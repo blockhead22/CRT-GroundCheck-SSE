@@ -1,0 +1,10 @@
+{
+  "timestamp": "2026-01-03T14:36:51.243194",
+  "test_name": "contradiction_stress_test",
+  "text_length": 1187,
+  "text_word_count": 181,
+  "chunk_count": 5,
+  "claim_count": 28,
+  "cluster_count": 11,
+  "contradiction_count": 48
+}

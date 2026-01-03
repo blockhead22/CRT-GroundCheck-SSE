@@ -1,0 +1,2 @@
+[console_scripts]
+sse = sse.cli:main

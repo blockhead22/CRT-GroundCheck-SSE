@@ -1,0 +1,52 @@
+
+======================================================================
+DOCUMENT SUMMARY
+======================================================================
+
+[Cluster cl1]
+  * Sleep is absolutely critical for human health.
+    >> "Sleep is absolutely critical for human health...."
+  * Studies show that inadequate sleep increases cardiovascular disease risk significantly.
+    >> "Studies show that inadequate sleep increases cardiovascular disease risk signifi..."
+  * However, some researchers claim sleep requirements are highly individual and can range from 4 to 12 hours.
+    >> "However, some researchers claim sleep requirements are highly individual and can..."
+  * Most adults need 7-9 hours, but this varies.
+    >> "Most adults need 7-9 hours, but this varies...."
+  * But evidence for blue light effects is still emerging and contested by some studies.
+    >> "But evidence for blue light effects is still emerging and contested by some stud..."
+  * Melatonin supplements help many people sleep, although clinical trials show mixed results.
+    >> "Melatonin supplements help many people sleep, although clinical trials show mixe..."
+  * Sleep apnea requires professional treatment; behavioral interventions alone are insufficient.
+    >> "Sleep apnea requires professional treatment; behavioral interventions alone are ..."
+  * Some people claim meditation is a cure, which is misleading.
+    >> "Some people claim meditation is a cure, which is misleading...."
+  * Exercise improves sleep quality for most individuals, though timing and intensity matter.
+    >> "Exercise improves sleep quality for most individuals, though timing and intensit..."
+  * In summary, sleep is critical and variable.
+    >> "In summary, sleep is critical and variable...."
+  * The relationship between sleep and health is complex.
+    >> "The relationship between sleep and health is complex...."
+
+[Cluster cl4]
+  * Most adults need 7-9 hours, but this varies.
+    >> "Most adults need 7-9 hours, but this varies...."
+  * Contradictory claims: Sleep deprivation is always harmful, yet some people function well on 5 hours.
+    >> "Contradictory claims: Sleep deprivation is always harmful, yet some people funct..."
+  * The evidence suggests sleep needs are genetic.
+    >> "The evidence suggests sleep needs are genetic...."
+  * The evidence suggests sleep needs are genetic.
+    >> "The evidence suggests sleep needs are genetic...."
+  * On the other hand, consistent sleep schedules matter more than total hours.
+    >> "On the other hand, consistent sleep schedules matter more than total hours...."
+  * Caffeine blocks sleep directly.
+    >> "Caffeine blocks sleep directly...."
+  * Caffeine blocks sleep directly.
+    >> "Caffeine blocks sleep directly...."
+  * Yet moderate caffeine enhances focus during the day.
+    >> "Yet moderate caffeine enhances focus during the day...."
+  * Blue light suppresses melatonin, which disrupts sleep.
+    >> "Blue light suppresses melatonin, which disrupts sleep...."
+
+======================================================================
+Total: 20 claims | 0 contradictions | 0 open questions
+======================================================================

@@ -1,0 +1,32 @@
+
+======================================================================
+DOCUMENT SUMMARY
+======================================================================
+
+[Cluster cl1]
+  1. Sleep is absolutely critical for human health.
+  2. Studies show that inadequate sleep increases cardiovascular disease risk significantly.
+  3. However, some researchers claim sleep requirements are highly individual and can range from 4 to 12 hours.
+  4. Most adults need 7-9 hours, but this varies.
+  5. But evidence for blue light effects is still emerging and contested by some studies.
+  6. Melatonin supplements help many people sleep, although clinical trials show mixed results.
+  7. Sleep apnea requires professional treatment; behavioral interventions alone are insufficient.
+  8. Some people claim meditation is a cure, which is misleading.
+  9. Exercise improves sleep quality for most individuals, though timing and intensity matter.
+  10. In summary, sleep is critical and variable.
+  11. The relationship between sleep and health is complex.
+
+[Cluster cl4]
+  1. Most adults need 7-9 hours, but this varies.
+  2. Contradictory claims: Sleep deprivation is always harmful, yet some people function well on 5 hours.
+  3. The evidence suggests sleep needs are genetic.
+  4. The evidence suggests sleep needs are genetic.
+  5. On the other hand, consistent sleep schedules matter more than total hours.
+  6. Caffeine blocks sleep directly.
+  7. Caffeine blocks sleep directly.
+  8. Yet moderate caffeine enhances focus during the day.
+  9. Blue light suppresses melatonin, which disrupts sleep.
+
+======================================================================
+Total: 20 claims | 0 contradictions | 0 open questions
+======================================================================

@@ -1,0 +1,367 @@
+================================================================================
+CONTRADICTION STRESS TEST REPORT
+================================================================================
+Timestamp: 2026-01-03T14:36:51.243194
+Test: Explicit Contradictions Detection
+
+--------------------------------------------------------------------------------
+TEXT STATISTICS
+--------------------------------------------------------------------------------
+Text Length: 1187 characters
+Word Count: 181 words
+Chunks Created: 5
+Claims Extracted: 28
+
+--------------------------------------------------------------------------------
+CONTRADICTION DETECTION RESULTS
+--------------------------------------------------------------------------------
+Total Contradictions Found: 48
+
+Contradiction 1:
+  Claim A: clm0
+  Claim B: clm2
+  Text A: The Earth is round....
+  Text B: However, some people still believe the Earth is flat....
+  Supporting Quotes: 2
+
+Contradiction 2:
+  Claim A: clm0
+  Claim B: clm3
+  Text A: The Earth is round....
+  Text B: The flat Earth theory contradicts all modern evidence....
+  Supporting Quotes: 2
+
+Contradiction 3:
+  Claim A: clm0
+  Claim B: clm14
+  Text A: The Earth is round....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 4:
+  Claim A: clm0
+  Claim B: clm15
+  Text A: The Earth is round....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 5:
+  Claim A: clm1
+  Claim B: clm14
+  Text A: Scientists have proven that the Earth is spherical....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 6:
+  Claim A: clm1
+  Claim B: clm15
+  Text A: Scientists have proven that the Earth is spherical....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 7:
+  Claim A: clm2
+  Claim B: clm14
+  Text A: However, some people still believe the Earth is flat....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 8:
+  Claim A: clm2
+  Claim B: clm15
+  Text A: However, some people still believe the Earth is flat....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 9:
+  Claim A: clm3
+  Claim B: clm14
+  Text A: The flat Earth theory contradicts all modern evidence....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 10:
+  Claim A: clm3
+  Claim B: clm15
+  Text A: The flat Earth theory contradicts all modern evidence....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 11:
+  Claim A: clm4
+  Claim B: clm14
+  Text A: Exercise is beneficial for health....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 12:
+  Claim A: clm4
+  Claim B: clm15
+  Text A: Exercise is beneficial for health....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 13:
+  Claim A: clm5
+  Claim B: clm9
+  Text A: Regular physical activity improves cardiovascular function....
+  Text B: Working out damages your body....
+  Supporting Quotes: 2
+
+Contradiction 14:
+  Claim A: clm5
+  Claim B: clm14
+  Text A: Regular physical activity improves cardiovascular function....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 15:
+  Claim A: clm5
+  Claim B: clm15
+  Text A: Regular physical activity improves cardiovascular function....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 16:
+  Claim A: clm6
+  Claim B: clm14
+  Text A: Studies show that active people live longer....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 17:
+  Claim A: clm6
+  Claim B: clm15
+  Text A: Studies show that active people live longer....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 18:
+  Claim A: clm7
+  Claim B: clm14
+  Text A: On the other hand, sedentary behavior is healthier than exercise....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 19:
+  Claim A: clm7
+  Claim B: clm15
+  Text A: On the other hand, sedentary behavior is healthier than exercise....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 20:
+  Claim A: clm8
+  Claim B: clm14
+  Text A: Sitting all day is better for your muscles than physical activity....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 21:
+  Claim A: clm8
+  Claim B: clm15
+  Text A: Sitting all day is better for your muscles than physical activity....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 22:
+  Claim A: clm9
+  Claim B: clm14
+  Text A: Working out damages your body....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 23:
+  Claim A: clm9
+  Claim B: clm15
+  Text A: Working out damages your body....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 24:
+  Claim A: clm10
+  Claim B: clm13
+  Text A: Climate change is real and caused by human activity....
+  Text B: Conversely, climate change is a hoax....
+  Supporting Quotes: 2
+
+Contradiction 25:
+  Claim A: clm10
+  Claim B: clm14
+  Text A: Climate change is real and caused by human activity....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 26:
+  Claim A: clm10
+  Claim B: clm15
+  Text A: Climate change is real and caused by human activity....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 27:
+  Claim A: clm11
+  Claim B: clm14
+  Text A: Global temperatures are rising due to greenhouse gas emissions....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 28:
+  Claim A: clm11
+  Claim B: clm15
+  Text A: Global temperatures are rising due to greenhouse gas emissions....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 29:
+  Claim A: clm12
+  Claim B: clm14
+  Text A: Scientists agree on this....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 30:
+  Claim A: clm12
+  Claim B: clm15
+  Text A: Scientists agree on this....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 31:
+  Claim A: clm13
+  Claim B: clm14
+  Text A: Conversely, climate change is a hoax....
+  Text B: The Earth's climate is stable and not affected by humans....
+  Supporting Quotes: 2
+
+Contradiction 32:
+  Claim A: clm13
+  Claim B: clm15
+  Text A: Conversely, climate change is a hoax....
+  Text B: No warming is happening....
+  Supporting Quotes: 2
+
+Contradiction 33:
+  Claim A: clm14
+  Claim B: clm16
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: Water boils at 100 degrees Celsius at sea level....
+  Supporting Quotes: 2
+
+Contradiction 34:
+  Claim A: clm14
+  Claim B: clm17
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: This is a physical fact....
+  Supporting Quotes: 2
+
+Contradiction 35:
+  Claim A: clm14
+  Claim B: clm18
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: This is a physical fact....
+  Supporting Quotes: 2
+
+Contradiction 36:
+  Claim A: clm14
+  Claim B: clm19
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: Yet some claim water boils at 50 degrees Celsius....
+  Supporting Quotes: 2
+
+Contradiction 37:
+  Claim A: clm14
+  Claim B: clm20
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: This contradicts the laws of physics....
+  Supporting Quotes: 2
+
+Contradiction 38:
+  Claim A: clm14
+  Claim B: clm21
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: Vaccines are safe and effective....
+  Supporting Quotes: 2
+
+Contradiction 39:
+  Claim A: clm14
+  Claim B: clm22
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: Millions of people have received vaccines without severe side effects....
+  Supporting Quotes: 2
+
+Contradiction 40:
+  Claim A: clm14
+  Claim B: clm23
+  Text A: The Earth's climate is stable and not affected by humans....
+  Text B: Vaccination prevents diseases....
+  Supporting Quotes: 2
+
+Contradiction 41:
+  Claim A: clm15
+  Claim B: clm16
+  Text A: No warming is happening....
+  Text B: Water boils at 100 degrees Celsius at sea level....
+  Supporting Quotes: 2
+
+Contradiction 42:
+  Claim A: clm15
+  Claim B: clm17
+  Text A: No warming is happening....
+  Text B: This is a physical fact....
+  Supporting Quotes: 2
+
+Contradiction 43:
+  Claim A: clm15
+  Claim B: clm18
+  Text A: No warming is happening....
+  Text B: This is a physical fact....
+  Supporting Quotes: 2
+
+Contradiction 44:
+  Claim A: clm15
+  Claim B: clm19
+  Text A: No warming is happening....
+  Text B: Yet some claim water boils at 50 degrees Celsius....
+  Supporting Quotes: 2
+
+Contradiction 45:
+  Claim A: clm15
+  Claim B: clm20
+  Text A: No warming is happening....
+  Text B: This contradicts the laws of physics....
+  Supporting Quotes: 2
+
+Contradiction 46:
+  Claim A: clm15
+  Claim B: clm21
+  Text A: No warming is happening....
+  Text B: Vaccines are safe and effective....
+  Supporting Quotes: 2
+
+Contradiction 47:
+  Claim A: clm15
+  Claim B: clm22
+  Text A: No warming is happening....
+  Text B: Millions of people have received vaccines without severe side effects....
+  Supporting Quotes: 2
+
+Contradiction 48:
+  Claim A: clm15
+  Claim B: clm23
+  Text A: No warming is happening....
+  Text B: Vaccination prevents diseases....
+  Supporting Quotes: 2
+
+--------------------------------------------------------------------------------
+VALIDATION CHECKS
+--------------------------------------------------------------------------------
+[PASS] Contradictions detected in stress test
+[PASS] All contradiction pairs have IDs
+[PASS] All contradictions have supporting quotes
+[PASS] All quote offsets are valid
+[PASS] Index schema validation passed
+
+================================================================================
+STRESS TEST PASSED: Contradiction detection is functional
+================================================================================

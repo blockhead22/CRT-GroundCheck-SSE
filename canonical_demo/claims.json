@@ -1,0 +1,478 @@
+[
+  {
+    "claim_id": "clm0",
+    "claim_text": "The Earth is round.",
+    "supporting_quotes": [
+      {
+        "quote_text": "The Earth is round.",
+        "chunk_id": "c0",
+        "start_char": 1,
+        "end_char": 20
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm1",
+    "claim_text": "Scientists have definitively proven that the Earth is a sphere.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Scientists have definitively proven that the Earth is a sphere.",
+        "chunk_id": "c0",
+        "start_char": 21,
+        "end_char": 84
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm2",
+    "claim_text": "Our planet orbits the Sun in an elliptical path.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Our planet orbits the Sun in an elliptical path.",
+        "chunk_id": "c0",
+        "start_char": 85,
+        "end_char": 133
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm3",
+    "claim_text": "However, some flat Earth believers claim the Earth is flat.",
+    "supporting_quotes": [
+      {
+        "quote_text": "However, some flat Earth believers claim the Earth is flat.",
+        "chunk_id": "c0",
+        "start_char": 134,
+        "end_char": 193
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": true,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm4",
+    "claim_text": "They argue that gravity is a hoax.",
+    "supporting_quotes": [
+      {
+        "quote_text": "They argue that gravity is a hoax.",
+        "chunk_id": "c0",
+        "start_char": 194,
+        "end_char": 228
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm5",
+    "claim_text": "The flat Earth theory contradicts all modern evidence.",
+    "supporting_quotes": [
+      {
+        "quote_text": "The flat Earth theory contradicts all modern evidence.",
+        "chunk_id": "c0",
+        "start_char": 229,
+        "end_char": 283
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": true,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm6",
+    "claim_text": "Exercise is beneficial for health.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Exercise is beneficial for health.",
+        "chunk_id": "c1",
+        "start_char": 286,
+        "end_char": 320
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm7",
+    "claim_text": "Regular physical activity improves cardiovascular function.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Regular physical activity improves cardiovascular function.",
+        "chunk_id": "c1",
+        "start_char": 321,
+        "end_char": 380
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm8",
+    "claim_text": "Studies show that active people live longer.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Studies show that active people live longer.",
+        "chunk_id": "c1",
+        "start_char": 381,
+        "end_char": 425
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm9",
+    "claim_text": "Exercise prevents many diseases.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Exercise prevents many diseases.",
+        "chunk_id": "c1",
+        "start_char": 426,
+        "end_char": 458
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm10",
+    "claim_text": "But some extremists insist that exercise is harmful and causes injury.",
+    "supporting_quotes": [
+      {
+        "quote_text": "But some extremists insist that exercise is harmful and causes injury.",
+        "chunk_id": "c1",
+        "start_char": 459,
+        "end_char": 529
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": true,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm11",
+    "claim_text": "On the other hand, sedentary behavior is healthier than exercise.",
+    "supporting_quotes": [
+      {
+        "quote_text": "On the other hand, sedentary behavior is healthier than exercise.",
+        "chunk_id": "c2",
+        "start_char": 531,
+        "end_char": 596
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm12",
+    "claim_text": "Sitting all day is better for your muscles than physical activity.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Sitting all day is better for your muscles than physical activity.",
+        "chunk_id": "c2",
+        "start_char": 597,
+        "end_char": 663
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm13",
+    "claim_text": "Climate change is real and caused by human activity.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Climate change is real and caused by human activity.",
+        "chunk_id": "c2",
+        "start_char": 664,
+        "end_char": 716
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm14",
+    "claim_text": "Global temperatures are rising due to greenhouse gas emissions.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Global temperatures are rising due to greenhouse gas emissions.",
+        "chunk_id": "c2",
+        "start_char": 717,
+        "end_char": 780
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm15",
+    "claim_text": "Scientists agree on this.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Scientists agree on this.",
+        "chunk_id": "c2",
+        "start_char": 781,
+        "end_char": 806
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm16",
+    "claim_text": "Scientists agree on this.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Scientists agree on this.",
+        "chunk_id": "c3",
+        "start_char": 782,
+        "end_char": 807
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm17",
+    "claim_text": "Conversely, climate skeptics claim climate change is a hoax.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Conversely, climate skeptics claim climate change is a hoax.",
+        "chunk_id": "c3",
+        "start_char": 808,
+        "end_char": 868
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm18",
+    "claim_text": "The Earth's climate is stable and not affected by humans.",
+    "supporting_quotes": [
+      {
+        "quote_text": "The Earth's climate is stable and not affected by humans.",
+        "chunk_id": "c3",
+        "start_char": 869,
+        "end_char": 926
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm19",
+    "claim_text": "Water boils at 100 degrees Celsius at sea level.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Water boils at 100 degrees Celsius at sea level.",
+        "chunk_id": "c3",
+        "start_char": 927,
+        "end_char": 975
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm20",
+    "claim_text": "This is a fundamental fact taught in every science class.",
+    "supporting_quotes": [
+      {
+        "quote_text": "This is a fundamental fact taught in every science class.",
+        "chunk_id": "c3",
+        "start_char": 976,
+        "end_char": 1033
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm21",
+    "claim_text": "Yet some pseudoscience advocates insist water boils at 50 degrees Celsius.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Yet some pseudoscience advocates insist water boils at 50 degrees Celsius.",
+        "chunk_id": "c4",
+        "start_char": 1037,
+        "end_char": 1111
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm22",
+    "claim_text": "Vaccines are safe and effective.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Vaccines are safe and effective.",
+        "chunk_id": "c4",
+        "start_char": 1112,
+        "end_char": 1144
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm23",
+    "claim_text": "Millions of people have received vaccines without severe side effects.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Millions of people have received vaccines without severe side effects.",
+        "chunk_id": "c4",
+        "start_char": 1145,
+        "end_char": 1215
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm24",
+    "claim_text": "Vaccination prevents diseases.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Vaccination prevents diseases.",
+        "chunk_id": "c4",
+        "start_char": 1216,
+        "end_char": 1246
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm25",
+    "claim_text": "In contrast, anti-vaccine activists claim vaccines cause autism and severe injuries.",
+    "supporting_quotes": [
+      {
+        "quote_text": "In contrast, anti-vaccine activists claim vaccines cause autism and severe injuries.",
+        "chunk_id": "c4",
+        "start_char": 1247,
+        "end_char": 1331
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm26",
+    "claim_text": "They are dangerous and should be avoided.",
+    "supporting_quotes": [
+      {
+        "quote_text": "They are dangerous and should be avoided.",
+        "chunk_id": "c5",
+        "start_char": 1334,
+        "end_char": 1375
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  },
+  {
+    "claim_id": "clm27",
+    "claim_text": "Vaccination makes people sick.",
+    "supporting_quotes": [
+      {
+        "quote_text": "Vaccination makes people sick.",
+        "chunk_id": "c5",
+        "start_char": 1376,
+        "end_char": 1406
+      }
+    ],
+    "ambiguity": {
+      "hedge_score": 0.0,
+      "contains_conflict_markers": false,
+      "open_questions": []
+    }
+  }
+]

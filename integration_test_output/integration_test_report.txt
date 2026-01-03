@@ -1,0 +1,94 @@
+================================================================================
+SSE v0.1 INTEGRATION TEST REPORT
+================================================================================
+Timestamp: 2026-01-03T14:36:53.250269
+Test Method: Rule-Based Claim Extraction
+
+--------------------------------------------------------------------------------
+INPUT STATISTICS
+--------------------------------------------------------------------------------
+Text Length: 1183 characters
+Word Count: 168 words
+
+--------------------------------------------------------------------------------
+PIPELINE RESULTS
+--------------------------------------------------------------------------------
+Chunks Produced: 8
+Claims Extracted: 20
+Semantic Clusters: 5
+Ambiguous Claims (hedge_score > 0.3): 0
+Contradictions Detected: 0
+
+--------------------------------------------------------------------------------
+TIMING BREAKDOWN (seconds)
+--------------------------------------------------------------------------------
+  chunking................................ 0.0000s
+  embedding_chunks........................ 0.9043s
+  extraction_rule_based................... 0.0030s
+  embedding............................... 0.0127s
+  clustering.............................. 0.0010s
+  ambiguity_detection..................... 0.0000s
+  contradiction_detection................. 0.0010s
+  render_natural.......................... 0.0000s
+  render_bullet........................... 0.0000s
+  render_conflict......................... 0.0000s
+  TOTAL................................... 1.1752s
+
+--------------------------------------------------------------------------------
+RENDER OUTPUT SAMPLES
+--------------------------------------------------------------------------------
+
+--- RENDER MODE: NATURAL ---
+
+======================================================================
+DOCUMENT SUMMARY
+======================================================================
+
+[Cluster cl1]
+  1. Sleep is absolutely critical for human health.
+  2. Studies show that inadequate sleep increases cardiovascular disease risk significantly.
+  3. However, some researchers claim sleep requirements are highly individual and can range from 4 to 12 hours.
+  4. Most adults need 7-9 hours, but this varies.
+  5. But evidence ...
+
+--- RENDER MODE: BULLET ---
+
+======================================================================
+DOCUMENT SUMMARY
+======================================================================
+
+[Cluster cl1]
+  * Sleep is absolutely critical for human health.
+    >> "Sleep is absolutely critical for human health...."
+  * Studies show that inadequate sleep increases cardiovascular disease risk significantly.
+    >> "Studies show that inadequate sleep increases cardiovascular disease risk signifi..."
+  * However, some researchers ...
+
+--- RENDER MODE: CONFLICT ---
+======================================================================
+EXPLICIT CONTRADICTIONS
+======================================================================
+
+======================================================================
+KEY CLAIMS
+======================================================================
+
+[Cluster cl1]
+  1. Sleep is absolutely critical for human health.
+  2. Studies show that inadequate sleep increases cardiovascular disease risk significantly.
+  3. However, some r...
+
+--------------------------------------------------------------------------------
+QUALITY CHECKS
+--------------------------------------------------------------------------------
+[PASS] All chunks have correct character offsets
+[PASS] All claims extracted from text
+[PASS] All claims have embeddings
+[PASS] Cluster assignments valid
+[PASS] Contradictions detected and validated
+[PASS] Render outputs contain only original text
+[PASS] Index schema validation passed
+
+================================================================================
+TEST PASSED: All phases executed successfully
+================================================================================
