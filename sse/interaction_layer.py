@@ -12,6 +12,7 @@ import json
 import numpy as np
 from typing import List, Dict, Optional, Any
 from .embeddings import EmbeddingStore
+from .coherence import CoherenceTracker, CoherenceBoundaryViolation
 
 
 class SSEBoundaryViolation(Exception):
@@ -53,6 +54,9 @@ class SSENavigator:
         self.clusters = self.index.get("clusters", [])
         self.claims = self.index.get("claims", [])
         self.contradictions = self.index.get("contradictions", [])
+        
+        # Initialize coherence tracker for disagreement observation
+        self.coherence = CoherenceTracker(self.index)
         
         # Try to load embeddings if available (same directory as index)
         self.embeddings = None
@@ -469,11 +473,86 @@ class SSENavigator:
         scored.sort(key=lambda x: x[0], reverse=True)
         return [claim for _, claim in scored[:k]]
     
+    # ===== COHERENCE (disagreement observation) =====
+    
+    def get_claim_coherence(self, claim_id: str) -> Optional[Dict]:
+        """
+        Get coherence metadata for a claim.
+        
+        PERMITTED OPERATION: Observation of disagreement patterns
+        
+        Shows how this claim relates to others, WITHOUT resolving conflicts.
+        """
+        return self.coherence.get_claim_coherence(claim_id)
+    
+    def get_disagreement_edges(self, claim_id: Optional[str] = None) -> List[Dict]:
+        """
+        Get disagreement relationships.
+        
+        PERMITTED OPERATION: Observation of relationship structure
+        
+        Args:
+            claim_id: Optional filter for specific claim
+        
+        Returns:
+            List of disagreement edges with confidence and reasoning
+        """
+        return self.coherence.get_disagreement_edges(claim_id)
+    
+    def get_related_claims(self, claim_id: str, 
+                          relationship: Optional[str] = None) -> List[Dict]:
+        """
+        Get claims related to this one.
+        
+        PERMITTED OPERATION: Navigation through disagreement graph
+        
+        Args:
+            claim_id: The claim to find relationships for
+            relationship: Optional filter ("contradicts", "conflicts", "qualifies", "uncertain")
+        
+        Returns:
+            List of dicts with claim_id, claim_text, and relationship type
+        """
+        related = self.coherence.get_related_claims(claim_id, relationship)
+        
+        result = []
+        for related_id, rel_type in related:
+            claim = self.get_claim_by_id(related_id)
+            result.append({
+                "claim_id": related_id,
+                "claim_text": claim.get("claim_text") if claim else None,
+                "relationship": rel_type
+            })
+        
+        return result
+    
+    def get_disagreement_clusters(self) -> List[List[str]]:
+        """
+        Find groups of claims that all disagree.
+        
+        PERMITTED OPERATION: Observation of relationship patterns
+        
+        Returns:
+            List of claim ID lists representing disagreement clusters
+        """
+        clusters = self.coherence.get_disagreement_clusters()
+        return [list(c) for c in clusters]
+    
+    def get_coherence_report(self) -> Dict:
+        """
+        Get overall coherence statistics for the index.
+        
+        PERMITTED OPERATION: Transparency about disagreement structure
+        
+        Shows disagreement patterns WITHOUT claiming any claims are wrong.
+        """
+        return self.coherence.get_coherence_report()
+    
     # ===== INDEX INFO =====
     
     def info(self) -> Dict:
         """Get basic information about the index."""
-        return {
+        info = {
             "doc_id": self.doc_id,
             "timestamp": self.timestamp,
             "num_chunks": len(self.chunks),
@@ -485,4 +564,4 @@ class SSENavigator:
                 if c.get("ambiguity", {}).get("hedge_score", 0) > 0
             ),
             "has_embeddings": self.embeddings is not None
-        }
+        }        return info
