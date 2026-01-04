@@ -483,7 +483,10 @@ class SSENavigator:
         
         Shows how this claim relates to others, WITHOUT resolving conflicts.
         """
-        return self.coherence.get_claim_coherence(claim_id)
+        coh = self.coherence.get_claim_coherence(claim_id)
+        if coh:
+            return coh.to_dict()
+        return None
     
     def get_disagreement_edges(self, claim_id: Optional[str] = None) -> List[Dict]:
         """
@@ -564,4 +567,185 @@ class SSENavigator:
                 if c.get("ambiguity", {}).get("hedge_score", 0) > 0
             ),
             "has_embeddings": self.embeddings is not None
-        }        return info
+        }
+        return info
+
+    # ===== FORBIDDEN OPERATIONS =====
+    # These operations violate the integrity boundaries of SSE.
+    # They are blocked to preserve disagreement visibility and claim completeness.
+
+    def modify_claim(self, claim_id: str, modifications: dict) -> None:
+        """
+        FORBIDDEN: Modifying claims violates integrity boundaries.
+        
+        Raising SSEBoundaryViolation because modifying claims would hide
+        the original disagreements and create false coherence.
+        """
+        raise SSEBoundaryViolation(
+            "modify_claim",
+            "Modifying claims would hide original disagreements and create false coherence. "
+            "SSE preserves all claims and disagreements as originally indexed. "
+            "To change interpretation, create a new index from source material."
+        )
+
+    def delete_claim(self, claim_id: str) -> None:
+        """
+        FORBIDDEN: Deleting claims violates integrity boundaries.
+        
+        Raising SSEBoundaryViolation because deleting claims would hide
+        original assertions and create false agreement.
+        """
+        raise SSEBoundaryViolation(
+            "delete_claim",
+            "Deleting claims would hide original assertions and create false agreement. "
+            "All claims must be preserved to maintain disagreement visibility."
+        )
+
+    def add_claim(self, claim: dict) -> None:
+        """
+        FORBIDDEN: Adding claims violates integrity boundaries.
+        
+        Raising SSEBoundaryViolation because new claims should come from
+        original source material, not synthetic generation.
+        """
+        raise SSEBoundaryViolation(
+            "add_claim",
+            "Claims must come from original source material, not synthetic generation. "
+            "Add claims by re-indexing the source document with sse compress."
+        )
+
+    def modify_contradiction(self, claim_a: str, claim_b: str, modifications: dict) -> None:
+        """
+        FORBIDDEN: Modifying contradictions violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "modify_contradiction",
+            "Contradictions are detected, not adjusted. Modifying would hide the actual disagreement structure."
+        )
+
+    def delete_contradiction(self, claim_a: str, claim_b: str) -> None:
+        """
+        FORBIDDEN: Deleting contradictions violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "delete_contradiction",
+            "All disagreements must be visible. Deleting contradictions would hide actual conflicts."
+        )
+
+    def add_contradiction(self, contradiction: dict) -> None:
+        """
+        FORBIDDEN: Adding contradictions violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "add_contradiction",
+            "Contradictions are detected from content, not injected. "
+            "Synthetic contradictions would misrepresent the source."
+        )
+
+    def query_without_contradictions(self, query: str) -> list:
+        """
+        FORBIDDEN: Filtering out contradictions violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "query_without_contradictions",
+            "All results must include disagreements. Filtering contradictions would provide false coherence."
+        )
+
+    def filter_high_confidence_only(self, min_confidence: float) -> list:
+        """
+        FORBIDDEN: Filtering low-confidence claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "filter_high_confidence_only",
+            "All claims must be visible. Filtering by confidence creates false certainty about uncertain claims."
+        )
+
+    def filter_unambiguous_claims(self) -> list:
+        """
+        FORBIDDEN: Filtering ambiguous claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "filter_unambiguous_claims",
+            "Ambiguity must be visible. Filtering ambiguous claims would hide uncertainty."
+        )
+
+    def resolve_contradiction(self, claim_a: str, claim_b: str, winner: str = None) -> None:
+        """
+        FORBIDDEN: Resolving contradictions violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "resolve_contradiction",
+            "SSE never picks winners. Both sides of disagreements must remain visible."
+        )
+
+    def synthesize_unified_view(self) -> dict:
+        """
+        FORBIDDEN: Synthesizing unified views violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "synthesize_unified_view",
+            "SSE preserves disagreements. Synthesis would create false coherence and hide actual conflicts."
+        )
+
+    def pick_preferred_claims(self, claim_ids: list) -> list:
+        """
+        FORBIDDEN: Picking preferred claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "pick_preferred_claims",
+            "All claims have equal standing. Preferring claims hides disagreements."
+        )
+
+    def reorder_claims(self, claim_ids: list) -> None:
+        """
+        FORBIDDEN: Reordering claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "reorder_claims",
+            "Reordering implies preference ordering. All claims must have equal standing."
+        )
+
+    def suppress_claim(self, claim_id: str) -> None:
+        """
+        FORBIDDEN: Suppressing claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "suppress_claim",
+            "All claims must be visible. Suppression hides original assertions."
+        )
+
+    def set_claim_weight(self, claim_id: str, weight: float) -> None:
+        """
+        FORBIDDEN: Weighting claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "set_claim_weight",
+            "All claims have equal standing. Weighting implies preference without evidence."
+        )
+
+    def merge_claims(self, claim_a: str, claim_b: str, merged_text: str) -> None:
+        """
+        FORBIDDEN: Merging claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "merge_claims",
+            "Merging claims hides their actual separation. If they are distinct, they should remain distinct."
+        )
+
+    def split_claim(self, claim_id: str, parts: list) -> None:
+        """
+        FORBIDDEN: Splitting claims violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "split_claim",
+            "Claims must be as extracted from source. Splitting would change the original assertion."
+        )
+
+    def change_relationship_type(self, claim_a: str, claim_b: str, relationship: str) -> None:
+        """
+        FORBIDDEN: Changing relationship types violates integrity boundaries.
+        """
+        raise SSEBoundaryViolation(
+            "change_relationship_type",
+            "Relationships are detected, not adjusted. Changing types would misrepresent actual disagreements."
+        )

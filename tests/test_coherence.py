@@ -144,7 +144,8 @@ class TestObservation:
         related = tracker.get_related_claims("clm0")
         
         # clm0 contradicts clm1, so clm1 should be in related
-        related_ids = [r["claim_id"] for r in related]
+        # Returns List[Tuple[str, str]], not List[Dict]
+        related_ids = [r[0] for r in related]
         assert "clm1" in related_ids
     
     def test_filter_by_relationship_type(self):
@@ -284,7 +285,8 @@ class TestMetadataAccuracy:
             for claim_id in cluster:
                 related = tracker.get_related_claims(claim_id)
                 # Should have relationships to other cluster members
-                related_ids = {r["claim_id"] for r in related}
+                # Returns List[Tuple[str, str]], so extract first element
+                related_ids = {r[0] for r in related}
                 assert len(related_ids & set(cluster)) > 0
 
 

@@ -266,8 +266,103 @@ def navigate(args):
                 print("\n")
             return
         
+        # Coherence: show disagreement metadata for a claim
+        if args.coherence:
+            coherence = nav.get_claim_coherence(args.coherence)
+            if not coherence:
+                print(f"Claim not found: {args.coherence}")
+                return
+            
+            print("=" * 60)
+            print("CLAIM COHERENCE METADATA")
+            print("=" * 60)
+            print(f"Claim ID: {coherence['claim_id']}")
+            print(f"Claim Text: {coherence['claim_text']}")
+            print(f"\nTotal Relationships: {coherence['total_relationships']}")
+            print(f"  Contradictions: {coherence['contradictions']}")
+            print(f"  Conflicts: {coherence['conflicts']}")
+            print(f"  Qualifications: {coherence['qualifications']}")
+            print(f"  Agreements: {coherence['agreements']}")
+            print(f"  Ambiguous: {coherence['ambiguous_relationships']}")
+            
+            if coherence['total_relationships'] > 0:
+                print(f"\nDisagreement Edges:")
+                edges = nav.get_disagreement_edges(args.coherence)
+                for i, edge in enumerate(edges, 1):
+                    print(f"{i}. {edge['claim_id_a']} ←→ {edge['claim_id_b']}")
+                    print(f"   Relationship: {edge['relationship']}")
+                    print(f"   Confidence: {edge['confidence']:.2f}")
+                    if edge['reasoning']:
+                        print(f"   Reasoning: {edge['reasoning']}")
+            
+            print("=" * 60)
+            return
+        
+        # Related claims: show claims related to a specific one
+        if args.related_to:
+            related = nav.get_related_claims(args.related_to)
+            if not related:
+                print(f"No related claims found for: {args.related_to}")
+                return
+            
+            print("=" * 60)
+            print(f"CLAIMS RELATED TO {args.related_to}")
+            print("=" * 60)
+            for i, rel in enumerate(related, 1):
+                print(f"{i}. {rel['claim_id']}")
+                print(f"   Text: {rel['claim_text']}")
+                print(f"   Relationship: {rel['relationship']}")
+            print("=" * 60)
+            return
+        
+        # Disagreement clusters: show groups of claims that disagree
+        if args.disagreement_clusters:
+            clusters = nav.get_disagreement_clusters()
+            if not clusters:
+                print("No disagreement clusters found.")
+                return
+            
+            print("=" * 60)
+            print(f"DISAGREEMENT CLUSTERS ({len(clusters)})")
+            print("=" * 60)
+            for i, cluster in enumerate(clusters, 1):
+                print(f"\nCluster {i}: {len(cluster)} claims")
+                for claim_id in cluster:
+                    claim = nav.get_claim_by_id(claim_id)
+                    print(f"  • {claim_id}: {claim.get('claim_text', 'N/A')[:60]}...")
+            print("=" * 60)
+            return
+        
+        # Coherence report: show overall disagreement statistics
+        if args.coherence_report:
+            report = nav.get_coherence_report()
+            print("=" * 60)
+            print("COHERENCE REPORT")
+            print("=" * 60)
+            print(f"Total Claims: {report['total_claims']}")
+            print(f"Total Disagreement Edges: {report['total_disagreement_edges']}")
+            print(f"Contradiction Edges: {report['contradiction_edges']}")
+            print(f"Conflict Edges: {report['conflict_edges']}")
+            print(f"Qualification Edges: {report['qualification_edges']}")
+            print(f"Ambiguous Edges: {report['ambiguous_edges']}")
+            print(f"Disagreement Density: {report['disagreement_density']:.4f}")
+            print(f"Isolated Claims (no disagreements): {report['num_isolated_claims']}")
+            
+            if report['highest_conflict_claims']:
+                print(f"\nHighest Conflict Claims:")
+                for i, item in enumerate(report['highest_conflict_claims'], 1):
+                    print(f"  {i}. {item['claim_id']}: {item['relationships']} relationships")
+            
+            if report['disagreement_clusters']:
+                print(f"\nDisagreement Clusters ({len(report['disagreement_clusters'])}):")
+                for i, cluster in enumerate(report['disagreement_clusters'], 1):
+                    print(f"  Cluster {i}: {len(cluster)} claims - {', '.join(cluster[:3])}{'...' if len(cluster) > 3 else ''}")
+            
+            print("=" * 60)
+            return
+        
         # If no operation specified, show help
-        print("No operation specified. Use --query, --topic-contradictions, --provenance, --uncertain, --cluster, or --all-contradictions")
+        print("No operation specified. Use --query, --topic-contradictions, --provenance, --uncertain, --cluster, --coherence, --related-to, --disagreement-clusters, or --coherence-report")
         
     except SSEBoundaryViolation as e:
         print(f"❌ {e}")
@@ -306,7 +401,7 @@ def main():
     r.add_argument("--index", required=True, help="Path to index JSON file")
     r.add_argument("--style", choices=["natural", "bullet", "conflict"], default="natural", help="Render style")
 
-    n = sub.add_parser("navigate", help="Navigate SSE index: query, contradictions, provenance, uncertainty.")
+    n = sub.add_parser("navigate", help="Navigate SSE index: query, contradictions, provenance, uncertainty, coherence.")
     n.add_argument("--index", required=True, help="Path to index JSON file")
     n.add_argument("--embed-model", default="all-MiniLM-L6-v2", help="Sentence transformer model name")
     n.add_argument("--query", help="Search for claims about a topic/keyword")
@@ -319,6 +414,10 @@ def main():
     n.add_argument("--cluster", help="Show all claims in a semantic cluster (by cluster_id)")
     n.add_argument("--all-contradictions", action="store_true", help="Show all contradictions in the index")
     n.add_argument("--info", action="store_true", help="Show index information (num claims, clusters, etc)")
+    n.add_argument("--coherence", help="Show coherence metadata for a claim (by claim_id)")
+    n.add_argument("--related-to", help="Show claims related to a specific claim (by claim_id)")
+    n.add_argument("--disagreement-clusters", action="store_true", help="Show groups of claims that disagree")
+    n.add_argument("--coherence-report", action="store_true", help="Show overall disagreement statistics")
 
     args = parser.parse_args()
     if args.cmd == "compress":

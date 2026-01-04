@@ -270,6 +270,92 @@ class CoherenceTracker:
             "Coherence tracking never synthesizes resolutions. "
             "Disagreement is observed, not resolved."
         )
+
+    # ===== ADDITIONAL FORBIDDEN OPERATIONS =====
+    
+    def modify_edge(self, claim_a: str, claim_b: str, **kwargs) -> None:
+        """FORBIDDEN: Modifying disagreement edges."""
+        raise CoherenceBoundaryViolation(
+            "modify_edge",
+            "Modifying edges would hide actual disagreement structure."
+        )
+
+    def delete_edge(self, claim_a: str, claim_b: str) -> None:
+        """FORBIDDEN: Deleting disagreement edges."""
+        raise CoherenceBoundaryViolation(
+            "delete_edge",
+            "Deleting edges hides actual disagreements."
+        )
+
+    def filter_high_confidence_edges(self, min_confidence: float) -> list:
+        """FORBIDDEN: Filtering edges by confidence."""
+        raise CoherenceBoundaryViolation(
+            "filter_high_confidence_edges",
+            "Filtering edges hides low-confidence disagreements."
+        )
+
+    def hide_disagreement_clusters(self) -> None:
+        """FORBIDDEN: Hiding disagreement clusters."""
+        raise CoherenceBoundaryViolation(
+            "hide_disagreement_clusters",
+            "Hiding clusters obscures disagreement structure."
+        )
+
+    def suppress_relationship(self, claim_a: str, claim_b: str) -> None:
+        """FORBIDDEN: Suppressing relationships."""
+        raise CoherenceBoundaryViolation(
+            "suppress_relationship",
+            "Suppressing relationships hides actual disagreements."
+        )
+
+    def mark_disagreement_resolved(self, claim_a: str, claim_b: str) -> None:
+        """FORBIDDEN: Marking disagreements as resolved."""
+        raise CoherenceBoundaryViolation(
+            "mark_disagreement_resolved",
+            "Marking as resolved would hide actual disagreement."
+        )
+
+    def pick_winning_claim(self, claim_a: str, claim_b: str) -> str:
+        """FORBIDDEN: Picking a winning claim."""
+        raise CoherenceBoundaryViolation(
+            "pick_winning_claim",
+            "Coherence tracking never picks winners."
+        )
+
+    def weight_claim(self, claim_id: str, weight: float) -> None:
+        """FORBIDDEN: Weighting claims differently."""
+        raise CoherenceBoundaryViolation(
+            "weight_claim",
+            "Weighting claims implies preference without evidence."
+        )
+
+    def suppress_claim(self, claim_id: str) -> None:
+        """FORBIDDEN: Suppressing claims."""
+        raise CoherenceBoundaryViolation(
+            "suppress_claim",
+            "Suppressing claims hides them from disagreement analysis."
+        )
+
+    def pick_subset_of_claims(self, claim_ids: list) -> list:
+        """FORBIDDEN: Picking a subset of claims."""
+        raise CoherenceBoundaryViolation(
+            "pick_subset_of_claims",
+            "Coherence tracking preserves all claims equally."
+        )
+
+    def synthesize_unified_view(self) -> dict:
+        """FORBIDDEN: Synthesizing a unified view."""
+        raise CoherenceBoundaryViolation(
+            "synthesize_unified_view",
+            "Coherence tracking preserves disagreements, does not synthesize."
+        )
+
+    def resolve_disagreement(self, claim_a: str, claim_b: str) -> None:
+        """FORBIDDEN: Resolving disagreements."""
+        raise CoherenceBoundaryViolation(
+            "resolve_disagreement",
+            "Coherence tracking preserves disagreements without resolution."
+        )
     
     # ===== INTERNAL HELPERS =====
     
@@ -367,4 +453,88 @@ class CoherenceBoundaryViolation(Exception):
             f"Reason: {reason}\n"
             f"Coherence tracking permits only: observation, metadata, transparency.\n"
             f"Coherence tracking forbids: resolution, synthesis, filtering disagreement."
+        )
+
+    # ===== FORBIDDEN OPERATIONS =====
+    # These operations violate coherence tracking boundaries.
+
+    def modify_edge(self, claim_a: str, claim_b: str, **kwargs) -> None:
+        """
+        FORBIDDEN: Modifying disagreement edges.
+        """
+        raise CoherenceBoundaryViolation(
+            "modify_edge",
+            "Modifying edges would hide actual disagreement structure."
+        )
+
+    def delete_edge(self, claim_a: str, claim_b: str) -> None:
+        """
+        FORBIDDEN: Deleting disagreement edges.
+        """
+        raise CoherenceBoundaryViolation(
+            "delete_edge",
+            "Deleting edges hides actual disagreements."
+        )
+
+    def filter_high_confidence_edges(self, min_confidence: float) -> list:
+        """
+        FORBIDDEN: Filtering edges by confidence.
+        """
+        raise CoherenceBoundaryViolation(
+            "filter_high_confidence_edges",
+            "Filtering edges hides low-confidence disagreements."
+        )
+
+    def hide_disagreement_clusters(self) -> None:
+        """
+        FORBIDDEN: Hiding disagreement clusters.
+        """
+        raise CoherenceBoundaryViolation(
+            "hide_disagreement_clusters",
+            "Hiding clusters obscures disagreement structure."
+        )
+
+    def suppress_relationship(self, claim_a: str, claim_b: str) -> None:
+        """
+        FORBIDDEN: Suppressing relationships.
+        """
+        raise CoherenceBoundaryViolation(
+            "suppress_relationship",
+            "Suppressing relationships hides actual disagreements."
+        )
+
+    def mark_disagreement_resolved(self, claim_a: str, claim_b: str) -> None:
+        """
+        FORBIDDEN: Marking disagreements as resolved.
+        """
+        raise CoherenceBoundaryViolation(
+            "mark_disagreement_resolved",
+            "Marking as resolved would hide actual disagreement."
+        )
+
+    def pick_winning_claim(self, claim_a: str, claim_b: str) -> str:
+        """
+        FORBIDDEN: Picking a winning claim.
+        """
+        raise CoherenceBoundaryViolation(
+            "pick_winning_claim",
+            "Coherence tracking never picks winners."
+        )
+
+    def weight_claim(self, claim_id: str, weight: float) -> None:
+        """
+        FORBIDDEN: Weighting claims differently.
+        """
+        raise CoherenceBoundaryViolation(
+            "weight_claim",
+            "Weighting claims implies preference without evidence."
+        )
+
+    def suppress_claim(self, claim_id: str) -> None:
+        """
+        FORBIDDEN: Suppressing claims.
+        """
+        raise CoherenceBoundaryViolation(
+            "suppress_claim",
+            "Suppressing claims hides them from disagreement analysis."
         )
