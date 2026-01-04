@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-03T17:29:26.167621",
+  "timestamp": "2026-01-03T21:24:18.353783",
   "text_length": 1183,
   "text_word_count": 168,
   "chunk_count": 8,
@@ -7,15 +7,15 @@
   "cluster_count": 5,
   "ambiguous_claim_count": 0,
   "contradiction_count": 0,
-  "chunking": 0.0010004043579101562,
-  "embedding_chunks": 0.9409148693084717,
-  "extraction_rule_based": 0.0025315284729003906,
-  "embedding": 0.02485346794128418,
-  "clustering": 0.0009999275207519531,
+  "chunking": 0.001028299331665039,
+  "embedding_chunks": 1.0544641017913818,
+  "extraction_rule_based": 0.0030014514923095703,
+  "embedding": 0.03142404556274414,
+  "clustering": 0.0010030269622802734,
   "ambiguity_detection": 0.0,
-  "contradiction_detection": 0.0009717941284179688,
+  "contradiction_detection": 0.00099945068359375,
   "render_natural": 0.0,
-  "render_bullet": 0.0,
+  "render_bullet": 0.0010001659393310547,
   "render_conflict": 0.0,
-  "total_time_seconds": 1.1419219970703125
+  "total_time_seconds": 1.4477035999298096
 }

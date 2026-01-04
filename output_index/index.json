@@ -1,80 +1,55 @@
 {
   "doc_id": "sample_sleep.txt",
-  "timestamp": "2026-01-01T02:46:47.616599Z",
+  "timestamp": "2026-01-04T03:23:05.465481Z",
   "chunks": [
     {
       "chunk_id": "c0",
-      "text": "The importance of sleep cannot be overstated. Sleep is critical for physical health, mental health, and cognitive performance. During sleep, the body repairs itself and consolidates memories. Studies suggest that inadequate sleep increases the risk of cardiovascular disease, obesity, and diabetes.",
+      "doc_id": "doc0",
+      "text": "The importance of sleep cannot be overstated. Sleep is critical for physical health, mental health, and cognitive performance. During sleep, the body repairs itself and consolidates memories. Studies suggest that inadequate sleep increases the risk of cardiovascular disease, obesity, and diabetes. Sleep deprivation can impair decision-making and reaction time. On the other hand, some researchers argue that sleep requirements vary significantly between individuals. Most adults need between 7 and 9 hours of sleep per night, but genetics and lifestyle may play roles. Despite these variations, sleep deprivation is universally harmful to human functioning. Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
       "start_char": 0,
-      "end_char": 298,
+      "end_char": 747,
       "embedding_id": "e0"
     },
     {
       "chunk_id": "c1",
-      "text": "Sleep deprivation can impair decision-making and reaction time. On the other hand, some researchers argue that sleep requirements vary significantly between individuals. Most adults need between 7 and 9 hours of sleep per night, but genetics and lifestyle may play roles.",
-      "start_char": 299,
-      "end_char": 570,
+      "doc_id": "doc0",
+      "text": " Despite these variations, sleep deprivation is universally harmful to human functioning. Regular sleep schedules seem to improve sleep quality more than occasional long sleeps. The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness. However, consuming caffeine late in the day can disrupt sleep cycles. Blue light from screens might suppress melatonin production, though the evidence is still emerging. Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime. Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies.",
+      "start_char": 570,
+      "end_char": 1250,
       "embedding_id": "e1"
     },
     {
       "chunk_id": "c2",
-      "text": "Despite these variations, sleep deprivation is universally harmful to human functioning. Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
-      "start_char": 571,
-      "end_char": 747,
+      "doc_id": "doc0",
+      "text": " Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies. Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment. In conclusion, prioritizing sleep is one of the most impactful health decisions anyone can make.\n",
+      "start_char": 1149,
+      "end_char": 1473,
       "embedding_id": "e2"
-    },
-    {
-      "chunk_id": "c3",
-      "text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness. However, consuming caffeine late in the day can disrupt sleep cycles. Blue light from screens might suppress melatonin production, though the evidence is still emerging.",
-      "start_char": 748,
-      "end_char": 1042,
-      "embedding_id": "e3"
-    },
-    {
-      "chunk_id": "c4",
-      "text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime. Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies.",
-      "start_char": 1043,
-      "end_char": 1250,
-      "embedding_id": "e4"
-    },
-    {
-      "chunk_id": "c5",
-      "text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment. In conclusion, prioritizing sleep is one of the most impactful health decisions anyone can make.",
-      "start_char": 1251,
-      "end_char": 1472,
-      "embedding_id": "e5"
     }
   ],
   "clusters": [
     {
       "cluster_id": "cl0",
       "chunk_ids": [
-        "c3",
-        "c4"
-      ],
-      "centroid_embedding_id": "cent0"
-    },
-    {
-      "cluster_id": "cl1",
-      "chunk_ids": [
         "c0",
         "c1",
-        "c2",
-        "c5"
+        "c2"
       ],
-      "centroid_embedding_id": "cent1"
+      "centroid_embedding_id": "cent0"
     }
   ],
   "claims": [
     {
       "claim_id": "clm0",
       "claim_text": "The importance of sleep cannot be overstated.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "The importance of sleep cannot be overstated.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
-          "end_char": 298
+          "end_char": 45
         }
       ],
       "ambiguity": {
@@ -85,13 +60,15 @@
     },
     {
       "claim_id": "clm1",
-      "claim_text": "Sleep deprivation can impair decision-making and reaction time.",
+      "claim_text": "Sleep is critical for physical health, mental health, and cognitive performance.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Sleep deprivation can impair decision-making and reaction time.",
-          "chunk_id": "c1",
-          "start_char": 299,
-          "end_char": 570
+          "quote_text": "Sleep is critical for physical health, mental health, and cognitive performance.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 46,
+          "end_char": 126
         }
       ],
       "ambiguity": {
@@ -102,13 +79,15 @@
     },
     {
       "claim_id": "clm2",
-      "claim_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
+      "claim_text": "During sleep, the body repairs itself and consolidates memories.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
-          "chunk_id": "c2",
-          "start_char": 571,
-          "end_char": 747
+          "quote_text": "During sleep, the body repairs itself and consolidates memories.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 127,
+          "end_char": 191
         }
       ],
       "ambiguity": {
@@ -119,30 +98,34 @@
     },
     {
       "claim_id": "clm3",
-      "claim_text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness.",
+      "claim_text": "Studies suggest that inadequate sleep increases the risk of cardiovascular disease, obesity, and diabetes.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness.",
-          "chunk_id": "c3",
-          "start_char": 748,
-          "end_char": 1042
+          "quote_text": "Studies suggest that inadequate sleep increases the risk of cardiovascular disease, obesity, and diabetes.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 192,
+          "end_char": 298
         }
       ],
       "ambiguity": {
-        "hedge_score": 0.058823529411764705,
+        "hedge_score": 0.0,
         "contains_conflict_markers": false,
         "open_questions": []
       }
     },
     {
       "claim_id": "clm4",
-      "claim_text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime.",
+      "claim_text": "Sleep deprivation can impair decision-making and reaction time.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime.",
-          "chunk_id": "c4",
-          "start_char": 1043,
-          "end_char": 1250
+          "quote_text": "Sleep deprivation can impair decision-making and reaction time.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 299,
+          "end_char": 362
         }
       ],
       "ambiguity": {
@@ -153,12 +136,261 @@
     },
     {
       "claim_id": "clm5",
+      "claim_text": "On the other hand, some researchers argue that sleep requirements vary significantly between individuals.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "On the other hand, some researchers argue that sleep requirements vary significantly between individuals.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 363,
+          "end_char": 468
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm6",
+      "claim_text": "Most adults need between 7 and 9 hours of sleep per night, but genetics and lifestyle may play roles.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Most adults need between 7 and 9 hours of sleep per night, but genetics and lifestyle may play roles.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 469,
+          "end_char": 570
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.05263157894736842,
+        "contains_conflict_markers": true,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm7",
+      "claim_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 571,
+          "end_char": 659
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm8",
+      "claim_text": "Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 660,
+          "end_char": 747
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm0",
+      "claim_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": " Despite these variations, sleep deprivation is universally harmful to human functioning.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 570,
+          "end_char": 659
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm1",
+      "claim_text": "Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 660,
+          "end_char": 747
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm2",
+      "claim_text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 748,
+          "end_char": 872
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.058823529411764705,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm3",
+      "claim_text": "However, consuming caffeine late in the day can disrupt sleep cycles.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "However, consuming caffeine late in the day can disrupt sleep cycles.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 873,
+          "end_char": 942
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": true,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm4",
+      "claim_text": "Blue light from screens might suppress melatonin production, though the evidence is still emerging.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Blue light from screens might suppress melatonin production, though the evidence is still emerging.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 943,
+          "end_char": 1042
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.07142857142857142,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm5",
+      "claim_text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 1043,
+          "end_char": 1149
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm6",
+      "claim_text": "Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 1150,
+          "end_char": 1250
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.07142857142857142,
+        "contains_conflict_markers": true,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm0",
+      "claim_text": "Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": " Some people swear by melatonin supplements, but their effectiveness remains unclear in many studies.",
+          "chunk_id": "c2",
+          "doc_id": "doc0",
+          "start_char": 1149,
+          "end_char": 1250
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.07142857142857142,
+        "contains_conflict_markers": true,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm1",
       "claim_text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment.",
-          "chunk_id": "c5",
+          "chunk_id": "c2",
+          "doc_id": "doc0",
           "start_char": 1251,
+          "end_char": 1375
+        }
+      ],
+      "ambiguity": {
+        "hedge_score": 0.0,
+        "contains_conflict_markers": false,
+        "open_questions": []
+      }
+    },
+    {
+      "claim_id": "clm2",
+      "claim_text": "In conclusion, prioritizing sleep is one of the most impactful health decisions anyone can make.",
+      "doc_id": "doc0",
+      "supporting_quotes": [
+        {
+          "quote_text": "In conclusion, prioritizing sleep is one of the most impactful health decisions anyone can make.",
+          "chunk_id": "c2",
+          "doc_id": "doc0",
+          "start_char": 1376,
           "end_char": 1472
         }
       ],
@@ -180,14 +412,16 @@
         {
           "quote_text": "The importance of sleep cannot be overstated.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
-          "end_char": 298
+          "end_char": 45
         },
         {
-          "quote_text": "Sleep deprivation can impair decision-making and reaction time.",
-          "chunk_id": "c1",
-          "start_char": 299,
-          "end_char": 570
+          "quote_text": "Sleep is critical for physical health, mental health, and cognitive performance.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 46,
+          "end_char": 126
         }
       ]
     },
@@ -201,14 +435,16 @@
         {
           "quote_text": "The importance of sleep cannot be overstated.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
-          "end_char": 298
+          "end_char": 45
         },
         {
-          "quote_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
-          "chunk_id": "c2",
-          "start_char": 571,
-          "end_char": 747
+          "quote_text": "During sleep, the body repairs itself and consolidates memories.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 127,
+          "end_char": 191
         }
       ]
     },
@@ -222,14 +458,16 @@
         {
           "quote_text": "The importance of sleep cannot be overstated.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
-          "end_char": 298
+          "end_char": 45
         },
         {
-          "quote_text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness.",
-          "chunk_id": "c3",
-          "start_char": 748,
-          "end_char": 1042
+          "quote_text": "Studies suggest that inadequate sleep increases the risk of cardiovascular disease, obesity, and diabetes.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 192,
+          "end_char": 298
         }
       ]
     },
@@ -243,98 +481,131 @@
         {
           "quote_text": "The importance of sleep cannot be overstated.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
-          "end_char": 298
+          "end_char": 45
         },
-        {
-          "quote_text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime.",
-          "chunk_id": "c4",
-          "start_char": 1043,
-          "end_char": 1250
-        }
-      ]
-    },
-    {
-      "pair": {
-        "claim_id_a": "clm1",
-        "claim_id_b": "clm5"
-      },
-      "label": "contradiction",
-      "evidence_quotes": [
         {
           "quote_text": "Sleep deprivation can impair decision-making and reaction time.",
-          "chunk_id": "c1",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 299,
-          "end_char": 570
-        },
-        {
-          "quote_text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment.",
-          "chunk_id": "c5",
-          "start_char": 1251,
-          "end_char": 1472
+          "end_char": 362
         }
       ]
     },
     {
       "pair": {
-        "claim_id_a": "clm2",
+        "claim_id_a": "clm0",
         "claim_id_b": "clm5"
       },
       "label": "contradiction",
       "evidence_quotes": [
+        {
+          "quote_text": "The importance of sleep cannot be overstated.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 0,
+          "end_char": 45
+        },
+        {
+          "quote_text": "On the other hand, some researchers argue that sleep requirements vary significantly between individuals.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 363,
+          "end_char": 468
+        }
+      ]
+    },
+    {
+      "pair": {
+        "claim_id_a": "clm0",
+        "claim_id_b": "clm6"
+      },
+      "label": "contradiction",
+      "evidence_quotes": [
+        {
+          "quote_text": "The importance of sleep cannot be overstated.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 0,
+          "end_char": 45
+        },
+        {
+          "quote_text": "Most adults need between 7 and 9 hours of sleep per night, but genetics and lifestyle may play roles.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 469,
+          "end_char": 570
+        }
+      ]
+    },
+    {
+      "pair": {
+        "claim_id_a": "clm0",
+        "claim_id_b": "clm7"
+      },
+      "label": "contradiction",
+      "evidence_quotes": [
+        {
+          "quote_text": "The importance of sleep cannot be overstated.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 0,
+          "end_char": 45
+        },
         {
           "quote_text": "Despite these variations, sleep deprivation is universally harmful to human functioning.",
-          "chunk_id": "c2",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 571,
+          "end_char": 659
+        }
+      ]
+    },
+    {
+      "pair": {
+        "claim_id_a": "clm0",
+        "claim_id_b": "clm8"
+      },
+      "label": "contradiction",
+      "evidence_quotes": [
+        {
+          "quote_text": "The importance of sleep cannot be overstated.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 0,
+          "end_char": 45
+        },
+        {
+          "quote_text": "Regular sleep schedules seem to improve sleep quality more than occasional long sleeps.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 660,
           "end_char": 747
-        },
-        {
-          "quote_text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment.",
-          "chunk_id": "c5",
-          "start_char": 1251,
-          "end_char": 1472
         }
       ]
     },
     {
       "pair": {
-        "claim_id_a": "clm3",
-        "claim_id_b": "clm5"
+        "claim_id_a": "clm0",
+        "claim_id_b": "clm0"
       },
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The relationship between caffeine and sleep is complex: while caffeine blocks sleep, moderate amounts may enhance alertness.",
-          "chunk_id": "c3",
-          "start_char": 748,
-          "end_char": 1042
+          "quote_text": "The importance of sleep cannot be overstated.",
+          "chunk_id": "c0",
+          "doc_id": "doc0",
+          "start_char": 0,
+          "end_char": 45
         },
         {
-          "quote_text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment.",
-          "chunk_id": "c5",
-          "start_char": 1251,
-          "end_char": 1472
-        }
-      ]
-    },
-    {
-      "pair": {
-        "claim_id_a": "clm4",
-        "claim_id_b": "clm5"
-      },
-      "label": "contradiction",
-      "evidence_quotes": [
-        {
-          "quote_text": "Good sleep hygiene practices include maintaining a cool, dark bedroom and avoiding screens before bedtime.",
-          "chunk_id": "c4",
-          "start_char": 1043,
-          "end_char": 1250
-        },
-        {
-          "quote_text": "Not all sleep problems are caused by behavioral factors; medical conditions like sleep apnea require professional treatment.",
-          "chunk_id": "c5",
-          "start_char": 1251,
-          "end_char": 1472
+          "quote_text": " Despite these variations, sleep deprivation is universally harmful to human functioning.",
+          "chunk_id": "c1",
+          "doc_id": "doc0",
+          "start_char": 570,
+          "end_char": 659
         }
       ]
     }

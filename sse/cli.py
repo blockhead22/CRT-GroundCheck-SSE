@@ -12,6 +12,7 @@ from .eval import evaluate_index
 from .schema import validate_index_schema
 from .ollama_utils import OllamaClient
 from .render import render_index
+from .interaction_layer import SSENavigator, SSEBoundaryViolation
 
 
 def compress(args):
@@ -155,6 +156,127 @@ def render_cmd(args):
         traceback.print_exc()
 
 
+def navigate(args):
+    """Navigate SSE index: retrieve claims, contradictions, provenance, uncertainty."""
+    try:
+        if not os.path.exists(args.index):
+            print(f"Error: index file '{args.index}' not found.")
+            return
+        
+        nav = SSENavigator(args.index, embed_model=args.embed_model)
+        
+        # Show index info if requested
+        if args.info:
+            info = nav.info()
+            print("=" * 60)
+            print("INDEX INFORMATION")
+            print("=" * 60)
+            for key, value in info.items():
+                print(f"{key}: {value}")
+            print("=" * 60)
+            return
+        
+        # Query: search for claims by topic/keyword
+        if args.query:
+            method = "semantic" if args.semantic else "keyword"
+            results = nav.query(args.query, k=args.k, method=method)
+            print(nav.format_search_results(results))
+            return
+        
+        # Topic contradictions: find all contradictions about a topic
+        if args.topic_contradictions:
+            contradictions = nav.get_contradictions_for_topic(args.topic_contradictions)
+            if not contradictions:
+                print(f"No contradictions found for topic: {args.topic_contradictions}")
+                return
+            
+            print(f"Found {len(contradictions)} contradictions about '{args.topic_contradictions}':\n")
+            for i, contra in enumerate(contradictions, 1):
+                print(nav.format_contradiction(contra))
+                print("\n")
+            return
+        
+        # Provenance: show exact source for a claim
+        if args.provenance:
+            claim = nav.get_claim_by_id(args.provenance)
+            if not claim:
+                print(f"Claim not found: {args.provenance}")
+                return
+            
+            prov = nav.get_provenance(args.provenance)
+            print("=" * 60)
+            print("CLAIM PROVENANCE")
+            print("=" * 60)
+            print(f"Claim ID: {prov['claim_id']}")
+            print(f"Claim Text: {prov['claim_text']}")
+            print(f"\nSupporting Quotes ({len(prov['supporting_quotes'])}):")
+            
+            for i, quote in enumerate(prov['supporting_quotes'], 1):
+                print(f"\n{i}. Quote:")
+                print(f"   Text: \"{quote['quote_text']}\"")
+                print(f"   Chunk ID: {quote['chunk_id']}")
+                print(f"   Byte Range: [{quote['start_char']}:{quote['end_char']}]")
+                print(f"   Length: {quote['char_count']} characters")
+                print(f"   Reconstructed Match: {quote['valid']}")
+            
+            print("=" * 60)
+            return
+        
+        # Uncertainty: show claims with high hedge scores
+        if args.uncertain:
+            uncertain = nav.get_uncertain_claims(min_hedge=args.min_hedge)
+            if not uncertain:
+                print(f"No claims with hedge score >= {args.min_hedge}")
+                return
+            
+            print(f"Found {len(uncertain)} claims with uncertain language (hedge score >= {args.min_hedge}):\n")
+            for i, claim in enumerate(uncertain, 1):
+                hedge = claim.get("ambiguity", {}).get("hedge_score", 0.0)
+                print(f"{i}. [{hedge:.2f}] {claim.get('claim_text')}")
+            print()
+            return
+        
+        # Cluster: show all claims in a cluster
+        if args.cluster:
+            cluster_info = nav.get_cluster(args.cluster)
+            print("=" * 60)
+            print(f"CLUSTER {args.cluster}")
+            print("=" * 60)
+            print(f"Number of claims: {cluster_info['num_claims']}")
+            print("\nClaims:")
+            
+            for i, claim in enumerate(cluster_info['claims'], 1):
+                print(f"\n{i}. {claim.get('claim_text')}")
+                for quote in claim.get("supporting_quotes", []):
+                    print(f"   Quote: \"{quote.get('quote_text')}\"")
+            
+            print("=" * 60)
+            return
+        
+        # Show all contradictions
+        if args.all_contradictions:
+            contradictions = nav.get_contradictions()
+            if not contradictions:
+                print("No contradictions found.")
+                return
+            
+            print(f"Found {len(contradictions)} total contradictions:\n")
+            for i, contra in enumerate(contradictions, 1):
+                print(nav.format_contradiction(contra))
+                print("\n")
+            return
+        
+        # If no operation specified, show help
+        print("No operation specified. Use --query, --topic-contradictions, --provenance, --uncertain, --cluster, or --all-contradictions")
+        
+    except SSEBoundaryViolation as e:
+        print(f"❌ {e}")
+    except Exception as e:
+        print(f"Error during navigation: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def main():
     parser = argparse.ArgumentParser(prog="sse", description="Semantic String Engine v0.1: local semantic compression for text.")
     sub = parser.add_subparsers(dest="cmd")
@@ -184,6 +306,20 @@ def main():
     r.add_argument("--index", required=True, help="Path to index JSON file")
     r.add_argument("--style", choices=["natural", "bullet", "conflict"], default="natural", help="Render style")
 
+    n = sub.add_parser("navigate", help="Navigate SSE index: query, contradictions, provenance, uncertainty.")
+    n.add_argument("--index", required=True, help="Path to index JSON file")
+    n.add_argument("--embed-model", default="all-MiniLM-L6-v2", help="Sentence transformer model name")
+    n.add_argument("--query", help="Search for claims about a topic/keyword")
+    n.add_argument("--semantic", action="store_true", help="Use semantic search (requires embeddings)")
+    n.add_argument("--k", type=int, default=5, help="Number of results to return")
+    n.add_argument("--topic-contradictions", help="Find all contradictions about a topic")
+    n.add_argument("--provenance", help="Show exact source for a claim (by claim_id)")
+    n.add_argument("--uncertain", action="store_true", help="Show all claims with uncertain language")
+    n.add_argument("--min-hedge", type=float, default=0.5, help="Minimum hedge score for --uncertain")
+    n.add_argument("--cluster", help="Show all claims in a semantic cluster (by cluster_id)")
+    n.add_argument("--all-contradictions", action="store_true", help="Show all contradictions in the index")
+    n.add_argument("--info", action="store_true", help="Show index information (num claims, clusters, etc)")
+
     args = parser.parse_args()
     if args.cmd == "compress":
         compress(args)
@@ -193,8 +329,11 @@ def main():
         eval_cmd(args)
     elif args.cmd == "render":
         render_cmd(args)
+    elif args.cmd == "navigate":
+        navigate(args)
     else:
         parser.print_help()
+
 
 if __name__ == "__main__":
     main()
