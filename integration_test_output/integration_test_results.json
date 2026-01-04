@@ -1,10 +1,11 @@
 {
   "doc_id": "integration_test_rule_based",
-  "timestamp": "2026-01-03T14:36:53.250269",
+  "timestamp": "2026-01-03T17:29:26.167621",
   "text_length": 1183,
   "chunks": [
     {
       "chunk_id": "c0",
+      "doc_id": "doc0",
       "text": "Sleep is absolutely critical for human health. Studies show that inadequate sleep increases \ncardiovascular disease risk significantly.",
       "start_char": 0,
       "end_char": 135,
@@ -12,50 +13,57 @@
     },
     {
       "chunk_id": "c1",
-      "text": "However, some researchers claim sleep requirements are \nhighly individual and can range from 4 to 12 hours. Most adults need 7-9 hours, but this varies.",
-      "start_char": 136,
+      "doc_id": "doc0",
+      "text": " However, some researchers claim sleep requirements are \nhighly individual and can range from 4 to 12 hours. Most adults need 7-9 hours, but this varies.",
+      "start_char": 135,
       "end_char": 288,
       "embedding_id": "e1"
     },
     {
       "chunk_id": "c2",
-      "text": "Most adults need 7-9 hours, but this varies. Contradictory claims: Sleep deprivation is always harmful, yet some people function well on 5 hours. The evidence suggests sleep needs are genetic.",
-      "start_char": 244,
+      "doc_id": "doc0",
+      "text": " Most adults need 7-9 hours, but this varies. \n\nContradictory claims: Sleep deprivation is always harmful, yet some people function well on 5 hours. \nThe evidence suggests sleep needs are genetic.",
+      "start_char": 243,
       "end_char": 439,
       "embedding_id": "e2"
     },
     {
       "chunk_id": "c3",
-      "text": "The evidence suggests sleep needs are genetic. On the other hand, consistent sleep schedules matter \nmore than total hours. Caffeine blocks sleep directly.",
-      "start_char": 393,
+      "doc_id": "doc0",
+      "text": " \nThe evidence suggests sleep needs are genetic. On the other hand, consistent sleep schedules matter \nmore than total hours. Caffeine blocks sleep directly.",
+      "start_char": 391,
       "end_char": 548,
       "embedding_id": "e3"
     },
     {
       "chunk_id": "c4",
-      "text": "Caffeine blocks sleep directly. Yet moderate caffeine enhances focus during \nthe day. Blue light suppresses melatonin, which disrupts sleep.",
-      "start_char": 517,
+      "doc_id": "doc0",
+      "text": " Caffeine blocks sleep directly. Yet moderate caffeine enhances focus during \nthe day.\n\nBlue light suppresses melatonin, which disrupts sleep.",
+      "start_char": 516,
       "end_char": 658,
       "embedding_id": "e4"
     },
     {
       "chunk_id": "c5",
-      "text": "But evidence for blue light effects is still \nemerging and contested by some studies. Melatonin supplements help many people sleep, although \nclinical trials show mixed results.",
-      "start_char": 659,
+      "doc_id": "doc0",
+      "text": " But evidence for blue light effects is still \nemerging and contested by some studies. Melatonin supplements help many people sleep, although \nclinical trials show mixed results.",
+      "start_char": 658,
       "end_char": 836,
       "embedding_id": "e5"
     },
     {
       "chunk_id": "c6",
-      "text": "Sleep apnea requires professional treatment; behavioral interventions alone are insufficient. Some people claim meditation is a cure, which is misleading.",
-      "start_char": 838,
+      "doc_id": "doc0",
+      "text": "\n\nSleep apnea requires professional treatment; behavioral interventions alone are insufficient. \nSome people claim meditation is a cure, which is misleading.",
+      "start_char": 836,
       "end_char": 993,
       "embedding_id": "e6"
     },
     {
       "chunk_id": "c7",
-      "text": "Exercise improves sleep quality for \nmost individuals, though timing and intensity matter. In summary, sleep is critical and variable. The relationship between sleep and health is complex.",
-      "start_char": 994,
+      "doc_id": "doc0",
+      "text": " Exercise improves sleep quality for \nmost individuals, though timing and intensity matter.\n\nIn summary, sleep is critical and variable. The relationship between sleep and health is complex.",
+      "start_char": 993,
       "end_char": 1183,
       "embedding_id": "e7"
     }
@@ -64,10 +72,12 @@
     {
       "claim_id": "clm0",
       "claim_text": "Sleep is absolutely critical for human health.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Sleep is absolutely critical for human health.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
           "end_char": 46
         }
@@ -81,10 +91,12 @@
     {
       "claim_id": "clm1",
       "claim_text": "Studies show that inadequate sleep increases cardiovascular disease risk significantly.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Studies show that inadequate sleep increases cardiovascular disease risk significantly.",
+          "quote_text": "Studies show that inadequate sleep increases \ncardiovascular disease risk significantly.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 47,
           "end_char": 135
         }
@@ -98,11 +110,13 @@
     {
       "claim_id": "clm2",
       "claim_text": "However, some researchers claim sleep requirements are highly individual and can range from 4 to 12 hours.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "However, some researchers claim sleep requirements are highly individual and can range from 4 to 12 hours.",
+          "quote_text": " However, some researchers claim sleep requirements are \nhighly individual and can range from 4 to 12 hours.",
           "chunk_id": "c1",
-          "start_char": 136,
+          "doc_id": "doc0",
+          "start_char": 135,
           "end_char": 243
         }
       ],
@@ -115,10 +129,12 @@
     {
       "claim_id": "clm3",
       "claim_text": "Most adults need 7-9 hours, but this varies.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Most adults need 7-9 hours, but this varies.",
           "chunk_id": "c1",
+          "doc_id": "doc0",
           "start_char": 244,
           "end_char": 288
         }
@@ -132,11 +148,13 @@
     {
       "claim_id": "clm4",
       "claim_text": "Most adults need 7-9 hours, but this varies.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Most adults need 7-9 hours, but this varies.",
+          "quote_text": " Most adults need 7-9 hours, but this varies.",
           "chunk_id": "c2",
-          "start_char": 244,
+          "doc_id": "doc0",
+          "start_char": 243,
           "end_char": 288
         }
       ],
@@ -149,12 +167,14 @@
     {
       "claim_id": "clm5",
       "claim_text": "Contradictory claims: Sleep deprivation is always harmful, yet some people function well on 5 hours.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Contradictory claims: Sleep deprivation is always harmful, yet some people function well on 5 hours.",
           "chunk_id": "c2",
-          "start_char": 289,
-          "end_char": 389
+          "doc_id": "doc0",
+          "start_char": 291,
+          "end_char": 391
         }
       ],
       "ambiguity": {
@@ -166,12 +186,14 @@
     {
       "claim_id": "clm6",
       "claim_text": "The evidence suggests sleep needs are genetic.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "The evidence suggests sleep needs are genetic.",
           "chunk_id": "c2",
-          "start_char": 390,
-          "end_char": 436
+          "doc_id": "doc0",
+          "start_char": 393,
+          "end_char": 439
         }
       ],
       "ambiguity": {
@@ -183,11 +205,13 @@
     {
       "claim_id": "clm7",
       "claim_text": "The evidence suggests sleep needs are genetic.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "The evidence suggests sleep needs are genetic.",
+          "quote_text": " \nThe evidence suggests sleep needs are genetic.",
           "chunk_id": "c3",
-          "start_char": 393,
+          "doc_id": "doc0",
+          "start_char": 391,
           "end_char": 439
         }
       ],
@@ -200,10 +224,12 @@
     {
       "claim_id": "clm8",
       "claim_text": "On the other hand, consistent sleep schedules matter more than total hours.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "On the other hand, consistent sleep schedules matter more than total hours.",
+          "quote_text": "On the other hand, consistent sleep schedules matter \nmore than total hours.",
           "chunk_id": "c3",
+          "doc_id": "doc0",
           "start_char": 440,
           "end_char": 516
         }
@@ -217,10 +243,12 @@
     {
       "claim_id": "clm9",
       "claim_text": "Caffeine blocks sleep directly.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Caffeine blocks sleep directly.",
           "chunk_id": "c3",
+          "doc_id": "doc0",
           "start_char": 517,
           "end_char": 548
         }
@@ -234,11 +262,13 @@
     {
       "claim_id": "clm10",
       "claim_text": "Caffeine blocks sleep directly.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Caffeine blocks sleep directly.",
+          "quote_text": " Caffeine blocks sleep directly.",
           "chunk_id": "c4",
-          "start_char": 517,
+          "doc_id": "doc0",
+          "start_char": 516,
           "end_char": 548
         }
       ],
@@ -251,10 +281,12 @@
     {
       "claim_id": "clm11",
       "claim_text": "Yet moderate caffeine enhances focus during the day.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Yet moderate caffeine enhances focus during the day.",
+          "quote_text": "Yet moderate caffeine enhances focus during \nthe day.",
           "chunk_id": "c4",
+          "doc_id": "doc0",
           "start_char": 549,
           "end_char": 602
         }
@@ -268,12 +300,14 @@
     {
       "claim_id": "clm12",
       "claim_text": "Blue light suppresses melatonin, which disrupts sleep.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Blue light suppresses melatonin, which disrupts sleep.",
           "chunk_id": "c4",
-          "start_char": 603,
-          "end_char": 657
+          "doc_id": "doc0",
+          "start_char": 604,
+          "end_char": 658
         }
       ],
       "ambiguity": {
@@ -285,11 +319,13 @@
     {
       "claim_id": "clm13",
       "claim_text": "But evidence for blue light effects is still emerging and contested by some studies.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "But evidence for blue light effects is still emerging and contested by some studies.",
+          "quote_text": " But evidence for blue light effects is still \nemerging and contested by some studies.",
           "chunk_id": "c5",
-          "start_char": 659,
+          "doc_id": "doc0",
+          "start_char": 658,
           "end_char": 744
         }
       ],
@@ -302,10 +338,12 @@
     {
       "claim_id": "clm14",
       "claim_text": "Melatonin supplements help many people sleep, although clinical trials show mixed results.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Melatonin supplements help many people sleep, although clinical trials show mixed results.",
+          "quote_text": "Melatonin supplements help many people sleep, although \nclinical trials show mixed results.",
           "chunk_id": "c5",
+          "doc_id": "doc0",
           "start_char": 745,
           "end_char": 836
         }
@@ -319,11 +357,13 @@
     {
       "claim_id": "clm15",
       "claim_text": "Sleep apnea requires professional treatment; behavioral interventions alone are insufficient.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Sleep apnea requires professional treatment; behavioral interventions alone are insufficient.",
+          "quote_text": "\n\nSleep apnea requires professional treatment; behavioral interventions alone are insufficient.",
           "chunk_id": "c6",
-          "start_char": 838,
+          "doc_id": "doc0",
+          "start_char": 836,
           "end_char": 931
         }
       ],
@@ -336,12 +376,14 @@
     {
       "claim_id": "clm16",
       "claim_text": "Some people claim meditation is a cure, which is misleading.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Some people claim meditation is a cure, which is misleading.",
           "chunk_id": "c6",
-          "start_char": 932,
-          "end_char": 992
+          "doc_id": "doc0",
+          "start_char": 933,
+          "end_char": 993
         }
       ],
       "ambiguity": {
@@ -353,11 +395,13 @@
     {
       "claim_id": "clm17",
       "claim_text": "Exercise improves sleep quality for most individuals, though timing and intensity matter.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Exercise improves sleep quality for most individuals, though timing and intensity matter.",
+          "quote_text": " Exercise improves sleep quality for \nmost individuals, though timing and intensity matter.",
           "chunk_id": "c7",
-          "start_char": 994,
+          "doc_id": "doc0",
+          "start_char": 993,
           "end_char": 1084
         }
       ],
@@ -370,12 +414,14 @@
     {
       "claim_id": "clm18",
       "claim_text": "In summary, sleep is critical and variable.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "In summary, sleep is critical and variable.",
           "chunk_id": "c7",
-          "start_char": 1085,
-          "end_char": 1128
+          "doc_id": "doc0",
+          "start_char": 1086,
+          "end_char": 1129
         }
       ],
       "ambiguity": {
@@ -387,12 +433,14 @@
     {
       "claim_id": "clm19",
       "claim_text": "The relationship between sleep and health is complex.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "The relationship between sleep and health is complex.",
           "chunk_id": "c7",
-          "start_char": 1129,
-          "end_char": 1182
+          "doc_id": "doc0",
+          "start_char": 1130,
+          "end_char": 1183
         }
       ],
       "ambiguity": {

@@ -1,40 +1,45 @@
 {
   "doc_id": "contradiction_stress_test",
-  "timestamp": "2026-01-03T14:36:51.243194",
+  "timestamp": "2026-01-03T17:29:24.218501",
   "text_length": 1187,
   "chunks": [
     {
       "chunk_id": "c0",
-      "text": "The Earth is round. Scientists have proven that the Earth is spherical. However, some people still believe the Earth is flat. The flat Earth theory\ncontradicts all modern evidence. Exercise is beneficial for health. Regular physical activity improves \ncardiovascular function.",
+      "doc_id": "doc0",
+      "text": "The Earth is round. Scientists have proven that the Earth is spherical.\n\nHowever, some people still believe the Earth is flat. The flat Earth theory\ncontradicts all modern evidence.\n\nExercise is beneficial for health. Regular physical activity improves \ncardiovascular function.",
       "start_char": 0,
       "end_char": 278,
       "embedding_id": "e0"
     },
     {
       "chunk_id": "c1",
-      "text": "Studies show that active people live longer. On the other hand, sedentary behavior is healthier than exercise. Sitting\nall day is better for your muscles than physical activity. Working out \ndamages your body. Climate change is real and caused by human activity.",
-      "start_char": 279,
+      "doc_id": "doc0",
+      "text": " Studies show that active people live longer.\n\nOn the other hand, sedentary behavior is healthier than exercise. Sitting\nall day is better for your muscles than physical activity. Working out \ndamages your body.\n\nClimate change is real and caused by human activity.",
+      "start_char": 278,
       "end_char": 543,
       "embedding_id": "e1"
     },
     {
       "chunk_id": "c2",
-      "text": "Global temperatures \nare rising due to greenhouse gas emissions. Scientists agree on this. Conversely, climate change is a hoax. The Earth's climate is stable and \nnot affected by humans. No warming is happening. Water boils at 100 degrees Celsius at sea level. This is a physical fact.",
-      "start_char": 544,
+      "doc_id": "doc0",
+      "text": " Global temperatures \nare rising due to greenhouse gas emissions. Scientists agree on this.\n\nConversely, climate change is a hoax. The Earth's climate is stable and \nnot affected by humans. No warming is happening.\n\nWater boils at 100 degrees Celsius at sea level. This is a physical fact.",
+      "start_char": 543,
       "end_char": 832,
       "embedding_id": "e2"
     },
     {
       "chunk_id": "c3",
-      "text": "This is a physical fact. Yet some claim water boils at 50 degrees Celsius. This contradicts the laws of physics. Vaccines are safe and effective. Millions of people have received vaccines\nwithout severe side effects. Vaccination prevents diseases.",
-      "start_char": 808,
+      "doc_id": "doc0",
+      "text": " This is a physical fact.\n\nYet some claim water boils at 50 degrees Celsius. This contradicts the laws of physics.\n\nVaccines are safe and effective. Millions of people have received vaccines\nwithout severe side effects. Vaccination prevents diseases.",
+      "start_char": 807,
       "end_char": 1057,
       "embedding_id": "e3"
     },
     {
       "chunk_id": "c4",
-      "text": "Vaccination prevents diseases. In contrast, vaccines cause autism and severe injuries. They are dangerous\nand should be avoided. Vaccination makes people sick.",
-      "start_char": 1027,
+      "doc_id": "doc0",
+      "text": " Vaccination prevents diseases.\n\nIn contrast, vaccines cause autism and severe injuries. They are dangerous\nand should be avoided. Vaccination makes people sick.",
+      "start_char": 1026,
       "end_char": 1187,
       "embedding_id": "e4"
     }
@@ -139,10 +144,12 @@
     {
       "claim_id": "clm0",
       "claim_text": "The Earth is round.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "The Earth is round.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
           "end_char": 19
         }
@@ -152,10 +159,12 @@
     {
       "claim_id": "clm1",
       "claim_text": "Scientists have proven that the Earth is spherical.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Scientists have proven that the Earth is spherical.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 20,
           "end_char": 71
         }
@@ -165,12 +174,14 @@
     {
       "claim_id": "clm2",
       "claim_text": "However, some people still believe the Earth is flat.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "However, some people still believe the Earth is flat.",
           "chunk_id": "c0",
-          "start_char": 72,
-          "end_char": 125
+          "doc_id": "doc0",
+          "start_char": 73,
+          "end_char": 126
         }
       ],
       "ambiguity": {}
@@ -178,12 +189,14 @@
     {
       "claim_id": "clm3",
       "claim_text": "The flat Earth theory contradicts all modern evidence.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "The flat Earth theory contradicts all modern evidence.",
+          "quote_text": "The flat Earth theory\ncontradicts all modern evidence.",
           "chunk_id": "c0",
-          "start_char": 126,
-          "end_char": 180
+          "doc_id": "doc0",
+          "start_char": 127,
+          "end_char": 181
         }
       ],
       "ambiguity": {}
@@ -191,12 +204,14 @@
     {
       "claim_id": "clm4",
       "claim_text": "Exercise is beneficial for health.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Exercise is beneficial for health.",
           "chunk_id": "c0",
-          "start_char": 181,
-          "end_char": 215
+          "doc_id": "doc0",
+          "start_char": 183,
+          "end_char": 217
         }
       ],
       "ambiguity": {}
@@ -204,12 +219,14 @@
     {
       "claim_id": "clm5",
       "claim_text": "Regular physical activity improves cardiovascular function.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Regular physical activity improves cardiovascular function.",
+          "quote_text": "Regular physical activity improves \ncardiovascular function.",
           "chunk_id": "c0",
-          "start_char": 216,
-          "end_char": 276
+          "doc_id": "doc0",
+          "start_char": 218,
+          "end_char": 278
         }
       ],
       "ambiguity": {}
@@ -217,11 +234,13 @@
     {
       "claim_id": "clm6",
       "claim_text": "Studies show that active people live longer.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Studies show that active people live longer.",
+          "quote_text": " Studies show that active people live longer.",
           "chunk_id": "c1",
-          "start_char": 279,
+          "doc_id": "doc0",
+          "start_char": 278,
           "end_char": 323
         }
       ],
@@ -230,12 +249,14 @@
     {
       "claim_id": "clm7",
       "claim_text": "On the other hand, sedentary behavior is healthier than exercise.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "On the other hand, sedentary behavior is healthier than exercise.",
           "chunk_id": "c1",
-          "start_char": 324,
-          "end_char": 389
+          "doc_id": "doc0",
+          "start_char": 325,
+          "end_char": 390
         }
       ],
       "ambiguity": {}
@@ -243,12 +264,14 @@
     {
       "claim_id": "clm8",
       "claim_text": "Sitting all day is better for your muscles than physical activity.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Sitting all day is better for your muscles than physical activity.",
+          "quote_text": "Sitting\nall day is better for your muscles than physical activity.",
           "chunk_id": "c1",
-          "start_char": 390,
-          "end_char": 456
+          "doc_id": "doc0",
+          "start_char": 391,
+          "end_char": 457
         }
       ],
       "ambiguity": {}
@@ -256,12 +279,14 @@
     {
       "claim_id": "clm9",
       "claim_text": "Working out damages your body.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Working out damages your body.",
+          "quote_text": "Working out \ndamages your body.",
           "chunk_id": "c1",
-          "start_char": 457,
-          "end_char": 488
+          "doc_id": "doc0",
+          "start_char": 458,
+          "end_char": 489
         }
       ],
       "ambiguity": {}
@@ -269,12 +294,14 @@
     {
       "claim_id": "clm10",
       "claim_text": "Climate change is real and caused by human activity.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Climate change is real and caused by human activity.",
           "chunk_id": "c1",
-          "start_char": 489,
-          "end_char": 541
+          "doc_id": "doc0",
+          "start_char": 491,
+          "end_char": 543
         }
       ],
       "ambiguity": {}
@@ -282,11 +309,13 @@
     {
       "claim_id": "clm11",
       "claim_text": "Global temperatures are rising due to greenhouse gas emissions.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Global temperatures are rising due to greenhouse gas emissions.",
+          "quote_text": " Global temperatures \nare rising due to greenhouse gas emissions.",
           "chunk_id": "c2",
-          "start_char": 544,
+          "doc_id": "doc0",
+          "start_char": 543,
           "end_char": 608
         }
       ],
@@ -295,10 +324,12 @@
     {
       "claim_id": "clm12",
       "claim_text": "Scientists agree on this.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Scientists agree on this.",
           "chunk_id": "c2",
+          "doc_id": "doc0",
           "start_char": 609,
           "end_char": 634
         }
@@ -308,12 +339,14 @@
     {
       "claim_id": "clm13",
       "claim_text": "Conversely, climate change is a hoax.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Conversely, climate change is a hoax.",
           "chunk_id": "c2",
-          "start_char": 635,
-          "end_char": 672
+          "doc_id": "doc0",
+          "start_char": 636,
+          "end_char": 673
         }
       ],
       "ambiguity": {}
@@ -321,12 +354,14 @@
     {
       "claim_id": "clm14",
       "claim_text": "The Earth's climate is stable and not affected by humans.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ],
       "ambiguity": {}
@@ -334,12 +369,14 @@
     {
       "claim_id": "clm15",
       "claim_text": "No warming is happening.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ],
       "ambiguity": {}
@@ -347,12 +384,14 @@
     {
       "claim_id": "clm16",
       "claim_text": "Water boils at 100 degrees Celsius at sea level.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Water boils at 100 degrees Celsius at sea level.",
           "chunk_id": "c2",
-          "start_char": 757,
-          "end_char": 805
+          "doc_id": "doc0",
+          "start_char": 759,
+          "end_char": 807
         }
       ],
       "ambiguity": {}
@@ -360,12 +399,14 @@
     {
       "claim_id": "clm17",
       "claim_text": "This is a physical fact.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "This is a physical fact.",
           "chunk_id": "c2",
-          "start_char": 806,
-          "end_char": 830
+          "doc_id": "doc0",
+          "start_char": 808,
+          "end_char": 832
         }
       ],
       "ambiguity": {}
@@ -373,11 +414,13 @@
     {
       "claim_id": "clm18",
       "claim_text": "This is a physical fact.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "This is a physical fact.",
+          "quote_text": " This is a physical fact.",
           "chunk_id": "c3",
-          "start_char": 808,
+          "doc_id": "doc0",
+          "start_char": 807,
           "end_char": 832
         }
       ],
@@ -386,12 +429,14 @@
     {
       "claim_id": "clm19",
       "claim_text": "Yet some claim water boils at 50 degrees Celsius.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Yet some claim water boils at 50 degrees Celsius.",
           "chunk_id": "c3",
-          "start_char": 833,
-          "end_char": 882
+          "doc_id": "doc0",
+          "start_char": 834,
+          "end_char": 883
         }
       ],
       "ambiguity": {}
@@ -399,12 +444,14 @@
     {
       "claim_id": "clm20",
       "claim_text": "This contradicts the laws of physics.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "This contradicts the laws of physics.",
           "chunk_id": "c3",
-          "start_char": 883,
-          "end_char": 920
+          "doc_id": "doc0",
+          "start_char": 884,
+          "end_char": 921
         }
       ],
       "ambiguity": {}
@@ -412,12 +459,14 @@
     {
       "claim_id": "clm21",
       "claim_text": "Vaccines are safe and effective.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Vaccines are safe and effective.",
           "chunk_id": "c3",
-          "start_char": 921,
-          "end_char": 953
+          "doc_id": "doc0",
+          "start_char": 923,
+          "end_char": 955
         }
       ],
       "ambiguity": {}
@@ -425,12 +474,14 @@
     {
       "claim_id": "clm22",
       "claim_text": "Millions of people have received vaccines without severe side effects.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Millions of people have received vaccines without severe side effects.",
+          "quote_text": "Millions of people have received vaccines\nwithout severe side effects.",
           "chunk_id": "c3",
-          "start_char": 954,
-          "end_char": 1024
+          "doc_id": "doc0",
+          "start_char": 956,
+          "end_char": 1026
         }
       ],
       "ambiguity": {}
@@ -438,12 +489,14 @@
     {
       "claim_id": "clm23",
       "claim_text": "Vaccination prevents diseases.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Vaccination prevents diseases.",
           "chunk_id": "c3",
-          "start_char": 1025,
-          "end_char": 1055
+          "doc_id": "doc0",
+          "start_char": 1027,
+          "end_char": 1057
         }
       ],
       "ambiguity": {}
@@ -451,11 +504,13 @@
     {
       "claim_id": "clm24",
       "claim_text": "Vaccination prevents diseases.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "Vaccination prevents diseases.",
+          "quote_text": " Vaccination prevents diseases.",
           "chunk_id": "c4",
-          "start_char": 1027,
+          "doc_id": "doc0",
+          "start_char": 1026,
           "end_char": 1057
         }
       ],
@@ -464,12 +519,14 @@
     {
       "claim_id": "clm25",
       "claim_text": "In contrast, vaccines cause autism and severe injuries.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "In contrast, vaccines cause autism and severe injuries.",
           "chunk_id": "c4",
-          "start_char": 1058,
-          "end_char": 1113
+          "doc_id": "doc0",
+          "start_char": 1059,
+          "end_char": 1114
         }
       ],
       "ambiguity": {}
@@ -477,12 +534,14 @@
     {
       "claim_id": "clm26",
       "claim_text": "They are dangerous and should be avoided.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
-          "quote_text": "They are dangerous and should be avoided.",
+          "quote_text": "They are dangerous\nand should be avoided.",
           "chunk_id": "c4",
-          "start_char": 1114,
-          "end_char": 1155
+          "doc_id": "doc0",
+          "start_char": 1115,
+          "end_char": 1156
         }
       ],
       "ambiguity": {}
@@ -490,12 +549,14 @@
     {
       "claim_id": "clm27",
       "claim_text": "Vaccination makes people sick.",
+      "doc_id": "doc0",
       "supporting_quotes": [
         {
           "quote_text": "Vaccination makes people sick.",
           "chunk_id": "c4",
-          "start_char": 1156,
-          "end_char": 1186
+          "doc_id": "doc0",
+          "start_char": 1157,
+          "end_char": 1187
         }
       ],
       "ambiguity": {}
@@ -512,14 +573,16 @@
         {
           "quote_text": "The Earth is round.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
           "end_char": 19
         },
         {
           "quote_text": "However, some people still believe the Earth is flat.",
           "chunk_id": "c0",
-          "start_char": 72,
-          "end_char": 125
+          "doc_id": "doc0",
+          "start_char": 73,
+          "end_char": 126
         }
       ]
     },
@@ -533,14 +596,16 @@
         {
           "quote_text": "The Earth is round.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
           "end_char": 19
         },
         {
-          "quote_text": "The flat Earth theory contradicts all modern evidence.",
+          "quote_text": "The flat Earth theory\ncontradicts all modern evidence.",
           "chunk_id": "c0",
-          "start_char": 126,
-          "end_char": 180
+          "doc_id": "doc0",
+          "start_char": 127,
+          "end_char": 181
         }
       ]
     },
@@ -554,14 +619,16 @@
         {
           "quote_text": "The Earth is round.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
           "end_char": 19
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -575,14 +642,16 @@
         {
           "quote_text": "The Earth is round.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 0,
           "end_char": 19
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -596,14 +665,16 @@
         {
           "quote_text": "Scientists have proven that the Earth is spherical.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 20,
           "end_char": 71
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -617,14 +688,16 @@
         {
           "quote_text": "Scientists have proven that the Earth is spherical.",
           "chunk_id": "c0",
+          "doc_id": "doc0",
           "start_char": 20,
           "end_char": 71
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -638,14 +711,16 @@
         {
           "quote_text": "However, some people still believe the Earth is flat.",
           "chunk_id": "c0",
-          "start_char": 72,
-          "end_char": 125
+          "doc_id": "doc0",
+          "start_char": 73,
+          "end_char": 126
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -659,14 +734,16 @@
         {
           "quote_text": "However, some people still believe the Earth is flat.",
           "chunk_id": "c0",
-          "start_char": 72,
-          "end_char": 125
+          "doc_id": "doc0",
+          "start_char": 73,
+          "end_char": 126
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -678,16 +755,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The flat Earth theory contradicts all modern evidence.",
+          "quote_text": "The flat Earth theory\ncontradicts all modern evidence.",
           "chunk_id": "c0",
-          "start_char": 126,
-          "end_char": 180
+          "doc_id": "doc0",
+          "start_char": 127,
+          "end_char": 181
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -699,16 +778,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The flat Earth theory contradicts all modern evidence.",
+          "quote_text": "The flat Earth theory\ncontradicts all modern evidence.",
           "chunk_id": "c0",
-          "start_char": 126,
-          "end_char": 180
+          "doc_id": "doc0",
+          "start_char": 127,
+          "end_char": 181
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -722,14 +803,16 @@
         {
           "quote_text": "Exercise is beneficial for health.",
           "chunk_id": "c0",
-          "start_char": 181,
-          "end_char": 215
+          "doc_id": "doc0",
+          "start_char": 183,
+          "end_char": 217
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -743,14 +826,16 @@
         {
           "quote_text": "Exercise is beneficial for health.",
           "chunk_id": "c0",
-          "start_char": 181,
-          "end_char": 215
+          "doc_id": "doc0",
+          "start_char": 183,
+          "end_char": 217
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -762,16 +847,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Regular physical activity improves cardiovascular function.",
+          "quote_text": "Regular physical activity improves \ncardiovascular function.",
           "chunk_id": "c0",
-          "start_char": 216,
-          "end_char": 276
+          "doc_id": "doc0",
+          "start_char": 218,
+          "end_char": 278
         },
         {
-          "quote_text": "Working out damages your body.",
+          "quote_text": "Working out \ndamages your body.",
           "chunk_id": "c1",
-          "start_char": 457,
-          "end_char": 488
+          "doc_id": "doc0",
+          "start_char": 458,
+          "end_char": 489
         }
       ]
     },
@@ -783,16 +870,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Regular physical activity improves cardiovascular function.",
+          "quote_text": "Regular physical activity improves \ncardiovascular function.",
           "chunk_id": "c0",
-          "start_char": 216,
-          "end_char": 276
+          "doc_id": "doc0",
+          "start_char": 218,
+          "end_char": 278
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -804,16 +893,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Regular physical activity improves cardiovascular function.",
+          "quote_text": "Regular physical activity improves \ncardiovascular function.",
           "chunk_id": "c0",
-          "start_char": 216,
-          "end_char": 276
+          "doc_id": "doc0",
+          "start_char": 218,
+          "end_char": 278
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -825,16 +916,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Studies show that active people live longer.",
+          "quote_text": " Studies show that active people live longer.",
           "chunk_id": "c1",
-          "start_char": 279,
+          "doc_id": "doc0",
+          "start_char": 278,
           "end_char": 323
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -846,16 +939,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Studies show that active people live longer.",
+          "quote_text": " Studies show that active people live longer.",
           "chunk_id": "c1",
-          "start_char": 279,
+          "doc_id": "doc0",
+          "start_char": 278,
           "end_char": 323
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -869,14 +964,16 @@
         {
           "quote_text": "On the other hand, sedentary behavior is healthier than exercise.",
           "chunk_id": "c1",
-          "start_char": 324,
-          "end_char": 389
+          "doc_id": "doc0",
+          "start_char": 325,
+          "end_char": 390
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -890,14 +987,16 @@
         {
           "quote_text": "On the other hand, sedentary behavior is healthier than exercise.",
           "chunk_id": "c1",
-          "start_char": 324,
-          "end_char": 389
+          "doc_id": "doc0",
+          "start_char": 325,
+          "end_char": 390
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -909,16 +1008,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Sitting all day is better for your muscles than physical activity.",
+          "quote_text": "Sitting\nall day is better for your muscles than physical activity.",
           "chunk_id": "c1",
-          "start_char": 390,
-          "end_char": 456
+          "doc_id": "doc0",
+          "start_char": 391,
+          "end_char": 457
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -930,16 +1031,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Sitting all day is better for your muscles than physical activity.",
+          "quote_text": "Sitting\nall day is better for your muscles than physical activity.",
           "chunk_id": "c1",
-          "start_char": 390,
-          "end_char": 456
+          "doc_id": "doc0",
+          "start_char": 391,
+          "end_char": 457
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -951,16 +1054,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Working out damages your body.",
+          "quote_text": "Working out \ndamages your body.",
           "chunk_id": "c1",
-          "start_char": 457,
-          "end_char": 488
+          "doc_id": "doc0",
+          "start_char": 458,
+          "end_char": 489
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -972,16 +1077,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Working out damages your body.",
+          "quote_text": "Working out \ndamages your body.",
           "chunk_id": "c1",
-          "start_char": 457,
-          "end_char": 488
+          "doc_id": "doc0",
+          "start_char": 458,
+          "end_char": 489
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -995,14 +1102,16 @@
         {
           "quote_text": "Climate change is real and caused by human activity.",
           "chunk_id": "c1",
-          "start_char": 489,
-          "end_char": 541
+          "doc_id": "doc0",
+          "start_char": 491,
+          "end_char": 543
         },
         {
           "quote_text": "Conversely, climate change is a hoax.",
           "chunk_id": "c2",
-          "start_char": 635,
-          "end_char": 672
+          "doc_id": "doc0",
+          "start_char": 636,
+          "end_char": 673
         }
       ]
     },
@@ -1016,14 +1125,16 @@
         {
           "quote_text": "Climate change is real and caused by human activity.",
           "chunk_id": "c1",
-          "start_char": 489,
-          "end_char": 541
+          "doc_id": "doc0",
+          "start_char": 491,
+          "end_char": 543
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -1037,14 +1148,16 @@
         {
           "quote_text": "Climate change is real and caused by human activity.",
           "chunk_id": "c1",
-          "start_char": 489,
-          "end_char": 541
+          "doc_id": "doc0",
+          "start_char": 491,
+          "end_char": 543
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -1056,16 +1169,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Global temperatures are rising due to greenhouse gas emissions.",
+          "quote_text": " Global temperatures \nare rising due to greenhouse gas emissions.",
           "chunk_id": "c2",
-          "start_char": 544,
+          "doc_id": "doc0",
+          "start_char": 543,
           "end_char": 608
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -1077,16 +1192,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "Global temperatures are rising due to greenhouse gas emissions.",
+          "quote_text": " Global temperatures \nare rising due to greenhouse gas emissions.",
           "chunk_id": "c2",
-          "start_char": 544,
+          "doc_id": "doc0",
+          "start_char": 543,
           "end_char": 608
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -1100,14 +1217,16 @@
         {
           "quote_text": "Scientists agree on this.",
           "chunk_id": "c2",
+          "doc_id": "doc0",
           "start_char": 609,
           "end_char": 634
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -1121,14 +1240,16 @@
         {
           "quote_text": "Scientists agree on this.",
           "chunk_id": "c2",
+          "doc_id": "doc0",
           "start_char": 609,
           "end_char": 634
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -1142,14 +1263,16 @@
         {
           "quote_text": "Conversely, climate change is a hoax.",
           "chunk_id": "c2",
-          "start_char": 635,
-          "end_char": 672
+          "doc_id": "doc0",
+          "start_char": 636,
+          "end_char": 673
         },
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         }
       ]
     },
@@ -1163,14 +1286,16 @@
         {
           "quote_text": "Conversely, climate change is a hoax.",
           "chunk_id": "c2",
-          "start_char": 635,
-          "end_char": 672
+          "doc_id": "doc0",
+          "start_char": 636,
+          "end_char": 673
         },
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         }
       ]
     },
@@ -1182,16 +1307,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
           "quote_text": "Water boils at 100 degrees Celsius at sea level.",
           "chunk_id": "c2",
-          "start_char": 757,
-          "end_char": 805
+          "doc_id": "doc0",
+          "start_char": 759,
+          "end_char": 807
         }
       ]
     },
@@ -1203,16 +1330,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
           "quote_text": "This is a physical fact.",
           "chunk_id": "c2",
-          "start_char": 806,
-          "end_char": 830
+          "doc_id": "doc0",
+          "start_char": 808,
+          "end_char": 832
         }
       ]
     },
@@ -1224,15 +1353,17 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
-          "quote_text": "This is a physical fact.",
+          "quote_text": " This is a physical fact.",
           "chunk_id": "c3",
-          "start_char": 808,
+          "doc_id": "doc0",
+          "start_char": 807,
           "end_char": 832
         }
       ]
@@ -1245,16 +1376,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
           "quote_text": "Yet some claim water boils at 50 degrees Celsius.",
           "chunk_id": "c3",
-          "start_char": 833,
-          "end_char": 882
+          "doc_id": "doc0",
+          "start_char": 834,
+          "end_char": 883
         }
       ]
     },
@@ -1266,16 +1399,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
           "quote_text": "This contradicts the laws of physics.",
           "chunk_id": "c3",
-          "start_char": 883,
-          "end_char": 920
+          "doc_id": "doc0",
+          "start_char": 884,
+          "end_char": 921
         }
       ]
     },
@@ -1287,16 +1422,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
           "quote_text": "Vaccines are safe and effective.",
           "chunk_id": "c3",
-          "start_char": 921,
-          "end_char": 953
+          "doc_id": "doc0",
+          "start_char": 923,
+          "end_char": 955
         }
       ]
     },
@@ -1308,16 +1445,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
-          "quote_text": "Millions of people have received vaccines without severe side effects.",
+          "quote_text": "Millions of people have received vaccines\nwithout severe side effects.",
           "chunk_id": "c3",
-          "start_char": 954,
-          "end_char": 1024
+          "doc_id": "doc0",
+          "start_char": 956,
+          "end_char": 1026
         }
       ]
     },
@@ -1329,16 +1468,18 @@
       "label": "contradiction",
       "evidence_quotes": [
         {
-          "quote_text": "The Earth's climate is stable and not affected by humans.",
+          "quote_text": "The Earth's climate is stable and \nnot affected by humans.",
           "chunk_id": "c2",
-          "start_char": 673,
-          "end_char": 731
+          "doc_id": "doc0",
+          "start_char": 674,
+          "end_char": 732
         },
         {
           "quote_text": "Vaccination prevents diseases.",
           "chunk_id": "c3",
-          "start_char": 1025,
-          "end_char": 1055
+          "doc_id": "doc0",
+          "start_char": 1027,
+          "end_char": 1057
         }
       ]
     },
@@ -1352,14 +1493,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
           "quote_text": "Water boils at 100 degrees Celsius at sea level.",
           "chunk_id": "c2",
-          "start_char": 757,
-          "end_char": 805
+          "doc_id": "doc0",
+          "start_char": 759,
+          "end_char": 807
         }
       ]
     },
@@ -1373,14 +1516,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
           "quote_text": "This is a physical fact.",
           "chunk_id": "c2",
-          "start_char": 806,
-          "end_char": 830
+          "doc_id": "doc0",
+          "start_char": 808,
+          "end_char": 832
         }
       ]
     },
@@ -1394,13 +1539,15 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
-          "quote_text": "This is a physical fact.",
+          "quote_text": " This is a physical fact.",
           "chunk_id": "c3",
-          "start_char": 808,
+          "doc_id": "doc0",
+          "start_char": 807,
           "end_char": 832
         }
       ]
@@ -1415,14 +1562,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
           "quote_text": "Yet some claim water boils at 50 degrees Celsius.",
           "chunk_id": "c3",
-          "start_char": 833,
-          "end_char": 882
+          "doc_id": "doc0",
+          "start_char": 834,
+          "end_char": 883
         }
       ]
     },
@@ -1436,14 +1585,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
           "quote_text": "This contradicts the laws of physics.",
           "chunk_id": "c3",
-          "start_char": 883,
-          "end_char": 920
+          "doc_id": "doc0",
+          "start_char": 884,
+          "end_char": 921
         }
       ]
     },
@@ -1457,14 +1608,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
           "quote_text": "Vaccines are safe and effective.",
           "chunk_id": "c3",
-          "start_char": 921,
-          "end_char": 953
+          "doc_id": "doc0",
+          "start_char": 923,
+          "end_char": 955
         }
       ]
     },
@@ -1478,14 +1631,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
-          "quote_text": "Millions of people have received vaccines without severe side effects.",
+          "quote_text": "Millions of people have received vaccines\nwithout severe side effects.",
           "chunk_id": "c3",
-          "start_char": 954,
-          "end_char": 1024
+          "doc_id": "doc0",
+          "start_char": 956,
+          "end_char": 1026
         }
       ]
     },
@@ -1499,14 +1654,16 @@
         {
           "quote_text": "No warming is happening.",
           "chunk_id": "c2",
-          "start_char": 732,
-          "end_char": 756
+          "doc_id": "doc0",
+          "start_char": 733,
+          "end_char": 757
         },
         {
           "quote_text": "Vaccination prevents diseases.",
           "chunk_id": "c3",
-          "start_char": 1025,
-          "end_char": 1055
+          "doc_id": "doc0",
+          "start_char": 1027,
+          "end_char": 1057
         }
       ]
     }

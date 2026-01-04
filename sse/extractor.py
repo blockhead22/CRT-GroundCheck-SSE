@@ -39,22 +39,44 @@ def normalize_claim_text(text: str) -> str:
 
 def has_negation_word(text: str) -> bool:
     """
-    Check if text contains negation keywords.
+    Check if text contains negation keywords or patterns.
     
     This prevents deduplication of opposite claims like:
     - "The statement is true" vs "The statement is not true"
-    - "Climate change is real" vs "Climate change is not real"
+    - "System complies" vs "System fails to comply"
+    - "Valid with approval" vs "Valid without approval"
     
     Phase 4 Fix #1: Addresses Invariant III violation.
+    Phase 4c expansion: Added "fails to", "lack", "without" patterns.
     """
+    # Simple negation words
     negation_words = {
         'not', 'no', 'never', 'neither', 'nor', 'nobody', 'nothing', 'nowhere',
         "doesn't", "don't", "didn't", "isn't", "aren't", "wasn't", "weren't",
-        "haven't", "hasn't", "hadn't", "won't", "wouldn't", "won't", "shouldn't",
+        "haven't", "hasn't", "hadn't", "won't", "wouldn't", "shouldn't",
         "can't", "couldn't", "cannot", "mustn't", "mightn't", "needn't"
     }
-    words = set(text.lower().split())
-    return bool(negation_words & words)
+    
+    # Multi-word negation patterns
+    negation_patterns = [
+        'fails to', 'failed to', 'lack', 'lacks', 'lacking',
+        'without', 'absence of', 'devoid of', 'free from',
+        'unable to', 'incapable of', 'insufficient'
+    ]
+    
+    text_lower = text.lower()
+    words = set(text_lower.split())
+    
+    # Check simple negation words
+    if negation_words & words:
+        return True
+    
+    # Check multi-word patterns
+    for pattern in negation_patterns:
+        if pattern in text_lower:
+            return True
+    
+    return False
 
 
 def dedupe_claims(claim_indices: List[int], claim_texts: List[str], embeddings: np.ndarray, thresh: float = 0.85) -> List[int]:
@@ -99,6 +121,7 @@ def extract_claims_from_chunks(chunks: List[Dict], embeddings: np.ndarray) -> Li
     Extract claims from chunks with precise sentence-level offsets.
     
     Phase 4 Fix #2: Now stores exact sentence boundaries instead of chunk boundaries.
+    Phase 5: Preserves doc_id provenance from chunks.
     This improves Invariant VI (Source Traceability) precision.
     """
     claims = []
@@ -109,6 +132,7 @@ def extract_claims_from_chunks(chunks: List[Dict], embeddings: np.ndarray) -> Li
     for cidx, c in enumerate(chunks):
         chunk_text = c['text']
         chunk_start = c['start_char']  # Document-level offset of chunk
+        doc_id = c.get('doc_id', 'doc0')  # Phase 5: Preserve document provenance
         
         # Split into sentences
         sents = re.split(r'(?<=[.!?])\s+', chunk_text)
@@ -116,28 +140,29 @@ def extract_claims_from_chunks(chunks: List[Dict], embeddings: np.ndarray) -> Li
         # Track position within chunk for precise offset calculation
         sent_pos = 0
         for s in sents:
+            # Find where this raw sentence appears in the chunk
+            sent_start_in_chunk = chunk_text.find(s, sent_pos)
+            if sent_start_in_chunk == -1:
+                continue
+                
+            sent_end_in_chunk = sent_start_in_chunk + len(s)
+            sent_pos = sent_end_in_chunk  # Move forward
+            
+            # Normalize for assertiveness check
             s_normalized = normalize_claim_text(s)
             if not s_normalized:
                 continue
             
-            # Find this sentence's position within the chunk
-            # We need to find the original sentence (before normalization) in the chunk
-            sent_start_in_chunk = chunk_text.find(s, sent_pos)
-            if sent_start_in_chunk == -1:
-                # Sentence not found at expected position - skip
-                continue
-            
-            sent_end_in_chunk = sent_start_in_chunk + len(s)
-            sent_pos = sent_end_in_chunk  # Move position forward for next sentence
-            
             if is_assertive(s_normalized):
                 claim_texts.append(s_normalized)
-                # Calculate document-level offsets for this specific sentence
+                # Store the RAW sentence as quote_text with its exact offsets
+                # This ensures text[start:end] == quote_text always holds
                 claim_support.append({
-                    "quote_text": s_normalized,
+                    "quote_text": s,  # Store original, not normalized
                     "chunk_id": c['chunk_id'],
-                    "start_char": chunk_start + sent_start_in_chunk,  # Document offset
-                    "end_char": chunk_start + sent_end_in_chunk        # Document offset
+                    "doc_id": doc_id,  # Phase 5: Track document source
+                    "start_char": chunk_start + sent_start_in_chunk,
+                    "end_char": chunk_start + sent_end_in_chunk
                 })
     
     if len(claim_texts) == 0:
@@ -160,10 +185,12 @@ def extract_claims_from_chunks(chunks: List[Dict], embeddings: np.ndarray) -> Li
     keep = dedupe_claims(list(range(len(claim_texts))), claim_texts, claim_embs_array, thresh=0.99)
     
     for k, i in enumerate(keep):
+        support = claim_support[i]
         claims.append({
             "claim_id": f"clm{k}",
             "claim_text": claim_texts[i],
-            "supporting_quotes": [claim_support[i]],
+            "doc_id": support["doc_id"],  # Phase 5: Provenance metadata
+            "supporting_quotes": [support],
             "ambiguity": {},
         })
     return claims

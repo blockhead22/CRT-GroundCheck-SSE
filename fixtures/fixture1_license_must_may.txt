@@ -1,0 +1,13 @@
+# Fixture 1: Software License Terms with Must/May Conflicts
+
+Users must provide attribution when redistributing this software. The attribution notice may be placed in documentation or source code headers. Users must not remove copyright notices under any circumstances.
+
+Redistribution in binary form may omit source code. However, binary distributions must include the original license text. Modified versions may change the license terms. Modified works must retain all original copyright notices.
+
+Commercial use is permitted without restriction. Commercial use must comply with export regulations. Noncommercial users may ignore export compliance requirements.
+
+The software is provided without warranty. The authors must not be held liable for damages. Contributors may disclaim warranties on their contributions. All warranties are disclaimed except those required by law.
+
+This license applies to all versions. Future versions may introduce different terms. Users must comply with the terms of the version they received. Users may choose terms from any version.
+
+Derivative works must use compatible licenses. Derivative works may use any OSI-approved license. GPL-licensed derivatives are prohibited. GPL-licensed derivatives are required for strong copyleft.

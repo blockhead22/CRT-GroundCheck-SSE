@@ -149,3 +149,53 @@ All 11 tests pass, covering:
 ## No Remote APIs
 
 By design, SSE-v0 does not depend on remote services. The optional Ollama integration is entirely local.
+
+---
+
+## Phase 6: Interface & Coherence Layer (ICL)
+
+**Status:** Specification Complete (Implementation Pending)
+
+Phase 6 is a **boundary-locking phase**. It defines how external systems can interact with SSE without corrupting it.
+
+### What Phase 6 Delivers
+
+**D1: Interface Contract** ([SSE_INTERFACE_CONTRACT.md](SSE_INTERFACE_CONTRACT.md))
+- Formal specification of permitted operations (retrieval, search, filtering, navigation)
+- Explicitly forbidden operations (synthesis, truth picking, ambiguity softening, suppression)
+- Binding contract; violations raise `SSEBoundaryViolation`
+
+**D2: Read-Only Interaction Layer** (implementation pending)
+- Stateless navigator for natural language queries
+- Preserves contradictions and ambiguity in all operations
+- Enables conversation without decision-making
+
+**D3: Coherence Tracking** ([SSE_COHERENCE_TRACKING.md](SSE_COHERENCE_TRACKING.md))
+- Metadata about disagreement: persistence, source alignment, claim recurrence, ambiguity evolution
+- Enables users to understand contradiction patterns without resolving them
+
+**D4: Platform Integration Guide** ([SSE_PLATFORM_INTEGRATION.md](SSE_PLATFORM_INTEGRATION.md))
+- How to integrate SSE into RAG systems, personal AIs, multi-agent systems, fact-checking pipelines
+- Anti-patterns to avoid
+- Examples of correct integration
+
+**D5: Test Suite** (implementation pending)
+- Verifies query parsing, contradiction preservation, boundary violations
+- Ensures Interface Contract is enforced at code review time
+
+### Why Phase 6 Matters
+
+Most systems erode because they add features before locking integrity boundaries.
+
+Phase 6 locks the boundaries **before** building on top. This ensures:
+- Contradictions are never hidden
+- Synthesis is never performed by SSE
+- Ambiguity is never softened
+- Provenance is always maintained
+
+### Navigation
+
+- **[PHASE_6_NAVIGATION.md](PHASE_6_NAVIGATION.md)** — Quick links and reading order
+- **[PHASE_6_INFLECTION_POINT.md](PHASE_6_INFLECTION_POINT.md)** — Why this phase matters philosophically
+- **[PHASE_6_PLAN.md](PHASE_6_PLAN.md)** — Complete Phase 6 strategy
+- **[PHASE_6_SUMMARY.md](PHASE_6_SUMMARY.md)** — Deliverables checklist

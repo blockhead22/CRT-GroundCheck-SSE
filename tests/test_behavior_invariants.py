@@ -439,6 +439,104 @@ class TestInvariantVII_ComputationalHonesty:
         )
 
 
+class TestInvariantIII_EdgeCases:
+    """
+    INVARIANT III EDGE CASES: Anti-Deduplication under adversarial negation patterns.
+    
+    Phase 4c expansion: Test double negation, temporal logic, quoted negation,
+    and other patterns that might fool simpler negation detection.
+    """
+
+    def test_double_negation_preserved(self):
+        """Double negations like 'not uncommon' must be preserved as distinct."""
+        text = """
+        Success is uncommon in this field.
+        Success is not uncommon in this field.
+        """
+        chunks = chunk_text(text, max_chars=100)
+        emb_store = EmbeddingStore("all-MiniLM-L6-v2")
+        embeddings = emb_store.embed_texts([c["text"] for c in chunks])
+        claims = extract_claims_from_chunks(chunks, embeddings)
+
+        # Should preserve both claims (opposite meanings)
+        assert len(claims) >= 2, f"Double negation not preserved: got {len(claims)} claims"
+        claim_texts = [c["claim_text"] for c in claims]
+        assert any("uncommon" in c for c in claim_texts), "Lost 'uncommon' claim"
+        assert any("not uncommon" in c for c in claim_texts), "Lost 'not uncommon' claim"
+
+    def test_fails_to_pattern_preserved(self):
+        """'fails to' and 'lack of' negations must be preserved."""
+        text = """
+        The system complies with security standards.
+        The system fails to comply with security standards.
+        The system lacks compliance with security standards.
+        """
+        chunks = chunk_text(text, max_chars=150)
+        emb_store = EmbeddingStore("all-MiniLM-L6-v2")
+        embeddings = emb_store.embed_texts([c["text"] for c in chunks])
+        claims = extract_claims_from_chunks(chunks, embeddings)
+
+        # Should preserve all three distinct claims
+        assert len(claims) >= 3, f"'fails to' pattern not preserved: got {len(claims)} claims"
+        claim_texts = [c["claim_text"].lower() for c in claims]
+        assert any("complies with" in c and "fails" not in c and "lack" not in c for c in claim_texts), "Lost positive claim"
+        assert any("fails to" in c for c in claim_texts), "Lost 'fails to' claim"
+        assert any("lack" in c for c in claim_texts), "Lost 'lacks' claim"
+
+    def test_temporal_logic_negation(self):
+        """Time-based negations like 'no later than' vs 'at least' must be preserved."""
+        text = """
+        Delivery occurs no later than 5pm.
+        Delivery requires at least 5 hours.
+        Delivery happens no earlier than 5pm.
+        """
+        chunks = chunk_text(text, max_chars=150)
+        emb_store = EmbeddingStore("all-MiniLM-L6-v2")
+        embeddings = emb_store.embed_texts([c["text"] for c in chunks])
+        claims = extract_claims_from_chunks(chunks, embeddings)
+
+        # All three temporal claims are semantically distinct
+        assert len(claims) >= 3, f"Temporal logic not preserved: got {len(claims)} claims"
+        claim_texts = [c["claim_text"].lower() for c in claims]
+        assert any("no later than" in c for c in claim_texts), "Lost 'no later than'"
+        assert any("at least" in c for c in claim_texts), "Lost 'at least'"
+        assert any("no earlier than" in c for c in claim_texts), "Lost 'no earlier than'"
+
+    def test_quoted_negation_in_complex_sentence(self):
+        """Negations embedded in complex sentences must be detected."""
+        text = """
+        The report states that climate change is accelerating.
+        The report states that climate change is not accelerating, contrary to earlier claims.
+        """
+        chunks = chunk_text(text, max_chars=200)
+        emb_store = EmbeddingStore("all-MiniLM-L6-v2")
+        embeddings = emb_store.embed_texts([c["text"] for c in chunks])
+        claims = extract_claims_from_chunks(chunks, embeddings)
+
+        # Should preserve opposite claims despite complex structure
+        assert len(claims) >= 2, f"Complex negation not preserved: got {len(claims)} claims"
+        claim_texts = [c["claim_text"].lower() for c in claims]
+        assert any("accelerating" in c and "not" not in c for c in claim_texts), "Lost positive claim"
+        assert any("not accelerating" in c for c in claim_texts), "Lost negated claim"
+
+    def test_without_vs_with_preserved(self):
+        """'without' (negation) vs 'with' must not deduplicate."""
+        text = """
+        The contract is valid with board approval.
+        The contract is valid without board approval.
+        """
+        chunks = chunk_text(text, max_chars=150)
+        emb_store = EmbeddingStore("all-MiniLM-L6-v2")
+        embeddings = emb_store.embed_texts([c["text"] for c in chunks])
+        claims = extract_claims_from_chunks(chunks, embeddings)
+
+        # Both conditions must be preserved
+        assert len(claims) >= 2, f"'without' negation not preserved: got {len(claims)} claims"
+        claim_texts = [c["claim_text"].lower() for c in claims]
+        assert any("with board approval" in c and "without" not in c for c in claim_texts), "Lost 'with' claim"
+        assert any("without board approval" in c for c in claim_texts), "Lost 'without' claim"
+
+
 class TestCrossInvariantScenarios:
     """
     Tests that combine multiple invariants to ensure no interaction violations.
@@ -464,11 +562,19 @@ class TestCrossInvariantScenarios:
             len(c.get("supporting_quotes", [])) > 0 for c in claims
         ), "Invariant I violated: missing quotes"
 
-        # Invariant VI: All quotes are substrings (SSE uses chunk-level offsets)
+        # Invariant VI: All quotes reconstruct exactly from offsets (Phase 5 upgrade)
         for claim in claims:
             for quote in claim["supporting_quotes"]:
+                start = quote["start_char"]
+                end = quote["end_char"]
                 quote_text = quote.get("quote_text") or quote.get("text")
-                assert quote_text in text, "Invariant VI violated: quote not in source"
+                reconstructed = text[start:end]
+                assert reconstructed == quote_text, (
+                    f"Invariant VI violated: offset reconstruction mismatch\n"
+                    f"  Expected: {repr(quote_text)}\n"
+                    f"  Got:      {repr(reconstructed)}\n"
+                    f"  Offsets:  [{start}:{end}]"
+                )
 
         # Detect contradictions
         claim_embeddings = emb_store.embed_texts([c["claim_text"] for c in claims])

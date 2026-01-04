@@ -1,0 +1,11 @@
+# Fixture 5: Access Control with Scope Conflicts
+
+All employees can access the development environment. Only senior developers have development environment access. Contractors are prohibited from accessing development systems. All technical staff require development access for testing. No external users may access development resources. Third-party auditors need full development environment access.
+
+Read permissions are granted to every team member. Team members have read-only access except for managers. All users can view and edit shared documents. Only document owners may modify content. Everyone has write access to the collaboration folder. Guests receive view-only permissions for all resources.
+
+Data export requires approval from any manager. Export functionality needs authorization from the security team. All users can export their own data without approval. No employee may export customer data under any circumstances. Managers can approve data exports for their department. Customer data exports require VP-level authorization.
+
+Admin privileges are restricted to IT staff only. Department heads have administrative rights for their teams. No single user should possess full admin capabilities. System administrators require unrestricted access to all functions. Admin access must be granted to at least two people per department. Only the security officer may assign admin privileges.
+
+Training materials are available to all new hires. Proprietary training content is limited to permanent employees. Everyone in the organization can access learning resources. Confidential training modules require manager pre-approval. All staff must complete training regardless of role. Contractors are excluded from internal training programs.
