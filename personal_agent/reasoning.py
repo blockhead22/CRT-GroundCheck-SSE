@@ -1,0 +1,485 @@
+"""
+Reasoning Engine - Advanced Thinking Modes
+
+Like Claude's extended thinking or Copilot's analysis phase.
+
+Supports:
+- Quick mode: Direct answer
+- Thinking mode: Analyze → Plan → Reason → Answer
+- Deep mode: Extended reasoning with sub-tasks
+"""
+
+import json
+from typing import List, Dict, Optional, Any
+from datetime import datetime
+from dataclasses import dataclass, asdict
+from enum import Enum
+
+
+class ReasoningMode(Enum):
+    """Thinking modes for different query types."""
+    QUICK = "quick"           # Direct answer, no analysis
+    THINKING = "thinking"     # Analyze → Reason → Answer
+    DEEP = "deep"             # Extended reasoning with planning
+    RESEARCH = "research"     # Multi-step research process
+
+
+@dataclass
+class ThinkingStep:
+    """A step in the reasoning process."""
+    step_type: str           # analysis, planning, reasoning, verification
+    content: str             # What was thought
+    duration_ms: float       # How long this took
+    timestamp: str
+    
+    def to_dict(self) -> Dict:
+        return asdict(self)
+
+
+@dataclass
+class ReasoningTrace:
+    """Complete reasoning trace (internal, invisible to user)."""
+    query: str
+    mode: str
+    thinking_steps: List[ThinkingStep]
+    decision: str            # What was decided
+    confidence: float        # Confidence in reasoning
+    contradictions_found: int
+    total_duration_ms: float
+    
+    def to_dict(self) -> Dict:
+        return {
+            **asdict(self),
+            'thinking_steps': [s.to_dict() for s in self.thinking_steps]
+        }
+
+
+class ReasoningEngine:
+    """
+    Advanced reasoning system with thinking modes.
+    
+    Modes:
+    1. QUICK: User wants fast answer, no contradictions
+       → Directly generate response
+    
+    2. THINKING: Contradictions or complexity detected
+       → Analyze query
+       → Identify sub-questions
+       → Reason about contradictions
+       → Generate answer
+    
+    3. DEEP: Complex multi-part question
+       → Create reasoning plan
+       → Execute sub-tasks
+       → Synthesize findings
+       → Verify consistency
+    
+    4. RESEARCH: Needs external information
+       → Plan search strategy
+       → Execute searches
+       → Integrate findings
+       → Check contradictions
+    """
+    
+    def __init__(self, llm_client=None):
+        """Initialize reasoning engine."""
+        self.llm = llm_client
+        self.reasoning_traces = []  # Internal log
+    
+    def reason(
+        self,
+        query: str,
+        context: Dict[str, Any],
+        mode: Optional[ReasoningMode] = None
+    ) -> Dict[str, Any]:
+        """
+        Main reasoning entry point.
+        
+        Args:
+            query: User's question
+            context: Retrieved docs, memories, contradictions
+            mode: Reasoning mode (auto-detected if None)
+        
+        Returns:
+            {
+                'mode': ReasoningMode,
+                'thinking': str,              # Thinking process (visible)
+                'answer': str,                # Final answer
+                'reasoning_trace': ReasoningTrace,  # Internal trace
+                'confidence': float
+            }
+        """
+        # Auto-detect mode if not specified
+        if mode is None:
+            mode = self._detect_mode(query, context)
+        
+        # Execute reasoning based on mode
+        if mode == ReasoningMode.QUICK:
+            return self._quick_answer(query, context)
+        elif mode == ReasoningMode.THINKING:
+            return self._thinking_mode(query, context)
+        elif mode == ReasoningMode.DEEP:
+            return self._deep_reasoning(query, context)
+        elif mode == ReasoningMode.RESEARCH:
+            return self._research_mode(query, context)
+    
+    def _detect_mode(self, query: str, context: Dict) -> ReasoningMode:
+        """Auto-detect which reasoning mode to use."""
+        contradictions = context.get('contradictions', [])
+        retrieved_docs = context.get('retrieved_docs', [])
+        
+        # Deep mode triggers
+        if contradictions and len(contradictions) >= 3:
+            return ReasoningMode.DEEP
+        
+        # Thinking mode triggers
+        if contradictions:
+            return ReasoningMode.THINKING
+        
+        # Research mode triggers
+        if len(retrieved_docs) == 0 and any(word in query.lower() for word in ['search', 'find', 'research', 'latest']):
+            return ReasoningMode.RESEARCH
+        
+        # Complex question indicators
+        complexity_markers = ['why', 'how', 'explain', 'compare', 'analyze', 'evaluate']
+        if any(marker in query.lower() for marker in complexity_markers):
+            return ReasoningMode.THINKING
+        
+        # Default to quick
+        return ReasoningMode.QUICK
+    
+    def _quick_answer(self, query: str, context: Dict) -> Dict:
+        """
+        Quick mode: Direct answer without visible thinking.
+        
+        Internal thinking still happens but not shown to user.
+        """
+        start_time = datetime.now()
+        
+        # Simple prompt
+        prompt = self._build_quick_prompt(query, context)
+        
+        # Generate (using LLM if available)
+        if self.llm:
+            answer = self._call_llm(prompt, max_tokens=500)
+        else:
+            answer = f"[Quick answer for: {query}]"
+        
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        
+        # Internal trace (not shown to user)
+        trace = ReasoningTrace(
+            query=query,
+            mode="quick",
+            thinking_steps=[
+                ThinkingStep(
+                    step_type="direct_answer",
+                    content="No complexity detected, generating direct answer",
+                    duration_ms=duration_ms,
+                    timestamp=datetime.now().isoformat()
+                )
+            ],
+            decision="quick_answer",
+            confidence=0.8,
+            contradictions_found=0,
+            total_duration_ms=duration_ms
+        )
+        
+        self.reasoning_traces.append(trace)
+        
+        return {
+            'mode': ReasoningMode.QUICK.value,
+            'thinking': None,  # Not shown in quick mode
+            'answer': answer,
+            'reasoning_trace': trace.to_dict(),
+            'confidence': 0.8
+        }
+    
+    def _thinking_mode(self, query: str, context: Dict) -> Dict:
+        """
+        Thinking mode: Visible analysis → reasoning → answer.
+        
+        Like Claude's extended thinking or o1's reasoning.
+        """
+        start_time = datetime.now()
+        steps = []
+        
+        # Step 1: Analyze query
+        analysis_start = datetime.now()
+        analysis = self._analyze_query(query, context)
+        steps.append(ThinkingStep(
+            step_type="analysis",
+            content=analysis,
+            duration_ms=(datetime.now() - analysis_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        # Step 2: Identify contradictions
+        if context.get('contradictions'):
+            contra_start = datetime.now()
+            contra_analysis = self._analyze_contradictions(context['contradictions'])
+            steps.append(ThinkingStep(
+                step_type="contradiction_analysis",
+                content=contra_analysis,
+                duration_ms=(datetime.now() - contra_start).total_seconds() * 1000,
+                timestamp=datetime.now().isoformat()
+            ))
+        
+        # Step 3: Plan approach
+        planning_start = datetime.now()
+        plan = self._plan_answer(query, analysis, context)
+        steps.append(ThinkingStep(
+            step_type="planning",
+            content=plan,
+            duration_ms=(datetime.now() - planning_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        # Step 4: Generate answer
+        answer_start = datetime.now()
+        
+        # Build thinking-aware prompt
+        prompt = self._build_thinking_prompt(query, context, analysis, plan)
+        
+        if self.llm:
+            answer = self._call_llm(prompt, max_tokens=1000)
+        else:
+            answer = f"[Thinking mode answer for: {query}]"
+        
+        steps.append(ThinkingStep(
+            step_type="answer_generation",
+            content="Generated final answer",
+            duration_ms=(datetime.now() - answer_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        
+        # Compile visible thinking
+        visible_thinking = self._format_thinking_steps(steps)
+        
+        # Internal trace
+        trace = ReasoningTrace(
+            query=query,
+            mode="thinking",
+            thinking_steps=steps,
+            decision="analyzed_and_answered",
+            confidence=0.9,
+            contradictions_found=len(context.get('contradictions', [])),
+            total_duration_ms=duration_ms
+        )
+        
+        self.reasoning_traces.append(trace)
+        
+        return {
+            'mode': ReasoningMode.THINKING.value,
+            'thinking': visible_thinking,
+            'answer': answer,
+            'reasoning_trace': trace.to_dict(),
+            'confidence': 0.9
+        }
+    
+    def _deep_reasoning(self, query: str, context: Dict) -> Dict:
+        """
+        Deep mode: Extended reasoning with sub-tasks.
+        
+        For complex queries with multiple contradictions or parts.
+        """
+        start_time = datetime.now()
+        steps = []
+        
+        # Step 1: Decompose query into sub-questions
+        decomp_start = datetime.now()
+        sub_questions = self._decompose_query(query)
+        steps.append(ThinkingStep(
+            step_type="decomposition",
+            content=f"Identified {len(sub_questions)} sub-questions: {sub_questions}",
+            duration_ms=(datetime.now() - decomp_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        # Step 2: Analyze each contradiction deeply
+        if context.get('contradictions'):
+            for i, contra in enumerate(context['contradictions'][:3], 1):  # Limit to 3
+                contra_start = datetime.now()
+                deep_analysis = self._deep_contradiction_analysis(contra, context)
+                steps.append(ThinkingStep(
+                    step_type=f"deep_contradiction_{i}",
+                    content=deep_analysis,
+                    duration_ms=(datetime.now() - contra_start).total_seconds() * 1000,
+                    timestamp=datetime.now().isoformat()
+                ))
+        
+        # Step 3: Create reasoning plan
+        plan_start = datetime.now()
+        plan = self._create_deep_plan(query, sub_questions, context)
+        steps.append(ThinkingStep(
+            step_type="deep_planning",
+            content=plan,
+            duration_ms=(datetime.now() - plan_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        # Step 4: Execute plan step-by-step
+        exec_start = datetime.now()
+        execution = self._execute_deep_plan(plan, context)
+        steps.append(ThinkingStep(
+            step_type="execution",
+            content=execution,
+            duration_ms=(datetime.now() - exec_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        # Step 5: Synthesize final answer
+        synth_start = datetime.now()
+        
+        prompt = self._build_deep_prompt(query, context, plan, execution)
+        
+        if self.llm:
+            answer = self._call_llm(prompt, max_tokens=2000)
+        else:
+            answer = f"[Deep reasoning answer for: {query}]"
+        
+        steps.append(ThinkingStep(
+            step_type="synthesis",
+            content="Synthesized comprehensive answer",
+            duration_ms=(datetime.now() - synth_start).total_seconds() * 1000,
+            timestamp=datetime.now().isoformat()
+        ))
+        
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        
+        # Visible thinking (detailed)
+        visible_thinking = self._format_deep_thinking(steps)
+        
+        # Internal trace
+        trace = ReasoningTrace(
+            query=query,
+            mode="deep",
+            thinking_steps=steps,
+            decision="deep_multi_step_reasoning",
+            confidence=0.95,
+            contradictions_found=len(context.get('contradictions', [])),
+            total_duration_ms=duration_ms
+        )
+        
+        self.reasoning_traces.append(trace)
+        
+        return {
+            'mode': ReasoningMode.DEEP.value,
+            'thinking': visible_thinking,
+            'answer': answer,
+            'reasoning_trace': trace.to_dict(),
+            'confidence': 0.95
+        }
+    
+    def _research_mode(self, query: str, context: Dict) -> Dict:
+        """Research mode: Multi-step information gathering."""
+        # Placeholder - would integrate with web search
+        return self._thinking_mode(query, context)
+    
+    # ========================================================================
+    # Helper Methods
+    # ========================================================================
+    
+    def _analyze_query(self, query: str, context: Dict) -> str:
+        """Analyze what the query is asking."""
+        contradictions = context.get('contradictions', [])
+        docs = context.get('retrieved_docs', [])
+        
+        return f"Query: '{query}' | Found {len(docs)} docs, {len(contradictions)} contradictions"
+    
+    def _analyze_contradictions(self, contradictions: List[Dict]) -> str:
+        """Analyze contradictions found."""
+        if not contradictions:
+            return "No contradictions"
+        
+        return f"Detected {len(contradictions)} contradictions requiring reconciliation"
+    
+    def _plan_answer(self, query: str, analysis: str, context: Dict) -> str:
+        """Plan how to answer."""
+        if context.get('contradictions'):
+            return "Plan: Present all perspectives from contradictions, explain context for each"
+        else:
+            return "Plan: Direct answer from retrieved context"
+    
+    def _decompose_query(self, query: str) -> List[str]:
+        """Break complex query into sub-questions."""
+        # Simple heuristic - look for conjunctions
+        if ' and ' in query.lower():
+            return query.lower().split(' and ')
+        return [query]
+    
+    def _deep_contradiction_analysis(self, contradiction: Dict, context: Dict) -> str:
+        """Deep analysis of a contradiction."""
+        return f"Contradiction analysis: Multiple valid perspectives detected"
+    
+    def _create_deep_plan(self, query: str, sub_questions: List[str], context: Dict) -> str:
+        """Create detailed reasoning plan."""
+        return f"Plan: Address {len(sub_questions)} sub-questions, reconcile contradictions, synthesize"
+    
+    def _execute_deep_plan(self, plan: str, context: Dict) -> str:
+        """Execute the deep reasoning plan."""
+        return "Executed multi-step reasoning process"
+    
+    def _format_thinking_steps(self, steps: List[ThinkingStep]) -> str:
+        """Format thinking steps for display."""
+        output = "<thinking>\n"
+        for step in steps:
+            output += f"[{step.step_type}] {step.content}\n"
+        output += "</thinking>"
+        return output
+    
+    def _format_deep_thinking(self, steps: List[ThinkingStep]) -> str:
+        """Format deep thinking steps (more detailed)."""
+        output = "<deep_reasoning>\n"
+        for i, step in enumerate(steps, 1):
+            output += f"\nStep {i}: {step.step_type}\n"
+            output += f"{step.content}\n"
+            output += f"(Duration: {step.duration_ms:.0f}ms)\n"
+        output += "\n</deep_reasoning>"
+        return output
+    
+    def _build_quick_prompt(self, query: str, context: Dict) -> str:
+        """Build prompt for quick mode."""
+        docs = context.get('retrieved_docs', [])
+        doc_text = "\n".join([d['text'] for d in docs[:3]])
+        
+        return f"Answer this question concisely:\n\nQuestion: {query}\n\nContext: {doc_text}"
+    
+    def _build_thinking_prompt(self, query: str, context: Dict, analysis: str, plan: str) -> str:
+        """Build prompt for thinking mode."""
+        docs = context.get('retrieved_docs', [])
+        contradictions = context.get('contradictions', [])
+        
+        prompt = f"Question: {query}\n\n"
+        prompt += f"Analysis: {analysis}\n"
+        prompt += f"Plan: {plan}\n\n"
+        
+        if docs:
+            prompt += "Context:\n" + "\n".join([d['text'] for d in docs[:5]]) + "\n\n"
+        
+        if contradictions:
+            prompt += f"Note: {len(contradictions)} contradictions found. Present multiple perspectives.\n\n"
+        
+        prompt += "Answer:"
+        
+        return prompt
+    
+    def _build_deep_prompt(self, query: str, context: Dict, plan: str, execution: str) -> str:
+        """Build prompt for deep mode."""
+        prompt = f"Complex Question: {query}\n\n"
+        prompt += f"Reasoning Plan: {plan}\n"
+        prompt += f"Execution: {execution}\n\n"
+        prompt += "Synthesize comprehensive answer addressing all aspects:"
+        
+        return prompt
+    
+    def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
+        """Call LLM (placeholder - integrate with actual LLM)."""
+        # This would call GPT-4, Claude, etc.
+        return f"[LLM response to: {prompt[:50]}...]"
+    
+    def get_reasoning_traces(self, limit: int = 10) -> List[Dict]:
+        """Get recent reasoning traces (for debugging/analysis)."""
+        return [t.to_dict() for t in self.reasoning_traces[-limit:]]
