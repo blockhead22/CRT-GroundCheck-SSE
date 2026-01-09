@@ -10,6 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from multi_agent.orchestrator import Orchestrator
+from multi_agent.llm_client import LLMPool, LLMClient, LLMProvider
 from multi_agent.agents import (
     BoundaryAgent,
     AnalysisAgent,
@@ -19,20 +20,46 @@ from multi_agent.agents import (
 )
 
 
+def setup_llm_pool() -> LLMPool:
+    """
+    Setup LLM pool (tries API, falls back to local, then mock)
+    """
+    print("\n" + "="*80)
+    print("LLM Setup")
+    print("="*80)
+    
+    pool = LLMPool.create_default_pool()
+    
+    clients = pool.list_clients()
+    if clients:
+        print(f"Available LLMs: {', '.join(clients)}")
+        for name in clients:
+            client = pool.get(name)
+            if client:
+                print(f"  {name}: {client.provider.value} / {client.model}")
+    else:
+        print("No LLMs available - using mock")
+    
+    return pool
+
+
 def demo_boundary_tests():
     """Demo: Implement boundary test suite"""
     print("\n" + "="*80)
-    print("DEMO 1: Implement Boundary Test Suite")
+    print("DEMO 1: Implement Boundary Test Suite (with LLM support)")
     print("="*80)
     
-    # Initialize orchestrator
-    orchestrator = Orchestrator(workspace_path=".")
+    # Setup LLM pool
+    pool = setup_llm_pool()
     
-    # Register agents
+    # Initialize orchestrator with LLM pool
+    orchestrator = Orchestrator(workspace_path=".", llm_pool=pool)
+    
+    # Register agents with LLMs
     orchestrator.register_agents({
-        "BoundaryAgent": BoundaryAgent(),
-        "AnalysisAgent": AnalysisAgent(workspace_path="."),
-        "CodeAgent": CodeAgent(),
+        "BoundaryAgent": BoundaryAgent(llm_client=pool.get("analysis")),
+        "AnalysisAgent": AnalysisAgent(workspace_path=".", llm_client=pool.get("analysis")),
+        "CodeAgent": CodeAgent(llm_client=pool.get("code")),
         "TestAgent": TestAgent(),
         "DocsAgent": DocsAgent()
     })

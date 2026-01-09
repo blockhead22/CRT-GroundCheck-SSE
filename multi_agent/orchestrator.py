@@ -8,6 +8,7 @@ from .task import Task, TaskResult
 from .task_decomposer import TaskDecomposer
 from .agent_router import AgentRouter
 from .sse_validator import AgentValidator
+from .llm_client import LLMPool
 
 
 class Orchestrator:
@@ -25,18 +26,26 @@ class Orchestrator:
         result = orchestrator.execute("Implement boundary test suite")
     """
     
-    def __init__(self, workspace_path: str = "."):
+    def __init__(self, workspace_path: str = ".", llm_pool: Optional[LLMPool] = None):
         """
         Initialize orchestrator
         
         Args:
             workspace_path: Path to workspace root
+            llm_pool: Optional pool of LLM clients for agents
         """
         self.workspace_path = workspace_path
         self.decomposer = TaskDecomposer()
         self.router = AgentRouter()
         self.validator = AgentValidator()
         self.context = {}
+        self.llm_pool = llm_pool or LLMPool.create_default_pool()
+        
+        # Log available LLMs
+        if self.llm_pool.list_clients():
+            print(f"LLM Pool: {', '.join(self.llm_pool.list_clients())}")
+        else:
+            print("LLM Pool: No LLMs available (using mock)")
     
     def register_agents(self, agents: Dict[str, Any]):
         """
@@ -230,3 +239,7 @@ class Orchestrator:
     def get_context(self) -> dict:
         """Get current workspace context"""
         return self.context.copy()
+    
+    def get_llm(self, name: str = "code"):
+        """Get LLM client from pool"""
+        return self.llm_pool.get(name)

@@ -39,12 +39,15 @@ class TaskDecomposer:
         """
         context = context or {}
         
-        # Pattern matching for common SSE development tasks
+        # Pattern matching for common tasks
         if "boundary test" in user_request.lower():
             return self._decompose_boundary_tests(context)
         
         elif "implement" in user_request.lower() and "roadmap" in user_request.lower():
             return self._decompose_roadmap_feature(user_request, context)
+        
+        elif "website" in user_request.lower() or ("html" in user_request.lower() and "css" in user_request.lower()):
+            return self._decompose_website_creation(user_request, context)
         
         elif "review" in user_request.lower() or "pr" in user_request.lower():
             return self._decompose_code_review(context)
@@ -136,6 +139,49 @@ class TaskDecomposer:
                 description=f"Document {feature_name} usage and API",
                 dependencies=[3],
                 context={**context, "api_docs": True}
+            )
+        ]
+    
+    def _decompose_website_creation(self, user_request: str, context: dict) -> List[Task]:
+        """Decompose: Create website with HTML, CSS, and content"""
+        # Extract business name and details from request
+        business_name = self._extract_business_name(user_request)
+        
+        return [
+            Task(
+                id=1,
+                agent_type="BoundaryAgent",
+                description="Verify website creation doesn't violate boundaries (no tracking, analytics, or user profiling)",
+                dependencies=[],
+                context={**context, "boundary_check": "website"}
+            ),
+            Task(
+                id=2,
+                agent_type="DocsAgent",
+                description=f"Create marketing content for {business_name}",
+                dependencies=[],
+                context={**context, "business": business_name, "content_type": "marketing"}
+            ),
+            Task(
+                id=3,
+                agent_type="CodeAgent",
+                description=f"Generate HTML structure for {business_name} website",
+                dependencies=[1, 2],
+                context={**context, "business": business_name, "code_type": "html"}
+            ),
+            Task(
+                id=4,
+                agent_type="CodeAgent",
+                description=f"Generate CSS styling for {business_name} website",
+                dependencies=[3],
+                context={**context, "business": business_name, "code_type": "css"}
+            ),
+            Task(
+                id=5,
+                agent_type="BoundaryAgent",
+                description="Final boundary scan on generated website code",
+                dependencies=[3, 4],
+                context={**context, "final_check": True}
             )
         ]
     
@@ -235,6 +281,28 @@ class TaskDecomposer:
             if keyword in request.lower():
                 return keyword
         return "feature"
+    
+    def _extract_business_name(self, request: str) -> str:
+        """Extract business name from user request"""
+        # Look for quoted names or patterns like "called 'Name'" or "for Name"
+        import re
+        
+        # Pattern: "called 'Name'" or "called \"Name\""
+        match = re.search(r"called ['\"]([^'\"]+)['\"]", request)
+        if match:
+            return match.group(1)
+        
+        # Pattern: "for Name business" or "Name stickers"
+        if "sticker" in request.lower():
+            words = request.split()
+            for i, word in enumerate(words):
+                if "sticker" in word.lower() and i > 0:
+                    # Get word before "sticker"
+                    potential_name = words[i-1].strip("'\".,!?")
+                    if potential_name.lower() not in ["a", "the", "for", "about"]:
+                        return potential_name.title()
+        
+        return "Business"
     
     def _load_patterns(self) -> dict:
         """Load common task patterns (future: load from config)"""

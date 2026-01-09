@@ -3,9 +3,10 @@ BoundaryAgent
 Enforces Phase 6 boundaries and detects forbidden patterns
 """
 
-from typing import List, Dict
+from typing import List, Dict, Optional
 from .base_agent import BaseAgent
 from ..task import Task
+from ..llm_client import LLMClient
 
 
 class BoundaryAgent(BaseAgent):
@@ -19,9 +20,10 @@ class BoundaryAgent(BaseAgent):
     - Generate violation reports
     """
     
-    def __init__(self):
+    def __init__(self, llm_client: Optional[LLMClient] = None):
         super().__init__("BoundaryAgent")
         self.forbidden_patterns = self._load_forbidden_patterns()
+        self.llm = llm_client  # Optional LLM for semantic analysis
     
     def execute(self, task: Task) -> Dict:
         """
@@ -107,6 +109,7 @@ class BoundaryAgent(BaseAgent):
         
         code_lower = code.lower()
         
+        # Pattern-based detection
         for category, data in self.forbidden_patterns.items():
             for pattern in data["patterns"]:
                 if pattern in code_lower:
@@ -117,10 +120,28 @@ class BoundaryAgent(BaseAgent):
                         "rationale": data["rationale"]
                     })
         
+        # LLM-based semantic analysis (if available)
+        if self.llm and code.strip():
+            self.log("Using LLM for semantic boundary analysis...")
+            try:
+                analysis = self.llm.analyze_code(code, analysis_type="boundaries")
+                # Parse LLM response for additional insights
+                # (In production, would structure this better)
+                if "violation" in analysis.lower() or "forbidden" in analysis.lower():
+                    violations.append({
+                        "category": "semantic_analysis",
+                        "pattern": "LLM-detected",
+                        "message": f"LLM detected potential violation: {analysis[:200]}",
+                        "rationale": "Semantic analysis by LLM"
+                    })
+            except Exception as e:
+                self.log(f"LLM analysis error: {e}")
+        
         return {
             "violations": violations,
             "compliant": len(violations) == 0,
-            "scanned_patterns": sum(len(d["patterns"]) for d in self.forbidden_patterns.values())
+            "scanned_patterns": sum(len(d["patterns"]) for d in self.forbidden_patterns.values()),
+            "llm_used": self.llm is not None
         }
     
     def _verify_feature(self, feature_name: str) -> Dict:

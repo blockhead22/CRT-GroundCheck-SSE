@@ -4,9 +4,10 @@ Performs semantic search, code analysis, and research
 """
 
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from .base_agent import BaseAgent
 from ..task import Task
+from ..llm_client import LLMClient
 
 
 class AnalysisAgent(BaseAgent):
@@ -20,9 +21,10 @@ class AnalysisAgent(BaseAgent):
     - Research best practices
     """
     
-    def __init__(self, workspace_path: str = "."):
+    def __init__(self, workspace_path: str = ".", llm_client: Optional[LLMClient] = None):
         super().__init__("AnalysisAgent")
         self.workspace_path = workspace_path
+        self.llm = llm_client  # Optional LLM for semantic understanding
     
     def execute(self, task: Task) -> Any:
         """Execute analysis task"""
@@ -134,8 +136,25 @@ class AnalysisAgent(BaseAgent):
     
     def _analyze_request(self, request: str) -> Dict:
         """Generic request analysis"""
+        if self.llm:
+            self.log("Using LLM for request analysis...")
+            try:
+                analysis = self.llm.generate(
+                    f"Analyze this request and suggest implementation approach: {request}",
+                    system_prompt="You are a technical analyst. Provide concise, actionable insights."
+                )
+                return {
+                    "request": request,
+                    "analysis": analysis,
+                    "llm_used": True,
+                    "model": self.llm.model
+                }
+            except Exception as e:
+                self.log(f"LLM analysis error: {e}")
+        
         return {
             "request": request,
-            "analysis": "Request analyzed (generic handler)",
-            "suggestions": []
+            "analysis": "Request analyzed (pattern matching only)",
+            "suggestions": [],
+            "llm_used": False
         }
