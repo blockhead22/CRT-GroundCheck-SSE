@@ -55,11 +55,12 @@ function App() {
       if (!response.ok) throw new Error('Failed to send message');
       const data = await response.json();
 
-      // Add AI response
+      // Add AI response with evidence packet
       const aiMessage = {
         id: data.id,
         role: 'assistant',
         text: data.response,
+        packet: data.packet, // EvidencePacket v1.0
         timestamp: new Date(data.timestamp),
       };
 
@@ -71,7 +72,7 @@ function App() {
         {
           id: `error_${Date.now()}`,
           role: 'assistant',
-          text: 'Sorry, I encountered an error. Please try again.',
+          text: 'Sorry, could not retrieve evidence. Make sure the Python API is running.',
           timestamp: new Date(),
           isError: true,
         },

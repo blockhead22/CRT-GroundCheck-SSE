@@ -31,9 +31,9 @@ app.get('/api/health', (req, res) => {
  * Chat endpoint
  * POST /api/chat
  * Body: { message: string }
- * Returns: { id, message, response, timestamp }
+ * Returns: { id, message, response, packet, timestamp }
  */
-app.post('/api/chat', (req, res) => {
+app.post('/api/chat', async (req, res) => {
   try {
     const { message } = req.body;
 
@@ -44,14 +44,28 @@ app.post('/api/chat', (req, res) => {
     const userMessage = message.trim().substring(0, 2000);
     const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Simulate thinking time (in real app, would call LLM or RAG adapter)
-    const response = generateResponse(userMessage);
+    // Call Python evidence API
+    const searchResponse = await fetch('http://127.0.0.1:5000/api/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: userMessage,
+        k: 5,
+        highlight_contradictions: true,
+      }),
+    });
+
+    if (!searchResponse.ok) {
+      throw new Error(`Evidence API error: ${searchResponse.statusText}`);
+    }
+
+    const searchData = await searchResponse.json();
 
     // Store in history
     const entry = {
       id: messageId,
       userMessage,
-      aiResponse: response,
+      packet: searchData.valid ? searchData.packet : null,
       timestamp: new Date().toISOString(),
     };
 
@@ -63,12 +77,18 @@ app.post('/api/chat', (req, res) => {
     res.json({
       id: messageId,
       message: userMessage,
-      response,
+      response: searchData.valid 
+        ? `Here's the evidence for: "${userMessage}"`
+        : 'No evidence found. Try a different query.',
+      packet: searchData.valid ? searchData.packet : null,
       timestamp: entry.timestamp,
     });
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ error: 'Chat processing failed' });
+    res.status(500).json({ 
+      error: 'Chat processing failed',
+      details: error.message 
+    });
   }
 });
 

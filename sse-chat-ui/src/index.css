@@ -62,7 +62,7 @@ body {
 }
 
 .message-ai .message-bubble {
-  @apply bg-darkCard text-ececec border border-darkBorder;
+  @apply bg-darkCard text-gray-200 border border-darkBorder;
 }
 
 /* Input styling */

@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   content: ['./src/**/*.{js,jsx}', './public/**/*.html'],
   theme: {
     extend: {
@@ -7,6 +7,7 @@ module.exports = {
         darkBg: '#0d0d0d',
         darkCard: '#1a1a1a',
         darkBorder: '#444',
+        ececec: '#ececec',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

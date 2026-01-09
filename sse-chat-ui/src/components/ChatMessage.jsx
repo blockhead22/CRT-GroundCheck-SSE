@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import SearchResults from './SearchResults';
 
 function ChatMessage({ message }) {
   const isUser = message.role === 'user';
@@ -7,19 +8,20 @@ function ChatMessage({ message }) {
 
   return (
     <motion.div
-      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 flex-col ${isUser ? 'items-end' : 'items-start'}`}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
     >
+      {/* Chat bubble */}
       <motion.div
         className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg ${
           isUser
             ? 'bg-primary text-white rounded-br-none'
             : isError
             ? 'bg-red-900 text-red-100 border border-red-700 rounded-bl-none'
-            : 'bg-darkCard text-ececec border border-darkBorder rounded-bl-none'
+            : 'bg-darkCard text-gray-200 border border-darkBorder rounded-bl-none'
         }`}
         layout
         initial={{ scale: 0.95, opacity: 0 }}
@@ -34,6 +36,17 @@ function ChatMessage({ message }) {
           })}
         </span>
       </motion.div>
+
+      {/* Evidence panel - show if assistant has packet */}
+      {!isUser && message.packet && (
+        <div className="mt-4 w-full">
+          <SearchResults 
+            results={message.packet}
+            loading={false}
+            error={null}
+          />
+        </div>
+      )}
     </motion.div>
   );
 }
