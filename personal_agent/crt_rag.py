@@ -98,6 +98,7 @@ class CRTEnhancedRAG:
         Query with CRT principles applied.
         
         Process:
+        0. Store user input as memory (USER source)
         1. Trust-weighted retrieval
         2. Generate candidate output (reasoning)
         3. Check reconstruction gates (intent + memory alignment)
@@ -109,6 +110,15 @@ class CRTEnhancedRAG:
         
         Returns both the response AND CRT metadata.
         """
+        # 0. Store user input as USER memory (always high trust)
+        self.memory.store_memory(
+            text=user_query,
+            confidence=0.95,  # User statements are high confidence
+            source=MemorySource.USER,
+            context={'type': 'user_input'},
+            user_marked_important=user_marked_important
+        )
+        
         # 1. Trust-weighted retrieval
         retrieved = self.retrieve(user_query, k=5)
         

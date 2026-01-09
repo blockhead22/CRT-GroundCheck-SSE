@@ -51,10 +51,10 @@ class CRTConfig:
     
     # Thresholds
     theta_align: float = 0.15     # Drift threshold for alignment
-    theta_contra: float = 0.35    # Drift threshold for contradiction
-    theta_min: float = 0.20       # Minimum drift for confidence-based contradiction
-    theta_drop: float = 0.25      # Confidence drop threshold
-    theta_fallback: float = 0.25  # Drift threshold for fallback contradictions
+    theta_contra: float = 0.50    # Drift threshold for contradiction (raised from 0.35)
+    theta_min: float = 0.30       # Minimum drift for confidence-based contradiction (raised from 0.20)
+    theta_drop: float = 0.30      # Confidence drop threshold (raised from 0.25)
+    theta_fallback: float = 0.40  # Drift threshold for fallback contradictions (raised from 0.25)
     
     # Reconstruction gates
     theta_intent: float = 0.7     # Intent alignment gate
@@ -119,6 +119,11 @@ class CRTMath:
         sim(a,b) = (a·b) / (||a|| ||b||)
         """
         if len(a) == 0 or len(b) == 0:
+            return 0.0
+        
+        # Check dimension compatibility
+        if len(a) != len(b):
+            # Dimension mismatch - likely from old data
             return 0.0
         
         norm_a = np.linalg.norm(a)
@@ -485,27 +490,31 @@ class CRTMath:
 
 def encode_vector(text: str, encoder=None) -> np.ndarray:
     """
-    Encode text to vector (placeholder - integrate with actual embeddings).
+    Encode text to semantic vector.
     
-    For now, uses simple hash-based encoding.
-    Replace with: OpenAI embeddings, sentence-transformers, etc.
+    Uses sentence-transformers for real semantic embeddings.
+    Falls back to hash-based if embeddings fail.
     """
     if encoder is not None:
         return encoder(text)
     
-    # Simple placeholder: hash-based vector
-    # In production, use actual embeddings
-    import hashlib
-    hash_obj = hashlib.sha256(text.encode())
-    hash_bytes = hash_obj.digest()
-    
-    # Convert to normalized vector
-    vector = np.frombuffer(hash_bytes[:32], dtype=np.float32)
-    norm = np.linalg.norm(vector)
-    if norm > 0:
-        vector = vector / norm
-    
-    return vector
+    # Use real embeddings
+    try:
+        from .embeddings import encode_text
+        return encode_text(text)
+    except Exception as e:
+        # Fallback to hash-based if embeddings fail
+        import hashlib
+        hash_obj = hashlib.sha256(text.encode())
+        hash_bytes = hash_obj.digest()
+        
+        # Convert to normalized vector
+        vector = np.frombuffer(hash_bytes[:32], dtype=np.float32)
+        norm = np.linalg.norm(vector)
+        if norm > 0:
+            vector = vector / norm
+        
+        return vector
 
 
 def extract_emotion_intensity(text: str) -> float:

@@ -83,6 +83,15 @@ class ReasoningEngine:
     
     def __init__(self, llm_client=None):
         """Initialize reasoning engine."""
+        if llm_client is None:
+            # Default to Ollama
+            try:
+                from .ollama_client import get_ollama_client
+                llm_client = get_ollama_client()
+            except Exception as e:
+                print(f"⚠️  Could not initialize Ollama: {e}")
+                llm_client = None
+        
         self.llm = llm_client
         self.reasoning_traces = []  # Internal log
     
@@ -443,26 +452,51 @@ class ReasoningEngine:
     def _build_quick_prompt(self, query: str, context: Dict) -> str:
         """Build prompt for quick mode."""
         docs = context.get('retrieved_docs', [])
-        doc_text = "\n".join([d['text'] for d in docs[:3]])
         
-        return f"Answer this question concisely:\n\nQuestion: {query}\n\nContext: {doc_text}"
+        prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
+
+Your core principles:
+- You ARE the assistant having a conversation, not a commentator
+- Remember what users tell you and use that context
+- Be helpful, direct, and conversational
+- When users introduce themselves or share info, acknowledge and remember it
+- When asked about previous info, check your memory context below
+
+"""
+        
+        # Add memory context if available
+        if docs:
+            prompt += "=== YOUR MEMORY ===\n"
+            user_memories = [d for d in docs if d.get('text', '')]
+            for i, mem in enumerate(user_memories[:5], 1):
+                prompt += f"{i}. {mem['text']}\n"
+            prompt += "\n"
+        
+        prompt += f"User: {query}\n\n"
+        prompt += "Respond naturally, using your memory above. If the user told you their name, use it:"
+        
+        return prompt
     
     def _build_thinking_prompt(self, query: str, context: Dict, analysis: str, plan: str) -> str:
         """Build prompt for thinking mode."""
         docs = context.get('retrieved_docs', [])
         contradictions = context.get('contradictions', [])
         
-        prompt = f"Question: {query}\n\n"
+        prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
+You are having a conversation with the user, not analyzing it from outside.
+
+"""
+        prompt += f"Question: {query}\n\n"
         prompt += f"Analysis: {analysis}\n"
         prompt += f"Plan: {plan}\n\n"
         
         if docs:
-            prompt += "Context:\n" + "\n".join([d['text'] for d in docs[:5]]) + "\n\n"
+            prompt += "Context from memory:\n" + "\n".join([d['text'] for d in docs[:5]]) + "\n\n"
         
         if contradictions:
-            prompt += f"Note: {len(contradictions)} contradictions found. Present multiple perspectives.\n\n"
+            prompt += f"Note: {len(contradictions)} contradictions found. Present multiple perspectives honestly.\n\n"
         
-        prompt += "Answer:"
+        prompt += "Your response:"
         
         return prompt
     
@@ -476,9 +510,14 @@ class ReasoningEngine:
         return prompt
     
     def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
-        """Call LLM (placeholder - integrate with actual LLM)."""
-        # This would call GPT-4, Claude, etc.
-        return f"[LLM response to: {prompt[:50]}...]"
+        """Call LLM (Ollama or fallback)."""
+        if self.llm is None:
+            return f"[No LLM available - install Ollama and run: ollama pull llama3.2]"
+        
+        try:
+            return self.llm.generate(prompt, max_tokens=max_tokens)
+        except Exception as e:
+            return f"[LLM error: {e}]"
     
     def get_reasoning_traces(self, limit: int = 10) -> List[Dict]:
         """Get recent reasoning traces (for debugging/analysis)."""
