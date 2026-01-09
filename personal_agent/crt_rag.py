@@ -149,10 +149,9 @@ class CRTEnhancedRAG:
         candidate_vector = encode_vector(candidate_output)
         
         # 3. Check reconstruction gates
-        query_vector = encode_vector(user_query)
-        
-        # Intent alignment (query → output)
-        intent_align = self.crt_math.intent_alignment(query_vector, candidate_vector)
+        # For conversational AI, intent alignment = reasoning confidence
+        # (Did we confidently answer the question?)
+        intent_align = reasoning_result['confidence']
         
         # Memory alignment (output → retrieved memories)
         memory_align = self.crt_math.memory_alignment(
@@ -177,65 +176,68 @@ class CRTEnhancedRAG:
             source = MemorySource.FALLBACK
             confidence = reasoning_result['confidence'] * 0.7  # Degrade confidence
         
-        # 5. Detect contradictions (if we have prior belief)
+        # 5. Detect contradictions (only on similar topics)
         contradiction_detected = False
         contradiction_entry = None
         
         if best_prior:
             drift = self.crt_math.drift_meaning(candidate_vector, best_prior.vector)
+            similarity = 1.0 - drift  # Similarity is inverse of drift
             
-            is_contra, contra_reason = self.crt_math.detect_contradiction(
-                drift=drift,
-                confidence_new=confidence,
-                confidence_prior=best_prior.confidence,
-                source=source
-            )
-            
-            if is_contra:
-                contradiction_detected = True
-                
-                # Store new memory first
-                new_memory = self.memory.store_memory(
-                    text=candidate_output,
-                    confidence=confidence,
-                    source=source,
-                    context={'query': user_query, 'type': response_type},
-                    user_marked_important=user_marked_important,
-                    contradiction_signal=1.0
-                )
-                
-                # Create ledger entry (NO OVERWRITE)
-                contradiction_entry = self.ledger.record_contradiction(
-                    old_memory_id=best_prior.memory_id,
-                    new_memory_id=new_memory.memory_id,
-                    drift_mean=drift,
-                    confidence_delta=best_prior.confidence - confidence,
-                    query=user_query,
-                    summary=contra_reason
-                )
-                
-                # Degrade old memory trust
-                self.memory.evolve_trust_for_contradiction(best_prior, candidate_vector)
-                
-                # Compute volatility and maybe queue reflection
-                volatility = self.crt_math.compute_volatility(
+            # Only check for contradictions if topics are related (similarity > 0.3)
+            if similarity > 0.3:
+                is_contra, contra_reason = self.crt_math.detect_contradiction(
                     drift=drift,
-                    memory_alignment=memory_align,
-                    is_contradiction=True,
-                    is_fallback=(source == MemorySource.FALLBACK)
+                    confidence_new=confidence,
+                    confidence_prior=best_prior.confidence,
+                    source=source
                 )
                 
-                if self.crt_math.should_reflect(volatility):
-                    self.ledger.queue_reflection(
-                        ledger_id=contradiction_entry.ledger_id,
-                        volatility=volatility,
-                        context={
-                            'query': user_query,
-                            'drift': drift,
-                            'intent_align': intent_align,
-                            'memory_align': memory_align
-                        }
+                if is_contra:
+                    contradiction_detected = True
+                    
+                    # Store new memory first
+                    new_memory = self.memory.store_memory(
+                        text=candidate_output,
+                        confidence=confidence,
+                        source=source,
+                        context={'query': user_query, 'type': response_type},
+                        user_marked_important=user_marked_important,
+                        contradiction_signal=1.0
                     )
+                    
+                    # Create ledger entry (NO OVERWRITE)
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=best_prior.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=best_prior.confidence - confidence,
+                        query=user_query,
+                        summary=contra_reason
+                    )
+                    
+                    # Degrade old memory trust
+                    self.memory.evolve_trust_for_contradiction(best_prior, candidate_vector)
+                    
+                    # Compute volatility and maybe queue reflection
+                    volatility = self.crt_math.compute_volatility(
+                        drift=drift,
+                        memory_alignment=memory_align,
+                        is_contradiction=True,
+                        is_fallback=(source == MemorySource.FALLBACK)
+                    )
+                    
+                    if self.crt_math.should_reflect(volatility):
+                        self.ledger.queue_reflection(
+                            ledger_id=contradiction_entry.ledger_id,
+                            volatility=volatility,
+                            context={
+                                'query': user_query,
+                                'drift': drift,
+                                'intent_align': intent_align,
+                                'memory_align': memory_align
+                            }
+                        )
         
         # 6. Store memory (if not already stored due to contradiction)
         if not contradiction_detected:
