@@ -37,9 +37,9 @@ class ContradictionStatus:
 class ContradictionType:
     """Type of contradiction based on fact topology."""
     REFINEMENT = "refinement"  # More specific information (Seattle → Bellevue)
-    REVISION = "revision"      # Explicit correction ("actually", "I meant", "not X")
-    TEMPORAL = "temporal"      # Time-based progression (Senior → Principal)
+    REVISION = "revision"      # Correction of prior fact (8 years → corrected to 8 years)
     CONFLICT = "conflict"      # Mutually exclusive facts (Microsoft vs Amazon)
+    TEMPORAL = "temporal"      # Time-based progression (Senior → Principal)
 
 
 @dataclass
@@ -268,7 +268,7 @@ class ContradictionLedger:
             (ledger_id, timestamp, old_memory_id, new_memory_id, drift_mean, 
              drift_reason, confidence_delta, status, contradiction_type, query, summary)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        \"\"\", (
             entry.ledger_id,
             entry.timestamp,
             old_memory_id,
@@ -315,6 +315,36 @@ class ContradictionLedger:
     # ========================================================================
     # Contradiction Queries
     # ========================================================================
+    
+    def get_unresolved_contradictions(self, limit: int = 100) -> List[Dict]:
+        """Get all unresolved contradictions as dictionaries."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT ledger_id, old_memory_id, new_memory_id, drift_mean, 
+                   status, contradiction_type, timestamp
+            FROM contradictions 
+            WHERE status = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (ContradictionStatus.OPEN, limit))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [
+            {
+                'ledger_id': row[0],
+                'old_memory_id': row[1],
+                'new_memory_id': row[2],
+                'drift_mean': row[3],
+                'status': row[4],
+                'contradiction_type': row[5],
+                'timestamp': row[6]
+            }
+            for row in rows
+        ]
     
     def get_open_contradictions(self, limit: int = 10) -> List[ContradictionEntry]:
         """Get unresolved contradictions."""
@@ -547,7 +577,7 @@ class ContradictionLedger:
             drift_reason=row[5],
             confidence_delta=row[6],
             status=row[7],
-            contradiction_type=row[8] if len(row) > 8 else ContradictionType.CONFLICT,  # Handle old schema
+            contradiction_type=row[8] if len(row) > 8 else "conflict",  # Handle old schema
             query=row[9] if len(row) > 9 else row[8],
             summary=row[10] if len(row) > 10 else row[9],
             resolution_timestamp=row[11] if len(row) > 11 else row[10],
