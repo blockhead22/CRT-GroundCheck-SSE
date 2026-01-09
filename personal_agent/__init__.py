@@ -24,6 +24,12 @@ from .researcher import ResearchAgent
 from .rag import RAGEngine, MemoryLineage
 from .reasoning import ReasoningEngine, ReasoningMode
 
+# CRT components
+from .crt_core import CRTMath, CRTConfig, SSEMode, MemorySource
+from .crt_memory import CRTMemorySystem, MemoryItem
+from .crt_ledger import ContradictionLedger, ContradictionEntry
+from .crt_rag import CRTEnhancedRAG
+
 __all__ = [
     'PersonalAgent',
     'MemorySystem',
@@ -31,5 +37,15 @@ __all__ = [
     'RAGEngine',
     'MemoryLineage',
     'ReasoningEngine',
-    'ReasoningMode'
+    'ReasoningMode',
+    # CRT
+    'CRTMath',
+    'CRTConfig',
+    'SSEMode',
+    'MemorySource',
+    'CRTMemorySystem',
+    'MemoryItem',
+    'ContradictionLedger',
+    'ContradictionEntry',
+    'CRTEnhancedRAG'
 ]
