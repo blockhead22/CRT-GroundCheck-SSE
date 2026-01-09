@@ -184,8 +184,9 @@ class CRTEnhancedRAG:
             drift = self.crt_math.drift_meaning(candidate_vector, best_prior.vector)
             similarity = 1.0 - drift  # Similarity is inverse of drift
             
-            # Only check for contradictions if topics are related (similarity > 0.3)
-            if similarity > 0.3:
+            # Only check for contradictions if topics are HIGHLY related (similarity > 0.5)
+            # This means drift < 0.5, so we're only checking near-identical topics
+            if similarity > 0.5:
                 is_contra, contra_reason = self.crt_math.detect_contradiction(
                     drift=drift,
                     confidence_new=confidence,

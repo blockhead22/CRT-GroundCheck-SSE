@@ -58,7 +58,7 @@ class CRTConfig:
     
     # Reconstruction gates
     theta_intent: float = 0.7     # Intent alignment gate (using reasoning confidence)
-    theta_mem: float = 0.4        # Memory alignment gate (lowered from 0.6)
+    theta_mem: float = 0.3        # Memory alignment gate (lowered from 0.4 for conversational flow)
     
     # Reflection triggers
     theta_reflect: float = 0.5    # Volatility threshold for reflection
