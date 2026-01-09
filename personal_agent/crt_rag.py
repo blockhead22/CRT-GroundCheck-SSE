@@ -85,6 +85,73 @@ class CRTEnhancedRAG:
         return self.memory.retrieve_memories(query, k, min_trust)
     
     # ========================================================================
+    # Uncertainty as First-Class State
+    # ========================================================================
+    
+    def _should_express_uncertainty(
+        self,
+        retrieved: List[Tuple[MemoryItem, float]],
+        contradictions_count: int = 0,
+        gates_passed: bool = False
+    ) -> Tuple[bool, str]:
+        """
+        Determine if system should express explicit uncertainty.
+        
+        Returns: (should_express_uncertainty, reason)
+        
+        Express uncertainty when:
+        1. Multiple high-trust memories conflict (unresolved contradictions)
+        2. Trust scores are too close (no clear winner)
+        3. Gates failed AND unresolved contradictions exist
+        4. Max trust below threshold (no confident belief)
+        """
+        if not retrieved:
+            return False, ""
+        
+        # Check 1: Unresolved contradictions
+        if contradictions_count > 0:
+            return True, f"I have {contradictions_count} unresolved contradictions about this"
+        
+        # Check 2: Trust scores too close (multiple competing beliefs)
+        trust_scores = [mem.trust for mem, _ in retrieved[:3]]
+        if len(trust_scores) >= 2:
+            max_trust = max(trust_scores)
+            second_trust = sorted(trust_scores, reverse=True)[1]
+            if max_trust - second_trust < 0.1:  # Very close
+                return True, "I have multiple beliefs with similar confidence levels"
+        
+        # Check 3: Max trust below confidence threshold
+        max_trust = max(mem.trust for mem, _ in retrieved)
+        if max_trust < 0.6:
+            return True, f"My confidence in this information is low (trust={max_trust:.2f})"
+        
+        # Check 4: Gates failed with moderate contradiction
+        if not gates_passed and contradictions_count > 0:
+            return True, "I cannot confidently reconstruct a coherent answer from my memories"
+        
+        return False, ""
+    
+    def _generate_uncertain_response(
+        self,
+        user_query: str,
+        retrieved: List[Tuple[MemoryItem, float]],
+        reason: str
+    ) -> str:
+        """
+        Generate explicit uncertainty response.
+        
+        This is a FIRST-CLASS response state, not a fallback.
+        """
+        # Show what we know and what conflicts
+        beliefs = []
+        for mem, score in retrieved[:3]:
+            beliefs.append(f"- {mem.text} (trust: {mem.trust:.2f})")
+        
+        beliefs_text = "\n".join(beliefs) if beliefs else "No clear memories"
+        
+        return f"I need to be honest about my uncertainty here.\n\n{reason}\n\nWhat I have in memory:\n{beliefs_text}\n\nI cannot give you a confident answer without resolving these conflicts. Can you help clarify?"
+    
+    # ========================================================================
     # Query with CRT Principles
     # ========================================================================
     
@@ -111,7 +178,7 @@ class CRTEnhancedRAG:
         Returns both the response AND CRT metadata.
         """
         # 0. Store user input as USER memory (always high trust)
-        self.memory.store_memory(
+        user_memory = self.memory.store_memory(
             text=user_query,
             confidence=0.95,  # User statements are high confidence
             source=MemorySource.USER,
@@ -125,6 +192,48 @@ class CRTEnhancedRAG:
         if not retrieved:
             # No memories → fallback speech
             return self._fallback_response(user_query)
+        
+        # GLOBAL COHERENCE GATE: Check for unresolved contradictions
+        # Count open contradictions related to this query
+        unresolved_contradictions = self.ledger.get_open_contradictions(limit=50)
+        related_contradictions = 0
+        
+        for contra in unresolved_contradictions:
+            # Check if contradiction involves any of our retrieved memories
+            contra_mem_ids = {contra.old_memory_id, contra.new_memory_id}
+            retrieved_mem_ids = {mem.memory_id for mem, _ in retrieved}
+            if contra_mem_ids & retrieved_mem_ids:  # Intersection
+                related_contradictions += 1
+        
+        # EARLY EXIT: Express uncertainty if too many unresolved contradictions
+        should_uncertain, uncertain_reason = self._should_express_uncertainty(
+            retrieved=retrieved,
+            contradictions_count=related_contradictions,
+            gates_passed=False  # Haven't checked gates yet
+        )
+        
+        if should_uncertain:
+            uncertain_response = self._generate_uncertain_response(
+                user_query, retrieved, uncertain_reason
+            )
+            return {
+                'answer': uncertain_response,
+                'thinking': None,
+                'mode': 'uncertainty',
+                'confidence': 0.3,  # Low confidence for uncertain responses
+                'response_type': 'uncertainty',
+                'gates_passed': False,
+                'gate_reason': 'unresolved_contradictions',
+                'intent_alignment': 0.0,
+                'memory_alignment': 0.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [
+                    {'text': mem.text, 'trust': mem.trust, 'confidence': mem.confidence}
+                    for mem, _ in retrieved
+                ],
+                'unresolved_contradictions': related_contradictions
+            }
         
         # Extract best prior belief
         best_prior = retrieved[0][0] if retrieved else None
@@ -176,56 +285,58 @@ class CRTEnhancedRAG:
             source = MemorySource.FALLBACK
             confidence = reasoning_result['confidence'] * 0.7  # Degrade confidence
         
-        # 5. Detect contradictions (only on similar topics)
+        # 5. Detect contradictions (check if USER's new statement contradicts previous USER memories)
         contradiction_detected = False
         contradiction_entry = None
         
-        if best_prior:
-            drift = self.crt_math.drift_meaning(candidate_vector, best_prior.vector)
-            similarity = 1.0 - drift  # Similarity is inverse of drift
+        # Check if new user input contradicts previous user memories
+        user_vector = encode_vector(user_query)
+        previous_user_memories = [mem for mem, _ in retrieved if mem.source == MemorySource.USER]
+        
+        from .crt_ledger import ContradictionType
+        
+        for prev_mem in previous_user_memories[:3]:  # Check top 3 user memories
+            drift = self.crt_math.drift_meaning(user_vector, prev_mem.vector)
+            similarity = 1.0 - drift
             
             # Only check for contradictions if topics are HIGHLY related (similarity > 0.5)
-            # This means drift < 0.5, so we're only checking near-identical topics
             if similarity > 0.5:
                 is_contra, contra_reason = self.crt_math.detect_contradiction(
                     drift=drift,
-                    confidence_new=confidence,
-                    confidence_prior=best_prior.confidence,
-                    source=source
+                    confidence_new=0.95,  # User input confidence
+                    confidence_prior=prev_mem.confidence,
+                    source=MemorySource.USER
                 )
                 
                 if is_contra:
-                    contradiction_detected = True
-                    
-                    # Store new memory first
-                    new_memory = self.memory.store_memory(
-                        text=candidate_output,
-                        confidence=confidence,
-                        source=source,
-                        context={'query': user_query, 'type': response_type},
-                        user_marked_important=user_marked_important,
-                        contradiction_signal=1.0
-                    )
-                    
-                    # Create ledger entry (NO OVERWRITE)
+                    # Create ledger entry with classification (NO OVERWRITE)
                     contradiction_entry = self.ledger.record_contradiction(
-                        old_memory_id=best_prior.memory_id,
-                        new_memory_id=new_memory.memory_id,
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=user_memory.memory_id,
                         drift_mean=drift,
-                        confidence_delta=best_prior.confidence - confidence,
+                        confidence_delta=prev_mem.confidence - 0.95,
                         query=user_query,
-                        summary=contra_reason
+                        summary=f"User contradiction: {prev_mem.text[:50]}... vs {user_query[:50]}...",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=user_vector
                     )
                     
-                    # Degrade old memory trust
-                    self.memory.evolve_trust_for_contradiction(best_prior, candidate_vector)
+                    # Only trigger full contradiction handling for CONFLICT type
+                    # Refinements and temporal progressions are logged but don't degrade trust as much
+                    if contradiction_entry.contradiction_type == ContradictionType.CONFLICT:
+                        contradiction_detected = True
+                        
+                        # Degrade old memory trust (conflicts reduce trust significantly)
+                        self.memory.evolve_trust_for_contradiction(prev_mem, user_vector)
                     
                     # Compute volatility and maybe queue reflection
                     volatility = self.crt_math.compute_volatility(
                         drift=drift,
                         memory_alignment=memory_align,
                         is_contradiction=True,
-                        is_fallback=(source == MemorySource.FALLBACK)
+                        is_fallback=False
                     )
                     
                     if self.crt_math.should_reflect(volatility):
@@ -239,20 +350,24 @@ class CRTEnhancedRAG:
                                 'memory_align': memory_align
                             }
                         )
+                    break  # Only track first contradiction
         
-        # 6. Store memory (if not already stored due to contradiction)
-        if not contradiction_detected:
-            new_memory = self.memory.store_memory(
-                text=candidate_output,
-                confidence=confidence,
-                source=source,
-                context={'query': user_query, 'type': response_type},
-                user_marked_important=user_marked_important
-            )
-            
-            # Update trust for aligned memories
-            if best_prior and gates_passed:
-                self.memory.evolve_trust_for_alignment(best_prior, candidate_vector)
+        # 6. Store system response memory
+        new_memory = self.memory.store_memory(
+            text=candidate_output,
+            confidence=confidence,
+            source=source,
+            context={'query': user_query, 'type': response_type},
+            user_marked_important=False  # System responses not marked important
+        )
+        
+        # Update trust for aligned USER memories when gates pass
+        # This rewards user memories that led to coherent, confident responses
+        if gates_passed and retrieved:
+            for mem, score in retrieved[:3]:  # Top 3 retrieved
+                # Only evolve trust for USER memories (not system/fallback)
+                if mem.source == MemorySource.USER:
+                    self.memory.evolve_trust_for_alignment(mem, candidate_vector)
         
         # 7. Record belief or speech
         if response_type == "belief":

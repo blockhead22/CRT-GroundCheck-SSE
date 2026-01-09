@@ -31,7 +31,7 @@ class EmbeddingEngine:
         if self.model is None:
             print(f"Loading embedding model: {self.model_name}...")
             self.model = SentenceTransformer(self.model_name)
-            print(f"✓ Model loaded ({self.model.get_sentence_embedding_dimension()} dimensions)")
+            print(f"Model loaded ({self.model.get_sentence_embedding_dimension()} dimensions)")
     
     def encode(self, text: str) -> np.ndarray:
         """

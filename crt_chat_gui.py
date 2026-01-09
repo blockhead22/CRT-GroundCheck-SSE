@@ -41,17 +41,19 @@ st.markdown("""
         padding: 1rem;
         border-radius: 0.5rem;
         margin-bottom: 1rem;
-        color: #1a1a1a;
     }
     .user-message {
         background-color: #e3f2fd;
         border-left: 4px solid #2196f3;
-        color: #0d47a1;
+        color: #0d47a1 !important;
     }
     .assistant-message {
         background-color: #f5f5f5;
         border-left: 4px solid #4caf50;
-        color: #1b5e20;
+        color: #1b5e20 !important;
+    }
+    .chat-message * {
+        color: inherit !important;
     }
     .belief-badge {
         background-color: #4caf50;

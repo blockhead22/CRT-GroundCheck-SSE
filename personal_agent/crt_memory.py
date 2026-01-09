@@ -370,17 +370,21 @@ class CRTMemorySystem:
         Evolve trust when new output aligns with memory.
         
         Uses: τ_new = clip(τ + η_pos·(1 - D_mean), 0, 1)
+        
+        This is called when gates pass, meaning the retrieved memory
+        was useful and led to a coherent response. We reward it.
         """
         drift = self.crt_math.drift_meaning(new_output_vector, memory.vector)
         
-        if drift <= self.config.theta_align:
-            new_trust = self.crt_math.evolve_trust_aligned(memory.trust, drift)
-            self.update_trust(
-                memory.memory_id,
-                new_trust,
-                f"Aligned (drift={drift:.3f})",
-                drift
-            )
+        # Always evolve trust when this is called (gates already passed)
+        # The drift just modulates HOW MUCH we increase trust
+        new_trust = self.crt_math.evolve_trust_aligned(memory.trust, drift)
+        self.update_trust(
+            memory.memory_id,
+            new_trust,
+            f"Aligned (drift={drift:.3f})",
+            drift
+        )
     
     def evolve_trust_for_contradiction(
         self,
