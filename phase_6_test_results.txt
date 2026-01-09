@@ -1,0 +1,50 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- /Users/nickblock/AI_round2/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/nickblock/AI_round2
+collecting ... collected 24 items
+
+tests/test_phase_6_boundary_violations.py::test_reject_adding_confidence_to_contradictions PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_confidence_scoring_api PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_synthesizing_best_explanation PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_claim_paraphrasing PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_filtering_by_truth_criteria PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_suppressing_contradictions PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_learning_from_repeated_queries PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_query_history_persistence PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_claim_modification PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_contradiction_modification PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_truth_ranking_of_claims PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_evidence_weighing PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_outcome_feedback_collection PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_user_action_tracking PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_engagement_metrics PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_session_state_persistence PASSED
+tests/test_phase_6_boundary_violations.py::test_reject_adaptive_responses PASSED
+tests/test_phase_6_boundary_violations.py::test_stateless_query_guarantee PASSED
+tests/test_phase_6_boundary_violations.py::test_coherence_reject_edge_modification PASSED
+tests/test_phase_6_boundary_violations.py::test_coherence_reject_resolution PASSED
+tests/test_phase_6_boundary_violations.py::test_evidence_packet_immutable_after_validation PASSED
+tests/test_phase_6_boundary_violations.py::test_no_hidden_violation_paths 
+✓ 15/15 forbidden methods correctly raise SSEBoundaryViolation
+PASSED
+tests/test_phase_6_boundary_violations.py::test_phase_6_complete_coverage 
+=== Phase 6 Boundary Enforcement Coverage ===
+✓ confidence_scores: test_reject_adding_confidence_to_contradictions
+✓ synthesis: test_reject_synthesizing_best_explanation
+✓ filtering: test_reject_filtering_by_truth_criteria
+✓ learning: test_reject_learning_from_repeated_queries
+✓ modification: test_reject_claim_modification
+✓ ranking: test_reject_truth_ranking_of_claims
+✓ outcome_measurement: test_reject_outcome_feedback_collection
+✓ state_persistence: test_reject_session_state_persistence
+✓ coherence_boundaries: test_coherence_reject_edge_modification
+✓ immutability: test_evidence_packet_immutable_after_validation
+==============================================
+
+PASSED
+tests/test_phase_6_boundary_violations.py::test_generate_boundary_enforcement_report 
+✓ Phase 6 Enforcement Report: /private/var/folders/r3/_zzp3zjj6tn5rkrmrrl4p6s40000gn/T/pytest-of-nickblock/pytest-5/test_generate_boundary_enforce0/phase_6_enforcement_report.json
+PASSED
+
+============================== 24 passed in 0.19s ==============================
