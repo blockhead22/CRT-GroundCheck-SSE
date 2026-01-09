@@ -34,6 +34,14 @@ class ContradictionStatus:
     ACCEPTED = "accepted"      # Both kept as valid perspectives
 
 
+class ContradictionType:
+    """Type of contradiction based on fact topology."""
+    REFINEMENT = "refinement"  # More specific information (Seattle → Bellevue)
+    REVISION = "revision"      # Explicit correction ("actually", "I meant", "not X")
+    TEMPORAL = "temporal"      # Time-based progression (Senior → Principal)
+    CONFLICT = "conflict"      # Mutually exclusive facts (Microsoft vs Amazon)
+
+
 @dataclass
 class ContradictionEntry:
     """
@@ -58,6 +66,7 @@ class ContradictionEntry:
     
     # Status
     status: str = ContradictionStatus.OPEN
+    contradiction_type: str = ContradictionType.CONFLICT  # Default to conflict
     
     # Metadata
     query: Optional[str] = None
@@ -77,6 +86,7 @@ class ContradictionEntry:
             'drift_reason': self.drift_reason,
             'confidence_delta': self.confidence_delta,
             'status': self.status,
+            'contradiction_type': self.contradiction_type,
             'query': self.query,
             'summary': self.summary,
             'resolution_timestamp': self.resolution_timestamp,
@@ -127,6 +137,7 @@ class ContradictionLedger:
                 drift_reason REAL,
                 confidence_delta REAL,
                 status TEXT NOT NULL,
+                contradiction_type TEXT DEFAULT 'conflict',
                 query TEXT,
                 summary TEXT,
                 resolution_timestamp REAL,
@@ -156,6 +167,56 @@ class ContradictionLedger:
     # Contradiction Recording
     # ========================================================================
     
+    def _classify_contradiction(
+        self,
+        old_text: str,
+        new_text: str,
+        drift_mean: float,
+        old_vector: Optional[np.ndarray] = None,
+        new_vector: Optional[np.ndarray] = None
+    ) -> str:
+        """
+        Classify contradiction type based on fact topology.
+        
+        Returns:
+            REFINEMENT: New info is more specific (Seattle → Bellevue)
+            REVISION: Explicit correction ("actually", "I meant", "not X")
+            TEMPORAL: Progression/upgrade (Senior → Principal)
+            CONFLICT: Mutually exclusive (Microsoft vs Amazon)
+        """
+        old_lower = old_text.lower()
+        new_lower = new_text.lower()
+        
+        # Check for revision keywords
+        revision_keywords = ["actually", "correction", "i meant", "not ", "wrong", "mistake"]
+        if any(kw in new_lower for kw in revision_keywords):
+            return ContradictionType.REVISION
+        
+        # Check for hierarchical refinement (one contains the other)
+        if old_text in new_text or new_text in old_text:
+            return ContradictionType.REFINEMENT
+        
+        # Check for temporal progression keywords
+        temporal_keywords = ["now", "currently", "promoted", "became", "upgraded"]
+        seniority_pairs = [("senior", "principal"), ("junior", "senior"), ("mid", "senior")]
+        
+        if any(kw in new_lower for kw in temporal_keywords):
+            return ContradictionType.TEMPORAL
+        
+        for lower, higher in seniority_pairs:
+            if lower in old_lower and higher in new_lower:
+                return ContradictionType.TEMPORAL
+        
+        # Check semantic similarity if vectors available
+        if old_vector is not None and new_vector is not None:
+            similarity = self.crt_math.similarity(old_vector, new_vector)
+            # High similarity but not identical suggests refinement
+            if 0.7 <= similarity < 0.9:
+                return ContradictionType.REFINEMENT
+        
+        # Default to conflict for mutually exclusive facts
+        return ContradictionType.CONFLICT
+    
     def record_contradiction(
         self,
         old_memory_id: str,
@@ -164,14 +225,26 @@ class ContradictionLedger:
         confidence_delta: float,
         query: Optional[str] = None,
         summary: Optional[str] = None,
-        drift_reason: Optional[float] = None
+        drift_reason: Optional[float] = None,
+        old_text: Optional[str] = None,
+        new_text: Optional[str] = None,
+        old_vector: Optional[np.ndarray] = None,
+        new_vector: Optional[np.ndarray] = None
     ) -> ContradictionEntry:
         """
-        Record contradiction event.
+        Record contradiction event with classification.
         
         NO DELETION. NO REPLACEMENT.
         Just create ledger entry preserving both memories.
         """
+        # Classify the contradiction type
+        if old_text and new_text:
+            contradiction_type = self._classify_contradiction(
+                old_text, new_text, drift_mean, old_vector, new_vector
+            )
+        else:
+            contradiction_type = ContradictionType.CONFLICT  # Default
+        
         entry = ContradictionEntry(
             ledger_id=f"contra_{int(time.time() * 1000)}_{hash(old_memory_id + new_memory_id) % 10000}",
             timestamp=time.time(),
@@ -181,8 +254,9 @@ class ContradictionLedger:
             drift_reason=drift_reason,
             confidence_delta=confidence_delta,
             status=ContradictionStatus.OPEN,
+            contradiction_type=contradiction_type,
             query=query,
-            summary=summary or self._generate_summary(drift_mean, confidence_delta)
+            summary=summary or self._generate_summary(drift_mean, confidence_delta, contradiction_type)
         )
         
         # Store in database
@@ -192,8 +266,8 @@ class ContradictionLedger:
         cursor.execute("""
             INSERT INTO contradictions
             (ledger_id, timestamp, old_memory_id, new_memory_id, drift_mean, 
-             drift_reason, confidence_delta, status, query, summary)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             drift_reason, confidence_delta, status, contradiction_type, query, summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             entry.ledger_id,
             entry.timestamp,
@@ -203,6 +277,7 @@ class ContradictionLedger:
             drift_reason,
             confidence_delta,
             entry.status,
+            entry.contradiction_type,
             query,
             entry.summary
         ))
@@ -212,7 +287,7 @@ class ContradictionLedger:
         
         return entry
     
-    def _generate_summary(self, drift: float, conf_delta: float) -> str:
+    def _generate_summary(self, drift: float, conf_delta: float, contradiction_type: str = ContradictionType.CONFLICT) -> str:
         """Generate natural language summary of contradiction."""
         if drift > 0.5:
             intensity = "Strong"
@@ -228,7 +303,14 @@ class ContradictionLedger:
         else:
             conf_desc = ""
         
-        return f"{intensity} belief divergence (drift={drift:.2f}) {conf_desc}".strip()
+        type_desc = {
+            ContradictionType.REFINEMENT: "Refinement",
+            ContradictionType.REVISION: "Revision",
+            ContradictionType.TEMPORAL: "Temporal progression",
+            ContradictionType.CONFLICT: "Conflict"
+        }.get(contradiction_type, "Contradiction")
+        
+        return f"{type_desc}: {intensity} belief divergence (drift={drift:.2f}) {conf_desc}".strip()
     
     # ========================================================================
     # Contradiction Queries
@@ -465,9 +547,10 @@ class ContradictionLedger:
             drift_reason=row[5],
             confidence_delta=row[6],
             status=row[7],
-            query=row[8],
-            summary=row[9],
-            resolution_timestamp=row[10],
-            resolution_method=row[11],
-            merged_memory_id=row[12]
+            contradiction_type=row[8] if len(row) > 8 else ContradictionType.CONFLICT,  # Handle old schema
+            query=row[9] if len(row) > 9 else row[8],
+            summary=row[10] if len(row) > 10 else row[9],
+            resolution_timestamp=row[11] if len(row) > 11 else row[10],
+            resolution_method=row[12] if len(row) > 12 else row[11],
+            merged_memory_id=row[13] if len(row) > 13 else row[12]
         )
