@@ -62,6 +62,8 @@ def evaluate_turn(
       - contradiction_should_be_false_for_questions: bool
       - expect_uncertainty: bool
       - expected_name: str (e.g. 'nick')
+            - must_contain: str | List[str] (case-insensitive substring checks)
+            - must_not_contain: str | List[str] (case-insensitive substring checks)
     """
 
     expectations = expectations or {}
@@ -73,9 +75,11 @@ def evaluate_turn(
     confidence = float(result.get("confidence", 0.0) or 0.0)
     unresolved = int(result.get("unresolved_contradictions", 0) or 0)
 
-    # 1) Questions should not trigger contradictions by themselves.
-    if expectations.get("contradiction_should_be_false_for_questions"):
-        if is_question(user_prompt):
+    # 1) Baseline: questions should not trigger contradictions by themselves.
+    # This is a core CRT contract check, so we run it by default whenever the user prompt looks like a question.
+    if is_question(user_prompt):
+        enforce = expectations.get("contradiction_should_be_false_for_questions", True)
+        if enforce:
             findings.append(
                 EvalFinding(
                     check="no_contradiction_on_question",
@@ -127,5 +131,30 @@ def evaluate_turn(
                     details=f"expected={exp_name}, claimed={claimed}",
                 )
             )
+
+    # 5) Generic content checks (useful for stress-test recall assertions).
+    if "must_contain" in expectations:
+        req = expectations["must_contain"]
+        req_list = [req] if isinstance(req, str) else list(req)
+        missing = [s for s in req_list if _norm_text(str(s)) not in _norm_text(answer)]
+        findings.append(
+            EvalFinding(
+                check="must_contain",
+                passed=(len(missing) == 0),
+                details=("missing=" + ", ".join(missing)) if missing else "",
+            )
+        )
+
+    if "must_not_contain" in expectations:
+        ban = expectations["must_not_contain"]
+        ban_list = [ban] if isinstance(ban, str) else list(ban)
+        present = [s for s in ban_list if _norm_text(str(s)) in _norm_text(answer)]
+        findings.append(
+            EvalFinding(
+                check="must_not_contain",
+                passed=(len(present) == 0),
+                details=("present=" + ", ".join(present)) if present else "",
+            )
+        )
 
     return findings

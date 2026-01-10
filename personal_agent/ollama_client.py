@@ -4,6 +4,8 @@ Ollama LLM Client for CRT
 Provides interface to local Ollama models.
 """
 
+import os
+
 import ollama
 from typing import Optional, Dict, List, Any
 
@@ -22,13 +24,32 @@ class OllamaClient:
         - codellama: Good for code
         """
         self.model = model
+
+        # Default request timeout so the UI/test harness can't hang forever.
+        # Can be overridden via env var OLLAMA_TIMEOUT_SECONDS.
+        timeout_s = None
+        try:
+            env = os.getenv("OLLAMA_TIMEOUT_SECONDS", "")
+            timeout_s = float(env) if env else 120.0
+        except Exception:
+            timeout_s = 120.0
+
+        # Use a dedicated client instance so we can pass timeout/settings.
+        # The underlying ollama Python client forwards kwargs to httpx.Client.
+        try:
+            self._client = ollama.Client(timeout=timeout_s)
+        except Exception:
+            self._client = None
         self._verify_model()
     
     def _verify_model(self):
         """Check if model is available."""
         try:
             # Try to list models - don't fail if this doesn't work
-            ollama.list()
+            if self._client is not None and hasattr(self._client, "list"):
+                self._client.list()
+            else:
+                ollama.list()
             # If we get here, Ollama is running
         except:
             # Silently continue - we'll find out when we try to generate
@@ -69,7 +90,9 @@ class OllamaClient:
         })
         
         try:
-            response = ollama.chat(
+            chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat
+
+            response = chat_fn(
                 model=self.model,
                 messages=messages,
                 options={
@@ -112,7 +135,9 @@ class OllamaClient:
             Generated response
         """
         try:
-            response = ollama.chat(
+            chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat
+
+            response = chat_fn(
                 model=self.model,
                 messages=messages,
                 options={

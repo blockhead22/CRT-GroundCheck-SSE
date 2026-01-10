@@ -12,6 +12,8 @@ Testing:
 
 import sys
 from pathlib import Path
+import argparse
+from datetime import datetime
 
 # Ensure imports work regardless of OS / working directory
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -29,8 +31,23 @@ print("="*80)
 print(" CRT STRESS TEST - MEMORY & TRUST ANALYSIS ".center(80, "="))
 print("="*80)
 
-ollama = get_ollama_client("llama3.2:latest")
-rag = CRTEnhancedRAG(llm_client=ollama)
+parser = argparse.ArgumentParser(description="CRT stress test (30-turn default)")
+parser.add_argument("--model", default="llama3.2:latest", help="Ollama model name")
+parser.add_argument("--turns", type=int, default=30, help="Max turns (default: 30)")
+parser.add_argument("--sleep", type=float, default=0.2, help="Sleep seconds between turns (default: 0.2)")
+parser.add_argument("--artifacts-dir", default="artifacts", help="Directory for run artifacts")
+parser.add_argument("--memory-db", default=None, help="Path to memory sqlite db (default: per-run in artifacts)")
+parser.add_argument("--ledger-db", default=None, help="Path to ledger sqlite db (default: per-run in artifacts)")
+args = parser.parse_args()
+
+art_dir = Path(args.artifacts_dir)
+art_dir.mkdir(parents=True, exist_ok=True)
+run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+memory_db = args.memory_db or str(art_dir / f"crt_stress_memory.{run_id}.db")
+ledger_db = args.ledger_db or str(art_dir / f"crt_stress_ledger.{run_id}.db")
+
+ollama = get_ollama_client(args.model)
+rag = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=ollama)
 
 # Tracking metrics
 metrics = {
@@ -52,7 +69,7 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
     """Query CRT and track all metrics."""
     # Hard stop for standardized runs (kept as a guardrail so edits elsewhere
     # don't accidentally change the effective test length).
-    if metrics['total_turns'] >= 30:
+    if metrics['total_turns'] >= args.turns:
         return None
 
     metrics['total_turns'] += 1
@@ -116,7 +133,8 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
                 metrics['eval_failures'].append(msg)
                 print(f"[EVAL ❌] {f.check} {('- ' + f.details) if f.details else ''}")
     
-    time.sleep(0.2)
+    if args.sleep:
+        time.sleep(args.sleep)
     return result
 
 print("\nPHASE 1: BASELINE FACT ESTABLISHMENT")
@@ -216,12 +234,14 @@ query_and_track(
     },
 )
 metrics['contradictions_introduced'].append("Turn 11: Microsoft vs Amazon")
-
-r1 = rag.query("Where do I work?")
 query_and_track(
     "Where do I work?",
     "Testing contradiction resolution",
-    "Post-Contradiction Recall"
+    "Post-Contradiction Recall",
+    expectations={
+        'must_contain': 'amazon',
+        'must_not_contain': 'microsoft',
+    },
 )
 
 query_and_track(

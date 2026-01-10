@@ -54,9 +54,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Examples:
     # - "My name is Sarah."
     # - "Yes, I'm Sarah"
-    m = re.search(r"\bmy name is\s+([A-Z][a-zA-Z'-]{1,40})\b", text)
+    m = re.search(r"\bmy name is\s+([A-Z][a-zA-Z'-]{1,40})\b", text, flags=re.IGNORECASE)
     if not m:
-        m = re.search(r"\bi\s*'?m\s+([A-Z][a-zA-Z'-]{1,40})\b", text)
+        m = re.search(r"\bi\s*'?m\s+([A-Z][a-zA-Z'-]{1,40})\b", text, flags=re.IGNORECASE)
     if m:
         name = m.group(1)
         facts["name"] = ExtractedFact("name", name, _norm_text(name))
@@ -132,12 +132,12 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         facts["remote_preference"] = ExtractedFact("remote_preference", pref, "remote" if pref else "office")
 
     # Education (very rough; enough for Stanford vs MIT undergrad contradictions)
-    m = re.search(r"\bundergraduate (?:degree )?was from\s+([A-Z][A-Za-z .'-]{2,60})\b", text)
+    m = re.search(r"\bundergraduate (?:degree )?was from\s+([A-Z][A-Za-z .'-]{2,60})\b", text, flags=re.IGNORECASE)
     if m:
         school = m.group(1).strip()
         facts["undergrad_school"] = ExtractedFact("undergrad_school", school, _norm_text(school))
 
-    m = re.search(r"\bmaster'?s (?:degree )?.*?from\s+([A-Z][A-Za-z .'-]{2,60})\b", text)
+    m = re.search(r"\bmaster'?s (?:degree )?.*?from\s+([A-Z][A-Za-z .'-]{2,60})\b", text, flags=re.IGNORECASE)
     if m:
         school = m.group(1).strip()
         facts["masters_school"] = ExtractedFact("masters_school", school, _norm_text(school))

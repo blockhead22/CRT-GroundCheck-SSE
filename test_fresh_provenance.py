@@ -1,8 +1,16 @@
 """Test provenance on fresh index."""
 
+from pathlib import Path
+
+import pytest
+
 from sse.interaction_layer import SSENavigator
 
-nav = SSENavigator('output_index_fresh/index.json')
+index_path = Path('output_index_fresh/index.json')
+if not index_path.exists():
+    pytest.skip(f"Missing required artifact: {index_path}", allow_module_level=True)
+
+nav = SSENavigator(str(index_path))
 
 # Check all claims
 claims = nav.get_all_claims()
