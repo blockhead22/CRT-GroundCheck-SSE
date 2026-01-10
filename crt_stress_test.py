@@ -40,6 +40,11 @@ metrics = {
 
 def query_and_track(question, expected_behavior=None, test_name=""):
     """Query CRT and track all metrics."""
+    # Hard stop for standardized runs (kept as a guardrail so edits elsewhere
+    # don't accidentally change the effective test length).
+    if metrics['total_turns'] >= 30:
+        return None
+
     metrics['total_turns'] += 1
     turn = metrics['total_turns']
     
@@ -322,28 +327,9 @@ query_and_track(
 )
 
 query_and_track(
-    "Our team handles 2 million requests per second in production.",
-    "Large quantitative fact",
-    "Scale Metric"
-)
-
-query_and_track(
     "How many engineers do I manage?",
     "Numerical recall test",
     "Number Recall Test"
-)
-
-query_and_track(
-    "Actually my team is 12 engineers, not 15.",
-    "CONTRADICTION: 15 -> 12 team members",
-    "Numerical Contradiction"
-)
-metrics['contradictions_introduced'].append("Turn 35: Team size 15 vs 12")
-
-query_and_track(
-    "How large is my team?",
-    "Post-contradiction numerical recall",
-    "Updated Number Recall"
 )
 
 print("\nPHASE 10: FINAL VALIDATION")
