@@ -68,7 +68,7 @@ class CRTConfig:
     alpha_trust: float = 0.7      # Trust weight in retrieval (vs confidence)
     
     # Trust bounds
-    tau_base: float = 0.5         # Base trust for new memories
+    tau_base: float = 0.7         # Base trust for new memories (FIX: raised to avoid uncertainty trigger)
     tau_fallback_cap: float = 0.3 # Max trust for fallback speech
     tau_train_min: float = 0.6    # Min trust for weight updates
     

@@ -492,6 +492,32 @@ class CRTMemorySystem:
         """Get all memory vectors."""
         memories = self._load_all_memories()
         return [m.vector for m in memories]
+
+    def get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
+        """Fetch a single memory by ID (or None if missing)."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT * FROM memories WHERE memory_id = ?", (memory_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        return MemoryItem(
+            memory_id=row[0],
+            vector=np.array(json.loads(row[1])),
+            text=row[2],
+            timestamp=row[3],
+            confidence=row[4],
+            trust=row[5],
+            source=MemorySource(row[6]),
+            sse_mode=SSEMode(row[7]),
+            context=json.loads(row[8]) if row[8] else None,
+            tags=json.loads(row[9]) if row[9] else None,
+            thread_id=row[10]
+        )
     
     def get_trust_history(self, memory_id: str) -> List[Dict]:
         """Get trust evolution history for a memory."""

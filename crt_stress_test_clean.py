@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 CRT STRESS TEST - Comprehensive Memory & Trust Analysis
 
@@ -70,13 +70,13 @@ def query_and_track(question, expected_behavior=None, test_name=""):
         min_trust = min(m['trust'] for m in result['retrieved_memories'])
         
         print(f"\n[METRICS]:")
-        print(f"  Gates: {'PASS' if result['gates_passed'] else 'FAIL'}")
+        print(f"  Gates: {' PASS' if result['gates_passed'] else ' FAIL'}")
         print(f"  Confidence: {result['confidence']:.3f}")
-        print(f"  Contradiction: {'YES' if result['contradiction_detected'] else 'NO'}")
+        print(f"  Contradiction: {'YES ' if result['contradiction_detected'] else 'NO'}")
         print(f"  Memories: {len(result['retrieved_memories'])} retrieved")
         print(f"  Trust: avg={avg_trust:.3f}, max={max_trust:.3f}, min={min_trust:.3f}")
     else:
-        print(f"\n[METRICS]: Gates={'PASS' if result['gates_passed'] else 'FAIL'}, Conf={result['confidence']:.3f}, Contra={'YES' if result['contradiction_detected'] else 'NO'}")
+        print(f"\n[METRICS]: Gates={'' if result['gates_passed'] else ''}, Conf={result['confidence']:.3f}, Contra={'YES' if result['contradiction_detected'] else 'NO'}")
     
     # Verify expected behavior
     if expected_behavior:
@@ -85,7 +85,7 @@ def query_and_track(question, expected_behavior=None, test_name=""):
     time.sleep(0.2)
     return result
 
-print("\nPHASE 1: BASELINE FACT ESTABLISHMENT")
+print("\n PHASE 1: BASELINE FACT ESTABLISHMENT")
 print("-" * 80)
 
 query_and_track(
@@ -119,7 +119,7 @@ r = metrics['total_turns']
 if 'sarah' not in rag.query("What's my name?")['answer'].lower():
     metrics['memory_failures'].append(f"Turn {r}: Failed to recall name 'Sarah'")
 
-print("\nPHASE 2: DETAILED FACT ACCUMULATION")
+print("\n PHASE 2: DETAILED FACT ACCUMULATION")
 print("-" * 80)
 
 query_and_track(
@@ -162,7 +162,7 @@ query_and_track(
     "Education Recall Test"
 )
 
-print("\nPHASE 3: CONTRADICTION INTRODUCTION")
+print("\n PHASE 3: CONTRADICTION INTRODUCTION")
 print("-" * 80)
 
 query_and_track(
@@ -198,7 +198,7 @@ query_and_track(
     "Experience Recall Test"
 )
 
-print("\nPHASE 4: SUBTLE CONTRADICTIONS")
+print("\n PHASE 4: SUBTLE CONTRADICTIONS")
 print("-" * 80)
 
 query_and_track(
@@ -219,7 +219,7 @@ query_and_track(
     "Title Recall Test"
 )
 
-print("\nPHASE 5: FACT REINFORCEMENT")
+print("\n PHASE 5: FACT REINFORCEMENT")
 print("-" * 80)
 
 query_and_track(
@@ -246,7 +246,7 @@ query_and_track(
     "High-Trust Recall Test"
 )
 
-print("\nPHASE 6: COMPLEX CONTRADICTIONS")
+print("\n PHASE 6: COMPLEX CONTRADICTIONS")
 print("-" * 80)
 
 query_and_track(
@@ -269,7 +269,7 @@ query_and_track(
 )
 metrics['contradictions_introduced'].append("Turn 25: Stanford vs MIT for undergrad")
 
-print("\nPHASE 7: EDGE CASES")
+print("\n PHASE 7: EDGE CASES")
 print("-" * 80)
 
 query_and_track(
@@ -291,7 +291,7 @@ query_and_track(
 )
 metrics['contradictions_introduced'].append("Turn 28: Remote vs office preference")
 
-print("\nPHASE 8: COMPREHENSIVE RECALL")
+print("\n PHASE 8: COMPREHENSIVE RECALL")
 print("-" * 80)
 
 query_and_track(
@@ -312,7 +312,7 @@ query_and_track(
     "High-Confidence Fact Query"
 )
 
-print("\nPHASE 9: FINAL STRESS TESTS")
+print("\n PHASE 9: FINAL STRESS TESTS")
 print("-" * 80)
 
 query_and_track(
@@ -346,7 +346,7 @@ query_and_track(
     "Updated Number Recall"
 )
 
-print("\nPHASE 10: FINAL VALIDATION")
+print("\n PHASE 10: FINAL VALIDATION")
 print("-" * 80)
 
 query_and_track(
@@ -372,7 +372,7 @@ print("\n" + "="*80)
 print(" STRESS TEST COMPLETE - ANALYSIS REPORT ".center(80, "="))
 print("="*80)
 
-print(f"\nOVERALL METRICS:")
+print(f"\n OVERALL METRICS:")
 print(f"  Total Turns: {metrics['total_turns']}")
 print(f"  Gates Passed: {metrics['gates_passed']} ({100*metrics['gates_passed']/metrics['total_turns']:.1f}%)")
 print(f"  Gates Failed: {metrics['gates_failed']} ({100*metrics['gates_failed']/metrics['total_turns']:.1f}%)")
@@ -382,75 +382,74 @@ print(f"  Avg Confidence: {sum(metrics['avg_confidence'])/len(metrics['avg_confi
 if metrics['trust_scores']:
     print(f"  Avg Trust Score: {sum(metrics['trust_scores'])/len(metrics['trust_scores']):.3f}")
 
-print(f"\nFACTS INTRODUCED: {len(metrics['facts_introduced'])}")
+print(f"\n FACTS INTRODUCED: {len(metrics['facts_introduced'])}")
 for i, fact in enumerate(metrics['facts_introduced'], 1):
     print(f"  {i}. {fact}")
 
-print(f"\nCONTRADICTIONS INTRODUCED: {len(metrics['contradictions_introduced'])}")
+print(f"\n  CONTRADICTIONS INTRODUCED: {len(metrics['contradictions_introduced'])}")
 for contra in metrics['contradictions_introduced']:
-    print(f"  - {contra}")
+    print(f"   {contra}")
 
-print(f"\nMEMORY FAILURES: {len(metrics['memory_failures'])}")
+print(f"\n MEMORY FAILURES: {len(metrics['memory_failures'])}")
 for failure in metrics['memory_failures']:
-    print(f"  - {failure}")
+    print(f"   {failure}")
 
 # RECOMMENDATIONS
-print(f"\nRECOMMENDED ADJUSTMENTS:")
-
-cfg = rag.config
+print(f"\n RECOMMENDED ADJUSTMENTS:")
 
 detection_rate = metrics['contradictions_detected'] / len(metrics['contradictions_introduced']) if metrics['contradictions_introduced'] else 0
 print(f"\n1. CONTRADICTION DETECTION RATE: {detection_rate:.1%}")
 if detection_rate < 0.7:
-    print(f"   LOW - Consider lowering theta_contra (currently {cfg.theta_contra:.2f})")
-    print(f"   Suggested: theta_contra = 0.25-0.30")
+    print(f"     LOW - Consider lowering theta_contra (currently 0.35)")
+    print(f"    Suggested: theta_contra = 0.25-0.30")
 elif detection_rate > 0.95:
-    print(f"   TOO SENSITIVE - May be detecting false positives")
-    print(f"   Suggested: theta_contra = 0.40-0.45")
+    print(f"     TOO SENSITIVE - May be detecting false positives")
+    print(f"    Suggested: theta_contra = 0.40-0.45")
 else:
-    print(f"   GOOD - Detection rate is in acceptable range")
+    print(f"    GOOD - Detection rate is in acceptable range")
 
 gate_pass_rate = metrics['gates_passed'] / metrics['total_turns']
 print(f"\n2. GATE PASS RATE: {gate_pass_rate:.1%}")
 if gate_pass_rate < 0.5:
-    print(f"   LOW - Gates too strict, blocking legitimate queries")
-    print(f"   Suggested: Lower theta_min (currently {cfg.theta_min:.2f}) to 0.20")
-    print(f"   Suggested: Lower theta_align (currently {cfg.theta_align:.2f}) to 0.25")
+    print(f"     LOW - Gates too strict, blocking legitimate queries")
+    print(f"    Suggested: Lower theta_min (currently 0.25) to 0.20")
+    print(f"    Suggested: Lower theta_align (currently 0.30) to 0.25")
 elif gate_pass_rate > 0.95:
-    print(f"   HIGH - Gates may be too permissive")
-    print(f"   Suggested: Raise theta_align to 0.35-0.40")
+    print(f"     HIGH - Gates may be too permissive")
+    print(f"    Suggested: Raise theta_align to 0.35-0.40")
 else:
-    print(f"   GOOD - Gate threshold is balanced")
+    print(f"    GOOD - Gate threshold is balanced")
 
 if metrics['trust_scores']:
     trust_variance = max(metrics['trust_scores']) - min(metrics['trust_scores'])
     print(f"\n3. TRUST SCORE VARIANCE: {trust_variance:.3f}")
     if trust_variance < 0.1:
-        print(f"   LOW - Trust scores not evolving enough")
-        print(f"   Suggested: Increase delta_trust (trust evolution step size)")
-        print(f"   Suggested: Review evolve_trust_for_alignment() logic")
+        print(f"     LOW - Trust scores not evolving enough")
+        print(f"    Suggested: Increase delta_trust (trust evolution step size)")
+        print(f"    Suggested: Review evolve_trust_for_alignment() logic")
     else:
-        print(f"   GOOD - Trust scores showing healthy variation")
+        print(f"    GOOD - Trust scores showing healthy variation")
 
 avg_conf = sum(metrics['avg_confidence'])/len(metrics['avg_confidence'])
 print(f"\n4. AVERAGE CONFIDENCE: {avg_conf:.3f}")
 if avg_conf < 0.6:
-    print(f"   LOW - System may be too uncertain")
-    print(f"   Review confidence calculation in CRT core")
+    print(f"     LOW - System may be too uncertain")
+    print(f"    Review confidence calculation in CRT core")
 elif avg_conf > 0.9:
-    print(f"   HIGH - System may be overconfident")
-    print(f"   Add uncertainty penalties for contradictions")
+    print(f"     HIGH - System may be overconfident")
+    print(f"    Add uncertainty penalties for contradictions")
 else:
-    print(f"   GOOD - Confidence levels are reasonable")
+    print(f"    GOOD - Confidence levels are reasonable")
 
 print(f"\n5. MEMORY RETRIEVAL:")
 if metrics['memory_failures']:
-    print(f"   {len(metrics['memory_failures'])} failures detected")
-    print(f"   Review semantic search quality")
-    print(f"   Consider adjusting retrieval threshold")
+    print(f"     {len(metrics['memory_failures'])} failures detected")
+    print(f"    Review semantic search quality")
+    print(f"    Consider adjusting retrieval threshold")
 else:
-    print(f"   GOOD - No critical memory retrieval failures")
+    print(f"    GOOD - No critical memory retrieval failures")
 
 print("\n" + "="*80)
 print(" Analysis complete! Review recommendations above. ".center(80))
 print("="*80)
+

@@ -112,13 +112,7 @@ class CRTEnhancedRAG:
         if contradictions_count > 0:
             return True, f"I have {contradictions_count} unresolved contradictions about this"
         
-        # Check 2: Trust scores too close (multiple competing beliefs)
-        trust_scores = [mem.trust for mem, _ in retrieved[:3]]
-        if len(trust_scores) >= 2:
-            max_trust = max(trust_scores)
-            second_trust = sorted(trust_scores, reverse=True)[1]
-            if max_trust - second_trust < 0.1:  # Very close
-                return True, "I have multiple beliefs with similar confidence levels"
+        # Check 2: DISABLED - was triggering too early
         
         # Check 3: Max trust below confidence threshold
         max_trust = max(mem.trust for mem, _ in retrieved)
@@ -291,7 +285,11 @@ class CRTEnhancedRAG:
         
         # Check if new user input contradicts previous user memories
         user_vector = encode_vector(user_query)
-        previous_user_memories = [mem for mem, _ in retrieved if mem.source == MemorySource.USER]
+        previous_user_memories = [mem for mem, _ in retrieved if mem.source == MemorySource.USER and mem.memory_id != user_memory.memory_id]
+        
+        print(f"[CRT DEBUG] Found {len(previous_user_memories)} previous USER memories to check")
+        
+        
         
         from .crt_ledger import ContradictionType
         
@@ -476,3 +474,5 @@ class CRTEnhancedRAG:
     def get_reflection_queue(self) -> List[Dict]:
         """Get pending reflections."""
         return self.ledger.get_reflection_queue()
+
+
