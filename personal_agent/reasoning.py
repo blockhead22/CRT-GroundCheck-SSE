@@ -131,6 +131,65 @@ class ReasoningEngine:
             return self._deep_reasoning(query, context)
         elif mode == ReasoningMode.RESEARCH:
             return self._research_mode(query, context)
+
+    # ====================================================================
+    # Streaming support
+    # ====================================================================
+
+    def supports_streaming(self) -> bool:
+        """Return True if the configured LLM client can stream tokens."""
+        try:
+            return bool(getattr(self.llm, "generate", None)) and ("stream" in self.llm.generate.__code__.co_varnames)
+        except Exception:
+            return False
+
+    def stream_answer(
+        self,
+        query: str,
+        context: Dict[str, Any],
+        mode: Optional[ReasoningMode] = None,
+        max_tokens: int = 1000,
+    ):
+        """Yield partial answer text as it is generated.
+
+        This is a best-effort streaming path. If the underlying LLM client
+        doesn't support streaming, callers should fall back to `reason()`.
+        """
+
+        if self.llm is None:
+            # No LLM available; just yield a single fallback message.
+            yield "[No LLM available - install Ollama and run: ollama pull llama3.2]"
+            return
+
+        if mode is None:
+            mode = self._detect_mode(query, context)
+
+        # For now, only QUICK mode is streamed (minimal chat UX).
+        # Other modes can be added once we decide how to stream multi-step thinking.
+        prompt = self._build_quick_prompt(query, context)
+
+        try:
+            stream = self.llm.generate(prompt, max_tokens=max_tokens, stream=True)
+        except TypeError:
+            # LLM client doesn't accept stream=...
+            yield self._call_llm(prompt, max_tokens=max_tokens)
+            return
+        except Exception as e:
+            yield f"[LLM error: {e}]"
+            return
+
+        buffer = ""
+        for chunk in stream:
+            try:
+                token = chunk.get('message', {}).get('content', '')
+            except Exception:
+                token = ""
+
+            if not token:
+                continue
+
+            buffer += token
+            yield buffer
     
     def _detect_mode(self, query: str, context: Dict) -> ReasoningMode:
         """Auto-detect which reasoning mode to use."""

@@ -11,12 +11,19 @@ Testing:
 """
 
 import sys
-sys.path.insert(0, 'd:/AI_round2')
+from pathlib import Path
+
+# Ensure imports work regardless of OS / working directory
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.ollama_client import get_ollama_client
 import time
 import json
+
+from crt_response_eval import evaluate_turn
 
 print("="*80)
 print(" CRT STRESS TEST - MEMORY & TRUST ANALYSIS ".center(80, "="))
@@ -35,10 +42,13 @@ metrics = {
     'trust_scores': [],
     'facts_introduced': [],
     'contradictions_introduced': [],
-    'memory_failures': []
+    'memory_failures': [],
+    'eval_failures': [],
+    'eval_passes': 0,
+    'eval_checks': 0,
 }
 
-def query_and_track(question, expected_behavior=None, test_name=""):
+def query_and_track(question, expected_behavior=None, test_name="", expectations=None):
     """Query CRT and track all metrics."""
     # Hard stop for standardized runs (kept as a guardrail so edits elsewhere
     # don't accidentally change the effective test length).
@@ -86,6 +96,25 @@ def query_and_track(question, expected_behavior=None, test_name=""):
     # Verify expected behavior
     if expected_behavior:
         print(f"\n[VALIDATION]: {expected_behavior}")
+
+    # Programmatic evaluation (makes failures measurable for the 30-turn cycle)
+    if expectations:
+        findings = evaluate_turn(user_prompt=question, result=result, expectations=expectations)
+        for f in findings:
+            metrics['eval_checks'] += 1
+            if f.passed:
+                metrics['eval_passes'] += 1
+                print(f"[EVAL ✅] {f.check} {('- ' + f.details) if f.details else ''}")
+            else:
+                msg = {
+                    'turn': turn,
+                    'test_name': test_name,
+                    'check': f.check,
+                    'details': f.details,
+                    'prompt': question,
+                }
+                metrics['eval_failures'].append(msg)
+                print(f"[EVAL ❌] {f.check} {('- ' + f.details) if f.details else ''}")
     
     time.sleep(0.2)
     return result
@@ -96,7 +125,11 @@ print("-" * 80)
 query_and_track(
     "Hello! I'm a software engineer. My name is Sarah.",
     "Establishing baseline: name and profession",
-    "Initial Introduction"
+    "Initial Introduction",
+    expectations={
+        # A statement should not be flagged as a contradiction by itself
+        'expect_contradiction': False,
+    },
 )
 
 query_and_track(
@@ -116,7 +149,11 @@ metrics['facts_introduced'].append("Employer: Microsoft, Level: Senior Developer
 query_and_track(
     "What do you know about me so far?",
     "Should recall: Sarah, software engineer, Seattle, Microsoft senior dev",
-    "Memory Recall Test #1"
+    "Memory Recall Test #1",
+    expectations={
+        # Questions shouldn't themselves trigger contradictions
+        'contradiction_should_be_false_for_questions': True,
+    },
 )
 
 # Check if it remembered
@@ -173,7 +210,10 @@ print("-" * 80)
 query_and_track(
     "Actually, I need to correct something - I work at Amazon, not Microsoft.",
     "CONTRADICTION: Microsoft -> Amazon (should detect)",
-    "Contradiction #1: Employer"
+    "Contradiction #1: Employer",
+    expectations={
+        'expect_contradiction': True,
+    },
 )
 metrics['contradictions_introduced'].append("Turn 11: Microsoft vs Amazon")
 
@@ -187,7 +227,10 @@ query_and_track(
 query_and_track(
     "I've been programming for 12 years, not 8.",
     "CONTRADICTION: 8 years -> 12 years (should detect)",
-    "Contradiction #2: Experience"
+    "Contradiction #2: Experience",
+    expectations={
+        'expect_contradiction': True,
+    },
 )
 metrics['contradictions_introduced'].append("Turn 13: 8 years vs 12 years")
 
@@ -292,7 +335,10 @@ query_and_track(
 query_and_track(
     "I hate working remotely, I prefer being in the office.",
     "CONTRADICTION: Remote preference -> Office preference",
-    "Preference Contradiction"
+    "Preference Contradiction",
+    expectations={
+        'expect_contradiction': True,
+    },
 )
 metrics['contradictions_introduced'].append("Turn 28: Remote vs office preference")
 
@@ -368,6 +414,11 @@ print(f"  Avg Confidence: {sum(metrics['avg_confidence'])/len(metrics['avg_confi
 if metrics['trust_scores']:
     print(f"  Avg Trust Score: {sum(metrics['trust_scores'])/len(metrics['trust_scores']):.3f}")
 
+if metrics['eval_checks']:
+    print(f"  Eval Checks: {metrics['eval_checks']}")
+    print(f"  Eval Pass Rate: {100*metrics['eval_passes']/metrics['eval_checks']:.1f}%")
+    print(f"  Eval Failures: {len(metrics['eval_failures'])}")
+
 print(f"\nFACTS INTRODUCED: {len(metrics['facts_introduced'])}")
 for i, fact in enumerate(metrics['facts_introduced'], 1):
     print(f"  {i}. {fact}")
@@ -379,6 +430,12 @@ for contra in metrics['contradictions_introduced']:
 print(f"\nMEMORY FAILURES: {len(metrics['memory_failures'])}")
 for failure in metrics['memory_failures']:
     print(f"  - {failure}")
+
+print(f"\nEVAL FAILURES: {len(metrics['eval_failures'])}")
+for f in metrics['eval_failures'][:10]:
+    print(f"  - Turn {f['turn']} ({f['test_name']}): {f['check']} - {f['details']}")
+if len(metrics['eval_failures']) > 10:
+    print(f"  ... ({len(metrics['eval_failures'])-10} more)")
 
 # RECOMMENDATIONS
 print(f"\nRECOMMENDED ADJUSTMENTS:")
