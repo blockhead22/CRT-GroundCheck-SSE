@@ -179,10 +179,10 @@ class CRTEnhancedRAG:
         Returns both the response AND CRT metadata.
         """
         # 0. Store user input as USER memory ONLY when it's an assertion.
-        # Questions should not be treated as durable factual claims.
+        # Questions and control instructions should not be treated as durable factual claims.
         user_memory: Optional[MemoryItem] = None
         user_input_kind = self._classify_user_input(user_query)
-        if user_input_kind != "question":
+        if user_input_kind == "assertion":
             user_memory = self.memory.store_memory(
                 text=user_query,
                 confidence=0.95,  # User assertions are high confidence
@@ -198,14 +198,14 @@ class CRTEnhancedRAG:
         # can miss the most recent correction (e.g., Amazon vs Microsoft). If the query
         # looks like it targets a known slot, explicitly pull the best candidate memory
         # for that slot from the full store and merge it into retrieved.
-        if user_input_kind == "question" and retrieved:
+        if user_input_kind in ("question", "instruction") and retrieved:
             inferred_slots = self._infer_slots_from_query(user_query)
             if inferred_slots:
                 retrieved = self._augment_retrieval_with_slot_memories(retrieved, inferred_slots)
 
         # Slot-based fast-path: if the user asks a simple personal-fact question and we have
         # an answer in memory, answer directly from canonical resolved facts.
-        if user_input_kind == "question":
+        if user_input_kind in ("question", "instruction"):
             inferred_slots = self._infer_slots_from_query(user_query)
             if inferred_slots:
                 slot_answer = self._answer_from_fact_slots(inferred_slots)
@@ -921,6 +921,31 @@ class CRTEnhancedRAG:
         )
         if lower.startswith(question_starters):
             return "question"
+
+        # Treat control / prompt-injection style instructions as non-assertions.
+        # These often contain factual-looking substrings (e.g., "tell me I work at X")
+        # but should not be stored as durable user facts.
+        instruction_starters = (
+            "ignore ",
+            "forget ",
+            "start fresh",
+            "for this test",
+            "in this test",
+            "repeat after me",
+            "act as ",
+            "roleplay ",
+            "pretend ",
+        )
+        instruction_markers = (
+            "no matter what",
+            "answer with",
+            "always answer",
+            "only answer",
+            "system prompt",
+            "developer message",
+        )
+        if lower.startswith(instruction_starters) or any(m in lower for m in instruction_markers):
+            return "instruction"
 
         # Default: treat as assertion/statement.
         return "assertion"

@@ -64,6 +64,8 @@ def evaluate_turn(
       - expected_name: str (e.g. 'nick')
             - must_contain: str | List[str] (case-insensitive substring checks)
             - must_not_contain: str | List[str] (case-insensitive substring checks)
+            - must_contain_any: List[str] (at least one case-insensitive substring must match)
+            - must_not_contain_any: List[str] (none of the case-insensitive substrings may match)
     """
 
     expectations = expectations or {}
@@ -157,4 +159,39 @@ def evaluate_turn(
             )
         )
 
+    if "must_contain_any" in expectations:
+        options = _to_list(expectations.get("must_contain_any"))
+        passed = any(_contains(answer, s) for s in options) if options else False
+        findings.append(
+            EvalFinding(
+                check="must_contain_any",
+                passed=passed,
+                details=("options=" + ", ".join(options)) if not passed else "",
+            )
+        )
+
+    if "must_not_contain_any" in expectations:
+        banned = _to_list(expectations.get("must_not_contain_any"))
+        present_any = [s for s in banned if _contains(answer, s)]
+        findings.append(
+            EvalFinding(
+                check="must_not_contain_any",
+                passed=(len(present_any) == 0),
+                details=("present=" + ", ".join(present_any)) if present_any else "",
+            )
+        )
+
     return findings
+
+
+def _to_list(v: Any) -> List[str]:
+    if v is None:
+        return []
+    if isinstance(v, str):
+        return [v]
+    return [str(x) for x in list(v)]
+
+
+def _contains(answer: str, needle: str) -> bool:
+    return _norm_text(str(needle)) in _norm_text(answer)
+
