@@ -90,7 +90,31 @@ class CRTEnhancedRAG:
         
         This is fundamentally different from standard RAG's pure similarity.
         """
-        return self.memory.retrieve_memories(query, k, min_trust)
+        retrieved = self.memory.retrieve_memories(query, k, min_trust)
+
+        # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
+        # not new world facts) to prevent recursive quoting and prompt pollution.
+        filtered: List[Tuple[MemoryItem, float]] = []
+        for mem, score in retrieved:
+            try:
+                kind = ((mem.context or {}).get("kind") or "").strip().lower()
+            except Exception:
+                kind = ""
+
+            if mem.source == MemorySource.FALLBACK and kind in {"memory_citation", "contradiction_status", "memory_inventory"}:
+                continue
+
+            txt = (mem.text or "").strip().lower()
+            if mem.source == MemorySource.FALLBACK and txt.startswith("here is the stored text i can cite"):
+                continue
+            if mem.source == MemorySource.FALLBACK and txt.startswith("here are the open contradictions i have recorded"):
+                continue
+            if mem.source == MemorySource.FALLBACK and txt.startswith("i don't expose internal memory ids"):
+                continue
+
+            filtered.append((mem, score))
+
+        return filtered
     
     # ========================================================================
     # Uncertainty as First-Class State
@@ -484,6 +508,129 @@ class CRTEnhancedRAG:
                 'session_id': self.session_id,
             }
 
+        # Special-case: user asks to list/dump memories or memory ids.
+        # Never invent internal identifiers; respond deterministically with safe citations.
+        if user_input_kind in ("question", "instruction") and self._is_memory_inventory_request(user_query):
+            prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=2)
+            candidate_output = self._build_memory_inventory_answer(
+                user_query=user_query,
+                retrieved=retrieved,
+                prompt_docs=prompt_docs,
+            )
+
+            self.memory.store_memory(
+                text=candidate_output,
+                confidence=0.25,
+                source=MemorySource.FALLBACK,
+                context={"query": user_query, "type": "speech", "kind": "memory_inventory"},
+                user_marked_important=False,
+            )
+
+            best_prior = retrieved[0][0] if retrieved else None
+            return {
+                'answer': candidate_output,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.8,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'memory_inventory',
+                'intent_alignment': 0.9,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [
+                    {
+                        'text': mem.text,
+                        'trust': mem.trust,
+                        'confidence': mem.confidence,
+                        'source': mem.source.value,
+                        'sse_mode': mem.sse_mode.value,
+                        'score': score,
+                    }
+                    for mem, score in retrieved
+                ],
+                'prompt_memories': [
+                    {
+                        'text': d.get('text'),
+                        'trust': d.get('trust'),
+                        'confidence': d.get('confidence'),
+                        'source': d.get('source'),
+                    }
+                    for d in prompt_docs
+                ],
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': best_prior.trust if best_prior else None,
+                'session_id': self.session_id,
+            }
+
+        # Special-case: user asks for contradiction ledger status.
+        # Answer deterministically from the ledger to prevent invented contradictions.
+        if user_input_kind in ("question", "instruction") and self._is_contradiction_status_request(user_query):
+            prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=0)
+            candidate_output, contra_meta = self._build_contradiction_status_answer(
+                user_query=user_query,
+                inferred_slots=inferred_slots,
+            )
+
+            final_answer = candidate_output
+            try:
+                if bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
+                    final_answer = candidate_output.rstrip() + "\n\nProvenance: derived from stored memories (contradiction ledger)."
+            except Exception:
+                final_answer = candidate_output
+
+            # Keep as non-durable speech.
+            self.memory.store_memory(
+                text=candidate_output,
+                confidence=0.25,
+                source=MemorySource.FALLBACK,
+                context={"query": user_query, "type": "speech", "kind": "contradiction_status"},
+                user_marked_important=False,
+            )
+
+            best_prior = retrieved[0][0] if retrieved else None
+            return {
+                'answer': final_answer,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.8,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'contradiction_status',
+                'intent_alignment': 0.9,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [
+                    {
+                        'text': mem.text,
+                        'trust': mem.trust,
+                        'confidence': mem.confidence,
+                        'source': mem.source.value,
+                        'sse_mode': mem.sse_mode.value,
+                        'score': score,
+                    }
+                    for mem, score in retrieved
+                ],
+                'prompt_memories': [
+                    {
+                        'text': d.get('text'),
+                        'trust': d.get('trust'),
+                        'confidence': d.get('confidence'),
+                        'source': d.get('source'),
+                    }
+                    for d in prompt_docs
+                ],
+                'unresolved_contradictions_total': int(contra_meta.get('unresolved_contradictions_total', 0) or 0),
+                'unresolved_hard_conflicts': int(contra_meta.get('unresolved_hard_conflicts', 0) or 0),
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': best_prior.trust if best_prior else None,
+                'session_id': self.session_id,
+            }
+
         # Slot-aware question augmentation: for simple fact questions, semantic retrieval
         # can miss the most recent correction (e.g., Amazon vs Microsoft). If the query
         # looks like it targets a known slot, explicitly pull the best candidate memory
@@ -833,6 +980,9 @@ class CRTEnhancedRAG:
         # Consistency guard: if we have memory context, do not let the surface text
         # claim "first conversation" / "no memories".
         candidate_output = self._sanitize_memory_denial(answer=candidate_output, has_memory_context=bool(prompt_docs))
+        # Honesty guard: if the model claims it "remembers" a personal fact that is not
+        # present in our resolved FACT prompt docs, strip that unsupported claim.
+        candidate_output = self._sanitize_unsupported_memory_claims(answer=candidate_output, prompt_docs=prompt_docs)
         candidate_vector = encode_vector(candidate_output)
         
         # 3. Check reconstruction gates
@@ -1560,6 +1710,67 @@ class CRTEnhancedRAG:
 
         return False
 
+    def _is_memory_inventory_request(self, text: str) -> bool:
+        """True if the user asks to list/dump memories or internal memory IDs.
+
+        This is treated as a high-risk prompt-injection surface: we should not invent
+        internal identifiers. We respond deterministically with safe citations.
+        """
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+
+        triggers = (
+            "memory id",
+            "memory ids",
+            "memory_id",
+            "ids of your memories",
+            "list your memories",
+            "list all memories",
+            "dump your memories",
+            "dump memory",
+            "show me your memories",
+            "show stored memories",
+            "memory database",
+            "export memories",
+            "print all memories",
+        )
+        return any(s in t for s in triggers)
+
+    def _build_memory_inventory_answer(
+        self,
+        *,
+        user_query: str,
+        retrieved: List[Tuple[MemoryItem, float]],
+        prompt_docs: List[Dict[str, Any]],
+        max_lines: int = 8,
+    ) -> str:
+        """Deterministic safe memory-inventory response.
+
+        We do NOT expose internal memory IDs here; we only cite stored text snippets.
+        """
+        lines: List[str] = []
+        lines.append("I don't expose internal memory IDs.")
+
+        # If nothing was retrieved, be explicit and safe.
+        if not retrieved:
+            lines.append("I don't have any stored memories to cite yet.")
+            return "\n".join(lines)
+
+        lines.append("here is the stored text i can cite:")
+
+        added = 0
+        for d in (prompt_docs or []):
+            txt = str((d or {}).get("text") or "").strip()
+            if not txt:
+                continue
+            lines.append(f"- {txt}")
+            added += 1
+            if added >= max_lines:
+                break
+
+        return "\n".join(lines)
+
     def _build_memory_citation_answer(
         self,
         *,
@@ -1586,7 +1797,12 @@ class CRTEnhancedRAG:
                     break
 
         # Add up to N retrieved memory texts verbatim.
-        for mem, _score in (retrieved or [])[: max(1, max_lines)]:
+        # IMPORTANT: only cite USER-provided text. System responses can be wrong,
+        # and citing them as "from our chat" is misleading.
+        from .crt_core import MemorySource
+
+        user_retrieved = [m for m, _s in (retrieved or []) if getattr(m, "source", None) == MemorySource.USER]
+        for mem in user_retrieved[: max(1, max_lines)]:
             mt = (mem.text or "").strip()
             if mt:
                 lines.append(mt)
@@ -1612,6 +1828,161 @@ class CRTEnhancedRAG:
         for ln in deduped[:max_lines]:
             out.append(f"- {ln}")
         return "\n".join(out)
+
+    # ========================================================================
+    # Ledger-grounded contradiction status helpers
+    # ========================================================================
+
+    def _is_contradiction_status_request(self, text: str) -> bool:
+        """True if the user is asking to list/inspect open contradictions."""
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+
+        if "contradiction ledger" in t:
+            return True
+
+        if "open contradictions" in t or "unresolved contradictions" in t:
+            return True
+
+        if "contradictions" in t and any(k in t for k in ("list", "show", "any", "open", "unresolved", "do you have")):
+            return True
+
+        # CLI-style short commands.
+        if t in {"contradictions", "show contradictions", "list contradictions"}:
+            return True
+
+        return False
+
+    def _build_contradiction_status_answer(
+        self,
+        *,
+        user_query: str,
+        inferred_slots: Optional[List[str]] = None,
+        limit: int = 8,
+    ) -> Tuple[str, Dict[str, Any]]:
+        """Build a deterministic answer listing OPEN contradictions from the ledger.
+
+        This is intentionally ledger-grounded to prevent hallucinated contradictions.
+        """
+        from .crt_ledger import ContradictionType
+
+        ql = (user_query or "").strip().lower()
+
+        scope_slots = set(inferred_slots or [])
+        if not scope_slots and "identity" in ql:
+            scope_slots = {
+                "name",
+                "employer",
+                "location",
+                "title",
+                "first_language",
+                "masters_school",
+                "undergrad_school",
+                "programming_years",
+                "team_size",
+            }
+
+        open_contras = self.ledger.get_open_contradictions(limit=200)
+        unresolved_total = len(open_contras)
+
+        rows: List[Dict[str, Any]] = []
+        hard_conflicts = 0
+
+        for contra in open_contras:
+            old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+            new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+            if old_mem is None or new_mem is None:
+                continue
+
+            old_facts = extract_fact_slots(old_mem.text) or {}
+            new_facts = extract_fact_slots(new_mem.text) or {}
+            shared = set(old_facts.keys()) & set(new_facts.keys())
+            if scope_slots:
+                shared = shared & scope_slots
+            if not shared:
+                continue
+
+            for slot in sorted(shared):
+                of = old_facts.get(slot)
+                nf = new_facts.get(slot)
+                if of is None or nf is None:
+                    continue
+                if getattr(of, "normalized", None) == getattr(nf, "normalized", None):
+                    continue
+
+                ctype = getattr(contra, "contradiction_type", None) or ContradictionType.CONFLICT
+                if ctype == ContradictionType.CONFLICT:
+                    hard_conflicts += 1
+
+                rows.append(
+                    {
+                        "timestamp": getattr(contra, "timestamp", 0.0) or 0.0,
+                        "ledger_id": contra.ledger_id,
+                        "slot": slot,
+                        "old": str(getattr(of, "value", "")),
+                        "new": str(getattr(nf, "value", "")),
+                        "type": ctype,
+                    }
+                )
+
+        # De-dup by (ledger_id, slot).
+        seen = set()
+        deduped: List[Dict[str, Any]] = []
+        for r in sorted(rows, key=lambda x: x.get("timestamp", 0.0), reverse=True):
+            key = (r.get("ledger_id"), r.get("slot"))
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(r)
+            if len(deduped) >= limit:
+                break
+
+        meta = {
+            "unresolved_contradictions_total": unresolved_total,
+            "unresolved_hard_conflicts": hard_conflicts,
+        }
+
+        if not deduped:
+            if "identity" in ql:
+                return "No open contradictions about your identity in my contradiction ledger.", meta
+            return "No open contradictions in my contradiction ledger.", meta
+
+        header = "Here are the open contradictions I have recorded"
+        if "identity" in ql:
+            header += " about your identity"
+        header += ":"
+
+        out_lines = [header]
+        for r in deduped:
+            slot_name = str(r.get("slot") or "").replace("_", " ")
+            old_v = (r.get("old") or "").strip()
+            new_v = (r.get("new") or "").strip()
+            ctype = (r.get("type") or "conflict").strip()
+            if old_v and new_v:
+                out_lines.append(f"- {slot_name}: {new_v} vs {old_v} (type: {ctype})")
+
+        # Add a single concrete next action for the first listed entry.
+        first = deduped[0] if deduped else None
+        if first is not None:
+            slot_name = str(first.get("slot") or "").replace("_", " ")
+            old_v = (first.get("old") or "").strip()
+            new_v = (first.get("new") or "").strip()
+            ctype = (first.get("type") or "").strip()
+            if old_v and new_v:
+                out_lines.append("")
+                if ctype == ContradictionType.CONFLICT:
+                    out_lines.append(f"To resolve the {slot_name} conflict: which is correct now: {new_v} or {old_v}?")
+                elif ctype == ContradictionType.REVISION:
+                    out_lines.append(
+                        f"To resolve this: should I treat {new_v} as your current {slot_name} and mark {old_v} as superseded?"
+                    )
+                else:
+                    out_lines.append(
+                        f"To resolve this: is {new_v} the more accurate/current {slot_name} to keep?"
+                    )
+
+        return "\n".join(out_lines), meta
 
     def _sanitize_memory_denial(self, *, answer: str, has_memory_context: bool) -> str:
         """If memory context exists, avoid self-contradictory 'no memories/first chat' claims.
@@ -1646,6 +2017,96 @@ class CRTEnhancedRAG:
                 low = out.lower()
 
         return out
+
+    def _sanitize_unsupported_memory_claims(self, *, answer: str, prompt_docs: List[Dict[str, Any]]) -> str:
+        """Remove unsupported personal-fact claims framed as memory.
+
+        Goal: avoid outputs like "I remember ... I work at X" when X is not actually
+        present in the retrieved/resolved memory facts.
+
+        This is intentionally conservative and only activates when the answer contains
+        a strong memory-claim phrase.
+        """
+        if not answer or not answer.strip():
+            return answer
+
+        t = answer.lower()
+        memory_claim = any(
+            p in t
+            for p in (
+                "i remember",
+                "i recall",
+                "i have a memory",
+                "i have it noted",
+                "i have you down",
+                "i have stored",
+                "in my memory",
+                "in my notes",
+                "i've got it stored",
+                "i've got you stored",
+                "i've got it noted",
+                "i've got you down",
+            )
+        )
+        if not memory_claim:
+            return answer
+
+        def _norm(s: str) -> str:
+            return re.sub(r"\s+", " ", (s or "").strip()).lower()
+
+        # Parse supported FACT values from resolved prompt docs.
+        supported_by_slot: Dict[str, set] = {}
+        fact_re = re.compile(r"^\s*fact:\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+?)\s*$", re.I)
+        for d in (prompt_docs or []):
+            txt = str((d or {}).get("text") or "")
+            m = fact_re.match(txt)
+            if not m:
+                continue
+            slot = m.group(1).strip().lower()
+            val = m.group(2).strip()
+            if not slot or not val:
+                continue
+            supported_by_slot.setdefault(slot, set()).add(_norm(val))
+
+        # Extract fact claims from the answer (first-person patterns).
+        claimed = extract_fact_slots(answer) or {}
+        if not claimed:
+            return answer
+
+        # Identify unsupported claimed slot-values.
+        unsupported: Dict[str, str] = {}
+        for slot, fact in claimed.items():
+            slot_l = str(slot).lower()
+            supported = supported_by_slot.get(slot_l) or set()
+            if fact is None:
+                continue
+            if not supported or str(getattr(fact, "normalized", "")) not in supported:
+                unsupported[slot_l] = str(getattr(fact, "value", ""))
+
+        if not unsupported:
+            return answer
+
+        # Drop lines that contain memory-claim language or the unsupported values.
+        bad_value_res = [re.compile(re.escape(v), re.I) for v in unsupported.values() if v]
+        memory_line_re = re.compile(
+            r"\b(i\s+(remember|recall)|i\s+have\s+(a\s+)?memory|i\s+have\s+it\s+noted|i\s+have\s+you\s+down|i\s+have\s+stored|in\s+my\s+(memory|notes)|i'?ve\s+got\s+(it|you)\s+(stored|noted|down))\b",
+            re.I,
+        )
+
+        kept_lines: List[str] = []
+        for line in answer.splitlines():
+            if memory_line_re.search(line):
+                continue
+            if any(r.search(line) for r in bad_value_res):
+                continue
+            kept_lines.append(line)
+
+        cleaned = "\n".join(kept_lines).strip()
+        first_slot = next(iter(unsupported.keys()))
+        if cleaned:
+            return cleaned + f"\n\nI don't have a reliable stored memory for your {first_slot} yet — if you tell me, I can remember it going forward."
+
+        return f"I don't have a reliable stored memory for your {first_slot} yet — if you tell me, I can remember it going forward."
     
     # ========================================================================
     # CRT Analytics

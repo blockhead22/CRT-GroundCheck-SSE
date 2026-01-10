@@ -26,6 +26,12 @@ DENY_MEMORY_RE = re.compile(
     re.I,
 )
 
+# Detect claims that the assistant is recalling/storing something from memory.
+MEMORY_CLAIM_RE = re.compile(
+    r"\b(i\s+(remember|recall)|i\s+have\s+(a\s+)?memory|i\s+have\s+it\s+noted|i\s+have\s+you\s+down|i\s+have\s+stored|in\s+my\s+(memory|notes)|i'?ve\s+got\s+(it|you)\s+(stored|noted|down))\b",
+    re.I,
+)
+
 
 def _norm_text(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip()).lower()
@@ -185,6 +191,37 @@ def evaluate_turn(
         findings.append(
             EvalFinding(
                 check="grounded_named_entities_when_chat_asked",
+                passed=(looks_uncertain or len(ungrounded) == 0),
+                details=("ungrounded=" + ", ".join(ungrounded)) if (not looks_uncertain and ungrounded) else "",
+            )
+        )
+
+    # 1d) Memory-claim grounding: if the assistant claims it "remembers" something,
+    # it should not introduce new named entities that are not present in the prompt
+    # or the retrieved/prompt memory context.
+    if MEMORY_CLAIM_RE.search(answer or ""):
+        allowed_text = _norm_text((user_prompt or "") + "\n" + retrieved_ctx)
+        named = _extract_named_phrases(answer)
+
+        allowlist = {
+            "i",
+            "we",
+            "you",
+            "crt",
+        }
+
+        ungrounded: List[str] = []
+        for phrase in named:
+            pn = _norm_text(phrase)
+            if not pn or pn in allowlist:
+                continue
+            if pn not in allowed_text:
+                ungrounded.append(phrase)
+
+        looks_uncertain = bool(UNCERTAINTY_PHRASE_RE.search(answer)) or mode == "uncertainty" or unresolved > 0
+        findings.append(
+            EvalFinding(
+                check="memory_claim_named_entities_grounded",
                 passed=(looks_uncertain or len(ungrounded) == 0),
                 details=("ungrounded=" + ", ".join(ungrounded)) if (not looks_uncertain and ungrounded) else "",
             )
