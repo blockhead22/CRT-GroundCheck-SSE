@@ -207,3 +207,43 @@ Suggested fix options (choose one):
 ---
 
 Handoff authoring note: This snapshot reflects the state after the successful run producing `artifacts/crt_stress_run.20260110_090237.jsonl` with 0 eval failures.
+
+---
+
+## 7) Handoff assessment (verified on macOS, 2026-01-10)
+
+This section was added by an automated review pass to confirm what’s true in the current repo checkout and to flag drift.
+
+### ✅ What I verified
+
+- **Repo has only a stray `.DS_Store` change** (`git status` shows `.DS_Store` modified).
+- **Pytest is green after minor hygiene fixes**:
+  - `271 passed, 2 skipped` (warnings only).
+  - The skips are for script-style files that were being (incorrectly) collected as pytest tests.
+
+### ⚠️ Mismatches / drift vs this handoff
+
+- `pytest.ini` referenced above **does not exist** in this repo checkout. Test behavior is currently controlled by pytest defaults.
+- `crt_stress_test.py` currently contains a guardrail:
+  - `if metrics['total_turns'] >= 30: return None`
+  - That means the script **won’t actually run 50 turns** unless that guardrail has been updated elsewhere (or this file was different on the machine that produced the Windows run noted above).
+
+### 🧪 Why pytest was failing initially (and what was done)
+
+`pytest` initially failed during collection because some root-level, script-style files matched `test_*.py` and executed on import.
+
+Fix applied (minimal, low-risk):
+- `test_fresh_provenance.py`: now **skips during pytest collection** and remains runnable as a script.
+  - Optional env override: `SSE_FRESH_INDEX_PATH`.
+- `test_crt_conversation.py`: now **skips during pytest collection**; it’s an Ollama-dependent integration script and not a unit test.
+
+### 🧯 Environment risk noted
+
+- Disk was tight during the first full pytest run (`/` at ~97% used, ~441MiB free). A transient "No space left on device" was observed once, then the test passed on rerun.
+
+### Recommended next steps (highest ROI)
+
+1) **Decide how you want 50-turn pressure runs to work in this repo**:
+   - Either remove/parameterize the `>= 30` hard stop in `crt_stress_test.py`, or run a separate harness that truly supports `--turns 50`.
+2) Add a real pytest config (optional), e.g. `pytest.ini` or `pyproject.toml`, to codify test discovery and avoid root script collection surprises.
+3) Consider ignoring `.DS_Store` repo-wide (and removing from git) to keep diffs clean.
