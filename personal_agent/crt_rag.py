@@ -26,6 +26,8 @@ from .crt_memory import CRTMemorySystem, MemoryItem
 from .crt_ledger import ContradictionLedger, ContradictionEntry
 from .reasoning import ReasoningEngine, ReasoningMode
 from .fact_slots import extract_fact_slots
+from .learned_suggestions import LearnedSuggestionEngine
+from .runtime_config import get_runtime_config
 
 
 class CRTEnhancedRAG:
@@ -57,6 +59,10 @@ class CRTEnhancedRAG:
         
         # Reasoning engine
         self.reasoning = ReasoningEngine(llm_client)
+
+        # Optional learned suggestions (metadata-only).
+        self.learned_suggestions = LearnedSuggestionEngine()
+        self.runtime_config = get_runtime_config()
         
         # Session tracking
         import uuid
@@ -196,6 +202,96 @@ class CRTEnhancedRAG:
             inferred_slots = self._infer_slots_from_query(user_query)
             if inferred_slots:
                 retrieved = self._augment_retrieval_with_slot_memories(retrieved, inferred_slots)
+
+        # Slot-based fast-path: if the user asks a simple personal-fact question and we have
+        # an answer in memory, answer directly from canonical resolved facts.
+        if user_input_kind == "question":
+            inferred_slots = self._infer_slots_from_query(user_query)
+            if inferred_slots:
+                slot_answer = self._answer_from_fact_slots(inferred_slots)
+                if slot_answer is not None:
+                    # Ensure we still have retrieval context for metadata/alignment.
+                    if not retrieved:
+                        retrieved = self.retrieve(user_query, k=5)
+                    prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=0)
+
+                    reasoning_result = {
+                        'answer': slot_answer,
+                        'thinking': None,
+                        'mode': 'quick',
+                        'confidence': 0.95,
+                    }
+
+                    candidate_output = reasoning_result['answer']
+                    candidate_vector = encode_vector(candidate_output)
+
+                    intent_align = reasoning_result['confidence']
+                    memory_align = self.crt_math.memory_alignment(
+                        output_vector=candidate_vector,
+                        retrieved_memories=[
+                            {'vector': mem.vector} for mem, _ in retrieved
+                        ],
+                        retrieval_scores=[score for _, score in retrieved]
+                    )
+
+                    gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
+                        intent_align, memory_align
+                    )
+
+                    response_type = "belief" if gates_passed else "speech"
+                    source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
+                    confidence = reasoning_result['confidence'] if gates_passed else (reasoning_result['confidence'] * 0.7)
+
+                    best_prior = retrieved[0][0] if retrieved else None
+
+                    # Store system response memory
+                    self.memory.store_memory(
+                        text=candidate_output,
+                        confidence=confidence,
+                        source=source,
+                        context={'query': user_query, 'type': response_type, 'kind': 'slot_answer'},
+                        user_marked_important=False,
+                    )
+
+                    learned = self._get_learned_suggestions_for_slots(inferred_slots)
+
+                    return {
+                        'answer': candidate_output,
+                        'thinking': None,
+                        'mode': 'quick',
+                        'confidence': reasoning_result['confidence'],
+                        'response_type': response_type,
+                        'gates_passed': gates_passed,
+                        'gate_reason': gate_reason,
+                        'intent_alignment': intent_align,
+                        'memory_alignment': memory_align,
+                        'contradiction_detected': False,
+                        'contradiction_entry': None,
+                        'retrieved_memories': [
+                            {
+                                'text': mem.text,
+                                'trust': mem.trust,
+                                'confidence': mem.confidence,
+                                'source': mem.source.value,
+                                'sse_mode': mem.sse_mode.value,
+                                'score': score,
+                            }
+                            for mem, score in retrieved
+                        ],
+                        'prompt_memories': [
+                            {
+                                'text': d.get('text'),
+                                'trust': d.get('trust'),
+                                'confidence': d.get('confidence'),
+                                'source': d.get('source'),
+                            }
+                            for d in prompt_docs
+                        ],
+                        'learned_suggestions': learned,
+                        'heuristic_suggestions': self._get_heuristic_suggestions_for_slots(inferred_slots),
+                        'best_prior_trust': best_prior.trust if best_prior else None,
+                        'session_id': self.session_id,
+                    }
         
         if not retrieved:
             # No memories → fallback speech
@@ -258,6 +354,8 @@ class CRTEnhancedRAG:
         # We keep raw retrieval for scoring/alignment, but present canonical facts
         # (latest, user-first) to reduce "snap back" to older contradictory text.
         prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=0)
+        learned = self._get_learned_suggestions_for_slots(self._infer_slots_from_query(user_query))
+        heuristic = self._get_heuristic_suggestions_for_slots(self._infer_slots_from_query(user_query))
         
         # 2. Generate candidate output using reasoning
         reasoning_context = {
@@ -461,6 +559,10 @@ class CRTEnhancedRAG:
                 }
                 for d in prompt_docs
             ],
+
+            # Learned suggestions (metadata-only; never authoritative)
+            'learned_suggestions': learned,
+            'heuristic_suggestions': heuristic,
             
             # Trust evolution
             'best_prior_trust': best_prior.trust if best_prior else None,
@@ -468,6 +570,86 @@ class CRTEnhancedRAG:
             # Session
             'session_id': self.session_id
         }
+
+    def _get_learned_suggestions_for_slots(self, slots: List[str]) -> List[Dict[str, Any]]:
+        ls_cfg = (self.runtime_config or {}).get("learned_suggestions", {})
+        if not ls_cfg.get("enabled", True):
+            return []
+        if not ls_cfg.get("emit_metadata", True):
+            return []
+        if not slots:
+            return []
+        # If A/B mode is enabled, learned suggestions still emit as usual.
+        if not slots:
+            return []
+        try:
+            all_memories = self.memory._load_all_memories()
+            user_memories = [m for m in all_memories if m.source == MemorySource.USER]
+            open_contras = self.ledger.get_open_contradictions(limit=50)
+
+            def infer_best(slot: str, candidates):
+                # candidates: List[(mem, value, normalized)]
+                if not candidates:
+                    return None, {}
+                best_mem, best_val, _norm = max(
+                    candidates,
+                    key=lambda mv: (
+                        1,  # user-only in this caller
+                        getattr(mv[0], "timestamp", 0.0),
+                        getattr(mv[0], "trust", 0.0),
+                    ),
+                )
+                return best_val, {"memory_id": getattr(best_mem, "memory_id", None)}
+
+            sugg = self.learned_suggestions.suggest_for_slots(
+                slots=slots,
+                use_model=True,
+                all_user_memories=user_memories,
+                open_contradictions=open_contras,
+                extract_fact_slots_fn=extract_fact_slots,
+                infer_best_slot_value_fn=infer_best,
+            )
+            return [s.to_dict() for s in sugg]
+        except Exception:
+            return []
+
+    def _get_heuristic_suggestions_for_slots(self, slots: List[str]) -> List[Dict[str, Any]]:
+        ls_cfg = (self.runtime_config or {}).get("learned_suggestions", {})
+        if not ls_cfg.get("enabled", True):
+            return []
+        if not ls_cfg.get("emit_ab", False):
+            return []
+        if not slots:
+            return []
+        try:
+            all_memories = self.memory._load_all_memories()
+            user_memories = [m for m in all_memories if m.source == MemorySource.USER]
+            open_contras = self.ledger.get_open_contradictions(limit=50)
+
+            def infer_best(slot: str, candidates):
+                if not candidates:
+                    return None, {}
+                best_mem, best_val, _norm = max(
+                    candidates,
+                    key=lambda mv: (
+                        1,
+                        getattr(mv[0], "timestamp", 0.0),
+                        getattr(mv[0], "trust", 0.0),
+                    ),
+                )
+                return best_val, {"memory_id": getattr(best_mem, "memory_id", None)}
+
+            sugg = self.learned_suggestions.suggest_for_slots(
+                slots=slots,
+                use_model=False,
+                all_user_memories=user_memories,
+                open_contradictions=open_contras,
+                extract_fact_slots_fn=extract_fact_slots,
+                infer_best_slot_value_fn=infer_best,
+            )
+            return [s.to_dict() for s in sugg]
+        except Exception:
+            return []
 
     def _build_resolved_memory_docs(
         self,
@@ -651,6 +833,71 @@ class CRTEnhancedRAG:
 
         # Prefer injected slot memories at the front so they influence best_prior and prompting.
         return injected + retrieved
+
+    def _answer_from_fact_slots(self, slots: List[str]) -> Optional[str]:
+        """Answer simple personal-fact questions directly from USER memories.
+
+        Returns an answer string if we can resolve at least one requested slot; otherwise None.
+        """
+        if not slots:
+            return None
+
+        all_memories = self.memory._load_all_memories()
+        user_memories = [m for m in all_memories if m.source == MemorySource.USER]
+        if not user_memories:
+            return None
+
+        def _source_priority(mem: MemoryItem) -> int:
+            if mem.source == MemorySource.USER:
+                return 3
+            if mem.source == MemorySource.SYSTEM:
+                return 2
+            if mem.source == MemorySource.REFLECTION:
+                return 2
+            return 1
+
+        # Collect candidate values per slot.
+        slot_values: Dict[str, List[Tuple[MemoryItem, Any]]] = {s: [] for s in slots}
+        for mem in user_memories:
+            facts = extract_fact_slots(mem.text)
+            if not facts:
+                continue
+            for slot in slots:
+                if slot in facts:
+                    slot_values[slot].append((mem, facts[slot].value))
+
+        resolved_parts: List[str] = []
+        for slot in slots:
+            candidates = slot_values.get(slot) or []
+            if not candidates:
+                continue
+
+            # Pick best (latest, user-first; trust as tiebreak).
+            best_mem, best_val = max(
+                candidates,
+                key=lambda mv: (_source_priority(mv[0]), mv[0].timestamp, mv[0].trust),
+            )
+
+            # If multiple distinct values exist, mention that this was updated.
+            distinct_norm = []
+            for _m, v in candidates:
+                vn = str(v).strip().lower()
+                if vn and vn not in distinct_norm:
+                    distinct_norm.append(vn)
+
+            if len(distinct_norm) > 1:
+                resolved_parts.append(f"{slot.replace('_', ' ')}: {best_val} (most recent update)")
+            else:
+                resolved_parts.append(f"{slot.replace('_', ' ')}: {best_val}")
+
+        if not resolved_parts:
+            return None
+
+        if len(resolved_parts) == 1:
+            # Return just the value-centric answer for naturalness.
+            return resolved_parts[0].split(": ", 1)[1]
+
+        return "\n".join(resolved_parts)
 
     def _classify_user_input(self, text: str) -> str:
         """Classify a user input as question vs assertion-ish.

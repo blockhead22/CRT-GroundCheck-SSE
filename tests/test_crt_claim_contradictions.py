@@ -22,6 +22,18 @@ class CapturingLLM:
         return "OK"
 
 
+def test_slot_question_answers_from_canonical_fact_even_with_contradiction(rag: CRTEnhancedRAG):
+    rag.query("I work at Microsoft as a senior developer.")
+    rag.query("Actually, I work at Amazon, not Microsoft.")
+
+    out = rag.query("Where do I work?")
+    answer = (out.get("answer") or "").lower()
+    assert "amazon" in answer
+    assert "microsoft" not in answer
+    # Slot-question fast-path should not produce uncertainty mode.
+    assert out.get("mode") != "uncertainty"
+
+
 @pytest.fixture()
 def rag(tmp_path: Path) -> CRTEnhancedRAG:
     mem_db = tmp_path / "mem.db"
@@ -124,3 +136,14 @@ def test_slot_question_augmentation_injects_latest_employer(capturing_rag):
     prompt_lower = llm.last_prompt.lower()
     assert "fact: employer = amazon" in prompt_lower
     assert "fact: employer = microsoft" not in prompt_lower
+
+
+def test_learned_suggestions_metadata_present_for_slot_questions(rag: CRTEnhancedRAG):
+    rag.query("I work at Microsoft as a senior developer.")
+    rag.query("Actually, I work at Amazon, not Microsoft.")
+
+    out = rag.query("Where do I work?")
+
+    # Suggestion-only metadata: must exist, but must not affect behavior.
+    assert "learned_suggestions" in out
+    assert isinstance(out["learned_suggestions"], list)

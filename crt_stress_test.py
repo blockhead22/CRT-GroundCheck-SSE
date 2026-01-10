@@ -13,7 +13,7 @@ Testing:
 import sys
 from pathlib import Path
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Ensure imports work regardless of OS / working directory
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -22,6 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.ollama_client import get_ollama_client
+from personal_agent.runtime_config import load_runtime_config
 import time
 import json
 
@@ -38,13 +39,21 @@ parser.add_argument("--sleep", type=float, default=0.2, help="Sleep seconds betw
 parser.add_argument("--artifacts-dir", default="artifacts", help="Directory for run artifacts")
 parser.add_argument("--memory-db", default=None, help="Path to memory sqlite db (default: per-run in artifacts)")
 parser.add_argument("--ledger-db", default=None, help="Path to ledger sqlite db (default: per-run in artifacts)")
+parser.add_argument("--config", default=None, help="Path to crt_runtime_config.json (optional)")
 args = parser.parse_args()
 
 art_dir = Path(args.artifacts_dir)
 art_dir.mkdir(parents=True, exist_ok=True)
-run_id = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 memory_db = args.memory_db or str(art_dir / f"crt_stress_memory.{run_id}.db")
 ledger_db = args.ledger_db or str(art_dir / f"crt_stress_ledger.{run_id}.db")
+
+runtime_cfg = load_runtime_config(args.config)
+ls_cfg = (runtime_cfg or {}).get("learned_suggestions", {})
+jsonl_path = art_dir / f"crt_stress_run.{run_id}.jsonl"
+jsonl_fp = None
+if ls_cfg.get("write_jsonl", True):
+    jsonl_fp = open(jsonl_path, "w", encoding="utf-8")
 
 ollama = get_ollama_client(args.model)
 rag = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=ollama)
@@ -83,6 +92,28 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
     result = rag.query(question)
     
     print(f"[A]: {result['answer'][:400]}{'...' if len(result['answer']) > 400 else ''}")
+
+    learned_suggestions = result.get("learned_suggestions")
+    heuristic_suggestions = result.get("heuristic_suggestions")
+    if ls_cfg.get("print_in_stress_test", False) and learned_suggestions:
+        print("\n[LEARNED SUGGESTIONS]:")
+        for s in learned_suggestions:
+            slot = s.get("slot")
+            action = s.get("action")
+            conf = s.get("confidence")
+            rec = s.get("recommended_value")
+            rationale = s.get("rationale")
+            print(f"  - {slot}: {action} (p={conf:.2f}) -> {rec} [{rationale}]")
+
+    if ls_cfg.get("print_in_stress_test", False) and ls_cfg.get("emit_ab", False) and heuristic_suggestions:
+        print("\n[HEURISTIC BASELINE]:")
+        for s in heuristic_suggestions:
+            slot = s.get("slot")
+            action = s.get("action")
+            conf = s.get("confidence")
+            rec = s.get("recommended_value")
+            rationale = s.get("rationale")
+            print(f"  - {slot}: {action} (p={conf:.2f}) -> {rec} [{rationale}]")
     
     # Track metrics
     if result['gates_passed']:
@@ -121,7 +152,7 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             metrics['eval_checks'] += 1
             if f.passed:
                 metrics['eval_passes'] += 1
-                print(f"[EVAL ✅] {f.check} {('- ' + f.details) if f.details else ''}")
+                print(f"[EVAL PASS] {f.check} {('- ' + f.details) if f.details else ''}")
             else:
                 msg = {
                     'turn': turn,
@@ -131,10 +162,27 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
                     'prompt': question,
                 }
                 metrics['eval_failures'].append(msg)
-                print(f"[EVAL ❌] {f.check} {('- ' + f.details) if f.details else ''}")
+                print(f"[EVAL FAIL] {f.check} {('- ' + f.details) if f.details else ''}")
     
     if args.sleep:
         time.sleep(args.sleep)
+
+    if jsonl_fp is not None:
+        record = {
+            "run_id": run_id,
+            "turn": turn,
+            "test_name": test_name,
+            "question": question,
+            "answer": result.get("answer") if ls_cfg.get("jsonl_include_full_answer", False) else (result.get("answer") or "")[:500],
+            "mode": result.get("mode"),
+            "confidence": result.get("confidence"),
+            "gates_passed": result.get("gates_passed"),
+            "contradiction_detected": result.get("contradiction_detected"),
+            "learned_suggestions": learned_suggestions or [],
+            "heuristic_suggestions": heuristic_suggestions or [],
+        }
+        jsonl_fp.write(json.dumps(record, ensure_ascii=False) + "\n")
+        jsonl_fp.flush()
     return result
 
 print("\nPHASE 1: BASELINE FACT ESTABLISHMENT")
@@ -150,19 +198,21 @@ query_and_track(
     },
 )
 
-query_and_track(
+_res = query_and_track(
     "I live in Seattle, Washington.",
     "Adding location fact",
     "Location Fact"
 )
-metrics['facts_introduced'].append("Name: Sarah, Profession: Software Engineer, Location: Seattle")
+if _res is not None:
+    metrics['facts_introduced'].append("Name: Sarah, Profession: Software Engineer, Location: Seattle")
 
-query_and_track(
+_res = query_and_track(
     "I work at Microsoft as a senior developer.",
     "Adding employer and seniority",
     "Employment Details"
 )
-metrics['facts_introduced'].append("Employer: Microsoft, Level: Senior Developer")
+if _res is not None:
+    metrics['facts_introduced'].append("Employer: Microsoft, Level: Senior Developer")
 
 query_and_track(
     "What do you know about me so far?",
@@ -174,41 +224,51 @@ query_and_track(
     },
 )
 
-# Check if it remembered
-r = metrics['total_turns']
-if 'sarah' not in rag.query("What's my name?")['answer'].lower():
-    metrics['memory_failures'].append(f"Turn {r}: Failed to recall name 'Sarah'")
+# Non-mutating memory check (avoid extra rag.query() calls outside turn accounting).
+try:
+    from personal_agent.crt_core import MemorySource
+
+    all_mems = rag.memory._load_all_memories()
+    user_texts = [m.text.lower() for m in all_mems if getattr(m, "source", None) == MemorySource.USER]
+    if not any("sarah" in t for t in user_texts):
+        metrics['memory_failures'].append(f"Turn {metrics['total_turns']}: Failed to store name 'Sarah'")
+except Exception:
+    pass
 
 print("\nPHASE 2: DETAILED FACT ACCUMULATION")
 print("-" * 80)
 
-query_and_track(
+_res = query_and_track(
     "I specialize in cloud computing and distributed systems.",
     "Technical specialization",
     "Technical Domain"
 )
-metrics['facts_introduced'].append("Specialization: Cloud + Distributed Systems")
+if _res is not None:
+    metrics['facts_introduced'].append("Specialization: Cloud + Distributed Systems")
 
-query_and_track(
+_res = query_and_track(
     "I've been programming for 8 years, starting with Python.",
     "Experience timeline",
     "Experience Level"
 )
-metrics['facts_introduced'].append("Experience: 8 years, First language: Python")
+if _res is not None:
+    metrics['facts_introduced'].append("Experience: 8 years, First language: Python")
 
-query_and_track(
+_res = query_and_track(
     "My current project involves Kubernetes and microservices.",
     "Current work details",
     "Current Project"
 )
-metrics['facts_introduced'].append("Current work: Kubernetes + microservices")
+if _res is not None:
+    metrics['facts_introduced'].append("Current work: Kubernetes + microservices")
 
-query_and_track(
+_res = query_and_track(
     "I have a Master's degree in Computer Science from MIT.",
     "Educational background",
     "Education Fact"
 )
-metrics['facts_introduced'].append("Education: MS CS from MIT")
+if _res is not None:
+    metrics['facts_introduced'].append("Education: MS CS from MIT")
 
 query_and_track(
     "What programming language did I start with?",
@@ -225,7 +285,7 @@ query_and_track(
 print("\nPHASE 3: CONTRADICTION INTRODUCTION")
 print("-" * 80)
 
-query_and_track(
+_res = query_and_track(
     "Actually, I need to correct something - I work at Amazon, not Microsoft.",
     "CONTRADICTION: Microsoft -> Amazon (should detect)",
     "Contradiction #1: Employer",
@@ -233,7 +293,8 @@ query_and_track(
         'expect_contradiction': True,
     },
 )
-metrics['contradictions_introduced'].append("Turn 11: Microsoft vs Amazon")
+if _res is not None:
+    metrics['contradictions_introduced'].append("Turn 11: Microsoft vs Amazon")
 query_and_track(
     "Where do I work?",
     "Testing contradiction resolution",
@@ -244,7 +305,7 @@ query_and_track(
     },
 )
 
-query_and_track(
+_res = query_and_track(
     "I've been programming for 12 years, not 8.",
     "CONTRADICTION: 8 years -> 12 years (should detect)",
     "Contradiction #2: Experience",
@@ -252,7 +313,8 @@ query_and_track(
         'expect_contradiction': True,
     },
 )
-metrics['contradictions_introduced'].append("Turn 13: 8 years vs 12 years")
+if _res is not None:
+    metrics['contradictions_introduced'].append("Turn 13: 8 years vs 12 years")
 
 query_and_track(
     "Wait, let me be clear: I've been programming for 8 years total. 12 was wrong.",
@@ -317,12 +379,13 @@ query_and_track(
 print("\nPHASE 6: COMPLEX CONTRADICTIONS")
 print("-" * 80)
 
-query_and_track(
+_res = query_and_track(
     "I started programming in college, which was 10 years ago.",
     "COMPLEX: '8 years experience' vs '10 years since college start'",
     "Temporal Contradiction"
 )
-metrics['contradictions_introduced'].append("Turn 23: 8 years experience vs 10 years since college")
+if _res is not None:
+    metrics['contradictions_introduced'].append("Turn 23: 8 years experience vs 10 years since college")
 
 query_and_track(
     "My undergraduate degree was from Stanford, then I went to MIT for my Master's.",
@@ -330,12 +393,13 @@ query_and_track(
     "Education Expansion"
 )
 
-query_and_track(
+_res = query_and_track(
     "Actually, both my undergrad and Master's were from MIT.",
     "CONTRADICTION: Stanford undergrad -> MIT undergrad",
     "Education Contradiction"
 )
-metrics['contradictions_introduced'].append("Turn 25: Stanford vs MIT for undergrad")
+if _res is not None:
+    metrics['contradictions_introduced'].append("Turn 25: Stanford vs MIT for undergrad")
 
 print("\nPHASE 7: EDGE CASES")
 print("-" * 80)
@@ -352,7 +416,7 @@ query_and_track(
     "Preference vs History"
 )
 
-query_and_track(
+_res = query_and_track(
     "I hate working remotely, I prefer being in the office.",
     "CONTRADICTION: Remote preference -> Office preference",
     "Preference Contradiction",
@@ -360,7 +424,8 @@ query_and_track(
         'expect_contradiction': True,
     },
 )
-metrics['contradictions_introduced'].append("Turn 28: Remote vs office preference")
+if _res is not None:
+    metrics['contradictions_introduced'].append("Turn 28: Remote vs office preference")
 
 print("\nPHASE 8: COMPREHENSIVE RECALL")
 print("-" * 80)
@@ -409,14 +474,43 @@ query_and_track(
 
 query_and_track(
     "Where do I work?",
-    "Most contradicted fact - trust should reflect uncertainty",
-    "Contradicted Fact: Employer"
+    "Employer recall should follow the most recent correction",
+    "Contradicted Fact: Employer",
+    expectations={
+        'must_contain': 'amazon',
+        'must_not_contain': 'microsoft',
+    },
 )
 
 query_and_track(
     "Thank you for this comprehensive test. You've helped me validate your memory systems.",
     "Conclusion",
     "Closing Statement"
+)
+
+# Pad to 40 turns for standardized long-run comparisons.
+query_and_track(
+    "Where do I live?",
+    "Location recall after multiple turns",
+    "Final Recall: Location"
+)
+
+query_and_track(
+    "What's my current job title?",
+    "Title recall after role progression",
+    "Final Recall: Job Title"
+)
+
+query_and_track(
+    "Do I prefer working remotely or in the office?",
+    "Preference recall after contradiction",
+    "Final Recall: Work Preference"
+)
+
+query_and_track(
+    "How many engineers do I manage?",
+    "Team-size recall",
+    "Final Recall: Team Size"
 )
 
 # ANALYSIS REPORT
@@ -517,3 +611,10 @@ else:
 print("\n" + "="*80)
 print(" Analysis complete! Review recommendations above. ".center(80))
 print("="*80)
+
+if jsonl_fp is not None:
+    try:
+        jsonl_fp.close()
+        print(f"\n[ARTIFACT]: Wrote run log to {jsonl_path}")
+    except Exception:
+        pass
