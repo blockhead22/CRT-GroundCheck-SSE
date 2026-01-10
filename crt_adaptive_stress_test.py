@@ -136,22 +136,62 @@ class HeuristicController(AdaptiveController):
                     {"contradiction_should_be_false_for_questions": True},
                 )
 
-        # Establish a stable identity early.
-        name = state.setdefault("name", "Nick")
-        if turn == 1:
-            return (f"Hi. My name is {name}.", {})
-        if turn == 2:
-            return ("What is my name?", {"contradiction_should_be_false_for_questions": True})
+        # Deterministic multi-phase probe script.
+        # This is designed to:
+        # 1) verify questions don't trigger contradictions
+        # 2) create a hard CONFLICT (no revision keywords)
+        # 3) verify CRT converts that conflict into an ask-user goal for slot questions
+        # 4) verify that a follow-up user clarification resolves the loop
 
-        # If CRT is uncertain, try resolving explicitly.
-        if (last_result.get("mode") == "uncertainty") or (int(last_result.get("unresolved_contradictions", 0) or 0) > 0):
-            return (
-                f"Clarifying for the record: my name is {name}. Please store this as the current truth.",
-                {"expect_contradiction": False},
-            )
+        name = state.setdefault("name", "Nick Block")
+        step = int(state.get("heuristic_step", 0) or 0)
 
-        # Otherwise probe recall without creating contradictions.
-        return ("What did I say my name was?", {"contradiction_should_be_false_for_questions": True})
+        script: List[Tuple[str, Dict[str, Any]]] = [
+            (f"Hi. My name is {name}.", {"expect_contradiction": False}),
+            ("What is my name?", {"contradiction_should_be_false_for_questions": True}),
+
+            # Establish an employer fact.
+            ("I work at Microsoft as an engineer.", {"expect_contradiction": False}),
+            ("Where do I work?", {"contradiction_should_be_false_for_questions": True, "must_contain_any": ["microsoft"]}),
+
+            # Inject a HARD conflict without revision keywords like "actually" or "not".
+            ("I work at Amazon as an engineer.", {"expect_contradiction": True}),
+
+            # This should now produce uncertainty + a targeted clarification question.
+            (
+                "Where do I work?",
+                {
+                    "contradiction_should_be_false_for_questions": True,
+                    "expect_uncertainty": True,
+                    "must_contain_any": ["which is correct", "conflicting", "amazon", "microsoft"],
+                },
+            ),
+
+            # Clarify explicitly (should resolve open hard conflict in ledger now).
+            ("For the record: I work at Amazon.", {"expect_contradiction": False}),
+
+            # After clarification, slot question should answer cleanly.
+            (
+                "Where do I work?",
+                {
+                    "contradiction_should_be_false_for_questions": True,
+                    "expect_uncertainty": False,
+                    "must_contain_any": ["amazon"],
+                    "must_not_contain_any": ["microsoft"],
+                },
+            ),
+
+            # Extra sanity probes.
+            ("What did I say my name was?", {"contradiction_should_be_false_for_questions": True, "must_contain_any": ["nick"]}),
+        ]
+
+        if step >= len(script):
+            # After the script, vary a bit but keep it safe.
+            return ("Do you have any open contradictions about me?", {"contradiction_should_be_false_for_questions": True})
+
+        msg, expectations = script[step]
+        state["heuristic_step"] = step + 1
+        return msg, expectations
 
 
 class LLMController(AdaptiveController):
@@ -337,6 +377,10 @@ class LLMController(AdaptiveController):
             temperature=self.temperature,
         )
 
+        def _is_name_related_prompt(m: str) -> bool:
+            ml = (m or "").lower()
+            return ("name" in ml) or ("who am i" in ml) or ("my identity" in ml)
+
         # Parse JSON, with safe fallback.
         try:
             obj = json.loads(raw)
@@ -356,6 +400,16 @@ class LLMController(AdaptiveController):
         # If controller forgot to mark a question, we still want that check.
         if msg.endswith("?") and "contradiction_should_be_false_for_questions" not in expectations:
             expectations["contradiction_should_be_false_for_questions"] = True
+
+        # Sanitize expectations to avoid false failures:
+        # - Drop empty-string expected_name
+        # - Only keep expected_name for prompts that are actually about identity/name
+        if "expected_name" in expectations:
+            en = (expectations.get("expected_name") or "").strip()
+            if not en or not _is_name_related_prompt(msg):
+                expectations.pop("expected_name", None)
+            else:
+                expectations["expected_name"] = en
 
         # Enforce non-repetition against the last 3 user messages.
         recent_user = state.get("recent_user_msgs") or []
@@ -381,6 +435,11 @@ def main() -> int:
     ap.add_argument("--controller-model", type=str, default="llama3.2:latest", help="Model used by the tester/controller")
     ap.add_argument("--controller", choices=["llm", "heuristic"], default="llm", help="How to generate the next user message")
     ap.add_argument("--artifacts-dir", type=str, default=str(PROJECT_ROOT / "artifacts"), help="Where to write logs/db")
+    ap.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Delete existing db/log artifacts in artifacts-dir before running (recommended for reproducible runs)",
+    )
     ap.add_argument("--controller-temp", type=float, default=0.3, help="Controller temperature")
     ap.add_argument(
         "--profile-file",
@@ -392,6 +451,21 @@ def main() -> int:
 
     artifacts_dir = Path(args.artifacts_dir).resolve()
     _safe_mkdir(artifacts_dir)
+
+    if bool(getattr(args, "fresh", False)):
+        # Prevent state bleed across runs by removing old DBs and the latest transcript.
+        # This harness otherwise reuses fixed filenames in artifacts_dir.
+        for fname in [
+            "crt_adaptive_memory.db",
+            "crt_adaptive_ledger.db",
+            "crt_adaptive_stress_test.latest.json",
+        ]:
+            try:
+                p = artifacts_dir / fname
+                if p.exists():
+                    p.unlink()
+            except Exception:
+                pass
 
     # Isolated DBs per run to avoid clobbering GUI state.
     memory_db = str(artifacts_dir / "crt_adaptive_memory.db")

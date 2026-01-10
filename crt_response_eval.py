@@ -15,6 +15,17 @@ from typing import Any, Dict, List, Optional
 
 UNCERTAINTY_PHRASE_RE = re.compile(r"\b(i need to be honest about my uncertainty here|cannot give you a confident answer)\b", re.I)
 
+# When a user explicitly asks for chat-grounded recall, CRT should not introduce
+# new named entities that are not present in the prompt or retrieved memories.
+FROM_CHAT_RE = re.compile(r"\bfrom (our|this) (chat|conversation|discussion)\b", re.I)
+QUOTE_MEMORY_RE = re.compile(r"\bquote\b.*\b(memory|memories)\b|\bexact memory text\b", re.I)
+
+# Detect claims that CRT has no memory despite having retrieved/prompt memories.
+DENY_MEMORY_RE = re.compile(
+    r"\b(i\s+(do not|don't)\s+have\s+(any\s+)?memories|i\s+have\s+no\s+memories|this\s+is\s+(our\s+)?first\s+(chat|conversation)|i\s+can't\s+remember\s+anything\s+about\s+you)\b",
+    re.I,
+)
+
 
 def _norm_text(s: str) -> str:
     return re.sub(r"\s+", " ", (s or "").strip()).lower()
@@ -38,6 +49,47 @@ def extract_name_claim(text: str) -> Optional[str]:
     if not m:
         return None
     return m.group(1).strip().lower()
+
+
+def _extract_named_phrases(text: str) -> List[str]:
+    """Extract candidate proper-noun phrases (very lightweight).
+
+    We intentionally bias toward multi-word Title Case phrases to reduce false positives.
+    """
+    t = (text or "").replace("\n", " ")
+    # Examples matched: "Nick Block", "The Printing Lair", "New York".
+    # Allow small connector words inside.
+    pattern = re.compile(
+        r"\b(?:[A-Z][a-zA-Z0-9'\-]{1,40})(?:\s+(?:[A-Z][a-zA-Z0-9'\-]{1,40}|of|the|and|&)){1,6}\b"
+    )
+    phrases = [m.group(0).strip() for m in pattern.finditer(t)]
+    # De-duplicate while preserving order.
+    seen = set()
+    out: List[str] = []
+    for p in phrases:
+        pn = _norm_text(p)
+        # Drop common non-entity discourse openers and placeholders.
+        if pn.startswith("hey ") or pn.startswith("hi ") or pn.startswith("hello "):
+            continue
+        if pn in {"your name", "your identity"}:
+            continue
+        if "your name" in pn or "[your name]" in pn:
+            continue
+        if pn and pn not in seen:
+            seen.add(pn)
+            out.append(p)
+    return out
+
+
+def _flatten_memory_text(result: Dict[str, Any]) -> str:
+    parts: List[str] = []
+    for key in ("retrieved_memories", "prompt_memories"):
+        for m in (result.get(key) or []) or []:
+            try:
+                parts.append(str(m.get("text") or ""))
+            except Exception:
+                continue
+    return "\n".join([p for p in parts if p])
 
 
 @dataclass
@@ -77,6 +129,9 @@ def evaluate_turn(
     confidence = float(result.get("confidence", 0.0) or 0.0)
     unresolved = int(result.get("unresolved_contradictions", 0) or 0)
 
+    retrieved_ctx = _flatten_memory_text(result)
+    has_any_memory_ctx = bool(_norm_text(retrieved_ctx))
+
     # 1) Baseline: questions should not trigger contradictions by themselves.
     # This is a core CRT contract check, so we run it by default whenever the user prompt looks like a question.
     if is_question(user_prompt):
@@ -89,6 +144,51 @@ def evaluate_turn(
                     details=f"contradiction_detected={contradiction}, mode={mode}, conf={confidence:.2f}",
                 )
             )
+
+    # 1b) Memory denial inconsistency: if the system says it has no memory while
+    # also returning retrieved/prompt memories, that's a grounding/contract violation.
+    if has_any_memory_ctx and DENY_MEMORY_RE.search(answer or ""):
+        findings.append(
+            EvalFinding(
+                check="denies_memory_with_context",
+                passed=False,
+                details="Answer denies having memories despite non-empty retrieved/prompt context",
+            )
+        )
+
+    # 1c) Grounding check for prompts that explicitly demand chat-grounded recall.
+    # If asked "from our chat" (or to quote memory text), penalize introducing new
+    # named entities that do not appear in the prompt or retrieved context.
+    wants_chat_grounding = bool(FROM_CHAT_RE.search(user_prompt or "") or QUOTE_MEMORY_RE.search(user_prompt or ""))
+    if wants_chat_grounding:
+        allowed_text = _norm_text((user_prompt or "") + "\n" + retrieved_ctx)
+        named = _extract_named_phrases(answer)
+
+        # Ignore generic tokens that frequently appear in assistant speech.
+        allowlist = {
+            "i",
+            "we",
+            "you",
+            "crt",
+        }
+
+        ungrounded: List[str] = []
+        for phrase in named:
+            pn = _norm_text(phrase)
+            if not pn or pn in allowlist:
+                continue
+            if pn not in allowed_text:
+                ungrounded.append(phrase)
+
+        # If CRT is explicitly uncertain, we don't penalize lightly here.
+        looks_uncertain = bool(UNCERTAINTY_PHRASE_RE.search(answer)) or mode == "uncertainty" or unresolved > 0
+        findings.append(
+            EvalFinding(
+                check="grounded_named_entities_when_chat_asked",
+                passed=(looks_uncertain or len(ungrounded) == 0),
+                details=("ungrounded=" + ", ".join(ungrounded)) if (not looks_uncertain and ungrounded) else "",
+            )
+        )
 
     # 2) Contradiction expected / not expected.
     if "expect_contradiction" in expectations:

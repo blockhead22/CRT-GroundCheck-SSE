@@ -17,6 +17,7 @@ Philosophy:
 """
 
 import numpy as np
+import re
 from typing import List, Dict, Optional, Any, Tuple
 from pathlib import Path
 import time
@@ -136,7 +137,9 @@ class CRTEnhancedRAG:
         self,
         user_query: str,
         retrieved: List[Tuple[MemoryItem, float]],
-        reason: str
+        reason: str,
+        recommended_next_action: Optional[Dict[str, Any]] = None,
+        conflict_beliefs: Optional[List[str]] = None,
     ) -> str:
         """
         Generate explicit uncertainty response.
@@ -144,13 +147,227 @@ class CRTEnhancedRAG:
         This is a FIRST-CLASS response state, not a fallback.
         """
         # Show what we know and what conflicts
-        beliefs = []
-        for mem, score in retrieved[:3]:
-            beliefs.append(f"- {mem.text} (trust: {mem.trust:.2f})")
-        
+        beliefs: List[str] = []
+
+        # Prefer explicit conflict beliefs if provided (ensures both sides show up
+        # even when retrieval misses one of the conflicting memories).
+        if conflict_beliefs:
+            beliefs.extend(conflict_beliefs[:6])
+        else:
+            for mem, _score in retrieved[:3]:
+                beliefs.append(f"- {mem.text} (trust: {mem.trust:.2f})")
+
         beliefs_text = "\n".join(beliefs) if beliefs else "No clear memories"
-        
-        return f"I need to be honest about my uncertainty here.\n\n{reason}\n\nWhat I have in memory:\n{beliefs_text}\n\nI cannot give you a confident answer without resolving these conflicts. Can you help clarify?"
+
+        ask = "Can you help clarify?"
+        if recommended_next_action and recommended_next_action.get("action_type") == "ask_user":
+            q = (recommended_next_action.get("question") or "").strip()
+            if q:
+                ask = q
+
+        return (
+            "I need to be honest about my uncertainty here.\n\n"
+            f"{reason}\n\n"
+            f"What I have in memory:\n{beliefs_text}\n\n"
+            "I cannot give you a confident answer without resolving this.\n"
+            f"{ask}"
+        )
+
+    def _infer_contradiction_goals_for_query(
+        self,
+        user_query: str,
+        retrieved: List[Tuple[MemoryItem, float]],
+        inferred_slots: Optional[List[str]] = None,
+        limit: int = 5,
+    ) -> Tuple[List[Dict[str, Any]], Optional[List[str]]]:
+        """Infer actionable "next steps" from open hard conflicts.
+
+        For Milestone M2, we keep this intentionally minimal and deterministic:
+        - Only hard CONFLICT contradictions become goals.
+        - The default action is to ask the user a targeted clarifying question.
+
+        Returns: (goals, conflict_beliefs)
+        """
+        from .crt_ledger import ContradictionType
+
+        if not retrieved:
+            retrieved_ids: set[str] = set()
+        else:
+            retrieved_ids = {mem.memory_id for mem, _ in retrieved}
+
+        goals: List[Dict[str, Any]] = []
+        conflict_beliefs: List[str] = []
+
+        open_contras = self.ledger.get_open_contradictions(limit=50)
+        for contra in open_contras:
+            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+                continue
+
+            old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+            new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+            if old_mem is None or new_mem is None:
+                continue
+
+            # Relevance: either overlaps retrieved, or overlaps the slots we think the user asked about.
+            is_related_by_retrieval = bool({contra.old_memory_id, contra.new_memory_id} & retrieved_ids)
+
+            old_facts = extract_fact_slots(old_mem.text) or {}
+            new_facts = extract_fact_slots(new_mem.text) or {}
+            shared_slots = set(old_facts.keys()) & set(new_facts.keys())
+
+            for slot in sorted(shared_slots):
+                old_fact = old_facts.get(slot)
+                new_fact = new_facts.get(slot)
+                if old_fact is None or new_fact is None:
+                    continue
+
+                if old_fact.normalized == new_fact.normalized:
+                    continue
+
+                is_related_by_slot = bool(inferred_slots) and slot in set(inferred_slots or [])
+                if not (is_related_by_retrieval or is_related_by_slot):
+                    continue
+
+                # Provide both sides as explicit beliefs.
+                conflict_beliefs.append(f"- {old_mem.text} (trust: {old_mem.trust:.2f})")
+                conflict_beliefs.append(f"- {new_mem.text} (trust: {new_mem.trust:.2f})")
+
+                slot_name = slot.replace("_", " ")
+                old_val = str(old_fact.value)
+                new_val = str(new_fact.value)
+
+                goals.append(
+                    {
+                        "action_type": "ask_user",
+                        "slot": slot,
+                        "ledger_id": contra.ledger_id,
+                        "options": [new_val, old_val],
+                        "question": (
+                            f"I have conflicting memories about your {slot_name}. "
+                            f"Which is correct now: {new_val} or {old_val}?"
+                        ),
+                        "reason": "open_conflict",
+                    }
+                )
+
+                if len(goals) >= limit:
+                    break
+
+            if len(goals) >= limit:
+                break
+
+        # De-dup conflict belief lines while preserving order.
+        seen = set()
+        dedup_beliefs: List[str] = []
+        for b in conflict_beliefs:
+            if b not in seen:
+                dedup_beliefs.append(b)
+                seen.add(b)
+
+        return goals, dedup_beliefs
+
+    def _resolve_open_conflicts_from_assertion(self, user_text: str) -> int:
+        """Resolve open hard CONFLICT contradictions when the user clarifies.
+
+        If the user makes a new assertion that sets a fact slot to a specific value
+        (e.g., employer=Amazon) and we have an OPEN hard CONFLICT about that slot,
+        mark those contradictions RESOLVED.
+
+        This prevents an infinite "ask_user" loop where CRT keeps asking the same
+        clarification question but never records that the user answered it.
+
+        Returns: number of ledger entries resolved.
+        """
+        from .crt_ledger import ContradictionStatus, ContradictionType
+
+        facts = extract_fact_slots(user_text) or {}
+
+        # Support explicit "slot = value" clarifications used by stress harnesses.
+        if not facts:
+            import re
+
+            def _norm(v: str) -> str:
+                return re.sub(r"\s+", " ", (v or "").strip()).lower()
+
+            text = (user_text or "").strip()
+            slot_patterns = {
+                "employer": r"\bemployer\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "name": r"\bname\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "location": r"\blocation\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "title": r"\btitle\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "first_language": r"\bfirst_language\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "masters_school": r"\bmasters_school\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "undergrad_school": r"\bundergrad_school\s*=\s*([^\n\r\.;,!\?]{2,80})",
+                "programming_years": r"\bprogramming_years\s*=\s*(\d{1,3})\b",
+                "team_size": r"\bteam_size\s*=\s*(\d{1,3})\b",
+            }
+
+            class _Tmp:
+                def __init__(self, value, normalized):
+                    self.value = value
+                    self.normalized = normalized
+
+            for slot, pat in slot_patterns.items():
+                m = re.search(pat, text, flags=re.IGNORECASE)
+                if not m:
+                    continue
+                raw = (m.group(1) or "").strip()
+                if not raw:
+                    continue
+                if slot in {"programming_years", "team_size"}:
+                    try:
+                        val = int(raw)
+                    except Exception:
+                        continue
+                    facts[slot] = _Tmp(val, str(val))
+                else:
+                    facts[slot] = _Tmp(raw, _norm(raw))
+
+        if not facts:
+            return 0
+
+        resolved = 0
+        open_contras = self.ledger.get_open_contradictions(limit=200)
+        for contra in open_contras:
+            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+                continue
+
+            old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+            new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+            if old_mem is None or new_mem is None:
+                continue
+
+            old_facts = extract_fact_slots(old_mem.text) or {}
+            new_facts = extract_fact_slots(new_mem.text) or {}
+            shared = set(old_facts.keys()) & set(new_facts.keys()) & set(facts.keys())
+            if not shared:
+                continue
+
+            should_resolve = False
+            for slot in shared:
+                user_fact = facts.get(slot)
+                if user_fact is None:
+                    continue
+                ov = old_facts.get(slot)
+                nv = new_facts.get(slot)
+                if ov is None or nv is None:
+                    continue
+
+                # If the user asserts either side's value, we treat that as a clarification.
+                if user_fact.normalized in {ov.normalized, nv.normalized}:
+                    should_resolve = True
+                    break
+
+            if should_resolve:
+                self.ledger.resolve_contradiction(
+                    contra.ledger_id,
+                    method="user_clarified",
+                    merged_memory_id=None,
+                    new_status=ContradictionStatus.RESOLVED,
+                )
+                resolved += 1
+
+        return resolved
     
     # ========================================================================
     # Query with CRT Principles
@@ -190,26 +407,139 @@ class CRTEnhancedRAG:
                 context={"type": "user_input", "kind": user_input_kind},
                 user_marked_important=user_marked_important
             )
+
+            # If the user is clarifying a previously-detected hard conflict, mark it resolved.
+            # This is intentionally conservative: only hard CONFLICT types, and only when
+            # the asserted value matches one side of the conflict.
+            try:
+                self._resolve_open_conflicts_from_assertion(user_query)
+            except Exception:
+                # Resolution is best-effort; never block the main chat loop.
+                pass
         
         # 1. Trust-weighted retrieval
         retrieved = self.retrieve(user_query, k=5)
+
+        inferred_slots: List[str] = []
+        if user_input_kind in ("question", "instruction"):
+            inferred_slots = self._infer_slots_from_query(user_query)
+
+        # Special-case: prompts that explicitly demand chat-grounded recall or memory citation.
+        # We answer deterministically from retrieved/prompt memory text to avoid hallucinations
+        # and to avoid claiming "no memories" when context exists.
+        if user_input_kind in ("question", "instruction") and self._is_memory_citation_request(user_query):
+            prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=2)
+            candidate_output = self._build_memory_citation_answer(
+                user_query=user_query,
+                retrieved=retrieved,
+                prompt_docs=prompt_docs,
+            )
+
+            # Keep this as non-durable "speech" to avoid polluting the belief store.
+            self.memory.store_memory(
+                text=candidate_output,
+                confidence=0.25,
+                source=MemorySource.FALLBACK,
+                context={"query": user_query, "type": "speech", "kind": "memory_citation"},
+                user_marked_important=False,
+            )
+
+            best_prior = retrieved[0][0] if retrieved else None
+
+            return {
+                'answer': candidate_output,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.8,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'memory_citation',
+                'intent_alignment': 0.9,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [
+                    {
+                        'text': mem.text,
+                        'trust': mem.trust,
+                        'confidence': mem.confidence,
+                        'source': mem.source.value,
+                        'sse_mode': mem.sse_mode.value,
+                        'score': score,
+                    }
+                    for mem, score in retrieved
+                ],
+                'prompt_memories': [
+                    {
+                        'text': d.get('text'),
+                        'trust': d.get('trust'),
+                        'confidence': d.get('confidence'),
+                        'source': d.get('source'),
+                    }
+                    for d in prompt_docs
+                ],
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': best_prior.trust if best_prior else None,
+                'session_id': self.session_id,
+            }
 
         # Slot-aware question augmentation: for simple fact questions, semantic retrieval
         # can miss the most recent correction (e.g., Amazon vs Microsoft). If the query
         # looks like it targets a known slot, explicitly pull the best candidate memory
         # for that slot from the full store and merge it into retrieved.
-        if user_input_kind in ("question", "instruction") and retrieved:
-            inferred_slots = self._infer_slots_from_query(user_query)
-            if inferred_slots:
-                retrieved = self._augment_retrieval_with_slot_memories(retrieved, inferred_slots)
+        if user_input_kind in ("question", "instruction") and retrieved and inferred_slots:
+            retrieved = self._augment_retrieval_with_slot_memories(retrieved, inferred_slots)
+
+        # M2: If the user is asking about a slot with an OPEN hard CONFLICT, do not silently
+        # pick the "most recent" value. Turn the contradiction into an explicit next action.
+        contradiction_goals: List[Dict[str, Any]] = []
+        conflict_beliefs: Optional[List[str]] = None
+        recommended_next_action: Optional[Dict[str, Any]] = None
+        if user_input_kind in ("question", "instruction") and inferred_slots:
+            contradiction_goals, conflict_beliefs = self._infer_contradiction_goals_for_query(
+                user_query=user_query,
+                retrieved=retrieved,
+                inferred_slots=inferred_slots,
+            )
+            if contradiction_goals:
+                recommended_next_action = contradiction_goals[0]
+
+                uncertain_response = self._generate_uncertain_response(
+                    user_query,
+                    retrieved,
+                    reason="I have an unresolved contradiction that affects your question",
+                    recommended_next_action=recommended_next_action,
+                    conflict_beliefs=conflict_beliefs,
+                )
+                return {
+                    'answer': uncertain_response,
+                    'thinking': None,
+                    'mode': 'uncertainty',
+                    'confidence': 0.3,
+                    'response_type': 'uncertainty',
+                    'gates_passed': False,
+                    'gate_reason': 'unresolved_contradictions',
+                    'intent_alignment': 0.0,
+                    'memory_alignment': 0.0,
+                    'contradiction_detected': False,
+                    'contradiction_entry': None,
+                    'retrieved_memories': [
+                        {'text': mem.text, 'trust': mem.trust, 'confidence': mem.confidence}
+                        for mem, _ in retrieved
+                    ],
+                    'unresolved_contradictions': 1,
+                    'unresolved_contradictions_total': 1,
+                    'unresolved_hard_conflicts': 1,
+                    'contradiction_goals': contradiction_goals,
+                    'recommended_next_action': recommended_next_action,
+                }
 
         # Slot-based fast-path: if the user asks a simple personal-fact question and we have
         # an answer in memory, answer directly from canonical resolved facts.
-        if user_input_kind in ("question", "instruction"):
-            inferred_slots = self._infer_slots_from_query(user_query)
-            if inferred_slots:
-                slot_answer = self._answer_from_fact_slots(inferred_slots)
-                if slot_answer is not None:
+        if user_input_kind in ("question", "instruction") and inferred_slots:
+            slot_answer = self._answer_from_fact_slots(inferred_slots)
+            if slot_answer is not None:
                     # Ensure we still have retrieval context for metadata/alignment.
                     if not retrieved:
                         retrieved = self.retrieve(user_query, k=5)
@@ -427,8 +757,20 @@ class CRTEnhancedRAG:
         )
         
         if should_uncertain:
+            # If we can infer a concrete next action from conflicts, include it.
+            contradiction_goals, conflict_beliefs = self._infer_contradiction_goals_for_query(
+                user_query=user_query,
+                retrieved=retrieved,
+                inferred_slots=inferred_slots,
+            )
+            recommended_next_action = contradiction_goals[0] if contradiction_goals else None
+
             uncertain_response = self._generate_uncertain_response(
-                user_query, retrieved, uncertain_reason
+                user_query,
+                retrieved,
+                uncertain_reason,
+                recommended_next_action=recommended_next_action,
+                conflict_beliefs=conflict_beliefs,
             )
             return {
                 'answer': uncertain_response,
@@ -449,6 +791,8 @@ class CRTEnhancedRAG:
                 'unresolved_contradictions': related_hard_conflicts,
                 'unresolved_contradictions_total': related_open_total,
                 'unresolved_hard_conflicts': related_hard_conflicts,
+                'contradiction_goals': contradiction_goals,
+                'recommended_next_action': recommended_next_action,
             }
         
         # Extract best prior belief
@@ -528,46 +872,54 @@ class CRTEnhancedRAG:
 
                 from .crt_ledger import ContradictionType
 
-                for prev_mem in reversed(previous_user_memories):
+                # Build candidate facts per slot from prior USER memories.
+                candidates_by_slot: Dict[str, List[Tuple[MemoryItem, Any]]] = {}
+                for prev_mem in previous_user_memories:
                     prev_facts = extract_fact_slots(prev_mem.text)
                     if not prev_facts:
                         continue
+                    for slot, fact in prev_facts.items():
+                        candidates_by_slot.setdefault(slot, []).append((prev_mem, fact))
 
-                    overlapping_slots = set(new_facts.keys()) & set(prev_facts.keys())
-                    if not overlapping_slots:
+                # Only create a contradiction if the asserted value is NEW for that slot.
+                # If it matches ANY prior value for the slot (even if older conflicts exist),
+                # treat it as reinforcement/clarification rather than another contradiction.
+                selected_prev: Optional[MemoryItem] = None
+                for slot, new_fact in new_facts.items():
+                    prior = candidates_by_slot.get(slot) or []
+                    if not prior:
                         continue
 
-                    # If any shared slot changed value, it's a contradiction signal.
-                    slot_conflict = False
-                    for slot in overlapping_slots:
-                        if new_facts[slot].normalized != prev_facts[slot].normalized:
-                            slot_conflict = True
-                            break
-
-                    if not slot_conflict:
-                        # Reinforcement / same claim; do not create contradictions.
+                    if any(getattr(f, "normalized", None) == new_fact.normalized for _m, f in prior):
                         continue
 
-                    drift = self.crt_math.drift_meaning(user_vector, prev_mem.vector)
+                    # Pick the most recent conflicting prior memory for this slot.
+                    selected_prev, _prev_fact = max(
+                        prior,
+                        key=lambda mf: (getattr(mf[0], "timestamp", 0.0), getattr(mf[0], "trust", 0.0)),
+                    )
+                    break
+
+                if selected_prev is not None:
+                    drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
 
                     contradiction_entry = self.ledger.record_contradiction(
-                        old_memory_id=prev_mem.memory_id,
+                        old_memory_id=selected_prev.memory_id,
                         new_memory_id=user_memory.memory_id,
                         drift_mean=drift,
-                        confidence_delta=prev_mem.confidence - 0.95,
+                        confidence_delta=selected_prev.confidence - 0.95,
                         query=user_query,
-                        summary=f"User contradiction: {prev_mem.text[:50]}... vs {user_query[:50]}...",
-                        old_text=prev_mem.text,
+                        summary=f"User contradiction: {selected_prev.text[:50]}... vs {user_query[:50]}...",
+                        old_text=selected_prev.text,
                         new_text=user_query,
-                        old_vector=prev_mem.vector,
+                        old_vector=selected_prev.vector,
                         new_vector=user_vector
                     )
 
-                    # A ledger entry exists: mark as detected for metrics/observability.
                     contradiction_detected = True
 
                     if contradiction_entry.contradiction_type == ContradictionType.CONFLICT:
-                        self.memory.evolve_trust_for_contradiction(prev_mem, user_vector)
+                        self.memory.evolve_trust_for_contradiction(selected_prev, user_vector)
 
                     volatility = self.crt_math.compute_volatility(
                         drift=drift,
@@ -587,7 +939,6 @@ class CRTEnhancedRAG:
                                 'memory_align': memory_align
                             }
                         )
-                    break
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
@@ -1130,6 +1481,83 @@ class CRTEnhancedRAG:
             'contradiction_detected': False,
             'retrieved_memories': []
         }
+
+    # ========================================================================
+    # Grounded memory citation helpers
+    # ========================================================================
+
+    def _is_memory_citation_request(self, text: str) -> bool:
+        """True if the user explicitly asks for chat-grounded recall/citation.
+
+        We use this to bypass open-ended generation and respond from stored memory text.
+        """
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+
+        if "from our chat" in t or "from this chat" in t or "from our conversation" in t or "conversation history" in t:
+            return True
+
+        if "quote" in t and ("memory" in t or "memories" in t or "exact memory" in t or "memory text" in t):
+            return True
+
+        if "exact memory text" in t:
+            return True
+
+        return False
+
+    def _build_memory_citation_answer(
+        self,
+        *,
+        user_query: str,
+        retrieved: List[Tuple[MemoryItem, float]],
+        prompt_docs: List[Dict[str, Any]],
+        max_lines: int = 4,
+    ) -> str:
+        """Build a deterministic, grounded answer for citation-style prompts.
+
+        Important: avoid introducing new named entities. Keep formatting lowercase.
+        """
+        # Prefer factual prompt docs if the user is asking about a known slot.
+        ql = (user_query or "").lower()
+        want_name = "name" in ql
+
+        lines: List[str] = []
+
+        if want_name:
+            for d in (prompt_docs or []):
+                txt = (d.get("text") or "").strip()
+                if txt and "fact:" in txt.lower() and "name" in txt.lower():
+                    lines.append(txt)
+                    break
+
+        # Add up to N retrieved memory texts verbatim.
+        for mem, _score in (retrieved or [])[: max(1, max_lines)]:
+            mt = (mem.text or "").strip()
+            if mt:
+                lines.append(mt)
+            if len(lines) >= max_lines:
+                break
+
+        # De-dup while preserving order.
+        seen = set()
+        deduped: List[str] = []
+        for ln in lines:
+            key = re.sub(r"\s+", " ", ln).strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            deduped.append(ln)
+
+        if not deduped:
+            # If we truly have nothing, keep it short and non-contradictory.
+            return "i don't have stored memory text to quote for that yet."
+
+        # Use simple bullets; no title-case headings.
+        out = ["here is the stored text i can cite:"]
+        for ln in deduped[:max_lines]:
+            out.append(f"- {ln}")
+        return "\n".join(out)
     
     # ========================================================================
     # CRT Analytics
