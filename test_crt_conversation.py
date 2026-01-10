@@ -9,6 +9,14 @@ Tests the fixes:
 4. System self-description
 """
 
+# This file is a runnable integration script (uses Ollama, prints output) and
+# is not intended to be collected as pytest unit tests.
+import sys as _sys
+if "pytest" in _sys.modules and __name__ != "__main__":
+    import pytest as _pytest
+
+    _pytest.skip("integration script; not a unit test", allow_module_level=True)
+
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))

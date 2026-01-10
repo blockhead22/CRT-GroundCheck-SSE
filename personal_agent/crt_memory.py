@@ -28,6 +28,7 @@ from .crt_core import (
     CRTMath, CRTConfig, SSEMode, MemorySource,
     encode_vector, extract_emotion_intensity, extract_future_relevance
 )
+from .policy import validate_external_memory_context
 
 
 @dataclass
@@ -191,6 +192,10 @@ class CRTMemorySystem:
         3. Assign initial trust (based on source)
         4. Store with metadata
         """
+        # Policy boundary: external/tool memories must be auditable.
+        if source == MemorySource.EXTERNAL:
+            validate_external_memory_context(context)
+
         # Encode
         vector = encode_vector(text)
         
