@@ -112,6 +112,20 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         years = int(m.group(1))
         facts["programming_years"] = ExtractedFact("programming_years", years, str(years))
 
+    # First programming language
+    # Examples:
+    # - "I've been programming for 8 years, starting with Python."
+    # - "I started with Python."
+    # - "My first programming language was Python."
+    m = re.search(
+        r"\b(?:starting with|started with|my first (?:programming )?language was)\s+([A-Z][A-Za-z0-9+_.#-]{1,40})\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        lang = m.group(1).strip()
+        facts["first_language"] = ExtractedFact("first_language", lang, _norm_text(lang))
+
     # Team size
     m = re.search(r"\bteam of\s+(\d{1,3})\b", text, flags=re.IGNORECASE)
     if not m:

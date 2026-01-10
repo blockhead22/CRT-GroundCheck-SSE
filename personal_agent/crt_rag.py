@@ -292,6 +292,110 @@ class CRTEnhancedRAG:
                         'best_prior_trust': best_prior.trust if best_prior else None,
                         'session_id': self.session_id,
                     }
+
+            # Summary-style instructions: answer from canonical resolved USER facts.
+            if user_input_kind == "instruction":
+                lower = (user_query or "").strip().lower()
+                if "summar" in lower or "one-line" in lower or "one line" in lower or "summary" in lower:
+                    summary = self._one_line_summary_from_facts()
+                    if summary is not None:
+                        if not retrieved:
+                            retrieved = self.retrieve(user_query, k=5)
+                        prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=0)
+
+                        candidate_output = summary
+                        candidate_vector = encode_vector(candidate_output)
+
+                        intent_align = 0.95
+                        memory_align = self.crt_math.memory_alignment(
+                            output_vector=candidate_vector,
+                            retrieved_memories=[
+                                {'vector': mem.vector} for mem, _ in retrieved
+                            ],
+                            retrieval_scores=[score for _, score in retrieved]
+                        )
+
+                        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
+                            intent_align, memory_align
+                        )
+
+                        response_type = "belief" if gates_passed else "speech"
+                        source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
+                        confidence = 0.95 if gates_passed else 0.95 * 0.7
+
+                        best_prior = retrieved[0][0] if retrieved else None
+
+                        self.memory.store_memory(
+                            text=candidate_output,
+                            confidence=confidence,
+                            source=source,
+                            context={'query': user_query, 'type': response_type, 'kind': 'fact_summary'},
+                            user_marked_important=False,
+                        )
+
+                        learned = self._get_learned_suggestions_for_slots(
+                            [
+                                "name",
+                                "employer",
+                                "title",
+                                "location",
+                                "programming_years",
+                                "first_language",
+                                "masters_school",
+                                "team_size",
+                                "remote_preference",
+                            ]
+                        )
+
+                        return {
+                            'answer': candidate_output,
+                            'thinking': None,
+                            'mode': 'quick',
+                            'confidence': confidence,
+                            'response_type': response_type,
+                            'gates_passed': gates_passed,
+                            'gate_reason': gate_reason,
+                            'intent_alignment': intent_align,
+                            'memory_alignment': memory_align,
+                            'contradiction_detected': False,
+                            'contradiction_entry': None,
+                            'retrieved_memories': [
+                                {
+                                    'text': mem.text,
+                                    'trust': mem.trust,
+                                    'confidence': mem.confidence,
+                                    'source': mem.source.value,
+                                    'sse_mode': mem.sse_mode.value,
+                                    'score': score,
+                                }
+                                for mem, score in retrieved
+                            ],
+                            'prompt_memories': [
+                                {
+                                    'text': d.get('text'),
+                                    'trust': d.get('trust'),
+                                    'confidence': d.get('confidence'),
+                                    'source': d.get('source'),
+                                }
+                                for d in prompt_docs
+                            ],
+                            'learned_suggestions': learned,
+                            'heuristic_suggestions': self._get_heuristic_suggestions_for_slots(
+                                [
+                                    "name",
+                                    "employer",
+                                    "title",
+                                    "location",
+                                    "programming_years",
+                                    "first_language",
+                                    "masters_school",
+                                    "team_size",
+                                    "remote_preference",
+                                ]
+                            ),
+                            'best_prior_trust': best_prior.trust if best_prior else None,
+                            'session_id': self.session_id,
+                        }
         
         if not retrieved:
             # No memories → fallback speech
@@ -782,6 +886,12 @@ class CRTEnhancedRAG:
         if "how many years" in t or "years" in t and "program" in t:
             slots.append("programming_years")
 
+        if "language" in t and ("start" in t or "starting" in t or "first" in t):
+            slots.append("first_language")
+
+        if "how many" in t and ("engineer" in t or "manage" in t or "team" in t):
+            slots.append("team_size")
+
         # De-dup, preserve order
         seen = set()
         out: List[str] = []
@@ -899,6 +1009,41 @@ class CRTEnhancedRAG:
 
         return "\n".join(resolved_parts)
 
+    def _one_line_summary_from_facts(self) -> Optional[str]:
+        """Build a compact, fact-grounded one-line summary from USER memories."""
+        core_slots = [
+            "name",
+            "employer",
+            "title",
+            "location",
+            "programming_years",
+            "first_language",
+            "masters_school",
+            "team_size",
+            "remote_preference",
+        ]
+        resolved = self._answer_from_fact_slots(core_slots)
+        if not resolved:
+            return None
+
+        # resolved is a multi-line "slot: value" block. Convert to a compact line.
+        parts: List[str] = []
+        for line in str(resolved).splitlines():
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            k, v = line.split(":", 1)
+            k = k.strip().replace("_", " ")
+            v = v.strip()
+            if k and v:
+                parts.append(f"{k}={v}")
+
+        if not parts:
+            return None
+
+        # Keep it to a single line and reasonably short.
+        return "; ".join(parts[:8])
+
     def _classify_user_input(self, text: str) -> str:
         """Classify a user input as question vs assertion-ish.
 
@@ -935,6 +1080,11 @@ class CRTEnhancedRAG:
             "act as ",
             "roleplay ",
             "pretend ",
+            "give me ",
+            "summarize ",
+            "summarise ",
+            "list ",
+            "explain ",
         )
         instruction_markers = (
             "no matter what",
