@@ -969,7 +969,7 @@ class CRTEnhancedRAG:
                     footer_lines = ["Provenance: this answer uses stored memories."]
 
                     wc = prov_cfg.get("world_check") or {}
-                    if bool(wc.get("enabled", False)) and used_fact_lines:
+                    if bool(wc.get("enabled", False)) and used_memory and self.reasoning.should_run_world_fact_check(candidate_output):
                         mem_ctx = "\n".join([str(d.get("text") or "").strip() for d in (prompt_docs or []) if d.get("text")])
                         warnings = self.reasoning.world_fact_check(
                             answer=candidate_output,
@@ -979,10 +979,12 @@ class CRTEnhancedRAG:
                         if warnings:
                             footer_lines.append("Note: some statements may conflict with widely-known public facts:")
                             for w in warnings[:3]:
-                                issue = (w.get("issue") or "").strip()
+                                public_fact = (w.get("public_fact") or "").strip()
                                 claim = (w.get("claim") or "").strip()
-                                if claim and issue:
-                                    footer_lines.append(f"- {claim} (why: {issue})")
+                                conf = (w.get("confidence") or "").strip()
+                                if claim and public_fact:
+                                    extra = f" (conf: {conf})" if conf else ""
+                                    footer_lines.append(f"- {claim} (conflicts with: {public_fact}){extra}")
 
                     final_answer = candidate_output.rstrip() + "\n\n" + "\n".join(footer_lines)
         except Exception:

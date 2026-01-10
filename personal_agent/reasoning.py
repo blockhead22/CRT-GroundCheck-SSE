@@ -10,6 +10,7 @@ Supports:
 """
 
 import json
+import re
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from dataclasses import dataclass, asdict
@@ -136,6 +137,65 @@ class ReasoningEngine:
     # World-fact sanity check (optional)
     # ====================================================================
 
+    @staticmethod
+    def should_run_world_fact_check(answer: str) -> bool:
+        """Heuristic gate: only run world-check on likely public-fact claims.
+
+        We intentionally avoid running this on personal/user-specific content to
+        reduce noise and cost.
+        """
+        a = (answer or "").strip()
+        if not a:
+            return False
+
+        low = a.lower()
+        # Don't world-check meta-chat / provenance / memory discussion.
+        if any(k in low for k in ("from our chat", "our chat", "stored mem", "provenance:")):
+            return False
+
+        # Require at least one sentence that looks like a public-fact claim and
+        # is not phrased in first/second-person terms.
+        public_triggers = (
+            "capital of",
+            "population",
+            "currency",
+            "gdp",
+            "located in",
+            "is located in",
+            "is in ",
+            "largest",
+            "smallest",
+            "highest",
+            "lowest",
+            "founded",
+            "invented",
+            "discovered",
+            "born",
+            "died",
+            "president",
+            "prime minister",
+            "country",
+            "continent",
+            "planet",
+            "moon",
+            "element",
+            "atomic number",
+            "speed of light",
+        )
+
+        pronoun_re = r"\b(i|you|we|my|your|our)\b"
+        # Crude sentence split; good enough for gating.
+        parts = [p.strip() for p in re.split(r"[.!?]+\s+", a) if p.strip()]
+        for p in parts:
+            pl = p.lower()
+            if not any(t in pl for t in public_triggers):
+                continue
+            if re.search(pronoun_re, pl):
+                continue
+            return True
+
+        return False
+
     def world_fact_check(
         self,
         *,
@@ -151,11 +211,15 @@ class ReasoningEngine:
         Returns a list of warnings like:
           [{"claim": "...", "issue": "...", "severity": "low|med|high"}, ...]
         """
-        if self.llm is None:
-            return []
-
         a = (answer or "").strip()
         if not a:
+            return []
+
+        # Avoid noisy checks on personal/chat content.
+        if not self.should_run_world_fact_check(a):
+            return []
+
+        if self.llm is None:
             return []
 
         ctx = (memory_context or "").strip()
@@ -163,15 +227,18 @@ class ReasoningEngine:
             ctx = ctx[:1800].rstrip() + "\n…"
 
         prompt = (
-            "You are a cautious fact-check assistant.\n"
-            "Task: identify statements in ANSWER that likely contradict widely-known public facts.\n"
-            "Rules:\n"
-            "- Do NOT warn about personal facts (names, jobs, preferences, life events).\n"
-            "- Only warn when the contradiction is strong (common knowledge).\n"
-            "- If unsure, return no warnings.\n"
-            "- Output STRICT JSON ONLY in the form: {\\\"warnings\\\": [...]}\n"
-            "- Each warning: {\\\"claim\\\": str, \\\"issue\\\": str, \\\"severity\\\": \\\"low|med|high\\\"}.\n\n"
-            "MEMORY_CONTEXT (what the system relied on):\n"
+            "You are a cautious world-knowledge checker.\n"
+            "Task: find statements in ANSWER that STRONGLY contradict widely-known public facts.\n"
+            "Important: this is NOT about personal facts or chat history.\n"
+            "Hard rules:\n"
+            "- Do NOT warn about personal/user-specific facts (names, jobs, preferences, life events).\n"
+            "- Do NOT warn about chat provenance, missing quotes, uncertainty, or 'unverifiable' claims.\n"
+            "- Only warn when the contradiction is strong and commonly known.\n"
+            "- If unsure, output zero warnings.\n"
+            "Output STRICT JSON ONLY: {\\\"warnings\\\": [...]}\n"
+            "Each warning MUST be: {\\\"claim\\\": str, \\\"public_fact\\\": str, \\\"confidence\\\": number, \\\"severity\\\": \\\"low|med|high\\\"}.\n"
+            "- confidence is 0..1 and should be >= 0.80 to include.\n\n"
+            "MEMORY_CONTEXT (for reference only; do not fact-check it):\n"
             f"{ctx}\n\n"
             "ANSWER:\n"
             f"{a}\n"
@@ -188,13 +255,20 @@ class ReasoningEngine:
                 if not isinstance(w, dict):
                     continue
                 claim = str(w.get("claim") or "").strip()
-                issue = str(w.get("issue") or "").strip()
+                public_fact = str(w.get("public_fact") or "").strip()
                 sev = str(w.get("severity") or "").strip().lower()
-                if not claim or not issue:
+                try:
+                    conf = float(w.get("confidence"))
+                except Exception:
+                    conf = 0.0
+
+                if not claim or not public_fact:
+                    continue
+                if conf < 0.80:
                     continue
                 if sev not in {"low", "med", "high"}:
                     sev = "low"
-                out.append({"claim": claim, "issue": issue, "severity": sev})
+                out.append({"claim": claim, "public_fact": public_fact, "severity": sev, "confidence": f"{conf:.2f}"})
             return out
         except Exception:
             return []
