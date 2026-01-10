@@ -8,13 +8,14 @@ Current Status:
 - ✅ CRT memory system with trust-weighted retrieval
 - ✅ Contradiction detection and ledger
 - ✅ Belief vs speech separation
-- ⚠️ Placeholder LLM (no real AI yet)
+- ✅ Optional local LLM via Ollama (if available)
 
 Usage:
-    python crt_chat.py
+    python crt_chat.py [--model llama3.2:latest]
 """
 
 import sys
+import argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -23,9 +24,13 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.crt_core import MemorySource
+try:
+    from personal_agent.ollama_client import get_ollama_client
+except Exception:
+    get_ollama_client = None
 
 
-def print_banner():
+def print_banner(llm_status_line: str):
     """Print welcome banner."""
     print("\n" + "=" * 70)
     print("  🧠 CRT CHAT - Cognitive-Reflective Transformer")
@@ -39,7 +44,7 @@ def print_banner():
     print("\n  Status:")
     print("    ✅ CRT memory system active")
     print("    ✅ Contradiction ledger enabled")
-    print("    ⚠️  Using placeholder LLM (no real AI integration yet)")
+    print(f"    {llm_status_line}")
     print("\n  Commands:")
     print("    chat       - Interactive chat mode")
     print("    store      - Store a memory directly")
@@ -184,7 +189,7 @@ def cmd_recall(rag: CRTEnhancedRAG):
         print()
 
 
-def cmd_status(rag: CRTEnhancedRAG):
+def cmd_status(rag: CRTEnhancedRAG, llm_status_line: str):
     """Show system status."""
     print("\n🏥 System Status")
     
@@ -209,6 +214,9 @@ def cmd_status(rag: CRTEnhancedRAG):
     print(f"   Speeches: {bs_ratio.get('speeches', 0)}")
     ratio = bs_ratio.get('ratio', 0)
     print(f"   Ratio: {ratio:.1%}")
+
+    print(f"\n🤖 LLM:")
+    print(f"   {llm_status_line.strip()}")
     
     print()
 
@@ -238,12 +246,31 @@ def cmd_contradictions(rag: CRTEnhancedRAG):
 
 def main():
     """Main CLI loop."""
-    print_banner()
+
+    parser = argparse.ArgumentParser(description="CRT interactive chat")
+    parser.add_argument("--model", default="llama3.2:latest", help="Ollama model name")
+    parser.add_argument(
+        "--no-ollama",
+        action="store_true",
+        help="Disable Ollama even if available (forces placeholder behavior)",
+    )
+    args = parser.parse_args()
+
+    llm_client = None
+    if args.no_ollama:
+        llm_status_line = "⚠️  LLM: placeholder (--no-ollama)"
+    elif get_ollama_client is None:
+        llm_status_line = "⚠️  LLM: placeholder (Ollama client not available)"
+    else:
+        llm_client = get_ollama_client(args.model)
+        llm_status_line = f"✅ LLM: Ollama ({args.model})"
+
+    print_banner(llm_status_line)
     
     # Initialize CRT system
     print("🔄 Initializing CRT system...")
     try:
-        rag = CRTEnhancedRAG()
+        rag = CRTEnhancedRAG(llm_client=llm_client)
         print("✅ CRT system ready\n")
     except Exception as e:
         print(f"❌ Failed to initialize: {e}")
@@ -271,13 +298,13 @@ def main():
                 cmd_recall(rag)
             
             elif cmd == 'status':
-                cmd_status(rag)
+                cmd_status(rag, llm_status_line)
             
             elif cmd == 'contradictions':
                 cmd_contradictions(rag)
             
             elif cmd == 'help':
-                print_banner()
+                print_banner(llm_status_line)
             
             else:
                 print(f"❌ Unknown command: {cmd}")
