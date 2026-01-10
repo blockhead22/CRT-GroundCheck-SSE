@@ -133,6 +133,73 @@ class ReasoningEngine:
             return self._research_mode(query, context)
 
     # ====================================================================
+    # World-fact sanity check (optional)
+    # ====================================================================
+
+    def world_fact_check(
+        self,
+        *,
+        answer: str,
+        memory_context: str,
+        max_tokens: int = 140,
+    ) -> List[Dict[str, str]]:
+        """Best-effort check for conflicts with widely-known public facts.
+
+        This is intentionally conservative: it should only emit *warnings* for claims
+        that are likely wrong in general world knowledge (not personal/user-specific facts).
+
+        Returns a list of warnings like:
+          [{"claim": "...", "issue": "...", "severity": "low|med|high"}, ...]
+        """
+        if self.llm is None:
+            return []
+
+        a = (answer or "").strip()
+        if not a:
+            return []
+
+        ctx = (memory_context or "").strip()
+        if len(ctx) > 1800:
+            ctx = ctx[:1800].rstrip() + "\n…"
+
+        prompt = (
+            "You are a cautious fact-check assistant.\n"
+            "Task: identify statements in ANSWER that likely contradict widely-known public facts.\n"
+            "Rules:\n"
+            "- Do NOT warn about personal facts (names, jobs, preferences, life events).\n"
+            "- Only warn when the contradiction is strong (common knowledge).\n"
+            "- If unsure, return no warnings.\n"
+            "- Output STRICT JSON ONLY in the form: {\\\"warnings\\\": [...]}\n"
+            "- Each warning: {\\\"claim\\\": str, \\\"issue\\\": str, \\\"severity\\\": \\\"low|med|high\\\"}.\n\n"
+            "MEMORY_CONTEXT (what the system relied on):\n"
+            f"{ctx}\n\n"
+            "ANSWER:\n"
+            f"{a}\n"
+        )
+
+        raw = self._call_llm(prompt, max_tokens=max_tokens)
+        try:
+            obj = json.loads(raw)
+            warnings = obj.get("warnings")
+            if not isinstance(warnings, list):
+                return []
+            out: List[Dict[str, str]] = []
+            for w in warnings[:5]:
+                if not isinstance(w, dict):
+                    continue
+                claim = str(w.get("claim") or "").strip()
+                issue = str(w.get("issue") or "").strip()
+                sev = str(w.get("severity") or "").strip().lower()
+                if not claim or not issue:
+                    continue
+                if sev not in {"low", "med", "high"}:
+                    sev = "low"
+                out.append({"claim": claim, "issue": issue, "severity": sev})
+            return out
+        except Exception:
+            return []
+
+    # ====================================================================
     # Streaming support
     # ====================================================================
 

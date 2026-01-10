@@ -14,6 +14,16 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         "print_in_stress_test": False,
         "write_jsonl": True,
         "jsonl_include_full_answer": False,
+    },
+    "provenance": {
+        # When enabled, CRT may add a short provenance footer to user-facing answers.
+        "enabled": True,
+        # Optional second-pass sanity check against widely-known public facts.
+        # Keep this conservative; it should produce warnings, not "truth picking".
+        "world_check": {
+            "enabled": False,
+            "max_tokens": 140,
+        },
     }
 }
 

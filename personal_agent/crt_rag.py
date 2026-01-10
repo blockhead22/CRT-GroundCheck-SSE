@@ -552,6 +552,14 @@ class CRTEnhancedRAG:
                         'confidence': 0.95,
                     }
 
+                    # User-facing provenance footer (do not store it as a belief).
+                    final_answer = slot_answer
+                    try:
+                        if bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
+                            final_answer = slot_answer + "\n\nProvenance: answered from stored memories."
+                    except Exception:
+                        pass
+
                     candidate_output = reasoning_result['answer']
                     candidate_vector = encode_vector(candidate_output)
 
@@ -586,7 +594,7 @@ class CRTEnhancedRAG:
                     learned = self._get_learned_suggestions_for_slots(inferred_slots)
 
                     return {
-                        'answer': candidate_output,
+                        'answer': final_answer,
                         'thinking': None,
                         'mode': 'quick',
                         'confidence': reasoning_result['confidence'],
@@ -821,6 +829,10 @@ class CRTEnhancedRAG:
         )
         
         candidate_output = reasoning_result['answer']
+
+        # Consistency guard: if we have memory context, do not let the surface text
+        # claim "first conversation" / "no memories".
+        candidate_output = self._sanitize_memory_denial(answer=candidate_output, has_memory_context=bool(prompt_docs))
         candidate_vector = encode_vector(candidate_output)
         
         # 3. Check reconstruction gates
@@ -939,6 +951,42 @@ class CRTEnhancedRAG:
                                 'memory_align': memory_align
                             }
                         )
+
+        # --------------------------------------------------------------------
+        # Provenance + optional world-fact warnings (user-facing only)
+        # --------------------------------------------------------------------
+        final_answer = candidate_output
+        try:
+            prov_cfg = self.runtime_config.get("provenance") or {}
+            if bool(prov_cfg.get("enabled", True)):
+                used_memory = bool(prompt_docs)
+                used_fact_lines = any(str(d.get("text") or "").lower().startswith("fact:") for d in (prompt_docs or []))
+
+                # Only add a provenance footer when it looks like we're answering about the user,
+                # or when we relied on explicit FACT lines.
+                is_personalish = bool(inferred_slots) or ("my " in (user_query or "").lower())
+                if used_memory and (used_fact_lines or is_personalish):
+                    footer_lines = ["Provenance: this answer uses stored memories."]
+
+                    wc = prov_cfg.get("world_check") or {}
+                    if bool(wc.get("enabled", False)) and used_fact_lines:
+                        mem_ctx = "\n".join([str(d.get("text") or "").strip() for d in (prompt_docs or []) if d.get("text")])
+                        warnings = self.reasoning.world_fact_check(
+                            answer=candidate_output,
+                            memory_context=mem_ctx,
+                            max_tokens=int(wc.get("max_tokens", 140) or 140),
+                        )
+                        if warnings:
+                            footer_lines.append("Note: some statements may conflict with widely-known public facts:")
+                            for w in warnings[:3]:
+                                issue = (w.get("issue") or "").strip()
+                                claim = (w.get("claim") or "").strip()
+                                if claim and issue:
+                                    footer_lines.append(f"- {claim} (why: {issue})")
+
+                    final_answer = candidate_output.rstrip() + "\n\n" + "\n".join(footer_lines)
+        except Exception:
+            final_answer = candidate_output
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
@@ -975,7 +1023,7 @@ class CRTEnhancedRAG:
         # 8. Return comprehensive result
         return {
             # User-facing
-            'answer': candidate_output,
+            'answer': final_answer,
             'thinking': reasoning_result.get('thinking'),
             'mode': reasoning_result['mode'],
             'confidence': reasoning_result['confidence'],
@@ -1562,6 +1610,40 @@ class CRTEnhancedRAG:
         for ln in deduped[:max_lines]:
             out.append(f"- {ln}")
         return "\n".join(out)
+
+    def _sanitize_memory_denial(self, *, answer: str, has_memory_context: bool) -> str:
+        """If memory context exists, avoid self-contradictory 'no memories/first chat' claims.
+
+        This is a lightweight post-processing step to keep the assistant's surface text
+        consistent with the CRT metadata we return (retrieved/prompt memories).
+        """
+        a = (answer or "")
+        if not a or not has_memory_context:
+            return a
+
+        # Normalize some frequent denial patterns.
+        repl = [
+            ("this is our first conversation", "in this conversation so far"),
+            ("this is the start of our conversation", "so far in this conversation"),
+            ("since this is our first conversation", "so far in this conversation"),
+            ("we just started the conversation", "so far in this conversation"),
+            ("we just started talking", "so far in this conversation"),
+            ("my memory is empty", "my stored memory is limited so far"),
+            ("my trust-weighted memory is empty", "my trust-weighted memory is limited so far"),
+            ("i don't have any memories", "i don't have much stored yet"),
+            ("i do not have any memories", "i don't have much stored yet"),
+            ("i have no memories", "i don't have much stored yet"),
+        ]
+
+        out = a
+        low = out.lower()
+        for old, new in repl:
+            if old in low:
+                # Case-insensitive replace (simple, conservative).
+                out = re.sub(re.escape(old), new, out, flags=re.I)
+                low = out.lower()
+
+        return out
     
     # ========================================================================
     # CRT Analytics

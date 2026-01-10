@@ -7,6 +7,13 @@
     "write_jsonl": true,
     "jsonl_include_full_answer": true
   },
+  "provenance": {
+    "enabled": true,
+    "world_check": {
+      "enabled": true,
+      "max_tokens": 140
+    }
+  },
   "reflection": {
     "artifacts_dir": "artifacts",
     "out_model_path": "artifacts/learned_suggestions.latest.joblib",
