@@ -1,0 +1,4154 @@
+{
+  "turns": [
+    {
+      "turn": 1,
+      "user": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_answer": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.6509680803618383,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749998312356585
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.7,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 2,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "Memory misalignment: 0.300 < 0.37",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.2995831255104922,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.14427544179546697
+          },
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.073392966602166
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.7,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 3,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2546400005220195
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17475763700132518
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.3,
+            "confidence": 0.6649999999999999,
+            "source": "fallback",
+            "sse_mode": "C",
+            "score": 0.026907621031834566
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.3,
+            "confidence": 0.6649999999999999,
+            "source": "fallback"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.7650968080361837,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 4,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.17875008096298564
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.138994770072845
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.3,
+            "confidence": 0.6649999999999999,
+            "source": "fallback",
+            "sse_mode": "C",
+            "score": 0.01377798258607867
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.7650968080361837,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 5,
+      "user": "What is your role in The Printing Lair?",
+      "crt_answer": "I'm an AI assistant (a software system). I don't have a human occupation, but my role is to help with questions, writing, and problem-solving.",
+      "crt_result": {
+        "answer": "I'm an AI assistant (a software system). I don't have a human occupation, but my role is to help with questions, writing, and problem-solving.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "assistant_profile",
+        "intent_alignment": 0.95,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [],
+        "prompt_memories": [],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": null,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 6,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.5389571405385014,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749985957924385
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.3,
+            "confidence": 0.6649999999999999,
+            "source": "fallback",
+            "sse_mode": "C",
+            "score": 0.30944388683299007
+          },
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.7650968080361837,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.25248497916899576
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.2492824101524183
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.7,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 7,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43297718406230745
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.4042616124440557
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15466040822862984
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.10511631930601435
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 8,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.6743645310420437,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3910570561544203
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.2428349032427645
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.1442594738759298
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.3,
+            "confidence": 0.6649999999999999,
+            "source": "fallback",
+            "sse_mode": "C",
+            "score": 0.0873053643040044
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.7681840909549098,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 9,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2610646667679135
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.18449095190474782
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17473885319417792
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.16975781439455348
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 10,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.1967566127553116
+          },
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.1832582459714137
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.13897848862857337
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.07667923241324227
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.7681840909549098,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 11,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hey Nick, nice to meet you! So, I have you down as \"Nick Block\" in my memory now. What's on your mind today?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hey Nick, nice to meet you! So, I have you down as \"Nick Block\" in my memory now. What's on your mind today?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.7155894014910367,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7681840909549098,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.822642110578653
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749998306380643
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.5856427689630117
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.4976950322989632
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.3,
+            "confidence": 0.6649999999999999,
+            "source": "fallback",
+            "sse_mode": "C",
+            "score": 0.3094118179723713
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.7681840909549098,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 12,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4329322387952007
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.40421964800153753
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15464435367976548
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I have you down as \"Nick Block\" in my memory now. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.12713425238623463
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 13,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.7601845643052049,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8379204483591853,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.41421834608039965
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3915754818455436
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.2428105612237616
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I have you down as \"Nick Block\" in my memory now. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.23390136208901433
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.16523166546254867
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.8379204483591853,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 14,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2610383649196651
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8379204483591853,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.1954177708455416
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.18473543845682852
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17472124853378204
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.16974071156586176
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 15,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8379204483591853,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20841048217274405
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.19701791519058925
+          },
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.18324030521707493
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.8379204483591853,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 16,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.5372183880273124,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8379204483591853,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.8713623908581654
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7697363574042755,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.8237301686201589
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749998555355541
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.5856409957241658
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.5855822710585152
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.8379204483591853,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 17,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43288740111534163
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.4041777840109502
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15877452659289917
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15462833756130404
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 18,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.6782983887125916,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8969100099485404,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4337990259921442
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8287259189936306,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4111605480010541
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.758989561589355,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.38800008863428515
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.27394568130689223
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.24278567048284694
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.758989561589355,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.8969100099485404,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 19,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2610112024000004
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8969100099485404,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20465512571965816
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8287259189936306,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.1939748791497819
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.758989561589355,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.1830483753094598
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17470306779873723
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.758989561589355,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 20,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8969100099485404,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.21826182616087209
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8287259189936306,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20687149273046113
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.8287259189936306,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.8969100099485404,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 21,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hi Nick, nice to meet you! So, I've got you down as \"Nick Block\" in my memory now. What's on your mind today?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hi Nick, nice to meet you! So, I've got you down as \"Nick Block\" in my memory now. What's on your mind today?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.6582344400157847,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8969100099485404,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.912560041228712
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8287259189936306,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.8649366737910946
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.758989561589355,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.8162152417724865
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749998026610029
+          },
+          {
+            "text": "Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.5856456067190497
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.8969100099485404,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 22,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43284860805159947
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.4041415637502129
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15876029806530773
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.154614480593095
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 23,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.6989613346857101,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4559712908745338
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43333722173079575
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4101811771512926
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.36837400755013805
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.2739206166987028
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.9636879707614644,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 24,
+      "user": "Can you tell me what kind of work Nick Block does outside of AI development?",
+      "crt_answer": "From our chat, I only know this about your work:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n\nIf you want, tell me your current job title/occupation in one line and I\u2019ll store it as a fact.\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "From our chat, I only know this about your work:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n\nIf you want, tell me your current job title/occupation in one line and I\u2019ll store it as a fact.\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.9,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "user_named_reference",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [],
+        "prompt_memories": [],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": null,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.90"
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 25,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.26098456116395197
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.21511315009221646
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20443509642884608
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.19351079090158574
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17468523597533345
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 26,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2294149971947494
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.21802701068542935
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.9636879707614644,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 27,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hi Nick, nice to chat with you! Just a note, I've got that on file now. What brings you here today?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hi Nick, nice to chat with you! Just a note, I've got that on file now. What brings you here today?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "Memory misalignment: 0.312 < 0.37",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.31184093017699577,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.959185410405234
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9115721739246269
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.8628609051060289
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749998646887287
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749149577748868
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.9636879707614644,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 28,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4327984200547771
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.404094704282168
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15874189010190762
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15459655332957525
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 29,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.755710999223487,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4559182482156548
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43328681206928443
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4101334612080004
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.36837151278914676
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.368331154990748
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.9636879707614644,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 30,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.26095673933885866
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.21509021831261058
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20441330296539206
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.19349016200555397
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17466661394627536
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 31,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.22939005899209225
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.218003310396243
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.9636879707614644,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 32,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.5493435284059528,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9636879707614644,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9590824121929921
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8955038798065545,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9114742884655433
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.825767522402279,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.8627682503078269
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749998045408252
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749166444899176
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 0.9636879707614644,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 33,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43275272404376364
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.40405203888598873
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.18397577212046679
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.1587251297099508
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15458023061332618
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 34,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.7557109992234868,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.46794653311951595
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4515122372592536
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.42836317717218875
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.36837281439811015
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3683332867726593
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 35,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2609314450601145
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2207663567135574
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.21301303584154196
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20209184443384903
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17464968368407313
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 36,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2354433246393774
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.22717454822671174
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 37,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hey Nick, great to have you here! I've got that down in my memory context now. How's your day going so far?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hey Nick, great to have you here! I've got that down in my memory context now. How's your day going so far?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "Memory misalignment: 0.357 < 0.37",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.3568532432153686,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9843879420041141
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9498162088355334
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9011190735741095
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.774999781290053
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749213446208045
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 38,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.432708950865226
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.40401116879770504
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.183957162868873
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.1587090745748698
+          },
+          {
+            "text": "Hey Nick, nice to meet you! So, I've got you down as \"Nick Block\" in our conversation's memory. Got it!",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15456459473709228
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 39,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.755710999223487,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.46789814986203726
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4514655532231856
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.42831888662951206
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.36837200897731415
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3683347265494657
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 40,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.26090208394436903
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2207415151443449
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2129890667089631
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.20206910420016705
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17463003135900984
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 41,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.23541713184220692
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2271492753213401
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 42,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hey Nick, nice to meet you! I've got you down as someone who's introduced themselves as Nick Block, just in case I need a quick refresher later on. How's it going?\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hey Nick, nice to meet you! I've got you down as someone who's introduced themselves as Nick Block, just in case I need a quick refresher later on. How's it going?\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.5914591572231946,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9842769619504653
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9504382326471499,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9497091264045981
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.8807018752428744,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9010174812659737
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749997944081762
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749124076910526
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "memory_claim_named_entities_grounded",
+          "passed": true,
+          "details": ""
+        },
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 43,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.43266176407906687
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.4039671114963948
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.1839371023933747
+          },
+          {
+            "text": "Hey Nick, nice to meet you! I've got you down as someone who's introduced themselves as Nick Block, just in case I need a quick refresher later on. How's it going?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.16398611133859015
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15869176739611027
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 44,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.7557109992234868,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.46789670387758764
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4678474684961326
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9398477909651939,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4479414540923173
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3683736447314468
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3683321079933467
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 45,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2608761709430093
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.22074281903414011
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.22071959092244678
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9398477909651939,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2113283947485537
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.174612686966157
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.9398477909651939,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 46,
+      "user": "Do you have any open contradictions about my identity? List them.",
+      "crt_answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+      "crt_result": {
+        "answer": "No open contradictions about your identity in my contradiction ledger.\n\nProvenance: derived from stored memories (contradiction ledger).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "contradiction_status",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.235419301202115
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.23539452872776215
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9398477909651939,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.2253789420355946
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.9398477909651939,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "unresolved_contradictions_total": 0,
+        "unresolved_hard_conflicts": 0,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        }
+      ]
+    },
+    {
+      "turn": 47,
+      "user": "For the record: my name is Nick Block.",
+      "crt_answer": "Hi Nick Block, nice to have you here!\n\nProvenance: this answer uses stored memories.",
+      "crt_result": {
+        "answer": "Hi Nick Block, nice to have you here!\n\nProvenance: this answer uses stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.6368348525627074,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.984290184814397
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.984186610879573
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.9398477909651939,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.9423113541528758
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749997440208114
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.7749286538003259
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "contradiction_expected",
+          "passed": true,
+          "details": "expected=False, got=False"
+        }
+      ]
+    },
+    {
+      "turn": 48,
+      "user": "What do you know about The Printing Lair from our chat?",
+      "crt_answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4326208357597536
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.4039288975928237
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.18391970257419643
+          },
+          {
+            "text": "Hey Nick, nice to meet you! I've got you down as someone who's introduced themselves as Nick Block, just in case I need a quick refresher later on. How's it going?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.16397059881475504
+          },
+          {
+            "text": "Hi Nick Block, nice to chat with you! I've got your name down for future reference, by the way. What's on your mind today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.15867675569905815
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          },
+          {
+            "text": "Thanks for letting me know your name, Nick Block! I've got that noted in my memory context. Would you like to chat about something specific or just shoot the breeze?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.80"
+        },
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    },
+    {
+      "turn": 49,
+      "user": "What did I say my name was?",
+      "crt_answer": "Nick Block\n\nProvenance: answered from stored memories.",
+      "crt_result": {
+        "answer": "Nick Block\n\nProvenance: answered from stored memories.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.95,
+        "response_type": "belief",
+        "gates_passed": true,
+        "gate_reason": "Gates passed",
+        "intent_alignment": 0.95,
+        "memory_alignment": 0.755710999223487,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.467900539979409
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4678521900193877
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.4678029593219938
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.368372389665729
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.3683385991069525
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "source": "user"
+          }
+        ],
+        "learned_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "heuristic_suggestions": [
+          {
+            "slot": "name",
+            "action": "prefer_latest",
+            "confidence": 0.65,
+            "recommended_value": "Nick Block",
+            "rationale": "heuristic"
+          }
+        ],
+        "best_prior_trust": 1.0,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "no_contradiction_on_question",
+          "passed": true,
+          "details": "contradiction_detected=False, mode=quick, conf=0.95"
+        }
+      ]
+    },
+    {
+      "turn": 50,
+      "user": "Quote the exact memory text you used to answer my name.",
+      "crt_answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+      "crt_result": {
+        "answer": "here is the stored text i can cite:\n- FACT: name = Nick Block\n- Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).\n- For the record: my name is Nick Block.",
+        "thinking": null,
+        "mode": "quick",
+        "confidence": 0.8,
+        "response_type": "speech",
+        "gates_passed": false,
+        "gate_reason": "memory_citation",
+        "intent_alignment": 0.9,
+        "memory_alignment": 1.0,
+        "contradiction_detected": false,
+        "contradiction_entry": null,
+        "retrieved_memories": [
+          {
+            "text": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop).",
+            "trust": 0.79480206161698,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.26084992583721656
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.220743421757352
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.22072061149169728
+          },
+          {
+            "text": "For the record: my name is Nick Block.",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user",
+            "sse_mode": "C",
+            "score": 0.22069738571683772
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system",
+            "sse_mode": "C",
+            "score": 0.17459512028528454
+          }
+        ],
+        "prompt_memories": [
+          {
+            "text": "FACT: name = Nick Block",
+            "trust": 1.0,
+            "confidence": 0.95,
+            "source": "user"
+          },
+          {
+            "text": "Nick Block! Welcome to our conversation. So, you're the creator of CRT - that's really cool. I've got a fact stored away in my memory context about you, actually. You built the Printing Lair, which is a print and sticker shop? That sounds like an amazing space. What brings you here today?",
+            "trust": 0.7,
+            "confidence": 0.8,
+            "source": "system"
+          }
+        ],
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "best_prior_trust": 0.79480206161698,
+        "session_id": "0d2408a7"
+      },
+      "eval": [
+        {
+          "check": "grounded_named_entities_when_chat_asked",
+          "passed": true,
+          "details": ""
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "checks": 68,
+    "passed": 68,
+    "failures": 0,
+    "pass_rate": 100.0
+  }
+}

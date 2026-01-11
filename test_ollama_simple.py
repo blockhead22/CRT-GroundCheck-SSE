@@ -1,3 +1,9 @@
+import pytest
+
+
+pytest.skip("integration script; requires optional 'ollama' package", allow_module_level=True)
+
+
 import ollama
 
 print("Testing Ollama...")

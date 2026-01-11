@@ -115,6 +115,196 @@ class CRTEnhancedRAG:
             filtered.append((mem, score))
 
         return filtered
+
+    def _get_latest_user_slot_value(self, slot: str) -> Optional[str]:
+        slot = (slot or "").strip().lower()
+        if not slot:
+            return None
+        try:
+            all_memories = self.memory._load_all_memories()
+        except Exception:
+            return None
+
+        best_val: Optional[str] = None
+        best_ts: float = -1.0
+        for mem in all_memories:
+            if mem.source != MemorySource.USER:
+                continue
+            facts = extract_fact_slots(mem.text)
+            if not facts or slot not in facts:
+                continue
+            try:
+                ts = float(mem.timestamp)
+            except Exception:
+                ts = 0.0
+            if ts >= best_ts:
+                best_ts = ts
+                best_val = str(facts[slot].value).strip()
+
+        return best_val or None
+
+    def _get_latest_user_name_guess(self) -> Optional[str]:
+        """Best-effort user name extraction from USER memories.
+
+        Prefer structured "FACT: name = ..." if present; otherwise fall back to
+        simple textual patterns like "my name is ...".
+        """
+        try:
+            all_memories = self.memory._load_all_memories()
+        except Exception:
+            return None
+
+        best_val: Optional[str] = None
+        best_ts: float = -1.0
+        name_pat = r"([A-Z][a-zA-Z'-]{1,40}(?:\s+[A-Z][a-zA-Z'-]{1,40}){0,2})"
+
+        for mem in all_memories:
+            if mem.source != MemorySource.USER:
+                continue
+            text = (mem.text or "").strip()
+            if not text:
+                continue
+
+            val: Optional[str] = None
+            m = re.search(r"\bFACT:\s*name\s*=\s*(.+?)\s*$", text, flags=re.IGNORECASE)
+            if m:
+                val = m.group(1).strip()
+            else:
+                m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
+                if m:
+                    val = m.group(1).strip()
+
+            if not val:
+                continue
+
+            try:
+                ts = float(mem.timestamp)
+            except Exception:
+                ts = 0.0
+            if ts >= best_ts:
+                best_ts = ts
+                best_val = val
+
+        return best_val or None
+
+    def _query_mentions_user_name(self, user_query: str, user_name: str) -> bool:
+        q = (user_query or "").strip().lower()
+        name = (user_name or "").strip().lower()
+        if not q or not name:
+            return False
+
+        # Consider full name and first token as acceptable matches.
+        variants: List[str] = []
+        variants.append(name)
+        first = name.split()[0].strip() if name.split() else ""
+        if first and first != name:
+            variants.append(first)
+
+        for v in variants:
+            tokens = [t for t in v.split() if t]
+            if not tokens:
+                continue
+            # Match "nick block" with flexible whitespace and allow possessive.
+            token_pat = r"\s+".join(re.escape(t) for t in tokens)
+            pat = rf"\b{token_pat}(?:['’]s)?\b"
+            if re.search(pat, q, flags=re.IGNORECASE):
+                return True
+        return False
+
+    def _is_user_named_reference_question(self, user_query: str) -> bool:
+        """Detect third-person questions that refer to the user by (their) name.
+
+        This is product-safety motivated: if a question looks like "What is <user-name>'s occupation?",
+        we should answer from chat memory or admit we don't know, rather than importing world facts.
+        """
+        q = (user_query or "").strip().lower()
+        if not q:
+            return False
+
+        user_name = self._get_latest_user_slot_value("name") or self._get_latest_user_name_guess()
+        if not user_name:
+            return False
+
+        if not self._query_mentions_user_name(user_query, user_name):
+            return False
+
+        # Only trigger for profile-ish questions where hallucination risk is high.
+        triggers = (
+            "occupation",
+            "job",
+            "job title",
+            "title",
+            "role",
+            "employer",
+            "company",
+            "career",
+            "profession",
+            "work for",
+            "work at",
+        )
+        if any(t in q for t in triggers):
+            return True
+
+        # Common paraphrases that omit explicit job/occupation keywords.
+        if re.search(r"\b(kind|type)\s+of\s+work\b", q, flags=re.IGNORECASE):
+            return True
+        if "for a living" in q:
+            return True
+        if re.search(r"\bwhat\s+does\b.*\bdo\b", q, flags=re.IGNORECASE) and "besides" in q:
+            return True
+
+        return False
+
+    def _build_user_named_reference_answer(self, user_query: str, inferred_slots: List[str]) -> str:
+        cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
+        responses = (cfg.get("responses") or {}) if isinstance(cfg.get("responses"), dict) else {}
+
+        def _resp(key: str, fallback: str) -> str:
+            value = responses.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+            return fallback
+
+        # Prefer canonical slot answers if available.
+        slot_answer = self._answer_from_fact_slots(inferred_slots)
+        if slot_answer:
+            return slot_answer
+
+        # Otherwise, fall back to strictly chat-grounded work-related statements.
+        try:
+            all_memories = self.memory._load_all_memories()
+        except Exception:
+            all_memories = []
+
+        user_memories = [m for m in all_memories if m.source == MemorySource.USER]
+        user_memories.sort(key=lambda m: getattr(m, "timestamp", 0.0), reverse=True)
+
+        snippets: List[str] = []
+        for mem in user_memories:
+            t = (mem.text or "").strip()
+            tl = t.lower()
+            if any(p in tl for p in ("i work at", "i work for", "i run ", "i built", "my job", "my role", "my title")):
+                snippets.append(t)
+            if len(snippets) >= 2:
+                break
+
+        if snippets:
+            lines = [_resp("known_work_prefix", "From our chat, I only know this about your work:")]
+            for s in snippets:
+                lines.append(f"- {s}")
+            lines.append(
+                "\n"
+                + _resp(
+                    "ask_to_store",
+                    "If you want, tell me your current job title/occupation in one line and I'll store it as a fact.",
+                )
+            )
+            return "\n".join(lines)
+
+        return _resp(
+            "unknown",
+            "I don't have a reliable stored memory of your occupation/job yet — if you tell me, I can remember it going forward.",
+        )
     
     # ========================================================================
     # Uncertainty as First-Class State
@@ -170,18 +360,21 @@ class CRTEnhancedRAG:
         
         This is a FIRST-CLASS response state, not a fallback.
         """
-        # Show what we know and what conflicts
+        # Show what we know and what conflicts, in a user-friendly way.
+        # Keep this readable for normal users: avoid internal scoring jargon.
         beliefs: List[str] = []
 
         # Prefer explicit conflict beliefs if provided (ensures both sides show up
         # even when retrieval misses one of the conflicting memories).
         if conflict_beliefs:
-            beliefs.extend(conflict_beliefs[:6])
+            beliefs.extend([b.strip() for b in conflict_beliefs[:6] if (b or "").strip()])
         else:
             for mem, _score in retrieved[:3]:
-                beliefs.append(f"- {mem.text} (trust: {mem.trust:.2f})")
+                t = (mem.text or "").strip()
+                if t:
+                    beliefs.append(f"- {t}")
 
-        beliefs_text = "\n".join(beliefs) if beliefs else "No clear memories"
+        beliefs_text = "\n".join(beliefs) if beliefs else "- (no clear memories)"
 
         ask = "Can you help clarify?"
         if recommended_next_action and recommended_next_action.get("action_type") == "ask_user":
@@ -189,12 +382,28 @@ class CRTEnhancedRAG:
             if q:
                 ask = q
 
+        conflict_warning_enabled = True
+        try:
+            conflict_warning_enabled = bool((self.runtime_config.get("conflict_warning") or {}).get("enabled", True))
+        except Exception:
+            conflict_warning_enabled = True
+
+        if conflict_warning_enabled:
+            header = (
+                "I need to be honest about my uncertainty here.\n\n"
+                "I might be wrong because I have conflicting information in our chat history.\n\n"
+            )
+            notes_label = "Here are the conflicting notes I have:"
+        else:
+            header = "I need to be honest about my uncertainty here.\n\n"
+            notes_label = "What I have in memory:"
+
         return (
-            "I need to be honest about my uncertainty here.\n\n"
-            f"{reason}\n\n"
-            f"What I have in memory:\n{beliefs_text}\n\n"
-            "I cannot give you a confident answer without resolving this.\n"
-            f"{ask}"
+            header
+            + f"{reason}\n\n"
+            + f"{notes_label}\n{beliefs_text}\n\n"
+            + "I cannot give you a confident answer until we resolve this.\n"
+            + f"{ask}"
         )
 
     def _infer_contradiction_goals_for_query(
@@ -252,9 +461,9 @@ class CRTEnhancedRAG:
                 if not (is_related_by_retrieval or is_related_by_slot):
                     continue
 
-                # Provide both sides as explicit beliefs.
-                conflict_beliefs.append(f"- {old_mem.text} (trust: {old_mem.trust:.2f})")
-                conflict_beliefs.append(f"- {new_mem.text} (trust: {new_mem.trust:.2f})")
+                # Provide both sides as explicit beliefs (user-facing; no internal scores).
+                conflict_beliefs.append(f"- {old_mem.text}")
+                conflict_beliefs.append(f"- {new_mem.text}")
 
                 slot_name = slot.replace("_", " ")
                 old_val = str(old_fact.value)
@@ -422,7 +631,16 @@ class CRTEnhancedRAG:
         # 0. Store user input as USER memory ONLY when it's an assertion.
         # Questions and control instructions should not be treated as durable factual claims.
         user_memory: Optional[MemoryItem] = None
+
+        # High-risk prompt types should be treated as instructions even if they do not
+        # look like questions (multi-paragraph prompt injection often starts as declarative).
+        is_memory_citation = self._is_memory_citation_request(user_query)
+        is_contradiction_status = self._is_contradiction_status_request(user_query)
+        is_memory_inventory = self._is_memory_inventory_request(user_query)
+
         user_input_kind = self._classify_user_input(user_query)
+        if user_input_kind == "assertion" and (is_memory_citation or is_contradiction_status or is_memory_inventory):
+            user_input_kind = "instruction"
         if user_input_kind == "assertion":
             user_memory = self.memory.store_memory(
                 text=user_query,
@@ -440,6 +658,35 @@ class CRTEnhancedRAG:
             except Exception:
                 # Resolution is best-effort; never block the main chat loop.
                 pass
+
+        # Deterministic safe path: assistant-profile questions.
+        # These are about the assistant/system, not the user, so we should not
+        # invent chat-backed claims about what the user said.
+        assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
+        assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
+        if assistant_profile_enabled and user_input_kind in ("question", "instruction") and self._is_assistant_profile_question(user_query):
+            answer = self._build_assistant_profile_answer(user_query)
+            return {
+                'answer': answer,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.95,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'assistant_profile',
+                'intent_alignment': 0.95,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [],
+                'prompt_memories': [],
+                'unresolved_contradictions_total': 0,
+                'unresolved_hard_conflicts': 0,
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': None,
+                'session_id': self.session_id,
+            }
         
         # 1. Trust-weighted retrieval
         retrieved = self.retrieve(user_query, k=5)
@@ -628,6 +875,49 @@ class CRTEnhancedRAG:
                 'learned_suggestions': [],
                 'heuristic_suggestions': [],
                 'best_prior_trust': best_prior.trust if best_prior else None,
+                'session_id': self.session_id,
+            }
+
+        # Deterministic safe path: third-person questions that reference the user by name.
+        # Avoid importing world knowledge for a name that matches the current user.
+        user_named_cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
+        user_named_enabled = bool(user_named_cfg.get("enabled", True))
+        if user_named_enabled and user_input_kind in ("question", "instruction") and self._is_user_named_reference_question(user_query):
+            # Infer likely slots from the query (title/employer are common).
+            inferred = inferred_slots or self._infer_slots_from_query(user_query)
+            relevant_slots = [s for s in inferred if s in {"title", "employer"}]
+            if not relevant_slots:
+                # Still treat as high-risk; attempt to answer from work snippets.
+                relevant_slots = ["title", "employer"]
+
+            answer = self._build_user_named_reference_answer(user_query, relevant_slots)
+
+            final_answer = answer
+            try:
+                if bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
+                    final_answer = answer.rstrip() + "\n\nProvenance: answered from stored memories."
+            except Exception:
+                pass
+
+            return {
+                'answer': final_answer,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.9,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'user_named_reference',
+                'intent_alignment': 0.9,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [],
+                'prompt_memories': [],
+                'unresolved_contradictions_total': 0,
+                'unresolved_hard_conflicts': 0,
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': None,
                 'session_id': self.session_id,
             }
 
@@ -1427,6 +1717,9 @@ class CRTEnhancedRAG:
         if "where" in t and ("live" in t or "located" in t or "from" in t or "location" in t):
             slots.append("location")
 
+        if "title" in t or "job title" in t or "role" in t or "position" in t or "occupation" in t:
+            slots.append("title")
+
         if "university" in t or "attend" in t or "school" in t:
             # Prefer master's if present; undergrad also possible.
             slots.extend(["masters_school", "undergrad_school"])
@@ -1451,6 +1744,71 @@ class CRTEnhancedRAG:
                 out.append(s)
                 seen.add(s)
         return out
+
+    def _is_assistant_profile_question(self, text: str) -> bool:
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+
+        # Keep this conservative: only very clear questions about the assistant itself.
+        patterns = (
+            r"\bwho\s+are\s+you\b",
+            r"\bwhat\s+are\s+you\b",
+            r"\bwhat\s+is\s+your\s+(occupation|job|role|purpose)\b",
+            r"\bwhat\s+do\s+you\s+do\b",
+            # Background/experience questions about the assistant (not the user).
+            r"\bwhat('?s|\s+is)\s+your\s+background\b",
+            r"\bwhat('?s|\s+is)\s+your\s+experience\b",
+            r"\b(tell\s+me|can\s+you\s+tell\s+me)\s+about\s+your\s+(background|experience)\b",
+            r"\babout\s+your\s+(background|experience)\b",
+            r"\bdo\s+you\s+have\s+(any\s+)?(background|experience)\b",
+            r"\bwhat\s+experience\s+do\s+you\s+have\b",
+            r"\bhave\s+you\s+(ever\s+)?worked\s+(as|in)\b",
+        )
+        return any(re.search(p, t, flags=re.IGNORECASE) for p in patterns)
+
+    def _build_assistant_profile_answer(self, user_query: str) -> str:
+        # Deterministic, chat-agnostic answer: don't claim the user said things.
+        cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
+        responses = (cfg.get("responses") or {}) if isinstance(cfg.get("responses"), dict) else {}
+
+        def _resp(key: str, fallback: str) -> str:
+            value = responses.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+            return fallback
+
+        q = (user_query or "").strip().lower()
+
+        if re.search(r"\b(occupation|job|role)\b", q):
+            return _resp(
+                "occupation",
+                "I'm an AI assistant (a software system). I don't have a human occupation, but my role is to help with tasks.",
+            )
+
+        if re.search(r"\b(purpose)\b", q) or re.search(r"\bwhat\s+do\s+you\s+do\b", q):
+            return _resp(
+                "purpose",
+                "I'm an AI assistant designed to help with information and tasks.",
+            )
+
+        if (
+            re.search(r"\b(background|experience)\b", q)
+            or re.search(r"\bwhat\s+experience\s+do\s+you\s+have\b", q)
+            or re.search(r"\bhave\s+you\s+(ever\s+)?worked\s+(as|in)\b", q)
+        ):
+            if re.search(r"\bfilmmaking\b|\bfilm\b|\bmovie\b|\bcinema\b|\bdirector\b|\bproducer\b", q):
+                return _resp(
+                    "background_filmmaking",
+                    "I don't have personal filmmaking experience—I'm an AI system. I can still help with filmmaking concepts.",
+                )
+            return _resp(
+                "background_general",
+                "I don't have personal experiences—I'm an AI system. I can still help with information and planning.",
+            )
+
+        # Generic fallback for "who/what are you".
+        return _resp("identity", "I'm an AI assistant (a software system) designed to help with information and tasks.")
 
     def _augment_retrieval_with_slot_memories(
         self,
@@ -1764,6 +2122,15 @@ class CRTEnhancedRAG:
             txt = str((d or {}).get("text") or "").strip()
             if not txt:
                 continue
+
+            src = str((d or {}).get("source") or "").strip().lower()
+            is_fact = txt.lower().startswith("fact:")
+            is_user = src == MemorySource.USER.value
+
+            # Only cite user-provided memories and canonical FACT lines.
+            if not (is_fact or is_user):
+                continue
+
             lines.append(f"- {txt}")
             added += 1
             if added >= max_lines:

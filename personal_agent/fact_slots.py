@@ -50,13 +50,41 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     if not text or not text.strip():
         return facts
 
+    # Structured facts/preferences (useful for onboarding and explicit corrections).
+    # Examples:
+    # - "FACT: name = Nick"
+    # - "PREF: communication_style = concise"
+    structured = re.search(
+        r"\b(?:FACT|PREF):\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+?)\s*$",
+        text.strip(),
+        flags=re.IGNORECASE,
+    )
+    if structured:
+        slot = structured.group(1).strip().lower()
+        value_raw = structured.group(2).strip()
+        # Keep this conservative: whitelist the slots we intentionally support.
+        allowed = {
+            "name",
+            "employer",
+            "title",
+            "location",
+            "pronouns",
+            "communication_style",
+            "goals",
+        }
+        if slot in allowed and value_raw:
+            facts[slot] = ExtractedFact(slot, value_raw, _norm_text(value_raw))
+            return facts
+
     # Name
     # Examples:
     # - "My name is Sarah."
     # - "Yes, I'm Sarah"
-    m = re.search(r"\bmy name is\s+([A-Z][a-zA-Z'-]{1,40})\b", text, flags=re.IGNORECASE)
+    # Allow multi-token names (e.g., "Nick Block"), but keep it conservative.
+    name_pat = r"([A-Z][a-zA-Z'-]{1,40}(?:\s+[A-Z][a-zA-Z'-]{1,40}){0,2})"
+    m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if not m:
-        m = re.search(r"\bi\s*'?m\s+([A-Z][a-zA-Z'-]{1,40})\b", text, flags=re.IGNORECASE)
+        m = re.search(r"\bi\s*'?m\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if m:
         name = m.group(1)
         facts["name"] = ExtractedFact("name", name, _norm_text(name))

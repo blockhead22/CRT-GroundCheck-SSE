@@ -33,6 +33,7 @@ def test_hard_conflict_slot_question_returns_goal_instead_of_silent_latest(rag: 
 
     # The user-facing answer should ask for clarification, not silently pick a winner.
     answer = (out.get("answer") or "").lower()
+    assert "might be wrong" in answer
     assert "which is correct" in answer
     assert "amazon" in answer
     assert "microsoft" in answer

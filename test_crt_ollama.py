@@ -9,6 +9,11 @@ Tests:
 4. Query with real AI
 """
 
+import pytest
+
+
+pytest.skip("integration script; requires optional 'ollama' dependency and a running Ollama server", allow_module_level=True)
+
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.ollama_client import get_ollama_client
 from personal_agent.embeddings import encode_text

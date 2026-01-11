@@ -75,7 +75,41 @@ def _extract_named_phrases(text: str) -> List[str]:
     for p in phrases:
         pn = _norm_text(p)
         # Drop common non-entity discourse openers and placeholders.
+        # Also drop common sentence starters (contractions / question headings)
+        # that can match our Title-Case heuristic but are not proper nouns.
+        first_token = pn.split(" ", 1)[0] if pn else ""
+        non_entity_first_tokens = {
+            "you",
+            "you're",
+            "youre",
+            "your",
+            "i",
+            "i'm",
+            "im",
+            "i've",
+            "ive",
+            "we",
+            "we're",
+            "were",
+            "we've",
+            "weve",
+            "this",
+            "that",
+            "what",
+            "who",
+            "when",
+            "where",
+            "why",
+            "how",
+        }
+        if first_token in non_entity_first_tokens:
+            continue
         if pn.startswith("hey ") or pn.startswith("hi ") or pn.startswith("hello "):
+            continue
+        # Discourse markers sometimes match our Title-Case heuristic (e.g. "By the way").
+        if pn in {"by the", "by the way", "for the record"}:
+            continue
+        if pn.startswith("by the way") or pn.startswith("for the record"):
             continue
         if pn in {"your name", "your identity"}:
             continue

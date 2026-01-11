@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -411,6 +412,13 @@ class LLMController(AdaptiveController):
             else:
                 expectations["expected_name"] = en
 
+        # Some prompts are meta-questions about contradictions; the correct behavior
+        # is often a direct ledger summary, not an uncertainty response. If the
+        # controller accidentally sets expect_uncertainty here, drop it.
+        ml = (msg or "").lower()
+        if expectations.get("expect_uncertainty") and ("open contradictions" in ml or "list any open contradictions" in ml):
+            expectations.pop("expect_uncertainty", None)
+
         # Enforce non-repetition against the last 3 user messages.
         recent_user = state.get("recent_user_msgs") or []
         if msg in recent_user[-3:]:
@@ -424,48 +432,27 @@ class LLMController(AdaptiveController):
         return msg, expectations
 
 
-def main() -> int:
-    print("=" * 80)
-    print(" CRT ADAPTIVE STRESS TEST (ADAPTIVE) ".center(80, "="))
-    print("=" * 80)
+def _clean_run_dir(run_dir: Path) -> None:
+    """Remove known per-run artifacts to prevent state bleed."""
+    for fname in [
+        "crt_adaptive_memory.db",
+        "crt_adaptive_ledger.db",
+        "crt_adaptive_stress_test.latest.json",
+    ]:
+        try:
+            p = run_dir / fname
+            if p.exists():
+                p.unlink()
+        except Exception:
+            pass
 
-    ap = argparse.ArgumentParser(description="Adaptive AI-vs-AI CRT stress test")
-    ap.add_argument("--turns", type=int, default=30, help="Number of user turns")
-    ap.add_argument("--sut-model", type=str, default="llama3.2:latest", help="Model used by CRT (system under test)")
-    ap.add_argument("--controller-model", type=str, default="llama3.2:latest", help="Model used by the tester/controller")
-    ap.add_argument("--controller", choices=["llm", "heuristic"], default="llm", help="How to generate the next user message")
-    ap.add_argument("--artifacts-dir", type=str, default=str(PROJECT_ROOT / "artifacts"), help="Where to write logs/db")
-    ap.add_argument(
-        "--fresh",
-        action="store_true",
-        help="Delete existing db/log artifacts in artifacts-dir before running (recommended for reproducible runs)",
-    )
-    ap.add_argument("--controller-temp", type=float, default=0.3, help="Controller temperature")
-    ap.add_argument(
-        "--profile-file",
-        type=str,
-        default="NickBlock.txt",
-        help="Optional profile text file to ground the controller + seed CRT (e.g., NickBlock.txt)",
-    )
-    args = ap.parse_args()
 
-    artifacts_dir = Path(args.artifacts_dir).resolve()
+def run_single(args: argparse.Namespace, *, artifacts_dir: Path, verbose: bool) -> Dict[str, Any]:
+    """Run a single adaptive stress conversation and return a structured summary."""
     _safe_mkdir(artifacts_dir)
 
     if bool(getattr(args, "fresh", False)):
-        # Prevent state bleed across runs by removing old DBs and the latest transcript.
-        # This harness otherwise reuses fixed filenames in artifacts_dir.
-        for fname in [
-            "crt_adaptive_memory.db",
-            "crt_adaptive_ledger.db",
-            "crt_adaptive_stress_test.latest.json",
-        ]:
-            try:
-                p = artifacts_dir / fname
-                if p.exists():
-                    p.unlink()
-            except Exception:
-                pass
+        _clean_run_dir(artifacts_dir)
 
     # Isolated DBs per run to avoid clobbering GUI state.
     memory_db = str(artifacts_dir / "crt_adaptive_memory.db")
@@ -511,9 +498,13 @@ def main() -> int:
         "recent_tactics": [],
     }
 
-    last_user = ""
     last_result: Dict[str, Any] = {}
     last_failures: List[Dict[str, Any]] = []
+
+    sleep_s = float(getattr(args, "sleep", 0.1) or 0.0)
+    if not verbose:
+        # In batch mode, keep things moving; logs are already reduced.
+        sleep_s = min(sleep_s, 0.01)
 
     for turn in range(1, int(args.turns) + 1):
         user_msg, expectations = controller.next_prompt(
@@ -524,26 +515,27 @@ def main() -> int:
             state=state,
         )
 
-        print("\n" + ("-" * 80))
-        print(f"TURN {turn}")
-        print(f"USER: {user_msg}")
+        if verbose:
+            print("\n" + ("-" * 80))
+            print(f"TURN {turn}")
+            print(f"USER: {user_msg}")
 
         result = rag.query(user_msg)
         answer = (result.get("answer") or "").strip()
-        print(f"CRT: {answer[:500]}{'...' if len(answer) > 500 else ''}")
-        print(f"META: {_brief_result(result)}")
+
+        if verbose:
+            print(f"CRT: {answer[:500]}{'...' if len(answer) > 500 else ''}")
+            print(f"META: {_brief_result(result)}")
 
         findings = evaluate_turn(user_prompt=user_msg, result=result, expectations=expectations)
         failures = [f for f in findings if not f.passed]
 
-        eval_dump = [
-            {"check": f.check, "passed": f.passed, "details": f.details}
-            for f in findings
-        ]
+        eval_dump = [{"check": f.check, "passed": f.passed, "details": f.details} for f in findings]
 
-        for f in findings:
-            tag = "✅" if f.passed else "❌"
-            print(f"EVAL {tag} {f.check}: {f.details}")
+        if verbose:
+            for f in findings:
+                tag = "✅" if f.passed else "❌"
+                print(f"EVAL {tag} {f.check}: {f.details}")
 
         transcript.append(
             TurnRecord(
@@ -555,12 +547,11 @@ def main() -> int:
             )
         )
 
-        last_user = user_msg
         last_result = result
         last_failures = eval_dump if failures else []
 
-        # small pause to keep logs readable; no need to throttle heavily
-        time.sleep(0.1)
+        if sleep_s > 0:
+            time.sleep(sleep_s)
 
     # Summary
     checks = 0
@@ -574,44 +565,165 @@ def main() -> int:
             else:
                 failed_items.append({"turn": tr.turn, **f, "user": tr.user})
 
-    print("\n" + ("=" * 80))
-    print(" SUMMARY ".center(80, "="))
-    print("=" * 80)
-    print(f"Turns: {len(transcript)}")
-    print(f"Eval checks: {checks}")
-    print(f"Pass rate: {100.0 * passed / max(checks, 1):.1f}%")
-    print(f"Failures: {len(failed_items)}")
-
-    for f in failed_items[:12]:
-        print(f"- Turn {f['turn']}: {f['check']} :: {f.get('details','')} :: {f['user']}")
-
     out_path = artifacts_dir / "crt_adaptive_stress_test.latest.json"
-    out_path.write_text(
-        json.dumps(
+    payload = {
+        "turns": [
             {
-                "turns": [
-                    {
-                        "turn": tr.turn,
-                        "user": tr.user,
-                        "crt_answer": tr.crt_answer,
-                        "crt_result": tr.crt_result,
-                        "eval": tr.eval_findings,
-                    }
-                    for tr in transcript
-                ],
-                "summary": {
-                    "checks": checks,
-                    "passed": passed,
-                    "failures": len(failed_items),
-                },
-            },
-            indent=2,
-        )
-    )
-    print(f"\nSaved transcript: {out_path}")
+                "turn": tr.turn,
+                "user": tr.user,
+                "crt_answer": tr.crt_answer,
+                "crt_result": tr.crt_result,
+                "eval": tr.eval_findings,
+            }
+            for tr in transcript
+        ],
+        "summary": {
+            "checks": checks,
+            "passed": passed,
+            "failures": len(failed_items),
+            "pass_rate": (100.0 * passed / max(checks, 1)),
+        },
+    }
+    out_path.write_text(json.dumps(payload, indent=2))
 
-    # Non-zero exit if failures
-    return 0 if len(failed_items) == 0 else 2
+    return {
+        "artifacts_dir": str(artifacts_dir),
+        "transcript_path": str(out_path),
+        "turns": len(transcript),
+        "checks": checks,
+        "passed": passed,
+        "failures": len(failed_items),
+        "failed_items": failed_items,
+        "pass_rate": (100.0 * passed / max(checks, 1)),
+    }
+
+
+def main() -> int:
+    print("=" * 80)
+    print(" CRT ADAPTIVE STRESS TEST (ADAPTIVE) ".center(80, "="))
+    print("=" * 80)
+
+    ap = argparse.ArgumentParser(description="Adaptive AI-vs-AI CRT stress test")
+    ap.add_argument("--turns", type=int, default=30, help="Number of user turns")
+    ap.add_argument("--runs", type=int, default=1, help="Number of independent runs to execute (batch mode)")
+    ap.add_argument(
+        "--stop-on-failure",
+        action="store_true",
+        help="In batch mode, stop early as soon as any run produces eval failures",
+    )
+    ap.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print per-turn logs (default: enabled for single-run, reduced for batch)",
+    )
+    ap.add_argument("--sleep", type=float, default=0.1, help="Sleep between turns (seconds)")
+    ap.add_argument("--sut-model", type=str, default="llama3.2:latest", help="Model used by CRT (system under test)")
+    ap.add_argument("--controller-model", type=str, default="llama3.2:latest", help="Model used by the tester/controller")
+    ap.add_argument("--controller", choices=["llm", "heuristic"], default="llm", help="How to generate the next user message")
+    ap.add_argument("--artifacts-dir", type=str, default=str(PROJECT_ROOT / "artifacts"), help="Where to write logs/db")
+    ap.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Delete existing db/log artifacts in artifacts-dir before running (recommended for reproducible runs)",
+    )
+    ap.add_argument("--controller-temp", type=float, default=0.3, help="Controller temperature")
+    ap.add_argument(
+        "--profile-file",
+        type=str,
+        default="NickBlock.txt",
+        help="Optional profile text file to ground the controller + seed CRT (e.g., NickBlock.txt)",
+    )
+    args = ap.parse_args()
+
+    base_artifacts_dir = Path(args.artifacts_dir).resolve()
+    _safe_mkdir(base_artifacts_dir)
+
+    runs = max(int(getattr(args, "runs", 1) or 1), 1)
+    is_batch = runs > 1
+    verbose = bool(getattr(args, "verbose", False)) or (not is_batch)
+
+    batch_summary_path = base_artifacts_dir / "crt_adaptive_stress_batch.latest.json"
+
+    if is_batch and bool(getattr(args, "fresh", False)):
+        # When running batches, treat --fresh as clearing prior run_* dirs + batch summary.
+        try:
+            if batch_summary_path.exists():
+                batch_summary_path.unlink()
+        except Exception:
+            pass
+        try:
+            for p in base_artifacts_dir.glob("run_*"):
+                if p.is_dir():
+                    shutil.rmtree(p, ignore_errors=True)
+        except Exception:
+            pass
+
+    all_runs: List[Dict[str, Any]] = []
+    any_failures = False
+    total_checks = 0
+    total_passed = 0
+    total_failures = 0
+
+    if is_batch:
+        print("\n" + ("=" * 80))
+        print(f" BATCH MODE: {runs} runs x {int(args.turns)} turns ".center(80, "="))
+        print("=" * 80)
+
+    for i in range(1, runs + 1):
+        run_dir = base_artifacts_dir if (not is_batch) else (base_artifacts_dir / f"run_{i:04d}")
+        run_summary = run_single(args, artifacts_dir=run_dir, verbose=verbose)
+        all_runs.append(run_summary)
+
+        total_checks += int(run_summary.get("checks", 0) or 0)
+        total_passed += int(run_summary.get("passed", 0) or 0)
+        total_failures += int(run_summary.get("failures", 0) or 0)
+
+        if int(run_summary.get("failures", 0) or 0) > 0:
+            any_failures = True
+
+        if is_batch:
+            print(
+                f"Run {i:02d}/{runs}: pass_rate={float(run_summary.get('pass_rate', 0.0) or 0.0):.1f}% "
+                f"failures={int(run_summary.get('failures', 0) or 0)} artifacts={run_dir}"
+            )
+
+        if is_batch and any_failures and bool(getattr(args, "stop_on_failure", False)):
+            print("Stopping early due to failures (--stop-on-failure).")
+            break
+
+    overall_pass_rate = 100.0 * total_passed / max(total_checks, 1)
+    batch_payload = {
+        "meta": {
+            "runs_requested": runs,
+            "runs_completed": len(all_runs),
+            "turns_per_run": int(args.turns),
+            "controller": str(args.controller),
+            "sut_model": str(args.sut_model),
+            "controller_model": str(args.controller_model),
+            "timestamp": time.time(),
+        },
+        "summary": {
+            "total_checks": total_checks,
+            "total_passed": total_passed,
+            "total_failures": total_failures,
+            "overall_pass_rate": overall_pass_rate,
+        },
+        "runs": all_runs,
+    }
+    if is_batch:
+        batch_summary_path.write_text(json.dumps(batch_payload, indent=2))
+
+        print("\n" + ("=" * 80))
+        print(" BATCH SUMMARY ".center(80, "="))
+        print("=" * 80)
+        print(f"Runs completed: {len(all_runs)}")
+        print(f"Total eval checks: {total_checks}")
+        print(f"Overall pass rate: {overall_pass_rate:.1f}%")
+        print(f"Total failures: {total_failures}")
+        print(f"Saved batch summary: {batch_summary_path}")
+
+    # Exit non-zero if any run had failures
+    return 0 if not any_failures else 2
 
 
 if __name__ == "__main__":

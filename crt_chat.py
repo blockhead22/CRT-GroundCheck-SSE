@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.crt_core import MemorySource
+from personal_agent.onboarding import run_onboarding_interactive
 try:
     from personal_agent.ollama_client import get_ollama_client
 except Exception:
@@ -51,6 +52,7 @@ def print_banner(llm_status_line: str):
     print("    recall     - Search memories")
     print("    status     - System health")
     print("    contradictions - View open contradictions")
+    print("    onboard    - Run first-run setup prompts")
     print("    exit       - Quit")
     print("=" * 70 + "\n")
 
@@ -275,6 +277,17 @@ def main():
     except Exception as e:
         print(f"❌ Failed to initialize: {e}")
         return
+
+    # Optional first-run onboarding (product-facing, configurable).
+    try:
+        ob_cfg = (rag.runtime_config.get("onboarding") or {}) if isinstance(rag.runtime_config, dict) else {}
+        ob_enabled = bool(ob_cfg.get("enabled", True))
+        ob_auto = bool(ob_cfg.get("auto_run_when_memory_empty", True))
+        if ob_enabled and ob_auto and rag.get_crt_status().get("memory_count", 0) == 0:
+            run_onboarding_interactive(rag, rag.runtime_config)
+    except Exception:
+        # Onboarding is best-effort; never block chat from starting.
+        pass
     
     # Main command loop
     while True:
@@ -302,6 +315,9 @@ def main():
             
             elif cmd == 'contradictions':
                 cmd_contradictions(rag)
+
+            elif cmd == 'onboard':
+                run_onboarding_interactive(rag, rag.runtime_config)
             
             elif cmd == 'help':
                 print_banner(llm_status_line)

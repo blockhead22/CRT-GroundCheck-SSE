@@ -25,6 +25,65 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
             "max_tokens": 140,
         },
     }
+    ,
+    # When enabled, uncertainty responses include a layperson-friendly explanation
+    # that the assistant might be wrong due to conflicting information.
+    "conflict_warning": {
+        "enabled": True,
+    },
+
+    # Deterministic, non-chat-backed answers for questions about the assistant itself.
+    # Product-facing: customize these strings in crt_runtime_config.json.
+    "assistant_profile": {
+        "enabled": True,
+        "responses": {
+            "occupation": (
+                "I'm an AI assistant (a software system). I don't have a human occupation, "
+                "but my role is to help with questions, writing, and problem-solving."
+            ),
+            "purpose": (
+                "I'm an AI assistant designed to help you think, write, and get tasks done. "
+                "I can use our chat context when it's provided, and I try to be explicit when I'm uncertain."
+            ),
+            "identity": "I'm an AI assistant (a software system) designed to help with information and tasks.",
+            "background_general": (
+                "I don't have personal experiences or a human background—I'm an AI system. "
+                "I can still help with information, planning, and examples if you tell me what you need."
+            ),
+            "background_filmmaking": (
+                "I don't have a personal background or real-world experience in filmmaking—I'm an AI system. "
+                "I can still help with filmmaking concepts, writing, planning, and feedback if you tell me what you're working on."
+            ),
+        },
+    },
+
+    # Deterministic safe path: third-person questions that refer to the user by name.
+    # Product-facing: customize these strings in crt_runtime_config.json.
+    "user_named_reference": {
+        "enabled": True,
+        "responses": {
+            "known_work_prefix": "From our chat, I only know this about your work:",
+            "ask_to_store": "If you want, tell me your current job title/occupation in one line and I'll store it as a fact.",
+            "unknown": "I don't have a reliable stored memory of your occupation/job yet — if you tell me, I can remember it going forward.",
+        },
+    },
+
+    # First-run onboarding: prompt the user for a few basics after a memory wipe.
+    # This is intentionally editable/configurable via crt_runtime_config.json.
+    "onboarding": {
+        "enabled": True,
+        "auto_run_when_memory_empty": True,
+        # Each question should store as either FACT: slot = value or PREF: slot = value.
+        "questions": [
+            {"slot": "name", "kind": "fact", "prompt": "What name should I call you?"},
+            {"slot": "pronouns", "kind": "fact", "prompt": "What pronouns should I use for you? (optional)"},
+            {"slot": "title", "kind": "fact", "prompt": "What's your job title/role? (optional)"},
+            {"slot": "employer", "kind": "fact", "prompt": "Who do you work for? (optional)"},
+            {"slot": "location", "kind": "fact", "prompt": "Where are you located? (optional)"},
+            {"slot": "communication_style", "kind": "pref", "prompt": "How should I communicate? (e.g., concise, detailed, direct)"},
+            {"slot": "goals", "kind": "pref", "prompt": "What are you hoping to use this assistant for?"},
+        ],
+    },
 }
 
 
@@ -72,6 +131,31 @@ def load_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     return dict(_DEFAULT_CONFIG)
 
 
-@lru_cache(maxsize=1)
-def get_runtime_config() -> Dict[str, Any]:
+@lru_cache(maxsize=32)
+def _get_runtime_config_cached(resolved_path: str, cwd: str) -> Dict[str, Any]:
+    # Note: we include cwd in the cache key because default resolution
+    # searches Path.cwd() / crt_runtime_config.json.
+    if resolved_path:
+        return load_runtime_config(resolved_path)
     return load_runtime_config(None)
+
+
+def get_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """Return CRT runtime config with safe caching.
+
+    Cache key incorporates the resolved config path (explicit arg or
+    CRT_RUNTIME_CONFIG_PATH) and the current working directory.
+    """
+
+    resolved_path = (config_path or os.environ.get("CRT_RUNTIME_CONFIG_PATH") or "").strip()
+    cwd = str(Path.cwd())
+    return _get_runtime_config_cached(resolved_path, cwd)
+
+
+def clear_runtime_config_cache() -> None:
+    """Clear cached runtime config.
+
+    Primarily useful in tests that mutate CRT_RUNTIME_CONFIG_PATH.
+    """
+
+    _get_runtime_config_cached.cache_clear()
