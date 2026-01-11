@@ -1,13 +1,16 @@
-"""
-Ollama LLM Client for CRT
+"""Ollama LLM client for CRT.
 
-Provides interface to local Ollama models.
+This integration is optional. The rest of the repo (tests, heuristic tooling)
+should remain usable even when the `ollama` Python package isn't installed.
 """
 
 import os
-
-import ollama
 from typing import Optional, Dict, List, Any
+
+try:
+    import ollama  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover
+    ollama = None  # type: ignore[assignment]
 
 
 class OllamaClient:
@@ -25,6 +28,11 @@ class OllamaClient:
         """
         self.model = model
 
+        if ollama is None:
+            raise ModuleNotFoundError(
+                "Optional dependency 'ollama' is not installed. Install with: pip install ollama"
+            )
+
         # Default request timeout so the UI/test harness can't hang forever.
         # Can be overridden via env var OLLAMA_TIMEOUT_SECONDS.
         timeout_s = None
@@ -37,7 +45,7 @@ class OllamaClient:
         # Use a dedicated client instance so we can pass timeout/settings.
         # The underlying ollama Python client forwards kwargs to httpx.Client.
         try:
-            self._client = ollama.Client(timeout=timeout_s)
+            self._client = ollama.Client(timeout=timeout_s)  # type: ignore[union-attr]
         except Exception:
             self._client = None
         self._verify_model()
@@ -49,7 +57,7 @@ class OllamaClient:
             if self._client is not None and hasattr(self._client, "list"):
                 self._client.list()
             else:
-                ollama.list()
+                ollama.list()  # type: ignore[union-attr]
             # If we get here, Ollama is running
         except:
             # Silently continue - we'll find out when we try to generate
@@ -90,7 +98,7 @@ class OllamaClient:
         })
         
         try:
-            chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat
+            chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat  # type: ignore[union-attr]
 
             response = chat_fn(
                 model=self.model,
@@ -135,7 +143,7 @@ class OllamaClient:
             Generated response
         """
         try:
-            chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat
+            chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat  # type: ignore[union-attr]
 
             response = chat_fn(
                 model=self.model,
@@ -207,6 +215,10 @@ _global_client: Optional[OllamaClient] = None
 def get_ollama_client(model: str = "llama3.2:latest") -> OllamaClient:
     """Get or create global Ollama client."""
     global _global_client
+    if ollama is None:
+        raise ModuleNotFoundError(
+            "Optional dependency 'ollama' is not installed. Install with: pip install ollama"
+        )
     if _global_client is None or _global_client.model != model:
         _global_client = OllamaClient(model)
     return _global_client

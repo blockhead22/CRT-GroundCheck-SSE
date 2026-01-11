@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "runs_requested": 2,
+    "runs_completed": 2,
+    "turns_per_run": 60,
+    "controller": "heuristic",
+    "sut_model": "llama3.2:latest",
+    "controller_model": "llama3.2:latest",
+    "timestamp": 1768167636.0680315
+  },
+  "summary": {
+    "total_checks": 146,
+    "total_passed": 146,
+    "total_failures": 0,
+    "overall_pass_rate": 100.0
+  },
+  "runs": [
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\rc_smoke_2x60_all_1337\\run_0001",
+      "transcript_path": "D:\\AI_round2\\artifacts\\rc_smoke_2x60_all_1337\\run_0001\\crt_adaptive_stress_test.latest.json",
+      "turns": 60,
+      "checks": 73,
+      "passed": 73,
+      "failures": 0,
+      "failed_items": [],
+      "pass_rate": 100.0
+    },
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\rc_smoke_2x60_all_1337\\run_0002",
+      "transcript_path": "D:\\AI_round2\\artifacts\\rc_smoke_2x60_all_1337\\run_0002\\crt_adaptive_stress_test.latest.json",
+      "turns": 60,
+      "checks": 73,
+      "passed": 73,
+      "failures": 0,
+      "failed_items": [],
+      "pass_rate": 100.0
+    }
+  ]
+}

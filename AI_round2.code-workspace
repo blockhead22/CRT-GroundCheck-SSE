@@ -4,5 +4,12 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			"/^python crt_stress_test\\.py --help$/": {
+				"approve": true,
+				"matchCommandLine": true
+			}
+		}
+	}
 }
