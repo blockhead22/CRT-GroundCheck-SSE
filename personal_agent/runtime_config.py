@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from personal_agent.schema_validation import format_errors, load_schema, validate_instance
 
 
 _DEFAULT_CONFIG: Dict[str, Any] = {
     "learned_suggestions": {
         "enabled": True,
         "emit_metadata": True,
+        "emit_ab": True,
         "print_in_stress_test": False,
         "write_jsonl": True,
         "jsonl_include_full_answer": False,
@@ -24,8 +28,16 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
             "enabled": False,
             "max_tokens": 140,
         },
-    }
-    ,
+    },
+
+    # Settings for the reflection/training loop that turns accepted suggestions into a lightweight model.
+    "reflection": {
+        "artifacts_dir": "artifacts",
+        "out_model_path": "artifacts/learned_suggestions.latest.joblib",
+        "min_examples": 50,
+        "max_runs": 0,
+    },
+
     # When enabled, uncertainty responses include a layperson-friendly explanation
     # that the assistant might be wrong due to conflicting information.
     "conflict_warning": {
@@ -97,7 +109,34 @@ def _deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any
     return out
 
 
-def load_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def _is_strict_validation_enabled(strict: Optional[bool]) -> bool:
+    if strict is not None:
+        return bool(strict)
+    raw = os.environ.get("CRT_STRICT_SCHEMA_VALIDATION", "").strip().lower()
+    return raw in {"1", "true", "yes", "y", "on"}
+
+
+def _validate_runtime_config_or_raise(cfg: Dict[str, Any]) -> None:
+    schema = load_schema("crt_runtime_config.v1.schema.json")
+    errors = validate_instance(cfg, schema)
+    if errors:
+        raise ValueError(
+            "CRT runtime config failed schema validation (crt_runtime_config.v1.schema.json):\n"
+            + format_errors(errors)
+        )
+
+
+def _validate_runtime_config(cfg: Dict[str, Any], *, strict: bool) -> Optional[str]:
+    try:
+        _validate_runtime_config_or_raise(cfg)
+        return None
+    except Exception as exc:
+        if strict:
+            raise
+        return str(exc)
+
+
+def load_runtime_config(config_path: Optional[str] = None, *, strict: Optional[bool] = None) -> Dict[str, Any]:
     """Load CRT runtime config.
 
     Resolution order:
@@ -108,14 +147,23 @@ def load_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     If nothing exists / parse fails, returns defaults.
     """
 
+    strict_enabled = _is_strict_validation_enabled(strict)
+
     candidate = config_path or os.environ.get("CRT_RUNTIME_CONFIG_PATH")
 
     if candidate:
         path = Path(candidate)
         if path.exists() and path.is_file():
             try:
-                return _deep_merge(_DEFAULT_CONFIG, json.loads(path.read_text(encoding="utf-8")))
+                merged = _deep_merge(_DEFAULT_CONFIG, json.loads(path.read_text(encoding="utf-8")))
+                err = _validate_runtime_config(merged, strict=strict_enabled)
+                if err:
+                    warnings.warn(err, RuntimeWarning)
+                    return dict(_DEFAULT_CONFIG)
+                return merged
             except Exception:
+                if strict_enabled:
+                    raise
                 return dict(_DEFAULT_CONFIG)
         return dict(_DEFAULT_CONFIG)
 
@@ -124,23 +172,34 @@ def load_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     for candidate_path in (module_default, Path.cwd() / "crt_runtime_config.json"):
         if candidate_path.exists() and candidate_path.is_file():
             try:
-                return _deep_merge(_DEFAULT_CONFIG, json.loads(candidate_path.read_text(encoding="utf-8")))
+                merged = _deep_merge(_DEFAULT_CONFIG, json.loads(candidate_path.read_text(encoding="utf-8")))
+                err = _validate_runtime_config(merged, strict=strict_enabled)
+                if err:
+                    warnings.warn(err, RuntimeWarning)
+                    return dict(_DEFAULT_CONFIG)
+                return merged
             except Exception:
+                if strict_enabled:
+                    raise
                 return dict(_DEFAULT_CONFIG)
 
+    # Validate defaults too (schema may evolve).
+    err = _validate_runtime_config(dict(_DEFAULT_CONFIG), strict=strict_enabled)
+    if err:
+        warnings.warn(err, RuntimeWarning)
     return dict(_DEFAULT_CONFIG)
 
 
 @lru_cache(maxsize=32)
-def _get_runtime_config_cached(resolved_path: str, cwd: str) -> Dict[str, Any]:
+def _get_runtime_config_cached(resolved_path: str, cwd: str, strict_enabled: bool) -> Dict[str, Any]:
     # Note: we include cwd in the cache key because default resolution
     # searches Path.cwd() / crt_runtime_config.json.
     if resolved_path:
-        return load_runtime_config(resolved_path)
-    return load_runtime_config(None)
+        return load_runtime_config(resolved_path, strict=strict_enabled)
+    return load_runtime_config(None, strict=strict_enabled)
 
 
-def get_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+def get_runtime_config(config_path: Optional[str] = None, *, strict: Optional[bool] = None) -> Dict[str, Any]:
     """Return CRT runtime config with safe caching.
 
     Cache key incorporates the resolved config path (explicit arg or
@@ -149,7 +208,8 @@ def get_runtime_config(config_path: Optional[str] = None) -> Dict[str, Any]:
 
     resolved_path = (config_path or os.environ.get("CRT_RUNTIME_CONFIG_PATH") or "").strip()
     cwd = str(Path.cwd())
-    return _get_runtime_config_cached(resolved_path, cwd)
+    strict_enabled = _is_strict_validation_enabled(strict)
+    return _get_runtime_config_cached(resolved_path, cwd, strict_enabled)
 
 
 def clear_runtime_config_cache() -> None:
