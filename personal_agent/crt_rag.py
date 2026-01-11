@@ -1761,6 +1761,11 @@ class CRTEnhancedRAG:
             r"\bwhat('?s|\s+is)\s+your\s+experience\b",
             r"\b(tell\s+me|can\s+you\s+tell\s+me)\s+about\s+your\s+(background|experience)\b",
             r"\babout\s+your\s+(background|experience)\b",
+            # Work-in-domain questions (often phrased as 'your work in X').
+            r"\b(tell\s+me|can\s+you\s+tell\s+me)\s+about\s+your\s+work\s+in\b",
+            r"\babout\s+your\s+work\s+in\b",
+            r"\bwhat\s+work\s+have\s+you\s+done\s+in\b",
+            r"\bwhat\s+is\s+your\s+work\s+in\b",
             r"\bdo\s+you\s+have\s+(any\s+)?(background|experience)\b",
             r"\bwhat\s+experience\s+do\s+you\s+have\b",
             r"\bhave\s+you\s+(ever\s+)?worked\s+(as|in)\b",
@@ -1794,6 +1799,8 @@ class CRTEnhancedRAG:
 
         if (
             re.search(r"\b(background|experience)\b", q)
+            or re.search(r"\byour\s+work\s+in\b", q)
+            or re.search(r"\bwhat\s+work\s+have\s+you\s+done\s+in\b", q)
             or re.search(r"\bwhat\s+experience\s+do\s+you\s+have\b", q)
             or re.search(r"\bhave\s+you\s+(ever\s+)?worked\s+(as|in)\b", q)
         ):

@@ -4,3 +4,4 @@ sentence-transformers
 jsonschema
 pytest
 hdbscan
+websockets

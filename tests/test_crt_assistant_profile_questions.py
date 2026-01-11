@@ -70,6 +70,19 @@ def test_assistant_background_filmmaking_paraphrase_is_deterministic(rag: CRTEnh
     assert "you mentioned" not in ans
 
 
+def test_assistant_work_filmmaking_paraphrase_is_deterministic(rag: CRTEnhancedRAG):
+    out = rag.query("Can you tell me about your work in filmmaking?")
+    ans = (out.get("answer") or "").lower()
+
+    assert out.get("gate_reason") == "assistant_profile"
+    assert "film" in ans
+    assert "ok" not in ans
+
+    assert "stored memories" not in ans
+    assert "i recall" not in ans
+    assert "you mentioned" not in ans
+
+
 def test_assistant_experience_question_is_deterministic(rag: CRTEnhancedRAG):
     out = rag.query("Do you have experience as a filmmaker?")
     ans = (out.get("answer") or "").lower()
