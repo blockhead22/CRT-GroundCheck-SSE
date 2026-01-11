@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Audit Answer Record v1",
+  "description": "Portable audit record for a single CRT answer (what was asked, what was answered, and what context was used).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "ts", "user_text", "answer_text", "mode"],
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "description": "Answer id (UUID recommended)." },
+    "ts": { "type": "string", "format": "date-time" },
+    "user_text": { "type": "string" },
+    "answer_text": { "type": "string" },
+    "mode": { "type": "string", "minLength": 1 },
+    "gate_reason": { "type": ["string", "null"] },
+    "retrieved_memory_ids": { "type": "array", "items": { "type": "string" } },
+    "retrieved_doc_ids": { "type": "array", "items": { "type": "string" } },
+    "contradiction_detected": { "type": ["boolean", "null"] },
+    "unresolved_contradictions": { "type": ["integer", "null"], "minimum": 0 }
+  }
+}

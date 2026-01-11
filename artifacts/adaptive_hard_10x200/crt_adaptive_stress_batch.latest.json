@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "runs_requested": 10,
+    "runs_completed": 2,
+    "turns_per_run": 200,
+    "controller": "llm",
+    "sut_model": "llama3.2:latest",
+    "controller_model": "llama3.2:latest",
+    "timestamp": 1768155572.1716585
+  },
+  "summary": {
+    "total_checks": 535,
+    "total_passed": 534,
+    "total_failures": 1,
+    "overall_pass_rate": 99.81308411214954
+  },
+  "runs": [
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\adaptive_hard_10x200\\run_0001",
+      "transcript_path": "D:\\AI_round2\\artifacts\\adaptive_hard_10x200\\run_0001\\crt_adaptive_stress_test.latest.json",
+      "turns": 200,
+      "checks": 270,
+      "passed": 270,
+      "failures": 0,
+      "failed_items": [],
+      "pass_rate": 100.0
+    },
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\adaptive_hard_10x200\\run_0002",
+      "transcript_path": "D:\\AI_round2\\artifacts\\adaptive_hard_10x200\\run_0002\\crt_adaptive_stress_test.latest.json",
+      "turns": 200,
+      "checks": 265,
+      "passed": 264,
+      "failures": 1,
+      "failed_items": [
+        {
+          "turn": 1,
+          "check": "memory_claim_named_entities_grounded",
+          "passed": false,
+          "details": "ungrounded=Cognitive-Reflective Transformer",
+          "user": "Hi\u2014I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). I run The Printing Lair (print/sticker shop)."
+        }
+      ],
+      "pass_rate": 99.62264150943396
+    }
+  ]
+}

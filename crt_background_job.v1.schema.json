@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Background Job Artifact v1",
+  "description": "Portable JSON representation of a single background-learning job run (the 'subconscious' worker).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["job"],
+  "properties": {
+    "job": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "status", "created_at", "payload"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Job id (UUID recommended)." },
+        "type": {
+          "type": "string",
+          "enum": [
+            "summarize_session",
+            "extract_slots",
+            "mine_contradictions",
+            "research_fetch",
+            "research_summarize",
+            "research_compare",
+            "propose_promotions",
+            "monitor_source"
+          ]
+        },
+        "status": { "type": "string", "enum": ["queued", "running", "succeeded", "failed", "canceled"] },
+        "priority": { "type": "integer", "minimum": 0 },
+        "created_at": { "type": "string", "format": "date-time" },
+        "started_at": { "type": ["string", "null"], "format": "date-time" },
+        "finished_at": { "type": ["string", "null"], "format": "date-time" },
+        "payload": {
+          "type": "object",
+          "description": "Job-type-specific payload. Intentionally flexible.",
+          "additionalProperties": true
+        },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ts", "level", "message"],
+        "properties": {
+          "ts": { "type": "string", "format": "date-time" },
+          "level": { "type": "string", "enum": ["debug", "info", "warn", "error"] },
+          "message": { "type": "string" },
+          "data": { "type": ["object", "null"], "additionalProperties": true }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "path", "created_at"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["summary", "evidence_packet", "extracted_facts", "contradictions", "proposal"] },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": ["string", "null"], "minLength": 0 },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "result": {
+      "type": ["object", "null"],
+      "additionalProperties": true,
+      "description": "Optional structured job result; free-form for v1."
+    }
+  }
+}

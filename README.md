@@ -118,6 +118,22 @@ The compressed index is a single JSON file (`index.json`) containing:
 
 - **Deterministic**: No randomness where possible; reproducible results.
 - **Local-only**: No remote APIs; can run entirely offline.
+
+---
+
+## CRT (Truthful Personal AI) — Roadmap & Architecture
+
+This repo also contains CRT (Cognitive-Reflective Transformer): a local-first, truth-contract-driven personal AI with memory, provenance, contradiction handling, a Control Panel UI, and a background-learning (“subconscious”) worker.
+
+Start here:
+- `CRT_MASTER_FOCUS_ROADMAP.md` (single consolidated roadmap + schemas + pseudocode)
+
+Related:
+- `CRT_CONTROL_PANEL_ROADMAP.md`
+- `CRT_ROADMAP_TRUTHFUL_PERSONAL_AI.md`
+- `CRT_BACKGROUND_LEARNING.md`
+- `BROWSER_BRIDGE_README.md`
+- `CRT_ARTIFACT_SCHEMAS.md`
 - **No hallucination**: If uncertain, record as open_question, not a claim.
 - **Explicit contradictions**: Record contradictions as first-class objects; never auto-resolve.
 - **Traceable claims**: Every claim must have supporting quote(s) with character offsets.

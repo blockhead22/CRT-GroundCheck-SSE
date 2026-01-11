@@ -29,7 +29,14 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.ollama_client import get_ollama_client, OllamaClient
+
+# Optional dependency: the LLM-driven controller uses Ollama.
+# Keep heuristic mode runnable without requiring the `ollama` package.
+try:
+    from personal_agent.ollama_client import get_ollama_client, OllamaClient
+except ModuleNotFoundError:  # pragma: no cover
+    get_ollama_client = None  # type: ignore[assignment]
+    OllamaClient = object  # type: ignore[misc,assignment]
 
 from crt_response_eval import evaluate_turn
 
@@ -75,7 +82,7 @@ def _build_profile_seed_message(profile_text: str) -> str:
 
     # Keep this short and high-signal; controller prompt limits are stricter than CRT.
     return (
-        "Hi—I'm Nick Block. I built CRT (memory-first, trust evolution + contradiction detection). "
+        "Hi—I'm Nick Block. I built CRT (Cognitive-Reflective Transformer; memory-first, trust evolution + contradiction detection). "
         "I run The Printing Lair (print/sticker shop)."
     )
 

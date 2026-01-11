@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Runtime Config v1",
+  "description": "Runtime policy/config surface for CRT. This schema is strict by default to keep config changes intentional.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "learned_suggestions",
+    "provenance",
+    "reflection",
+    "conflict_warning",
+    "assistant_profile",
+    "user_named_reference",
+    "onboarding"
+  ],
+  "properties": {
+    "learned_suggestions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "emit_metadata",
+        "emit_ab",
+        "print_in_stress_test",
+        "write_jsonl",
+        "jsonl_include_full_answer"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "emit_metadata": { "type": "boolean" },
+        "emit_ab": { "type": "boolean" },
+        "print_in_stress_test": { "type": "boolean" },
+        "write_jsonl": { "type": "boolean" },
+        "jsonl_include_full_answer": { "type": "boolean" }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "world_check"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "world_check": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "max_tokens"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "max_tokens": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "reflection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifacts_dir", "out_model_path", "min_examples", "max_runs"],
+      "properties": {
+        "artifacts_dir": { "type": "string", "minLength": 1 },
+        "out_model_path": { "type": "string", "minLength": 1 },
+        "min_examples": { "type": "integer", "minimum": 0 },
+        "max_runs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "conflict_warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "assistant_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "responses"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "responses": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "occupation",
+            "purpose",
+            "identity",
+            "background_general",
+            "background_filmmaking"
+          ],
+          "properties": {
+            "occupation": { "type": "string" },
+            "purpose": { "type": "string" },
+            "identity": { "type": "string" },
+            "background_general": { "type": "string" },
+            "background_filmmaking": { "type": "string" }
+          }
+        }
+      }
+    },
+    "user_named_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "responses"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "responses": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["known_work_prefix", "ask_to_store", "unknown"],
+          "properties": {
+            "known_work_prefix": { "type": "string" },
+            "ask_to_store": { "type": "string" },
+            "unknown": { "type": "string" }
+          }
+        }
+      }
+    },
+    "onboarding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "auto_run_when_memory_empty", "questions"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "auto_run_when_memory_empty": { "type": "boolean" },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slot", "kind", "prompt"],
+            "properties": {
+              "slot": { "type": "string", "minLength": 1 },
+              "kind": { "type": "string", "enum": ["fact", "pref"] },
+              "prompt": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

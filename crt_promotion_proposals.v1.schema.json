@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Promotion Proposals v1",
+  "description": "Human-in-the-loop proposals produced by background learning. These are candidates for belief-lane memory updates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "proposals"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "generated_at"],
+      "properties": {
+        "version": { "type": "string", "enum": ["v1"] },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "source_job_id": { "type": ["string", "null"], "minLength": 0 },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "memory"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "Proposal id (UUID recommended)." },
+          "status": { "type": "string", "enum": ["proposed", "approved", "rejected"] },
+          "rationale": { "type": ["string", "null"] },
+          "memory": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind", "lane", "value_text", "source", "provenance"],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "fact",
+                  "preference",
+                  "episodic",
+                  "research_note",
+                  "derived_summary",
+                  "policy",
+                  "tool_log"
+                ]
+              },
+              "lane": { "type": "string", "enum": ["belief", "notes"] },
+              "key": { "type": ["string", "null"], "minLength": 0 },
+              "value_text": { "type": "string", "minLength": 1 },
+              "source": { "type": "string", "enum": ["user", "chat", "research", "tool", "system"] },
+              "trust": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "confidence": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+              "supersedes_id": { "type": ["string", "null"], "minLength": 0 },
+              "provenance": {
+                "type": "object",
+                "additionalProperties": true,
+                "description": "Provenance payload (urls, quotes, timestamps, tool ids)."
+              },
+              "evidence": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["source_type"],
+                  "properties": {
+                    "source_type": { "type": "string", "enum": ["memory", "url", "chat", "tool"] },
+                    "memory_id": { "type": ["string", "null"], "minLength": 0 },
+                    "url": { "type": ["string", "null"], "minLength": 0 },
+                    "quote_text": { "type": ["string", "null"] },
+                    "timestamp": { "type": ["string", "null"], "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

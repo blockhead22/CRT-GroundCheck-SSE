@@ -101,8 +101,14 @@ def _extract_named_phrases(text: str) -> List[str]:
             "where",
             "why",
             "how",
+            # Time markers often get picked up by the Title-Case heuristic (e.g. "9 AM and").
+            "am",
+            "pm",
         }
         if first_token in non_entity_first_tokens:
+            continue
+        # Drop short all-caps time markers and their common continuations.
+        if pn in {"am", "pm", "am and", "pm and", "am on", "pm on"}:
             continue
         if pn.startswith("hey ") or pn.startswith("hi ") or pn.startswith("hello "):
             continue
