@@ -312,6 +312,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     except Exception as e:
         raise SystemExit(f"Prediction failed: {e}")
 
+    true_label_counts: Dict[str, int] = {}
+    pred_label_counts: Dict[str, int] = {}
+    for yt, yp in zip(y_all, y_pred):
+        true_label_counts[str(yt)] = int(true_label_counts.get(str(yt), 0) + 1)
+        pred_label_counts[str(yp)] = int(pred_label_counts.get(str(yp), 0) + 1)
+
+    total_preds = int(sum(pred_label_counts.values()) or 0)
+    prefer_latest_rate_pred = (
+        float(pred_label_counts.get("prefer_latest", 0)) / total_preds if total_preds else None
+    )
+
     # Metrics (keep lightweight)
     try:
         from sklearn.metrics import accuracy_score, confusion_matrix  # type: ignore
@@ -367,6 +378,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         "metrics": {
             "examples": int(len(X_all)),
             "accuracy": acc,
+            "true_label_counts": true_label_counts,
+            "pred_label_counts": pred_label_counts,
+            "prefer_latest_rate_pred": prefer_latest_rate_pred,
             "labels": labels,
             "confusion_matrix": cm_list,
             "by_slot": by_slot,

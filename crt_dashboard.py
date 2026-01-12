@@ -131,6 +131,8 @@ def render_learned_model_tracking() -> None:
             m = ev.get("metrics") or {}
             eacc = m.get("accuracy")
             st.metric("Eval acc", f"{float(eacc):.3f}" if eacc is not None else "N/A")
+            pr = m.get("prefer_latest_rate_pred")
+            st.metric("Prefer-latest rate", f"{float(pr):.1%}" if pr is not None else "N/A")
 
     # Timeline view from available meta files
     rows: List[Dict[str, Any]] = []
@@ -146,6 +148,7 @@ def render_learned_model_tracking() -> None:
                 "examples": int((ex or {}).get("count") or 0),
                 "train_accuracy": (ex or {}).get("train_accuracy"),
                 "eval_accuracy": (metrics or {}).get("accuracy"),
+                "prefer_latest_rate_pred": (metrics or {}).get("prefer_latest_rate_pred"),
                 "sha256": (m.get("out_sha256") if isinstance(m, dict) else None),
             }
         )
@@ -171,6 +174,21 @@ def render_learned_model_tracking() -> None:
         except Exception:
             pass
 
+        # Prefer-latest rate plot (if present)
+        try:
+            if "prefer_latest_rate_pred" in df_sorted.columns:
+                df_pr = df_sorted.dropna(subset=["prefer_latest_rate_pred"])
+                if not df_pr.empty:
+                    fig3 = px.line(
+                        df_pr,
+                        x="mtime",
+                        y="prefer_latest_rate_pred",
+                        title="Prefer-latest prediction rate over time",
+                    )
+                    st.plotly_chart(fig3, use_container_width=True)
+        except Exception:
+            pass
+
     st.subheader("Compare Two Models")
     col_a, col_b = st.columns(2)
     with col_a:
@@ -187,8 +205,12 @@ def render_learned_model_tracking() -> None:
     if left and right:
         lm = _load_learned_model_meta(Path(left)) or {}
         rm = _load_learned_model_meta(Path(right)) or {}
+        le = _load_learned_model_eval(Path(left)) or {}
+        re = _load_learned_model_eval(Path(right)) or {}
         l_ex = lm.get("examples") if isinstance(lm.get("examples"), dict) else {}
         r_ex = rm.get("examples") if isinstance(rm.get("examples"), dict) else {}
+        l_metrics = le.get("metrics") if isinstance(le.get("metrics"), dict) else {}
+        r_metrics = re.get("metrics") if isinstance(re.get("metrics"), dict) else {}
 
         st.write("Diff (high level)")
         st.write(
@@ -201,12 +223,107 @@ def render_learned_model_tracking() -> None:
                     "left": (l_ex or {}).get("train_accuracy"),
                     "right": (r_ex or {}).get("train_accuracy"),
                 },
+                "eval_accuracy": {
+                    "left": (l_metrics or {}).get("accuracy"),
+                    "right": (r_metrics or {}).get("accuracy"),
+                },
+                "prefer_latest_rate_pred": {
+                    "left": (l_metrics or {}).get("prefer_latest_rate_pred"),
+                    "right": (r_metrics or {}).get("prefer_latest_rate_pred"),
+                },
                 "sha256": {
                     "left": lm.get("out_sha256"),
                     "right": rm.get("out_sha256"),
                 },
             }
         )
+
+        # Per-slot accuracy diffs (from eval artifacts)
+        l_by_slot = (l_metrics or {}).get("by_slot") if isinstance((l_metrics or {}).get("by_slot"), dict) else {}
+        r_by_slot = (r_metrics or {}).get("by_slot") if isinstance((r_metrics or {}).get("by_slot"), dict) else {}
+        if l_by_slot and r_by_slot:
+            common = sorted(set(l_by_slot.keys()) & set(r_by_slot.keys()))
+            slot_rows: List[Dict[str, Any]] = []
+            for slot in common:
+                la = (l_by_slot.get(slot) or {}).get("accuracy")
+                ra = (r_by_slot.get(slot) or {}).get("accuracy")
+                lc = int((l_by_slot.get(slot) or {}).get("count") or 0)
+                rc = int((r_by_slot.get(slot) or {}).get("count") or 0)
+                if la is None or ra is None:
+                    continue
+                slot_rows.append(
+                    {
+                        "slot": slot,
+                        "left_count": lc,
+                        "right_count": rc,
+                        "left_acc": float(la),
+                        "right_acc": float(ra),
+                        "delta_acc": float(ra) - float(la),
+                    }
+                )
+            if slot_rows:
+                df_slots = pd.DataFrame(slot_rows)
+                df_slots["abs_delta"] = df_slots["delta_acc"].abs()
+                df_slots = df_slots.sort_values("abs_delta", ascending=False).drop(columns=["abs_delta"]).head(30)
+                st.subheader("Per-slot accuracy deltas (top 30 by |Δ|)")
+                st.dataframe(df_slots, use_container_width=True)
+        else:
+            st.info("Per-slot compare requires eval artifacts for both models.")
+
+        # Confusion matrix compare
+        l_cm = (l_metrics or {}).get("confusion_matrix")
+        r_cm = (r_metrics or {}).get("confusion_matrix")
+        l_labels = (l_metrics or {}).get("labels")
+        r_labels = (r_metrics or {}).get("labels")
+        if isinstance(l_cm, list) and isinstance(r_cm, list) and isinstance(l_labels, list) and isinstance(r_labels, list):
+            if l_labels == r_labels and l_cm and r_cm:
+                st.subheader("Confusion Matrix (Compare)")
+                normalize = st.checkbox("Normalize rows", value=False, key="learned_model_cm_normalize")
+
+                def _normalize_cm(cm: List[List[int]]) -> List[List[float]]:
+                    out: List[List[float]] = []
+                    for row in cm:
+                        s = float(sum(row) or 0.0)
+                        if s <= 0:
+                            out.append([0.0 for _ in row])
+                        else:
+                            out.append([float(v) / s for v in row])
+                    return out
+
+                def _plot_cm(title: str, labels: List[str], cm_vals: Any) -> "go.Figure":
+                    fig = go.Figure(
+                        data=
+                        [
+                            go.Heatmap(
+                                z=cm_vals,
+                                x=labels,
+                                y=labels,
+                                colorscale="Blues",
+                                hovertemplate="true=%{y}<br>pred=%{x}<br>value=%{z}<extra></extra>",
+                            )
+                        ]
+                    )
+                    fig.update_layout(
+                        title=title,
+                        xaxis_title="Predicted",
+                        yaxis_title="True",
+                        height=350,
+                        margin=dict(l=50, r=20, t=50, b=50),
+                    )
+                    return fig
+
+                l_cm_vals = _normalize_cm(l_cm) if normalize else l_cm
+                r_cm_vals = _normalize_cm(r_cm) if normalize else r_cm
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.plotly_chart(_plot_cm("Left", l_labels, l_cm_vals), use_container_width=True)
+                with c2:
+                    st.plotly_chart(_plot_cm("Right", r_labels, r_cm_vals), use_container_width=True)
+            else:
+                st.info("Confusion-matrix compare requires both evals to have the same label set.")
+        else:
+            st.info("Confusion-matrix compare requires eval artifacts for both models.")
 
 
 # ============================================================================
