@@ -1,0 +1,17 @@
+{
+  "metadata": {
+    "version": "v1",
+    "generated_at": "2026-01-12T00:00:00+00:00",
+    "source_proposals_path": "artifacts/live_promotions_20260111/promotions/proposals.livepromos-20260111.json",
+    "source_job_id": "livepromos-20260111",
+    "notes": "manual decisions artifact for dry-run"
+  },
+  "decisions": [
+    {
+      "proposal_id": "livepromos-20260111:name",
+      "decision": "approved",
+      "decided_at": "2026-01-12T00:00:00+00:00",
+      "reason": "dry-run test approval"
+    }
+  ]
+}

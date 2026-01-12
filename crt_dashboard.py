@@ -23,6 +23,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import sqlite3
 import json
+import shutil
 from pathlib import Path
 import glob
 
@@ -30,7 +31,13 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.crt_memory import CRTMemorySystem, MemoryItem
 from personal_agent.crt_ledger import ContradictionLedger, ContradictionEntry
 from personal_agent.crt_core import MemorySource, SSEMode
-from personal_agent.artifact_store import now_iso_utc, write_promotion_decisions, validate_payload_against_schema
+from personal_agent.artifact_store import (
+    now_iso_utc,
+    validate_payload_against_schema,
+    write_promotion_apply_result,
+    write_promotion_decisions,
+)
+from personal_agent.promotion_apply import apply_promotions
 
 
 # ============================================================================
@@ -713,6 +720,39 @@ def _find_proposal_artifacts(base_dir: Path) -> List[Path]:
     return out
 
 
+def _find_decisions_artifacts(base_dir: Path) -> List[Path]:
+    patterns = [
+        str(base_dir / "**" / "approvals" / "decisions.*.json"),
+    ]
+    out: List[Path] = []
+    for pat in patterns:
+        for p in glob.glob(pat, recursive=True):
+            try:
+                out.append(Path(p))
+            except Exception:
+                continue
+    out = [p for p in out if p.exists() and p.is_file()]
+    out.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return out
+
+
+def _render_apply_results(results: List[Dict[str, Any]]) -> None:
+    if not results:
+        st.info("No results to display.")
+        return
+    applied = sum(1 for r in results if r.get("action") == "applied")
+    skipped = sum(1 for r in results if r.get("action") == "skipped")
+    errors = sum(1 for r in results if r.get("action") == "error")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Applied", applied)
+    with col2:
+        st.metric("Skipped", skipped)
+    with col3:
+        st.metric("Errors", errors)
+    st.dataframe(pd.DataFrame(results), use_container_width=True)
+
+
 def render_promotion_approvals() -> None:
     st.header("✅ Promotion Approvals")
     st.caption("Review promotion proposals artifacts and record approve/reject decisions (does not change memories yet).")
@@ -821,12 +861,135 @@ def render_promotion_approvals() -> None:
 
             try:
                 write_promotion_decisions(out_path, payload)
+                st.session_state["last_written_decisions_path"] = str(out_path)
                 st.success(f"Wrote decisions: {out_path}")
             except Exception as e:
                 st.error(f"Failed to write decisions: {e}")
 
     with save_col2:
         st.caption("This records your decision as an artifact. Next milestone is applying approved items into a controlled memory lane with audit trail.")
+
+    st.markdown("---")
+    st.subheader("Apply (Dry-run / Sandbox / Real)")
+    st.caption(
+        "Dry-run shows what would be written; sandbox apply is recommended first. "
+        "Real apply writes to the selected DB and is gated behind an explicit confirmation."
+    )
+
+    decisions_files = _find_decisions_artifacts(base_dir)
+    default_decisions: Optional[Path] = None
+    last_written = st.session_state.get("last_written_decisions_path")
+    if last_written:
+        try:
+            p = Path(str(last_written))
+            if p.exists() and p.is_file():
+                default_decisions = p
+        except Exception:
+            default_decisions = None
+    if default_decisions is None and decisions_files:
+        default_decisions = decisions_files[0]
+
+    if not default_decisions:
+        st.info("No decisions artifact found yet. Save decisions above to enable apply actions.")
+        return
+
+    selected_decisions = st.selectbox(
+        "Select decisions artifact",
+        decisions_files or [default_decisions],
+        index=(0 if not decisions_files else max(0, (decisions_files.index(default_decisions) if default_decisions in decisions_files else 0))),
+        format_func=lambda p: str(Path(p).as_posix()),
+    )
+    decisions_path = Path(selected_decisions)
+
+    # Choose memory DB defaults conservatively.
+    proposals_meta = proposals_payload.get("metadata") or {}
+    default_memory_db = str(proposals_meta.get("memory_db") or "artifacts/crt_live_memory.db")
+    memory_db = st.text_input("Target memory DB (real)", value=default_memory_db)
+
+    sandbox_db_default = str((base_dir / "sandboxes" / f"sandbox_{Path(memory_db).stem}.db").as_posix())
+    sandbox_db = st.text_input("Sandbox memory DB", value=sandbox_db_default)
+
+    col_a, col_b, col_c = st.columns([1, 1, 2])
+    with col_a:
+        if st.button("Create/refresh sandbox DB"):
+            try:
+                src = Path(memory_db)
+                dst = Path(sandbox_db)
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                if not src.exists() or not src.is_file():
+                    raise FileNotFoundError(f"Target DB not found: {src}")
+                shutil.copy2(src, dst)
+                st.success(f"Sandbox ready: {dst}")
+            except Exception as e:
+                st.error(f"Failed to create sandbox: {e}")
+
+    with col_b:
+        if st.button("Dry-run apply (target DB)"):
+            try:
+                apply_payload, results = apply_promotions(
+                    memory_db=str(memory_db),
+                    proposals_path=proposals_path,
+                    decisions_path=decisions_path,
+                    dry_run=True,
+                )
+                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                source_job_id = metadata.get("source_job_id") or "unknown"
+                out_dir = base_dir / "apply_results"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out_path = out_dir / f"apply_result.{source_job_id}.{ts}.dry_run.json"
+                write_promotion_apply_result(out_path, apply_payload)
+                st.success(f"Dry-run complete. Wrote apply-result: {out_path}")
+                _render_apply_results(results)
+            except Exception as e:
+                st.error(f"Dry-run failed: {e}")
+
+    with col_c:
+        st.caption("Sandbox apply is the recommended next step after saving decisions.")
+
+    if st.button("Apply to sandbox DB", type="primary"):
+        try:
+            sb = Path(sandbox_db)
+            if not sb.exists() or not sb.is_file():
+                raise FileNotFoundError("Sandbox DB not found. Click 'Create/refresh sandbox DB' first.")
+            apply_payload, results = apply_promotions(
+                memory_db=str(sb),
+                proposals_path=proposals_path,
+                decisions_path=decisions_path,
+                dry_run=False,
+            )
+            ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            source_job_id = metadata.get("source_job_id") or "unknown"
+            out_dir = base_dir / "apply_results"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / f"apply_result.{source_job_id}.{ts}.sandbox.json"
+            write_promotion_apply_result(out_path, apply_payload)
+            st.success(f"Applied to sandbox. Wrote apply-result: {out_path}")
+            _render_apply_results(results)
+        except Exception as e:
+            st.error(f"Sandbox apply failed: {e}")
+
+    with st.expander("Danger zone: Apply to real DB", expanded=False):
+        st.warning("This writes to the target DB. Prefer sandbox-first.")
+        confirm = st.checkbox("I understand this will write to the target DB", value=False)
+        typed = st.text_input("Type APPLY to confirm", value="")
+        if st.button("Apply to target DB", disabled=not (confirm and typed.strip().upper() == "APPLY")):
+            try:
+                apply_payload, results = apply_promotions(
+                    memory_db=str(memory_db),
+                    proposals_path=proposals_path,
+                    decisions_path=decisions_path,
+                    dry_run=False,
+                )
+                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                source_job_id = metadata.get("source_job_id") or "unknown"
+                out_dir = base_dir / "apply_results"
+                out_dir.mkdir(parents=True, exist_ok=True)
+                out_path = out_dir / f"apply_result.{source_job_id}.{ts}.real.json"
+                write_promotion_apply_result(out_path, apply_payload)
+                st.success(f"Applied to target DB. Wrote apply-result: {out_path}")
+                _render_apply_results(results)
+            except Exception as e:
+                st.error(f"Real apply failed: {e}")
 
 
 # ============================================================================

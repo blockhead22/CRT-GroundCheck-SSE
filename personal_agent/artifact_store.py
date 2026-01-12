@@ -77,6 +77,10 @@ def write_promotion_decisions(path: Path, payload: Dict[str, Any]) -> None:
     write_validated_json(path, payload, "crt_promotion_decisions.v1.schema.json")
 
 
+def write_promotion_apply_result(path: Path, payload: Dict[str, Any]) -> None:
+    write_validated_json(path, payload, "crt_promotion_apply_result.v1.schema.json")
+
+
 def write_audit_answer_record(path: Path, payload: Dict[str, Any]) -> None:
     write_validated_json(path, payload, "crt_audit_answer_record.v1.schema.json")
 

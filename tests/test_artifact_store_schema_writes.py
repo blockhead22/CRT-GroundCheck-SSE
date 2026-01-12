@@ -10,6 +10,7 @@ from personal_agent.artifact_store import (
     now_iso_utc,
     write_audit_answer_record,
     write_background_job_artifact,
+    write_promotion_apply_result,
     write_promotion_decisions,
     write_promotion_proposals,
 )
@@ -105,4 +106,30 @@ def test_write_promotion_decisions_validates(tmp_path: Path) -> None:
         ],
     }
     write_promotion_decisions(out, payload)
+    assert out.exists()
+
+
+def test_write_promotion_apply_result_validates(tmp_path: Path) -> None:
+    out = tmp_path / "apply.json"
+    payload = {
+        "metadata": {
+            "version": "v1",
+            "generated_at": now_iso_utc(),
+            "memory_db": "artifacts/crt_live_memory.db",
+            "proposals_path": "artifacts/promotions/proposals.job-123.json",
+            "decisions_path": "artifacts/approvals/decisions.job-123.json",
+            "dry_run": True,
+            "notes": None,
+        },
+        "results": [
+            {
+                "proposal_id": "job-123:title",
+                "decision": "approved",
+                "action": "applied",
+                "new_memory_id": "dry_run",
+                "reason": "dry run",
+            }
+        ],
+    }
+    write_promotion_apply_result(out, payload)
     assert out.exists()

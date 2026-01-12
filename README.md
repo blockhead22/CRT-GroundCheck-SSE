@@ -4,6 +4,9 @@ Local prototype for meaning-preserving semantic compression of text with explici
 
 ## Quick Start
 
+For the CRT (truthful personal AI) workflow (background jobs → proposals → approvals → apply), see:
+- [CRT_HOW_TO_USE.md](CRT_HOW_TO_USE.md)
+
 ### Installation
 
 ```bash

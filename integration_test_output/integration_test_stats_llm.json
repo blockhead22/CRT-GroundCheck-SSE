@@ -1,14 +1,14 @@
 {
-  "timestamp": "2026-01-11T20:19:44.934943",
+  "timestamp": "2026-01-12T00:47:13.002864",
   "extraction_method": "llm",
   "text_length": 1183,
   "claim_count_llm": 20,
   "cluster_count": 5,
   "contradiction_count": 0,
-  "chunking": 0.0003666877746582031,
-  "embedding_chunks": 1.0714452266693115,
-  "extraction_llm": 0.0022423267364501953,
-  "embedding": 0.04997396469116211,
-  "clustering": 0.0006818771362304688,
-  "contradiction_detection": 0.0009877681732177734
+  "chunking": 0.00037670135498046875,
+  "embedding_chunks": 4.326868534088135,
+  "extraction_llm": 0.00261688232421875,
+  "embedding": 0.04107356071472168,
+  "clustering": 0.0007166862487792969,
+  "contradiction_detection": 0.001519918441772461
 }
