@@ -517,11 +517,38 @@ def _build_challenge_items(*, user_name: str) -> Dict[str, List[Tuple[str, str, 
         ),
     ]
 
+    # UX regression pack: ensure unresolved conflicts don't stall normal chat,
+    # but still produce an uncertainty state when the user asks about the conflicted slot.
+    ux: List[Tuple[str, str, Dict[str, Any]]] = [
+        (
+            "inject_name_conflict",
+            "My name is Emily.",
+            {"expect_contradiction": True},
+        ),
+        (
+            "smalltalk_not_uncertain",
+            "Hello again!",
+            {
+                "contradiction_should_be_false_for_questions": True,
+                "expect_not_uncertainty": True,
+            },
+        ),
+        (
+            "conflicted_slot_uncertainty",
+            "What's my name?",
+            {
+                "expect_uncertainty": True,
+                "must_contain": "I can still help with other parts of your question",
+            },
+        ),
+    ]
+
     return {
         "baseline": [],
         "adversarial": adversarial,
         "security": security,
         "memory": memory,
+        "ux": ux,
         "all": adversarial + security + memory,
     }
 
@@ -541,15 +568,23 @@ def _build_forced_schedule(
     if not items:
         return {}
 
-    rng = random.Random(seed)
-    rng.shuffle(items)
+    # UX pack is intentionally deterministic and ordered.
+    if pack != "ux":
+        rng = random.Random(seed)
+        rng.shuffle(items)
 
-    # Inject a forced probe periodically to guarantee coverage.
+    # Inject forced probes periodically to guarantee coverage.
     candidate_turns: List[int] = []
-    t = 3
-    while t <= max(int(turns), 1):
-        candidate_turns.append(t)
-        t += 7
+    if pack == "ux":
+        # Run the ordered UX probes early, back-to-back.
+        start = 3
+        for i in range(len(items)):
+            candidate_turns.append(start + i)
+    else:
+        t = 3
+        while t <= max(int(turns), 1):
+            candidate_turns.append(t)
+            t += 7
 
     schedule: Dict[int, Tuple[str, Dict[str, Any], str]] = {}
     for turn, (tactic, msg, expectations) in zip(candidate_turns, items):
@@ -775,7 +810,7 @@ def main() -> int:
     ap.add_argument("--controller-temp", type=float, default=0.3, help="Controller temperature")
     ap.add_argument(
         "--challenge-pack",
-        choices=["baseline", "adversarial", "security", "memory", "all"],
+        choices=["baseline", "adversarial", "security", "memory", "ux", "all"],
         default="baseline",
         help="Inject forced adversarial/security/memory probes on a schedule",
     )

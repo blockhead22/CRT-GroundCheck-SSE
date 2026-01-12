@@ -159,6 +159,7 @@ def evaluate_turn(
       - expect_contradiction: bool
       - contradiction_should_be_false_for_questions: bool
       - expect_uncertainty: bool
+            - expect_not_uncertainty: bool
       - expected_name: str (e.g. 'nick')
             - must_contain: str | List[str] (case-insensitive substring checks)
             - must_not_contain: str | List[str] (case-insensitive substring checks)
@@ -285,6 +286,17 @@ def evaluate_turn(
             EvalFinding(
                 check="uncertainty_expected",
                 passed=looks_uncertain,
+                details=f"mode={mode}, unresolved={unresolved}, conf={confidence:.2f}",
+            )
+        )
+
+    # 3b) Uncertainty mode explicitly NOT expected.
+    if expectations.get("expect_not_uncertainty"):
+        looks_uncertain = bool(UNCERTAINTY_PHRASE_RE.search(answer)) or mode == "uncertainty" or unresolved > 0
+        findings.append(
+            EvalFinding(
+                check="uncertainty_not_expected",
+                passed=(not looks_uncertain),
                 details=f"mode={mode}, unresolved={unresolved}, conf={confidence:.2f}",
             )
         )
