@@ -236,9 +236,12 @@ class CRTEnhancedRAG:
         t = (text or "").strip()
         if not t:
             return False
-        # Intentionally only match the explicit "for the record" pattern to avoid
-        # interfering with name-correction contradictions ("Actually, my name is...").
-        return bool(re.search(r"\bfor the record:.*\bmy name is\b", t, flags=re.IGNORECASE))
+        # Use fact-slot extraction so we catch common forms like:
+        # - "My name is Nick"
+        # - "I'm Nick"
+        # while avoiding false positives like "I'm trying to ...".
+        facts = extract_fact_slots(t) or {}
+        return "name" in facts
 
     def _is_user_named_reference_question(self, user_query: str) -> bool:
         """Detect third-person questions that refer to the user by (their) name.
@@ -727,6 +730,54 @@ class CRTEnhancedRAG:
                     answer = f"Thanks — noted: your name is {name_guess}."
                 else:
                     answer = "Thanks — noted."
+
+                # If the user previously stated a different name, record a contradiction entry.
+                contradiction_detected = False
+                contradiction_entry = None
+                try:
+                    new_facts = extract_fact_slots(user_query) or {}
+                    new_name = new_facts.get("name")
+                    if new_name is not None:
+                        all_memories = self.memory._load_all_memories()
+                        previous_user_memories = [
+                            m
+                            for m in all_memories
+                            if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
+                        ]
+                        prior_names: List[MemoryItem] = []
+                        for prev_mem in previous_user_memories:
+                            prev_facts = extract_fact_slots(prev_mem.text) or {}
+                            prev_name = prev_facts.get("name")
+                            if prev_name is None:
+                                continue
+                            if getattr(prev_name, "normalized", None) != getattr(new_name, "normalized", None):
+                                prior_names.append(prev_mem)
+
+                        if prior_names:
+                            selected_prev = max(
+                                prior_names,
+                                key=lambda m: (getattr(m, "timestamp", 0.0), getattr(m, "trust", 0.0)),
+                            )
+                            # Reuse existing embeddings from stored memories; do not invoke the embedder here.
+                            user_vector = user_memory.vector
+                            drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
+                            contradiction_entry = self.ledger.record_contradiction(
+                                old_memory_id=selected_prev.memory_id,
+                                new_memory_id=user_memory.memory_id,
+                                drift_mean=drift,
+                                confidence_delta=float(selected_prev.confidence) - 0.95,
+                                query=user_query,
+                                summary=f"User name changed: {selected_prev.text[:50]}... vs {user_query[:50]}...",
+                                old_text=selected_prev.text,
+                                new_text=user_query,
+                                old_vector=selected_prev.vector,
+                                new_vector=user_vector,
+                            )
+                            contradiction_detected = True
+                except Exception:
+                    contradiction_detected = False
+                    contradiction_entry = None
+
                 return {
                     'answer': answer,
                     'thinking': None,
@@ -737,8 +788,8 @@ class CRTEnhancedRAG:
                     'gate_reason': 'user_name_declaration',
                     'intent_alignment': 0.95,
                     'memory_alignment': 1.0,
-                    'contradiction_detected': False,
-                    'contradiction_entry': None,
+                    'contradiction_detected': contradiction_detected,
+                    'contradiction_entry': (contradiction_entry.to_dict() if contradiction_entry is not None else None),
                     'retrieved_memories': [],
                     'prompt_memories': [],
                     'unresolved_contradictions_total': 0,
@@ -1363,6 +1414,9 @@ class CRTEnhancedRAG:
         # Honesty guard: if the model claims it "remembers" a personal fact that is not
         # present in our resolved FACT prompt docs, strip that unsupported claim.
         candidate_output = self._sanitize_unsupported_memory_claims(answer=candidate_output, prompt_docs=prompt_docs)
+        # UI cleanliness: the assistant should not leak internal scoring/metrics in the user-visible answer.
+        # (These are available in metadata panels instead.)
+        candidate_output = re.sub(r"\(\s*trust score[^)]*\)", "", candidate_output, flags=re.IGNORECASE).strip()
         candidate_vector = encode_vector(candidate_output)
         
         # 3. Check reconstruction gates

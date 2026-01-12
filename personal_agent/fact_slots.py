@@ -24,6 +24,34 @@ class ExtractedFact:
 _WS_RE = re.compile(r"\s+")
 
 
+_NAME_STOPWORDS = {
+    # Common non-name tokens that appear after "I'm ..." in normal sentences.
+    "a",
+    "an",
+    "the",
+    "ai",
+    "back",
+    "building",
+    "build",
+    "busy",
+    "fine",
+    "good",
+    "great",
+    "here",
+    "help",
+    "okay",
+    "ok",
+    "ready",
+    "sorry",
+    "sure",
+    "tired",
+    "trying",
+    "working",
+    "going",
+    "to",
+}
+
+
 def _norm_text(value: str) -> str:
     value = _WS_RE.sub(" ", value.strip())
     return value.lower()
@@ -81,13 +109,23 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "My name is Sarah."
     # - "Yes, I'm Sarah"
     # Allow multi-token names (e.g., "Nick Block"), but keep it conservative.
-    name_pat = r"([A-Z][a-zA-Z'-]{1,40}(?:\s+[A-Z][a-zA-Z'-]{1,40}){0,2})"
+    name_pat = r"([A-Za-z][A-Za-z'-]{1,40}(?:\s+[A-Za-z][A-Za-z'-]{1,40}){0,2})"
     m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if not m:
         m = re.search(r"\bi\s*'?m\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if m:
-        name = m.group(1)
-        facts["name"] = ExtractedFact("name", name, _norm_text(name))
+        name = m.group(1).strip()
+        tokens = [t for t in re.split(r"\s+", name) if t]
+        token_lowers = [t.lower() for t in tokens]
+
+        # Filter obvious non-name phrases like "I'm trying to build ...".
+        trailing = (text[m.end():] or "").lstrip().lower()
+        looks_like_infinitive = trailing.startswith("to ")
+        has_stopword = any(t in _NAME_STOPWORDS for t in token_lowers)
+
+        # Allow single-token lowercase names like "nick", but reject common verbs.
+        if tokens and not has_stopword and not looks_like_infinitive:
+            facts["name"] = ExtractedFact("name", name, _norm_text(name))
 
     # Employer
     # Examples:

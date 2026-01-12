@@ -169,10 +169,10 @@ Do not include explanatory text, only code.
                 if hasattr(openai, 'OpenAI'):
                     return openai.OpenAI(api_key=self.api_key)
                 else:
-                    print("WARNING: Old OpenAI package version. Upgrade: pip install --upgrade openai")
+                    print("⚠️  Old OpenAI package version. Upgrade: pip install --upgrade openai")
                     return None
             except ImportError:
-                print("WARNING: OpenAI package not installed. Run: pip install openai")
+                print("⚠️  OpenAI package not installed. Run: pip install openai")
                 return None
         
         elif self.provider == LLMProvider.ANTHROPIC:
@@ -180,7 +180,7 @@ Do not include explanatory text, only code.
                 import anthropic
                 return anthropic.Anthropic(api_key=self.api_key)
             except ImportError:
-                print("WARNING: Anthropic package not installed. Run: pip install anthropic")
+                print("⚠️  Anthropic package not installed. Run: pip install anthropic")
                 return None
         
         elif self.provider in (LLMProvider.OLLAMA, LLMProvider.LMSTUDIO):
@@ -376,7 +376,7 @@ class LLMPool:
                         temperature=0.4
                     ))
             except Exception as e:
-                print(f"WARNING: Failed to initialize OpenAI client: {e}")
+                print(f"⚠️  Failed to initialize OpenAI client: {e}")
                 openai_key = None  # Fall through to next option
         
         # Try Anthropic

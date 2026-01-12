@@ -40,6 +40,175 @@ from personal_agent.artifact_store import (
 from personal_agent.promotion_apply import apply_promotions
 
 
+def _find_learned_model_artifacts(base_dir: Path) -> List[Path]:
+    patterns = [
+        str(base_dir / "**" / "learned_suggestions*.joblib"),
+    ]
+    out: List[Path] = []
+    for pat in patterns:
+        for p in glob.glob(pat, recursive=True):
+            try:
+                out.append(Path(p))
+            except Exception:
+                continue
+    out = [p for p in out if p.exists() and p.is_file()]
+    out.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return out
+
+
+def _load_learned_model_meta(model_path: Path) -> Optional[Dict[str, Any]]:
+    try:
+        meta_path = model_path.with_suffix(".meta.json")
+        if not meta_path.exists():
+            return None
+        return json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _load_learned_model_eval(model_path: Path) -> Optional[Dict[str, Any]]:
+    try:
+        eval_path = model_path.with_suffix(".eval.json")
+        if not eval_path.exists():
+            return None
+        return json.loads(eval_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def render_learned_model_tracking() -> None:
+    st.header("🧠 Learned Model (Suggestions)")
+    st.caption("Tracks evolution of the learned suggestion-only model (joblib + sidecar metadata).")
+
+    artifacts_root = st.text_input("Artifacts root", value="artifacts", key="learned_model_artifacts_root")
+    base_dir = Path(artifacts_root).resolve()
+    if not base_dir.exists():
+        st.warning(f"Artifacts directory does not exist: {base_dir}")
+        return
+
+    models = _find_learned_model_artifacts(base_dir)
+    if not models:
+        st.info("No learned model artifacts found yet (expected files like artifacts/learned_suggestions.*.joblib).")
+        return
+
+    selected = st.selectbox(
+        "Select model artifact",
+        models,
+        format_func=lambda p: str(Path(p).as_posix()),
+    )
+    model_path = Path(selected)
+    meta = _load_learned_model_meta(model_path)
+    ev = _load_learned_model_eval(model_path)
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.subheader("Selected Model")
+        st.write(f"Path: {model_path}")
+        st.write(f"Modified: {datetime.fromtimestamp(model_path.stat().st_mtime).strftime('%Y-%m-%d %H:%M:%S')}")
+        if meta:
+            st.json(meta)
+        else:
+            st.info("No sidecar metadata found for this model (expected *.meta.json). Re-train to generate it.")
+
+        if ev:
+            st.subheader("Latest Eval")
+            st.json(ev.get("metrics") if isinstance(ev, dict) else ev)
+        else:
+            st.info("No eval artifact found for this model (expected *.eval.json). Run crt_learn_eval.py to generate it.")
+
+    with col2:
+        st.subheader("Quick Stats")
+        if meta and isinstance(meta.get("examples"), dict):
+            ex = meta.get("examples") or {}
+            st.metric("Examples", int(ex.get("count") or 0))
+            acc = ex.get("train_accuracy")
+            st.metric("Train acc", f"{float(acc):.3f}" if acc is not None else "N/A")
+            lc = ex.get("label_counts") or {}
+            if isinstance(lc, dict) and lc:
+                st.write("Label counts")
+                st.json(lc)
+        if ev and isinstance(ev.get("metrics"), dict):
+            m = ev.get("metrics") or {}
+            eacc = m.get("accuracy")
+            st.metric("Eval acc", f"{float(eacc):.3f}" if eacc is not None else "N/A")
+
+    # Timeline view from available meta files
+    rows: List[Dict[str, Any]] = []
+    for p in models:
+        m = _load_learned_model_meta(p) or {}
+        e = _load_learned_model_eval(p) or {}
+        ex = m.get("examples") if isinstance(m.get("examples"), dict) else {}
+        metrics = e.get("metrics") if isinstance(e.get("metrics"), dict) else {}
+        rows.append(
+            {
+                "path": str(p.as_posix()),
+                "mtime": datetime.fromtimestamp(p.stat().st_mtime),
+                "examples": int((ex or {}).get("count") or 0),
+                "train_accuracy": (ex or {}).get("train_accuracy"),
+                "eval_accuracy": (metrics or {}).get("accuracy"),
+                "sha256": (m.get("out_sha256") if isinstance(m, dict) else None),
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        st.subheader("Timeline")
+        df_sorted = df.sort_values("mtime")
+        st.dataframe(df_sorted, use_container_width=True)
+        try:
+            fig = px.line(df_sorted, x="mtime", y="examples", title="Training examples over time")
+            st.plotly_chart(fig, use_container_width=True)
+        except Exception:
+            pass
+
+        # Eval plot (if present)
+        try:
+            if "eval_accuracy" in df_sorted.columns:
+                df_eval = df_sorted.dropna(subset=["eval_accuracy"])
+                if not df_eval.empty:
+                    fig2 = px.line(df_eval, x="mtime", y="eval_accuracy", title="Eval accuracy over time")
+                    st.plotly_chart(fig2, use_container_width=True)
+        except Exception:
+            pass
+
+    st.subheader("Compare Two Models")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        left = st.selectbox("Left", models, index=0, key="learned_model_left", format_func=lambda p: str(Path(p).as_posix()))
+    with col_b:
+        right = st.selectbox(
+            "Right",
+            models,
+            index=(1 if len(models) > 1 else 0),
+            key="learned_model_right",
+            format_func=lambda p: str(Path(p).as_posix()),
+        )
+
+    if left and right:
+        lm = _load_learned_model_meta(Path(left)) or {}
+        rm = _load_learned_model_meta(Path(right)) or {}
+        l_ex = lm.get("examples") if isinstance(lm.get("examples"), dict) else {}
+        r_ex = rm.get("examples") if isinstance(rm.get("examples"), dict) else {}
+
+        st.write("Diff (high level)")
+        st.write(
+            {
+                "examples": {
+                    "left": int((l_ex or {}).get("count") or 0),
+                    "right": int((r_ex or {}).get("count") or 0),
+                },
+                "train_accuracy": {
+                    "left": (l_ex or {}).get("train_accuracy"),
+                    "right": (r_ex or {}).get("train_accuracy"),
+                },
+                "sha256": {
+                    "left": lm.get("out_sha256"),
+                    "right": rm.get("out_sha256"),
+                },
+            }
+        )
+
+
 # ============================================================================
 # Page Configuration
 # ============================================================================
@@ -1011,7 +1180,8 @@ def main():
             "⚠️ Contradictions",
             "💭 Belief vs Speech",
             "🔍 Memory Explorer",
-            "✅ Promotion Approvals"
+            "✅ Promotion Approvals",
+            "🧠 Learned Model"
         ]
     )
     
@@ -1052,6 +1222,8 @@ def main():
         render_memory_explorer(crt_system)
     elif page == "✅ Promotion Approvals":
         render_promotion_approvals()
+    elif page == "🧠 Learned Model":
+        render_learned_model_tracking()
     
     # Footer
     st.markdown("---")

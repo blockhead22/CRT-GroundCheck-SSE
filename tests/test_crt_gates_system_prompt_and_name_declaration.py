@@ -30,8 +30,14 @@ def test_system_prompt_request_is_gated(rag: CRTEnhancedRAG) -> None:
 
 
 def test_name_declaration_is_acknowledged_without_embellishment(rag: CRTEnhancedRAG) -> None:
-    out = rag.query("For the record: my name is Nick Block.")
-    assert out.get("gate_reason") == "user_name_declaration"
-    ans = out.get("answer") or ""
-    assert "Nick Block" in ans
-    assert "New York" not in ans
+    for text, expected_name in (
+        ("For the record: my name is Nick Block.", "Nick Block"),
+        ("My name is Nick.", "Nick"),
+        ("I'm Nick.", "Nick"),
+    ):
+        out = rag.query(text)
+        assert out.get("gate_reason") == "user_name_declaration"
+        ans = out.get("answer") or ""
+        assert expected_name in ans
+        assert "New York" not in ans
+

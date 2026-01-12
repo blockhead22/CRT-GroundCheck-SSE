@@ -1,0 +1,90 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "pytest -q",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-q"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "pytest new tests",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-q",
+				"tests/test_fact_slots_name_extraction.py",
+				"tests/test_crt_gates_system_prompt_and_name_declaration.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "pytest -q (full)",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-q"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "pytest name gate + fact slots",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-q",
+				"tests/test_fact_slots_name_extraction.py",
+				"tests/test_crt_gates_system_prompt_and_name_declaration.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "pytest contradiction status queries",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-q",
+				"tests/test_crt_contradiction_status_queries.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "pytest contradiction status queries -vv",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"pytest",
+				"-vv",
+				"tests/test_crt_contradiction_status_queries.py",
+				"-x"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

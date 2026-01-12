@@ -24,6 +24,8 @@ from __future__ import annotations
 import argparse
 import sqlite3
 import re
+import json
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -297,6 +299,77 @@ def main() -> int:
     model.fit(X, y)
 
     joblib.dump(model, args.out)
+
+    # Write a small, human-readable metadata sidecar for tracking evolution over time.
+    # This intentionally avoids a strict schema so it can grow without breaking older runs.
+    try:
+        out_path = Path(args.out)
+        meta_path = out_path.with_suffix(".meta.json")
+
+        label_counts: Dict[str, int] = {}
+        for lbl in y:
+            label_counts[lbl] = int(label_counts.get(lbl, 0) + 1)
+
+        try:
+            classes = list(getattr(model, "classes_", []))
+            if not classes and hasattr(model, "named_steps"):
+                clf = model.named_steps.get("clf")
+                classes = list(getattr(clf, "classes_", [])) if clf is not None else []
+        except Exception:
+            classes = []
+
+        try:
+            train_accuracy = float(model.score(X, y))
+        except Exception:
+            train_accuracy = None
+
+        try:
+            from personal_agent.artifact_store import sha256_file, now_iso_utc
+
+            out_sha256 = sha256_file(out_path)
+            trained_at = now_iso_utc()
+        except Exception:
+            out_sha256 = None
+            trained_at = None
+
+        try:
+            import sklearn  # type: ignore
+
+            sklearn_version = getattr(sklearn, "__version__", None)
+        except Exception:
+            sklearn_version = None
+
+        meta = {
+            "type": "crt_learned_suggestions_model",
+            "version": "v1",
+            "trained_at": trained_at,
+            "out_path": str(out_path),
+            "out_sha256": out_sha256,
+            "python_version": sys.version.split()[0],
+            "sklearn_version": sklearn_version,
+            "examples": {
+                "count": len(X),
+                "label_counts": label_counts,
+                "train_accuracy": train_accuracy,
+                "classes": classes,
+            },
+            "data": {
+                "artifacts_dir": str(args.artifacts_dir) if args.artifacts_dir else None,
+                "runs_used": len(runs),
+                "total_contradictions_scanned": int(total_contras),
+                "memory_db": str(args.memory_db) if args.memory_db else None,
+                "ledger_db": str(args.ledger_db) if args.ledger_db else None,
+                "max_runs": int(args.max_runs),
+                "min_examples": int(args.min_examples),
+            },
+        }
+
+        meta_path.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        print(f"Wrote metadata: {meta_path}")
+    except Exception:
+        # Metadata is best-effort; training output is the joblib.
+        pass
+
     print(f"Trained learned-suggestions model on {len(X)} examples")
     if args.artifacts_dir:
         print(f"Runs used: {len(runs)} (total contradictions scanned: {total_contras})")
