@@ -1,5 +1,19 @@
 # CRT Control Panel + Background Learning (Local‑First) — Architecture & Roadmap
 
+## Current status (Jan 12, 2026)
+
+Delivered and working in this repo now:
+- Control Panel (Streamlit) supports end-to-end **human-in-the-loop promotions**: proposals → decisions → dry-run apply → sandbox apply → gated real apply, with artifacts written for audit.
+- Chat UI (Streamlit) is available and can run with an optional local LLM backend (Ollama).
+- Deterministic safety/grounding gates have regression coverage (notably name declaration + false-contradiction hardening).
+- Learned “suggestions-only” model is now observable over time:
+  - training writes `*.meta.json`
+  - evaluation writes `*.eval.json`
+  - dashboard plots timelines and compares two models (including confusion matrices)
+
+Immediate focus:
+- Turn “learning” into a controlled release process: **train → eval → publish latest** with explicit thresholds and artifacts.
+
 This document describes a local-first architecture for a **truthful personal AI** built on CRT + SSE principles, with:
 - an intuitive dashboard/control panel
 - onboarding + consented memory
@@ -132,6 +146,8 @@ When you rent compute later:
 - Expand stress harness metrics and run multi-run campaigns.
 - Ensure runtime config is stable/test-isolated (done).
 
+Status: largely complete; continuing incremental hardening.
+
 ### Phase 1 — Control Panel MVP (local)
 - Add a Control Panel app with:
   - onboarding flow
@@ -176,6 +192,15 @@ If we want to pivot into the big control panel + background learning track clean
 - A single, reliable runtime config surface (already in place).
 - The Control Panel MVP (Phase 1) so we have a place to expose new features safely.
 - A job queue DB + worker skeleton (Phase 2) so “background learning” is real, observable, and reversible.
+
+## Next milestone (recommended)
+
+### Controlled learned-model releases (train → eval → publish)
+Add a gated pipeline that:
+1) trains a timestamped model artifact
+2) evaluates it (on latest N stress runs and/or a held-out eval set)
+3) only updates `learned_suggestions.latest.joblib` if it passes thresholds
+4) writes a publish report artifact for auditability
 
 ---
 

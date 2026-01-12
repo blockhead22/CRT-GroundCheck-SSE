@@ -836,6 +836,10 @@ class CRTEnhancedRAG:
         if user_input_kind in ("question", "instruction"):
             inferred_slots = self._infer_slots_from_query(user_query)
 
+        # Parse any explicit first-person fact assertions (used for relevance checks).
+        # For most questions this will be empty, which is fine.
+        asserted_facts = extract_fact_slots(user_query) or {}
+
         # Special-case: prompts that explicitly demand chat-grounded recall or memory citation.
         # We answer deterministically from retrieved/prompt memory text to avoid hallucinations
         # and to avoid claiming "no memories" when context exists.
@@ -1130,14 +1134,6 @@ class CRTEnhancedRAG:
                         'confidence': 0.95,
                     }
 
-                    # User-facing provenance footer (do not store it as a belief).
-                    final_answer = slot_answer
-                    try:
-                        if bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
-                            final_answer = slot_answer + "\n\nProvenance: answered from stored memories."
-                    except Exception:
-                        pass
-
                     candidate_output = reasoning_result['answer']
                     candidate_vector = encode_vector(candidate_output)
 
@@ -1153,6 +1149,15 @@ class CRTEnhancedRAG:
                     gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
                         intent_align, memory_align
                     )
+
+                    # User-facing provenance footer: only emit when gates pass to avoid
+                    # confusing "gates failed" + "answered from stored memories" combinations.
+                    final_answer = slot_answer
+                    try:
+                        if gates_passed and bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
+                            final_answer = slot_answer + "\n\nProvenance: answered from stored memories."
+                    except Exception:
+                        pass
 
                     response_type = "belief" if gates_passed else "speech"
                     source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
@@ -1326,21 +1331,48 @@ class CRTEnhancedRAG:
         related_open_total = 0
         related_hard_conflicts = 0
 
+        # Only consider conflicts that are relevant to what the user is asking/asserting.
+        # This prevents unrelated open conflicts (e.g., name conflict) from stalling normal chat.
+        relevant_slots = set(inferred_slots or []) | set((asserted_facts or {}).keys())
+
         retrieved_mem_ids = {mem.memory_id for mem, _ in retrieved}
         for contra in unresolved_contradictions:
             contra_mem_ids = {contra.old_memory_id, contra.new_memory_id}
             if not (contra_mem_ids & retrieved_mem_ids):
                 continue
             related_open_total += 1
-            if getattr(contra, "contradiction_type", None) == ContradictionType.CONFLICT:
-                related_hard_conflicts += 1
+            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+                continue
+
+            # If the current query doesn't target user-fact slots, don't block the conversation.
+            if not relevant_slots:
+                continue
+
+            try:
+                old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+                new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+                if old_mem is None or new_mem is None:
+                    continue
+
+                old_facts = extract_fact_slots(old_mem.text) or {}
+                new_facts = extract_fact_slots(new_mem.text) or {}
+                shared = set(old_facts.keys()) & set(new_facts.keys()) & set(relevant_slots)
+                if shared:
+                    related_hard_conflicts += 1
+            except Exception:
+                # Never allow contradiction relevance checks to block a normal answer.
+                continue
         
-        # EARLY EXIT: Express uncertainty if too many unresolved contradictions
-        should_uncertain, uncertain_reason = self._should_express_uncertainty(
-            retrieved=retrieved,
-            contradictions_count=related_hard_conflicts,
-            gates_passed=False  # Haven't checked gates yet
-        )
+        # EARLY EXIT: Express uncertainty only when an unresolved hard CONFLICT
+        # is relevant to the user's current slot-targeted question/assertion.
+        should_uncertain = False
+        uncertain_reason = ""
+        if related_hard_conflicts > 0:
+            should_uncertain, uncertain_reason = self._should_express_uncertainty(
+                retrieved=retrieved,
+                contradictions_count=related_hard_conflicts,
+                gates_passed=False,  # Haven't checked gates yet
+            )
         
         if should_uncertain:
             # If we can infer a concrete next action from conflicts, include it.
@@ -1548,8 +1580,10 @@ class CRTEnhancedRAG:
 
                 # Only add a provenance footer when it looks like we're answering about the user,
                 # or when we relied on explicit FACT lines.
-                is_personalish = bool(inferred_slots) or ("my " in (user_query or "").lower())
-                if used_memory and (used_fact_lines or is_personalish):
+                is_personalish = bool(inferred_slots) or bool(asserted_facts) or ("my " in (user_query or "").lower())
+
+                # Avoid misleading provenance when reconstruction gates fail.
+                if gates_passed and used_memory and (used_fact_lines or is_personalish):
                     footer_lines = ["Provenance: this answer uses stored memories."]
 
                     wc = prov_cfg.get("world_check") or {}

@@ -4,6 +4,16 @@ This is the consolidated “final focus roadmap” for CRT: what the system is, 
 
 CRT’s core promise is not “magic accuracy.” It’s **coherent, inspectable, consented memory + explicit uncertainty + durable contradiction handling**.
 
+## Current implementation status (Jan 12, 2026)
+
+Implemented and running in this repo now:
+- Streamlit Control Panel with human-in-the-loop promotion approvals and gated apply (dry-run/sandbox/real).
+- Streamlit Chat UI (optional local LLM integration).
+- Deterministic gates with regression tests for key failure modes (e.g., name declaration / false contradictions).
+- Learned “suggestions-only” model tracking (train metadata + eval artifacts + dashboard timeline/compare).
+
+Immediate next: make learned-model updates a controlled release process (train → eval → publish latest with thresholds).
+
 ---
 
 ## 0) North Star

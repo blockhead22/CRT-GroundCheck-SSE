@@ -146,7 +146,7 @@ def _has_preference_language(text: str) -> int:
     return 0
 
 
-def main() -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Train CRT learned suggestion model (MLP, suggestion-only)")
     ap.add_argument("--memory-db", required=False, help="Path to memory sqlite db")
     ap.add_argument("--ledger-db", required=False, help="Path to ledger sqlite db")
@@ -154,7 +154,7 @@ def main() -> int:
     ap.add_argument("--max-runs", type=int, default=0, help="If >0, use only the most recent N runs from artifacts-dir")
     ap.add_argument("--out", required=True, help="Output joblib path")
     ap.add_argument("--min-examples", type=int, default=20, help="Minimum examples required to train")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     from personal_agent.fact_slots import extract_fact_slots
 

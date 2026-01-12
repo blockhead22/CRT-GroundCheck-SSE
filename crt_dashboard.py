@@ -80,6 +80,82 @@ def render_learned_model_tracking() -> None:
     st.header("🧠 Learned Model (Suggestions)")
     st.caption("Tracks evolution of the learned suggestion-only model (joblib + sidecar metadata).")
 
+    st.subheader("Train → Eval → Publish (Gated)")
+    st.caption("Trains a timestamped model, evaluates it, and only updates learned_suggestions.latest.joblib if thresholds pass.")
+
+    with st.expander("Run gated publish pipeline", expanded=False):
+        pub_col1, pub_col2, pub_col3 = st.columns([2, 1, 1])
+        with pub_col1:
+            pub_artifacts_dir = st.text_input(
+                "Stress artifacts dir (optional)",
+                value="",
+                help="If set, uses paired crt_stress_memory.*.db + crt_stress_ledger.*.db from this folder.",
+                key="learned_publish_artifacts_dir",
+            )
+            pub_eval_set = st.text_input(
+                "Frozen eval-set JSON (optional)",
+                value="",
+                help="If set, evaluation uses this frozen set (created by crt_learn_make_eval_set.py).",
+                key="learned_publish_eval_set",
+            )
+        with pub_col2:
+            pub_max_runs = st.number_input("Max runs", min_value=0, max_value=100, value=3, step=1, key="learned_publish_max_runs")
+        with pub_col3:
+            pub_dry_run = st.checkbox("Dry run", value=True, key="learned_publish_dry_run")
+
+        thr1, thr2, thr3 = st.columns(3)
+        with thr1:
+            pub_min_train = st.number_input("Min train examples", min_value=1, max_value=1000000, value=20, step=1, key="learned_publish_min_train")
+        with thr2:
+            pub_min_eval = st.number_input("Min eval examples", min_value=1, max_value=1000000, value=20, step=1, key="learned_publish_min_eval")
+        with thr3:
+            pub_min_acc = st.number_input(
+                "Min eval accuracy (0 disables)",
+                min_value=0.0,
+                max_value=1.0,
+                value=0.0,
+                step=0.01,
+                key="learned_publish_min_acc",
+            )
+
+        pub_max_plr = st.number_input(
+            "Max prefer-latest rate (1.0 disables)",
+            min_value=0.0,
+            max_value=1.0,
+            value=1.0,
+            step=0.01,
+            key="learned_publish_max_plr",
+        )
+
+        if st.button("Run train+eval+publish", key="learned_publish_run"):
+            try:
+                from crt_learn_publish import run_train_eval_publish
+
+                artifacts_dir_path = Path(pub_artifacts_dir).resolve() if pub_artifacts_dir.strip() else None
+                min_acc = None if float(pub_min_acc) <= 0.0 else float(pub_min_acc)
+                max_plr = None if float(pub_max_plr) >= 1.0 else float(pub_max_plr)
+
+                res = run_train_eval_publish(
+                    out_dir=Path("artifacts").resolve(),
+                    publish_path=Path("artifacts/learned_suggestions.latest.joblib").resolve(),
+                    artifacts_dir=artifacts_dir_path,
+                    eval_set=(Path(pub_eval_set).resolve() if pub_eval_set.strip() else None),
+                    max_runs=int(pub_max_runs),
+                    min_train_examples=int(pub_min_train),
+                    min_eval_examples=int(pub_min_eval),
+                    min_eval_accuracy=min_acc,
+                    max_prefer_latest_rate=max_plr,
+                    dry_run=bool(pub_dry_run),
+                )
+
+                st.success(f"Decision: {res.decision} ({'OK' if res.ok else 'FAIL'})")
+                st.write({"reason": res.reason, "trained": res.trained_model_path, "published": res.published_model_path, "report": res.report_path})
+                st.subheader("Eval metrics")
+                st.json(res.eval_metrics)
+                st.info("Refresh the page to see new artifacts in the timeline.")
+            except Exception as e:
+                st.error(f"Publish pipeline failed: {e}")
+
     artifacts_root = st.text_input("Artifacts root", value="artifacts", key="learned_model_artifacts_root")
     base_dir = Path(artifacts_root).resolve()
     if not base_dir.exists():

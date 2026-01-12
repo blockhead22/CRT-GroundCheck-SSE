@@ -27,3 +27,29 @@ def test_revision_contradiction_does_not_force_uncertainty_loop(rag: CRTEnhanced
     # just because there is an open non-CONFLICT ledger entry.
     out = rag.query("What's my name?")
     assert out["mode"] != "uncertainty"
+
+
+def test_unrelated_hard_conflict_does_not_block_smalltalk(rag: CRTEnhancedRAG):
+    # Create an open hard CONFLICT about a personal slot (name).
+    rag.query("My name is Sarah.")
+    rag.query("My name is Emily.")
+
+    # Normal conversation should remain generative (not forced into uncertainty)
+    # when the user is not asking about the conflicting slot.
+    out = rag.query("Hello again!")
+    assert out["mode"] != "uncertainty"
+
+
+def test_provenance_footer_requires_gates_passed(rag: CRTEnhancedRAG, monkeypatch: pytest.MonkeyPatch):
+    rag.query("My name is Sarah.")
+
+    # Force reconstruction gates to fail, regardless of embeddings.
+    monkeypatch.setattr(
+        rag.crt_math,
+        "check_reconstruction_gates",
+        lambda _intent, _mem: (False, "forced_for_test"),
+    )
+
+    out = rag.query("What's my name?")
+    assert out["gates_passed"] is False
+    assert "Provenance:" not in out["answer"]

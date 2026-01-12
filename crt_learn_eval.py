@@ -260,6 +260,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     ap = argparse.ArgumentParser(description="Evaluate CRT learned suggestion model")
     ap.add_argument("--model", required=True, help="Path to joblib model")
     ap.add_argument("--out", required=True, help="Output eval JSON path")
+    ap.add_argument("--eval-set", required=False, default=None, help="Path to frozen eval-set JSON (from crt_learn_make_eval_set.py)")
     ap.add_argument("--memory-db", required=False, help="Path to memory sqlite db")
     ap.add_argument("--ledger-db", required=False, help="Path to ledger sqlite db")
     ap.add_argument("--artifacts-dir", required=False, default=None, help="Directory containing crt_stress_memory.*.db and crt_stress_ledger.*.db")
@@ -271,18 +272,24 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not model_path.exists():
         raise SystemExit(f"model not found: {model_path}")
 
+    eval_set_path = Path(args.eval_set).resolve() if args.eval_set else None
+    eval_set_id = None
     runs: List[Tuple[str, str]] = []
-    if args.artifacts_dir:
-        art = Path(args.artifacts_dir)
-        if not art.exists():
-            raise SystemExit(f"artifacts-dir not found: {art}")
-        runs = _choose_runs_from_artifacts_dir(art, int(args.max_runs))
-        if not runs:
-            raise SystemExit("No paired memory/ledger DBs found in artifacts-dir")
+    if eval_set_path is not None:
+        if not eval_set_path.exists():
+            raise SystemExit(f"eval-set not found: {eval_set_path}")
     else:
-        if not args.memory_db or not args.ledger_db:
-            raise SystemExit("Provide either --artifacts-dir or both --memory-db and --ledger-db")
-        runs = [(args.memory_db, args.ledger_db)]
+        if args.artifacts_dir:
+            art = Path(args.artifacts_dir)
+            if not art.exists():
+                raise SystemExit(f"artifacts-dir not found: {art}")
+            runs = _choose_runs_from_artifacts_dir(art, int(args.max_runs))
+            if not runs:
+                raise SystemExit("No paired memory/ledger DBs found in artifacts-dir")
+        else:
+            if not args.memory_db or not args.ledger_db:
+                raise SystemExit("Provide either --eval-set, --artifacts-dir, or both --memory-db and --ledger-db")
+            runs = [(args.memory_db, args.ledger_db)]
 
     try:
         import joblib  # type: ignore
@@ -294,11 +301,27 @@ def main(argv: Optional[List[str]] = None) -> int:
     X_all: List[Dict[str, Any]] = []
     y_all: List[str] = []
     scanned = 0
-    for mem_db, led_db in runs:
-        X, y, meta = _collect_labeled_examples(mem_db_path=mem_db, led_db_path=led_db)
-        scanned += int(meta.get("contradictions_scanned") or 0)
-        X_all.extend(X)
-        y_all.extend(y)
+    if eval_set_path is not None:
+        payload = json.loads(eval_set_path.read_text(encoding="utf-8"))
+        eval_set_id = payload.get("eval_set_id") if isinstance(payload, dict) else None
+        ex = payload.get("examples") if isinstance(payload, dict) else None
+        items = (ex or {}).get("items") if isinstance(ex, dict) else None
+        if not isinstance(items, list):
+            raise SystemExit("Invalid eval-set format: missing examples.items")
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            x = it.get("x")
+            y = it.get("y")
+            if isinstance(x, dict) and y is not None:
+                X_all.append(x)
+                y_all.append(str(y))
+    else:
+        for mem_db, led_db in runs:
+            X, y, meta = _collect_labeled_examples(mem_db_path=mem_db, led_db_path=led_db)
+            scanned += int(meta.get("contradictions_scanned") or 0)
+            X_all.extend(X)
+            y_all.extend(y)
 
     if len(X_all) < int(args.min_examples):
         raise SystemExit(
@@ -371,6 +394,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         },
         "data": {
             "artifacts_dir": str(args.artifacts_dir) if args.artifacts_dir else None,
+            "eval_set_path": str(eval_set_path) if eval_set_path is not None else None,
+            "eval_set_id": eval_set_id,
             "runs_used": int(len(runs)),
             "total_contradictions_scanned": int(scanned),
             "min_examples": int(args.min_examples),
