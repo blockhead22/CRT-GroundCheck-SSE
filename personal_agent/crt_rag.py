@@ -430,11 +430,19 @@ class CRTEnhancedRAG:
             header = "I need to be honest about my uncertainty here.\n\n"
             notes_label = "What I have in memory:"
 
+        # UX soften: even when we cannot answer the conflicted slot, keep the chat usable.
+        # Offer to continue on other parts of the question or other topics.
+        continue_line = (
+            "\nIf you want, I can still help with other parts of your question that don’t depend on that fact — "
+            "tell me what you’d like to focus on.\n"
+        )
+
         return (
             header
             + f"{reason}\n\n"
             + f"{notes_label}\n{beliefs_text}\n\n"
             + "I cannot give you a confident answer until we resolve this.\n"
+            + continue_line
             + f"{ask}"
         )
 

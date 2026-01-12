@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from personal_agent.crt_rag import CRTEnhancedRAG
+from personal_agent.crt_ledger import ContradictionType
 
 
 class FakeLLM:
@@ -53,3 +54,17 @@ def test_provenance_footer_requires_gates_passed(rag: CRTEnhancedRAG, monkeypatc
     out = rag.query("What's my name?")
     assert out["gates_passed"] is False
     assert "Provenance:" not in out["answer"]
+
+
+def test_uncertainty_response_invites_continuing_conversation(rag: CRTEnhancedRAG, monkeypatch: pytest.MonkeyPatch):
+    # Force a hard CONFLICT classification so this test doesn't depend on
+    # embedding similarity heuristics.
+    monkeypatch.setattr(rag.ledger, "_classify_contradiction", lambda *args, **kwargs: ContradictionType.CONFLICT)
+
+    # Create a hard CONFLICT and ask about the conflicted slot.
+    rag.query("My name is Sarah.")
+    rag.query("My name is Emily.")
+
+    out = rag.query("What's my name?")
+    assert out["mode"] == "uncertainty"
+    assert "I can still help with other parts of your question" in out["answer"]
