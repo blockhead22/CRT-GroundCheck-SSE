@@ -10,6 +10,7 @@ from personal_agent.artifact_store import (
     now_iso_utc,
     write_audit_answer_record,
     write_background_job_artifact,
+    write_promotion_decisions,
     write_promotion_proposals,
 )
 
@@ -81,4 +82,27 @@ def test_write_promotion_proposals_validates(tmp_path: Path) -> None:
         ],
     }
     write_promotion_proposals(out, payload)
+    assert out.exists()
+
+
+def test_write_promotion_decisions_validates(tmp_path: Path) -> None:
+    out = tmp_path / "decisions.json"
+    payload = {
+        "metadata": {
+            "version": "v1",
+            "generated_at": now_iso_utc(),
+            "source_proposals_path": "artifacts/promotions/proposals.job-123.json",
+            "source_job_id": "job-123",
+            "notes": None,
+        },
+        "decisions": [
+            {
+                "proposal_id": "job-123:title",
+                "decision": "approved",
+                "decided_at": now_iso_utc(),
+                "reason": "Confirmed by user",
+            }
+        ],
+    }
+    write_promotion_decisions(out, payload)
     assert out.exists()

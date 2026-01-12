@@ -24,11 +24,13 @@ from typing import List, Dict, Any, Optional
 import sqlite3
 import json
 from pathlib import Path
+import glob
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.crt_memory import CRTMemorySystem, MemoryItem
 from personal_agent.crt_ledger import ContradictionLedger, ContradictionEntry
 from personal_agent.crt_core import MemorySource, SSEMode
+from personal_agent.artifact_store import now_iso_utc, write_promotion_decisions, validate_payload_against_schema
 
 
 # ============================================================================
@@ -690,6 +692,144 @@ def render_health_dashboard(crt_system: CRTEnhancedRAG):
 
 
 # ============================================================================
+# Promotion Approvals
+# ============================================================================
+
+
+def _find_proposal_artifacts(base_dir: Path) -> List[Path]:
+    patterns = [
+        str(base_dir / "**" / "promotions" / "proposals.*.json"),
+    ]
+    out: List[Path] = []
+    for pat in patterns:
+        for p in glob.glob(pat, recursive=True):
+            try:
+                out.append(Path(p))
+            except Exception:
+                continue
+    # Newest first by mtime.
+    out = [p for p in out if p.exists() and p.is_file()]
+    out.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    return out
+
+
+def render_promotion_approvals() -> None:
+    st.header("✅ Promotion Approvals")
+    st.caption("Review promotion proposals artifacts and record approve/reject decisions (does not change memories yet).")
+
+    artifacts_root = st.text_input("Artifacts root", value="artifacts")
+    base_dir = Path(artifacts_root).resolve()
+    if not base_dir.exists():
+        st.warning(f"Artifacts directory does not exist: {base_dir}")
+        return
+
+    proposal_files = _find_proposal_artifacts(base_dir)
+    if not proposal_files:
+        st.info("No proposals found yet. Run propose_promotions to generate artifacts under an artifacts directory.")
+        return
+
+    selected = st.selectbox(
+        "Select proposals artifact",
+        proposal_files,
+        format_func=lambda p: str(Path(p).as_posix()),
+    )
+    proposals_path = Path(selected)
+
+    try:
+        proposals_payload = json.loads(proposals_path.read_text(encoding="utf-8"))
+        validate_payload_against_schema(proposals_payload, "crt_promotion_proposals.v1.schema.json")
+    except Exception as e:
+        st.error(f"Failed to load/validate proposals: {e}")
+        return
+
+    metadata = proposals_payload.get("metadata") or {}
+    proposals = proposals_payload.get("proposals") or []
+
+    st.subheader("Artifact Metadata")
+    st.json(metadata)
+    st.write(f"Proposals: {len(proposals)}")
+
+    st.subheader("Proposals")
+    if proposals:
+        rows = []
+        for p in proposals:
+            mem = p.get("memory") or {}
+            rows.append(
+                {
+                    "proposal_id": p.get("id"),
+                    "status": p.get("status"),
+                    "kind": mem.get("kind"),
+                    "key": mem.get("key"),
+                    "value_text": (mem.get("value_text") or "")[:120],
+                    "trust": mem.get("trust"),
+                    "confidence": mem.get("confidence"),
+                }
+            )
+        st.dataframe(pd.DataFrame(rows), use_container_width=True)
+
+    st.subheader("Decisions")
+    decisions: List[Dict[str, Any]] = []
+
+    for idx, p in enumerate(proposals):
+        proposal_id = str(p.get("id") or f"proposal-{idx}")
+        mem = p.get("memory") or {}
+        default_key = f"decision__{proposal_id}"
+        reason_key = f"reason__{proposal_id}"
+        if default_key not in st.session_state:
+            st.session_state[default_key] = "defer"
+        if reason_key not in st.session_state:
+            st.session_state[reason_key] = ""
+
+        with st.expander(f"{proposal_id} → {mem.get('key')} = {mem.get('value_text')}", expanded=False):
+            st.json(p)
+            st.radio(
+                "Decision",
+                options=["defer", "approved", "rejected"],
+                key=default_key,
+                horizontal=True,
+            )
+            st.text_input("Reason (optional)", key=reason_key)
+
+        decisions.append(
+            {
+                "proposal_id": proposal_id,
+                "decision": st.session_state[default_key],
+                "decided_at": now_iso_utc(),
+                "reason": (st.session_state[reason_key] or None),
+            }
+        )
+
+    save_col1, save_col2 = st.columns([1, 3])
+    with save_col1:
+        if st.button("Save decisions artifact", type="primary"):
+            source_job_id = metadata.get("source_job_id")
+            ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            out_dir = base_dir / "approvals"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / f"decisions.{source_job_id or 'unknown'}.{ts}.json"
+
+            payload = {
+                "metadata": {
+                    "version": "v1",
+                    "generated_at": now_iso_utc(),
+                    "source_proposals_path": str(proposals_path),
+                    "source_job_id": source_job_id,
+                    "notes": None,
+                },
+                "decisions": decisions,
+            }
+
+            try:
+                write_promotion_decisions(out_path, payload)
+                st.success(f"Wrote decisions: {out_path}")
+            except Exception as e:
+                st.error(f"Failed to write decisions: {e}")
+
+    with save_col2:
+        st.caption("This records your decision as an artifact. Next milestone is applying approved items into a controlled memory lane with audit trail.")
+
+
+# ============================================================================
 # Main App
 # ============================================================================
 
@@ -707,7 +847,8 @@ def main():
             "📈 Trust Evolution",
             "⚠️ Contradictions",
             "💭 Belief vs Speech",
-            "🔍 Memory Explorer"
+            "🔍 Memory Explorer",
+            "✅ Promotion Approvals"
         ]
     )
     
@@ -746,6 +887,8 @@ def main():
         render_belief_speech_monitor(crt_system)
     elif page == "🔍 Memory Explorer":
         render_memory_explorer(crt_system)
+    elif page == "✅ Promotion Approvals":
+        render_promotion_approvals()
     
     # Footer
     st.markdown("---")

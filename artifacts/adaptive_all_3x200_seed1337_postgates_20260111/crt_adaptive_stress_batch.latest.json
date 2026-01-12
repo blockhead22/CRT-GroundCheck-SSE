@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "runs_requested": 3,
+    "runs_completed": 3,
+    "turns_per_run": 200,
+    "controller": "llm",
+    "sut_model": "llama3.2:latest",
+    "controller_model": "llama3.2:latest",
+    "timestamp": 1768173949.6643496
+  },
+  "summary": {
+    "total_checks": 736,
+    "total_passed": 736,
+    "total_failures": 0,
+    "overall_pass_rate": 100.0
+  },
+  "runs": [
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\adaptive_all_3x200_seed1337_postgates_20260111\\run_0001",
+      "transcript_path": "D:\\AI_round2\\artifacts\\adaptive_all_3x200_seed1337_postgates_20260111\\run_0001\\crt_adaptive_stress_test.latest.json",
+      "turns": 200,
+      "checks": 245,
+      "passed": 245,
+      "failures": 0,
+      "failed_items": [],
+      "pass_rate": 100.0
+    },
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\adaptive_all_3x200_seed1337_postgates_20260111\\run_0002",
+      "transcript_path": "D:\\AI_round2\\artifacts\\adaptive_all_3x200_seed1337_postgates_20260111\\run_0002\\crt_adaptive_stress_test.latest.json",
+      "turns": 200,
+      "checks": 246,
+      "passed": 246,
+      "failures": 0,
+      "failed_items": [],
+      "pass_rate": 100.0
+    },
+    {
+      "artifacts_dir": "D:\\AI_round2\\artifacts\\adaptive_all_3x200_seed1337_postgates_20260111\\run_0003",
+      "transcript_path": "D:\\AI_round2\\artifacts\\adaptive_all_3x200_seed1337_postgates_20260111\\run_0003\\crt_adaptive_stress_test.latest.json",
+      "turns": 200,
+      "checks": 245,
+      "passed": 245,
+      "failures": 0,
+      "failed_items": [],
+      "pass_rate": 100.0
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "generated_at": "2026-01-12T02:15:55.981710+00:00",
+    "notes": null,
+    "source_job_id": "livepromos-20260111",
+    "version": "v1"
+  },
+  "proposals": [
+    {
+      "id": "livepromos-20260111:name",
+      "memory": {
+        "confidence": 0.95,
+        "evidence": [
+          {
+            "memory_id": "mem_1768025723760_3458",
+            "quote_text": null,
+            "source_type": "memory",
+            "timestamp": null,
+            "url": null
+          }
+        ],
+        "key": "name",
+        "kind": "fact",
+        "lane": "notes",
+        "provenance": {
+          "job_id": "livepromos-20260111",
+          "memory_id": "mem_1768025723760_3458"
+        },
+        "source": "user",
+        "supersedes_id": null,
+        "trust": 0.7,
+        "value_text": "Nick Block"
+      },
+      "rationale": "Extracted conservatively from user-provided memory text; requires approval.",
+      "status": "proposed"
+    }
+  ]
+}

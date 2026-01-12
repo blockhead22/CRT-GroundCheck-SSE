@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Promotion Decisions (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "decisions"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["version", "generated_at", "source_proposals_path", "source_job_id", "notes"],
+      "properties": {
+        "version": {"type": "string", "enum": ["v1"]},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "source_proposals_path": {"type": "string", "minLength": 1},
+        "source_job_id": {"type": ["string", "null"]},
+        "notes": {"type": ["string", "null"]}
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["proposal_id", "decision", "decided_at", "reason"],
+        "properties": {
+          "proposal_id": {"type": "string", "minLength": 1},
+          "decision": {"type": "string", "enum": ["approved", "rejected", "defer"]},
+          "decided_at": {"type": "string", "format": "date-time"},
+          "reason": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

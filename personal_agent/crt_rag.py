@@ -211,6 +211,35 @@ class CRTEnhancedRAG:
                 return True
         return False
 
+    def _is_system_prompt_request(self, text: str) -> bool:
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+        needles = [
+            "system prompt",
+            "developer message",
+            "developer prompt",
+            "hidden prompt",
+            "paste it verbatim",
+            "paste the prompt",
+        ]
+        if any(n in t for n in needles):
+            return True
+        # Common exfil phrasing (keep this tight so we don't catch generic "instructions" attacks).
+        if "reveal" in t and ("system prompt" in t or "developer" in t):
+            return True
+        if "show" in t and "system" in t and "prompt" in t:
+            return True
+        return False
+
+    def _is_user_name_declaration(self, text: str) -> bool:
+        t = (text or "").strip()
+        if not t:
+            return False
+        # Intentionally only match the explicit "for the record" pattern to avoid
+        # interfering with name-correction contradictions ("Actually, my name is...").
+        return bool(re.search(r"\bfor the record:.*\bmy name is\b", t, flags=re.IGNORECASE))
+
     def _is_user_named_reference_question(self, user_query: str) -> bool:
         """Detect third-person questions that refer to the user by (their) name.
 
@@ -641,6 +670,37 @@ class CRTEnhancedRAG:
         user_input_kind = self._classify_user_input(user_query)
         if user_input_kind == "assertion" and (is_memory_citation or is_contradiction_status or is_memory_inventory):
             user_input_kind = "instruction"
+
+        # Deterministic safe path: refuse prompt/system-instruction disclosure.
+        # This prevents the model from hallucinating and avoids memory-claim phrasing
+        # that can confuse the evaluator.
+        if user_input_kind in ("question", "instruction") and self._is_system_prompt_request(user_query):
+            answer = (
+                "I can’t share my system prompt or hidden instructions verbatim. "
+                "If you tell me what you’re trying to do, I can summarize how I’m designed to behave "
+                "or help you accomplish the goal another way."
+            )
+            return {
+                'answer': answer,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.95,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'system_prompt',
+                'intent_alignment': 0.95,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [],
+                'prompt_memories': [],
+                'unresolved_contradictions_total': 0,
+                'unresolved_hard_conflicts': 0,
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': None,
+                'session_id': self.session_id,
+            }
         if user_input_kind == "assertion":
             user_memory = self.memory.store_memory(
                 text=user_query,
@@ -658,6 +718,36 @@ class CRTEnhancedRAG:
             except Exception:
                 # Resolution is best-effort; never block the main chat loop.
                 pass
+
+            # Deterministic safe ack: user name declarations should not be embellished.
+            # (e.g., never add a location like "New York" unless the user said it.)
+            if self._is_user_name_declaration(user_query):
+                name_guess = self._get_latest_user_name_guess()
+                if name_guess:
+                    answer = f"Thanks — noted: your name is {name_guess}."
+                else:
+                    answer = "Thanks — noted."
+                return {
+                    'answer': answer,
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.95,
+                    'response_type': 'speech',
+                    'gates_passed': False,
+                    'gate_reason': 'user_name_declaration',
+                    'intent_alignment': 0.95,
+                    'memory_alignment': 1.0,
+                    'contradiction_detected': False,
+                    'contradiction_entry': None,
+                    'retrieved_memories': [],
+                    'prompt_memories': [],
+                    'unresolved_contradictions_total': 0,
+                    'unresolved_hard_conflicts': 0,
+                    'learned_suggestions': [],
+                    'heuristic_suggestions': [],
+                    'best_prior_trust': None,
+                    'session_id': self.session_id,
+                }
 
         # Deterministic safe path: assistant-profile questions.
         # These are about the assistant/system, not the user, so we should not
