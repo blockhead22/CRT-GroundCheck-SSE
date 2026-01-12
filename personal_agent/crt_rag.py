@@ -752,16 +752,23 @@ class CRTEnhancedRAG:
                             for m in all_memories
                             if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
                         ]
+                        # Only record a new contradiction if the user asserts a NEW name
+                        # (i.e., it does not match any prior user-stated name value).
+                        # If the user re-asserts a previously-known name, treat it as
+                        # reinforcement/clarification (and let conflict resolution handle it).
+                        prior_same_exists = False
                         prior_names: List[MemoryItem] = []
                         for prev_mem in previous_user_memories:
                             prev_facts = extract_fact_slots(prev_mem.text) or {}
                             prev_name = prev_facts.get("name")
                             if prev_name is None:
                                 continue
-                            if getattr(prev_name, "normalized", None) != getattr(new_name, "normalized", None):
+                            if getattr(prev_name, "normalized", None) == getattr(new_name, "normalized", None):
+                                prior_same_exists = True
+                            else:
                                 prior_names.append(prev_mem)
 
-                        if prior_names:
+                        if (not prior_same_exists) and prior_names:
                             selected_prev = max(
                                 prior_names,
                                 key=lambda m: (getattr(m, "timestamp", 0.0), getattr(m, "trust", 0.0)),

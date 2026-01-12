@@ -68,3 +68,19 @@ def test_uncertainty_response_invites_continuing_conversation(rag: CRTEnhancedRA
     out = rag.query("What's my name?")
     assert out["mode"] == "uncertainty"
     assert "I can still help with other parts of your question" in out["answer"]
+
+
+def test_reasserting_prior_name_is_clarification_not_new_contradiction(
+    rag: CRTEnhancedRAG, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(rag.ledger, "_classify_contradiction", lambda *args, **kwargs: ContradictionType.CONFLICT)
+
+    rag.query("My name is Sarah.")
+    rag.query("My name is Emily.")
+
+    out = rag.query("For the record: my name is Sarah.")
+    assert out["contradiction_detected"] is False
+
+    # The earlier name conflict should be resolvable by this clarification.
+    open_contras = rag.get_open_contradictions()
+    assert open_contras == []
