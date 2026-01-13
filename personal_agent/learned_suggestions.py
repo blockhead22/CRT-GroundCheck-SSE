@@ -59,23 +59,43 @@ class LearnedSuggestionEngine:
         self.model_path = model_path or os.environ.get("CRT_LEARNED_MODEL_PATH")
         self._model = None
         self._load_error: Optional[str] = None
+        self._model_mtime: Optional[float] = None
 
     def is_enabled(self) -> bool:
         return self._model is not None
 
     def load_if_available(self) -> None:
-        if self._model is not None:
-            return
+        """Load (or reload) the learned model if available.
+
+        This supports hot-reload: if the file's mtime changes, we reload it.
+        """
+        # Allow env var changes after init.
+        if not self.model_path:
+            self.model_path = os.environ.get("CRT_LEARNED_MODEL_PATH")
+
         if not self.model_path:
             return
         if not os.path.exists(self.model_path):
             return
+
+        try:
+            mtime = float(os.path.getmtime(self.model_path))
+        except Exception:
+            mtime = None
+
+        if self._model is not None and self._model_mtime is not None and mtime is not None:
+            if abs(mtime - self._model_mtime) < 1e-9:
+                return
+
         try:
             import joblib  # type: ignore
 
             self._model = joblib.load(self.model_path)
+            self._model_mtime = mtime
+            self._load_error = None
         except Exception as e:
             self._model = None
+            self._model_mtime = None
             self._load_error = str(e)
 
     def suggest_for_slots(

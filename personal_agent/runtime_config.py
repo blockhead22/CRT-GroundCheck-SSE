@@ -38,6 +38,23 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         "max_runs": 0,
     },
 
+    # Dev-facing: periodic train→eval→publish loop for the suggestion-only model.
+    # Safe by design: it only updates a model used for *recommendations*, not beliefs.
+    "training_loop": {
+        "enabled": False,
+        # "thread" trains from personal_agent/crt_memory_<thread>.db + crt_ledger_<thread>.db
+        # "artifacts" trains from reflection.artifacts_dir containing crt_stress_memory.*.db pairs
+        "source": "thread",
+        "thread_id": "default",
+        "interval_seconds": 300,
+        "run_on_startup": True,
+        # Optional publish gates
+        "min_train_examples": 20,
+        "min_eval_examples": 20,
+        "min_eval_accuracy": None,
+        "max_prefer_latest_rate": None,
+    },
+
     # When enabled, uncertainty responses include a layperson-friendly explanation
     # that the assistant might be wrong due to conflicting information.
     "conflict_warning": {
