@@ -123,6 +123,21 @@ class ThreadResetResponse(BaseModel):
     ok: bool = True
 
 
+class ThreadPurgeMemoriesRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    sources: list[str] = Field(default_factory=lambda: ["system", "fallback"], description="memory sources to delete")
+    confirm: bool = Field(default=False, description="must be true to execute")
+
+
+class ThreadPurgeMemoriesResponse(BaseModel):
+    thread_id: str
+    sources: list[str]
+    confirm: bool
+    deleted_memories: int = 0
+    deleted_trust_log: int = 0
+    ok: bool = True
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="CRT API", version="0.1.0")
 
@@ -175,6 +190,12 @@ def create_app() -> FastAPI:
         if not t:
             return False
         needles = (
+            # Direct "what is memory" questions about the system.
+            'what is memory to you',
+            'what does memory mean to you',
+            'why is memory important',
+            'why is memory so important',
+            'memory to you',
             'how do you work',
             'how you work',
             'how does crt work',
@@ -385,6 +406,58 @@ def create_app() -> FastAPI:
             "memory": (root / f"personal_agent/crt_memory_{tid}.db"),
             "ledger": (root / f"personal_agent/crt_ledger_{tid}.db"),
         }
+
+    def _purge_memory_sources(db_path: Path, sources: list[str]) -> tuple[int, int]:
+        # Returns: (deleted_memories, deleted_trust_log)
+        if not sources:
+            return (0, 0)
+        norm_sources = [str(s).strip().lower() for s in sources if str(s).strip()]
+        norm_sources = [s for s in norm_sources if s]
+        if not norm_sources:
+            return (0, 0)
+
+        if not db_path.exists() or not db_path.is_file():
+            return (0, 0)
+
+        placeholders = ",".join(["?"] * len(norm_sources))
+        deleted_memories = 0
+        deleted_trust_log = 0
+
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cur = conn.cursor()
+
+            # Collect ids to clean up trust_log.
+            cur.execute(
+                f"SELECT memory_id FROM memories WHERE lower(source) IN ({placeholders})",
+                tuple(norm_sources),
+            )
+            ids = [str(r[0]) for r in cur.fetchall() if r and r[0]]
+
+            if ids:
+                id_placeholders = ",".join(["?"] * len(ids))
+                cur.execute(
+                    f"DELETE FROM trust_log WHERE memory_id IN ({id_placeholders})",
+                    tuple(ids),
+                )
+                deleted_trust_log = int(cur.rowcount or 0)
+
+            cur.execute(
+                f"DELETE FROM memories WHERE lower(source) IN ({placeholders})",
+                tuple(norm_sources),
+            )
+            deleted_memories = int(cur.rowcount or 0)
+
+            conn.commit()
+            conn.close()
+        except Exception:
+            try:
+                conn.close()  # type: ignore[name-defined]
+            except Exception:
+                pass
+            return (0, 0)
+
+        return (deleted_memories, deleted_trust_log)
 
     @app.get("/health")
     def health() -> Dict[str, str]:
@@ -677,6 +750,37 @@ def create_app() -> FastAPI:
             _delete_path("ledger")
 
         return ThreadResetResponse(thread_id=tid, target=target, deleted=deleted, ok=True)
+
+    @app.post("/api/thread/purge_memories", response_model=ThreadPurgeMemoriesResponse)
+    def thread_purge_memories(req: ThreadPurgeMemoriesRequest) -> ThreadPurgeMemoriesResponse:
+        tid = _sanitize_thread_id(req.thread_id)
+
+        # Require explicit confirmation.
+        if not bool(req.confirm):
+            return ThreadPurgeMemoriesResponse(
+                thread_id=tid,
+                sources=list(req.sources or []),
+                confirm=False,
+                deleted_memories=0,
+                deleted_trust_log=0,
+                ok=False,
+            )
+
+        # Drop cached engine first to avoid holding references and to ensure re-open.
+        engines.pop(tid, None)
+
+        sources = [str(s) for s in (req.sources or [])]
+        paths = _thread_db_paths(tid)
+        deleted_memories, deleted_trust_log = _purge_memory_sources(paths["memory"], sources)
+
+        return ThreadPurgeMemoriesResponse(
+            thread_id=tid,
+            sources=sources,
+            confirm=True,
+            deleted_memories=deleted_memories,
+            deleted_trust_log=deleted_trust_log,
+            ok=True,
+        )
 
     return app
 
