@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
@@ -35,6 +36,19 @@ class ChatSendResponse(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class DocListItem(BaseModel):
+    id: str
+    title: str
+    kind: str
+
+
+class DocGetResponse(BaseModel):
+    id: str
+    title: str
+    kind: str
+    markdown: str
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="CRT API", version="0.1.0")
 
@@ -52,6 +66,24 @@ def create_app() -> FastAPI:
     # Cache one CRT engine per thread (isolated DBs per thread).
     engines: Dict[str, CRTEnhancedRAG] = {}
 
+    root = Path(__file__).resolve().parent
+    docs_dir = root / "docs"
+    doc_map: Dict[str, Dict[str, Any]] = {
+        # Mirrors the Streamlit dashboard docs tabs.
+        "architecture": {"title": "CRT System Architecture", "kind": "docs", "path": docs_dir / "CRT_SYSTEM_ARCHITECTURE.md"},
+        "faq": {"title": "CRT FAQ", "kind": "docs", "path": docs_dir / "CRT_FAQ.md"},
+        "functional_spec": {"title": "CRT Functional Spec", "kind": "docs", "path": docs_dir / "CRT_FUNCTIONAL_SPEC.md"},
+        # Convenience reference docs (same list as Streamlit dashboard).
+        "how_it_works": {"title": "How It Works", "kind": "reference", "path": root / "HOW_IT_WORKS.md"},
+        "project_summary": {"title": "Project Summary", "kind": "reference", "path": root / "PROJECT_SUMMARY.md"},
+        "crt_quick_reference": {"title": "CRT Quick Reference", "kind": "reference", "path": root / "CRT_QUICK_REFERENCE.md"},
+        "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": root / "CRT_WHITEPAPER.md"},
+        "crt_chat_gui_setup": {"title": "CRT Chat GUI Setup", "kind": "reference", "path": root / "CRT_CHAT_GUI_SETUP.md"},
+        "crt_dashboard_guide": {"title": "CRT Dashboard Guide", "kind": "reference", "path": root / "CRT_DASHBOARD_GUIDE.md"},
+        "multi_agent_user_guide": {"title": "Multi-Agent User Guide", "kind": "reference", "path": root / "MULTI_AGENT_USER_GUIDE.md"},
+        "rag_start_here": {"title": "RAG Start Here", "kind": "reference", "path": root / "RAG_START_HERE.md"},
+    }
+
     def get_engine(thread_id: str) -> CRTEnhancedRAG:
         tid = _sanitize_thread_id(thread_id)
         engine = engines.get(tid)
@@ -67,6 +99,37 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> Dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/api/docs", response_model=list[DocListItem])
+    def list_docs() -> list[DocListItem]:
+        items: list[DocListItem] = []
+        for doc_id, meta in doc_map.items():
+            path: Path = meta["path"]
+            if not path.exists() or not path.is_file():
+                continue
+            items.append(DocListItem(id=doc_id, title=str(meta.get("title") or doc_id), kind=str(meta.get("kind") or "docs")))
+        # Stable ordering: docs first, then reference
+        items.sort(key=lambda x: (0 if x.kind == "docs" else 1, x.title.lower()))
+        return items
+
+    @app.get("/api/docs/{doc_id}", response_model=DocGetResponse)
+    def get_doc(doc_id: str) -> DocGetResponse:
+        meta = doc_map.get(doc_id)
+        if not meta:
+            return DocGetResponse(id=doc_id, title="Not found", kind="error", markdown=f"# Not found\n\nUnknown doc id: `{doc_id}`")
+
+        path: Path = meta["path"]
+        try:
+            markdown = path.read_text(encoding="utf-8")
+        except Exception as e:
+            markdown = f"# Missing document\n\nCould not read: `{path}`\n\nError: {e}"
+
+        return DocGetResponse(
+            id=doc_id,
+            title=str(meta.get("title") or doc_id),
+            kind=str(meta.get("kind") or "docs"),
+            markdown=markdown,
+        )
 
     @app.post("/api/chat/send", response_model=ChatSendResponse)
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:
