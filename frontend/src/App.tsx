@@ -11,13 +11,21 @@ import { DocsPage } from './pages/DocsPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
+import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
 export default function App() {
   const [navActive, setNavActive] = useState<NavId>('chat')
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [threads, setThreads] = useState<ChatThread[]>(() => seedThreads())
-  const [selectedThreadId, setSelectedThreadId] = useState<string>(() => seedThreads()[0]?.id ?? 't1')
+  const [threads, setThreads] = useState<ChatThread[]>(() => {
+    const loaded = loadChatStateFromStorage()
+    return loaded.threads.length ? loaded.threads : seedThreads()
+  })
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(() => {
+    const loaded = loadChatStateFromStorage()
+    if (loaded.selectedThreadId) return loaded.selectedThreadId
+    return loaded.threads[0]?.id ?? seedThreads()[0]?.id ?? 't1'
+  })
   const [typing, setTyping] = useState(false)
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
@@ -39,11 +47,49 @@ export default function App() {
 
   function upsertThread(updated: ChatThread) {
     setThreads((prev) => {
-      const next = prev.map((t) => (t.id === updated.id ? updated : t))
+      const exists = prev.some((t) => t.id === updated.id)
+      const next = exists ? prev.map((t) => (t.id === updated.id ? updated : t)) : [updated, ...prev]
       next.sort((a, b) => b.updatedAt - a.updatedAt)
       return next
     })
   }
+
+  function newThread() {
+    const now = Date.now()
+    const t: ChatThread = { id: newId('t'), title: 'New chat', updatedAt: now, messages: [] }
+    setThreads((prev) => [t, ...prev].sort((a, b) => b.updatedAt - a.updatedAt))
+    setSelectedThreadId(t.id)
+    setSelectedMessageId(null)
+    setNavActive('chat')
+  }
+
+  function deleteThread(id: string) {
+    setThreads((prev) => {
+      const remaining = prev.filter((t) => t.id !== id)
+      if (selectedThreadId === id) {
+        const next = remaining[0]
+        if (next) {
+          setSelectedThreadId(next.id)
+        } else {
+          const now = Date.now()
+          const t: ChatThread = { id: newId('t'), title: 'New chat', updatedAt: now, messages: [] }
+          remaining.unshift(t)
+          setSelectedThreadId(t.id)
+        }
+        setSelectedMessageId(null)
+        setNavActive('chat')
+      }
+      return remaining
+    })
+  }
+
+  useEffect(() => {
+    // Persist threads + selection for the Recent chats sidebar.
+    const id = window.setTimeout(() => {
+      saveChatStateToStorage({ threads, selectedThreadId: selectedThread?.id ?? selectedThreadId ?? null })
+    }, 150)
+    return () => window.clearTimeout(id)
+  }, [threads, selectedThread?.id, selectedThreadId])
 
   useEffect(() => {
     let mounted = true
@@ -93,10 +139,52 @@ export default function App() {
   async function handleSend(text: string) {
     if (!selectedThread) return
 
+    const raw = text
+    const trimmed = raw.trim()
+    const expandTriggers = [
+      'explain more',
+      'expand',
+      'expand more',
+      'tell me more',
+      'go deeper',
+      'continue',
+      'more detail',
+      'more details',
+      'elaborate',
+    ]
+    const wantsExpand = expandTriggers.some((t) => trimmed.toLowerCase() === t || trimmed.toLowerCase().startsWith(t + ' '))
+
+    const lastAssistant = [...selectedThread.messages].reverse().find((m) => m.role === 'assistant')
+    const outgoingText = wantsExpand && lastAssistant?.text
+      ? [
+          'Expand on your previous answer with more depth and concrete detail.',
+          'Requirements:',
+          '- Do not repeat the original text verbatim.',
+          '- Add examples and a step-by-step breakdown when applicable.',
+          '- If you are uncertain about internal mechanisms, say so explicitly.',
+          '',
+          'Previous answer:',
+          lastAssistant.text,
+          '',
+          `User request: ${raw}`,
+        ].join('\n')
+      : raw
+
     const now = Date.now()
-    const userMsg = { id: newId('m'), role: 'user' as const, text, createdAt: now }
+    const userMsg = { id: newId('m'), role: 'user' as const, text: raw, createdAt: now }
+
+    const shouldAutoTitle = !selectedThread.title || selectedThread.title === 'New chat'
+    const autoTitle = shouldAutoTitle
+        ? raw
+          .trim()
+          .replace(/^FACT:\s*/i, '')
+          .replace(/^PREF:\s*/i, '')
+          .slice(0, 48) || 'New chat'
+      : selectedThread.title
+
     const withUser: ChatThread = {
       ...selectedThread,
+      title: autoTitle,
       updatedAt: now,
       messages: [...selectedThread.messages, userMsg],
     }
@@ -105,7 +193,7 @@ export default function App() {
     setTyping(true)
 
     try {
-      const res = await sendToCrtApi({ threadId: withUser.id, message: text, history: withUser.messages })
+      const res = await sendToCrtApi({ threadId: withUser.id, message: outgoingText, history: withUser.messages })
       const at = Date.now()
       const asstMsg = {
         id: newId('m'),
@@ -172,6 +260,8 @@ export default function App() {
               setSelectedMessageId(null)
               setNavActive('chat')
             }}
+            onNewThread={newThread}
+            onDeleteThread={deleteThread}
           />
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">

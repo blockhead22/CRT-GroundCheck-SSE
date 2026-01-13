@@ -999,12 +999,8 @@ class CRTEnhancedRAG:
                 inferred_slots=inferred_slots,
             )
 
+            # Do not append provenance footers into the answer text.
             final_answer = candidate_output
-            try:
-                if bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
-                    final_answer = candidate_output.rstrip() + "\n\nProvenance: derived from stored memories (contradiction ledger)."
-            except Exception:
-                final_answer = candidate_output
 
             # Keep as non-durable speech.
             self.memory.store_memory(
@@ -1070,12 +1066,8 @@ class CRTEnhancedRAG:
 
             answer = self._build_user_named_reference_answer(user_query, relevant_slots)
 
+            # Do not append provenance footers into the answer text.
             final_answer = answer
-            try:
-                if bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
-                    final_answer = answer.rstrip() + "\n\nProvenance: answered from stored memories."
-            except Exception:
-                pass
 
             return {
                 'answer': final_answer,

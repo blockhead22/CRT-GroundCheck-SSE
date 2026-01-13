@@ -110,10 +110,18 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "My name is Sarah."
     # - "Yes, I'm Sarah"
     # Allow multi-token names (e.g., "Nick Block"), but keep it conservative.
+    # For "I'm ..." specifically, require a name-like token to avoid false positives
+    # like "I'm glad you asked".
     name_pat = r"([A-Za-z][A-Za-z'-]{1,40}(?:\s+[A-Za-z][A-Za-z'-]{1,40}){0,2})"
+    name_pat_title = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
     m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if not m:
-        m = re.search(r"\bi\s*'?m\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
+        # Prefer TitleCase names for the generic "I'm X" pattern.
+        m = re.search(r"\bi\s*'?m\s+" + name_pat_title + r"\b", text)
+        if not m:
+            # Allow a single-token lowercase name, but only when it appears as a direct
+            # name declaration (no extra trailing content).
+            m = re.search(r"^\s*i\s*'?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
     if m:
         name = m.group(1).strip()
         tokens = [t for t in re.split(r"\s+", name) if t]
@@ -124,7 +132,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         looks_like_infinitive = trailing.startswith("to ")
         has_stopword = any(t in _NAME_STOPWORDS for t in token_lowers)
 
-        # Allow single-token lowercase names like "nick", but reject common verbs.
+        # Reject common non-name tokens and infinitive phrases.
         if tokens and not has_stopword and not looks_like_infinitive:
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
 

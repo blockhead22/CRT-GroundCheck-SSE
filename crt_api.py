@@ -170,6 +170,118 @@ def create_app() -> FastAPI:
         engines[tid] = engine
         return engine
 
+    def _is_architecture_explanation_request(text: str) -> bool:
+        t = (text or '').strip().lower()
+        if not t:
+            return False
+        needles = (
+            'how do you work',
+            'how you work',
+            'how does crt work',
+            'how does sse work',
+            'crt architecture',
+            'system architecture',
+            'reconstruction gate',
+            'reconstruction gates',
+            'trust-weighted',
+            'trust weighted',
+            'trust weights',
+            'contradiction preservation',
+            'contradiction ledger',
+            'coherence priority',
+            'cognitive-reflective',
+            'cognitive reflective',
+            'sse',
+        )
+        return any(n in t for n in needles)
+
+    def _load_doc_text(doc_id: str) -> str:
+        info = doc_map.get(doc_id)
+        if not info:
+            return ''
+        path = info.get('path')
+        try:
+            return Path(path).read_text(encoding='utf-8', errors='ignore')  # type: ignore[arg-type]
+        except Exception:
+            return ''
+
+    def _score_snippet(snippet: str, q_words: list[str]) -> float:
+        s = snippet.lower()
+        score = 0.0
+        for w in q_words:
+            if not w:
+                continue
+            if w in s:
+                score += 1.0
+        # Prefer shorter, denser snippets.
+        score *= 1.0 / max(1.0, (len(snippet) / 800.0))
+        return score
+
+    def _answer_from_docs(query: str) -> tuple[str, list[dict[str, Any]]]:
+        q = (query or '').strip()
+        ql = q.lower()
+        q_words = [w for w in re.split(r"[^a-z0-9_]+", ql) if len(w) >= 3]
+
+        # Pick a small curated set of docs for architecture explanations.
+        doc_ids = [
+            'how_it_works',
+            'crt_whitepaper',
+            'crt_quick_reference',
+            'project_summary',
+            'crt_dashboard_guide',
+            'architecture',
+            'functional_spec',
+        ]
+
+        candidates: list[tuple[float, str, str]] = []  # (score, doc_id, snippet)
+        for did in doc_ids:
+            txt = _load_doc_text(did)
+            if not txt:
+                continue
+            # Split on blank lines; keep paragraph-ish chunks.
+            parts = [p.strip() for p in re.split(r"\n\s*\n", txt) if p.strip()]
+            for p in parts:
+                if len(p) < 60:
+                    continue
+                if len(p) > 1600:
+                    p = p[:1600] + '…'
+                sc = _score_snippet(p, q_words)
+                if sc <= 0:
+                    continue
+                candidates.append((sc, did, p))
+
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        top = candidates[:6]
+
+        # Build a safe, doc-grounded explanation.
+        lines: list[str] = []
+        lines.append('This is a design/spec explanation (doc-grounded), not a personal memory claim.')
+        lines.append('')
+        lines.append(f'Question: {q}')
+        lines.append('')
+
+        if not top:
+            lines.append('I could not find a relevant section in the local docs set.')
+            lines.append('Try asking about a specific component (e.g., “reconstruction gates”, “contradiction ledger”, “trust-weighted memories”).')
+            return '\n'.join(lines), []
+
+        prompt_items: list[dict[str, Any]] = []
+        for i, (_sc, did, snippet) in enumerate(top, start=1):
+            title = str((doc_map.get(did) or {}).get('title') or did)
+            lines.append(f'{i}. From {title}:')
+            lines.append(snippet)
+            lines.append('')
+            prompt_items.append({
+                'memory_id': f'doc:{did}',
+                'text': f'DOC[{did}]: {snippet}',
+                'source': 'docs',
+                'trust': None,
+                'confidence': None,
+            })
+
+        lines.append('If you want, tell me which part to go deeper on (gates, memory, ledger, coherence), and I’ll expand that section.')
+        return '\n'.join(lines).strip(), prompt_items
+
     def _memory_item_to_dict(mem) -> Dict[str, Any]:
         return {
             "memory_id": getattr(mem, "memory_id", ""),
@@ -427,6 +539,22 @@ def create_app() -> FastAPI:
     @app.post("/api/chat/send", response_model=ChatSendResponse)
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:
         engine = get_engine(req.thread_id)
+
+        # Safe doc-grounded channel for architecture/system explanation questions.
+        if _is_architecture_explanation_request(req.message):
+            answer, prompt_items = _answer_from_docs(req.message)
+            return ChatSendResponse(
+                answer=answer,
+                response_type='explanation',
+                gates_passed=False,
+                gate_reason='docs_explanation',
+                session_id=getattr(engine, 'session_id', None),
+                metadata={
+                    'confidence': 0.85,
+                    'retrieved_memories': [],
+                    'prompt_memories': prompt_items,
+                },
+            )
 
         mode_arg = None
         if req.mode:

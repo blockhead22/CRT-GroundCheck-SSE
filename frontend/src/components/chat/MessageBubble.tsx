@@ -15,14 +15,19 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
 
   const responseType = (meta?.response_type ?? '').toLowerCase()
   const isBelief = responseType === 'belief'
+  const isExplanation = responseType === 'explanation'
   const gatesPassed = meta?.gates_passed
   const showMeta = isAssistant && Boolean(meta)
 
   const prov = (() => {
-    if (!isAssistant || !meta || !isBelief) return null
+    if (!isAssistant || !meta || !(isBelief || isExplanation)) return null
     const pm = meta.prompt_memories ?? []
     const rm = meta.retrieved_memories ?? []
-    const best = pm.find((m) => (m.text || '').trim().toLowerCase().startsWith('fact:')) || pm[0] || rm[0]
+    const best =
+      pm.find((m: any) => String(m?.memory_id || '').toLowerCase().startsWith('doc:')) ||
+      pm.find((m) => (m.text || '').trim().toLowerCase().startsWith('fact:')) ||
+      pm[0] ||
+      rm[0]
     const text = (best?.text || '').trim()
     const id = (best as any)?.memory_id ? String((best as any).memory_id) : ''
     if (!text && !id) return null
@@ -50,7 +55,11 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
             <span
               className={
                 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ' +
-                (isBelief ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/10 text-white/80')
+                (isBelief
+                  ? 'bg-emerald-500/15 text-emerald-200'
+                  : isExplanation
+                    ? 'bg-sky-500/15 text-sky-200'
+                    : 'bg-white/10 text-white/80')
               }
               title="CRT response type"
             >
@@ -88,7 +97,7 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
 
         {prov ? (
           <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/60">
-            <div className="font-semibold tracking-wide text-white/50">PROVENANCE</div>
+            <div className="font-semibold tracking-wide text-white/50">{isExplanation ? 'CITATIONS' : 'PROVENANCE'}</div>
             <div className="mt-1 line-clamp-2 whitespace-pre-wrap text-white/70">
               {prov.id ? <span className="font-mono text-white/60">{prov.id}</span> : null}
               {prov.id && prov.text ? <span className="text-white/40"> · </span> : null}

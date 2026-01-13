@@ -17,6 +17,8 @@ export function Sidebar(props: {
   threads: ChatThread[]
   selectedThreadId: string | null
   onSelectThread: (id: string) => void
+  onNewThread: () => void
+  onDeleteThread: (id: string) => void
 }) {
   return (
     <AnimatePresence initial={false}>
@@ -85,11 +87,6 @@ export function Sidebar(props: {
                         {item.icon}
                       </span>
                       <span className="font-medium">{item.label}</span>
-                      {(item.id === 'dashboard' || item.id === 'docs') && (
-                        <span className="ml-auto rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/70">
-                          PRO
-                        </span>
-                      )}
                     </button>
                   )
                 })}
@@ -99,7 +96,9 @@ export function Sidebar(props: {
             <div className="mt-4 px-4">
               <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Recent chats</div>
-                <button className="text-xs text-white/70 hover:underline">View all</button>
+                <button onClick={props.onNewThread} className="text-xs text-white/70 hover:underline">
+                  New
+                </button>
               </div>
 
               <div className="mt-2 flex flex-col gap-2">
@@ -115,30 +114,31 @@ export function Sidebar(props: {
                         key={t.id}
                         onClick={() => props.onSelectThread(t.id)}
                         className={
-                          'rounded-xl border border-white/10 px-3 py-2 text-left ' +
+                          'group rounded-xl border border-white/10 px-3 py-2 text-left ' +
                           (selected ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10')
                         }
                       >
-                        <div className="truncate text-sm font-medium text-white">{t.title}</div>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium text-white">{t.title}</div>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              props.onDeleteThread(t.id)
+                            }}
+                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 opacity-0 transition group-hover:opacity-100 hover:bg-white/10"
+                            aria-label="Delete chat"
+                            title="Delete"
+                          >
+                            ✕
+                          </button>
+                        </div>
                         <div className="text-xs text-white/50">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
                       </motion.button>
                     )
                   })}
-              </div>
-            </div>
-
-            <div className="mt-auto p-4">
-              <div className="rounded-2xl bg-gradient-to-br from-violet-600/30 via-white/5 to-white/5 p-4 shadow-card">
-                <div className="text-sm font-semibold text-white">Pro Plan</div>
-                <div className="mt-1 text-xs text-white/60">Strengthen artificial intelligence: get plan!</div>
-                <div className="mt-3 flex gap-2">
-                  <button className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500">
-                    Get PRO
-                  </button>
-                  <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10">
-                    Info
-                  </button>
-                </div>
               </div>
             </div>
           </div>
