@@ -8,7 +8,7 @@ import { InspectorLightbox } from './components/InspectorLightbox'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { newId } from './lib/id'
-import { getEffectiveApiBaseUrl, getHealth, sendToCrtApi, setEffectiveApiBaseUrl } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
 
 export default function App() {
@@ -21,6 +21,8 @@ export default function App() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
   const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(getEffectiveApiBaseUrl())
+  const [userName, setUserName] = useState<string>('User')
+  const [userEmail, setUserEmail] = useState<string>('')
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -57,6 +59,27 @@ export default function App() {
       window.clearInterval(id)
     }
   }, [])
+
+  useEffect(() => {
+    // Best-effort: load profile slots (including name) for the active thread.
+    const tid = selectedThread?.id ?? selectedThreadId
+    let mounted = true
+
+    async function load() {
+      try {
+        const p = await getProfile(tid)
+        const name = (p?.name || p?.slots?.name || '').trim()
+        if (mounted) setUserName(name || 'User')
+      } catch (_e) {
+        // Keep existing name on error.
+      }
+    }
+
+    void load()
+    return () => {
+      mounted = false
+    }
+  }, [selectedThread?.id, selectedThreadId])
 
   useEffect(() => {
     setEffectiveApiBaseUrl(apiBaseUrl)
@@ -150,8 +173,8 @@ export default function App() {
             <Topbar
               onToggleSidebarMobile={() => setSidebarOpen((v) => !v)}
               title="CRT"
-              userName="Marcus Aurelius"
-              userEmail="marcusaurel@example.com"
+              userName={userName}
+              userEmail={userEmail}
               apiStatus={apiStatus}
               apiBaseUrl={apiBaseUrl}
               onChangeApiBaseUrl={setApiBaseUrl}
