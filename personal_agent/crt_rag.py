@@ -77,7 +77,10 @@ class CRTEnhancedRAG:
         self,
         query: str,
         k: int = 5,
-        min_trust: float = 0.0
+        min_trust: float = 0.0,
+        include_system: bool = False,
+        include_fallback: bool = False,
+        include_reflection: bool = False,
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using CRT trust-weighted scoring.
@@ -90,12 +93,28 @@ class CRTEnhancedRAG:
         
         This is fundamentally different from standard RAG's pure similarity.
         """
-        retrieved = self.memory.retrieve_memories(query, k, min_trust)
+        # Default retrieval is intended to ground answers in auditable sources.
+        # Assistant-generated outputs (SYSTEM) and non-durable speech (FALLBACK)
+        # tend to create self-retrieval loops and misleading provenance, so they
+        # are excluded unless explicitly requested.
+        allowed_sources = {MemorySource.USER, MemorySource.EXTERNAL}
+        if include_system:
+            allowed_sources.add(MemorySource.SYSTEM)
+        if include_fallback:
+            allowed_sources.add(MemorySource.FALLBACK)
+        if include_reflection:
+            allowed_sources.add(MemorySource.REFLECTION)
+
+        # Over-fetch then filter, so excluding sources doesn't starve results.
+        candidate_k = max(int(k) * 5, int(k))
+        retrieved = self.memory.retrieve_memories(query, candidate_k, min_trust)
 
         # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
         # not new world facts) to prevent recursive quoting and prompt pollution.
         filtered: List[Tuple[MemoryItem, float]] = []
         for mem, score in retrieved:
+            if getattr(mem, "source", None) not in allowed_sources:
+                continue
             try:
                 kind = ((mem.context or {}).get("kind") or "").strip().lower()
             except Exception:
@@ -113,6 +132,9 @@ class CRTEnhancedRAG:
                 continue
 
             filtered.append((mem, score))
+
+            if len(filtered) >= k:
+                break
 
         return filtered
 
