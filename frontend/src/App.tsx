@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import type { ChatThread, NavId, QuickAction } from './types'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { ChatThreadView } from './components/chat/ChatThreadView'
-import { RightPanel } from './components/RightPanel'
+import { InspectorLightbox } from './components/InspectorLightbox'
+import { DashboardPage } from './pages/DashboardPage'
+import { DocsPage } from './pages/DocsPage'
 import { newId } from './lib/id'
-import { sendToCrtApi } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, sendToCrtApi, setEffectiveApiBaseUrl } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
 
 export default function App() {
@@ -17,6 +19,8 @@ export default function App() {
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => seedThreads()[0]?.id ?? 't1')
   const [typing, setTyping] = useState(false)
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
+  const [apiStatus, setApiStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking')
+  const [apiBaseUrl, setApiBaseUrl] = useState<string>(getEffectiveApiBaseUrl())
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -35,6 +39,28 @@ export default function App() {
       return next
     })
   }
+
+  useEffect(() => {
+    let mounted = true
+    async function ping() {
+      try {
+        await getHealth()
+        if (mounted) setApiStatus('connected')
+      } catch (_e) {
+        if (mounted) setApiStatus('disconnected')
+      }
+    }
+    void ping()
+    const id = window.setInterval(() => void ping(), 5000)
+    return () => {
+      mounted = false
+      window.clearInterval(id)
+    }
+  }, [])
+
+  useEffect(() => {
+    setEffectiveApiBaseUrl(apiBaseUrl)
+  }, [apiBaseUrl])
 
   async function handleSend(text: string) {
     if (!selectedThread) return
@@ -126,9 +152,12 @@ export default function App() {
               title="CRT"
               userName="Marcus Aurelius"
               userEmail="marcusaurel@example.com"
+              apiStatus={apiStatus}
+              apiBaseUrl={apiBaseUrl}
+              onChangeApiBaseUrl={setApiBaseUrl}
             />
 
-            <div className="flex gap-5">
+            <div className="relative">
               <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
                 {navActive === 'chat' ? (
                   selectedThread ? (
@@ -144,43 +173,18 @@ export default function App() {
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
                   )
+                ) : navActive === 'dashboard' ? (
+                  <DashboardPage threadId={selectedThread?.id ?? 'default'} />
                 ) : (
-                  <div className="flex flex-1 items-center justify-center p-10">
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.22 }}
-                      className="w-full max-w-[760px] text-center"
-                    >
-                      <div className="text-2xl font-semibold text-white">{navActive.toUpperCase()}</div>
-                      <div className="mt-2 text-sm text-white/60">
-                        This section mirrors the Streamlit app navigation and will be wired next.
-                      </div>
-                      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm text-white/70 shadow-card">
-                        Next: render Dashboard + Docs pages (matching Streamlit content).
-                      </div>
-                    </motion.div>
-                  </div>
+                  <DocsPage />
                 )}
               </main>
-
-              <div className="hidden lg:block">
-                <RightPanel
-                  threads={threads}
-                  selectedThreadId={selectedThread?.id ?? null}
-                  onSelectThread={(id) => {
-                    setSelectedThreadId(id)
-                    setSelectedMessageId(null)
-                    setNavActive('chat')
-                  }}
-                  selectedMessage={selectedMessage}
-                  onClearSelection={() => setSelectedMessageId(null)}
-                />
-              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <InspectorLightbox open={navActive === 'chat' && Boolean(selectedMessageId)} message={selectedMessage} onClose={() => setSelectedMessageId(null)} />
     </div>
   )
 }

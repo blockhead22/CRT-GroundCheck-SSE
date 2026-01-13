@@ -49,7 +49,7 @@ export function ChatThreadView(props: {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-hidden px-2 py-4 md:px-6">
-        <div className="mx-auto flex h-full w-full max-w-[980px] gap-4">
+        <div className="mx-auto flex h-full w-full max-w-[1180px] gap-4">
           <div className="min-w-0 flex-1 overflow-auto">
             <div className="flex w-full flex-col gap-3">
               {hint}
@@ -96,7 +96,7 @@ export function ChatThreadView(props: {
       </div>
 
       <div className="border-t border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-[980px]">
+        <div className="mx-auto w-full max-w-[1180px]">
           <Composer onSend={props.onSend} />
           <div className="mt-3 text-center text-xs text-white/50">
             Join the CRT community for more insights.{' '}

@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
+from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
+from personal_agent.fact_slots import extract_fact_slots
 
 
 def _sanitize_thread_id(value: str) -> str:
@@ -47,6 +49,55 @@ class DocGetResponse(BaseModel):
     title: str
     kind: str
     markdown: str
+
+
+class DashboardOverviewResponse(BaseModel):
+    thread_id: str
+    session_id: Optional[str] = None
+    memories_total: int
+    open_contradictions: int
+    belief_ratio: float
+    speech_ratio: float
+    belief_count: int
+    speech_count: int
+
+
+class MemoryListItem(BaseModel):
+    memory_id: str
+    text: str
+    timestamp: float
+    confidence: float
+    trust: float
+    source: str
+    sse_mode: str
+    thread_id: Optional[str] = None
+
+
+class ContradictionListItem(BaseModel):
+    ledger_id: str
+    timestamp: float
+    status: str
+    contradiction_type: str
+    drift_mean: float
+    confidence_delta: float
+    summary: Optional[str] = None
+    query: Optional[str] = None
+    old_memory_id: str
+    new_memory_id: str
+
+
+class ResolveContradictionRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    ledger_id: str
+    method: str = Field(description="resolution method (e.g., accept_both, user_clarified, reflection_merge)")
+    new_status: str = Field(default="resolved")
+    merged_memory_id: Optional[str] = None
+
+
+class ProfileResponse(BaseModel):
+    thread_id: str
+    name: Optional[str] = None
+    slots: Dict[str, str] = Field(default_factory=dict)
 
 
 def create_app() -> FastAPI:
@@ -96,6 +147,50 @@ def create_app() -> FastAPI:
         engines[tid] = engine
         return engine
 
+    def _memory_item_to_dict(mem) -> Dict[str, Any]:
+        return {
+            "memory_id": getattr(mem, "memory_id", ""),
+            "text": getattr(mem, "text", ""),
+            "timestamp": float(getattr(mem, "timestamp", 0.0) or 0.0),
+            "confidence": float(getattr(mem, "confidence", 0.0) or 0.0),
+            "trust": float(getattr(mem, "trust", 0.0) or 0.0),
+            "source": getattr(getattr(mem, "source", None), "value", None) or str(getattr(mem, "source", "")),
+            "sse_mode": getattr(getattr(mem, "sse_mode", None), "value", None) or str(getattr(mem, "sse_mode", "")),
+            "thread_id": getattr(mem, "thread_id", None),
+        }
+
+    def _extract_latest_profile_slots(engine: CRTEnhancedRAG) -> Dict[str, str]:
+        """Best-effort extraction of latest fact slots from user memories.
+
+        We treat structured facts like "FACT: name = Nick" as authoritative signals.
+        """
+        try:
+            items = engine.memory._load_all_memories()
+        except Exception:
+            items = []
+
+        best_by_slot: Dict[str, Dict[str, Any]] = {}
+        for mem in items:
+            src = getattr(getattr(mem, "source", None), "value", None) or str(getattr(mem, "source", ""))
+            if str(src).lower() != "user":
+                continue
+            text = str(getattr(mem, "text", "") or "")
+            facts = extract_fact_slots(text)
+            if not facts:
+                continue
+            ts = float(getattr(mem, "timestamp", 0.0) or 0.0)
+            for slot, extracted in facts.items():
+                prev = best_by_slot.get(slot)
+                if prev is None or ts >= float(prev.get("timestamp") or 0.0):
+                    best_by_slot[slot] = {"value": str(extracted.value), "timestamp": ts}
+
+        out: Dict[str, str] = {}
+        for slot, d in best_by_slot.items():
+            v = str(d.get("value") or "").strip()
+            if v:
+                out[str(slot)] = v
+        return out
+
     @app.get("/health")
     def health() -> Dict[str, str]:
         return {"status": "ok"}
@@ -130,6 +225,121 @@ def create_app() -> FastAPI:
             kind=str(meta.get("kind") or "docs"),
             markdown=markdown,
         )
+
+    @app.get("/api/profile", response_model=ProfileResponse)
+    def get_profile(thread_id: str = Query(default="default")) -> ProfileResponse:
+        engine = get_engine(thread_id)
+        tid = _sanitize_thread_id(thread_id)
+        slots = _extract_latest_profile_slots(engine)
+        name = slots.get("name")
+        return ProfileResponse(thread_id=tid, name=name, slots=slots)
+
+    @app.get("/api/dashboard/overview", response_model=DashboardOverviewResponse)
+    def dashboard_overview(thread_id: str = Query(default="default")) -> DashboardOverviewResponse:
+        engine = get_engine(thread_id)
+        tid = _sanitize_thread_id(thread_id)
+
+        try:
+            memories_total = len(engine.memory._load_all_memories())
+        except Exception:
+            memories_total = 0
+
+        try:
+            open_contradictions = len(engine.ledger.get_open_contradictions(limit=10_000))
+        except Exception:
+            open_contradictions = 0
+
+        try:
+            ratio = engine.memory.get_belief_speech_ratio(limit=100)
+        except Exception:
+            ratio = {"belief_ratio": 0.0, "speech_ratio": 0.0, "belief_count": 0, "speech_count": 0}
+
+        return DashboardOverviewResponse(
+            thread_id=tid,
+            session_id=getattr(engine, "session_id", None),
+            memories_total=memories_total,
+            open_contradictions=open_contradictions,
+            belief_ratio=float(ratio.get("belief_ratio") or 0.0),
+            speech_ratio=float(ratio.get("speech_ratio") or 0.0),
+            belief_count=int(ratio.get("belief_count") or 0),
+            speech_count=int(ratio.get("speech_count") or 0),
+        )
+
+    @app.get("/api/memory/recent", response_model=list[MemoryListItem])
+    def memory_recent(thread_id: str = Query(default="default"), limit: int = Query(default=30, ge=1, le=200)) -> list[MemoryListItem]:
+        engine = get_engine(thread_id)
+        try:
+            items = engine.memory._load_all_memories()
+        except Exception:
+            items = []
+
+        items.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
+        out = []
+        for mem in items[:limit]:
+            out.append(MemoryListItem(**_memory_item_to_dict(mem)))
+        return out
+
+    @app.get("/api/memory/search", response_model=list[MemoryListItem])
+    def memory_search(
+        thread_id: str = Query(default="default"),
+        q: str = Query(min_length=1),
+        k: int = Query(default=10, ge=1, le=50),
+        min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
+    ) -> list[MemoryListItem]:
+        engine = get_engine(thread_id)
+        try:
+            retrieved = engine.retrieve(q, k=k, min_trust=min_trust)
+        except Exception:
+            retrieved = []
+        out = []
+        for mem, _score in retrieved:
+            out.append(MemoryListItem(**_memory_item_to_dict(mem)))
+        return out
+
+    @app.get("/api/memory/{memory_id}", response_model=MemoryListItem)
+    def memory_get(memory_id: str, thread_id: str = Query(default="default")) -> MemoryListItem:
+        engine = get_engine(thread_id)
+        mem = engine.memory.get_memory_by_id(memory_id)
+        if mem is None:
+            return MemoryListItem(
+                memory_id=memory_id,
+                text="",
+                timestamp=0.0,
+                confidence=0.0,
+                trust=0.0,
+                source="",
+                sse_mode="",
+                thread_id=None,
+            )
+        return MemoryListItem(**_memory_item_to_dict(mem))
+
+    @app.get("/api/memory/{memory_id}/trust", response_model=list[dict])
+    def memory_trust_history(memory_id: str, thread_id: str = Query(default="default")) -> list[dict]:
+        engine = get_engine(thread_id)
+        try:
+            return engine.memory.get_trust_history(memory_id)
+        except Exception:
+            return []
+
+    @app.get("/api/ledger/open", response_model=list[ContradictionListItem])
+    def ledger_open(thread_id: str = Query(default="default"), limit: int = Query(default=50, ge=1, le=500)) -> list[ContradictionListItem]:
+        engine = get_engine(thread_id)
+        try:
+            entries = engine.ledger.get_open_contradictions(limit=limit)
+        except Exception:
+            entries = []
+        return [ContradictionListItem(**e.to_dict()) for e in entries]
+
+    @app.post("/api/ledger/resolve")
+    def ledger_resolve(req: ResolveContradictionRequest) -> Dict[str, Any]:
+        engine = get_engine(req.thread_id)
+        engine.ledger.resolve_contradiction(
+            ledger_id=req.ledger_id,
+            method=req.method,
+            merged_memory_id=req.merged_memory_id,
+            new_status=req.new_status,
+        )
+        return {"ok": True}
 
     @app.post("/api/chat/send", response_model=ChatSendResponse)
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:

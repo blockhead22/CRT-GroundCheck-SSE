@@ -2,6 +2,63 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "crt api (uvicorn --reload)",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"crt_api:app",
+				"--reload",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8000"
+			],
+			"options": {
+				"cwd": "D:/AI_round2"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "frontend dev (vite)",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"dev"
+			],
+			"options": {
+				"cwd": "D:/AI_round2/frontend"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "frontend build",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"build"
+			],
+			"options": {
+				"cwd": "D:/AI_round2/frontend"
+			},
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "dev (api + frontend)",
+			"dependsOn": [
+				"crt api (uvicorn --reload)",
+				"frontend dev (vite)"
+			],
+			"dependsOrder": "parallel",
+			"problemMatcher": []
+		},
+		{
 			"label": "pytest -q",
 			"type": "shell",
 			"command": "D:/AI_round2/.venv/Scripts/python.exe",
