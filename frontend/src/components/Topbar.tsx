@@ -66,6 +66,12 @@ export function Topbar(props: {
         <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10" title="Notifications">
           🔔
         </button>
+
+        <div className="hidden min-w-0 flex-col items-end sm:flex">
+          <div className="max-w-[220px] truncate text-sm font-medium text-white/90">{props.userName || 'User'}</div>
+          {props.userEmail ? <div className="max-w-[220px] truncate text-xs text-white/50">{props.userEmail}</div> : null}
+        </div>
+
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}

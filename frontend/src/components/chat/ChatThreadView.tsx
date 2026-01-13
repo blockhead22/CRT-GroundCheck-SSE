@@ -11,6 +11,7 @@ export function ChatThreadView(props: {
   onSend: (text: string) => void
   quickActions: QuickAction[]
   onPickQuickAction: (a: QuickAction) => void
+  userName: string
   selectedMessageId: string | null
   onSelectAssistantMessage: (messageId: string) => void
 }) {
@@ -24,6 +25,8 @@ export function ChatThreadView(props: {
 
   const hint = useMemo(() => {
     if (!empty) return null
+
+    const displayName = (props.userName || '').trim() || 'there'
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -33,7 +36,7 @@ export function ChatThreadView(props: {
       >
         <div className="text-center">
           <div className="bg-gradient-to-r from-violet-300 via-violet-200 to-white bg-clip-text text-4xl font-semibold text-transparent md:text-5xl">
-            Hello Marcus
+            Hello {displayName}
           </div>
           <div className="mt-2 text-xl font-medium text-white/60 md:text-2xl">How can I help you today?</div>
         </div>
@@ -42,7 +45,7 @@ export function ChatThreadView(props: {
         </div>
       </motion.div>
     )
-  }, [empty, props.onPickQuickAction, props.quickActions])
+  }, [empty, props.onPickQuickAction, props.quickActions, props.userName])
 
   const selectedMessageId = props.selectedMessageId
 

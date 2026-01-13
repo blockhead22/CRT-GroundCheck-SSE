@@ -190,6 +190,7 @@ export default function App() {
                       onSend={handleSend}
                       quickActions={quickActions}
                       onPickQuickAction={pickQuickAction}
+                      userName={userName}
                       selectedMessageId={selectedMessageId}
                       onSelectAssistantMessage={(id) => setSelectedMessageId(id)}
                     />
