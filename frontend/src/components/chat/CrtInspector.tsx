@@ -71,11 +71,13 @@ export function CrtInspector(props: { message: ChatMessage | null; onClear: () =
         <div className="mt-2 space-y-2">
           {(meta?.retrieved_memories ?? []).slice(0, 8).map((m, idx) => (
             <div key={idx} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              {m.memory_id ? <div className="font-mono text-[11px] text-white/50">{m.memory_id}</div> : null}
               <div className="line-clamp-3 whitespace-pre-wrap text-xs text-white/80">{m.text || '—'}</div>
               <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/60">
                 <span>src: {m.source ?? '—'}</span>
                 <span>trust: {m.trust ?? '—'}</span>
                 <span>conf: {m.confidence ?? '—'}</span>
+                {typeof (m as any).score === 'number' ? <span>score: {(m as any).score.toFixed(3)}</span> : null}
               </div>
             </div>
           ))}
@@ -90,6 +92,7 @@ export function CrtInspector(props: { message: ChatMessage | null; onClear: () =
         <div className="mt-2 space-y-2">
           {(meta?.prompt_memories ?? []).slice(0, 8).map((m, idx) => (
             <div key={idx} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              {m.memory_id ? <div className="font-mono text-[11px] text-white/50">{m.memory_id}</div> : null}
               <div className="line-clamp-3 whitespace-pre-wrap text-xs text-white/80">{m.text || '—'}</div>
               <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/60">
                 <span>src: {m.source ?? '—'}</span>

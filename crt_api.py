@@ -456,16 +456,21 @@ def create_app() -> FastAPI:
             "heuristic_suggestions": result.get("heuristic_suggestions") or [],
             "retrieved_memories": [
                 {
+                    "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
                     "text": (m.get("text") if isinstance(m, dict) else None),
                     "source": (m.get("source") if isinstance(m, dict) else None),
                     "trust": (m.get("trust") if isinstance(m, dict) else None),
                     "confidence": (m.get("confidence") if isinstance(m, dict) else None),
+                    "timestamp": (m.get("timestamp") if isinstance(m, dict) else None),
+                    "sse_mode": (m.get("sse_mode") if isinstance(m, dict) else None),
+                    "score": (m.get("score") if isinstance(m, dict) else None),
                 }
                 for m in (result.get("retrieved_memories") or [])
                 if isinstance(m, dict)
             ],
             "prompt_memories": [
                 {
+                    "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
                     "text": (m.get("text") if isinstance(m, dict) else None),
                     "source": (m.get("source") if isinstance(m, dict) else None),
                     "trust": (m.get("trust") if isinstance(m, dict) else None),

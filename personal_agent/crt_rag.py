@@ -1140,8 +1140,17 @@ class CRTEnhancedRAG:
                     'contradiction_detected': False,
                     'contradiction_entry': None,
                     'retrieved_memories': [
-                        {'text': mem.text, 'trust': mem.trust, 'confidence': mem.confidence}
-                        for mem, _ in retrieved
+                        {
+                            'memory_id': mem.memory_id,
+                            'text': mem.text,
+                            'timestamp': getattr(mem, 'timestamp', None),
+                            'trust': mem.trust,
+                            'confidence': mem.confidence,
+                            'source': mem.source.value,
+                            'sse_mode': mem.sse_mode.value,
+                            'score': score,
+                        }
+                        for mem, score in retrieved
                     ],
                     'unresolved_contradictions': 1,
                     'unresolved_contradictions_total': 1,
@@ -1153,7 +1162,7 @@ class CRTEnhancedRAG:
         # Slot-based fast-path: if the user asks a simple personal-fact question and we have
         # an answer in memory, answer directly from canonical resolved facts.
         if user_input_kind in ("question", "instruction") and inferred_slots:
-            slot_answer = self._answer_from_fact_slots(inferred_slots)
+            slot_answer = self._answer_from_fact_slots(inferred_slots, user_query=user_query)
             if slot_answer is not None:
                     # Ensure we still have retrieval context for metadata/alignment.
                     if not retrieved:
@@ -1183,14 +1192,8 @@ class CRTEnhancedRAG:
                         intent_align, memory_align
                     )
 
-                    # User-facing provenance footer: only emit when gates pass to avoid
-                    # confusing "gates failed" + "answered from stored memories" combinations.
+                    # Do not append provenance footers into the answer text.
                     final_answer = slot_answer
-                    try:
-                        if gates_passed and bool((self.runtime_config.get("provenance") or {}).get("enabled", True)):
-                            final_answer = slot_answer + "\n\nProvenance: answered from stored memories."
-                    except Exception:
-                        pass
 
                     response_type = "belief" if gates_passed else "speech"
                     source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
@@ -1223,7 +1226,9 @@ class CRTEnhancedRAG:
                         'contradiction_entry': None,
                         'retrieved_memories': [
                             {
+                                'memory_id': mem.memory_id,
                                 'text': mem.text,
+                                'timestamp': getattr(mem, 'timestamp', None),
                                 'trust': mem.trust,
                                 'confidence': mem.confidence,
                                 'source': mem.source.value,
@@ -1235,6 +1240,7 @@ class CRTEnhancedRAG:
                         'prompt_memories': [
                             {
                                 'text': d.get('text'),
+                                'memory_id': d.get('memory_id'),
                                 'trust': d.get('trust'),
                                 'confidence': d.get('confidence'),
                                 'source': d.get('source'),
@@ -1503,8 +1509,24 @@ class CRTEnhancedRAG:
         )
         
         # 4. Belief vs Speech decision
-        if gates_passed:
+        # Belief should be reserved for user-profile / memory-grounded answers.
+        qlow = (user_query or "").strip().lower()
+        is_personalish = bool(inferred_slots) or bool(asserted_facts)
+        if not is_personalish:
+            # Only treat explicit personal pronouns as personalish if paired with a profile-ish topic.
+            if re.search(r"\b(my|mine)\b", qlow) and any(k in qlow for k in ("name", "favorite", "favourite", "work", "job", "employer", "live", "located", "pronoun", "title", "goals")):
+                is_personalish = True
+            if re.search(r"\b(about me|do you remember|what do you know about me)\b", qlow):
+                is_personalish = True
+
+        used_fact_lines = any(str(d.get("text") or "").lower().startswith("fact:") for d in (prompt_docs or []))
+
+        if gates_passed and (is_personalish or used_fact_lines):
             response_type = "belief"
+            source = MemorySource.SYSTEM
+            confidence = reasoning_result['confidence']
+        elif gates_passed:
+            response_type = "speech"
             source = MemorySource.SYSTEM
             confidence = reasoning_result['confidence']
         else:
@@ -1602,44 +1624,11 @@ class CRTEnhancedRAG:
                         )
 
         # --------------------------------------------------------------------
-        # Provenance + optional world-fact warnings (user-facing only)
+        # Provenance / warnings (metadata-only)
         # --------------------------------------------------------------------
+        # Do not append provenance footers into the user-visible answer text; the UI can
+        # render provenance using prompt/retrieved memories.
         final_answer = candidate_output
-        try:
-            prov_cfg = self.runtime_config.get("provenance") or {}
-            if bool(prov_cfg.get("enabled", True)):
-                used_memory = bool(prompt_docs)
-                used_fact_lines = any(str(d.get("text") or "").lower().startswith("fact:") for d in (prompt_docs or []))
-
-                # Only add a provenance footer when it looks like we're answering about the user,
-                # or when we relied on explicit FACT lines.
-                is_personalish = bool(inferred_slots) or bool(asserted_facts) or ("my " in (user_query or "").lower())
-
-                # Avoid misleading provenance when reconstruction gates fail.
-                if gates_passed and used_memory and (used_fact_lines or is_personalish):
-                    footer_lines = ["Provenance: this answer uses stored memories."]
-
-                    wc = prov_cfg.get("world_check") or {}
-                    if bool(wc.get("enabled", False)) and used_memory and self.reasoning.should_run_world_fact_check(candidate_output):
-                        mem_ctx = "\n".join([str(d.get("text") or "").strip() for d in (prompt_docs or []) if d.get("text")])
-                        warnings = self.reasoning.world_fact_check(
-                            answer=candidate_output,
-                            memory_context=mem_ctx,
-                            max_tokens=int(wc.get("max_tokens", 140) or 140),
-                        )
-                        if warnings:
-                            footer_lines.append("Note: some statements may conflict with widely-known public facts:")
-                            for w in warnings[:3]:
-                                public_fact = (w.get("public_fact") or "").strip()
-                                claim = (w.get("claim") or "").strip()
-                                conf = (w.get("confidence") or "").strip()
-                                if claim and public_fact:
-                                    extra = f" (conf: {conf})" if conf else ""
-                                    footer_lines.append(f"- {claim} (conflicts with: {public_fact}){extra}")
-
-                    final_answer = candidate_output.rstrip() + "\n\n" + "\n".join(footer_lines)
-        except Exception:
-            final_answer = candidate_output
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
@@ -1695,7 +1684,9 @@ class CRTEnhancedRAG:
             # Retrieved context
             'retrieved_memories': [
                 {
+                    'memory_id': mem.memory_id,
                     'text': mem.text,
+                    'timestamp': getattr(mem, 'timestamp', None),
                     'trust': mem.trust,
                     'confidence': mem.confidence,
                     'source': mem.source.value,
@@ -1709,6 +1700,7 @@ class CRTEnhancedRAG:
             'prompt_memories': [
                 {
                     'text': d.get('text'),
+                    'memory_id': d.get('memory_id'),
                     'trust': d.get('trust'),
                     'confidence': d.get('confidence'),
                     'source': d.get('source'),
@@ -1871,6 +1863,7 @@ class CRTEnhancedRAG:
             resolved_docs.append(
                 {
                     "text": f"FACT: {slot} = {fact.value}",
+                    "memory_id": mem.memory_id,
                     "trust": mem.trust,
                     "confidence": mem.confidence,
                     "source": mem.source.value,
@@ -1882,6 +1875,7 @@ class CRTEnhancedRAG:
             return [
                 {
                     "text": mem.text,
+                    "memory_id": mem.memory_id,
                     "trust": mem.trust,
                     "confidence": mem.confidence,
                     "source": mem.source.value,
@@ -1899,6 +1893,7 @@ class CRTEnhancedRAG:
             resolved_docs.append(
                 {
                     "text": mem.text,
+                    "memory_id": mem.memory_id,
                     "trust": mem.trust,
                     "confidence": mem.confidence,
                     "source": mem.source.value,
@@ -2075,7 +2070,7 @@ class CRTEnhancedRAG:
         # Prefer injected slot memories at the front so they influence best_prior and prompting.
         return injected + retrieved
 
-    def _answer_from_fact_slots(self, slots: List[str]) -> Optional[str]:
+    def _answer_from_fact_slots(self, slots: List[str], *, user_query: Optional[str] = None) -> Optional[str]:
         """Answer simple personal-fact questions directly from USER memories.
 
         Returns an answer string if we can resolve at least one requested slot; otherwise None.
@@ -2108,6 +2103,8 @@ class CRTEnhancedRAG:
                     slot_values[slot].append((mem, facts[slot].value))
 
         resolved_parts: List[str] = []
+        q = (user_query or "").strip().lower()
+        wants_another = bool(re.search(r"\b(another|other|second|additional)\b", q))
         for slot in slots:
             candidates = slot_values.get(slot) or []
             if not candidates:
@@ -2136,6 +2133,29 @@ class CRTEnhancedRAG:
 
         if len(resolved_parts) == 1:
             # Return just the value-centric answer for naturalness.
+            if wants_another and "favorite_color" in slots:
+                # Special-case: user is asking for an additional favorite color.
+                candidates = slot_values.get("favorite_color") or []
+                if candidates:
+                    best_mem, best_val = max(
+                        candidates,
+                        key=lambda mv: (_source_priority(mv[0]), mv[0].timestamp, mv[0].trust),
+                    )
+                    distinct_vals: list[str] = []
+                    for _m, v in candidates:
+                        vv = str(v).strip()
+                        if vv and vv.lower() not in [x.lower() for x in distinct_vals]:
+                            distinct_vals.append(vv)
+
+                    if len(distinct_vals) <= 1:
+                        return f"No — I only have {best_val} stored as your favorite color."
+
+                    others = [v for v in distinct_vals if v.strip().lower() != str(best_val).strip().lower()]
+                    if others:
+                        return f"Yes — I have {best_val} as your most recent favorite color, and you’ve also said: {', '.join(others)}."
+                # Fallback
+                return "I only have one favorite color stored right now."
+
             return resolved_parts[0].split(": ", 1)[1]
 
         return "\n".join(resolved_parts)

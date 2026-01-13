@@ -8,13 +8,18 @@ export type ChatSendRequest = {
 }
 
 export type RetrievedMemory = {
+  memory_id?: string | null
   text?: string | null
+  timestamp?: number | null
   source?: string | null
   trust?: number | null
   confidence?: number | null
+  sse_mode?: string | null
+  score?: number | null
 }
 
 export type PromptMemory = {
+  memory_id?: string | null
   text?: string | null
   source?: string | null
   trust?: number | null

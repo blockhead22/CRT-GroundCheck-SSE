@@ -4,13 +4,18 @@ export type NavId = 'chat' | 'dashboard' | 'docs'
 export type ChatRole = 'user' | 'assistant'
 
 export type RetrievedMemory = {
+  memory_id?: string | null
   text?: string | null
+  timestamp?: number | null
   source?: string | null
   trust?: number | null
   confidence?: number | null
+  sse_mode?: string | null
+  score?: number | null
 }
 
 export type PromptMemory = {
+  memory_id?: string | null
   text?: string | null
   source?: string | null
   trust?: number | null

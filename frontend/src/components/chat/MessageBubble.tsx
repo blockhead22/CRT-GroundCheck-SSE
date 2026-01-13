@@ -18,6 +18,17 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
   const gatesPassed = meta?.gates_passed
   const showMeta = isAssistant && Boolean(meta)
 
+  const prov = (() => {
+    if (!isAssistant || !meta || !isBelief) return null
+    const pm = meta.prompt_memories ?? []
+    const rm = meta.retrieved_memories ?? []
+    const best = pm.find((m) => (m.text || '').trim().toLowerCase().startsWith('fact:')) || pm[0] || rm[0]
+    const text = (best?.text || '').trim()
+    const id = (best as any)?.memory_id ? String((best as any).memory_id) : ''
+    if (!text && !id) return null
+    return { id, text }
+  })()
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -75,7 +86,16 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
 
         <div className="whitespace-pre-wrap leading-6">{props.msg.text}</div>
 
-        {/* Details moved into the right-side Inspector for less clutter. */}
+        {prov ? (
+          <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/60">
+            <div className="font-semibold tracking-wide text-white/50">PROVENANCE</div>
+            <div className="mt-1 line-clamp-2 whitespace-pre-wrap text-white/70">
+              {prov.id ? <span className="font-mono text-white/60">{prov.id}</span> : null}
+              {prov.id && prov.text ? <span className="text-white/40"> · </span> : null}
+              {prov.text || '—'}
+            </div>
+          </div>
+        ) : null}
 
         <div className={isUser ? 'mt-2 text-right text-[11px] text-white/80' : 'mt-2 text-right text-[11px] text-white/40'}>
           {formatTime(props.msg.createdAt)}
