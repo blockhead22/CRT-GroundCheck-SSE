@@ -99,6 +99,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             "pronouns",
             "communication_style",
             "goals",
+            "favorite_color",
         }
         if slot in allowed and value_raw:
             facts[slot] = ExtractedFact(slot, value_raw, _norm_text(value_raw))
@@ -210,6 +211,22 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
 
     if pref is not None:
         facts["remote_preference"] = ExtractedFact("remote_preference", pref, "remote" if pref else "office")
+
+    # Favorite color
+    # Examples:
+    # - "My favorite color is orange."
+    # - "My favourite colour is light blue."
+    m = re.search(
+        r"\bmy\s+favou?rite\s+colou?r\s+is\s+([^\n\r\.;,!\?]{2,60})",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        color_raw = m.group(1).strip()
+        # Trim at common continuations.
+        color_raw = re.split(r"\b(?:and|but|though|however)\b", color_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        if color_raw:
+            facts["favorite_color"] = ExtractedFact("favorite_color", color_raw, _norm_text(color_raw))
 
     # Education (very rough; enough for Stanford vs MIT undergrad contradictions)
     m = re.search(r"\bundergraduate (?:degree )?was from\s+([A-Z][A-Za-z .'-]{2,60})\b", text, flags=re.IGNORECASE)

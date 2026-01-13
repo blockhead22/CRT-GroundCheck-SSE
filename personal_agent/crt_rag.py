@@ -733,11 +733,18 @@ class CRTEnhancedRAG:
             # Deterministic safe ack: user name declarations should not be embellished.
             # (e.g., never add a location like "New York" unless the user said it.)
             if self._is_user_name_declaration(user_query):
-                name_guess = self._get_latest_user_name_guess()
-                if name_guess:
-                    answer = f"Thanks — noted: your name is {name_guess}."
+                # Prefer the name declared in this message (avoids echoing stale prior names
+                # from the DB/profile seed).
+                declared_facts = extract_fact_slots(user_query) or {}
+                declared_name = declared_facts.get("name")
+                if declared_name is not None and getattr(declared_name, "value", None):
+                    answer = f"Thanks — noted: your name is {declared_name.value}."
                 else:
-                    answer = "Thanks — noted."
+                    name_guess = self._get_latest_user_name_guess()
+                    if name_guess:
+                        answer = f"Thanks — noted: your name is {name_guess}."
+                    else:
+                        answer = "Thanks — noted."
 
                 # If the user previously stated a different name, record a contradiction entry.
                 contradiction_detected = False
@@ -763,7 +770,18 @@ class CRTEnhancedRAG:
                             prev_name = prev_facts.get("name")
                             if prev_name is None:
                                 continue
-                            if getattr(prev_name, "normalized", None) == getattr(new_name, "normalized", None):
+                            prev_norm = str(getattr(prev_name, "normalized", "") or "")
+                            new_norm = str(getattr(new_name, "normalized", "") or "")
+
+                            # Treat nickname/partial-name cases as the same identity signal
+                            # (e.g., "Nick" vs "Nick Block") to avoid noisy conflicts.
+                            same_or_prefix = (
+                                prev_norm == new_norm
+                                or (prev_norm and new_norm and prev_norm.startswith(new_norm))
+                                or (prev_norm and new_norm and new_norm.startswith(prev_norm))
+                            )
+
+                            if same_or_prefix:
                                 prior_same_exists = True
                             else:
                                 prior_names.append(prev_mem)
@@ -1835,6 +1853,7 @@ class CRTEnhancedRAG:
 
         slot_priority = [
             "name",
+            "favorite_color",
             "employer",
             "title",
             "location",
@@ -1901,6 +1920,9 @@ class CRTEnhancedRAG:
         slots: List[str] = []
         if "name" in t:
             slots.append("name")
+
+        if ("favorite" in t or "favourite" in t) and ("color" in t or "colour" in t):
+            slots.append("favorite_color")
 
         if "where" in t and ("work" in t or "job" in t or "employer" in t):
             slots.append("employer")

@@ -40,6 +40,63 @@ from personal_agent.artifact_store import (
 from personal_agent.promotion_apply import apply_promotions
 
 
+def _read_markdown(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"# Missing document\n\nCould not read: `{path}`\n\nError: {e}"
+
+
+def render_docs_and_architecture() -> None:
+    st.header("📚 Documentation")
+    st.caption("Rigorous, in-dashboard documentation for CRT: expected behavior, architecture, and FAQ.")
+
+    tabs = st.tabs(["🏗️ Architecture", "❓ FAQ", "✅ Functional Spec", "📖 Reference Docs"])
+
+    docs_dir = Path(__file__).parent / "docs"
+    arch_path = docs_dir / "CRT_SYSTEM_ARCHITECTURE.md"
+    faq_path = docs_dir / "CRT_FAQ.md"
+    spec_path = docs_dir / "CRT_FUNCTIONAL_SPEC.md"
+
+    with tabs[0]:
+        st.markdown(_read_markdown(arch_path))
+
+    with tabs[1]:
+        st.markdown(_read_markdown(faq_path))
+
+    with tabs[2]:
+        st.markdown(_read_markdown(spec_path))
+
+    with tabs[3]:
+        st.subheader("Project docs")
+        st.caption("These are existing repo documents rendered inline for convenience.")
+
+        candidates = [
+            Path("HOW_IT_WORKS.md"),
+            Path("PROJECT_SUMMARY.md"),
+            Path("CRT_QUICK_REFERENCE.md"),
+            Path("CRT_WHITEPAPER.md"),
+            Path("CRT_CHAT_GUI_SETUP.md"),
+            Path("CRT_DASHBOARD_GUIDE.md"),
+            Path("MULTI_AGENT_USER_GUIDE.md"),
+            Path("RAG_START_HERE.md"),
+        ]
+
+        existing = [p for p in candidates if p.exists() and p.is_file()]
+        if not existing:
+            st.info("No reference docs found in the repo root.")
+            return
+
+        selected = st.selectbox(
+            "Open document",
+            existing,
+            index=0,
+            format_func=lambda p: str(p.as_posix()),
+            key="docs_selected_ref",
+        )
+        st.markdown(_read_markdown(Path(selected)))
+
+
 def _find_learned_model_artifacts(base_dir: Path) -> List[Path]:
     patterns = [
         str(base_dir / "**" / "learned_suggestions*.joblib"),
@@ -1374,7 +1431,8 @@ def main():
             "💭 Belief vs Speech",
             "🔍 Memory Explorer",
             "✅ Promotion Approvals",
-            "🧠 Learned Model"
+            "🧠 Learned Model",
+            "📚 Docs / FAQ / Architecture",
         ]
     )
     
@@ -1417,6 +1475,8 @@ def main():
         render_promotion_approvals()
     elif page == "🧠 Learned Model":
         render_learned_model_tracking()
+    elif page == "📚 Docs / FAQ / Architecture":
+        render_docs_and_architecture()
     
     # Footer
     st.markdown("---")

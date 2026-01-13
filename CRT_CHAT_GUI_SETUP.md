@@ -43,6 +43,14 @@ streamlit run crt_chat_gui.py
 
 Visit: http://localhost:8502 (or the port Streamlit shows)
 
+### (Recommended) Launch Unified CRT App (Chat + Dashboard)
+
+```bash
+streamlit run crt_app.py
+```
+
+Then use the Streamlit sidebar page selector to open **Chat** or **Dashboard**.
+
 ---
 
 ## Features

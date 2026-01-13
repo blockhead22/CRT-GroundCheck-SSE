@@ -158,6 +158,9 @@ if 'show_metadata' not in st.session_state:
 if 'stream_responses' not in st.session_state:
     st.session_state.stream_responses = True
 
+if 'stream_use_memory_context' not in st.session_state:
+    st.session_state.stream_use_memory_context = True
+
 if 'ollama_model' not in st.session_state:
     st.session_state.ollama_model = "llama3.2:latest"
 
@@ -227,10 +230,17 @@ with st.sidebar:
     )
 
     st.session_state.stream_responses = st.checkbox(
-        "Stream responses",
+        "Stream draft preview",
         value=st.session_state.stream_responses,
-        help="Stream tokens as they are generated (best-effort; may fall back)"
+        help="Shows a fast draft while CRT computes the final answer + metadata. Draft can be wrong; final answer is authoritative."
     )
+
+    if st.session_state.stream_responses:
+        st.session_state.stream_use_memory_context = st.checkbox(
+            "Use memory context in draft",
+            value=st.session_state.stream_use_memory_context,
+            help="Grounds the streaming draft with retrieved memories when possible (recommended).",
+        )
     
     # System status
     st.markdown("---")
@@ -470,12 +480,24 @@ if user_input:
 
             streamed_text = None
             if st.session_state.stream_responses and hasattr(rag, 'reasoning') and hasattr(rag.reasoning, 'stream_answer'):
+                preview_docs = []
+                if st.session_state.stream_use_memory_context and hasattr(rag, 'retrieve'):
+                    try:
+                        preview_retrieved = rag.retrieve(user_input, k=5)
+                        for mem, _score in preview_retrieved:
+                            txt = (getattr(mem, 'text', None) or '').strip()
+                            if not txt:
+                                continue
+                            preview_docs.append({'text': txt})
+                    except Exception:
+                        preview_docs = []
+
                 streamed_text = ""
                 for partial in rag.reasoning.stream_answer(
                     query=user_input,
                     context={
                         # Keep minimal chat: don't stream multi-step thinking yet.
-                        'retrieved_docs': [],
+                        'retrieved_docs': preview_docs,
                         'contradictions': []
                     },
                     max_tokens=800,

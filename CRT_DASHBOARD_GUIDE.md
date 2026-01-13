@@ -12,6 +12,14 @@ streamlit run crt_dashboard.py
 
 The dashboard will open at `http://localhost:8501`
 
+### (Recommended) Launch Unified CRT App (Chat + Dashboard)
+
+```bash
+streamlit run crt_app.py
+```
+
+Then use the Streamlit sidebar page selector to open **Dashboard**.
+
 ### Populate with Demo Data
 
 Before using the dashboard, populate it with sample data:
