@@ -8,6 +8,7 @@
     "learned_suggestions",
     "provenance",
     "reflection",
+    "training_loop",
     "conflict_warning",
     "assistant_profile",
     "user_named_reference",
@@ -60,6 +61,32 @@
         "out_model_path": { "type": "string", "minLength": 1 },
         "min_examples": { "type": "integer", "minimum": 0 },
         "max_runs": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "training_loop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "source",
+        "thread_id",
+        "interval_seconds",
+        "run_on_startup",
+        "min_train_examples",
+        "min_eval_examples",
+        "min_eval_accuracy",
+        "max_prefer_latest_rate"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "source": { "type": "string", "enum": ["thread", "artifacts"] },
+        "thread_id": { "type": "string", "minLength": 1 },
+        "interval_seconds": { "type": "integer", "minimum": 5 },
+        "run_on_startup": { "type": "boolean" },
+        "min_train_examples": { "type": "integer", "minimum": 0 },
+        "min_eval_examples": { "type": "integer", "minimum": 0 },
+        "min_eval_accuracy": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 },
+        "max_prefer_latest_rate": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
       }
     },
     "conflict_warning": {

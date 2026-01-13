@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import threading
 import time
+import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -152,6 +153,17 @@ class CRTTrainingLoop:
             out_dir = artifacts_path
 
             if source_mode == "artifacts":
+                # If no paired stress DBs exist, skip quietly.
+                mem_glob = list(artifacts_path.glob("crt_stress_memory.*.db"))
+                led_glob = list(artifacts_path.glob("crt_stress_ledger.*.db"))
+                if not mem_glob or not led_glob:
+                    self._last_ok = False
+                    self._last_decision = "skip"
+                    self._last_reason = "no_artifact_runs"
+                    self._last_report_path = None
+                    self._last_finished_at = time.time()
+                    return self.status()
+
                 res = run_train_eval_publish(
                     out_dir=out_dir,
                     publish_path=publish_path,
@@ -166,6 +178,27 @@ class CRTTrainingLoop:
             else:
                 mem_db = (self.repo_root / "personal_agent" / f"crt_memory_{thread_id}.db").resolve()
                 led_db = (self.repo_root / "personal_agent" / f"crt_ledger_{thread_id}.db").resolve()
+
+                # Quick precheck: if there are no contradictions at all, training can't proceed.
+                contra_total = 0
+                try:
+                    if led_db.exists():
+                        conn = sqlite3.connect(str(led_db))
+                        cur = conn.cursor()
+                        cur.execute("SELECT COUNT(1) FROM contradictions")
+                        contra_total = int((cur.fetchone() or [0])[0] or 0)
+                        conn.close()
+                except Exception:
+                    contra_total = 0
+
+                if contra_total <= 0:
+                    self._last_ok = False
+                    self._last_decision = "skip"
+                    self._last_reason = "no_contradictions"
+                    self._last_report_path = None
+                    self._last_finished_at = time.time()
+                    return self.status()
+
                 res = run_train_eval_publish(
                     out_dir=out_dir,
                     publish_path=publish_path,
@@ -186,7 +219,7 @@ class CRTTrainingLoop:
             self._last_finished_at = time.time()
             return self.status()
 
-        except Exception as e:
+        except BaseException as e:
             self._last_ok = False
             self._last_decision = None
             self._last_reason = None

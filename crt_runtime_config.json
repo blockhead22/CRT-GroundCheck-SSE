@@ -20,6 +20,17 @@
     "min_examples": 50,
     "max_runs": 0
   },
+  "training_loop": {
+    "enabled": true,
+    "source": "thread",
+    "thread_id": "t1",
+    "interval_seconds": 300,
+    "run_on_startup": true,
+    "min_train_examples": 20,
+    "min_eval_examples": 20,
+    "min_eval_accuracy": 0.6,
+    "max_prefer_latest_rate": 0.9
+  },
   "conflict_warning": {
     "enabled": true
   },

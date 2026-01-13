@@ -9,11 +9,14 @@ from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
 from fastapi import Query
+from fastapi import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots
+from personal_agent.runtime_config import get_runtime_config
+from personal_agent.training_loop import CRTTrainingLoop
 
 
 def _sanitize_thread_id(value: str) -> str:
@@ -141,6 +144,20 @@ class ThreadPurgeMemoriesResponse(BaseModel):
 def create_app() -> FastAPI:
     app = FastAPI(title="CRT API", version="0.1.0")
 
+    runtime_cfg = get_runtime_config()
+    reflection_cfg = (runtime_cfg.get("reflection") or {}) if isinstance(runtime_cfg, dict) else {}
+    learned_cfg = (runtime_cfg.get("learned_suggestions") or {}) if isinstance(runtime_cfg, dict) else {}
+    loop_cfg = (runtime_cfg.get("training_loop") or {}) if isinstance(runtime_cfg, dict) else {}
+
+    # Shared training loop (suggestion-only model). Stored in app.state for endpoints.
+    training_loop = CRTTrainingLoop(
+        repo_root=Path(__file__).resolve().parent,
+        reflection_cfg=reflection_cfg,
+        learned_cfg=learned_cfg,
+        loop_cfg=loop_cfg,
+    )
+    app.state.training_loop = training_loop
+
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
     origins = [o.strip() for o in cors_env.split(",") if o.strip()]
@@ -184,6 +201,66 @@ def create_app() -> FastAPI:
         engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db)
         engines[tid] = engine
         return engine
+
+    @app.on_event("startup")
+    def _startup() -> None:
+        # Start the (optional) training loop.
+        try:
+            training_loop.start()
+        except Exception:
+            pass
+
+    @app.on_event("shutdown")
+    def _shutdown() -> None:
+        try:
+            training_loop.stop()
+        except Exception:
+            pass
+
+    class LearnStatusResponse(BaseModel):
+        enabled: bool
+        running: bool
+        last_started_at: Optional[float] = None
+        last_finished_at: Optional[float] = None
+        last_ok: Optional[bool] = None
+        last_decision: Optional[str] = None
+        last_reason: Optional[str] = None
+        last_report_path: Optional[str] = None
+        last_error: Optional[str] = None
+        model_path: Optional[str] = None
+        model_file_exists: bool = False
+
+    @app.get("/api/learn/status", response_model=LearnStatusResponse)
+    def learn_status() -> LearnStatusResponse:
+        st = training_loop.status().to_dict()
+        model_path = os.environ.get("CRT_LEARNED_MODEL_PATH")
+        exists = bool(model_path and Path(model_path).exists())
+        return LearnStatusResponse(
+            enabled=bool(st.get("enabled")),
+            running=bool(st.get("running")),
+            last_started_at=st.get("last_started_at"),
+            last_finished_at=st.get("last_finished_at"),
+            last_ok=st.get("last_ok"),
+            last_decision=st.get("last_decision"),
+            last_reason=st.get("last_reason"),
+            last_report_path=st.get("last_report_path"),
+            last_error=st.get("last_error"),
+            model_path=model_path,
+            model_file_exists=exists,
+        )
+
+    class LearnRunRequest(BaseModel):
+        confirm: bool = Field(default=False, description="must be true to run training")
+
+    @app.post("/api/learn/run")
+    def learn_run(req: LearnRunRequest, background: BackgroundTasks) -> Dict[str, Any]:
+        if not bool(req.confirm):
+            return {"ok": False, "error": "confirm must be true"}
+        if not training_loop.enabled():
+            return {"ok": False, "error": "training loop disabled"}
+
+        kicked = training_loop.trigger_async()
+        return {"ok": bool(kicked), "running": training_loop.status().running}
 
     def _is_architecture_explanation_request(text: str) -> bool:
         t = (text or '').strip().lower()
