@@ -253,3 +253,47 @@ export async function resolveContradiction(args: {
     new_status: args.newStatus ?? 'resolved',
   })
 }
+
+export type ThreadExportResponse = {
+  thread_id: string
+  generated_at: number
+  memories: MemoryListItem[]
+  contradictions: ContradictionListItem[]
+  memories_total: number
+  contradictions_total: number
+}
+
+export async function exportThread(args: {
+  threadId: string
+  includeResolved?: boolean
+  memoriesLimit?: number
+  contradictionsLimit?: number
+}): Promise<ThreadExportResponse> {
+  const includeResolved = args.includeResolved ?? true
+  const memoriesLimit = args.memoriesLimit ?? 2000
+  const contradictionsLimit = args.contradictionsLimit ?? 2000
+  return fetchJson<ThreadExportResponse>(
+    `/api/thread/export?thread_id=${encodeURIComponent(args.threadId)}&include_resolved=${encodeURIComponent(
+      String(includeResolved),
+    )}&memories_limit=${encodeURIComponent(String(memoriesLimit))}&contradictions_limit=${encodeURIComponent(
+      String(contradictionsLimit),
+    )}`,
+  )
+}
+
+export type ThreadResetResponse = {
+  thread_id: string
+  target: string
+  deleted: Record<string, boolean>
+  ok: boolean
+}
+
+export async function resetThread(args: {
+  threadId: string
+  target: 'memory' | 'ledger' | 'all'
+}): Promise<ThreadResetResponse> {
+  return postJson<ThreadResetResponse>('/api/thread/reset', {
+    thread_id: args.threadId,
+    target: args.target,
+  })
+}

@@ -12,6 +12,8 @@ export function ChatThreadView(props: {
   quickActions: QuickAction[]
   onPickQuickAction: (a: QuickAction) => void
   userName: string
+  showSetNameCta?: boolean
+  onRequestSetName?: () => void
   selectedMessageId: string | null
   onSelectAssistantMessage: (messageId: string) => void
 }) {
@@ -39,6 +41,17 @@ export function ChatThreadView(props: {
             Hello {displayName}
           </div>
           <div className="mt-2 text-xl font-medium text-white/60 md:text-2xl">How can I help you today?</div>
+
+          {props.showSetNameCta ? (
+            <div className="mt-5 flex justify-center">
+              <button
+                onClick={props.onRequestSetName}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+              >
+                Set your name
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="mt-10">
           <QuickCards actions={props.quickActions} onPick={props.onPickQuickAction} />

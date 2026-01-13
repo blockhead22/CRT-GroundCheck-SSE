@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import re
+import sqlite3
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -100,6 +102,27 @@ class ProfileResponse(BaseModel):
     slots: Dict[str, str] = Field(default_factory=dict)
 
 
+class ThreadExportResponse(BaseModel):
+    thread_id: str
+    generated_at: float
+    memories: list[MemoryListItem]
+    contradictions: list[ContradictionListItem]
+    memories_total: int
+    contradictions_total: int
+
+
+class ThreadResetRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    target: str = Field(default="all", description="memory | ledger | all")
+
+
+class ThreadResetResponse(BaseModel):
+    thread_id: str
+    target: str
+    deleted: Dict[str, bool] = Field(default_factory=dict)
+    ok: bool = True
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="CRT API", version="0.1.0")
 
@@ -190,6 +213,66 @@ def create_app() -> FastAPI:
             if v:
                 out[str(slot)] = v
         return out
+
+    def _list_contradictions(
+        engine: CRTEnhancedRAG,
+        *,
+        include_resolved: bool,
+        limit: int,
+    ) -> list[ContradictionListItem]:
+        if not include_resolved:
+            try:
+                entries = engine.ledger.get_open_contradictions(limit=limit)
+            except Exception:
+                entries = []
+            return [ContradictionListItem(**e.to_dict()) for e in entries]
+
+        # Best-effort: read the ledger DB directly to include resolved/accepted.
+        db_path = getattr(engine.ledger, "db_path", None)
+        if not db_path:
+            return []
+
+        try:
+            conn = sqlite3.connect(str(db_path))
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT ledger_id, timestamp, status, contradiction_type, drift_mean, confidence_delta,
+                       summary, query, old_memory_id, new_memory_id
+                FROM contradictions
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (int(limit),),
+            )
+            rows = cursor.fetchall()
+            conn.close()
+        except Exception:
+            return []
+
+        out: list[ContradictionListItem] = []
+        for r in rows:
+            out.append(
+                ContradictionListItem(
+                    ledger_id=str(r[0]),
+                    timestamp=float(r[1] or 0.0),
+                    status=str(r[2] or ""),
+                    contradiction_type=str(r[3] or ""),
+                    drift_mean=float(r[4] or 0.0),
+                    confidence_delta=float(r[5] or 0.0),
+                    summary=(str(r[6]) if r[6] is not None else None),
+                    query=(str(r[7]) if r[7] is not None else None),
+                    old_memory_id=str(r[8] or ""),
+                    new_memory_id=str(r[9] or ""),
+                )
+            )
+        return out
+
+    def _thread_db_paths(tid: str) -> Dict[str, Path]:
+        return {
+            "memory": (root / f"personal_agent/crt_memory_{tid}.db"),
+            "ledger": (root / f"personal_agent/crt_ledger_{tid}.db"),
+        }
 
     @app.get("/health")
     def health() -> Dict[str, str]:
@@ -401,6 +484,66 @@ def create_app() -> FastAPI:
             session_id=(result.get("session_id") if isinstance(result.get("session_id"), str) else None),
             metadata=metadata,
         )
+
+    @app.get("/api/thread/export", response_model=ThreadExportResponse)
+    def thread_export(
+        thread_id: str = Query(default="default"),
+        include_resolved: bool = Query(default=True),
+        memories_limit: int = Query(default=2000, ge=1, le=20000),
+        contradictions_limit: int = Query(default=2000, ge=1, le=20000),
+    ) -> ThreadExportResponse:
+        tid = _sanitize_thread_id(thread_id)
+        engine = get_engine(tid)
+
+        try:
+            mems = engine.memory._load_all_memories()
+        except Exception:
+            mems = []
+        mems.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
+        memories = [MemoryListItem(**_memory_item_to_dict(m)) for m in mems[: int(memories_limit)]]
+
+        contradictions = _list_contradictions(engine, include_resolved=bool(include_resolved), limit=int(contradictions_limit))
+
+        return ThreadExportResponse(
+            thread_id=tid,
+            generated_at=time.time(),
+            memories=memories,
+            contradictions=contradictions,
+            memories_total=len(mems),
+            contradictions_total=len(contradictions),
+        )
+
+    @app.post("/api/thread/reset", response_model=ThreadResetResponse)
+    def thread_reset(req: ThreadResetRequest) -> ThreadResetResponse:
+        tid = _sanitize_thread_id(req.thread_id)
+
+        # Drop cached engine first to avoid holding references.
+        engines.pop(tid, None)
+
+        target = (req.target or "all").strip().lower()
+        if target not in {"memory", "ledger", "all"}:
+            target = "all"
+
+        paths = _thread_db_paths(tid)
+        deleted: Dict[str, bool] = {}
+
+        def _delete_path(name: str) -> None:
+            p = paths[name]
+            try:
+                if p.exists() and p.is_file():
+                    p.unlink()
+                    deleted[name] = True
+                else:
+                    deleted[name] = False
+            except Exception:
+                deleted[name] = False
+
+        if target in {"memory", "all"}:
+            _delete_path("memory")
+        if target in {"ledger", "all"}:
+            _delete_path("ledger")
+
+        return ThreadResetResponse(thread_id=tid, target=target, deleted=deleted, ok=True)
 
     return app
 

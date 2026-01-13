@@ -5,6 +5,8 @@ import {
   getMemoryTrustHistory,
   listOpenContradictions,
   listRecentMemories,
+  exportThread,
+  resetThread,
   resolveContradiction,
   searchMemories,
   type ContradictionListItem,
@@ -12,6 +14,7 @@ import {
   type MemoryListItem,
   type TrustHistoryRow,
 } from '../lib/api'
+import { ThreadToolsLightbox } from '../components/ThreadToolsLightbox'
 
 function fmtPct01(v: number): string {
   const clamped = Math.max(0, Math.min(1, v))
@@ -34,6 +37,7 @@ export function DashboardPage(props: { threadId: string }) {
   const [selectedMemoryId, setSelectedMemoryId] = useState<string | null>(null)
   const [selectedMemory, setSelectedMemory] = useState<MemoryListItem | null>(null)
   const [trustRows, setTrustRows] = useState<TrustHistoryRow[]>([])
+  const [toolsOpen, setToolsOpen] = useState(false)
 
   async function refresh() {
     setError(null)
@@ -62,6 +66,44 @@ export function DashboardPage(props: { threadId: string }) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function doExport() {
+    setError(null)
+    setBusy(true)
+    try {
+      const data = await exportThread({ threadId: props.threadId, includeResolved: true })
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      a.href = url
+      a.download = `crt_thread_${props.threadId}_${stamp}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function doReset(target: 'memory' | 'ledger' | 'all') {
+    setError(null)
+    setBusy(true)
+    try {
+      await resetThread({ threadId: props.threadId, target })
+      setSelectedMemoryId(null)
+      setSearchResults([])
+      await refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+      setToolsOpen(false)
     }
   }
 
@@ -149,6 +191,13 @@ export function DashboardPage(props: { threadId: string }) {
             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
           >
             Refresh
+          </button>
+          <button
+            disabled={busy}
+            onClick={() => setToolsOpen(true)}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+          >
+            Thread tools
           </button>
         </div>
       </div>
@@ -405,6 +454,14 @@ export function DashboardPage(props: { threadId: string }) {
           </div>
         ) : null}
       </div>
+
+      <ThreadToolsLightbox
+        open={toolsOpen}
+        threadId={props.threadId}
+        onClose={() => setToolsOpen(false)}
+        onExport={doExport}
+        onReset={doReset}
+      />
     </div>
   )
 }

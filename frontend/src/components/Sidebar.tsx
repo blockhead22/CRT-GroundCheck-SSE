@@ -27,7 +27,7 @@ export function Sidebar(props: {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: -16, opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="hidden h-[calc(100vh-3rem)] w-[290px] flex-none lg:flex"
+          className="hidden h-full w-[290px] flex-none lg:flex"
         >
           <div className="flex h-full w-full flex-col rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
             <div className="flex items-center justify-between px-4 py-4">

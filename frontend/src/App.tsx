@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { ChatThreadView } from './components/chat/ChatThreadView'
 import { InspectorLightbox } from './components/InspectorLightbox'
+import { ProfileNameLightbox } from './components/ProfileNameLightbox'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { newId } from './lib/id'
@@ -23,6 +24,8 @@ export default function App() {
   const [apiBaseUrl, setApiBaseUrl] = useState<string>(getEffectiveApiBaseUrl())
   const [userName, setUserName] = useState<string>('User')
   const [userEmail, setUserEmail] = useState<string>('')
+  const [profileHasName, setProfileHasName] = useState<boolean>(false)
+  const [setNameOpen, setSetNameOpen] = useState<boolean>(false)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -68,8 +71,10 @@ export default function App() {
     async function load() {
       try {
         const p = await getProfile(tid)
-        const name = (p?.name || p?.slots?.name || '').trim()
-        if (mounted) setUserName(name || 'User')
+        const raw = (p?.name || p?.slots?.name || '').trim()
+        if (!mounted) return
+        setProfileHasName(Boolean(raw))
+        setUserName(raw || 'User')
       } catch (_e) {
         // Keep existing name on error.
       }
@@ -150,9 +155,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full">
-      <div className="mx-auto max-w-[1480px] px-4 py-6">
-        <div className="flex gap-5">
+    <div className="h-screen w-full overflow-hidden">
+      <div className="mx-auto h-full max-w-[1480px] px-4 py-6">
+        <div className="flex h-full min-h-0 gap-5">
           <Sidebar
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
@@ -169,7 +174,7 @@ export default function App() {
             }}
           />
 
-          <div className="flex min-w-0 flex-1 flex-col gap-4">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
             <Topbar
               onToggleSidebarMobile={() => setSidebarOpen((v) => !v)}
               title="CRT"
@@ -180,8 +185,8 @@ export default function App() {
               onChangeApiBaseUrl={setApiBaseUrl}
             />
 
-            <div className="relative">
-              <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
+            <div className="relative min-h-0 flex-1">
+              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
                 {navActive === 'chat' ? (
                   selectedThread ? (
                     <ChatThreadView
@@ -191,6 +196,8 @@ export default function App() {
                       quickActions={quickActions}
                       onPickQuickAction={pickQuickAction}
                       userName={userName}
+                      showSetNameCta={!profileHasName}
+                      onRequestSetName={() => setSetNameOpen(true)}
                       selectedMessageId={selectedMessageId}
                       onSelectAssistantMessage={(id) => setSelectedMessageId(id)}
                     />
@@ -209,6 +216,25 @@ export default function App() {
       </div>
 
       <InspectorLightbox open={navActive === 'chat' && Boolean(selectedMessageId)} message={selectedMessage} onClose={() => setSelectedMessageId(null)} />
+
+      <ProfileNameLightbox
+        open={navActive === 'chat' && setNameOpen}
+        initialName={profileHasName ? userName : ''}
+        onClose={() => setSetNameOpen(false)}
+        onSubmit={async (name) => {
+          const tid = selectedThread?.id ?? selectedThreadId
+          await handleSend(`FACT: name = ${name}`)
+          try {
+            const p = await getProfile(tid)
+            const raw = (p?.name || p?.slots?.name || '').trim()
+            setProfileHasName(Boolean(raw))
+            setUserName(raw || 'User')
+          } catch (_e) {
+            // Ignore refresh errors.
+          }
+          setSetNameOpen(false)
+        }}
+      />
     </div>
   )
 }
