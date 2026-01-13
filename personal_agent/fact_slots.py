@@ -109,11 +109,34 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Examples:
     # - "My name is Sarah."
     # - "Yes, I'm Sarah"
+    # - "Call me Sarah"
+    # - "Nick not Ben" (short correction)
     # Allow multi-token names (e.g., "Nick Block"), but keep it conservative.
     # For "I'm ..." specifically, require a name-like token to avoid false positives
     # like "I'm glad you asked".
     name_pat = r"([A-Za-z][A-Za-z'-]{1,40}(?:\s+[A-Za-z][A-Za-z'-]{1,40}){0,2})"
     name_pat_title = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
+
+    # Very explicit "call me" pattern.
+    m = re.search(r"\bcall me\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
+    if m:
+        name = m.group(1).strip()
+        tokens = [t for t in re.split(r"\s+", name) if t]
+        token_lowers = [t.lower() for t in tokens]
+        if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers):
+            facts["name"] = ExtractedFact("name", name, _norm_text(name))
+
+    # Short correction pattern: "Nick not Ben".
+    if "name" not in facts:
+        m = re.match(
+            r"^\s*([A-Z][A-Za-z'-]{1,40})\s+not\s+([A-Z][A-Za-z'-]{1,40})\s*[\.!?]?\s*$",
+            text,
+        )
+        if m:
+            cand = m.group(1).strip()
+            if cand and cand.lower() not in _NAME_STOPWORDS:
+                facts["name"] = ExtractedFact("name", cand, _norm_text(cand))
+
     m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if not m:
         # Prefer TitleCase names for the generic "I'm X" pattern.

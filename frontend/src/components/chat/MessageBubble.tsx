@@ -19,6 +19,40 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
   const gatesPassed = meta?.gates_passed
   const showMeta = isAssistant && Boolean(meta)
 
+  const grounding = (() => {
+    if (!isAssistant || !meta) return null
+    const pm: any[] = (meta as any).prompt_memories ?? []
+    const rm: any[] = (meta as any).retrieved_memories ?? []
+
+    const hasSystemRetrieved = rm.some((m) => String(m?.source || '').toLowerCase() === 'system')
+    const hasFallbackRetrieved = rm.some((m) => String(m?.source || '').toLowerCase() === 'fallback')
+    const hasNonAuditableRetrieved = rm.some((m) => {
+      const s = String(m?.source || '').toLowerCase()
+      return s && s !== 'user' && s !== 'external'
+    })
+
+    const factLines = pm.filter((m) => String(m?.text || '').trim().toLowerCase().startsWith('fact:'))
+    const badFactSource = factLines.some((m) => {
+      const s = String(m?.source || '').toLowerCase()
+      return s && s !== 'user'
+    })
+
+    const responseType = String((meta as any).response_type || '').toLowerCase()
+    const isExplanation = responseType === 'explanation'
+    const hasDocCitation = pm.some((m) => String(m?.memory_id || '').toLowerCase().startsWith('doc:'))
+
+    if (badFactSource || hasSystemRetrieved || hasFallbackRetrieved) {
+      return { level: 'bad', reason: 'Non-auditable sources present (system/fallback or non-user FACT lines).' }
+    }
+    if (isExplanation && !hasDocCitation) {
+      return { level: 'weak', reason: 'Explanation without doc citations.' }
+    }
+    if (hasNonAuditableRetrieved) {
+      return { level: 'weak', reason: 'Retrieved memories include non-user sources.' }
+    }
+    return { level: 'ok', reason: 'Grounded in user/external memories or doc citations.' }
+  })()
+
   const prov = (() => {
     if (!isAssistant || !meta || !(isBelief || isExplanation)) return null
     const pm = meta.prompt_memories ?? []
@@ -88,6 +122,22 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
                 title="A contradiction was detected and recorded"
               >
                 CONTRADICTION
+              </span>
+            ) : null}
+
+            {grounding ? (
+              <span
+                className={
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ' +
+                  (grounding.level === 'ok'
+                    ? 'bg-emerald-500/15 text-emerald-200'
+                    : grounding.level === 'bad'
+                      ? 'bg-rose-500/15 text-rose-200'
+                      : 'bg-amber-500/15 text-amber-200')
+                }
+                title={grounding.reason}
+              >
+                {grounding.level === 'ok' ? 'GROUNDING: OK' : grounding.level === 'bad' ? 'GROUNDING: BAD' : 'GROUNDING: WEAK'}
               </span>
             ) : null}
           </div>

@@ -2045,10 +2045,19 @@ class CRTEnhancedRAG:
         self,
         retrieved: List[Tuple[MemoryItem, float]],
         slots: List[str],
+        *,
+        allowed_sources: Optional[set] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """Merge best per-slot memories into the retrieved list."""
         if not retrieved or not slots:
             return retrieved
+
+        # Slot augmentation is meant to make user-profile questions more stable
+        # (e.g., "What is my name?") by pulling the best USER-stated fact.
+        # Do not inject assistant-generated (SYSTEM) or non-durable (FALLBACK)
+        # memories here, as that can create prompt contamination and bad grounding.
+        if allowed_sources is None:
+            allowed_sources = {MemorySource.USER}
 
         retrieved_ids = {m.memory_id for m, _ in retrieved}
         all_memories = self.memory._load_all_memories()
@@ -2067,6 +2076,8 @@ class CRTEnhancedRAG:
             best: Optional[MemoryItem] = None
             best_key: Optional[Tuple[int, float, float]] = None
             for mem in all_memories:
+                if getattr(mem, "source", None) not in allowed_sources:
+                    continue
                 facts = extract_fact_slots(mem.text)
                 if slot not in facts:
                     continue

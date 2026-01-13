@@ -162,6 +162,7 @@ class CRTTrainingLoop:
                     self._last_reason = "no_artifact_runs"
                     self._last_report_path = None
                     self._last_finished_at = time.time()
+                    self._running = False
                     return self.status()
 
                 res = run_train_eval_publish(
@@ -197,6 +198,7 @@ class CRTTrainingLoop:
                     self._last_reason = "no_contradictions"
                     self._last_report_path = None
                     self._last_finished_at = time.time()
+                    self._running = False
                     return self.status()
 
                 res = run_train_eval_publish(
@@ -217,6 +219,7 @@ class CRTTrainingLoop:
             self._last_reason = str(res.reason)
             self._last_report_path = str(res.report_path)
             self._last_finished_at = time.time()
+            self._running = False
             return self.status()
 
         except BaseException as e:
@@ -226,6 +229,7 @@ class CRTTrainingLoop:
             self._last_report_path = None
             self._last_error = str(e)
             self._last_finished_at = time.time()
+            self._running = False
             return self.status()
 
         finally:

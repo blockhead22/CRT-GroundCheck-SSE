@@ -15,6 +15,18 @@ def test_fact_slots_name_accepts_lowercase_name() -> None:
     assert facts["name"].normalized == "nick"
 
 
+def test_fact_slots_name_accepts_call_me_pattern() -> None:
+    facts = extract_fact_slots("Call me Nick")
+    assert facts.get("name") is not None
+    assert facts["name"].normalized == "nick"
+
+
+def test_fact_slots_name_accepts_short_correction_pattern() -> None:
+    facts = extract_fact_slots("Nick not Ben")
+    assert facts.get("name") is not None
+    assert facts["name"].normalized == "nick"
+
+
 def test_fact_slots_favorite_color_extracts_value() -> None:
     facts = extract_fact_slots("My favorite color is orange.")
     assert facts.get("favorite_color") is not None
