@@ -19,6 +19,7 @@ export function Sidebar(props: {
   onSelectThread: (id: string) => void
   onNewThread: () => void
   onDeleteThread: (id: string) => void
+  onRequestRenameThread: (id: string) => void
 }) {
   return (
     <AnimatePresence initial={false}>
@@ -122,18 +123,32 @@ export function Sidebar(props: {
                           <div className="min-w-0 flex-1">
                             <div className="truncate text-sm font-medium text-white">{t.title}</div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              props.onDeleteThread(t.id)
-                            }}
-                            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 opacity-0 transition group-hover:opacity-100 hover:bg-white/10"
-                            aria-label="Delete chat"
-                            title="Delete"
-                          >
-                            ✕
-                          </button>
+                          <div className="flex flex-none items-center gap-1 opacity-0 transition group-hover:opacity-100">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                props.onRequestRenameThread(t.id)
+                              }}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                              aria-label="Rename chat"
+                              title="Rename"
+                            >
+                              ✎
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                props.onDeleteThread(t.id)
+                              }}
+                              className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                              aria-label="Delete chat"
+                              title="Delete"
+                            >
+                              ✕
+                            </button>
+                          </div>
                         </div>
                         <div className="text-xs text-white/50">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
                       </motion.button>

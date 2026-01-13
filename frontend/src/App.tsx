@@ -6,6 +6,7 @@ import { Topbar } from './components/Topbar'
 import { ChatThreadView } from './components/chat/ChatThreadView'
 import { InspectorLightbox } from './components/InspectorLightbox'
 import { ProfileNameLightbox } from './components/ProfileNameLightbox'
+import { ThreadRenameLightbox } from './components/ThreadRenameLightbox'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { newId } from './lib/id'
@@ -34,6 +35,8 @@ export default function App() {
   const [userEmail, setUserEmail] = useState<string>('')
   const [profileHasName, setProfileHasName] = useState<boolean>(false)
   const [setNameOpen, setSetNameOpen] = useState<boolean>(false)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -49,6 +52,22 @@ export default function App() {
     setThreads((prev) => {
       const exists = prev.some((t) => t.id === updated.id)
       const next = exists ? prev.map((t) => (t.id === updated.id ? updated : t)) : [updated, ...prev]
+      next.sort((a, b) => b.updatedAt - a.updatedAt)
+      return next
+    })
+  }
+
+  function openRename(id: string) {
+    setRenameThreadId(id)
+    setRenameOpen(true)
+  }
+
+  function renameThread(id: string, title: string) {
+    const clean = title.trim()
+    if (!clean) return
+    const now = Date.now()
+    setThreads((prev) => {
+      const next = prev.map((t) => (t.id === id ? { ...t, title: clean, updatedAt: now } : t))
       next.sort((a, b) => b.updatedAt - a.updatedAt)
       return next
     })
@@ -262,6 +281,7 @@ export default function App() {
             }}
             onNewThread={newThread}
             onDeleteThread={deleteThread}
+            onRequestRenameThread={openRename}
           />
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
@@ -323,6 +343,20 @@ export default function App() {
             // Ignore refresh errors.
           }
           setSetNameOpen(false)
+        }}
+      />
+
+      <ThreadRenameLightbox
+        open={renameOpen}
+        initialTitle={threads.find((t) => t.id === renameThreadId)?.title ?? 'New chat'}
+        onClose={() => {
+          setRenameOpen(false)
+          setRenameThreadId(null)
+        }}
+        onSubmit={(title) => {
+          if (renameThreadId) renameThread(renameThreadId, title)
+          setRenameOpen(false)
+          setRenameThreadId(null)
         }}
       />
     </div>
