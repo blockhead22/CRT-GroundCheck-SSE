@@ -1,0 +1,186 @@
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
+import type { ChatThread, NavId, QuickAction } from './types'
+import { Sidebar } from './components/Sidebar'
+import { Topbar } from './components/Topbar'
+import { ChatThreadView } from './components/chat/ChatThreadView'
+import { RightPanel } from './components/RightPanel'
+import { newId } from './lib/id'
+import { sendToCrtApi } from './lib/api'
+import { quickActions, seedThreads } from './lib/seed'
+
+export default function App() {
+  const [navActive, setNavActive] = useState<NavId>('chat')
+  const [search, setSearch] = useState('')
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [threads, setThreads] = useState<ChatThread[]>(() => seedThreads())
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(() => seedThreads()[0]?.id ?? 't1')
+  const [typing, setTyping] = useState(false)
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null)
+
+  const selectedThread = useMemo(
+    () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
+    [threads, selectedThreadId],
+  )
+
+  const selectedMessage = useMemo(() => {
+    if (!selectedThread || !selectedMessageId) return null
+    return selectedThread.messages.find((m) => m.id === selectedMessageId) ?? null
+  }, [selectedThread, selectedMessageId])
+
+  function upsertThread(updated: ChatThread) {
+    setThreads((prev) => {
+      const next = prev.map((t) => (t.id === updated.id ? updated : t))
+      next.sort((a, b) => b.updatedAt - a.updatedAt)
+      return next
+    })
+  }
+
+  async function handleSend(text: string) {
+    if (!selectedThread) return
+
+    const now = Date.now()
+    const userMsg = { id: newId('m'), role: 'user' as const, text, createdAt: now }
+    const withUser: ChatThread = {
+      ...selectedThread,
+      updatedAt: now,
+      messages: [...selectedThread.messages, userMsg],
+    }
+
+    upsertThread(withUser)
+    setTyping(true)
+
+    try {
+      const res = await sendToCrtApi({ threadId: withUser.id, message: text, history: withUser.messages })
+      const at = Date.now()
+      const asstMsg = {
+        id: newId('m'),
+        role: 'assistant' as const,
+        text: res.answer,
+        createdAt: at,
+        crt: {
+          response_type: res.response_type,
+          gates_passed: res.gates_passed,
+          gate_reason: res.gate_reason ?? null,
+          session_id: res.session_id ?? null,
+          confidence: res.metadata?.confidence ?? null,
+          intent_alignment: res.metadata?.intent_alignment ?? null,
+          memory_alignment: res.metadata?.memory_alignment ?? null,
+          contradiction_detected: res.metadata?.contradiction_detected ?? null,
+          unresolved_contradictions_total: res.metadata?.unresolved_contradictions_total ?? null,
+          unresolved_hard_conflicts: res.metadata?.unresolved_hard_conflicts ?? null,
+          retrieved_memories: res.metadata?.retrieved_memories ?? [],
+          prompt_memories: res.metadata?.prompt_memories ?? [],
+          learned_suggestions: res.metadata?.learned_suggestions ?? [],
+          heuristic_suggestions: res.metadata?.heuristic_suggestions ?? [],
+        },
+      }
+      upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+    } catch (e) {
+      const at = Date.now()
+      const errText = e instanceof Error ? e.message : String(e)
+      const asstMsg = {
+        id: newId('m'),
+        role: 'assistant' as const,
+        text: `CRT API error: ${errText}`,
+        createdAt: at,
+        crt: {
+          response_type: 'speech',
+          gates_passed: false,
+          gate_reason: 'api_error',
+        },
+      }
+      upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+    } finally {
+      setTyping(false)
+    }
+  }
+
+  function pickQuickAction(a: QuickAction) {
+    void handleSend(a.seedPrompt)
+  }
+
+  return (
+    <div className="min-h-screen w-full">
+      <div className="mx-auto max-w-[1480px] px-4 py-6">
+        <div className="flex gap-5">
+          <Sidebar
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            navActive={navActive}
+            onNav={(id) => setNavActive(id)}
+            search={search}
+            onSearch={setSearch}
+            threads={threads}
+            selectedThreadId={selectedThread?.id ?? null}
+            onSelectThread={(id) => {
+              setSelectedThreadId(id)
+              setSelectedMessageId(null)
+              setNavActive('chat')
+            }}
+          />
+
+          <div className="flex min-w-0 flex-1 flex-col gap-4">
+            <Topbar
+              onToggleSidebarMobile={() => setSidebarOpen((v) => !v)}
+              title="CRT"
+              userName="Marcus Aurelius"
+              userEmail="marcusaurel@example.com"
+            />
+
+            <div className="flex gap-5">
+              <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
+                {navActive === 'chat' ? (
+                  selectedThread ? (
+                    <ChatThreadView
+                      thread={selectedThread}
+                      typing={typing}
+                      onSend={handleSend}
+                      quickActions={quickActions}
+                      onPickQuickAction={pickQuickAction}
+                      selectedMessageId={selectedMessageId}
+                      onSelectAssistantMessage={(id) => setSelectedMessageId(id)}
+                    />
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
+                  )
+                ) : (
+                  <div className="flex flex-1 items-center justify-center p-10">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22 }}
+                      className="w-full max-w-[760px] text-center"
+                    >
+                      <div className="text-2xl font-semibold text-white">{navActive.toUpperCase()}</div>
+                      <div className="mt-2 text-sm text-white/60">
+                        This section mirrors the Streamlit app navigation and will be wired next.
+                      </div>
+                      <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-left text-sm text-white/70 shadow-card">
+                        Next: render Dashboard + Docs pages (matching Streamlit content).
+                      </div>
+                    </motion.div>
+                  </div>
+                )}
+              </main>
+
+              <div className="hidden lg:block">
+                <RightPanel
+                  threads={threads}
+                  selectedThreadId={selectedThread?.id ?? null}
+                  onSelectThread={(id) => {
+                    setSelectedThreadId(id)
+                    setSelectedMessageId(null)
+                    setNavActive('chat')
+                  }}
+                  selectedMessage={selectedMessage}
+                  onClearSelection={() => setSelectedMessageId(null)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

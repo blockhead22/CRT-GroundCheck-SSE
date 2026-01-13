@@ -5,3 +5,5 @@ jsonschema
 pytest
 hdbscan
 websockets
+fastapi
+uvicorn[standard]
