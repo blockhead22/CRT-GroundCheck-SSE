@@ -142,6 +142,28 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "CRT Stress Test (API quick)",
+			"type": "shell",
+			"command": "py",
+			"args": [
+				"-3",
+				"d:\\AI_round2\\crt_stress_test.py",
+				"--use-api",
+				"--api-base-url",
+				"http://127.0.0.1:8000",
+				"--thread-id",
+				"stress_api_quick",
+				"--reset-thread",
+				"--turns",
+				"5",
+				"--sleep",
+				"0.05"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }
