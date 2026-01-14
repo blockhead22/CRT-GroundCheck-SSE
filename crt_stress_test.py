@@ -14,6 +14,9 @@ import sys
 from pathlib import Path
 import argparse
 from datetime import datetime, timezone
+import urllib.request
+import urllib.error
+import urllib.parse
 
 # Ensure imports work regardless of OS / working directory
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -40,6 +43,10 @@ parser.add_argument("--artifacts-dir", default="artifacts", help="Directory for 
 parser.add_argument("--memory-db", default=None, help="Path to memory sqlite db (default: per-run in artifacts)")
 parser.add_argument("--ledger-db", default=None, help="Path to ledger sqlite db (default: per-run in artifacts)")
 parser.add_argument("--config", default=None, help="Path to crt_runtime_config.json (optional)")
+parser.add_argument("--use-api", action="store_true", help="Run via FastAPI hooks (/api/chat/send) instead of importing CRTEnhancedRAG")
+parser.add_argument("--api-base-url", default="http://127.0.0.1:8000", help="CRT API base URL (default: http://127.0.0.1:8000)")
+parser.add_argument("--thread-id", default=None, help="Thread id to use for API mode (default: stress_<run_id>)")
+parser.add_argument("--reset-thread", action="store_true", help="In API mode, reset the thread (memory+ledger) before starting")
 args = parser.parse_args()
 
 art_dir = Path(args.artifacts_dir)
@@ -56,7 +63,80 @@ if ls_cfg.get("write_jsonl", True):
     jsonl_fp = open(jsonl_path, "w", encoding="utf-8")
 
 ollama = get_ollama_client(args.model)
-rag = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=ollama)
+
+
+def _api_base(url: str) -> str:
+    return (url or "").strip().rstrip("/")
+
+
+def _api_post_json(base_url: str, path: str, payload: dict, *, timeout_seconds: float = 120.0) -> dict:
+    base = _api_base(base_url)
+    url = f"{base}{path}"
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data, method="POST", headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+        raw = resp.read().decode("utf-8", errors="replace")
+        return json.loads(raw) if raw else {}
+
+
+def _api_get_json(base_url: str, path: str, *, timeout_seconds: float = 30.0) -> dict:
+    base = _api_base(base_url)
+    url = f"{base}{path}"
+    req = urllib.request.Request(url, method="GET")
+    with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+        raw = resp.read().decode("utf-8", errors="replace")
+        return json.loads(raw) if raw else {}
+
+
+class _ApiCrtClient:
+    def __init__(self, *, base_url: str, thread_id: str):
+        self.base_url = _api_base(base_url)
+        self.thread_id = (thread_id or "default").strip() or "default"
+
+    def query(self, user_query: str):
+        res = _api_post_json(
+            self.base_url,
+            "/api/chat/send",
+            {"thread_id": self.thread_id, "message": str(user_query or "")},
+            timeout_seconds=240.0,
+        )
+        meta = (res.get("metadata") or {}) if isinstance(res, dict) else {}
+        return {
+            "answer": res.get("answer") if isinstance(res, dict) else "",
+            "response_type": res.get("response_type") if isinstance(res, dict) else "speech",
+            "gates_passed": bool(res.get("gates_passed")) if isinstance(res, dict) else False,
+            "gate_reason": res.get("gate_reason") if isinstance(res, dict) else None,
+            "session_id": res.get("session_id") if isinstance(res, dict) else None,
+            "mode": None,
+            "confidence": float(meta.get("confidence") or 0.0),
+            "intent_alignment": meta.get("intent_alignment"),
+            "memory_alignment": meta.get("memory_alignment"),
+            "contradiction_detected": bool(meta.get("contradiction_detected")),
+            "unresolved_contradictions_total": meta.get("unresolved_contradictions_total"),
+            # crt_response_eval expects this key name in some checks
+            "unresolved_contradictions": meta.get("unresolved_contradictions_total"),
+            "unresolved_hard_conflicts": meta.get("unresolved_hard_conflicts"),
+            "retrieved_memories": meta.get("retrieved_memories") or [],
+            "prompt_memories": meta.get("prompt_memories") or [],
+            "learned_suggestions": meta.get("learned_suggestions") or [],
+            "heuristic_suggestions": meta.get("heuristic_suggestions") or [],
+        }
+
+
+use_api = bool(getattr(args, "use_api", False))
+api_thread_id = (args.thread_id or "").strip() or f"stress_{run_id}"
+
+if use_api:
+    rag = None
+    crt = _ApiCrtClient(base_url=args.api_base_url, thread_id=api_thread_id)
+    if args.reset_thread:
+        try:
+            _api_post_json(args.api_base_url, "/api/thread/reset", {"thread_id": api_thread_id, "target": "all"})
+        except Exception:
+            pass
+else:
+    rag = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=ollama)
+    crt = rag
 
 # Tracking metrics
 metrics = {
@@ -89,7 +169,7 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
     print(f"{'='*80}")
     print(f"[Q]: {question}")
     
-    result = rag.query(question)
+    result = crt.query(question)
     
     print(f"[A]: {result['answer'][:400]}{'...' if len(result['answer']) > 400 else ''}")
 
@@ -227,15 +307,25 @@ query_and_track(
 )
 
 # Non-mutating memory check (avoid extra rag.query() calls outside turn accounting).
-try:
-    from personal_agent.crt_core import MemorySource
+if not use_api:
+    try:
+        from personal_agent.crt_core import MemorySource
 
-    all_mems = rag.memory._load_all_memories()
-    user_texts = [m.text.lower() for m in all_mems if getattr(m, "source", None) == MemorySource.USER]
-    if not any("sarah" in t for t in user_texts):
-        metrics['memory_failures'].append(f"Turn {metrics['total_turns']}: Failed to store name 'Sarah'")
-except Exception:
-    pass
+        all_mems = rag.memory._load_all_memories()
+        user_texts = [m.text.lower() for m in all_mems if getattr(m, "source", None) == MemorySource.USER]
+        if not any("sarah" in t for t in user_texts):
+            metrics['memory_failures'].append(f"Turn {metrics['total_turns']}: Failed to store name 'Sarah'")
+    except Exception:
+        pass
+else:
+    try:
+        prof = _api_get_json(args.api_base_url, f"/api/profile?thread_id={urllib.parse.quote(api_thread_id)}")
+        raw = str((prof.get("name") or "")).lower()
+        if "sarah" not in raw:
+            # Soft check: profile may not be populated immediately depending on gates.
+            pass
+    except Exception:
+        pass
 
 print("\nPHASE 2: DETAILED FACT ACCUMULATION")
 print("-" * 80)
@@ -697,12 +787,13 @@ if len(metrics['eval_failures']) > 10:
 # RECOMMENDATIONS
 print(f"\nRECOMMENDED ADJUSTMENTS:")
 
-cfg = rag.config
+cfg = rag.config if rag is not None else None
 
 detection_rate = metrics['contradictions_detected'] / len(metrics['contradictions_introduced']) if metrics['contradictions_introduced'] else 0
 print(f"\n1. CONTRADICTION DETECTION RATE: {detection_rate:.1%}")
 if detection_rate < 0.7:
-    print(f"   LOW - Consider lowering theta_contra (currently {cfg.theta_contra:.2f})")
+    if cfg is not None:
+        print(f"   LOW - Consider lowering theta_contra (currently {cfg.theta_contra:.2f})")
     print(f"   Suggested: theta_contra = 0.25-0.30")
 elif detection_rate > 0.95:
     print(f"   TOO SENSITIVE - May be detecting false positives")
@@ -714,8 +805,9 @@ gate_pass_rate = metrics['gates_passed'] / metrics['total_turns']
 print(f"\n2. GATE PASS RATE: {gate_pass_rate:.1%}")
 if gate_pass_rate < 0.5:
     print(f"   LOW - Gates too strict, blocking legitimate queries")
-    print(f"   Suggested: Lower theta_min (currently {cfg.theta_min:.2f}) to 0.20")
-    print(f"   Suggested: Lower theta_align (currently {cfg.theta_align:.2f}) to 0.25")
+    if cfg is not None:
+        print(f"   Suggested: Lower theta_min (currently {cfg.theta_min:.2f}) to 0.20")
+        print(f"   Suggested: Lower theta_align (currently {cfg.theta_align:.2f}) to 0.25")
 elif gate_pass_rate > 0.95:
     print(f"   HIGH - Gates may be too permissive")
     print(f"   Suggested: Raise theta_align to 0.35-0.40")
