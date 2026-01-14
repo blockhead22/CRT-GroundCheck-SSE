@@ -11,6 +11,21 @@ from personal_agent.schema_validation import format_errors, load_schema, validat
 
 
 _DEFAULT_CONFIG: Dict[str, Any] = {
+    # Background jobs: queue + worker + optional idle scheduler.
+    # This powers async research, promotion proposals, and auto-resolution attempts.
+    "background_jobs": {
+        "enabled": False,
+        "jobs_db_path": "artifacts/crt_jobs.db",
+        "artifacts_dir": "artifacts",
+        "worker_interval_seconds": 2,
+        # When enabled, the scheduler can enqueue jobs while chat is idle.
+        "idle_scheduler_enabled": False,
+        "idle_seconds": 120,
+        # Conservative by default: only attempt auto-resolution when explicitly enabled.
+        "auto_resolve_contradictions_enabled": False,
+        # Web research can be privacy-surprising; keep off unless explicitly enabled.
+        "auto_web_research_enabled": False,
+    },
     "learned_suggestions": {
         "enabled": True,
         "emit_metadata": True,

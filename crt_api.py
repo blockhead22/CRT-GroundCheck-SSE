@@ -4,10 +4,11 @@ import os
 import re
 import sqlite3
 import time
+import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi import Query
 from fastapi import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,17 @@ from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots
+from personal_agent.artifact_store import now_iso_utc
+from personal_agent.idle_scheduler import CRTIdleScheduler
+from personal_agent.jobs_db import (
+    enqueue_job,
+    get_job,
+    init_jobs_db,
+    list_job_artifacts,
+    list_job_events,
+    list_jobs,
+)
+from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 
@@ -148,6 +160,7 @@ def create_app() -> FastAPI:
     reflection_cfg = (runtime_cfg.get("reflection") or {}) if isinstance(runtime_cfg, dict) else {}
     learned_cfg = (runtime_cfg.get("learned_suggestions") or {}) if isinstance(runtime_cfg, dict) else {}
     loop_cfg = (runtime_cfg.get("training_loop") or {}) if isinstance(runtime_cfg, dict) else {}
+    jobs_cfg = (runtime_cfg.get("background_jobs") or {}) if isinstance(runtime_cfg, dict) else {}
 
     # Shared training loop (suggestion-only model). Stored in app.state for endpoints.
     training_loop = CRTTrainingLoop(
@@ -157,6 +170,39 @@ def create_app() -> FastAPI:
         loop_cfg=loop_cfg,
     )
     app.state.training_loop = training_loop
+
+    # Optional: background jobs worker + idle scheduler.
+    # Stored on app.state so endpoints can report status.
+    root = Path(__file__).resolve().parent
+    jobs_enabled = bool(jobs_cfg.get("enabled", False))
+    jobs_db_path = str(jobs_cfg.get("jobs_db_path") or "artifacts/crt_jobs.db")
+    jobs_artifacts_dir = str(jobs_cfg.get("artifacts_dir") or "artifacts")
+    worker_interval = float(jobs_cfg.get("worker_interval_seconds") or 2)
+
+    init_jobs_db(jobs_db_path)
+    app.state.jobs_db_path = jobs_db_path
+
+    jobs_worker = CRTJobsWorker(
+        repo_root=root,
+        jobs_db_path=jobs_db_path,
+        artifacts_dir=jobs_artifacts_dir,
+        enabled=jobs_enabled,
+        interval_seconds=worker_interval,
+    )
+    app.state.jobs_worker = jobs_worker
+
+    idle_enabled = bool(jobs_cfg.get("idle_scheduler_enabled", False)) and jobs_enabled
+    idle_seconds = int(jobs_cfg.get("idle_seconds") or 120)
+    idle_scheduler = CRTIdleScheduler(
+        repo_root=root,
+        jobs_db_path=jobs_db_path,
+        enabled=idle_enabled,
+        idle_seconds=idle_seconds,
+        interval_seconds=10,
+        auto_resolve_contradictions_enabled=bool(jobs_cfg.get("auto_resolve_contradictions_enabled", False)),
+        auto_web_research_enabled=bool(jobs_cfg.get("auto_web_research_enabled", False)),
+    )
+    app.state.idle_scheduler = idle_scheduler
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -172,7 +218,6 @@ def create_app() -> FastAPI:
     # Cache one CRT engine per thread (isolated DBs per thread).
     engines: Dict[str, CRTEnhancedRAG] = {}
 
-    root = Path(__file__).resolve().parent
     docs_dir = root / "docs"
     doc_map: Dict[str, Dict[str, Any]] = {
         # Mirrors the Streamlit dashboard docs tabs.
@@ -210,12 +255,136 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
+        try:
+            jobs_worker.start()
+        except Exception:
+            pass
+
+        try:
+            idle_scheduler.start()
+        except Exception:
+            pass
+
     @app.on_event("shutdown")
     def _shutdown() -> None:
         try:
             training_loop.stop()
         except Exception:
             pass
+
+        try:
+            idle_scheduler.stop()
+        except Exception:
+            pass
+
+        try:
+            jobs_worker.stop()
+        except Exception:
+            pass
+
+    class JobListItem(BaseModel):
+        id: str
+        type: str
+        status: str
+        priority: int
+        created_at: str
+        started_at: Optional[str] = None
+        finished_at: Optional[str] = None
+        payload: Dict[str, Any] = Field(default_factory=dict)
+        error: Optional[str] = None
+
+    class JobsListResponse(BaseModel):
+        jobs: list[JobListItem]
+
+    class JobDetailResponse(BaseModel):
+        job: JobListItem
+        events: list[Dict[str, Any]]
+        artifacts: list[Dict[str, Any]]
+
+    class JobsStatusResponse(BaseModel):
+        enabled: bool
+        worker: Dict[str, Any]
+        idle_scheduler_enabled: bool
+        jobs_db_path: str
+
+    class EnqueueJobRequest(BaseModel):
+        type: str = Field(description="job type")
+        payload: Dict[str, Any] = Field(default_factory=dict)
+        priority: int = Field(default=0)
+        job_id: Optional[str] = Field(default=None, description="optional custom job id")
+
+    class EnqueueJobResponse(BaseModel):
+        ok: bool = True
+        job_id: str
+
+    @app.get("/api/jobs/status", response_model=JobsStatusResponse)
+    def jobs_status() -> JobsStatusResponse:
+        st = app.state.jobs_worker.status().to_dict() if getattr(app.state, "jobs_worker", None) else {}
+        return JobsStatusResponse(
+            enabled=bool(getattr(app.state.jobs_worker, "enabled", False)),
+            worker=st,
+            idle_scheduler_enabled=bool(getattr(app.state.idle_scheduler, "enabled", False)),
+            jobs_db_path=str(getattr(app.state, "jobs_db_path", "")),
+        )
+
+    @app.get("/api/jobs", response_model=JobsListResponse)
+    def jobs_list(
+        status: Optional[str] = Query(default=None),
+        limit: int = Query(default=50, ge=1, le=200),
+        offset: int = Query(default=0, ge=0),
+    ) -> JobsListResponse:
+        rows = list_jobs(app.state.jobs_db_path, status=status, limit=limit, offset=offset)
+        return JobsListResponse(
+            jobs=[
+                JobListItem(
+                    id=r.id,
+                    type=r.type,
+                    status=r.status,
+                    priority=r.priority,
+                    created_at=r.created_at,
+                    started_at=r.started_at,
+                    finished_at=r.finished_at,
+                    payload=r.payload,
+                    error=r.error,
+                )
+                for r in rows
+            ]
+        )
+
+    @app.get("/api/jobs/{job_id}", response_model=JobDetailResponse)
+    def job_get(job_id: str) -> JobDetailResponse:
+        row = get_job(app.state.jobs_db_path, job_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail=f"Job not found: {job_id}")
+
+        return JobDetailResponse(
+            job=JobListItem(
+                id=row.id,
+                type=row.type,
+                status=row.status,
+                priority=row.priority,
+                created_at=row.created_at,
+                started_at=row.started_at,
+                finished_at=row.finished_at,
+                payload=row.payload,
+                error=row.error,
+            ),
+            events=list_job_events(app.state.jobs_db_path, job_id),
+            artifacts=list_job_artifacts(app.state.jobs_db_path, job_id),
+        )
+
+    @app.post("/api/jobs", response_model=EnqueueJobResponse)
+    def jobs_enqueue(req: EnqueueJobRequest) -> EnqueueJobResponse:
+        jid = (req.job_id or "").strip() or f"job_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+        enqueue_job(
+            db_path=app.state.jobs_db_path,
+            job_id=jid,
+            job_type=req.type,
+            created_at=now_iso_utc(),
+            payload=dict(req.payload or {}),
+            priority=int(req.priority or 0),
+        )
+        return EnqueueJobResponse(job_id=jid)
 
     class LearnStatusResponse(BaseModel):
         enabled: bool

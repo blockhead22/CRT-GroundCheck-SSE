@@ -21,8 +21,10 @@
             "research_fetch",
             "research_summarize",
             "research_compare",
+            "auto_resolve_contradictions",
             "propose_promotions",
-            "monitor_source"
+            "monitor_source",
+            "train_learned_suggestions"
           ]
         },
         "status": { "type": "string", "enum": ["queued", "running", "succeeded", "failed", "canceled"] },

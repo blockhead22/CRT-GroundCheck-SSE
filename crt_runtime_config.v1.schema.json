@@ -15,6 +15,30 @@
     "onboarding"
   ],
   "properties": {
+    "background_jobs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "jobs_db_path",
+        "artifacts_dir",
+        "worker_interval_seconds",
+        "idle_scheduler_enabled",
+        "idle_seconds",
+        "auto_resolve_contradictions_enabled",
+        "auto_web_research_enabled"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "jobs_db_path": { "type": "string", "minLength": 1 },
+        "artifacts_dir": { "type": "string", "minLength": 1 },
+        "worker_interval_seconds": { "type": "integer", "minimum": 1 },
+        "idle_scheduler_enabled": { "type": "boolean" },
+        "idle_seconds": { "type": "integer", "minimum": 5 },
+        "auto_resolve_contradictions_enabled": { "type": "boolean" },
+        "auto_web_research_enabled": { "type": "boolean" }
+      }
+    },
     "learned_suggestions": {
       "type": "object",
       "additionalProperties": false,

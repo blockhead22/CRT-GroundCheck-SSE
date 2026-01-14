@@ -213,6 +213,93 @@ def add_job_artifact(
     conn.close()
 
 
+def get_job(db_path: str, job_id: str) -> Optional[JobRow]:
+    init_jobs_db(db_path)
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error FROM jobs WHERE id = ?",
+        (job_id,),
+    )
+    row = cur.fetchone()
+    conn.close()
+
+    if not row:
+        return None
+
+    payload = {}
+    try:
+        payload = json.loads(row[7] or "{}")
+    except Exception:
+        payload = {}
+
+    return JobRow(
+        id=str(row[0]),
+        type=str(row[1]),
+        status=str(row[2]),
+        priority=int(row[3] or 0),
+        created_at=str(row[4]),
+        started_at=(str(row[5]) if row[5] is not None else None),
+        finished_at=(str(row[6]) if row[6] is not None else None),
+        payload=payload,
+        error=(str(row[8]) if row[8] is not None else None),
+    )
+
+
+def list_jobs(
+    db_path: str,
+    *,
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> List[JobRow]:
+    init_jobs_db(db_path)
+
+    limit = max(1, min(int(limit), 200))
+    offset = max(0, int(offset))
+
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+
+    if status:
+        cur.execute(
+            "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
+            "FROM jobs WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (status, limit, offset),
+        )
+    else:
+        cur.execute(
+            "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
+            "FROM jobs ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (limit, offset),
+        )
+    rows = cur.fetchall()
+    conn.close()
+
+    out: List[JobRow] = []
+    for row in rows:
+        payload = {}
+        try:
+            payload = json.loads(row[7] or "{}")
+        except Exception:
+            payload = {}
+        out.append(
+            JobRow(
+                id=str(row[0]),
+                type=str(row[1]),
+                status=str(row[2]),
+                priority=int(row[3] or 0),
+                created_at=str(row[4]),
+                started_at=(str(row[5]) if row[5] is not None else None),
+                finished_at=(str(row[6]) if row[6] is not None else None),
+                payload=payload,
+                error=(str(row[8]) if row[8] is not None else None),
+            )
+        )
+    return out
+
+
 def list_job_events(db_path: str, job_id: str) -> List[Dict[str, Any]]:
     init_jobs_db(db_path)
 

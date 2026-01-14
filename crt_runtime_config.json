@@ -1,4 +1,14 @@
 {
+  "background_jobs": {
+    "enabled": true,
+    "jobs_db_path": "artifacts/crt_jobs.db",
+    "artifacts_dir": "artifacts",
+    "worker_interval_seconds": 2,
+    "idle_scheduler_enabled": false,
+    "idle_seconds": 120,
+    "auto_resolve_contradictions_enabled": false,
+    "auto_web_research_enabled": false
+  },
   "learned_suggestions": {
     "enabled": true,
     "emit_metadata": true,
