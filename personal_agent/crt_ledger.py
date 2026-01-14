@@ -159,9 +159,87 @@ class ContradictionLedger:
                 FOREIGN KEY (ledger_id) REFERENCES contradictions(ledger_id)
             )
         """)
+
+        # Worklog for "contradictions become goals": record when we asked the user to clarify.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contradiction_worklog (
+                ledger_id TEXT PRIMARY KEY,
+                first_asked_at REAL,
+                last_asked_at REAL,
+                ask_count INTEGER DEFAULT 0,
+                last_user_answer TEXT,
+                last_user_answer_at REAL
+            )
+        """)
         
         conn.commit()
         conn.close()
+
+    def mark_contradiction_asked(self, ledger_id: str) -> None:
+        """Record that we asked the user to clarify a contradiction."""
+        ts = time.time()
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO contradiction_worklog (ledger_id, first_asked_at, last_asked_at, ask_count)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(ledger_id) DO UPDATE SET
+                last_asked_at=excluded.last_asked_at,
+                ask_count=coalesce(contradiction_worklog.ask_count, 0) + 1
+            """,
+            (ledger_id, ts, ts),
+        )
+        conn.commit()
+        conn.close()
+
+    def record_contradiction_user_answer(self, ledger_id: str, answer: str) -> None:
+        """Record a user answer intended to resolve a contradiction (does not auto-resolve)."""
+        ts = time.time()
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO contradiction_worklog (ledger_id, last_user_answer, last_user_answer_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(ledger_id) DO UPDATE SET
+                last_user_answer=excluded.last_user_answer,
+                last_user_answer_at=excluded.last_user_answer_at
+            """,
+            (ledger_id, (answer or "").strip(), ts),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_contradiction_worklog(self, ledger_id: str) -> Dict[str, Optional[object]]:
+        """Return worklog fields for a contradiction (or defaults if absent)."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT first_asked_at, last_asked_at, ask_count, last_user_answer, last_user_answer_at
+            FROM contradiction_worklog
+            WHERE ledger_id = ?
+            """,
+            (ledger_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return {
+                "first_asked_at": None,
+                "last_asked_at": None,
+                "ask_count": 0,
+                "last_user_answer": None,
+                "last_user_answer_at": None,
+            }
+        return {
+            "first_asked_at": row[0],
+            "last_asked_at": row[1],
+            "ask_count": int(row[2] or 0),
+            "last_user_answer": row[3],
+            "last_user_answer_at": row[4],
+        }
     
     # ========================================================================
     # Contradiction Recording

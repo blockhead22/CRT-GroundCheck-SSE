@@ -317,6 +317,54 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "Build CRT Stress Report (latest)",
+			"type": "shell",
+			"command": "py",
+			"args": [
+				"-3",
+				"d:\\AI_round2\\artifacts\\build_crt_stress_report.py"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "crt api (uvicorn --reload)",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"crt_api:app",
+				"--reload",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8000"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "crt api (uvicorn --reload)",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"crt_api:app",
+				"--reload",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8000"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }

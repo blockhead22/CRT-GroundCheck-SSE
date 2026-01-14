@@ -111,6 +111,30 @@ class ResolveContradictionRequest(BaseModel):
     merged_memory_id: Optional[str] = None
 
 
+class ContradictionWorkItem(BaseModel):
+    thread_id: str
+    ledger_id: str
+    status: str
+    contradiction_type: str
+    drift_mean: float
+    summary: Optional[str] = None
+    ask_count: int = 0
+    last_asked_at: Optional[float] = None
+    next_action: str
+    suggested_question: str
+
+
+class ContradictionNextResponse(BaseModel):
+    thread_id: str
+    has_item: bool
+    item: Optional[ContradictionWorkItem] = None
+
+
+class ContradictionAskedRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    ledger_id: str
+
+
 class ProfileResponse(BaseModel):
     thread_id: str
     name: Optional[str] = None
@@ -514,6 +538,72 @@ def create_app() -> FastAPI:
         # Fallback: short messages that mention contradictions + detect/found.
         return ("contradict" in t) and ("detect" in t or "found" in t)
 
+    def _suggest_contradiction_question(engine: CRTEnhancedRAG, entry: Any) -> str:
+        """Deterministic, low-risk clarifying question for a ledger entry."""
+        try:
+            old_id = getattr(entry, "old_memory_id", None)
+            new_id = getattr(entry, "new_memory_id", None)
+            old_mem = engine.memory.get_memory_by_id(old_id) if old_id else None
+            new_mem = engine.memory.get_memory_by_id(new_id) if new_id else None
+            old_text = (getattr(old_mem, "text", "") or "").strip()
+            new_text = (getattr(new_mem, "text", "") or "").strip()
+        except Exception:
+            old_text, new_text = "", ""
+
+        if old_text and new_text:
+            q = (
+                "I have two conflicting statements recorded:\n"
+                f"1) {old_text}\n"
+                f"2) {new_text}\n\n"
+                "Which is correct right now? If both can be true, tell me how."
+            )
+        else:
+            q = "I have a potential contradiction recorded. Can you clarify which version is correct?"
+
+        ctype = (getattr(entry, "contradiction_type", None) or "conflict").strip().lower()
+        if ctype == "refinement":
+            return q + " (If it’s a refinement, please specify the more precise version.)"
+        if ctype == "temporal":
+            return q + " (If this changed over time, tell me the current value and when it changed.)"
+        return q
+
+    def _work_item_for_entry(engine: CRTEnhancedRAG, thread_id: str, entry: Any) -> ContradictionWorkItem:
+        ledger_id = str(getattr(entry, "ledger_id", "") or "")
+        status = str(getattr(entry, "status", "") or "open")
+        ctype = str(getattr(entry, "contradiction_type", "") or "conflict")
+        drift = float(getattr(entry, "drift_mean", 0.0) or 0.0)
+        summary = getattr(entry, "summary", None)
+
+        try:
+            wl = engine.ledger.get_contradiction_worklog(ledger_id)
+        except Exception:
+            wl = {"ask_count": 0, "last_asked_at": None}
+
+        # M2 heuristic: open conflicts/revisions should ask user; refinements ask for precision; temporal asks for timeline.
+        next_action = "ask_user"
+        suggested = _suggest_contradiction_question(engine, entry)
+
+        return ContradictionWorkItem(
+            thread_id=_sanitize_thread_id(thread_id),
+            ledger_id=ledger_id,
+            status=status,
+            contradiction_type=ctype,
+            drift_mean=drift,
+            summary=summary,
+            ask_count=int(wl.get("ask_count") or 0),
+            last_asked_at=(wl.get("last_asked_at") if wl else None),
+            next_action=next_action,
+            suggested_question=suggested,
+        )
+
+    def _priority_key(item: ContradictionWorkItem) -> tuple:
+        # Higher drift first, then fewer asks first, then most recently created (best-effort via ledger_id timestamp).
+        return (
+            -float(item.drift_mean or 0.0),
+            int(item.ask_count or 0),
+            item.ledger_id,
+        )
+
     def _load_doc_text(doc_id: str) -> str:
         info = doc_map.get(doc_id)
         if not info:
@@ -895,6 +985,44 @@ def create_app() -> FastAPI:
         except Exception:
             entries = []
         return [ContradictionListItem(**e.to_dict()) for e in entries]
+
+    @app.get("/api/contradictions/work-items", response_model=list[ContradictionWorkItem])
+    def contradiction_work_items(
+        thread_id: str = Query(default="default"),
+        limit: int = Query(default=20, ge=1, le=200),
+    ) -> list[ContradictionWorkItem]:
+        engine = get_engine(thread_id)
+        try:
+            entries = engine.ledger.get_open_contradictions(limit=500)
+        except Exception:
+            entries = []
+
+        items = [_work_item_for_entry(engine, thread_id, e) for e in entries]
+        items.sort(key=_priority_key)
+        return items[: int(limit)]
+
+    @app.get("/api/contradictions/next", response_model=ContradictionNextResponse)
+    def contradiction_next(thread_id: str = Query(default="default")) -> ContradictionNextResponse:
+        engine = get_engine(thread_id)
+        try:
+            entries = engine.ledger.get_open_contradictions(limit=500)
+        except Exception:
+            entries = []
+        if not entries:
+            return ContradictionNextResponse(thread_id=_sanitize_thread_id(thread_id), has_item=False, item=None)
+
+        items = [_work_item_for_entry(engine, thread_id, e) for e in entries]
+        items.sort(key=_priority_key)
+        return ContradictionNextResponse(thread_id=_sanitize_thread_id(thread_id), has_item=True, item=items[0])
+
+    @app.post("/api/contradictions/asked")
+    def contradiction_mark_asked(req: ContradictionAskedRequest) -> Dict[str, Any]:
+        engine = get_engine(req.thread_id)
+        try:
+            engine.ledger.mark_contradiction_asked(req.ledger_id)
+        except Exception:
+            return {"ok": False}
+        return {"ok": True}
 
     @app.post("/api/ledger/resolve")
     def ledger_resolve(req: ResolveContradictionRequest) -> Dict[str, Any]:
