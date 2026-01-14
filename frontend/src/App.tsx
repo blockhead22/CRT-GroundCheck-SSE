@@ -9,6 +9,7 @@ import { ProfileNameLightbox } from './components/ProfileNameLightbox'
 import { ThreadRenameLightbox } from './components/ThreadRenameLightbox'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
+import { JobsPage } from './pages/JobsPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
@@ -316,6 +317,8 @@ export default function App() {
                   )
                 ) : navActive === 'dashboard' ? (
                   <DashboardPage threadId={selectedThread?.id ?? 'default'} />
+                ) : navActive === 'jobs' ? (
+                  <JobsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : (
                   <DocsPage />
                 )}

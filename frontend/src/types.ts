@@ -1,5 +1,5 @@
 // Mirror the Streamlit app's primary sections.
-export type NavId = 'chat' | 'dashboard' | 'docs'
+export type NavId = 'chat' | 'dashboard' | 'jobs' | 'docs'
 
 export type ChatRole = 'user' | 'assistant'
 

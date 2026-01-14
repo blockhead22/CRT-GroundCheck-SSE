@@ -302,3 +302,73 @@ export async function resetThread(args: {
     target: args.target,
   })
 }
+
+// ============================================================================
+// Jobs (background worker)
+// ============================================================================
+
+export type JobsStatusResponse = {
+  enabled: boolean
+  worker: Record<string, unknown>
+  idle_scheduler_enabled: boolean
+  jobs_db_path: string
+}
+
+export type JobListItem = {
+  id: string
+  type: string
+  status: string
+  priority: number
+  created_at: string
+  started_at?: string | null
+  finished_at?: string | null
+  payload: Record<string, unknown>
+  error?: string | null
+}
+
+export type JobsListResponse = {
+  jobs: JobListItem[]
+}
+
+export type JobDetailResponse = {
+  job: JobListItem
+  events: Array<{ ts: string; level: string; message: string; data?: unknown }>
+  artifacts: Array<{ kind: string; path: string; sha256?: string | null; created_at: string }>
+}
+
+export async function getJobsStatus(): Promise<JobsStatusResponse> {
+  return fetchJson<JobsStatusResponse>('/api/jobs/status')
+}
+
+export async function listJobs(args: {
+  status?: string | null
+  limit?: number
+  offset?: number
+}): Promise<JobsListResponse> {
+  const status = args.status ? String(args.status) : ''
+  const limit = args.limit ?? 50
+  const offset = args.offset ?? 0
+  const qs = new URLSearchParams()
+  if (status) qs.set('status', status)
+  qs.set('limit', String(limit))
+  qs.set('offset', String(offset))
+  return fetchJson<JobsListResponse>(`/api/jobs?${qs.toString()}`)
+}
+
+export async function getJob(jobId: string): Promise<JobDetailResponse> {
+  return fetchJson<JobDetailResponse>(`/api/jobs/${encodeURIComponent(jobId)}`)
+}
+
+export async function enqueueJob(args: {
+  type: string
+  payload: Record<string, unknown>
+  priority?: number
+  jobId?: string | null
+}): Promise<{ ok: boolean; job_id: string }> {
+  return postJson<{ ok: boolean; job_id: string }>('/api/jobs', {
+    type: args.type,
+    payload: args.payload,
+    priority: args.priority ?? 0,
+    job_id: args.jobId ?? null,
+  })
+}

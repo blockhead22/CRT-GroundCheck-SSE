@@ -247,6 +247,12 @@ def create_app() -> FastAPI:
         engines[tid] = engine
         return engine
 
+    def _thread_db_paths(thread_id: str) -> tuple[str, str]:
+        tid = _sanitize_thread_id(thread_id)
+        memory_db = f"personal_agent/crt_memory_{tid}.db"
+        ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+        return memory_db, ledger_db
+
     @app.on_event("startup")
     def _startup() -> None:
         # Start the (optional) training loop.
@@ -376,12 +382,30 @@ def create_app() -> FastAPI:
     @app.post("/api/jobs", response_model=EnqueueJobResponse)
     def jobs_enqueue(req: EnqueueJobRequest) -> EnqueueJobResponse:
         jid = (req.job_id or "").strip() or f"job_{int(time.time())}_{uuid.uuid4().hex[:8]}"
+
+        payload: Dict[str, Any] = dict(req.payload or {})
+        thread_id = str(payload.get("thread_id") or payload.get("thread") or "").strip() or None
+        if thread_id:
+            mem_db, led_db = _thread_db_paths(thread_id)
+
+            # Convenience: infer DB paths when absent.
+            if req.type in {"propose_promotions"}:
+                payload.setdefault("memory_db", mem_db)
+            if req.type in {"auto_resolve_contradictions"}:
+                payload.setdefault("memory_db", mem_db)
+                payload.setdefault("ledger_db", led_db)
+
+            # Research jobs optionally store EXTERNAL memory; if requested, infer memory_db.
+            if req.type in {"research_fetch", "research_summarize"}:
+                if bool(payload.get("store_as_external_memory")):
+                    payload.setdefault("memory_db", mem_db)
+
         enqueue_job(
             db_path=app.state.jobs_db_path,
             job_id=jid,
             job_type=req.type,
             created_at=now_iso_utc(),
-            payload=dict(req.payload or {}),
+            payload=payload,
             priority=int(req.priority or 0),
         )
         return EnqueueJobResponse(job_id=jid)
