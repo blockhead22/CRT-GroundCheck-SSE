@@ -23,8 +23,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.ollama_client import get_ollama_client
 from personal_agent.runtime_config import load_runtime_config
 import time
 import json
@@ -62,7 +60,11 @@ jsonl_fp = None
 if ls_cfg.get("write_jsonl", True):
     jsonl_fp = open(jsonl_path, "w", encoding="utf-8")
 
-ollama = get_ollama_client(args.model)
+ollama = None
+if not bool(getattr(args, "use_api", False)):
+    from personal_agent.ollama_client import get_ollama_client
+
+    ollama = get_ollama_client(args.model)
 
 
 def _api_base(url: str) -> str:
@@ -135,6 +137,8 @@ if use_api:
         except Exception:
             pass
 else:
+    from personal_agent.crt_rag import CRTEnhancedRAG
+
     rag = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=ollama)
     crt = rag
 
@@ -745,6 +749,57 @@ for q, beh, name, ex in pressure_tests:
     if metrics['total_turns'] >= args.turns:
         break
     query_and_track(q, beh, name, expectations=ex)
+
+
+def _run_extra_turns_to_target() -> None:
+    """Pad to exactly args.turns with low-risk, deterministic prompts.
+
+    This keeps `--turns` meaningful even if the scripted scenario has fewer prompts
+    (or is edited over time).
+    """
+
+    if metrics['total_turns'] >= args.turns:
+        return
+
+    print("\nPHASE 12: EXTRA TURNS (PADDING)")
+    print("-" * 80)
+
+    extra_templates = [
+        (
+            "What’s my name?",
+            "Padding: Name recall",
+            {"must_contain_any": ["sarah"], "contradiction_should_be_false_for_questions": True},
+        ),
+        (
+            "Where do I work?",
+            "Padding: Employer recall",
+            {"contradiction_should_be_false_for_questions": True},
+        ),
+        (
+            "Where do I live?",
+            "Padding: Location recall",
+            {"contradiction_should_be_false_for_questions": True},
+        ),
+        (
+            "Give me a one-sentence summary of the key facts you know about me.",
+            "Padding: Compressed summary",
+            {"must_contain_any": ["sarah"]},
+        ),
+        (
+            "List 3 facts you’re confident about regarding me.",
+            "Padding: Confidence/facts",
+            {"must_contain_any": ["sarah"]},
+        ),
+    ]
+
+    i = 0
+    while metrics['total_turns'] < args.turns:
+        q, name, ex = extra_templates[i % len(extra_templates)]
+        query_and_track(q, "Padding to requested turn count", name, expectations=ex)
+        i += 1
+
+
+_run_extra_turns_to_target()
 
 # ANALYSIS REPORT
 print("\n" + "="*80)
