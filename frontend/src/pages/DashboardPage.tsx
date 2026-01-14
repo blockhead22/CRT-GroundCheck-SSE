@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   getDashboardOverview,
+  getJobsStatus,
   getMemory,
   getMemoryTrustHistory,
+  enqueueJob,
   listOpenContradictions,
   listRecentMemories,
+  listJobs,
   exportThread,
   resetThread,
   resolveContradiction,
   searchMemories,
   type ContradictionListItem,
   type DashboardOverview,
+  type JobListItem,
+  type JobsStatusResponse,
   type MemoryListItem,
   type TrustHistoryRow,
 } from '../lib/api'
@@ -21,7 +26,7 @@ function fmtPct01(v: number): string {
   return `${Math.round(clamped * 100)}%`
 }
 
-export function DashboardPage(props: { threadId: string }) {
+export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void }) {
   type Tab = 'overview' | 'memory' | 'ledger'
   const [tab, setTab] = useState<Tab>('overview')
 
@@ -31,6 +36,8 @@ export function DashboardPage(props: { threadId: string }) {
   const [overview, setOverview] = useState<DashboardOverview | null>(null)
   const [memories, setMemories] = useState<MemoryListItem[]>([])
   const [contras, setContras] = useState<ContradictionListItem[]>([])
+  const [jobsStatus, setJobsStatus] = useState<JobsStatusResponse | null>(null)
+  const [threadJobs, setThreadJobs] = useState<JobListItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -95,14 +102,49 @@ export function DashboardPage(props: { threadId: string }) {
   async function refresh() {
     setError(null)
     const tid = props.threadId
-    const [o, m, c] = await Promise.all([
+    const [o, m, c, js, jl] = await Promise.all([
       getDashboardOverview(tid),
       listRecentMemories(tid, 25),
       listOpenContradictions(tid, 50),
+      getJobsStatus().catch(() => null),
+      listJobs({ status: null, limit: 100, offset: 0 }).catch(() => ({ jobs: [] })),
     ])
     setOverview(o)
     setMemories(m)
     setContras(c)
+    setJobsStatus(js)
+
+    const byThread = (jl.jobs || []).filter((j) => {
+      const payload = (j.payload || {}) as Record<string, unknown>
+      return String(payload.thread_id || '') === tid
+    })
+    setThreadJobs(byThread.slice(0, 12))
+  }
+
+  function jobBadge(status: string): string {
+    const s = (status || '').toLowerCase()
+    if (s === 'succeeded') return 'border-emerald-500/20 bg-emerald-500/15 text-emerald-200'
+    if (s === 'failed') return 'border-rose-500/20 bg-rose-500/15 text-rose-200'
+    if (s === 'running') return 'border-amber-500/20 bg-amber-500/15 text-amber-200'
+    if (s === 'queued') return 'border-sky-500/20 bg-sky-500/15 text-sky-200'
+    return 'border-white/10 bg-white/5 text-white/70'
+  }
+
+  async function enqueueThreadJob(jobType: string, payload: Record<string, unknown>, priority = 0) {
+    setError(null)
+    setBusy(true)
+    try {
+      await enqueueJob({
+        type: jobType,
+        payload: { thread_id: props.threadId, ...payload },
+        priority,
+      })
+      await refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
   }
 
   useEffect(() => {
@@ -322,6 +364,86 @@ export function DashboardPage(props: { threadId: string }) {
                 </div>
                 <div className="mt-1 text-xs text-white/50">
                   {overview?.belief_count ?? 0} belief · {overview?.speech_count ?? 0} speech
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">Background jobs</div>
+                  <div className="mt-1 text-xs text-white/60">
+                    One-click enqueue for this thread, plus recent job activity.
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {props.onOpenJobs ? (
+                    <button
+                      onClick={props.onOpenJobs}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                    >
+                      Open Jobs
+                    </button>
+                  ) : null}
+                  <div className="text-xs text-white/50">
+                    Worker: <span className="font-semibold text-white">{jobsStatus?.enabled ? 'enabled' : 'disabled'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  disabled={busy}
+                  onClick={() => void enqueueThreadJob('auto_resolve_contradictions', { max_to_resolve: 10 }, 1)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Auto-resolve contradictions (queued)
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => void enqueueThreadJob('propose_promotions', {}, 0)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Propose promotions
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => void enqueueThreadJob('summarize_session', { text: 'Summarize this session.' }, 0)}
+                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                >
+                  Summarize session (smoke test)
+                </button>
+              </div>
+
+              {!jobsStatus?.enabled ? (
+                <div className="mt-3 text-xs text-white/50">
+                  Jobs are disabled in runtime config. Enable `background_jobs.enabled` to process queued jobs.
+                </div>
+              ) : null}
+
+              <div className="mt-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold tracking-wide text-white/60">Recent jobs (this thread)</div>
+                  <div className="text-xs text-white/50">{threadJobs.length} shown</div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {threadJobs.map((j) => (
+                    <div key={j.id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-white">{j.type}</div>
+                          <div className="mt-1 truncate text-xs text-white/50">{j.id}</div>
+                        </div>
+                        <span className={'rounded-full border px-2 py-0.5 text-[11px] font-semibold ' + jobBadge(j.status)}>
+                          {j.status}
+                        </span>
+                      </div>
+                      {j.error ? (
+                        <div className="mt-2 line-clamp-2 text-xs text-rose-200">{j.error}</div>
+                      ) : null}
+                    </div>
+                  ))}
+                  {!threadJobs.length ? <div className="text-sm text-white/60">No recent jobs for this thread.</div> : null}
                 </div>
               </div>
             </div>

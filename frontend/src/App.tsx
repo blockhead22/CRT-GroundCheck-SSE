@@ -316,7 +316,7 @@ export default function App() {
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
                   )
                 ) : navActive === 'dashboard' ? (
-                  <DashboardPage threadId={selectedThread?.id ?? 'default'} />
+                  <DashboardPage threadId={selectedThread?.id ?? 'default'} onOpenJobs={() => setNavActive('jobs')} />
                 ) : navActive === 'jobs' ? (
                   <JobsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : (
