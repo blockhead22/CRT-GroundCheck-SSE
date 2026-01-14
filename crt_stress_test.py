@@ -109,7 +109,7 @@ class _ApiCrtClient:
             "gates_passed": bool(res.get("gates_passed")) if isinstance(res, dict) else False,
             "gate_reason": res.get("gate_reason") if isinstance(res, dict) else None,
             "session_id": res.get("session_id") if isinstance(res, dict) else None,
-            "mode": None,
+            "mode": meta.get("mode"),
             "confidence": float(meta.get("confidence") or 0.0),
             "intent_alignment": meta.get("intent_alignment"),
             "memory_alignment": meta.get("memory_alignment"),

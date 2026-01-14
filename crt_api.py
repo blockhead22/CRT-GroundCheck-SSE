@@ -486,6 +486,34 @@ def create_app() -> FastAPI:
         )
         return any(n in t for n in needles)
 
+    def _is_contradiction_inventory_request(text: str) -> bool:
+        """Detect user requests asking about contradictions/conflicts in the conversation."""
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+
+        if not any(k in t for k in ("contradict", "inconsisten", "conflict")):
+            return False
+
+        needles = (
+            "what contradictions",
+            "which contradictions",
+            "any contradictions",
+            "contradictions have you",
+            "contradictions did you",
+            "contradictions detected",
+            "contradictions found",
+            "what conflicts",
+            "any conflicts",
+            "in our conversation",
+            "in our chat",
+        )
+        if any(n in t for n in needles):
+            return True
+
+        # Fallback: short messages that mention contradictions + detect/found.
+        return ("contradict" in t) and ("detect" in t or "found" in t)
+
     def _load_doc_text(doc_id: str) -> str:
         info = doc_map.get(doc_id)
         if not info:
@@ -883,6 +911,53 @@ def create_app() -> FastAPI:
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:
         engine = get_engine(req.thread_id)
 
+        # Deterministic ledger-backed contradiction inventory.
+        # This is intentionally handled outside the LLM path for auditability.
+        if _is_contradiction_inventory_request(req.message):
+            try:
+                open_entries = engine.ledger.get_open_contradictions(limit=50)
+            except Exception:
+                open_entries = []
+
+            open_count = len(open_entries)
+            hard_conflicts = sum(1 for e in open_entries if (getattr(e, "contradiction_type", "") or "") == "conflict")
+
+            if open_entries:
+                lines = [
+                    "I can summarize what I've recorded in the contradiction ledger so far.",
+                    f"Open contradictions: {open_count}.",
+                    "",
+                    "Most recent open items:",
+                ]
+                for e in open_entries[:10]:
+                    typ = getattr(e, "contradiction_type", None) or "conflict"
+                    status = getattr(e, "status", None) or "open"
+                    summary = getattr(e, "summary", None) or "(no summary)"
+                    lines.append(f"- [{typ}/{status}] {summary}")
+                answer = "\n".join(lines)
+            else:
+                answer = (
+                    "I don't currently have any open contradictions recorded in the ledger. "
+                    "If you think something conflicts, point it out and I'll log it explicitly."
+                )
+
+            return ChatSendResponse(
+                answer=answer,
+                response_type="explanation",
+                gates_passed=False,
+                gate_reason="ledger_contradictions",
+                session_id=getattr(engine, "session_id", None),
+                metadata={
+                    "mode": "uncertainty",
+                    "confidence": 0.65,
+                    "contradiction_detected": bool(open_count),
+                    "unresolved_contradictions_total": open_count,
+                    "unresolved_hard_conflicts": hard_conflicts,
+                    "retrieved_memories": [],
+                    "prompt_memories": [],
+                },
+            )
+
         # Safe doc-grounded channel for architecture/system explanation questions.
         if _is_architecture_explanation_request(req.message):
             answer, prompt_items = _answer_from_docs(req.message)
@@ -917,6 +992,7 @@ def create_app() -> FastAPI:
 
         # Keep the payload compact and UI-friendly.
         metadata: Dict[str, Any] = {
+            "mode": result.get("mode"),
             "confidence": result.get("confidence"),
             "intent_alignment": result.get("intent_alignment"),
             "memory_alignment": result.get("memory_alignment"),

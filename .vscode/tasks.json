@@ -278,6 +278,45 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
+		},
+		{
+			"label": "crt api (uvicorn)",
+			"type": "shell",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+			"args": [
+				"-m",
+				"uvicorn",
+				"crt_api:app",
+				"--host",
+				"127.0.0.1",
+				"--port",
+				"8000"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "CRT Stress Test (API 30 contradiction inventory fix)",
+			"type": "shell",
+			"command": "py",
+			"args": [
+				"-3",
+				"d:\\AI_round2\\crt_stress_test.py",
+				"--use-api",
+				"--api-base-url",
+				"http://127.0.0.1:8000",
+				"--thread-id",
+				"stress_api_contra_inventory_fix",
+				"--reset-thread",
+				"--turns",
+				"30",
+				"--sleep",
+				"0.02"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
 		}
 	]
 }
