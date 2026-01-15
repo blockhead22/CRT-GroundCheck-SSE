@@ -239,10 +239,67 @@ export type ContradictionListItem = {
   new_memory_id: string
 }
 
+export type ContradictionWorkItem = {
+  thread_id: string
+  ledger_id: string
+  status: string
+  contradiction_type: string
+  drift_mean: number
+  summary?: string | null
+  ask_count: number
+  last_asked_at?: number | null
+  next_action: string
+  suggested_question: string
+}
+
+export type ContradictionNextResponse = {
+  thread_id: string
+  has_item: boolean
+  item?: ContradictionWorkItem | null
+}
+
 export async function listOpenContradictions(threadId: string, limit = 50): Promise<ContradictionListItem[]> {
   return fetchJson<ContradictionListItem[]>(
     `/api/ledger/open?thread_id=${encodeURIComponent(threadId)}&limit=${encodeURIComponent(String(limit))}`,
   )
+}
+
+export async function getContradictionNext(threadId: string): Promise<ContradictionNextResponse> {
+  return fetchJson<ContradictionNextResponse>(`/api/contradictions/next?thread_id=${encodeURIComponent(threadId)}`)
+}
+
+export async function markContradictionAsked(args: { threadId: string; ledgerId: string }): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>('/api/contradictions/asked', {
+    thread_id: args.threadId,
+    ledger_id: args.ledgerId,
+  })
+}
+
+export async function respondToContradiction(args: {
+  threadId: string
+  ledgerId: string
+  answer: string
+  resolve?: boolean
+  resolutionMethod?: string
+  newStatus?: string
+  mergedMemoryId?: string | null
+}): Promise<{
+  ok: boolean
+  thread_id: string
+  ledger_id: string
+  recorded: boolean
+  resolved: boolean
+  next: ContradictionNextResponse
+}> {
+  return postJson('/api/contradictions/respond', {
+    thread_id: args.threadId,
+    ledger_id: args.ledgerId,
+    answer: args.answer,
+    resolve: args.resolve ?? true,
+    resolution_method: args.resolutionMethod ?? 'user_clarified',
+    new_status: args.newStatus ?? 'resolved',
+    merged_memory_id: args.mergedMemoryId ?? null,
+  })
 }
 
 export async function resolveContradiction(args: {

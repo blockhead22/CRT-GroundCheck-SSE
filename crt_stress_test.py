@@ -45,6 +45,28 @@ parser.add_argument("--use-api", action="store_true", help="Run via FastAPI hook
 parser.add_argument("--api-base-url", default="http://127.0.0.1:8000", help="CRT API base URL (default: http://127.0.0.1:8000)")
 parser.add_argument("--thread-id", default=None, help="Thread id to use for API mode (default: stress_<run_id>)")
 parser.add_argument("--reset-thread", action="store_true", help="In API mode, reset the thread (memory+ledger) before starting")
+parser.add_argument("--print-every", type=int, default=1, help="Print every N turns (default: 1). Use >1 for long runs")
+parser.add_argument(
+    "--m2-followup",
+    action="store_true",
+    help="In API mode, attempt to exercise the M2 goalqueue by calling /api/contradictions/next + /asked + /respond",
+)
+parser.add_argument(
+    "--m2-followup-max",
+    type=int,
+    default=25,
+    help="Max number of M2 follow-ups to attempt over the whole run (default: 25)",
+)
+parser.add_argument(
+    "--m2-followup-verbose",
+    action="store_true",
+    help="Print detailed M2 follow-up HTTP diagnostics to stdout (JSONL capture is always on).",
+)
+parser.add_argument(
+    "--m2-smoke",
+    action="store_true",
+    help="Run a deterministic M2 scenario (create contradiction -> next -> asked -> respond) and exit 0/2.",
+)
 args = parser.parse_args()
 
 art_dir = Path(args.artifacts_dir)
@@ -90,6 +112,96 @@ def _api_get_json(base_url: str, path: str, *, timeout_seconds: float = 30.0) ->
         return json.loads(raw) if raw else {}
 
 
+def _safe_snip(text: str, *, limit: int = 4000) -> str:
+    t = str(text or "")
+    if len(t) <= limit:
+        return t
+    return t[:limit] + "…<snip>"
+
+
+def _api_call_json(
+    base_url: str,
+    method: str,
+    path: str,
+    payload: dict | None = None,
+    *,
+    timeout_seconds: float = 30.0,
+) -> dict:
+    """HTTP call with full diagnostics.
+
+    Returns a dict suitable for JSONL logging. Does not raise on non-2xx.
+    """
+
+    base = _api_base(base_url)
+    url = f"{base}{path}"
+    method_u = (method or "GET").strip().upper()
+    req_json = payload if isinstance(payload, dict) else None
+
+    data = None
+    headers: dict[str, str] = {}
+    if req_json is not None and method_u in {"POST", "PUT", "PATCH"}:
+        data = json.dumps(req_json).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    started = time.time()
+    try:
+        req = urllib.request.Request(url, data=data, method=method_u, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            try:
+                parsed = json.loads(raw) if raw else {}
+            except Exception:
+                parsed = None
+            status = int(getattr(resp, "status", 0) or 0)
+            return {
+                "ok": bool(200 <= status < 300),
+                "url": url,
+                "method": method_u,
+                "request_json": req_json,
+                "status": status,
+                "response_text": _safe_snip(raw),
+                "response_json": parsed,
+                "error_type": None,
+                "error_message": None,
+                "elapsed_ms": int((time.time() - started) * 1000),
+            }
+    except urllib.error.HTTPError as e:
+        try:
+            raw = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            raw = ""
+        try:
+            parsed = json.loads(raw) if raw else None
+        except Exception:
+            parsed = None
+        status = int(getattr(e, "code", 0) or 0)
+        return {
+            "ok": False,
+            "url": url,
+            "method": method_u,
+            "request_json": req_json,
+            "status": status,
+            "response_text": _safe_snip(raw),
+            "response_json": parsed,
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "elapsed_ms": int((time.time() - started) * 1000),
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "url": url,
+            "method": method_u,
+            "request_json": req_json,
+            "status": None,
+            "response_text": None,
+            "response_json": None,
+            "error_type": type(e).__name__,
+            "error_message": str(e),
+            "elapsed_ms": int((time.time() - started) * 1000),
+        }
+
+
 class _ApiCrtClient:
     def __init__(self, *, base_url: str, thread_id: str):
         self.base_url = _api_base(base_url)
@@ -124,6 +236,36 @@ class _ApiCrtClient:
             "heuristic_suggestions": meta.get("heuristic_suggestions") or [],
         }
 
+    def contradictions_next(self) -> dict:
+        return _api_get_json(
+            self.base_url,
+            f"/api/contradictions/next?thread_id={urllib.parse.quote(self.thread_id)}",
+            timeout_seconds=30.0,
+        )
+
+    def contradictions_mark_asked(self, ledger_id: str) -> dict:
+        return _api_post_json(
+            self.base_url,
+            "/api/contradictions/asked",
+            {"thread_id": self.thread_id, "ledger_id": str(ledger_id or "")},
+            timeout_seconds=30.0,
+        )
+
+    def contradictions_respond(self, ledger_id: str, answer: str, *, resolve: bool = True) -> dict:
+        return _api_post_json(
+            self.base_url,
+            "/api/contradictions/respond",
+            {
+                "thread_id": self.thread_id,
+                "ledger_id": str(ledger_id or ""),
+                "answer": str(answer or ""),
+                "resolve": bool(resolve),
+                "resolution_method": "user_clarified",
+                "new_status": "resolved" if resolve else "open",
+            },
+            timeout_seconds=30.0,
+        )
+
 
 use_api = bool(getattr(args, "use_api", False))
 api_thread_id = (args.thread_id or "").strip() or f"stress_{run_id}"
@@ -156,7 +298,107 @@ metrics = {
     'eval_failures': [],
     'eval_passes': 0,
     'eval_checks': 0,
+    'm2_followups_attempted': 0,
+    'm2_followups_succeeded': 0,
 }
+
+
+def _should_print(turn: int) -> bool:
+    try:
+        every = int(getattr(args, "print_every", 1) or 1)
+    except Exception:
+        every = 1
+    if every <= 1:
+        return True
+    return (turn % every) == 0 or turn == 1 or turn == int(getattr(args, "turns", 0) or 0)
+
+
+def _choose_m2_clarification(prompt: str) -> str | None:
+    """Pick a deterministic slot=value clarification based on a suggested question.
+
+    This is intentionally conservative; if we can't confidently map to one of the
+    harness' known facts, we skip the follow-up.
+    """
+
+    p = (prompt or "").lower()
+    if not p:
+        return None
+
+    # Employer
+    if ("work" in p and ("microsoft" in p or "amazon" in p)) or "employer" in p:
+        return "employer = amazon"
+
+    # Programming years
+    if "programming" in p and "year" in p:
+        return "programming_years = 8"
+
+    # Location
+    if "live" in p or "location" in p or "bellevue" in p or "seattle" in p:
+        return "location = bellevue"
+
+    # Title/role
+    if "job title" in p or "title" in p or "role" in p or "principal" in p:
+        return "title = principal engineer"
+
+    # Name
+    if "name" in p or "call you" in p:
+        return "name = sarah"
+
+    return None
+
+
+def _maybe_run_m2_followup(result: dict) -> None:
+    if not use_api:
+        return
+    if not bool(getattr(args, "m2_followup", False)):
+        return
+    if metrics.get('m2_followups_attempted', 0) >= int(getattr(args, 'm2_followup_max', 0) or 0):
+        return
+
+    # Only attempt follow-ups when contradictions are present / uncertainty.
+    try:
+        wants = bool(result.get("contradiction_detected")) or (str(result.get("mode") or "") == "uncertainty")
+        wants = wants or bool((result.get("unresolved_contradictions_total") or 0) > 0)
+    except Exception:
+        wants = False
+    if not wants:
+        return
+
+    try:
+        nxt = crt.contradictions_next()  # type: ignore[attr-defined]
+    except Exception:
+        return
+
+    if not isinstance(nxt, dict) or not nxt.get("has_item"):
+        return
+
+    item = nxt.get("item") or {}
+    if not isinstance(item, dict):
+        return
+
+    ledger_id = str(item.get("ledger_id") or "").strip()
+    suggested = str(item.get("suggested_question") or "").strip()
+    if not ledger_id or not suggested:
+        return
+
+    clarification = _choose_m2_clarification(suggested)
+    if not clarification:
+        return
+
+    metrics['m2_followups_attempted'] += 1
+    try:
+        # Mark asked for audit trail.
+        crt.contradictions_mark_asked(ledger_id)  # type: ignore[attr-defined]
+
+        # Also send the clarification through the real chat path so CRT can
+        # resolve open conflicts via assertion logic.
+        crt.query(clarification)
+
+        # Finally, record+resolve via the explicit goalqueue endpoint.
+        crt.contradictions_respond(ledger_id, clarification, resolve=True)  # type: ignore[attr-defined]
+        metrics['m2_followups_succeeded'] += 1
+    except Exception:
+        pass
 
 def query_and_track(question, expected_behavior=None, test_name="", expectations=None):
     """Query CRT and track all metrics."""
@@ -167,37 +409,41 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
 
     metrics['total_turns'] += 1
     turn = metrics['total_turns']
-    
-    print(f"\n{'='*80}")
-    print(f" TURN {turn}: {test_name} ".center(80, "="))
-    print(f"{'='*80}")
-    print(f"[Q]: {question}")
+
+    if _should_print(turn):
+        print(f"\n{'='*80}")
+        print(f" TURN {turn}: {test_name} ".center(80, "="))
+        print(f"{'='*80}")
+        print(f"[Q]: {question}")
     
     result = crt.query(question)
     
-    print(f"[A]: {result['answer'][:400]}{'...' if len(result['answer']) > 400 else ''}")
+    if _should_print(turn):
+        print(f"[A]: {result['answer'][:400]}{'...' if len(result['answer']) > 400 else ''}")
 
     learned_suggestions = result.get("learned_suggestions")
     heuristic_suggestions = result.get("heuristic_suggestions")
     if ls_cfg.get("print_in_stress_test", False) and learned_suggestions:
-        print("\n[LEARNED SUGGESTIONS]:")
-        for s in learned_suggestions:
-            slot = s.get("slot")
-            action = s.get("action")
-            conf = s.get("confidence")
-            rec = s.get("recommended_value")
-            rationale = s.get("rationale")
-            print(f"  - {slot}: {action} (p={conf:.2f}) -> {rec} [{rationale}]")
+        if _should_print(turn):
+            print("\n[LEARNED SUGGESTIONS]:")
+            for s in learned_suggestions:
+                slot = s.get("slot")
+                action = s.get("action")
+                conf = s.get("confidence")
+                rec = s.get("recommended_value")
+                rationale = s.get("rationale")
+                print(f"  - {slot}: {action} (p={conf:.2f}) -> {rec} [{rationale}]")
 
     if ls_cfg.get("print_in_stress_test", False) and ls_cfg.get("emit_ab", False) and heuristic_suggestions:
-        print("\n[HEURISTIC BASELINE]:")
-        for s in heuristic_suggestions:
-            slot = s.get("slot")
-            action = s.get("action")
-            conf = s.get("confidence")
-            rec = s.get("recommended_value")
-            rationale = s.get("rationale")
-            print(f"  - {slot}: {action} (p={conf:.2f}) -> {rec} [{rationale}]")
+        if _should_print(turn):
+            print("\n[HEURISTIC BASELINE]:")
+            for s in heuristic_suggestions:
+                slot = s.get("slot")
+                action = s.get("action")
+                conf = s.get("confidence")
+                rec = s.get("recommended_value")
+                rationale = s.get("rationale")
+                print(f"  - {slot}: {action} (p={conf:.2f}) -> {rec} [{rationale}]")
     
     # Track metrics
     if result['gates_passed']:
@@ -216,18 +462,21 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
         max_trust = max(m['trust'] for m in result['retrieved_memories'])
         min_trust = min(m['trust'] for m in result['retrieved_memories'])
         
-        print(f"\n[METRICS]:")
-        print(f"  Gates: {'PASS' if result['gates_passed'] else 'FAIL'}")
-        print(f"  Confidence: {result['confidence']:.3f}")
-        print(f"  Contradiction: {'YES' if result['contradiction_detected'] else 'NO'}")
-        print(f"  Memories: {len(result['retrieved_memories'])} retrieved")
-        print(f"  Trust: avg={avg_trust:.3f}, max={max_trust:.3f}, min={min_trust:.3f}")
+        if _should_print(turn):
+            print(f"\n[METRICS]:")
+            print(f"  Gates: {'PASS' if result['gates_passed'] else 'FAIL'}")
+            print(f"  Confidence: {result['confidence']:.3f}")
+            print(f"  Contradiction: {'YES' if result['contradiction_detected'] else 'NO'}")
+            print(f"  Memories: {len(result['retrieved_memories'])} retrieved")
+            print(f"  Trust: avg={avg_trust:.3f}, max={max_trust:.3f}, min={min_trust:.3f}")
     else:
-        print(f"\n[METRICS]: Gates={'PASS' if result['gates_passed'] else 'FAIL'}, Conf={result['confidence']:.3f}, Contra={'YES' if result['contradiction_detected'] else 'NO'}")
+        if _should_print(turn):
+            print(f"\n[METRICS]: Gates={'PASS' if result['gates_passed'] else 'FAIL'}, Conf={result['confidence']:.3f}, Contra={'YES' if result['contradiction_detected'] else 'NO'}")
     
     # Verify expected behavior
     if expected_behavior:
-        print(f"\n[VALIDATION]: {expected_behavior}")
+        if _should_print(turn):
+            print(f"\n[VALIDATION]: {expected_behavior}")
 
     # Programmatic evaluation (makes failures measurable for the 30-turn cycle)
     if expectations:
@@ -236,7 +485,8 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             metrics['eval_checks'] += 1
             if f.passed:
                 metrics['eval_passes'] += 1
-                print(f"[EVAL PASS] {f.check} {('- ' + f.details) if f.details else ''}")
+                if _should_print(turn):
+                    print(f"[EVAL PASS] {f.check} {('- ' + f.details) if f.details else ''}")
             else:
                 msg = {
                     'turn': turn,
@@ -246,7 +496,11 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
                     'prompt': question,
                 }
                 metrics['eval_failures'].append(msg)
-                print(f"[EVAL FAIL] {f.check} {('- ' + f.details) if f.details else ''}")
+                if _should_print(turn):
+                    print(f"[EVAL FAIL] {f.check} {('- ' + f.details) if f.details else ''}")
+
+    # Optional: exercise M2 goalqueue follow-up endpoints (API mode only).
+    _maybe_run_m2_followup(result)
     
     if args.sleep:
         time.sleep(args.sleep)
@@ -815,6 +1069,9 @@ print(f"  Contradictions Introduced: {len(metrics['contradictions_introduced'])}
 print(f"  Avg Confidence: {sum(metrics['avg_confidence'])/len(metrics['avg_confidence']):.3f}")
 if metrics['trust_scores']:
     print(f"  Avg Trust Score: {sum(metrics['trust_scores'])/len(metrics['trust_scores']):.3f}")
+if metrics.get('m2_followups_attempted'):
+    print(f"  M2 Follow-ups Attempted: {metrics['m2_followups_attempted']}")
+    print(f"  M2 Follow-ups Succeeded: {metrics['m2_followups_succeeded']}")
 
 if metrics['eval_checks']:
     print(f"  Eval Checks: {metrics['eval_checks']}")

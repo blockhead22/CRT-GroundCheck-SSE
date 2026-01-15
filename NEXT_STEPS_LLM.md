@@ -1,7 +1,8 @@
 # CRT System - Next Steps & LLM Integration
 
 **Date:** January 9, 2026  
-**Current Status:** PATH A (UI) Complete ✅
+**Update:** January 15, 2026  
+**Current Status:** PATH A (UI) Complete ✅ (and HTTP-first FastAPI + React UI is now in active use)
 
 ## What You Have Now
 
@@ -9,7 +10,9 @@
 ✅ **Memory System** - Trust-weighted storage & retrieval  
 ✅ **Contradiction Ledger** - No silent overwrites  
 ✅ **Dashboard** - Full visualization at http://localhost:8501  
-⚠️ **LLM Integration** - Placeholder only (no real AI)
+✅ **LLM Integration** - Real LLM-backed chat is now supported (API-first), and the stress harness can run in API-mode without local Ollama.
+
+Note: Parts of this document are now outdated. The repo has both Streamlit apps and a separate [frontend/](frontend/) web UI.
 
 ---
 

@@ -11,6 +11,8 @@ This roadmap turns the constitution into a buildable sequence with measurable ac
 - Slot-based fast-path for canonical user facts (reduces drift on personal questions).
 - Stress harness + evaluator that can run multi-turn regression.
 - Streamlit chat GUI + dashboard for observability.
+- FastAPI backend + React UI for HTTP-first end-to-end testing and day-to-day interaction.
+- Background jobs queue (durable SQLite) with a worker loop + endpoints + UI.
 
 ---
 
@@ -63,6 +65,11 @@ Work items:
 Acceptance criteria:
 - Contradiction count stabilizes under repeated use.
 - The system asks targeted questions rather than becoming vague.
+
+Status (Jan 15, 2026): implemented end-to-end (API + UI), but needs measurement hardening.
+- API: `GET /api/contradictions/next`, `POST /api/contradictions/asked`, `POST /api/contradictions/respond`
+- UI: dashboard panel to ask/record/resolve
+- Known gap: stress-harness M2 follow-up automation currently reports attempted>0 but succeeded=0; needs debugging/visibility.
 
 ---
 

@@ -4,15 +4,26 @@ This is the consolidated “final focus roadmap” for CRT: what the system is, 
 
 CRT’s core promise is not “magic accuracy.” It’s **coherent, inspectable, consented memory + explicit uncertainty + durable contradiction handling**.
 
-## Current implementation status (Jan 12, 2026)
+## Current implementation status (Jan 15, 2026)
 
 Implemented and running in this repo now:
-- Streamlit Control Panel with human-in-the-loop promotion approvals and gated apply (dry-run/sandbox/real).
-- Streamlit Chat UI (optional local LLM integration).
-- Deterministic gates with regression tests for key failure modes (e.g., name declaration / false contradictions).
+- FastAPI backend ([crt_api.py](crt_api.py)) providing HTTP-first hooks for chat, jobs, and contradiction workflows.
+- Vite/React/TypeScript frontend ([frontend/](frontend/)) wired to the FastAPI endpoints (chat + dashboard + docs + jobs/control-plane).
+- Durable background autonomy:
+    - SQLite jobs queue + event/artifact logging + worker loop + idle scheduler.
+    - `/api/jobs/*` endpoints and a Jobs UI page.
+- Deterministic gates + regression tests for key failure modes (notably named-reference hardening).
 - Learned “suggestions-only” model tracking (train metadata + eval artifacts + dashboard timeline/compare).
+- Milestone M2 loop (“contradictions become goals”) implemented end-to-end:
+    - `GET /api/contradictions/next`
+    - `POST /api/contradictions/asked`
+    - `POST /api/contradictions/respond`
+    - Frontend dashboard panel to ask/record/resolve.
+- Stress harness supports API-mode runs (via `POST /api/chat/send`) and long runs; latest 300-turn report is in `artifacts/crt_stress_report.20260115_093355.md`.
 
-Immediate next: make learned-model updates a controlled release process (train → eval → publish latest with thresholds).
+Immediate next (highest ROI):
+- Make the M2 follow-up automation in the stress harness observable and working (currently attempted but not succeeding).
+- Improve long-run stability metrics (gate pass rate, late-turn padding drift, and false-positive contradiction pressure).
 
 ---
 

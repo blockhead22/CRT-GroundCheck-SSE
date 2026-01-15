@@ -12,6 +12,10 @@ CRT is “successful” for this phase when:
 - The system does not fabricate identity facts without user evidence.
 - A 30-turn run produces stable artifacts and repeatable metrics.
 
+Latest baseline note (Jan 15, 2026):
+- A 300-turn API-mode run completed and wrote `artifacts/crt_stress_report.20260115_093355.md`.
+- The most urgent follow-ups from that run are improving long-run gate pass rate and fixing/observing the M2 follow-up automation path.
+
 ## Now (stabilization)
 
 - Reduce false contradictions (question vs assertion, claim-level matching).

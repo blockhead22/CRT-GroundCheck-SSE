@@ -135,6 +135,25 @@ class ContradictionAskedRequest(BaseModel):
     ledger_id: str
 
 
+class ContradictionRespondRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    ledger_id: str
+    answer: str = Field(default="", description="User clarification/answer")
+    resolve: bool = Field(default=True, description="If true, mark the contradiction resolved")
+    resolution_method: str = Field(default="user_clarified")
+    new_status: str = Field(default="resolved")
+    merged_memory_id: Optional[str] = None
+
+
+class ContradictionRespondResponse(BaseModel):
+    ok: bool = True
+    thread_id: str
+    ledger_id: str
+    recorded: bool = True
+    resolved: bool = False
+    next: ContradictionNextResponse
+
+
 class ProfileResponse(BaseModel):
     thread_id: str
     name: Optional[str] = None
@@ -1023,6 +1042,45 @@ def create_app() -> FastAPI:
         except Exception:
             return {"ok": False}
         return {"ok": True}
+
+    @app.post("/api/contradictions/respond", response_model=ContradictionRespondResponse)
+    def contradiction_respond(req: ContradictionRespondRequest) -> ContradictionRespondResponse:
+        engine = get_engine(req.thread_id)
+
+        recorded = False
+        resolved = False
+        try:
+            engine.ledger.record_contradiction_user_answer(req.ledger_id, req.answer)
+            recorded = True
+        except Exception:
+            recorded = False
+
+        if bool(req.resolve):
+            try:
+                engine.ledger.resolve_contradiction(
+                    ledger_id=req.ledger_id,
+                    method=str(req.resolution_method or "user_clarified"),
+                    merged_memory_id=req.merged_memory_id,
+                    new_status=str(req.new_status or "resolved"),
+                )
+                resolved = True
+            except Exception:
+                resolved = False
+
+        # Return the next work item for convenience (M2 loop).
+        try:
+            nxt = contradiction_next(thread_id=req.thread_id)
+        except Exception:
+            nxt = ContradictionNextResponse(thread_id=_sanitize_thread_id(req.thread_id), has_item=False, item=None)
+
+        return ContradictionRespondResponse(
+            ok=bool(recorded),
+            thread_id=_sanitize_thread_id(req.thread_id),
+            ledger_id=str(req.ledger_id),
+            recorded=bool(recorded),
+            resolved=bool(resolved),
+            next=nxt,
+        )
 
     @app.post("/api/ledger/resolve")
     def ledger_resolve(req: ResolveContradictionRequest) -> Dict[str, Any]:

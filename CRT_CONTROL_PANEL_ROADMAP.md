@@ -1,18 +1,25 @@
 # CRT Control Panel + Background Learning (Local‑First) — Architecture & Roadmap
 
-## Current status (Jan 12, 2026)
+## Current status (Jan 15, 2026)
 
 Delivered and working in this repo now:
 - Control Panel (Streamlit) supports end-to-end **human-in-the-loop promotions**: proposals → decisions → dry-run apply → sandbox apply → gated real apply, with artifacts written for audit.
-- Chat UI (Streamlit) is available and can run with an optional local LLM backend (Ollama).
-- Deterministic safety/grounding gates have regression coverage (notably name declaration + false-contradiction hardening).
-- Learned “suggestions-only” model is now observable over time:
+- Web Control Plane (Vite/React) exists in [frontend/](frontend/) and is wired to the FastAPI backend for:
+  - chat
+  - dashboard/inspector
+  - jobs UI
+  - contradiction goal-queue workflow
+- FastAPI backend ([crt_api.py](crt_api.py)) provides HTTP-first endpoints used by the UI and the API-mode stress harness.
+- Durable background autonomy exists (SQLite jobs DB + worker + scheduler + event/artifact logging).
+- Deterministic safety/grounding gates have regression coverage (notably named-reference hardening).
+- Learned “suggestions-only” model is observable over time:
   - training writes `*.meta.json`
   - evaluation writes `*.eval.json`
   - dashboard plots timelines and compares two models (including confusion matrices)
 
 Immediate focus:
 - Turn “learning” into a controlled release process: **train → eval → publish latest** with explicit thresholds and artifacts.
+- Use long-run API stress reports to drive measurable reductions in false contradictions and late-run drift.
 
 This document describes a local-first architecture for a **truthful personal AI** built on CRT + SSE principles, with:
 - an intuitive dashboard/control panel

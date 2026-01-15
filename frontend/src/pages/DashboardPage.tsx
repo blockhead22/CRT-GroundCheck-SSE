@@ -4,15 +4,19 @@ import {
   getJobsStatus,
   getMemory,
   getMemoryTrustHistory,
+  getContradictionNext,
+  markContradictionAsked,
   enqueueJob,
   listOpenContradictions,
   listRecentMemories,
   listJobs,
   exportThread,
   resetThread,
+  respondToContradiction,
   resolveContradiction,
   searchMemories,
   type ContradictionListItem,
+  type ContradictionNextResponse,
   type DashboardOverview,
   type JobListItem,
   type JobsStatusResponse,
@@ -38,6 +42,9 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
   const [contras, setContras] = useState<ContradictionListItem[]>([])
   const [jobsStatus, setJobsStatus] = useState<JobsStatusResponse | null>(null)
   const [threadJobs, setThreadJobs] = useState<JobListItem[]>([])
+  const [nextContra, setNextContra] = useState<ContradictionNextResponse | null>(null)
+  const [contraAnswer, setContraAnswer] = useState('')
+  const [contraBusy, setContraBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -102,23 +109,74 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
   async function refresh() {
     setError(null)
     const tid = props.threadId
-    const [o, m, c, js, jl] = await Promise.all([
+    const [o, m, c, js, jl, nxt] = await Promise.all([
       getDashboardOverview(tid),
       listRecentMemories(tid, 25),
       listOpenContradictions(tid, 50),
       getJobsStatus().catch(() => null),
       listJobs({ status: null, limit: 100, offset: 0 }).catch(() => ({ jobs: [] })),
+      getContradictionNext(tid).catch(() => null),
     ])
     setOverview(o)
     setMemories(m)
     setContras(c)
     setJobsStatus(js)
+    setNextContra(nxt)
 
     const byThread = (jl.jobs || []).filter((j) => {
       const payload = (j.payload || {}) as Record<string, unknown>
       return String(payload.thread_id || '') === tid
     })
     setThreadJobs(byThread.slice(0, 12))
+  }
+
+  async function refreshNextContra() {
+    try {
+      const nxt = await getContradictionNext(props.threadId)
+      setNextContra(nxt)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function doMarkAsked() {
+    const item = nextContra?.item
+    if (!item) return
+    setContraBusy(true)
+    setError(null)
+    try {
+      await markContradictionAsked({ threadId: props.threadId, ledgerId: item.ledger_id })
+      await refreshNextContra()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setContraBusy(false)
+    }
+  }
+
+  async function doRespond(resolve: boolean) {
+    const item = nextContra?.item
+    if (!item) return
+    setContraBusy(true)
+    setError(null)
+    try {
+      const res = await respondToContradiction({
+        threadId: props.threadId,
+        ledgerId: item.ledger_id,
+        answer: contraAnswer,
+        resolve,
+        resolutionMethod: 'user_clarified',
+        newStatus: resolve ? 'resolved' : 'open',
+      })
+      setContraAnswer('')
+      setNextContra(res.next)
+      // Refresh counters and lists in the background.
+      void refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setContraBusy(false)
+    }
   }
 
   function jobBadge(status: string): string {
@@ -366,6 +424,93 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   {overview?.belief_count ?? 0} belief · {overview?.speech_count ?? 0} speech
                 </div>
               </div>
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-white">Next contradiction to resolve</div>
+                  <div className="mt-1 text-xs text-white/60">Goal queue (M2): ask → user clarifies → resolve.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={contraBusy}
+                    onClick={() => void refreshNextContra()}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {!nextContra?.has_item || !nextContra?.item ? (
+                <div className="mt-3 text-sm text-white/60">No open contradiction work item found for this thread.</div>
+              ) : (
+                <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-white">{nextContra.item.contradiction_type}</div>
+                        <div className="mt-1 truncate text-xs text-white/50">{nextContra.item.ledger_id}</div>
+                      </div>
+                      <div className="text-xs text-white/60">
+                        drift <span className="font-semibold text-white">{nextContra.item.drift_mean.toFixed(2)}</span> · asks{' '}
+                        <span className="font-semibold text-white">{nextContra.item.ask_count}</span>
+                      </div>
+                    </div>
+                    {nextContra.item.summary ? (
+                      <div className="mt-2 text-sm text-white/80">{nextContra.item.summary}</div>
+                    ) : null}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        disabled={contraBusy}
+                        onClick={() => void doMarkAsked()}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Mark asked
+                      </button>
+                      <button
+                        onClick={() => safeCopy(nextContra.item!.suggested_question)}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                      >
+                        Copy question
+                      </button>
+                    </div>
+                    <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-white/80">
+                      {nextContra.item.suggested_question}
+                    </pre>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div className="text-xs font-semibold tracking-wide text-white/60">User clarification</div>
+                    <textarea
+                      value={contraAnswer}
+                      onChange={(e) => setContraAnswer(e.target.value)}
+                      placeholder="Example: Employer = Amazon"
+                      className="mt-2 h-28 w-full resize-none rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-violet-500/50"
+                    />
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        disabled={contraBusy || !contraAnswer.trim()}
+                        onClick={() => void doRespond(true)}
+                        className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                      >
+                        Record answer + resolve
+                      </button>
+                      <button
+                        disabled={contraBusy || !contraAnswer.trim()}
+                        onClick={() => void doRespond(false)}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Record answer only
+                      </button>
+                    </div>
+                    <div className="mt-2 text-xs text-white/50">
+                      Tip: use slot form like <span className="font-semibold text-white">Employer = Amazon</span> to make resolution deterministic.
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
