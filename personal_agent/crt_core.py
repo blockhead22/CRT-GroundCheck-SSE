@@ -57,8 +57,8 @@ class CRTConfig:
     theta_fallback: float = 0.40  # Drift threshold for fallback contradictions
     
     # Reconstruction gates
-    theta_intent: float = 0.7     # Intent alignment gate (using reasoning confidence)
-    theta_mem: float = 0.37       # Memory alignment gate (raised to be slightly stricter)
+    theta_intent: float = 0.5     # Intent alignment gate (lowered from 0.7 to reduce gate failures)
+    theta_mem: float = 0.45       # Memory alignment gate (lowered to account for LLM response variance)
     
     # Reflection triggers
     theta_reflect: float = 0.5    # Volatility threshold for reflection
