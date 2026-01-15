@@ -202,6 +202,42 @@ def _api_call_json(
         }
 
 
+def _m2_self_check_or_die(*, fail_fast: bool) -> None:
+    """Check that the API exposes the endpoints needed by the M2 loop.
+
+    We intentionally POST empty JSON to endpoints that require a body; a healthy server
+    should return 422 Unprocessable Entity (validation error). A 404 indicates the
+    route doesn't exist (wrong server, wrong version, or wrong port).
+    """
+
+    base = _api_base(args.api_base_url)
+    checks = [
+        ("POST", "/api/contradictions/asked", {}),
+        ("POST", "/api/contradictions/respond", {}),
+        ("POST", "/api/thread/reset", {}),
+    ]
+
+    missing: list[str] = []
+    for method, path, payload in checks:
+        call = _api_call_json(args.api_base_url, method, path, payload, timeout_seconds=10.0)
+        status = call.get("status")
+        if status == 404:
+            missing.append(path)
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 SELF-CHECK] {method} {base}{path} -> status={status} ok={call.get('ok')}")
+
+    if missing:
+        msg = (
+            "M2 endpoints missing on the configured API. "
+            f"base_url={base} missing={missing}. "
+            "You are likely pointing at the wrong server/process. "
+            "Start the CRT API with: python -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8123"
+        )
+        if fail_fast:
+            raise SystemExit(msg)
+        print(f"[M2 SELF-CHECK WARNING] {msg}")
+
+
 class _ApiCrtClient:
     def __init__(self, *, base_url: str, thread_id: str):
         self.base_url = _api_base(base_url)
@@ -717,42 +753,6 @@ def _run_m2_smoke() -> None:
 
     print("[M2 SMOKE PASS] next -> asked -> respond resolved=True")
     raise SystemExit(0)
-
-
-def _m2_self_check_or_die(*, fail_fast: bool) -> None:
-    """Check that the API exposes the endpoints needed by the M2 loop.
-
-    We intentionally POST empty JSON to endpoints that require a body; a healthy server
-    should return 422 Unprocessable Entity (validation error). A 404 indicates the
-    route doesn't exist (wrong server, wrong version, or wrong port).
-    """
-
-    base = _api_base(args.api_base_url)
-    checks = [
-        ("POST", "/api/contradictions/asked", {}),
-        ("POST", "/api/contradictions/respond", {}),
-        ("POST", "/api/thread/reset", {}),
-    ]
-
-    missing: list[str] = []
-    for method, path, payload in checks:
-        call = _api_call_json(args.api_base_url, method, path, payload, timeout_seconds=10.0)
-        status = call.get("status")
-        if status == 404:
-            missing.append(path)
-        if bool(getattr(args, "m2_followup_verbose", False)):
-            print(f"[M2 SELF-CHECK] {method} {base}{path} -> status={status} ok={call.get('ok')}")
-
-    if missing:
-        msg = (
-            "M2 endpoints missing on the configured API. "
-            f"base_url={base} missing={missing}. "
-            "You are likely pointing at the wrong server/process. "
-            "Start the CRT API with: python -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8000"
-        )
-        if fail_fast:
-            raise SystemExit(msg)
-        print(f"[M2 SELF-CHECK WARNING] {msg}")
 
 
 if use_api and bool(getattr(args, "m2_smoke", False)):
