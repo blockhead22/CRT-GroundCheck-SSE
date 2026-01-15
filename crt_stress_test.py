@@ -347,13 +347,13 @@ def _choose_m2_clarification(prompt: str) -> str | None:
     return None
 
 
-def _maybe_run_m2_followup(result: dict) -> None:
+def _maybe_run_m2_followup(result: dict, *, turn: int) -> dict | None:
     if not use_api:
-        return
+        return None
     if not bool(getattr(args, "m2_followup", False)):
-        return
+        return None
     if metrics.get('m2_followups_attempted', 0) >= int(getattr(args, 'm2_followup_max', 0) or 0):
-        return
+        return None
 
     # Only attempt follow-ups when contradictions are present / uncertainty.
     try:
@@ -362,43 +362,135 @@ def _maybe_run_m2_followup(result: dict) -> None:
     except Exception:
         wants = False
     if not wants:
-        return
+        return None
 
-    try:
-        nxt = crt.contradictions_next()  # type: ignore[attr-defined]
-    except Exception:
-        return
+    event: dict = {
+        "turn": int(turn),
+        "thread_id": api_thread_id,
+        "trigger": {
+            "contradiction_detected": bool(result.get("contradiction_detected")),
+            "mode": result.get("mode"),
+            "unresolved_contradictions_total": result.get("unresolved_contradictions_total"),
+        },
+        "steps": [],
+        "ok": False,
+        "failure": None,
+    }
 
-    if not isinstance(nxt, dict) or not nxt.get("has_item"):
-        return
+    # Count an attempt as soon as we begin the /next step.
+    metrics['m2_followups_attempted'] += 1
 
-    item = nxt.get("item") or {}
+    nxt_call = _api_call_json(
+        args.api_base_url,
+        "GET",
+        f"/api/contradictions/next?thread_id={urllib.parse.quote(api_thread_id)}",
+        None,
+        timeout_seconds=30.0,
+    )
+    event["steps"].append({"name": "next", **nxt_call})
+    if not nxt_call.get("ok"):
+        event["failure"] = "next_http_error"
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 FOLLOWUP] /next failed: status={nxt_call.get('status')} body={_safe_snip(nxt_call.get('response_text') or '')}")
+        return event
+
+    nxt_json = nxt_call.get("response_json")
+    if not isinstance(nxt_json, dict) or not bool(nxt_json.get("has_item")):
+        event["failure"] = "next_no_item"
+        return event
+
+    item = nxt_json.get("item") or {}
     if not isinstance(item, dict):
-        return
+        event["failure"] = "next_bad_item"
+        return event
 
     ledger_id = str(item.get("ledger_id") or "").strip()
     suggested = str(item.get("suggested_question") or "").strip()
     if not ledger_id or not suggested:
-        return
+        event["failure"] = "next_missing_fields"
+        return event
 
     clarification = _choose_m2_clarification(suggested)
     if not clarification:
-        return
+        event["failure"] = "no_clarification_mapping"
+        event["suggested_question"] = _safe_snip(suggested, limit=2000)
+        return event
 
-    metrics['m2_followups_attempted'] += 1
+    event["ledger_id"] = ledger_id
+    event["suggested_question"] = _safe_snip(suggested, limit=2000)
+    event["clarification"] = clarification
+
+    asked_call = _api_call_json(
+        args.api_base_url,
+        "POST",
+        "/api/contradictions/asked",
+        {"thread_id": api_thread_id, "ledger_id": ledger_id},
+        timeout_seconds=30.0,
+    )
+    event["steps"].append({"name": "asked", **asked_call})
+    if not asked_call.get("ok"):
+        event["failure"] = "asked_http_error"
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 FOLLOWUP] /asked failed: status={asked_call.get('status')} body={_safe_snip(asked_call.get('response_text') or '')}")
+        return event
+
+    # Send the clarification through the chat path (same thread).
     try:
-        # Mark asked for audit trail.
-        crt.contradictions_mark_asked(ledger_id)  # type: ignore[attr-defined]
+        chat_res = crt.query(clarification)
+        event["clarification_chat"] = {
+            "ok": True,
+            "answer_snip": _safe_snip((chat_res or {}).get("answer") or "", limit=400),
+            "mode": (chat_res or {}).get("mode"),
+            "contradiction_detected": (chat_res or {}).get("contradiction_detected"),
+            "unresolved_contradictions_total": (chat_res or {}).get("unresolved_contradictions_total"),
+        }
+    except Exception as e:
+        event["clarification_chat"] = {"ok": False, "error_type": type(e).__name__, "error_message": str(e)}
+        event["failure"] = "clarification_chat_exception"
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 FOLLOWUP] clarification chat failed: {type(e).__name__}: {e}")
+        return event
 
-        # Also send the clarification through the real chat path so CRT can
-        # resolve open conflicts via assertion logic.
-        crt.query(clarification)
+    respond_call = _api_call_json(
+        args.api_base_url,
+        "POST",
+        "/api/contradictions/respond",
+        {
+            "thread_id": api_thread_id,
+            "ledger_id": ledger_id,
+            "answer": clarification,
+            "resolve": True,
+            "resolution_method": "user_clarified",
+            "new_status": "resolved",
+        },
+        timeout_seconds=30.0,
+    )
+    event["steps"].append({"name": "respond", **respond_call})
+    if not respond_call.get("ok"):
+        event["failure"] = "respond_http_error"
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 FOLLOWUP] /respond failed: status={respond_call.get('status')} body={_safe_snip(respond_call.get('response_text') or '')}")
+        return event
 
-        # Finally, record+resolve via the explicit goalqueue endpoint.
-        crt.contradictions_respond(ledger_id, clarification, resolve=True)  # type: ignore[attr-defined]
-        metrics['m2_followups_succeeded'] += 1
-    except Exception:
-        pass
+    resp_json = respond_call.get("response_json")
+    if not isinstance(resp_json, dict):
+        event["failure"] = "respond_bad_json"
+        return event
+
+    recorded = bool(resp_json.get("recorded")) or bool(resp_json.get("ok"))
+    resolved = bool(resp_json.get("resolved"))
+    event["recorded"] = recorded
+    event["resolved"] = resolved
+    if not recorded:
+        event["failure"] = "respond_not_recorded"
+        return event
+    if not resolved:
+        event["failure"] = "respond_not_resolved"
+        return event
+
+    event["ok"] = True
+    metrics['m2_followups_succeeded'] += 1
+    return event
 
 def query_and_track(question, expected_behavior=None, test_name="", expectations=None):
     """Query CRT and track all metrics."""
@@ -500,7 +592,7 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
                     print(f"[EVAL FAIL] {f.check} {('- ' + f.details) if f.details else ''}")
 
     # Optional: exercise M2 goalqueue follow-up endpoints (API mode only).
-    _maybe_run_m2_followup(result)
+    m2_event = _maybe_run_m2_followup(result, turn=turn)
     
     if args.sleep:
         time.sleep(args.sleep)
@@ -509,6 +601,7 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
         record = {
             "run_id": run_id,
             "turn": turn,
+            "thread_id": api_thread_id if use_api else None,
             "test_name": test_name,
             "question": question,
             "answer": result.get("answer") if ls_cfg.get("jsonl_include_full_answer", False) else (result.get("answer") or "")[:500],
@@ -519,9 +612,108 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             "learned_suggestions": learned_suggestions or [],
             "heuristic_suggestions": heuristic_suggestions or [],
         }
+        if m2_event is not None:
+            record["m2_followup"] = m2_event
         jsonl_fp.write(json.dumps(record, ensure_ascii=False) + "\n")
         jsonl_fp.flush()
     return result
+
+
+def _run_m2_smoke() -> None:
+    if not use_api:
+        raise SystemExit("--m2-smoke requires --use-api")
+
+    print("\nM2 SMOKE MODE")
+    print("-" * 80)
+    print(f"API: {_api_base(args.api_base_url)}")
+    print(f"Thread: {api_thread_id}")
+
+    # Reset thread to remove flakiness.
+    reset_call = _api_call_json(
+        args.api_base_url,
+        "POST",
+        "/api/thread/reset",
+        {"thread_id": api_thread_id, "target": "all"},
+        timeout_seconds=30.0,
+    )
+    if bool(getattr(args, "m2_followup_verbose", False)):
+        print(f"[M2 SMOKE] reset: status={reset_call.get('status')} ok={reset_call.get('ok')}")
+
+    # Create a deterministic contradiction (employer revision).
+    crt.query("I work at Microsoft.")
+    crt.query("Actually, correction: I work at Amazon, not Microsoft.")
+
+    # Poll /next briefly until the contradiction shows up.
+    nxt = None
+    for _ in range(10):
+        nxt = _api_call_json(
+            args.api_base_url,
+            "GET",
+            f"/api/contradictions/next?thread_id={urllib.parse.quote(api_thread_id)}",
+            None,
+            timeout_seconds=10.0,
+        )
+        if nxt.get("ok") and isinstance(nxt.get("response_json"), dict) and bool(nxt["response_json"].get("has_item")):
+            break
+        time.sleep(0.2)
+
+    if not nxt or not nxt.get("ok"):
+        print(f"[M2 SMOKE FAIL] /next HTTP failed: {nxt}")
+        raise SystemExit(2)
+
+    nxt_json = nxt.get("response_json")
+    if not isinstance(nxt_json, dict) or not nxt_json.get("has_item"):
+        print(f"[M2 SMOKE FAIL] /next returned no item: {nxt_json}")
+        raise SystemExit(2)
+
+    item = nxt_json.get("item") or {}
+    ledger_id = str((item.get("ledger_id") if isinstance(item, dict) else "") or "").strip()
+    suggested = str((item.get("suggested_question") if isinstance(item, dict) else "") or "").strip()
+    if not ledger_id:
+        print(f"[M2 SMOKE FAIL] /next item missing ledger_id: {item}")
+        raise SystemExit(2)
+
+    clarification = _choose_m2_clarification(suggested) or "employer = amazon"
+
+    asked = _api_call_json(
+        args.api_base_url,
+        "POST",
+        "/api/contradictions/asked",
+        {"thread_id": api_thread_id, "ledger_id": ledger_id},
+        timeout_seconds=10.0,
+    )
+    if not asked.get("ok"):
+        print(f"[M2 SMOKE FAIL] /asked failed: status={asked.get('status')} body={asked.get('response_text')}")
+        raise SystemExit(2)
+
+    respond = _api_call_json(
+        args.api_base_url,
+        "POST",
+        "/api/contradictions/respond",
+        {
+            "thread_id": api_thread_id,
+            "ledger_id": ledger_id,
+            "answer": clarification,
+            "resolve": True,
+            "resolution_method": "user_clarified",
+            "new_status": "resolved",
+        },
+        timeout_seconds=10.0,
+    )
+    if not respond.get("ok"):
+        print(f"[M2 SMOKE FAIL] /respond HTTP failed: status={respond.get('status')} body={respond.get('response_text')}")
+        raise SystemExit(2)
+    rj = respond.get("response_json")
+    if not isinstance(rj, dict) or not bool(rj.get("resolved")):
+        print(f"[M2 SMOKE FAIL] /respond did not resolve: {rj}")
+        raise SystemExit(2)
+
+    print("[M2 SMOKE PASS] next -> asked -> respond resolved=True")
+    raise SystemExit(0)
+
+
+if use_api and bool(getattr(args, "m2_smoke", False)):
+    _run_m2_smoke()
 
 print("\nPHASE 1: BASELINE FACT ESTABLISHMENT")
 print("-" * 80)
