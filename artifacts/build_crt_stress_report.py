@@ -5,6 +5,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def _snip(x: Any, limit: int = 800) -> str:
+    s = str(x if x is not None else "")
+    if len(s) <= limit:
+        return s
+    return s[:limit] + "…<snip>"
+
+
 def _norm_text(x: Any) -> str:
     return (str(x) if x is not None else "").strip().lower()
 
@@ -71,6 +78,13 @@ def main() -> None:
         out.write(f"- Contradictions detected: {contra_yes}\n")
         if avg_conf is not None:
             out.write(f"- Avg confidence: {avg_conf:.3f}\n")
+
+        m2_rows = [r for r in rows if isinstance(r.get("m2_followup"), dict)]
+        if m2_rows:
+            m2_ok = sum(1 for r in m2_rows if bool((r.get("m2_followup") or {}).get("ok")))
+            m2_fail = len(m2_rows) - m2_ok
+            out.write(f"- M2 followups: attempted={len(m2_rows)} succeeded={m2_ok} failed={m2_fail}\n")
+
         out.write(f"- Source JSONL: {path.name}\n\n")
 
         # Compute A/B summary first so it appears near the top.
@@ -142,6 +156,24 @@ def main() -> None:
             out.write(
                 f"**Meta:** mode={mode} confidence={conf} gates_passed={gates} contradiction_detected={contra}\n\n"
             )
+
+            m2 = r.get("m2_followup")
+            if isinstance(m2, dict):
+                out.write(
+                    f"**M2 followup:** ok={bool(m2.get('ok'))} failure={m2.get('failure')} ledger_id={m2.get('ledger_id')}\n\n"
+                )
+                steps = m2.get("steps")
+                if isinstance(steps, list) and steps:
+                    out.write("**M2 HTTP steps:**\n")
+                    for s in steps:
+                        if not isinstance(s, dict):
+                            continue
+                        out.write(
+                            f"- {s.get('name')}: {s.get('method')} {s.get('url')} status={s.get('status')} ok={s.get('ok')}\n"
+                        )
+                        if s.get("ok") is False:
+                            out.write(f"  - body: {_snip(s.get('response_text'))}\n")
+                    out.write("\n")
 
             # Per-turn A/B delta (only if both exist)
             if sugg and heur:
