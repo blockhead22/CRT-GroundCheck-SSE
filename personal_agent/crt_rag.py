@@ -18,7 +18,7 @@ Philosophy:
 
 import numpy as np
 import re
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
 import time
 
@@ -81,6 +81,8 @@ class CRTEnhancedRAG:
         include_system: bool = False,
         include_fallback: bool = False,
         include_reflection: bool = False,
+        exclude_contradiction_sources: bool = True,
+        relevant_slots: Optional[Set[str]] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using CRT trust-weighted scoring.
@@ -105,6 +107,26 @@ class CRTEnhancedRAG:
         if include_reflection:
             allowed_sources.add(MemorySource.REFLECTION)
 
+        # Build set of contradiction memory IDs to exclude (prevents unrelated contradictions
+        # from polluting retrieval just because they're semantically similar).
+        excluded_mem_ids: Set[str] = set()
+        if exclude_contradiction_sources:
+            from .crt_ledger import ContradictionType
+            unresolved_contradictions = self.ledger.get_open_contradictions(limit=100)
+            for contra in unresolved_contradictions:
+                # Only exclude contradictions that DON'T affect the slots we're querying
+                affects_slots_str = getattr(contra, "affects_slots", None)
+                if affects_slots_str and relevant_slots:
+                    affects_slots_set = set(affects_slots_str.split(","))
+                    if not (affects_slots_set & relevant_slots):
+                        # This contradiction doesn't affect what we're querying, exclude its sources
+                        excluded_mem_ids.add(contra.old_memory_id)
+                        excluded_mem_ids.add(contra.new_memory_id)
+                elif not affects_slots_str:
+                    # No slot info - exclude to be safe (prevents semantic pollution)
+                    excluded_mem_ids.add(contra.old_memory_id)
+                    excluded_mem_ids.add(contra.new_memory_id)
+
         # Over-fetch then filter, so excluding sources doesn't starve results.
         candidate_k = max(int(k) * 5, int(k))
         retrieved = self.memory.retrieve_memories(query, candidate_k, min_trust)
@@ -113,6 +135,10 @@ class CRTEnhancedRAG:
         # not new world facts) to prevent recursive quoting and prompt pollution.
         filtered: List[Tuple[MemoryItem, float]] = []
         for mem, score in retrieved:
+            # Exclude contradiction source memories (prevents semantic pollution from unrelated contradictions)
+            if exclude_contradiction_sources and mem.memory_id in excluded_mem_ids:
+                continue
+            
             if getattr(mem, "source", None) not in allowed_sources:
                 continue
             try:
@@ -893,15 +919,19 @@ class CRTEnhancedRAG:
             }
         
         # 1. Trust-weighted retrieval
-        retrieved = self.retrieve(user_query, k=5)
-
+        # First pass to infer slots before retrieval (enables scope filtering)
         inferred_slots: List[str] = []
         if user_input_kind in ("question", "instruction"):
             inferred_slots = self._infer_slots_from_query(user_query)
-
+        
         # Parse any explicit first-person fact assertions (used for relevance checks).
         # For most questions this will be empty, which is fine.
         asserted_facts = extract_fact_slots(user_query) or {}
+        
+        # Compute relevant slots for contradiction filtering
+        relevant_slots_set = set(inferred_slots or []) | set((asserted_facts or {}).keys())
+        
+        retrieved = self.retrieve(user_query, k=5, relevant_slots=relevant_slots_set if relevant_slots_set else None)
 
         # Special-case: prompts that explicitly demand chat-grounded recall or memory citation.
         # We answer deterministically from retrieved/prompt memory text to avoid hallucinations
