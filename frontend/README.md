@@ -23,12 +23,12 @@ python -m pip install -r requirements.txt
 python crt_api.py
 ```
 
-The frontend calls `http://127.0.0.1:8000` by default.
+The frontend calls `http://127.0.0.1:8123` by default.
 
 To override, create `frontend/.env` (you can copy `frontend/.env.example`) and set:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_API_BASE_URL=http://127.0.0.1:8123
 ```
 
 ## What works (UI)

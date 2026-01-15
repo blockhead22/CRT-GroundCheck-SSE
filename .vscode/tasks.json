@@ -13,7 +13,7 @@
 				"--host",
 				"127.0.0.1",
 				"--port",
-				"8000"
+				"8123"
 			],
 			"options": {
 				"cwd": "D:/AI_round2"
@@ -152,7 +152,7 @@
 				"d:\\AI_round2\\crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
-				"http://127.0.0.1:8000",
+				"http://127.0.0.1:8123",
 				"--thread-id",
 				"stress_api_quick",
 				"--reset-thread",
@@ -174,7 +174,7 @@
 				"d:\\AI_round2\\crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
-				"http://127.0.0.1:8000",
+				"http://127.0.0.1:8123",
 				"--thread-id",
 				"stress_api_quick",
 				"--reset-thread",
@@ -196,7 +196,7 @@
 				"d:\\AI_round2\\crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
-				"http://127.0.0.1:8000",
+				"http://127.0.0.1:8123",
 				"--thread-id",
 				"stress_api_full_30",
 				"--reset-thread",
@@ -230,7 +230,7 @@
 				"d:\\AI_round2\\crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
-				"http://127.0.0.1:8000",
+				"http://127.0.0.1:8123",
 				"--thread-id",
 				"stress_api_full_30_v2",
 				"--reset-thread",
@@ -290,7 +290,7 @@
 				"--host",
 				"127.0.0.1",
 				"--port",
-				"8000"
+				"8123"
 			],
 			"isBackground": true,
 			"problemMatcher": [],
@@ -305,7 +305,7 @@
 				"d:\\AI_round2\\crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
-				"http://127.0.0.1:8000",
+				"http://127.0.0.1:8123",
 				"--thread-id",
 				"stress_api_contra_inventory_fix",
 				"--reset-thread",
@@ -342,7 +342,7 @@
 				"--host",
 				"127.0.0.1",
 				"--port",
-				"8000"
+				"8123"
 			],
 			"isBackground": true,
 			"problemMatcher": [],
@@ -360,7 +360,7 @@
 				"--host",
 				"127.0.0.1",
 				"--port",
-				"8000"
+				"8123"
 			],
 			"isBackground": true,
 			"problemMatcher": [],

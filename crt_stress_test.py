@@ -42,7 +42,7 @@ parser.add_argument("--memory-db", default=None, help="Path to memory sqlite db 
 parser.add_argument("--ledger-db", default=None, help="Path to ledger sqlite db (default: per-run in artifacts)")
 parser.add_argument("--config", default=None, help="Path to crt_runtime_config.json (optional)")
 parser.add_argument("--use-api", action="store_true", help="Run via FastAPI hooks (/api/chat/send) instead of importing CRTEnhancedRAG")
-parser.add_argument("--api-base-url", default="http://127.0.0.1:8000", help="CRT API base URL (default: http://127.0.0.1:8000)")
+parser.add_argument("--api-base-url", default="http://127.0.0.1:8123", help="CRT API base URL (default: http://127.0.0.1:8123)")
 parser.add_argument("--thread-id", default=None, help="Thread id to use for API mode (default: stress_<run_id>)")
 parser.add_argument("--reset-thread", action="store_true", help="In API mode, reset the thread (memory+ledger) before starting")
 parser.add_argument("--print-every", type=int, default=1, help="Print every N turns (default: 1). Use >1 for long runs")

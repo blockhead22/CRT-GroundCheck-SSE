@@ -51,8 +51,8 @@ function getApiBaseUrlInternal(): string {
   const fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
   // Default behavior:
   // - Dev: same-origin (works with Vite proxy for /api and /health)
-  // - Prod: explicit loopback (for the common “API on :8000” setup)
-  const fallback = import.meta.env.DEV ? '' : 'http://127.0.0.1:8000'
+  // - Prod: explicit loopback (for the common “API on :8123” setup)
+  const fallback = import.meta.env.DEV ? '' : 'http://127.0.0.1:8123'
   const base = (fromStorage && fromStorage.trim()) || (fromEnv && String(fromEnv).trim()) || fallback
   return base.replace(/\/$/, '')
 }
