@@ -73,7 +73,7 @@ The Windows thread agent **completed the M2 debugging mission**:
 ### Core Components
 
 #### 1. **Backend** (`crt_api.py`)
-- FastAPI server (typically `:8000`)
+- FastAPI server (typically `:8123`)
 - Endpoints:
   - `POST /api/chat/send` - main chat interface
   - `GET /api/contradictions/next` - fetch next unresolved contradiction
@@ -195,13 +195,13 @@ The Windows thread agent **completed the M2 debugging mission**:
    - Action: Tune gate thresholds or fix model behavior
 
 2. **Debug M2 Followup 88% Failure Rate**
-   - Run smoke test against correct API: `python crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8000 --thread-id m2_smoke --m2-smoke --m2-followup-verbose`
+   - Run smoke test against correct API: `python crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8123 --thread-id m2_smoke --m2-smoke --m2-followup-verbose`
    - Review failed M2 step details in latest JSONL
    - Check schema alignment between stress harness and API endpoints
    - Verify thread_id propagation in followup calls
 
 3. **Validate API Self-Check**
-   - Start fresh API instance on `:8000`
+   - Start fresh API instance on `:8123`
    - Run smoke test and confirm self-check passes
    - Document expected behavior for CI/CD
 
@@ -297,10 +297,10 @@ The Windows thread agent **completed the M2 debugging mission**:
 #### Start API Server
 ```bash
 # Windows
-D:\AI_round2\.venv\Scripts\python.exe -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8000
+D:\AI_round2\.venv\Scripts\python.exe -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8123
 
 # macOS (adjust path)
-python -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8000
+python -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8123
 ```
 
 #### Start Frontend
@@ -313,15 +313,15 @@ npm run dev
 #### Run M2 Smoke Test
 ```bash
 # Windows
-py -3 crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8000 --thread-id m2_smoke --m2-smoke --m2-followup-verbose
+py -3 crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8123 --thread-id m2_smoke --m2-smoke --m2-followup-verbose
 
 # macOS
-python3 crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8000 --thread-id m2_smoke --m2-smoke --m2-followup-verbose
+python3 crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8123 --thread-id m2_smoke --m2-smoke --m2-followup-verbose
 ```
 
 #### Run 100-Turn Stress Test
 ```bash
-python3 crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8000 --thread-id stress_100 --reset-thread --turns 100 --sleep 0.02 --m2-followup --m2-followup-max 25 --print-every 25
+python3 crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8123 --thread-id stress_100 --reset-thread --turns 100 --sleep 0.02 --m2-followup --m2-followup-max 25 --print-every 25
 ```
 
 #### Generate Report
@@ -382,7 +382,7 @@ Before moving to M3, the following must be true:
 
 1. ✅ **This assessment document created**
 2. ⏭️ **Fix environment setup** - Adapt task paths for macOS or test on Windows
-3. ⏭️ **Start API server** - Verify clean startup on `:8000`
+3. ⏭️ **Start API server** - Verify clean startup on `:8123`
 4. ⏭️ **Run M2 smoke test** - Confirm self-check + full cycle works
 5. ⏭️ **Analyze latest JSONL** - Extract gate failure patterns
 6. ⏭️ **Review M2 followup failures** - Identify schema/timing issues
