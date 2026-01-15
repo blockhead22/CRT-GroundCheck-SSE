@@ -24,6 +24,7 @@ from dataclasses import dataclass
 import time
 
 from .crt_core import CRTMath, CRTConfig, MemorySource
+from .fact_slots import extract_fact_slots
 from .crt_semantic_anchor import (
     SemanticAnchor,
     generate_clarification_prompt,
@@ -74,6 +75,9 @@ class ContradictionEntry:
     status: str = ContradictionStatus.OPEN
     contradiction_type: str = ContradictionType.CONFLICT  # Default to conflict
     
+    # Slot tracking - which fact slots does this contradiction affect?
+    affects_slots: Optional[str] = None  # Comma-separated slot names (e.g., "employer,location")
+    
     # Metadata
     query: Optional[str] = None
     summary: Optional[str] = None
@@ -93,6 +97,7 @@ class ContradictionEntry:
             'confidence_delta': self.confidence_delta,
             'status': self.status,
             'contradiction_type': self.contradiction_type,
+            'affects_slots': self.affects_slots,
             'query': self.query,
             'summary': self.summary,
             'resolution_timestamp': self.resolution_timestamp,
@@ -144,6 +149,7 @@ class ContradictionLedger:
                 confidence_delta REAL,
                 status TEXT NOT NULL,
                 contradiction_type TEXT DEFAULT 'conflict',
+                affects_slots TEXT,
                 query TEXT,
                 summary TEXT,
                 resolution_timestamp REAL,
@@ -329,6 +335,17 @@ class ContradictionLedger:
         else:
             contradiction_type = ContradictionType.CONFLICT  # Default
         
+        # Extract affected slots from both memories
+        affects_slots_set = set()
+        if old_text and new_text:
+            old_facts = extract_fact_slots(old_text) or {}
+            new_facts = extract_fact_slots(new_text) or {}
+            # Track slots that appear in both (potential conflicts)
+            shared_slots = set(old_facts.keys()) & set(new_facts.keys())
+            affects_slots_set.update(shared_slots)
+        
+        affects_slots_str = ",".join(sorted(affects_slots_set)) if affects_slots_set else None
+        
         entry = ContradictionEntry(
             ledger_id=f"contra_{int(time.time() * 1000)}_{hash(old_memory_id + new_memory_id) % 10000}",
             timestamp=time.time(),
@@ -339,6 +356,7 @@ class ContradictionLedger:
             confidence_delta=confidence_delta,
             status=ContradictionStatus.OPEN,
             contradiction_type=contradiction_type,
+            affects_slots=affects_slots_str,
             query=query,
             summary=summary or self._generate_summary(drift_mean, confidence_delta, contradiction_type)
         )
@@ -350,8 +368,8 @@ class ContradictionLedger:
         cursor.execute("""
             INSERT INTO contradictions
             (ledger_id, timestamp, old_memory_id, new_memory_id, drift_mean, 
-             drift_reason, confidence_delta, status, contradiction_type, query, summary)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             drift_reason, confidence_delta, status, contradiction_type, affects_slots, query, summary)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             entry.ledger_id,
             entry.timestamp,
@@ -362,6 +380,7 @@ class ContradictionLedger:
             confidence_delta,
             entry.status,
             entry.contradiction_type,
+            entry.affects_slots,
             query,
             entry.summary
         ))
@@ -387,6 +406,21 @@ class ContradictionLedger:
         
         The anchor carries the contradiction context forward for follow-up questions.
         """
+        # Extract slot values if not provided
+        if slot_name is None or old_value is None or new_value is None:
+            old_facts = extract_fact_slots(old_text) or {}
+            new_facts = extract_fact_slots(new_text) or {}
+            shared_slots = set(old_facts.keys()) & set(new_facts.keys())
+            
+            if shared_slots and slot_name is None:
+                # Pick the first shared slot as the primary slot
+                slot_name = sorted(shared_slots)[0]
+                old_fact = old_facts.get(slot_name)
+                new_fact = new_facts.get(slot_name)
+                if old_fact and new_fact:
+                    old_value = str(old_fact.value)
+                    new_value = str(new_fact.value)
+        
         # Calculate drift vector if embeddings provided
         drift_vector = None
         if old_vector is not None and new_vector is not None:
@@ -684,10 +718,11 @@ class ContradictionLedger:
             drift_reason=row[5],
             confidence_delta=row[6],
             status=row[7],
-            contradiction_type=row[8] if len(row) > 8 else ContradictionType.CONFLICT,  # Handle old schema
-            query=row[9] if len(row) > 9 else row[8],
-            summary=row[10] if len(row) > 10 else row[9],
-            resolution_timestamp=row[11] if len(row) > 11 else row[10],
-            resolution_method=row[12] if len(row) > 12 else row[11],
-            merged_memory_id=row[13] if len(row) > 13 else row[12]
+            contradiction_type=row[8] if len(row) > 8 else ContradictionType.CONFLICT,
+            affects_slots=row[9] if len(row) > 9 else None,
+            query=row[10] if len(row) > 10 else (row[9] if len(row) > 9 else row[8]),
+            summary=row[11] if len(row) > 11 else (row[10] if len(row) > 10 else row[9]),
+            resolution_timestamp=row[12] if len(row) > 12 else (row[11] if len(row) > 11 else row[10]),
+            resolution_method=row[13] if len(row) > 13 else (row[12] if len(row) > 12 else row[11]),
+            merged_memory_id=row[14] if len(row) > 14 else (row[13] if len(row) > 13 else row[12])
         )

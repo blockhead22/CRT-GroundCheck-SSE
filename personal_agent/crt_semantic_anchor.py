@@ -108,7 +108,10 @@ def generate_clarification_prompt(anchor: SemanticAnchor) -> str:
     old_text = anchor.old_text[:100]  # truncate for readability
     new_text = anchor.new_text[:100]
     
-    if anchor.contradiction_type == "REFINEMENT":
+    # Normalize contradiction type for comparison
+    ctype = anchor.contradiction_type.lower() if isinstance(anchor.contradiction_type, str) else ""
+    
+    if ctype == "refinement":
         if anchor.slot_name and anchor.old_value and anchor.new_value:
             return (
                 f"I have two values for {anchor.slot_name}: '{anchor.old_value}' and '{anchor.new_value}'. "
@@ -120,7 +123,7 @@ def generate_clarification_prompt(anchor: SemanticAnchor) -> str:
                 f"Is the newer statement more specific, or did something change?"
             )
     
-    elif anchor.contradiction_type == "REVISION":
+    elif ctype == "revision":
         if anchor.slot_name and anchor.old_value and anchor.new_value:
             return (
                 f"You told me {anchor.slot_name} = '{anchor.old_value}', but now you said '{anchor.new_value}'. "
@@ -132,7 +135,7 @@ def generate_clarification_prompt(anchor: SemanticAnchor) -> str:
                 f"Which one should I remember?"
             )
     
-    elif anchor.contradiction_type == "TEMPORAL":
+    elif ctype == "temporal":
         if anchor.slot_name and anchor.old_value and anchor.new_value:
             return (
                 f"I have {anchor.slot_name} = '{anchor.old_value}' from earlier, and now '{anchor.new_value}'. "
@@ -144,7 +147,7 @@ def generate_clarification_prompt(anchor: SemanticAnchor) -> str:
                 f"Did this change over time, or are both true at different moments?"
             )
     
-    else:  # CONFLICT
+    else:  # CONFLICT (default)
         if anchor.slot_name and anchor.old_value and anchor.new_value:
             return (
                 f"I have conflicting values for {anchor.slot_name}: '{anchor.old_value}' vs '{anchor.new_value}'. "
@@ -185,25 +188,39 @@ def parse_user_answer(
     }
     
     # Check for explicit old/new references
-    if any(phrase in answer_lower for phrase in ["the first", "the old", "the earlier", "before"]):
+    old_patterns = ["the first", "the old", "the earlier", "before", "previously", "original", "initially"]
+    new_patterns = ["the new", "the second", "the later", "now", "current", "latest", "actually", "correction"]
+    
+    if any(phrase in answer_lower for phrase in old_patterns):
         result["resolution_method"] = "user_chose_old"
         result["chosen_memory_id"] = anchor.old_memory_id
         result["confidence"] = 0.8
     
-    elif any(phrase in answer_lower for phrase in ["the new", "the second", "the later", "now", "current"]):
+    elif any(phrase in answer_lower for phrase in new_patterns):
         result["resolution_method"] = "user_chose_new"
         result["chosen_memory_id"] = anchor.new_memory_id
         result["confidence"] = 0.8
     
-    elif any(phrase in answer_lower for phrase in ["both", "both true", "different times", "changed"]):
+    elif any(phrase in answer_lower for phrase in ["both", "both true", "different times", "changed", "it changed", "changed over time", "evolved", "progressed"]):
         result["resolution_method"] = "both_true_temporal"
         result["new_status"] = "resolved"
         result["confidence"] = 0.7
     
-    elif any(phrase in answer_lower for phrase in ["neither", "wrong", "mistake"]):
+    elif any(phrase in answer_lower for phrase in ["neither", "wrong", "mistake", "incorrect", "both wrong", "not right"]):
         result["resolution_method"] = "both_wrong"
         result["new_status"] = "resolved"
         result["confidence"] = 0.6
+    
+    # Enhanced: Check for ordinal references
+    elif any(phrase in answer_lower for phrase in ["1)", "number 1", "first one", "option 1", "statement 1"]):
+        result["resolution_method"] = "user_chose_old"
+        result["chosen_memory_id"] = anchor.old_memory_id
+        result["confidence"] = 0.75
+    
+    elif any(phrase in answer_lower for phrase in ["2)", "number 2", "second one", "option 2", "statement 2"]):
+        result["resolution_method"] = "user_chose_new"
+        result["chosen_memory_id"] = anchor.new_memory_id
+        result["confidence"] = 0.75
     
     # If slot-based, try to extract canonical value
     if anchor.slot_name and anchor.expected_answer_type == "choose_one":

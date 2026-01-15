@@ -259,6 +259,7 @@ def create_app() -> FastAPI:
 
     # Cache one CRT engine per thread (isolated DBs per thread).
     engines: Dict[str, CRTEnhancedRAG] = {}
+    turn_counters: Dict[str, int] = {}  # Track turn numbers per thread
 
     docs_dir = root / "docs"
     doc_map: Dict[str, Dict[str, Any]] = {
@@ -287,7 +288,19 @@ def create_app() -> FastAPI:
         ledger_db = f"personal_agent/crt_ledger_{tid}.db"
         engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db)
         engines[tid] = engine
+        turn_counters[tid] = 0  # Initialize turn counter
         return engine
+    
+    def get_turn_number(thread_id: str) -> int:
+        """Get current turn number for thread."""
+        tid = _sanitize_thread_id(thread_id)
+        return turn_counters.get(tid, 0)
+    
+    def increment_turn(thread_id: str) -> int:
+        """Increment and return new turn number."""
+        tid = _sanitize_thread_id(thread_id)
+        turn_counters[tid] = turn_counters.get(tid, 0) + 1
+        return turn_counters[tid]
 
     def _thread_db_paths(thread_id: str) -> tuple[str, str]:
         tid = _sanitize_thread_id(thread_id)
@@ -599,34 +612,42 @@ def create_app() -> FastAPI:
 
         # M2 heuristic: open conflicts/revisions should ask user; refinements ask for precision; temporal asks for timeline.
         next_action = "ask_user"
-        suggested = _suggest_contradiction_question(engine, entry)
         
         # Create semantic anchor for this contradiction
         semantic_anchor_dict = None
+        suggested = None
         try:
             # Retrieve the memory texts
             old_mem_id = str(getattr(entry, "old_memory_id", ""))
             new_mem_id = str(getattr(entry, "new_memory_id", ""))
             
-            old_mems = engine.memory.retrieve_by_ids([old_mem_id]) if old_mem_id else []
-            new_mems = engine.memory.retrieve_by_ids([new_mem_id]) if new_mem_id else []
+            old_mem = engine.memory.get_memory_by_id(old_mem_id) if old_mem_id else None
+            new_mem = engine.memory.get_memory_by_id(new_mem_id) if new_mem_id else None
             
-            if old_mems and new_mems:
-                old_text = old_mems[0].get("memory_text", "")
-                new_text = new_mems[0].get("memory_text", "")
+            if old_mem and new_mem:
+                old_text = old_mem.text
+                new_text = new_mem.text
+                
+                # Get current turn number for this thread
+                turn_num = get_turn_number(thread_id)
                 
                 # Create the semantic anchor
                 anchor = engine.ledger.create_semantic_anchor(
                     entry=entry,
                     old_text=old_text,
                     new_text=new_text,
-                    turn_number=0,  # TODO: track turn number properly
-                    # TODO: extract slot info if available
+                    turn_number=turn_num,
                 )
                 semantic_anchor_dict = anchor.to_dict()
+                # Use the anchor's type-aware clarification prompt
+                suggested = anchor.clarification_prompt
         except Exception:
             # If anchor creation fails, fall back to no anchor (degraded mode)
             pass
+        
+        # Fall back to old generic question if anchor creation failed
+        if not suggested:
+            suggested = _suggest_contradiction_question(engine, entry)
 
         return ContradictionWorkItem(
             thread_id=_sanitize_thread_id(thread_id),
@@ -1076,6 +1097,8 @@ def create_app() -> FastAPI:
 
         recorded = False
         resolved = False
+        parse_result = None
+        
         try:
             engine.ledger.record_contradiction_user_answer(req.ledger_id, req.answer)
             recorded = True
@@ -1083,12 +1106,72 @@ def create_app() -> FastAPI:
             recorded = False
 
         if bool(req.resolve):
+            # Try to use semantic anchor for intelligent parsing
+            try:
+                # Get the contradiction entry to build anchor
+                entries = [e for e in engine.ledger.get_all_contradictions(limit=1000) 
+                          if getattr(e, 'ledger_id', '') == req.ledger_id]
+                
+                if entries:
+                    entry = entries[0]
+                    old_mem_id = str(getattr(entry, "old_memory_id", ""))
+                    new_mem_id = str(getattr(entry, "new_memory_id", ""))
+                    
+                    # Retrieve memory texts
+                    old_mem = engine.memory.get_memory_by_id(old_mem_id) if old_mem_id else None
+                    new_mem = engine.memory.get_memory_by_id(new_mem_id) if new_mem_id else None
+                    
+                    if old_mem and new_mem:
+                        # Create semantic anchor
+                        from personal_agent.crt_semantic_anchor import (
+                            parse_user_answer,
+                            is_resolution_grounded
+                        )
+                        
+                        anchor = engine.ledger.create_semantic_anchor(
+                            entry=entry,
+                            old_text=old_mem.text,
+                            new_text=new_mem.text,
+                            turn_number=get_turn_number(req.thread_id),
+                        )
+                        
+                        # Parse the user's answer using semantic anchor
+                        parse_result = parse_user_answer(anchor, req.answer)
+                        
+                        # Validate grounding
+                        if is_resolution_grounded(anchor, parse_result):
+                            # Use parsed resolution instead of raw request
+                            resolution_method = parse_result.get("resolution_method", req.resolution_method)
+                            chosen_memory_id = parse_result.get("chosen_memory_id", req.merged_memory_id)
+                            new_status = parse_result.get("new_status", req.new_status)
+                        else:
+                            # Grounding check failed - fall back to request params
+                            resolution_method = req.resolution_method
+                            chosen_memory_id = req.merged_memory_id
+                            new_status = req.new_status
+                    else:
+                        # No memories found - use request params
+                        resolution_method = req.resolution_method
+                        chosen_memory_id = req.merged_memory_id
+                        new_status = req.new_status
+                else:
+                    # No entry found - use request params
+                    resolution_method = req.resolution_method
+                    chosen_memory_id = req.merged_memory_id
+                    new_status = req.new_status
+                    
+            except Exception:
+                # Parsing failed - fall back to request params
+                resolution_method = req.resolution_method
+                chosen_memory_id = req.merged_memory_id
+                new_status = req.new_status
+            
             try:
                 engine.ledger.resolve_contradiction(
                     ledger_id=req.ledger_id,
-                    method=str(req.resolution_method or "user_clarified"),
-                    merged_memory_id=req.merged_memory_id,
-                    new_status=str(req.new_status or "resolved"),
+                    method=str(resolution_method or "user_clarified"),
+                    merged_memory_id=chosen_memory_id,
+                    new_status=str(new_status or "resolved"),
                 )
                 resolved = True
             except Exception:
@@ -1123,6 +1206,9 @@ def create_app() -> FastAPI:
     @app.post("/api/chat/send", response_model=ChatSendResponse)
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:
         engine = get_engine(req.thread_id)
+        
+        # Increment turn counter
+        increment_turn(req.thread_id)
 
         # Deterministic ledger-backed contradiction inventory.
         # This is intentionally handled outside the LLM path for auditability.

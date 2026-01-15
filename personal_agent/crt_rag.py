@@ -498,6 +498,14 @@ class CRTEnhancedRAG:
             if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
                 continue
 
+            # Check affects_slots for fast filtering
+            affects_slots_str = getattr(contra, "affects_slots", None)
+            if affects_slots_str and inferred_slots:
+                affects_slots_set = set(affects_slots_str.split(","))
+                if not (affects_slots_set & set(inferred_slots)):
+                    # Contradiction doesn't affect slots relevant to this query
+                    continue
+
             old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
             new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
             if old_mem is None or new_mem is None:
@@ -1385,33 +1393,57 @@ class CRTEnhancedRAG:
         related_hard_conflicts = 0
 
         # Only consider conflicts that are relevant to what the user is asking/asserting.
-        # This prevents unrelated open conflicts (e.g., name conflict) from stalling normal chat.
+        # This prevents unrelated open conflicts (e.g., remote_preference) from stalling unrelated queries (e.g., employer).
         relevant_slots = set(inferred_slots or []) | set((asserted_facts or {}).keys())
 
         retrieved_mem_ids = {mem.memory_id for mem, _ in retrieved}
         for contra in unresolved_contradictions:
-            contra_mem_ids = {contra.old_memory_id, contra.new_memory_id}
-            if not (contra_mem_ids & retrieved_mem_ids):
-                continue
-            related_open_total += 1
+            # Skip if not a hard CONFLICT type
             if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
                 continue
+            
+            # Check if contradiction affects slots relevant to this query
+            # Use affects_slots field if available for fast filtering
+            affects_slots_str = getattr(contra, "affects_slots", None)
+            contra_mem_ids = {contra.old_memory_id, contra.new_memory_id}
+            
+            if affects_slots_str:
+                affects_slots_set = set(affects_slots_str.split(","))
+                # Only count this contradiction if it affects slots we're querying about
+                # If relevant_slots is empty (query doesn't target slots), check retrieval overlap instead
+                if relevant_slots:
+                    if not (affects_slots_set & relevant_slots):
+                        continue  # Contradiction doesn't affect any slots we're querying about
+                else:
+                    # Query doesn't target specific slots - only count if contradiction was retrieved
+                    if not (contra_mem_ids & retrieved_mem_ids):
+                        continue  # Not retrieved, so not relevant
+            else:
+                # No affects_slots cached - check retrieval overlap as fallback
+                if not (contra_mem_ids & retrieved_mem_ids):
+                    continue
+            
+            related_open_total += 1
 
             # If the current query doesn't target user-fact slots, don't block the conversation.
             if not relevant_slots:
                 continue
 
             try:
-                old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
-                new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
-                if old_mem is None or new_mem is None:
-                    continue
+                # Double-check slot overlap if we don't have affects_slots cached
+                if not affects_slots_str:
+                    old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+                    new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+                    if old_mem is None or new_mem is None:
+                        continue
 
-                old_facts = extract_fact_slots(old_mem.text) or {}
-                new_facts = extract_fact_slots(new_mem.text) or {}
-                shared = set(old_facts.keys()) & set(new_facts.keys()) & set(relevant_slots)
-                if shared:
-                    related_hard_conflicts += 1
+                    old_facts = extract_fact_slots(old_mem.text) or {}
+                    new_facts = extract_fact_slots(new_mem.text) or {}
+                    shared = set(old_facts.keys()) & set(new_facts.keys()) & set(relevant_slots)
+                    if not shared:
+                        continue
+                
+                related_hard_conflicts += 1
             except Exception:
                 # Never allow contradiction relevance checks to block a normal answer.
                 continue
