@@ -120,6 +120,7 @@ class ContradictionWorkItem(BaseModel):
     last_asked_at: Optional[float] = None
     next_action: str
     suggested_question: str
+    semantic_anchor: Optional[Dict[str, Any]] = None  # Carries contradiction context
 
 
 class ContradictionNextResponse(BaseModel):
@@ -599,6 +600,33 @@ def create_app() -> FastAPI:
         # M2 heuristic: open conflicts/revisions should ask user; refinements ask for precision; temporal asks for timeline.
         next_action = "ask_user"
         suggested = _suggest_contradiction_question(engine, entry)
+        
+        # Create semantic anchor for this contradiction
+        semantic_anchor_dict = None
+        try:
+            # Retrieve the memory texts
+            old_mem_id = str(getattr(entry, "old_memory_id", ""))
+            new_mem_id = str(getattr(entry, "new_memory_id", ""))
+            
+            old_mems = engine.memory.retrieve_by_ids([old_mem_id]) if old_mem_id else []
+            new_mems = engine.memory.retrieve_by_ids([new_mem_id]) if new_mem_id else []
+            
+            if old_mems and new_mems:
+                old_text = old_mems[0].get("memory_text", "")
+                new_text = new_mems[0].get("memory_text", "")
+                
+                # Create the semantic anchor
+                anchor = engine.ledger.create_semantic_anchor(
+                    entry=entry,
+                    old_text=old_text,
+                    new_text=new_text,
+                    turn_number=0,  # TODO: track turn number properly
+                    # TODO: extract slot info if available
+                )
+                semantic_anchor_dict = anchor.to_dict()
+        except Exception:
+            # If anchor creation fails, fall back to no anchor (degraded mode)
+            pass
 
         return ContradictionWorkItem(
             thread_id=_sanitize_thread_id(thread_id),
@@ -611,6 +639,7 @@ def create_app() -> FastAPI:
             last_asked_at=(wl.get("last_asked_at") if wl else None),
             next_action=next_action,
             suggested_question=suggested,
+            semantic_anchor=semantic_anchor_dict,
         )
 
     def _priority_key(item: ContradictionWorkItem) -> tuple:

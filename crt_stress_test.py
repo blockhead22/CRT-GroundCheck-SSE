@@ -712,9 +712,20 @@ def _run_m2_smoke() -> None:
     item = nxt_json.get("item") or {}
     ledger_id = str((item.get("ledger_id") if isinstance(item, dict) else "") or "").strip()
     suggested = str((item.get("suggested_question") if isinstance(item, dict) else "") or "").strip()
+    semantic_anchor = item.get("semantic_anchor") if isinstance(item, dict) else None
+    
     if not ledger_id:
         print(f"[M2 SMOKE FAIL] /next item missing ledger_id: {item}")
         raise SystemExit(2)
+    
+    # Validate semantic anchor presence
+    if semantic_anchor:
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 SMOKE] semantic_anchor present: type={semantic_anchor.get('contradiction_type')}")
+            print(f"  clarification_prompt: {semantic_anchor.get('clarification_prompt', '')[:100]}")
+    else:
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print("[M2 SMOKE WARN] semantic_anchor not present (degraded mode)")
 
     clarification = _choose_m2_clarification(suggested) or "employer = amazon"
 

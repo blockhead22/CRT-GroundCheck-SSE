@@ -24,6 +24,12 @@ from dataclasses import dataclass
 import time
 
 from .crt_core import CRTMath, CRTConfig, MemorySource
+from .crt_semantic_anchor import (
+    SemanticAnchor,
+    generate_clarification_prompt,
+    parse_user_answer,
+    is_resolution_grounded,
+)
 
 
 class ContradictionStatus:
@@ -364,6 +370,59 @@ class ContradictionLedger:
         conn.close()
         
         return entry
+    
+    def create_semantic_anchor(
+        self,
+        entry: ContradictionEntry,
+        old_text: str,
+        new_text: str,
+        turn_number: int,
+        slot_name: Optional[str] = None,
+        old_value: Optional[str] = None,
+        new_value: Optional[str] = None,
+        old_vector: Optional[np.ndarray] = None,
+        new_vector: Optional[np.ndarray] = None
+    ) -> SemanticAnchor:
+        """Create a semantic anchor for this contradiction.
+        
+        The anchor carries the contradiction context forward for follow-up questions.
+        """
+        # Calculate drift vector if embeddings provided
+        drift_vector = None
+        if old_vector is not None and new_vector is not None:
+            drift_vector = new_vector - old_vector
+        
+        # Generate clarification prompt based on type
+        anchor = SemanticAnchor(
+            contradiction_id=entry.ledger_id,
+            turn_number=turn_number,
+            contradiction_type=entry.contradiction_type,
+            old_memory_id=entry.old_memory_id,
+            new_memory_id=entry.new_memory_id,
+            old_text=old_text,
+            new_text=new_text,
+            slot_name=slot_name,
+            old_value=old_value,
+            new_value=new_value,
+            drift_vector=drift_vector,
+            expected_answer_type=self._determine_expected_answer_type(entry.contradiction_type),
+        )
+        
+        # Generate the clarification prompt
+        anchor.clarification_prompt = generate_clarification_prompt(anchor)
+        
+        return anchor
+    
+    def _determine_expected_answer_type(self, contradiction_type: str) -> str:
+        """Determine what kind of answer we expect based on contradiction type."""
+        if contradiction_type == ContradictionType.REFINEMENT:
+            return "both_true"  # Both might be valid at different levels of specificity
+        elif contradiction_type == ContradictionType.REVISION:
+            return "choose_one"  # User correcting themselves
+        elif contradiction_type == ContradictionType.TEMPORAL:
+            return "temporal_order"  # Progression over time
+        else:  # CONFLICT
+            return "choose_one"  # Mutually exclusive - pick one
     
     def _generate_summary(self, drift: float, conf_delta: float, contradiction_type: str = ContradictionType.CONFLICT) -> str:
         """Generate natural language summary of contradiction."""
