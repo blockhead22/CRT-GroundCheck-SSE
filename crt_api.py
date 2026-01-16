@@ -206,6 +206,51 @@ class CitationModel(BaseModel):
     confidence: float = 0.8
 
 
+# Agent API Models
+class AgentStepModel(BaseModel):
+    step_num: int
+    thought: str
+    action: Optional[Dict[str, Any]] = None
+    observation: Optional[Dict[str, Any]] = None
+    timestamp: str
+
+
+class AgentTraceModel(BaseModel):
+    query: str
+    steps: list[AgentStepModel]
+    final_answer: Optional[str] = None
+    success: bool
+    error: Optional[str] = None
+    started_at: str
+    completed_at: Optional[str] = None
+
+
+class AgentRunRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    query: str = Field(min_length=1, description="Task for agent")
+    max_steps: int = Field(default=10, ge=1, le=50)
+    auto_mode: bool = Field(default=True, description="Enable autonomous execution")
+
+
+class AgentRunResponse(BaseModel):
+    trace: AgentTraceModel
+    triggered_by: Optional[str] = None
+
+
+class AgentTriggersResponse(BaseModel):
+    thread_id: str
+    triggers: list[Dict[str, Any]]
+    should_activate: bool
+    suggested_task: Optional[str] = None
+
+
+class AgentStatusResponse(BaseModel):
+    available: bool
+    llm_available: bool
+    reasoning_available: bool
+    tools_count: int
+
+
 class ResearchSearchRequest(BaseModel):
     thread_id: str = Field(default="default")
     query: str = Field(min_length=1, description="Research query")
@@ -1332,6 +1377,54 @@ def create_app() -> FastAPI:
             mode=mode_arg,
         )
 
+        # AGENT INTEGRATION: Check for proactive triggers
+        agent_activated = False
+        agent_trace_data = None
+        agent_answer = None
+        
+        try:
+            from personal_agent.proactive_triggers import ProactiveTriggers
+            from personal_agent.agent_loop import create_agent
+            from pathlib import Path
+            
+            # Analyze response for triggers
+            triggers_engine = ProactiveTriggers(
+                confidence_threshold=0.5,
+                auto_research_threshold=0.3,
+                contradiction_auto_resolve=False,  # Don't auto-resolve contradictions
+            )
+            detected_triggers = triggers_engine.analyze_response(result)
+            
+            # Auto-activate agent if triggers detected
+            if triggers_engine.should_activate_agent(detected_triggers):
+                # Create research engine
+                research_engine = None
+                try:
+                    from personal_agent.research_engine import ResearchEngine
+                    research_engine = ResearchEngine()
+                except Exception:
+                    pass
+                
+                # Create and run agent
+                agent = create_agent(
+                    memory_engine=engine.memory,
+                    research_engine=research_engine,
+                    workspace_root=Path.cwd(),
+                    max_steps=8,
+                )
+                
+                task = triggers_engine.get_agent_task(detected_triggers, req.message)
+                trace = agent.run(task)
+                
+                agent_activated = True
+                agent_answer = trace.final_answer
+                agent_trace_data = trace.to_dict()
+                
+        except Exception as e:
+            # Agent execution failed - continue without agent
+            print(f"Agent execution error: {e}")
+            pass
+
         # Keep the payload compact and UI-friendly.
         metadata: Dict[str, Any] = {
             "mode": result.get("mode"),
@@ -1343,6 +1436,10 @@ def create_app() -> FastAPI:
             "unresolved_hard_conflicts": result.get("unresolved_hard_conflicts"),
             "learned_suggestions": result.get("learned_suggestions") or [],
             "heuristic_suggestions": result.get("heuristic_suggestions") or [],
+            "agent_activated": agent_activated,
+            "agent_answer": agent_answer,
+            "agent_trace": agent_trace_data,
+        }
             "retrieved_memories": [
                 {
                     "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
@@ -1489,6 +1586,166 @@ def create_app() -> FastAPI:
             ok=True,
             memory_id=req.memory_id,
             promoted=promoted,
+        )
+
+    # Agent API Endpoints
+    @app.post("/api/agent/run", response_model=AgentRunResponse)
+    def run_agent(req: AgentRunRequest) -> AgentRunResponse:
+        """
+        Run autonomous agent for a task.
+        
+        Executes ReAct loop: Thought → Action → Observation cycles.
+        Returns complete execution trace.
+        """
+        tid = _sanitize_thread_id(req.thread_id)
+        engine = get_engine(tid)
+        
+        try:
+            from personal_agent.agent_loop import create_agent
+            from pathlib import Path
+            
+            # Create research engine if not exists
+            research_engine = None
+            try:
+                from personal_agent.research_engine import ResearchEngine
+                research_engine = ResearchEngine()
+            except Exception:
+                pass
+            
+            agent = create_agent(
+                memory_engine=engine.memory,
+                research_engine=research_engine,
+                workspace_root=Path.cwd(),
+                max_steps=req.max_steps,
+            )
+            
+            trace = agent.run(req.query)
+            
+            # Convert trace to response model
+            steps = [
+                AgentStepModel(
+                    step_num=s.step_num,
+                    thought=s.thought,
+                    action={
+                        "tool": s.action.tool.value if s.action else None,
+                        "args": s.action.args if s.action else None,
+                        "reasoning": s.action.reasoning if s.action else None,
+                    } if s.action else None,
+                    observation={
+                        "tool": s.observation.tool.value if s.observation else None,
+                        "success": s.observation.success if s.observation else None,
+                        "result": str(s.observation.result)[:500] if s.observation and s.observation.result else None,
+                        "error": s.observation.error if s.observation else None,
+                    } if s.observation else None,
+                    timestamp=s.timestamp.isoformat(),
+                )
+                for s in trace.steps
+            ]
+            
+            return AgentRunResponse(
+                trace=AgentTraceModel(
+                    query=trace.query,
+                    steps=steps,
+                    final_answer=trace.final_answer,
+                    success=trace.success,
+                    error=trace.error,
+                    started_at=trace.started_at.isoformat(),
+                    completed_at=trace.completed_at.isoformat() if trace.completed_at else None,
+                ),
+                triggered_by=None,
+            )
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Agent execution failed: {str(e)}")
+    
+    @app.post("/api/agent/analyze-triggers", response_model=AgentTriggersResponse)
+    def analyze_triggers(thread_id: str = Query(default="default"), response_data: Dict[str, Any] = None) -> AgentTriggersResponse:
+        """
+        Analyze CRT response for agent trigger conditions.
+        
+        Checks for:
+        - Low confidence
+        - Contradictions
+        - Insufficient context
+        - Memory gaps
+        - Complex queries
+        
+        Returns suggested agent activation.
+        """
+        tid = _sanitize_thread_id(thread_id)
+        
+        if not response_data:
+            return AgentTriggersResponse(
+                thread_id=tid,
+                triggers=[],
+                should_activate=False,
+                suggested_task=None,
+            )
+        
+        try:
+            from personal_agent.proactive_triggers import ProactiveTriggers
+            
+            triggers_engine = ProactiveTriggers()
+            detected = triggers_engine.analyze_response(response_data)
+            should_activate = triggers_engine.should_activate_agent(detected)
+            
+            suggested_task = None
+            if detected and response_data.get("query"):
+                suggested_task = triggers_engine.get_agent_task(detected, response_data["query"])
+            
+            return AgentTriggersResponse(
+                thread_id=tid,
+                triggers=[
+                    {
+                        "type": t.trigger_type.value,
+                        "reason": t.reason,
+                        "suggested_action": t.suggested_action,
+                        "auto_execute": t.should_auto_execute,
+                    }
+                    for t in detected
+                ],
+                should_activate=should_activate,
+                suggested_task=suggested_task,
+            )
+            
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Trigger analysis failed: {str(e)}")
+    
+    @app.get("/api/agent/status", response_model=AgentStatusResponse)
+    def agent_status() -> AgentStatusResponse:
+        """Get agent system status."""
+        available = False
+        llm_available = False
+        reasoning_available = False
+        tools_count = 0
+        
+        try:
+            from personal_agent.agent_loop import create_agent
+            from personal_agent.ollama_client import get_ollama_client
+            
+            # Test agent creation
+            agent = create_agent()
+            available = True
+            tools_count = len(agent.tools._tools)
+            
+            # Test LLM
+            try:
+                llm = get_ollama_client()
+                llm_available = True
+            except Exception:
+                pass
+            
+            # Test reasoning
+            reasoning_available = agent.reasoning is not None
+            
+        except Exception:
+            pass
+        
+        return AgentStatusResponse(
+            available=available,
+            llm_available=llm_available,
+            reasoning_available=reasoning_available,
+            tools_count=tools_count,
         )
 
     @app.get("/api/thread/export", response_model=ThreadExportResponse)
