@@ -7,11 +7,12 @@ import { ChatThreadView } from './components/chat/ChatThreadView'
 import { InspectorLightbox } from './components/InspectorLightbox'
 import { ProfileNameLightbox } from './components/ProfileNameLightbox'
 import { ThreadRenameLightbox } from './components/ThreadRenameLightbox'
+import { SourceInspector } from './components/SourceInspector'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
 import { newId } from './lib/id'
-import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl, searchResearch } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -38,6 +39,8 @@ export default function App() {
   const [setNameOpen, setSetNameOpen] = useState<boolean>(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
+  const [sourceInspectorMemoryId, setSourceInspectorMemoryId] = useState<string | null>(null)
+  const [researching, setResearching] = useState(false)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -262,6 +265,61 @@ export default function App() {
     void handleSend(a.seedPrompt)
   }
 
+  async function handleResearch(query: string) {
+    if (!selectedThread || !query.trim()) return
+
+    setResearching(true)
+    const now = Date.now()
+    const userMsg = { id: newId('m'), role: 'user' as const, text: `Research: ${query}`, createdAt: now }
+
+    const withUser: ChatThread = {
+      ...selectedThread,
+      updatedAt: now,
+      messages: [...selectedThread.messages, userMsg],
+    }
+
+    upsertThread(withUser)
+
+    try {
+      const packet = await searchResearch({
+        threadId: withUser.id,
+        query,
+        maxSources: 3,
+      })
+
+      const at = Date.now()
+      const asstMsg = {
+        id: newId('m'),
+        role: 'assistant' as const,
+        text: packet.summary,
+        createdAt: at,
+        crt: {
+          response_type: 'research',
+          gates_passed: true,
+          research_packet: packet,
+        },
+      }
+      upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+    } catch (e) {
+      const at = Date.now()
+      const errText = e instanceof Error ? e.message : String(e)
+      const asstMsg = {
+        id: newId('m'),
+        role: 'assistant' as const,
+        text: `Research failed: ${errText}`,
+        createdAt: at,
+        crt: {
+          response_type: 'speech',
+          gates_passed: false,
+          gate_reason: 'research_error',
+        },
+      }
+      upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+    } finally {
+      setResearching(false)
+    }
+  }
+
   return (
     <div className="h-screen w-full overflow-hidden">
       <div className="mx-auto h-full max-w-[1480px] px-4 py-6">
@@ -311,6 +369,9 @@ export default function App() {
                       onRequestSetName={() => setSetNameOpen(true)}
                       selectedMessageId={selectedMessageId}
                       onSelectAssistantMessage={(id) => setSelectedMessageId(id)}
+                      onResearch={handleResearch}
+                      researching={researching}
+                      onOpenSourceInspector={setSourceInspectorMemoryId}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
@@ -360,6 +421,15 @@ export default function App() {
           if (renameThreadId) renameThread(renameThreadId, title)
           setRenameOpen(false)
           setRenameThreadId(null)
+        }}
+      />
+
+      <SourceInspector
+        memoryId={sourceInspectorMemoryId}
+        threadId={selectedThread?.id ?? 'default'}
+        onClose={() => setSourceInspectorMemoryId(null)}
+        onPromote={() => {
+          // Optionally refresh chat or show success message
         }}
       />
     </div>

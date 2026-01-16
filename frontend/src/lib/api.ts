@@ -429,3 +429,42 @@ export async function enqueueJob(args: {
     job_id: args.jobId ?? null,
   })
 }
+
+// ========================================================================
+// M3: Research API
+// ========================================================================
+
+export async function searchResearch(args: {
+  threadId: string
+  query: string
+  maxSources?: number
+}): Promise<import('../types').EvidencePacket> {
+  return postJson<import('../types').EvidencePacket>('/api/research/search', {
+    thread_id: args.threadId,
+    query: args.query,
+    max_sources: args.maxSources ?? 3,
+  })
+}
+
+export async function getCitations(args: {
+  memoryId: string
+  threadId: string
+}): Promise<{ memory_id: string; citations: import('../types').Citation[] }> {
+  const qs = new URLSearchParams({ thread_id: args.threadId })
+  return fetchJson<{ memory_id: string; citations: import('../types').Citation[] }>(
+    `/api/research/citations/${encodeURIComponent(args.memoryId)}?${qs.toString()}`
+  )
+}
+
+export async function promoteResearch(args: {
+  threadId: string
+  memoryId: string
+  userConfirmed: boolean
+}): Promise<{ ok: boolean; memory_id: string; promoted: boolean }> {
+  return postJson<{ ok: boolean; memory_id: string; promoted: boolean }>('/api/research/promote', {
+    thread_id: args.threadId,
+    memory_id: args.memoryId,
+    user_confirmed: args.userConfirmed,
+  })
+}
+

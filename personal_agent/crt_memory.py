@@ -584,3 +584,138 @@ class CRTMemorySystem:
             'belief_count': belief_count,
             'speech_count': speech_count
         }
+    
+    # ========================================================================
+    # M3: Research Storage with Evidence Packets
+    # ========================================================================
+    
+    def store_research_result(
+        self,
+        query: str,
+        evidence_packet: 'EvidencePacket',  # type: ignore
+    ) -> str:
+        """
+        Store research result in notes lane with full provenance.
+        
+        Design:
+        - Always goes to notes lane (quarantined, never belief)
+        - Trust fixed at 0.4 for TOOL sources
+        - Provenance stored in context with citations
+        - Can only be promoted to belief lane by user
+        
+        Args:
+            query: Original research query
+            evidence_packet: EvidencePacket with summary and citations
+        
+        Returns:
+            memory_id of stored research result
+        """
+        # Build provenance context (must match policy.py requirements)
+        provenance_context = {
+            "type": "research_note",
+            "packet_id": evidence_packet.packet_id,
+            "query": query,
+            "provenance": {
+                "tool": "research_engine",
+                "retrieved_at": evidence_packet.created_at.isoformat(),
+                "source": f"local_search:{query}",
+                "citations": [c.to_dict() for c in evidence_packet.citations],
+                "citation_count": evidence_packet.citation_count(),
+                "source_urls": evidence_packet.get_source_urls(),
+            }
+        }
+        
+        # Store as EXTERNAL source (requires provenance)
+        memory = self.store_memory(
+            text=evidence_packet.summary,
+            confidence=0.6,  # Medium confidence for research
+            source=MemorySource.EXTERNAL,
+            context=provenance_context,
+            user_marked_important=False,
+            contradiction_signal=0.0
+        )
+        
+        # Override trust to match evidence packet (should be 0.4)
+        self._update_memory_trust(memory.memory_id, evidence_packet.trust)
+        
+        return memory.memory_id
+    
+    def _update_memory_trust(self, memory_id: str, new_trust: float) -> None:
+        """Update trust score for a memory (internal use)."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            UPDATE memories 
+            SET trust = ?
+            WHERE memory_id = ?
+        """, (new_trust, memory_id))
+        
+        conn.commit()
+        conn.close()
+    
+    def promote_to_belief(self, memory_id: str, user_confirmed: bool = True) -> bool:
+        """
+        Promote a research note to belief lane.
+        
+        Args:
+            memory_id: Memory to promote
+            user_confirmed: Must be True (user must explicitly confirm)
+        
+        Returns:
+            True if promoted successfully
+        """
+        if not user_confirmed:
+            return False
+        
+        # Increase trust to belief threshold (0.7+)
+        self._update_memory_trust(memory_id, 0.8)
+        
+        return True
+    
+    def get_research_citations(self, memory_id: str) -> List[Dict]:
+        """
+        Get citations for a research memory.
+        
+        Args:
+            memory_id: Memory ID
+        
+        Returns:
+            List of citation dicts
+        """
+        memory = self.retrieve_by_id(memory_id)
+        if not memory or not memory.context:
+            return []
+        
+        # Citations are stored in context.provenance.citations
+        provenance = memory.context.get("provenance", {})
+        return provenance.get("citations", [])
+    
+    def retrieve_by_id(self, memory_id: str) -> Optional[MemoryItem]:
+        """Retrieve a specific memory by ID."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json
+            FROM memories
+            WHERE memory_id = ?
+        """, (memory_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return MemoryItem(
+            memory_id=row[0],
+            vector=np.array(json.loads(row[1])),
+            text=row[2],
+            timestamp=row[3],
+            confidence=row[4],
+            trust=row[5],
+            source=MemorySource(row[6]),
+            sse_mode=SSEMode(row[7]),
+            context=json.loads(row[8]) if row[8] else None
+        )

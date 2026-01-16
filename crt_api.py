@@ -16,6 +16,8 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots
 from personal_agent.artifact_store import now_iso_utc
 from personal_agent.idle_scheduler import CRTIdleScheduler
+from personal_agent.evidence_packet import Citation, EvidencePacket
+from personal_agent.research_engine import ResearchEngine
 from personal_agent.jobs_db import (
     enqueue_job,
     get_job,
@@ -193,6 +195,47 @@ class ThreadPurgeMemoriesResponse(BaseModel):
     deleted_memories: int = 0
     deleted_trust_log: int = 0
     ok: bool = True
+
+
+# M3: Research API Models
+class CitationModel(BaseModel):
+    quote_text: str
+    source_url: str
+    char_offset: list[int]  # [start, end]
+    fetched_at: str  # ISO timestamp
+    confidence: float = 0.8
+
+
+class ResearchSearchRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    query: str = Field(min_length=1, description="Research query")
+    max_sources: int = Field(default=3, ge=1, le=10)
+
+
+class ResearchSearchResponse(BaseModel):
+    packet_id: str
+    query: str
+    summary: str
+    citations: list[CitationModel]
+    memory_id: str
+    citation_count: int
+
+
+class ResearchCitationsResponse(BaseModel):
+    memory_id: str
+    citations: list[CitationModel]
+
+
+class ResearchPromoteRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    memory_id: str
+    user_confirmed: bool = Field(default=False)
+
+
+class ResearchPromoteResponse(BaseModel):
+    ok: bool
+    memory_id: str
+    promoted: bool
 
 
 def create_app() -> FastAPI:
@@ -1334,6 +1377,118 @@ def create_app() -> FastAPI:
             gate_reason=(result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None),
             session_id=(result.get("session_id") if isinstance(result.get("session_id"), str) else None),
             metadata=metadata,
+        )
+
+    # ========================================================================
+    # M3: Research API Endpoints
+    # ========================================================================
+    
+    @app.post("/api/research/search", response_model=ResearchSearchResponse)
+    def research_search(req: ResearchSearchRequest) -> ResearchSearchResponse:
+        """
+        Execute research query and return evidence packet with citations.
+        
+        Design:
+        - Searches local workspace documents (Phase 1)
+        - Stores result in notes lane (quarantined, trust=0.4)
+        - Returns citations with full provenance
+        - Never auto-promotes to belief lane
+        """
+        tid = _sanitize_thread_id(req.thread_id)
+        engine = get_engine(tid)
+        
+        # Get workspace root for local document search
+        workspace_root = str(Path.cwd())
+        
+        # Execute research query
+        research_engine = ResearchEngine(workspace_root=workspace_root)
+        packet = research_engine.research(
+            query=req.query,
+            max_sources=req.max_sources,
+            search_local=True,
+            search_web=False,  # M3.5
+        )
+        
+        # Store in memory with provenance
+        memory_id = engine.memory.store_research_result(
+            query=req.query,
+            evidence_packet=packet,
+        )
+        
+        # Convert citations to response model
+        citations = [
+            CitationModel(
+                quote_text=c.quote_text,
+                source_url=c.source_url,
+                char_offset=[c.char_offset[0], c.char_offset[1]],
+                fetched_at=c.fetched_at.isoformat(),
+                confidence=c.confidence,
+            )
+            for c in packet.citations
+        ]
+        
+        return ResearchSearchResponse(
+            packet_id=packet.packet_id,
+            query=req.query,
+            summary=packet.summary,
+            citations=citations,
+            memory_id=memory_id,
+            citation_count=packet.citation_count(),
+        )
+    
+    @app.get("/api/research/citations/{memory_id}", response_model=ResearchCitationsResponse)
+    def get_citations(memory_id: str, thread_id: str = Query(default="default")) -> ResearchCitationsResponse:
+        """Get citations for a research memory."""
+        tid = _sanitize_thread_id(thread_id)
+        engine = get_engine(tid)
+        
+        # Get citations from memory context
+        citations_data = engine.memory.get_research_citations(memory_id)
+        
+        citations = [
+            CitationModel(
+                quote_text=c["quote_text"],
+                source_url=c["source_url"],
+                char_offset=c["char_offset"],
+                fetched_at=c["fetched_at"],
+                confidence=c.get("confidence", 0.8),
+            )
+            for c in citations_data
+        ]
+        
+        return ResearchCitationsResponse(
+            memory_id=memory_id,
+            citations=citations,
+        )
+    
+    @app.post("/api/research/promote", response_model=ResearchPromoteResponse)
+    def promote_research(req: ResearchPromoteRequest) -> ResearchPromoteResponse:
+        """
+        Promote research note to belief lane.
+        
+        Requires explicit user confirmation (user_confirmed=True).
+        Increases trust from 0.4 → 0.8 (belief threshold).
+        """
+        tid = _sanitize_thread_id(req.thread_id)
+        engine = get_engine(tid)
+        
+        if not req.user_confirmed:
+            return ResearchPromoteResponse(
+                ok=False,
+                memory_id=req.memory_id,
+                promoted=False,
+            )
+        
+        # Promote to belief lane
+        promoted = engine.memory.promote_to_belief(
+            memory_id=req.memory_id,
+            user_confirmed=True,
+        )
+        
+        return ResearchPromoteResponse(
+            ok=True,
+            memory_id=req.memory_id,
+            promoted=promoted,
         )
 
     @app.get("/api/thread/export", response_model=ThreadExportResponse)

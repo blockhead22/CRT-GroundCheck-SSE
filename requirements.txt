@@ -7,3 +7,5 @@ hdbscan
 websockets
 fastapi
 uvicorn[standard]
+beautifulsoup4
+requests

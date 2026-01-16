@@ -22,6 +22,24 @@ export type PromptMemory = {
   confidence?: number | null
 }
 
+// M3: Research & Evidence Packets
+export type Citation = {
+  quote_text: string
+  source_url: string
+  char_offset: number[]
+  fetched_at: string
+  confidence: number
+}
+
+export type EvidencePacket = {
+  packet_id: string
+  query: string
+  summary: string
+  citations: Citation[]
+  memory_id: string
+  citation_count: number
+}
+
 export type CtrMessageMeta = {
   response_type?: string
   gates_passed?: boolean
@@ -37,6 +55,7 @@ export type CtrMessageMeta = {
   prompt_memories?: PromptMemory[]
   learned_suggestions?: unknown[]
   heuristic_suggestions?: unknown[]
+  research_packet?: EvidencePacket | null
 }
 
 export type ChatMessage = {

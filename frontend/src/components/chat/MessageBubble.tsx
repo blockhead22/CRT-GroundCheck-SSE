@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import type { ChatMessage } from '../../types'
 import { formatTime } from '../../lib/time'
+import { CitationViewer } from '../CitationViewer'
 
 function pct01(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
@@ -8,7 +9,11 @@ function pct01(v: number | null | undefined): string {
   return `${Math.round(clamped * 100)}%`
 }
 
-export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
+export function MessageBubble(props: {
+  msg: ChatMessage
+  selected?: boolean
+  onOpenSourceInspector?: (memoryId: string) => void
+}) {
   const isUser = props.msg.role === 'user'
   const meta = props.msg.crt
   const isAssistant = !isUser
@@ -145,7 +150,16 @@ export function MessageBubble(props: { msg: ChatMessage; selected?: boolean }) {
 
         <div className="whitespace-pre-wrap leading-6">{props.msg.text}</div>
 
-        {prov ? (
+        {meta?.research_packet ? (
+          <CitationViewer
+            citations={meta.research_packet.citations}
+            onCitationClick={() => {
+              if (meta.research_packet?.memory_id && props.onOpenSourceInspector) {
+                props.onOpenSourceInspector(meta.research_packet.memory_id)
+              }
+            }}
+          />
+        ) : prov ? (
           <div className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-[11px] text-white/60">
             <div className="font-semibold tracking-wide text-white/50">{isExplanation ? 'CITATIONS' : 'PROVENANCE'}</div>
             <div className="mt-1 line-clamp-2 whitespace-pre-wrap text-white/70">
