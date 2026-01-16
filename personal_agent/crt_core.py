@@ -58,7 +58,7 @@ class CRTConfig:
     
     # Reconstruction gates
     theta_intent: float = 0.5     # Intent alignment gate (lowered from 0.7 to reduce gate failures)
-    theta_mem: float = 0.45       # Memory alignment gate (lowered to account for LLM response variance)
+    theta_mem: float = 0.38       # Memory alignment gate (lowered from 0.45 to allow detailed explanatory responses)
     
     # Reflection triggers
     theta_reflect: float = 0.5    # Volatility threshold for reflection

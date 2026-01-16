@@ -630,18 +630,25 @@ def create_app() -> FastAPI:
         return any(n in t for n in needles)
 
     def _is_contradiction_inventory_request(text: str) -> bool:
-        """Detect user requests asking about contradictions/conflicts in the conversation."""
+        """Detect user requests asking about contradictions/conflicts in the conversation.
+        
+        IMPORTANT: Only trigger on QUERIES, not assertions mentioning contradiction as a topic.
+        """
         t = (text or "").strip().lower()
         if not t:
             return False
 
+        # Require contradiction-related terms
         if not any(k in t for k in ("contradict", "inconsisten", "conflict")):
             return False
 
+        # Explicit interrogative patterns
         needles = (
             "what contradictions",
             "which contradictions",
             "any contradictions",
+            "are there contradictions",
+            "do you have contradictions",
             "contradictions have you",
             "contradictions did you",
             "contradictions detected",
@@ -654,8 +661,11 @@ def create_app() -> FastAPI:
         if any(n in t for n in needles):
             return True
 
-        # Fallback: short messages that mention contradictions + detect/found.
-        return ("contradict" in t) and ("detect" in t or "found" in t)
+        # REMOVED: Fallback check that matched "contradiction detection" assertions
+        # Old code: return ("contradict" in t) and ("detect" in t or "found" in t)
+        # This caused false positives on assertions like "I work on contradiction detection"
+        
+        return False
 
     def _suggest_contradiction_question(engine: CRTEnhancedRAG, entry: Any) -> str:
         """Deterministic, low-risk clarifying question for a ledger entry."""

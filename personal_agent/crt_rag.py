@@ -2716,21 +2716,29 @@ class CRTEnhancedRAG:
     # ========================================================================
 
     def _is_contradiction_status_request(self, text: str) -> bool:
-        """True if the user is asking to list/inspect open contradictions."""
+        """True if the user is asking to list/inspect open contradictions.
+        
+        IMPORTANT: Only trigger on QUERIES about contradictions, not assertions
+        that mention "contradiction" as a topic (e.g., "I work on contradiction detection").
+        """
         t = (text or "").strip().lower()
         if not t:
             return False
 
+        # Explicit ledger queries
         if "contradiction ledger" in t:
             return True
 
+        # Explicit status queries
         if "open contradictions" in t or "unresolved contradictions" in t:
             return True
 
-        if "contradictions" in t and any(k in t for k in ("list", "show", "any", "open", "unresolved", "do you have")):
+        # Plural "contradictions" + interrogative keywords
+        # Note: Use "contradictions" (plural) to avoid matching "contradiction detection", "contradiction tracking", etc.
+        if "contradictions" in t and any(k in t for k in ("list", "show", "any", "open", "unresolved", "do you have", "are there")):
             return True
 
-        # CLI-style short commands.
+        # CLI-style short commands (exact match only)
         if t in {"contradictions", "show contradictions", "list contradictions"}:
             return True
 
