@@ -269,7 +269,7 @@ class ContradictionLedger:
         Classify contradiction type based on fact topology.
         
         Returns:
-            REFINEMENT: New info is more specific (Seattle → Bellevue)
+            REFINEMENT: New info is more specific (Seattle → Bellevue, Seattle metro → Bellevue)
             REVISION: Explicit correction ("actually", "I meant", "not X")
             TEMPORAL: Progression/upgrade (Senior → Principal)
             CONFLICT: Mutually exclusive (Microsoft vs Amazon)
@@ -285,6 +285,39 @@ class ContradictionLedger:
         # Check for hierarchical refinement (one contains the other)
         if old_text in new_text or new_text in old_text:
             return ContradictionType.REFINEMENT
+        
+        # Check for geographic refinement (city → specific neighborhood/suburb)
+        # This prevents "Seattle metro → Bellevue" from being treated as a conflict
+        old_facts = extract_fact_slots(old_text) or {}
+        new_facts = extract_fact_slots(new_text) or {}
+        
+        # Check if location slot is being refined
+        if "location" in old_facts and "location" in new_facts:
+            old_loc = str(getattr(old_facts.get("location"), "value", "")).lower()
+            new_loc = str(getattr(new_facts.get("location"), "value", "")).lower()
+            
+            # Common refinement patterns
+            refinement_patterns = [
+                ("seattle metro", "bellevue"),
+                ("seattle", "bellevue"),
+                ("seattle area", "bellevue"),
+                ("bay area", "san francisco"),
+                ("bay area", "oakland"),
+                ("bay area", "palo alto"),
+                ("new york", "brooklyn"),
+                ("new york", "manhattan"),
+                ("los angeles", "santa monica"),
+                ("metro", ""),  # Generic metro → specific city is refinement
+            ]
+            
+            for broad, specific in refinement_patterns:
+                if broad in old_loc and specific in new_loc:
+                    return ContradictionType.REFINEMENT
+            
+            # If new location contains qualifier words suggesting refinement
+            refinement_qualifiers = ["specifically", "actually in", "more precisely", "in the"]
+            if any(q in new_lower for q in refinement_qualifiers):
+                return ContradictionType.REFINEMENT
         
         # Check for temporal progression keywords
         temporal_keywords = ["now", "currently", "promoted", "became", "upgraded"]

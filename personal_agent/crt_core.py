@@ -362,7 +362,10 @@ class CRTMath:
     def check_reconstruction_gates(
         self,
         intent_align: float,
-        memory_align: float
+        memory_align: float,
+        has_grounding_issues: bool = False,
+        has_contradiction_issues: bool = False,
+        has_extraction_issues: bool = False
     ) -> Tuple[bool, str]:
         """
         Check if reconstruction passes gates.
@@ -371,14 +374,33 @@ class CRTMath:
             A_intent ≥ θ_intent AND A_mem ≥ θ_mem
         
         Returns (passed, reason)
+        
+        Reason types for better diagnostics:
+        - grounding_fail: used a fact not in memory
+        - contradiction_fail: answered despite unresolved contradiction
+        - extraction_fail: couldn't parse slot/value
+        - narration_fail: explanation contradicts ledger (not yet implemented here, handled upstream)
+        - intent_fail: low confidence/intent alignment
+        - memory_fail: low memory alignment
+        - gates_passed: all checks passed
         """
+        # Priority order: specific fails before general alignment fails
+        if has_grounding_issues:
+            return False, "grounding_fail"
+        
+        if has_contradiction_issues:
+            return False, "contradiction_fail"
+        
+        if has_extraction_issues:
+            return False, "extraction_fail"
+        
         if intent_align < self.config.theta_intent:
-            return False, f"Intent misalignment: {intent_align:.3f} < {self.config.theta_intent}"
+            return False, f"intent_fail (align={intent_align:.3f} < {self.config.theta_intent})"
         
         if memory_align < self.config.theta_mem:
-            return False, f"Memory misalignment: {memory_align:.3f} < {self.config.theta_mem}"
+            return False, f"memory_fail (align={memory_align:.3f} < {self.config.theta_mem})"
         
-        return True, "Gates passed"
+        return True, "gates_passed"
     
     # ========================================================================
     # 6. Contradiction Detection

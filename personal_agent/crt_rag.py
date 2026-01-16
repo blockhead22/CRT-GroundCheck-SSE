@@ -1687,6 +1687,23 @@ class CRTEnhancedRAG:
             intent_align, memory_align
         )
         
+        # Calibrate confidence based on gate failures
+        # This ensures confidence aligns with gate pass/fail status
+        raw_confidence = reasoning_result['confidence']
+        if not gates_passed:
+            if "grounding_fail" in gate_reason or "contradiction_fail" in gate_reason:
+                # Hard fails: cap confidence very low
+                calibrated_confidence = min(raw_confidence, 0.49)
+            elif "narration_fail" in gate_reason or "extraction_fail" in gate_reason:
+                # Medium fails: cap confidence moderately
+                calibrated_confidence = min(raw_confidence, 0.69)
+            else:
+                # Soft fails (intent/memory alignment): degrade confidence
+                calibrated_confidence = raw_confidence * 0.7
+        else:
+            # Gates passed: use raw confidence
+            calibrated_confidence = raw_confidence
+        
         # 4. Belief vs Speech decision
         # Belief should be reserved for user-profile / memory-grounded answers.
         qlow = (user_query or "").strip().lower()
@@ -1703,15 +1720,15 @@ class CRTEnhancedRAG:
         if gates_passed and (is_personalish or used_fact_lines):
             response_type = "belief"
             source = MemorySource.SYSTEM
-            confidence = reasoning_result['confidence']
+            confidence = calibrated_confidence
         elif gates_passed:
             response_type = "speech"
             source = MemorySource.SYSTEM
-            confidence = reasoning_result['confidence']
+            confidence = calibrated_confidence
         else:
             response_type = "speech"
             source = MemorySource.FALLBACK
-            confidence = reasoning_result['confidence'] * 0.7  # Degrade confidence
+            confidence = calibrated_confidence  # Already degraded above
         
         # 5. Detect contradictions (only when USER made a new assertion)
         contradiction_detected = False
@@ -1847,7 +1864,7 @@ class CRTEnhancedRAG:
             'answer': final_answer,
             'thinking': reasoning_result.get('thinking'),
             'mode': reasoning_result['mode'],
-            'confidence': reasoning_result['confidence'],
+            'confidence': calibrated_confidence,  # Use calibrated confidence, not raw
             
             # CRT metadata
             'response_type': response_type,  # "belief" or "speech"
