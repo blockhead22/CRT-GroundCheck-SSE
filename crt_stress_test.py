@@ -383,6 +383,12 @@ def _choose_m2_clarification(prompt: str) -> str | None:
     # Name
     if "name" in p or "call you" in p:
         return "name = sarah"
+    
+    # Remote preference
+    if "remote" in p and "preference" in p:
+        return "remote_preference = false"
+    if "remote" in p and ("office" in p or "work" in p):
+        return "remote_preference = false"
 
     return None
 
@@ -454,6 +460,8 @@ def _maybe_run_m2_followup(result: dict, *, turn: int) -> dict | None:
     if not clarification:
         event["failure"] = "no_clarification_mapping"
         event["suggested_question"] = _safe_snip(suggested, limit=2000)
+        if bool(getattr(args, "m2_followup_verbose", False)):
+            print(f"[M2 FOLLOWUP] No clarification mapping for question: {_safe_snip(suggested, limit=200)}")
         return event
 
     event["ledger_id"] = ledger_id

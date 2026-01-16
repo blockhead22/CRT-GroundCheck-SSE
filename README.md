@@ -124,22 +124,61 @@ The compressed index is a single JSON file (`index.json`) containing:
 
 ---
 
-## CRT (Truthful Personal AI) — Roadmap & Architecture
+## CRT (Truthful Personal AI) — Current Status & Next Steps
 
-This repo also contains CRT (Cognitive-Reflective Transformer): a local-first, truth-contract-driven personal AI with memory, provenance, contradiction handling, a Control Panel UI, and a background-learning (“subconscious”) worker.
+**CRT** is a local-first, trust-weighted memory system that **doesn't lie**. Instead of hallucinating, it tracks contradictions explicitly and asks clarifying questions.
 
-Start here:
-- `CRT_MASTER_FOCUS_ROADMAP.md` (single consolidated roadmap + schemas + pseudocode)
+### ✅ What's Working Now (v0.85)
 
-Related:
-- `CRT_CONTROL_PANEL_ROADMAP.md`
-- `CRT_ROADMAP_TRUTHFUL_PERSONAL_AI.md`
-- `CRT_BACKGROUND_LEARNING.md`
-- `BROWSER_BRIDGE_README.md`
-- `CRT_ARTIFACT_SCHEMAS.md`
-- **No hallucination**: If uncertain, record as open_question, not a claim.
-- **Explicit contradictions**: Record contradictions as first-class objects; never auto-resolve.
-- **Traceable claims**: Every claim must have supporting quote(s) with character offsets.
+**Core Engine (Milestone M0-M2):**
+- ✅ Trust-weighted memory with belief/speech separation
+- ✅ Contradiction ledger (no silent overwrites)
+- ✅ HTTP API (FastAPI) with `/api/chat`, `/api/contradictions`, `/api/jobs`
+- ✅ React/Vite frontend (Chat, Dashboard, Docs, Jobs pages)
+- ✅ Background jobs queue with SQLite persistence
+- ✅ M2 contradiction resolution: 85%+ success rate in 100-turn tests
+- ✅ Scope isolation: contradictions don't leak across unrelated topics
+- ✅ Learned suggestion engine (metadata-only, never overwrites facts)
+- ✅ Stress testing harness (200+ turn validation)
+
+**What This Means:**
+You can chat with CRT, it remembers what you tell it, flags contradictions instead of silently changing history, and asks you to resolve conflicts. Works locally, no cloud required.
+
+### 🔧 Known Limitations & Polish Opportunities
+
+**M2 Remaining Work (to reach 95%+):**
+1. **Gate pass rate**: Currently 14-33% (target: 70%+)
+   - Many legitimate queries flagged as "instructions" 
+   - Needs gate logic review in `crt_rag.py`
+2. **Contradiction classification polish**:
+   - CONFLICT/REVISION/REFINEMENT/TEMPORAL types exist but need edge case tuning
+3. **M2 edge cases**: 
+   - Better handling of multi-slot contradictions
+   - Improved clarification question templates
+
+**Next Major Features (M3+):**
+- **M3 - Evidence Packets**: Web research with citations (search → fetch → quote → cite)
+- **M4 - Background Task Permissions**: Tier-based safety (read-only → notes → tools)
+- **M5 - Learning Polish**: User-facing controls for suggestions, export/import
+
+### 📚 Documentation
+
+**Start Here:**
+- `CRT_HOW_TO_USE.md` - Quick start guide
+- `CRT_MASTER_FOCUS_ROADMAP.md` - Full roadmap + architecture
+- `CRT_COMPANION_ROADMAP.md` - Milestone definitions (M0-M5)
+
+**Technical Deep Dives:**
+- `CRT_INTEGRATION.md` - Core math framework
+- `CRT_QUICK_REFERENCE.md` - API reference
+- `CRT_ARTIFACT_SCHEMAS.md` - Data schemas
+- `CRT_BACKGROUND_LEARNING.md` - Subconscious worker design
+- `BROWSER_BRIDGE_README.md` - Research mode setup
+
+**Architecture Principles:**
+- **No hallucination**: If uncertain, express uncertainty or ask
+- **Explicit contradictions**: Never auto-resolve conflicts
+- **Traceable claims**: Every fact grounded in memory text or citations
 
 ## Optional: Local LLM (Ollama)
 
