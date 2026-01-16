@@ -140,11 +140,15 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if not m:
         # Prefer TitleCase names for the generic "I'm X" pattern.
-        m = re.search(r"\bi\s*'?m\s+" + name_pat_title + r"\b", text)
+        # Match various apostrophe types (', ', ') and handle "I am" as well
+        m = re.search(r"\bi\s*['']?m\s+" + name_pat_title, text)
+        if not m:
+            # Also try "I am" pattern
+            m = re.search(r"\bi\s+am\s+" + name_pat_title, text, flags=re.IGNORECASE)
         if not m:
             # Allow a single-token lowercase name, but only when it appears as a direct
             # name declaration (no extra trailing content).
-            m = re.search(r"^\s*i\s*'?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
+            m = re.search(r"^\s*i\s*['']?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
     if m:
         name = m.group(1).strip()
         tokens = [t for t in re.split(r"\s+", name) if t]
