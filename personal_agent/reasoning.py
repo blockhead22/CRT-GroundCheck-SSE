@@ -662,9 +662,17 @@ YOUR ARCHITECTURE (How you actually work):
 - Coherence Over Time: You prioritize consistency across conversations over single-query accuracy
 - Evidence Packets: Your reasoning is backed by provenance chains linking claims to source memories
 
+CRITICAL CONSTRAINTS - MUST FOLLOW:
+1. ONLY reference facts that appear in YOUR MEMORY below
+2. NEVER invent attributes, locations, jobs, or any details not explicitly in memory
+3. If asked to summarize/list facts: ONLY use facts from YOUR MEMORY section
+4. If a fact is NOT in YOUR MEMORY, say you don't have that information - do NOT guess
+5. Do NOT add "typical" or "likely" attributes based on other facts (e.g., don't assume location from employer)
+6. If memory shows conflicting values, acknowledge the conflict - don't pick one arbitrarily
+
 Your core principles:
 - You ARE the assistant having a conversation, not a commentator
-- Use your MEMORY CONTEXT below (with trust scores) to ground your responses
+- Use ONLY your MEMORY CONTEXT below (with trust scores) to ground your responses
 - Be helpful, direct, and conversational
 - When users introduce themselves or share info, acknowledge and remember it
 - When explaining "how you work", describe your CRT architecture above, NOT generic transformer/AI concepts
@@ -673,14 +681,16 @@ Your core principles:
         
         # Add memory context if available
         if docs:
-            prompt += "=== YOUR MEMORY ===\n"
+            prompt += "=== YOUR MEMORY (ONLY source of user facts - do NOT add anything not listed here) ===\n"
             user_memories = [d for d in docs if d.get('text', '')]
             for i, mem in enumerate(user_memories[:5], 1):
                 prompt += f"{i}. {mem['text']}\n"
             prompt += "\n"
+        else:
+            prompt += "=== YOUR MEMORY ===\n(No stored facts about this user yet)\n\n"
         
         prompt += f"User: {query}\n\n"
-        prompt += "Respond concisely and naturally. Use your memory context. Avoid repeating phrases like 'Nice to remember' - just be natural:"
+        prompt += "Respond concisely and naturally using ONLY facts from YOUR MEMORY above. Do NOT invent or assume any attributes not explicitly listed:"
         
         return prompt
     

@@ -43,6 +43,32 @@ export type ChatSendResponse = {
     heuristic_suggestions?: unknown[]
     retrieved_memories?: RetrievedMemory[]
     prompt_memories?: PromptMemory[]
+    agent_activated?: boolean | null
+    agent_answer?: string | null
+    agent_trace?: {
+      query: string
+      steps: Array<{
+        step_num: number
+        thought: string | null
+        action: {
+          tool: string
+          args: Record<string, unknown>
+          reasoning?: string | null
+        } | null
+        observation: {
+          tool: string
+          success: boolean
+          result: string | null
+          error: string | null
+        } | null
+        timestamp: string
+      }>
+      final_answer: string | null
+      success: boolean
+      error: string | null
+      started_at: string
+      completed_at: string | null
+    } | null
   }
 }
 

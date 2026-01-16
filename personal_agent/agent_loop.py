@@ -140,6 +140,7 @@ class ToolRegistry:
         self.memory = memory_engine
         self.research = research_engine
         self.workspace = workspace_root or Path.cwd()
+        self.llm_client: Optional[Any] = None  # Set by AgentLoop
         self._tools: dict[AgentAction, Callable] = self._register_tools()
 
     def _register_tools(self) -> dict[AgentAction, Callable]:
@@ -375,6 +376,9 @@ class AgentLoop:
         self.llm = llm_client
         self.reasoning = reasoning_engine
         self.trace: Optional[AgentTrace] = None
+        
+        # Pass LLM to tools for finish action
+        self.tools.llm_client = llm_client
 
     def run(self, query: str, context: Optional[dict] = None) -> AgentTrace:
         """
@@ -396,7 +400,18 @@ class AgentLoop:
 
                 # Check if agent wants to finish
                 if step.action and step.action.tool == AgentAction.FINISH:
-                    self.trace.final_answer = step.action.args.get("answer", "Task completed")
+                    # If finish with placeholder answer and we have LLM, generate real answer
+                    placeholder_answer = step.action.args.get("answer", "")
+                    if "placeholder" in placeholder_answer.lower() or "built-in knowledge" in placeholder_answer.lower():
+                        if self.llm:
+                            # Use LLM to answer the original query
+                            real_answer = self._generate_llm_answer(self.trace.query)
+                            self.trace.final_answer = real_answer
+                        else:
+                            self.trace.final_answer = "I don't have access to web search or enough local information to answer this general knowledge question."
+                    else:
+                        self.trace.final_answer = placeholder_answer
+                    
                     self.trace.success = True
                     break
 
@@ -505,24 +520,37 @@ class AgentLoop:
                 return f"Last action failed: {last_step.observation.error}. Need alternative approach."
         else:
             return "Evaluating previous step"
+    
+    def _generate_llm_answer(self, query: str) -> str:
+        """Generate answer using LLM's general knowledge."""
+        if not self.llm:
+            return "LLM not available for general knowledge queries."
+        
+        prompt = f"""Answer this question concisely using your general knowledge:
+
+{query}
+
+Provide a clear, accurate answer in 2-4 sentences."""
+
+        try:
+            response = self.llm.generate(model="mistral:latest", prompt=prompt)
+            answer = response.get("response", "").strip()
+            return answer if answer else "Could not generate answer."
+        except Exception as e:
+            return f"Error generating answer: {e}"
 
 
 # Convenience functions
-def reasoning_engine = None
-    if get_ollama_client:
-        try:
-            llm_client = get_ollama_client()
-            # Import reasoning engine lazily
-            from personal_agent.agent_reasoning import AgentReasoning
-            reasoning_engine = AgentReasoning(llm_client=llm_client)
-        except Exception as e:
-            print(f"Warning: Could not initialize reasoning engine: {e}")
-
-    return AgentLoop(
-        tool_registry=tools,
-        max_steps=max_steps,
-        llm_client=llm_client,
-        reasoning_engine=reasoning_engine
+def create_agent(
+    memory_engine: Optional[CRTMemoryEngine] = None,
+    research_engine: Optional[ResearchEngine] = None,
+    workspace_root: Optional[Path] = None,
+    max_steps: int = 10,
+) -> AgentLoop:
+    """
+    Create and configure an agent instance.
+    
+    Args:
         memory_engine: CRT memory engine
         research_engine: Research engine for local docs
         workspace_root: Root directory for file operations
@@ -538,16 +566,21 @@ def reasoning_engine = None
     )
 
     llm_client = None
+    reasoning_engine = None
     if get_ollama_client:
         try:
             llm_client = get_ollama_client()
-        except Exception:
-            pass
+            # Import reasoning engine lazily
+            from personal_agent.agent_reasoning import AgentReasoning
+            reasoning_engine = AgentReasoning(llm_client=llm_client)
+        except Exception as e:
+            print(f"Warning: Could not initialize reasoning engine: {e}")
 
     return AgentLoop(
         tool_registry=tools,
         max_steps=max_steps,
         llm_client=llm_client,
+        reasoning_engine=reasoning_engine,
     )
 
 

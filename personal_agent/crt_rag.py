@@ -1308,6 +1308,109 @@ class CRTEnhancedRAG:
             # Summary-style instructions: answer from canonical resolved USER facts.
             if user_input_kind == "instruction":
                 lower = (user_query or "").strip().lower()
+                
+                # Handler for "list N facts" queries - FACT-CONSTRAINED, no LLM hallucination
+                if re.search(r"\blist\s+\d+\s+facts?\b", lower) or "facts you're confident" in lower or "facts you know" in lower:
+                    fact_list = self._list_confident_facts_from_slots()
+                    if fact_list is not None:
+                        if not retrieved:
+                            retrieved = self.retrieve(user_query, k=5)
+                        prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=0)
+
+                        candidate_output = fact_list
+                        candidate_vector = encode_vector(candidate_output)
+
+                        intent_align = 0.95
+                        memory_align = self.crt_math.memory_alignment(
+                            output_vector=candidate_vector,
+                            retrieved_memories=[
+                                {'vector': mem.vector} for mem, _ in retrieved
+                            ],
+                            retrieval_scores=[score for _, score in retrieved]
+                        )
+
+                        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
+                            intent_align, memory_align
+                        )
+
+                        response_type = "belief" if gates_passed else "speech"
+                        source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
+                        confidence = 0.95 if gates_passed else 0.95 * 0.7
+
+                        best_prior = retrieved[0][0] if retrieved else None
+
+                        self.memory.store_memory(
+                            text=candidate_output,
+                            confidence=confidence,
+                            source=source,
+                            context={'query': user_query, 'type': response_type, 'kind': 'fact_list'},
+                            user_marked_important=False,
+                        )
+
+                        learned = self._get_learned_suggestions_for_slots(
+                            [
+                                "name",
+                                "employer",
+                                "title",
+                                "location",
+                                "programming_years",
+                                "first_language",
+                                "masters_school",
+                                "team_size",
+                                "remote_preference",
+                            ]
+                        )
+
+                        return {
+                            'answer': candidate_output,
+                            'thinking': None,
+                            'mode': 'quick',
+                            'confidence': confidence,
+                            'response_type': response_type,
+                            'gates_passed': gates_passed,
+                            'gate_reason': gate_reason,
+                            'intent_alignment': intent_align,
+                            'memory_alignment': memory_align,
+                            'contradiction_detected': False,
+                            'contradiction_entry': None,
+                            'retrieved_memories': [
+                                {
+                                    'text': mem.text,
+                                    'trust': mem.trust,
+                                    'confidence': mem.confidence,
+                                    'source': mem.source.value,
+                                    'sse_mode': mem.sse_mode.value,
+                                    'score': score,
+                                }
+                                for mem, score in retrieved
+                            ],
+                            'prompt_memories': [
+                                {
+                                    'text': d.get('text'),
+                                    'trust': d.get('trust'),
+                                    'confidence': d.get('confidence'),
+                                    'source': d.get('source'),
+                                }
+                                for d in prompt_docs
+                            ],
+                            'learned_suggestions': learned,
+                            'heuristic_suggestions': self._get_heuristic_suggestions_for_slots(
+                                [
+                                    "name",
+                                    "employer",
+                                    "title",
+                                    "location",
+                                    "programming_years",
+                                    "first_language",
+                                    "masters_school",
+                                    "team_size",
+                                    "remote_preference",
+                                ]
+                            ),
+                            'best_prior_trust': best_prior.trust if best_prior else None,
+                            'session_id': self.session_id,
+                        }
+                
                 if "summar" in lower or "one-line" in lower or "one line" in lower or "summary" in lower:
                     summary = self._one_line_summary_from_facts()
                     if summary is not None:
@@ -2281,6 +2384,55 @@ class CRTEnhancedRAG:
 
         # Keep it to a single line and reasonably short.
         return "; ".join(parts[:8])
+
+    def _list_confident_facts_from_slots(self) -> Optional[str]:
+        """Build a numbered list of confident facts from USER memories.
+        
+        FACT-CONSTRAINED: Only returns facts that exist in resolved slot values.
+        NEVER invents attributes not in the ledger.
+        """
+        core_slots = [
+            "name",
+            "employer",
+            "title",
+            "location",
+            "programming_years",
+            "first_language",
+            "masters_school",
+            "undergrad_school",
+            "team_size",
+            "remote_preference",
+            "favorite_color",
+            "hobby",
+        ]
+        resolved = self._answer_from_fact_slots(core_slots)
+        if not resolved:
+            return "I don't have any confirmed facts about you stored yet."
+
+        # Parse the resolved facts into a clean numbered list
+        facts: List[str] = []
+        for line in str(resolved).splitlines():
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            k, v = line.split(":", 1)
+            k = k.strip().replace("_", " ").title()
+            v = v.strip()
+            if k and v:
+                facts.append(f"{k}: {v}")
+
+        if not facts:
+            return "I don't have any confirmed facts about you stored yet."
+
+        # Format as a natural response with numbered list
+        if len(facts) == 1:
+            return f"I have one confirmed fact: {facts[0]}"
+        elif len(facts) == 2:
+            return f"I have two confirmed facts:\n1. {facts[0]}\n2. {facts[1]}"
+        else:
+            # Limit to top facts by importance (name, employer, location, programming_years are prioritized)
+            numbered = "\n".join([f"{i+1}. {f}" for i, f in enumerate(facts[:10])])
+            return f"Here are the facts I'm confident about:\n{numbered}"
 
     def _classify_user_input(self, text: str) -> str:
         """Classify a user input as question vs assertion-ish.

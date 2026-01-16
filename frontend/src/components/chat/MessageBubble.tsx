@@ -13,6 +13,7 @@ export function MessageBubble(props: {
   msg: ChatMessage
   selected?: boolean
   onOpenSourceInspector?: (memoryId: string) => void
+  onOpenAgentPanel?: (messageId: string) => void
 }) {
   const isUser = props.msg.role === 'user'
   const meta = props.msg.crt
@@ -144,6 +145,19 @@ export function MessageBubble(props: {
               >
                 {grounding.level === 'ok' ? 'GROUNDING: OK' : grounding.level === 'bad' ? 'GROUNDING: BAD' : 'GROUNDING: WEAK'}
               </span>
+            ) : null}
+
+            {meta?.agent_activated ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  props.onOpenAgentPanel?.(props.msg.id)
+                }}
+                className="inline-flex items-center rounded-full bg-blue-500/15 px-2 py-0.5 text-[11px] font-medium text-blue-200 hover:bg-blue-500/25 transition-colors"
+                title="Agent was activated - click to view execution trace"
+              >
+                🤖 AGENT TRACE
+              </button>
             ) : null}
           </div>
         ) : null}

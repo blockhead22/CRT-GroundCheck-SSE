@@ -1390,7 +1390,7 @@ def create_app() -> FastAPI:
             # Analyze response for triggers
             triggers_engine = ProactiveTriggers(
                 confidence_threshold=0.5,
-                auto_research_threshold=0.3,
+                auto_research_threshold=0.4,  # Auto-activate below 0.4 (was 0.3)
                 contradiction_auto_resolve=False,  # Don't auto-resolve contradictions
             )
             detected_triggers = triggers_engine.analyze_response(result)
@@ -1439,7 +1439,6 @@ def create_app() -> FastAPI:
             "agent_activated": agent_activated,
             "agent_answer": agent_answer,
             "agent_trace": agent_trace_data,
-        }
             "retrieved_memories": [
                 {
                     "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),

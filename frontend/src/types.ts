@@ -40,6 +40,38 @@ export type EvidencePacket = {
   citation_count: number
 }
 
+// Agent System Types
+export type AgentAction = {
+  tool: string
+  args: Record<string, unknown>
+  reasoning?: string | null
+}
+
+export type AgentObservation = {
+  tool: string
+  success: boolean
+  result: string | null
+  error: string | null
+}
+
+export type AgentStep = {
+  step_num: number
+  thought: string | null
+  action: AgentAction | null
+  observation: AgentObservation | null
+  timestamp: string
+}
+
+export type AgentTrace = {
+  query: string
+  steps: AgentStep[]
+  final_answer: string | null
+  success: boolean
+  error: string | null
+  started_at: string
+  completed_at: string | null
+}
+
 export type CtrMessageMeta = {
   response_type?: string
   gates_passed?: boolean
@@ -56,6 +88,9 @@ export type CtrMessageMeta = {
   learned_suggestions?: unknown[]
   heuristic_suggestions?: unknown[]
   research_packet?: EvidencePacket | null
+  agent_activated?: boolean | null
+  agent_answer?: string | null
+  agent_trace?: AgentTrace | null
 }
 
 export type ChatMessage = {

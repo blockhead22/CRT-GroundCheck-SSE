@@ -8,6 +8,7 @@ import { InspectorLightbox } from './components/InspectorLightbox'
 import { ProfileNameLightbox } from './components/ProfileNameLightbox'
 import { ThreadRenameLightbox } from './components/ThreadRenameLightbox'
 import { SourceInspector } from './components/SourceInspector'
+import { AgentPanel } from './components/AgentPanel'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
@@ -41,6 +42,7 @@ export default function App() {
   const [renameThreadId, setRenameThreadId] = useState<string | null>(null)
   const [sourceInspectorMemoryId, setSourceInspectorMemoryId] = useState<string | null>(null)
   const [researching, setResearching] = useState(false)
+  const [agentPanelMessageId, setAgentPanelMessageId] = useState<string | null>(null)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -238,6 +240,9 @@ export default function App() {
           prompt_memories: res.metadata?.prompt_memories ?? [],
           learned_suggestions: res.metadata?.learned_suggestions ?? [],
           heuristic_suggestions: res.metadata?.heuristic_suggestions ?? [],
+          agent_activated: res.metadata?.agent_activated ?? null,
+          agent_answer: res.metadata?.agent_answer ?? null,
+          agent_trace: res.metadata?.agent_trace ?? null,
         },
       }
       upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
@@ -372,6 +377,7 @@ export default function App() {
                       onResearch={handleResearch}
                       researching={researching}
                       onOpenSourceInspector={setSourceInspectorMemoryId}
+                      onOpenAgentPanel={setAgentPanelMessageId}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
@@ -431,6 +437,20 @@ export default function App() {
         onPromote={() => {
           // Optionally refresh chat or show success message
         }}
+      />
+
+      <AgentPanel
+        trace={(() => {
+          if (!agentPanelMessageId) return null
+          const msg = selectedThread?.messages.find(m => m.id === agentPanelMessageId)
+          return msg?.crt?.agent_trace ?? null
+        })()}
+        agentAnswer={(() => {
+          if (!agentPanelMessageId) return null
+          const msg = selectedThread?.messages.find(m => m.id === agentPanelMessageId)
+          return msg?.crt?.agent_answer ?? null
+        })()}
+        onClose={() => setAgentPanelMessageId(null)}
       />
     </div>
   )

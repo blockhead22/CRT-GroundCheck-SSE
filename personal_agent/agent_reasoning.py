@@ -31,26 +31,26 @@ PREVIOUS STEPS:
 {previous_steps}
 
 AVAILABLE TOOLS:
-- search_memory: Search CRT memory for existing knowledge
-- search_research: Search local documents for information
+- search_memory: Search CRT memory for personal knowledge (what the user told you)
+- search_research: Search local CRT documentation files only (NOT for general knowledge)
+- finish: Answer using your general knowledge (for questions outside personal/CRT scope)
 - store_memory: Store new information in memory
 - check_contradiction: Check if statement contradicts beliefs
 - calculate: Evaluate math expressions
-- read_file: Read file contents
-- list_files: List files in directory
-- synthesize: Combine multiple pieces of information
-- reflect: Analyze action outcomes
-- plan: Generate step-by-step plan
-- finish: Complete task with final answer
+
+IMPORTANT DECISION:
+- If the question is about PERSONAL info (user's facts, preferences) → search_memory
+- If the question is about CRT SYSTEM (how CRT works) → search_research  
+- If the question is GENERAL KNOWLEDGE (history, science, etc.) → finish immediately with your knowledge
+- Only search local files if the query is specifically about CRT or the user's personal data
 
 CURRENT SITUATION:
 {current_situation}
 
 What should you do next? Think step-by-step:
-1. What have I learned so far?
-2. What information is still missing?
-3. Which tool would best help me make progress?
-4. If I have enough information, should I finish?
+1. Is this a personal/CRT question or general knowledge?
+2. If general knowledge, I should FINISH now with my built-in knowledge
+3. If personal/CRT, which tool helps me find that specific information?
 
 THOUGHT:"""
 
@@ -353,34 +353,18 @@ class AgentReasoning:
     def _default_thought(self, step_num: int) -> str:
         """Default thought when LLM unavailable."""
         if step_num == 1:
-            return "I should check memory for existing knowledge"
-        elif step_num == 2:
-            return "Memory search complete, should search documents"
-        elif step_num == 3:
-            return "I have enough information to formulate an answer"
+            return "This appears to be a general knowledge question - I should answer with my built-in knowledge"
         else:
             return "Continuing task execution"
 
     def _default_action(self, thought: str) -> ToolCall:
-        """Default action when LLM unavailable."""
-        if "memory" in thought.lower():
-            return ToolCall(
-                tool=AgentAction.SEARCH_MEMORY,
-                args={"query": "placeholder", "top_k": 5},
-                reasoning="Default: searching memory",
-            )
-        elif "document" in thought.lower() or "research" in thought.lower():
-            return ToolCall(
-                tool=AgentAction.SEARCH_RESEARCH,
-                args={"query": "placeholder", "top_k": 3},
-                reasoning="Default: searching documents",
-            )
-        else:
-            return ToolCall(
-                tool=AgentAction.FINISH,
-                args={"answer": "Task completed with default actions"},
-                reasoning="Default: finishing task",
-            )
+        """Default action when LLM unavailable - prefer finish with LLM knowledge."""
+        # For general knowledge, just finish immediately
+        return ToolCall(
+            tool=AgentAction.FINISH,
+            args={"answer": "I'll answer this using my general knowledge since it's not about personal data or CRT system specifics."},
+            reasoning="General knowledge query - using built-in knowledge",
+        )
 
     def _default_plan(self, goal: str) -> dict:
         """Default plan when LLM unavailable."""
