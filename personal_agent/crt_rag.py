@@ -802,6 +802,15 @@ class CRTEnhancedRAG:
                     else:
                         answer = "Thanks — noted."
 
+                # If the input also contains a question (e.g., "Hi, I'm Nick. Who are you?"),
+                # answer both the name acknowledgment AND the question.
+                if self._is_assistant_profile_question(user_query):
+                    assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
+                    assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
+                    if assistant_profile_enabled:
+                        profile_answer = self._build_assistant_profile_answer(user_query)
+                        answer = f"{answer} {profile_answer}"
+
                 # If the user previously stated a different name, record a contradiction entry.
                 contradiction_detected = False
                 contradiction_entry = None
@@ -2455,10 +2464,18 @@ class CRTEnhancedRAG:
         """Classify a user input as question vs assertion-ish.
 
         This is intentionally lightweight: we only need to avoid treating questions as factual claims.
+        
+        CRITICAL: Name declarations are ALWAYS treated as assertions, even if followed by a question.
+        Example: "Hi, I'm Nick Block. Who are you?" → "assertion" (contains name declaration)
         """
         t = (text or "").strip()
         if not t:
             return "other"
+
+        # PRIORITY CHECK: Name declarations trump question classification.
+        # Common pattern: "Hi, I'm <name>. Who are you?" should be stored as a fact.
+        if self._is_user_name_declaration(t):
+            return "assertion"
 
         lower = t.lower()
         if t.endswith("?"):
