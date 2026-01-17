@@ -644,14 +644,14 @@ def create_app() -> FastAPI:
             stats: LearningStats = coordinator.get_stats()
             
             return LearningStatsResponse(
-                total_events=stats.total_events,
+                total_events=stats.total_gate_events,
                 total_corrections=stats.total_corrections,
-                model_loaded=stats.model_loaded,
-                model_version=stats.model_version,
-                model_accuracy=stats.model_accuracy,
-                pending_training=stats.pending_training,
-                recent_gate_pass_rate=stats.recent_gate_pass_rate,
-                recent_events_24h=stats.recent_events_24h,
+                model_loaded=(stats.current_model_version != "none"),
+                model_version=int(stats.current_model_version) if stats.current_model_version.isdigit() else None,
+                model_accuracy=stats.current_model_accuracy,
+                pending_training=(stats.pending_corrections >= stats.next_training_threshold),
+                recent_gate_pass_rate=None,  # TODO: Calculate from recent events
+                recent_events_24h=0,  # TODO: Calculate from timestamp
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to get learning stats: {e}")

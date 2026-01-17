@@ -58,6 +58,7 @@ class GateEvent:
 
 
 @dataclass
+@dataclass
 class LearningStats:
     """Current learning system statistics."""
     total_gate_events: int
@@ -150,11 +151,13 @@ class ActiveLearningCoordinator:
                 user_override INTEGER,
                 correction_timestamp REAL,
                 thread_id TEXT,
-                session_id TEXT,
-                INDEX idx_timestamp (timestamp),
-                INDEX idx_correction (user_override, correction_timestamp)
+                session_id TEXT
             )
         """)
+        
+        # Create indexes separately
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_timestamp ON gate_events(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_correction ON gate_events(user_override, correction_timestamp)")
         
         # Training runs table
         cursor.execute("""
