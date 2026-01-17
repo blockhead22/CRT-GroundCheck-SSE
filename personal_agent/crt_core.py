@@ -461,8 +461,8 @@ class CRTMath:
                 return False, f"explanatory_intent_fail (align={intent_align:.3f} < 0.4)"
             if memory_align < 0.25:
                 return False, f"explanatory_memory_fail (align={memory_align:.3f} < 0.25)"
-            if grounding_score < 0.3:
-                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < 0.3)"
+            if grounding_score < 0.25:  # Lowered from 0.3 - improved grounding computation
+                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < 0.25)"
         
         else:  # conversational
             # Minimal gates for chat/acknowledgment

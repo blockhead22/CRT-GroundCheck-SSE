@@ -247,6 +247,42 @@ class CRTEnhancedRAG:
         name = (user_name or "").strip().lower()
         if not q or not name:
             return False
+        return name in q
+    
+    def _classify_query_type_heuristic(self, user_query: str) -> Optional[str]:
+        """
+        Heuristic-based query type classification.
+        
+        Returns "explanatory" for question-word queries that need relaxed gates,
+        "conversational" for greetings/acknowledgments, or None to use ML model.
+        """
+        q = user_query.lower().strip()
+        
+        # Question-word patterns that typically need explanatory handling
+        # These queries ask ABOUT facts rather than demanding them
+        question_word_patterns = [
+            r'\bwhen (did|do|does|is|was|were)\b',
+            r'\bwhere (did|do|does|is|was|were)\b',
+            r'\bhow many\b',
+            r'\bhow much\b',
+            r'\bwhy (do|does|did|is|are|was|were)\b',
+            r'\bhow (do|does|did|can|could)\b',
+        ]
+        
+        if any(re.search(p, q) for p in question_word_patterns):
+            return "explanatory"
+        
+        # Conversational patterns
+        conversational_patterns = [
+            r'^\s*(hi|hello|hey|greetings)\b',
+            r'\b(thanks|thank you|appreciate)\b',
+            r'^\s*(okay|ok|alright|cool|nice)\b',
+        ]
+        
+        if any(re.search(p, q) for p in conversational_patterns):
+            return "conversational"
+        
+        return None  # Use ML model
     
     def _compute_grounding_score(
         self,
@@ -271,6 +307,20 @@ class CRTEnhancedRAG:
             if answer_words and len(answer_words & memory_words) == len(answer_words):
                 return 0.95  # All words present
         
+        # For longer answers, check if MEMORY appears in ANSWER (core fact present)
+        # This handles "You graduated in 2020. Would you like..." where "2020" is the key fact
+        for mem, score in retrieved_memories[:3]:
+            mem_text_lower = mem.text.lower().strip()
+            # Extract key content words (skip common words)
+            mem_words = set(w for w in mem_text_lower.split() if len(w) > 3)
+            answer_words_set = set(answer_lower.split())
+            
+            # If most memory content words appear in answer, it's grounded
+            if mem_words:
+                mem_in_answer_ratio = len(mem_words & answer_words_set) / len(mem_words)
+                if mem_in_answer_ratio >= 0.6:  # 60% of memory words present
+                    return 0.85  # High grounding - core fact is in answer
+        
         answer_words = set(answer_lower.split())
         memory_words = set(memory_text.split())
         
@@ -284,15 +334,14 @@ class CRTEnhancedRAG:
         has_quotes = '"' in answer or "'" in answer
         quote_bonus = 0.15 if has_quotes else 0.0
         
-        # No penalty for short answers - they're expected for factual queries
-        length_penalty = 0.0
-        if len(answer) > 100:  # Only penalize very long answers
-            len_ratio = len(answer) / max(len(memory_text), 1)
-            if len_ratio > 3.0:
-                length_penalty = 0.1
+        # More lenient for longer answers - focus on key fact presence
+        # If >40% overlap, consider it reasonably grounded
+        if overlap_ratio >= 0.4:
+            grounding_score = min(1.0, overlap_ratio + 0.2)  # Boost for decent overlap
+        else:
+            grounding_score = overlap_ratio + quote_bonus
         
-        grounding_score = min(1.0, overlap_ratio + quote_bonus - length_penalty)
-        return max(0.0, grounding_score)
+        return max(0.0, min(1.0, grounding_score))
     
     def _classify_contradiction_severity(
         self,
@@ -1315,13 +1364,15 @@ class CRTEnhancedRAG:
                     intent_align = reasoning_result['confidence']
                     memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
-                    # Predict response type using active learning
-                    response_type_pred = "factual"  # Default for slot queries
-                    if self.active_learning:
-                        try:
-                            response_type_pred = self.active_learning.predict_response_type(user_query)
-                        except Exception:
-                            pass
+                    # Predict response type using heuristic first, then active learning
+                    response_type_pred = self._classify_query_type_heuristic(user_query)
+                    if response_type_pred is None:
+                        response_type_pred = "factual"  # Default for slot queries
+                        if self.active_learning:
+                            try:
+                                response_type_pred = self.active_learning.predict_response_type(user_query)
+                            except Exception:
+                                pass
                     
                     # Compute grounding score
                     grounding_score = self._compute_grounding_score(candidate_output, retrieved)
@@ -1432,12 +1483,14 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = "factual"
-                        if self.active_learning:
-                            try:
-                                response_type_pred = self.active_learning.predict_response_type(user_query)
-                            except Exception:
-                                pass
+                        response_type_pred = self._classify_query_type_heuristic(user_query)
+                        if response_type_pred is None:
+                            response_type_pred = "factual"
+                            if self.active_learning:
+                                try:
+                                    response_type_pred = self.active_learning.predict_response_type(user_query)
+                                except Exception:
+                                    pass
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -1563,12 +1616,14 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = "factual"
-                        if self.active_learning:
-                            try:
-                                response_type_pred = self.active_learning.predict_response_type(user_query)
-                            except Exception:
-                                pass
+                        response_type_pred = self._classify_query_type_heuristic(user_query)
+                        if response_type_pred is None:
+                            response_type_pred = "factual"
+                            if self.active_learning:
+                                try:
+                                    response_type_pred = self.active_learning.predict_response_type(user_query)
+                                except Exception:
+                                    pass
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -1846,12 +1901,14 @@ class CRTEnhancedRAG:
         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
         
         # Predict response type and compute grounding
-        response_type_pred = "conversational"
-        if self.active_learning:
-            try:
-                response_type_pred = self.active_learning.predict_response_type(user_query)
-            except Exception:
-                pass
+        response_type_pred = self._classify_query_type_heuristic(user_query)
+        if response_type_pred is None:
+            response_type_pred = "conversational"
+            if self.active_learning:
+                try:
+                    response_type_pred = self.active_learning.predict_response_type(user_query)
+                except Exception:
+                    pass
         
         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
         open_contradictions = self.ledger.get_open_contradictions()

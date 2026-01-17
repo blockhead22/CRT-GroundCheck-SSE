@@ -1,0 +1,195 @@
+{
+  "timestamp": 1768641911.5995088,
+  "overall_pass_rate": 0.0,
+  "total_passed": 0,
+  "total_queries": 19,
+  "phase_results": [
+    {
+      "phase_name": "phase1_basic_facts",
+      "results": [
+        {
+          "query": "What is my name?",
+          "expected_type": "factual",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "Where do I work?",
+          "expected_type": "factual",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "What city do I live in?",
+          "expected_type": "factual",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "What is my favorite color?",
+          "expected_type": "factual",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "How many siblings do I have?",
+          "expected_type": "factual",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        }
+      ],
+      "passed": 0,
+      "total": 5,
+      "pass_rate": 0.0
+    },
+    {
+      "phase_name": "phase2_conversational",
+      "results": [
+        {
+          "query": "Hi, how are you?",
+          "expected_type": "conversational",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "Can you help me?",
+          "expected_type": "conversational",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "Thanks for the information!",
+          "expected_type": "conversational",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "Tell me about yourself",
+          "expected_type": "conversational",
+          "difficulty": "medium",
+          "passed": false,
+          "error": "name 're' is not defined"
+        }
+      ],
+      "passed": 0,
+      "total": 4,
+      "pass_rate": 0.0
+    },
+    {
+      "phase_name": "phase3_synthesis",
+      "results": [
+        {
+          "query": "What do you know about my interests?",
+          "expected_type": "synthesis",
+          "difficulty": "medium",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "What technologies am I into?",
+          "expected_type": "synthesis",
+          "difficulty": "medium",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "Can you summarize what you know about me?",
+          "expected_type": "synthesis",
+          "difficulty": "hard",
+          "passed": false,
+          "error": "name 're' is not defined"
+        }
+      ],
+      "passed": 0,
+      "total": 3,
+      "pass_rate": 0.0
+    },
+    {
+      "phase_name": "phase4_question_words",
+      "results": [
+        {
+          "query": "When did I graduate?",
+          "expected_type": "question_word",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "What is my project called?",
+          "expected_type": "question_word",
+          "difficulty": "easy",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "How many languages do I speak?",
+          "expected_type": "question_word",
+          "difficulty": "medium",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "Why am I working on this project?",
+          "expected_type": "question_word",
+          "difficulty": "hard",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "How does CRT work?",
+          "expected_type": "question_word",
+          "difficulty": "hard",
+          "passed": false,
+          "error": "name 're' is not defined"
+        }
+      ],
+      "passed": 0,
+      "total": 5,
+      "pass_rate": 0.0
+    },
+    {
+      "phase_name": "phase5_contradictions",
+      "results": [
+        {
+          "query": "Am I happy at TechCorp?",
+          "expected_type": "contradiction",
+          "difficulty": "hard",
+          "passed": false,
+          "error": "name 're' is not defined"
+        },
+        {
+          "query": "What's going on with my job?",
+          "expected_type": "contradiction",
+          "difficulty": "hard",
+          "passed": false,
+          "error": "name 're' is not defined"
+        }
+      ],
+      "passed": 0,
+      "total": 2,
+      "pass_rate": 0.0
+    }
+  ],
+  "by_difficulty": {
+    "easy": {
+      "passed": 0,
+      "total": 10
+    },
+    "medium": {
+      "passed": 0,
+      "total": 4
+    },
+    "hard": {
+      "passed": 0,
+      "total": 5
+    }
+  }
+}

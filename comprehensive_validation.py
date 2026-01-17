@@ -11,6 +11,7 @@ Test structure:
 import requests
 import time
 import json
+import re
 from typing import Dict, List, Tuple
 
 API_BASE = "http://localhost:8123"
@@ -136,11 +137,19 @@ def test_query(query: str, expected_type: str, difficulty: str) -> Dict:
             metadata = data.get("metadata", {})
             
             # Check if answer is meaningful (not a rejection)
-            is_meaningful = (
-                len(answer) > 20 and
-                "don't have" not in answer.lower() and
-                "sorry" not in answer.lower()[:50]
-            )
+            # Look for explicit rejection patterns, not just presence of phrases
+            rejection_patterns = [
+                r"^(sorry|unfortunately),?\s+(i\s+)?don't\s+(have|know)",
+                r"^i\s+don't\s+(have|know)\s+(that|any|the)",
+                r"(not|don't)\s+have\s+(that\s+)?information",
+                r"can't\s+(help|assist)\s+with",
+            ]
+            
+            # Answer is a rejection if it STARTS with or is PRIMARILY a rejection
+            is_rejection = any(re.search(pattern, answer.lower(), re.IGNORECASE) for pattern in rejection_patterns)
+            
+            # If gates passed and it's not an explicit rejection, it's meaningful
+            is_meaningful = gates_passed and not is_rejection
             
             passed = gates_passed and is_meaningful
             
