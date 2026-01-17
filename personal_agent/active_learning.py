@@ -623,6 +623,37 @@ class ActiveLearningCoordinator:
         
         conn.close()
         return corrections
+    
+    def get_events_needing_correction(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get recent gate events that haven't been corrected yet."""
+        conn = sqlite3.connect(str(self.db_path))
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT event_id, question, response_type_predicted, gates_passed,
+                   intent_score, memory_score, grounding_score, timestamp
+            FROM gate_events
+            WHERE user_override = 0
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (limit,))
+        
+        events = []
+        for row in cursor.fetchall():
+            events.append({
+                'event_id': row[0],
+                'user_query': row[1],
+                'predicted_type': row[2],
+                'gates_passed': bool(row[3]),
+                'intent_score': row[4],
+                'memory_score': row[5],
+                'grounding_score': row[6],
+                'timestamp': row[7],
+                'correction_submitted': False,
+            })
+        
+        conn.close()
+        return events
 
 
 # Singleton instance for global access

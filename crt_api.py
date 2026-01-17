@@ -4,7 +4,7 @@ import sqlite3
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi import Query
@@ -655,6 +655,15 @@ def create_app() -> FastAPI:
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to get learning stats: {e}")
+    
+    @app.get("/api/learning/events")
+    def learning_events_needing_correction(limit: int = Query(default=50, ge=1, le=100)) -> List[Dict[str, Any]]:
+        """Get recent gate events that need user correction."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            return coordinator.get_events_needing_correction(limit=limit)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get events: {e}")
     
     @app.get("/api/learning/corrections", response_model=list[CorrectionItem])
     def learning_corrections(limit: int = Query(default=10, ge=1, le=100)) -> list[CorrectionItem]:

@@ -21,6 +21,7 @@ import re
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
 import time
+import joblib
 
 from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
@@ -72,9 +73,42 @@ class CRTEnhancedRAG:
         except Exception:
             self.active_learning = None
         
+        # Load trained response classifier (graceful degradation)
+        self._classifier_model = None
+        self._load_classifier()
+        
         # Session tracking
         import uuid
         self.session_id = str(uuid.uuid4())[:8]
+    
+    def _load_classifier(self):
+        """Load trained response type classifier with hot-reload support."""
+        model_path = Path("models/response_classifier_v1.joblib")
+        if not model_path.exists():
+            return  # Use heuristics if no model available
+        
+        try:
+            model_data = joblib.load(model_path)
+            self._classifier_model = model_data
+        except Exception:
+            self._classifier_model = None
+    
+    def _classify_query_type_ml(self, user_query: str) -> str:
+        """Classify query type using trained ML model with heuristic fallback."""
+        # Try ML model first
+        if self._classifier_model is not None:
+            try:
+                vectorizer = self._classifier_model['vectorizer']
+                classifier = self._classifier_model['classifier']
+                query_vec = vectorizer.transform([user_query])
+                prediction = classifier.predict(query_vec)[0]
+                return prediction
+            except Exception:
+                pass  # Fall through to heuristic
+        
+        # Fallback to heuristic if model unavailable/fails
+        heuristic = self._classify_query_type_heuristic(user_query)
+        return heuristic if heuristic else "factual"
     
     # ========================================================================
     # Trust-Weighted Retrieval
@@ -1364,15 +1398,8 @@ class CRTEnhancedRAG:
                     intent_align = reasoning_result['confidence']
                     memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
-                    # Predict response type using heuristic first, then active learning
-                    response_type_pred = self._classify_query_type_heuristic(user_query)
-                    if response_type_pred is None:
-                        response_type_pred = "factual"  # Default for slot queries
-                        if self.active_learning:
-                            try:
-                                response_type_pred = self.active_learning.predict_response_type(user_query)
-                            except Exception:
-                                pass
+                    # Predict response type using ML classifier
+                    response_type_pred = self._classify_query_type_ml(user_query)
                     
                     # Compute grounding score
                     grounding_score = self._compute_grounding_score(candidate_output, retrieved)
@@ -1483,14 +1510,7 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = self._classify_query_type_heuristic(user_query)
-                        if response_type_pred is None:
-                            response_type_pred = "factual"
-                            if self.active_learning:
-                                try:
-                                    response_type_pred = self.active_learning.predict_response_type(user_query)
-                                except Exception:
-                                    pass
+                        response_type_pred = self._classify_query_type_ml(user_query)
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -1616,14 +1636,7 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = self._classify_query_type_heuristic(user_query)
-                        if response_type_pred is None:
-                            response_type_pred = "factual"
-                            if self.active_learning:
-                                try:
-                                    response_type_pred = self.active_learning.predict_response_type(user_query)
-                                except Exception:
-                                    pass
+                        response_type_pred = self._classify_query_type_ml(user_query)
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -1901,14 +1914,7 @@ class CRTEnhancedRAG:
         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
         
         # Predict response type and compute grounding
-        response_type_pred = self._classify_query_type_heuristic(user_query)
-        if response_type_pred is None:
-            response_type_pred = "conversational"
-            if self.active_learning:
-                try:
-                    response_type_pred = self.active_learning.predict_response_type(user_query)
-                except Exception:
-                    pass
+        response_type_pred = self._classify_query_type_ml(user_query)
         
         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
         open_contradictions = self.ledger.get_open_contradictions()
