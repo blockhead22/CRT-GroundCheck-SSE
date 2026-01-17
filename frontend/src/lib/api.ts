@@ -180,6 +180,13 @@ export async function getProfile(threadId: string): Promise<ProfileResponse> {
   return fetchJson<ProfileResponse>(`/api/profile?thread_id=${encodeURIComponent(threadId)}`)
 }
 
+export async function setProfileName(args: { threadId: string; name: string }): Promise<ChatSendResponse> {
+  return postJson<ChatSendResponse>('/api/profile/set_name', {
+    thread_id: args.threadId,
+    message: `FACT: name = ${args.name}`,
+  })
+}
+
 export type DocListItem = { id: string; title: string; kind: string }
 export type DocGetResponse = { id: string; title: string; kind: string; markdown: string }
 
@@ -492,5 +499,50 @@ export async function promoteResearch(args: {
     memory_id: args.memoryId,
     user_confirmed: args.userConfirmed,
   })
+}
+
+// ========================================================================
+// Thread Management
+// ========================================================================
+
+export type ThreadListItem = {
+  id: string
+  title: string
+  updated_at: number
+  message_count: number
+}
+
+export async function listThreads(): Promise<ThreadListItem[]> {
+  return fetchJson<ThreadListItem[]>('/api/threads')
+}
+
+export async function createThread(args: { title?: string }): Promise<ThreadListItem> {
+  return postJson<ThreadListItem>('/api/threads', {
+    title: args.title ?? 'New chat',
+  })
+}
+
+export async function updateThread(args: { threadId: string; title: string }): Promise<ThreadListItem> {
+  const res = await fetch(`${getBase()}/api/threads/${encodeURIComponent(args.threadId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: args.title }),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Failed to update thread: ${text || res.statusText}`)
+  }
+  return (await res.json()) as ThreadListItem
+}
+
+export async function deleteThread(args: { threadId: string }): Promise<{ ok: boolean; thread_id: string; deleted: boolean }> {
+  const res = await fetch(`${getBase()}/api/threads/${encodeURIComponent(args.threadId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`Failed to delete thread: ${text || res.statusText}`)
+  }
+  return (await res.json()) as { ok: boolean; thread_id: string; deleted: boolean }
 }
 

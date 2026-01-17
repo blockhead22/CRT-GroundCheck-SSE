@@ -13,7 +13,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
 import { newId } from './lib/id'
-import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl, searchResearch } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -325,6 +325,23 @@ export default function App() {
     }
   }
 
+  async function handleSetName(name: string) {
+    if (!selectedThread) return
+    try {
+      await setProfileName({ threadId: selectedThread.id, name })
+      setUserName(name)
+      setProfileHasName(true)
+      setSetNameOpen(false)
+      // Refresh profile to confirm
+      const p = await getProfile(selectedThread.id)
+      const raw = (p?.name || p?.slots?.name || '').trim()
+      if (raw) setUserName(raw)
+    } catch (e) {
+      console.error('Failed to set name:', e)
+      alert(`Failed to set name: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+
   return (
     <div className="h-screen w-full overflow-hidden">
       <div className="mx-auto h-full max-w-[1480px] px-4 py-6">
@@ -401,19 +418,7 @@ export default function App() {
         open={navActive === 'chat' && setNameOpen}
         initialName={profileHasName ? userName : ''}
         onClose={() => setSetNameOpen(false)}
-        onSubmit={async (name) => {
-          const tid = selectedThread?.id ?? selectedThreadId
-          await handleSend(`FACT: name = ${name}`)
-          try {
-            const p = await getProfile(tid)
-            const raw = (p?.name || p?.slots?.name || '').trim()
-            setProfileHasName(Boolean(raw))
-            setUserName(raw || 'User')
-          } catch (_e) {
-            // Ignore refresh errors.
-          }
-          setSetNameOpen(false)
-        }}
+        onSubmit={handleSetName}
       />
 
       <ThreadRenameLightbox

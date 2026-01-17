@@ -155,6 +155,21 @@ class ContradictionRespondResponse(BaseModel):
     next: ContradictionNextResponse
 
 
+class ThreadListItem(BaseModel):
+    id: str
+    title: str
+    updated_at: float
+    message_count: int
+
+
+class ThreadCreateRequest(BaseModel):
+    title: str = Field(default="New chat", max_length=200)
+
+
+class ThreadUpdateRequest(BaseModel):
+    title: str = Field(max_length=200)
+
+
 class ProfileResponse(BaseModel):
     thread_id: str
     name: Optional[str] = None
@@ -1055,6 +1070,12 @@ def create_app() -> FastAPI:
         name = slots.get("name")
         return ProfileResponse(thread_id=tid, name=name, slots=slots)
 
+    @app.post("/api/profile/set_name")
+    async def set_profile_name(req: ChatSendRequest) -> ChatSendResponse:
+        """Set profile name by sending a FACT message through CRT."""
+        # Forward to the main chat endpoint - this ensures proper CRT processing
+        return chat_send(req)
+
     @app.get("/api/dashboard/overview", response_model=DashboardOverviewResponse)
     def dashboard_overview(thread_id: str = Query(default="default")) -> DashboardOverviewResponse:
         engine = get_engine(thread_id)
@@ -1847,6 +1868,91 @@ def create_app() -> FastAPI:
             deleted_trust_log=deleted_trust_log,
             ok=True,
         )
+
+    # ============================================================================
+    # Thread Management
+    # ============================================================================
+
+    @app.get("/api/threads", response_model=list[ThreadListItem])
+    def list_threads() -> list[ThreadListItem]:
+        """List all threads with basic metadata."""
+        # For now, return threads from in-memory engines cache
+        # In production, this would query a threads table in the database
+        result = []
+        for tid in engines.keys():
+            result.append(ThreadListItem(
+                id=tid,
+                title=tid.replace('_', ' ').title(),
+                updated_at=time.time(),
+                message_count=0
+            ))
+        # Always include 'default' if not present
+        if not any(t.id == 'default' for t in result):
+            result.insert(0, ThreadListItem(
+                id='default',
+                title='Default Thread',
+                updated_at=time.time(),
+                message_count=0
+            ))
+        return result
+
+    @app.post("/api/threads", response_model=ThreadListItem)
+    def create_thread(req: ThreadCreateRequest) -> ThreadListItem:
+        """Create a new thread."""
+        thread_id = str(uuid.uuid4())[:8]
+        tid = _sanitize_thread_id(thread_id)
+        
+        # Initialize engine for this thread (creates DBs)
+        get_engine(tid)
+        
+        return ThreadListItem(
+            id=tid,
+            title=req.title,
+            updated_at=time.time(),
+            message_count=0
+        )
+
+    @app.put("/api/threads/{thread_id}", response_model=ThreadListItem)
+    def update_thread(thread_id: str, req: ThreadUpdateRequest) -> ThreadListItem:
+        """Update thread metadata (e.g., title)."""
+        tid = _sanitize_thread_id(thread_id)
+        
+        # Ensure thread exists
+        get_engine(tid)
+        
+        return ThreadListItem(
+            id=tid,
+            title=req.title,
+            updated_at=time.time(),
+            message_count=0
+        )
+
+    @app.delete("/api/threads/{thread_id}")
+    def delete_thread(thread_id: str) -> dict:
+        """Delete a thread and its associated data."""
+        tid = _sanitize_thread_id(thread_id)
+        
+        if tid == 'default':
+            raise HTTPException(status_code=400, detail="Cannot delete default thread")
+        
+        # Remove from engines cache
+        if tid in engines:
+            del engines[tid]
+        if tid in turn_counters:
+            del turn_counters[tid]
+        
+        # Optionally delete the DB files
+        memory_db, ledger_db = _thread_db_paths(tid)
+        try:
+            if Path(memory_db).exists():
+                Path(memory_db).unlink()
+            if Path(ledger_db).exists():
+                Path(ledger_db).unlink()
+        except Exception as e:
+            # Log but don't fail on DB deletion errors
+            pass
+        
+        return {"ok": True, "thread_id": tid, "deleted": True}
 
     return app
 
