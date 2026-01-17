@@ -1,7 +1,7 @@
 {
-  "timestamp": 1768641911.5995088,
-  "overall_pass_rate": 0.0,
-  "total_passed": 0,
+  "timestamp": 1768642054.9915175,
+  "overall_pass_rate": 78.94736842105263,
+  "total_passed": 15,
   "total_queries": 19,
   "phase_results": [
     {
@@ -11,41 +11,61 @@
           "query": "What is my name?",
           "expected_type": "factual",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "Alex Chen",
+          "gate_reason": "gates_passed",
+          "answer_length": 9
         },
         {
           "query": "Where do I work?",
           "expected_type": "factual",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "TechCorp",
+          "gate_reason": "gates_passed",
+          "answer_length": 8
         },
         {
           "query": "What city do I live in?",
           "expected_type": "factual",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You mentioned earlier that you live in San Francisco, which is stored in my memory as a fact with a trust score of 1 (high confidence).",
+          "gate_reason": "gates_passed",
+          "answer_length": 135
         },
         {
           "query": "What is my favorite color?",
           "expected_type": "factual",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "blue",
+          "gate_reason": "gates_passed",
+          "answer_length": 4
         },
         {
           "query": "How many siblings do I have?",
           "expected_type": "factual",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You have two siblings.",
+          "gate_reason": "gates_passed",
+          "answer_length": 22
         }
       ],
-      "passed": 0,
+      "passed": 5,
       "total": 5,
-      "pass_rate": 0.0
+      "pass_rate": 100.0
     },
     {
       "phase_name": "phase2_conversational",
@@ -54,34 +74,50 @@
           "query": "Hi, how are you?",
           "expected_type": "conversational",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "I'm doing well, thanks for asking! How about you?",
+          "gate_reason": "gates_passed",
+          "answer_length": 49
         },
         {
           "query": "Can you help me?",
           "expected_type": "conversational",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "Hello! I'm CRT, your cognitive-reflective transformer assistant. I'd be happy to help you. You mentioned your name is Alex Chen. Is there something specific you'd like to talk about or ask?",
+          "gate_reason": "gates_passed",
+          "answer_length": 189
         },
         {
           "query": "Thanks for the information!",
           "expected_type": "conversational",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You're welcome! I'm glad I could provide you with some helpful info. You're also welcome, by the way - thanks for the second time!",
+          "gate_reason": "gates_passed",
+          "answer_length": 130
         },
         {
           "query": "Tell me about yourself",
           "expected_type": "conversational",
           "difficulty": "medium",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "Hey Alex, nice to meet you! From what I recall, your name is Alex Chen. That's the only info I have on you right now. Would you like to share more about yourself?",
+          "gate_reason": "gates_passed",
+          "answer_length": 162
         }
       ],
-      "passed": 0,
+      "passed": 4,
       "total": 4,
-      "pass_rate": 0.0
+      "pass_rate": 100.0
     },
     {
       "phase_name": "phase3_synthesis",
@@ -90,27 +126,39 @@
           "query": "What do you know about my interests?",
           "expected_type": "synthesis",
           "difficulty": "medium",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You mentioned enjoying programming in Python multiple times, so I'll go with that! You enjoy programming in Python.\n\n(As a side note, it's interesting that you've expressed interest in changing jobs twice - I can keep track of this for our conversation.)",
+          "gate_reason": "gates_passed",
+          "answer_length": 254
         },
         {
           "query": "What technologies am I into?",
           "expected_type": "synthesis",
           "difficulty": "medium",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "I'm still learning about you, but according to my memory so far, your employer is TechCorp. That's all I have for now!",
+          "gate_reason": "gates_passed",
+          "answer_length": 118
         },
         {
           "query": "Can you summarize what you know about me?",
           "expected_type": "synthesis",
           "difficulty": "hard",
           "passed": false,
-          "error": "name 're' is not defined"
+          "gates_passed": true,
+          "is_meaningful": false,
+          "answer": "I don't have that information. I only remember your name is Alex Chen, but I don't have any additional details.",
+          "gate_reason": "gates_passed",
+          "answer_length": 111
         }
       ],
-      "passed": 0,
+      "passed": 2,
       "total": 3,
-      "pass_rate": 0.0
+      "pass_rate": 66.66666666666667
     },
     {
       "phase_name": "phase4_question_words",
@@ -119,41 +167,61 @@
           "query": "When did I graduate?",
           "expected_type": "question_word",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You graduated in 2020.",
+          "gate_reason": "gates_passed",
+          "answer_length": 22
         },
         {
           "query": "What is my project called?",
           "expected_type": "question_word",
           "difficulty": "easy",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "Your project is called CRT.\n\nWould you like to know more about it?",
+          "gate_reason": "gates_passed",
+          "answer_length": 66
         },
         {
           "query": "How many languages do I speak?",
           "expected_type": "question_word",
           "difficulty": "medium",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You speak three languages.",
+          "gate_reason": "gates_passed",
+          "answer_length": 26
         },
         {
           "query": "Why am I working on this project?",
           "expected_type": "question_word",
           "difficulty": "hard",
           "passed": false,
-          "error": "name 're' is not defined"
+          "gates_passed": false,
+          "is_meaningful": false,
+          "answer": "I'm not sure I have enough information to provide a definitive answer. However, based on my understanding of your work on CRT, it seems like you're exploring the architecture and capabilities of my own design. Is that correct?",
+          "gate_reason": "explanatory_grounding_fail (score=0.207 < 0.25)",
+          "answer_length": 226
         },
         {
           "query": "How does CRT work?",
           "expected_type": "question_word",
           "difficulty": "hard",
           "passed": false,
-          "error": "name 're' is not defined"
+          "gates_passed": false,
+          "is_meaningful": false,
+          "answer": "This is a design/spec explanation (doc-grounded), not a personal memory claim.\n\nQuestion: How does CRT work?\n\n1. From CRT Quick Reference:\n- RAG: \"What's the best answer?\"\n- CRT: \"How does this affect what I believe over time?\"\n\n2. From CRT Functional Spec:\n- **Where:** `crt_app.py` (with Streamlit multipage wrappers in `pages/`)\n- **Inputs:** user selects a page in Streamlit sidebar (Chat or Dashboard)\n- **Outputs:** renders the selected page inside a single Streamlit server\n- **Side effects:** none (aside from whatever the selected page does)\n- **Failure modes:**\n  - Port already in use \u2192 Streamlit should display an error; user should choose a new port.\n- **Acceptance checks:**\n  - `streamlit run crt_app.py` shows **Chat** and **Dashboard** in sidebar.\n\n3. From How It Works:\n**What SSE does:**\n- Shows you ALL three claims\n- Explicitly tells you \"Claim 1 and Claim 3 contradict each other\"\n- Lets you click on each claim to see the exact sentence in the original article\n- Refuses to pick a winner or create a fake consensus\n\n4. From How It Works:\n### \u274c Never Synthesize\n```python\n# This function does NOT exist in SSE\ndef synthesize_consensus(contradictory_claims):\n    # \u274c FORBIDDEN: Creating a new claim that \"resolves\" the contradiction\n    return \"Most evidence suggests X, though some studies show Y\"\n```\n\n5. From CRT Whitepaper:\nCRT does not guarantee truth. It enforces **consistency with evidence**, not correctness.\n\n6. From CRT Quick Reference:\n```python\nresult = rag.query(\"How does sleep affect memory?\")\n\nIf you want, tell me which part to go deeper on (gates, memory, ledger, coherence), and I\u2019ll expand that section.",
+          "gate_reason": "docs_explanation",
+          "answer_length": 1645
         }
       ],
-      "passed": 0,
+      "passed": 3,
       "total": 5,
-      "pass_rate": 0.0
+      "pass_rate": 60.0
     },
     {
       "phase_name": "phase5_contradictions",
@@ -163,32 +231,40 @@
           "expected_type": "contradiction",
           "difficulty": "hard",
           "passed": false,
-          "error": "name 're' is not defined"
+          "gates_passed": true,
+          "is_meaningful": false,
+          "answer": "I don't have information about your happiness at TechCorp. Can you tell me more about it?",
+          "gate_reason": "gates_passed",
+          "answer_length": 89
         },
         {
           "query": "What's going on with my job?",
           "expected_type": "contradiction",
           "difficulty": "hard",
-          "passed": false,
-          "error": "name 're' is not defined"
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "It sounds like you've been having a lot of thoughts about your job lately! Your memory has shown that it's the topic that's been on your mind, but it doesn't seem to have anything specific to report - just a persistent idea. Would you like to talk more about what's behind this thought?",
+          "gate_reason": "gates_passed",
+          "answer_length": 286
         }
       ],
-      "passed": 0,
+      "passed": 1,
       "total": 2,
-      "pass_rate": 0.0
+      "pass_rate": 50.0
     }
   ],
   "by_difficulty": {
     "easy": {
-      "passed": 0,
+      "passed": 10,
       "total": 10
     },
     "medium": {
-      "passed": 0,
+      "passed": 4,
       "total": 4
     },
     "hard": {
-      "passed": 0,
+      "passed": 1,
       "total": 5
     }
   }
