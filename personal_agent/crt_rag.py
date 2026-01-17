@@ -1398,8 +1398,8 @@ class CRTEnhancedRAG:
                     intent_align = reasoning_result['confidence']
                     memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
-                    # Predict response type using heuristics (ML underperforming with limited data)
-                    response_type_pred = self._classify_query_type_heuristic(user_query)
+                    # Predict response type using ML classifier (147 examples, 86.7% accuracy)
+                    response_type_pred = self._classify_query_type_ml(user_query)
                     
                     # Compute grounding score
                     grounding_score = self._compute_grounding_score(candidate_output, retrieved)
@@ -1510,7 +1510,7 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = self._classify_query_type_heuristic(user_query)
+                        response_type_pred = self._classify_query_type_ml(user_query)
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -1636,7 +1636,7 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = self._classify_query_type_heuristic(user_query)
+                        response_type_pred = self._classify_query_type_ml(user_query)
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -1914,7 +1914,7 @@ class CRTEnhancedRAG:
         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
         
         # Predict response type and compute grounding
-        response_type_pred = self._classify_query_type_heuristic(user_query)
+        response_type_pred = self._classify_query_type_ml(user_query)
         
         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
         open_contradictions = self.ledger.get_open_contradictions()
