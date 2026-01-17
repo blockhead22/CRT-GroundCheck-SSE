@@ -546,3 +546,18 @@ export async function deleteThread(args: { threadId: string }): Promise<{ ok: bo
   return (await res.json()) as { ok: boolean; thread_id: string; deleted: boolean }
 }
 
+export type LearningStats = {
+  total_events: number
+  total_corrections: number
+  model_loaded: boolean
+  model_version: number | null
+  model_accuracy: number | null
+  pending_training: boolean
+  recent_gate_pass_rate: number | null
+  recent_events_24h: number
+}
+
+export async function getLearningStats(): Promise<LearningStats> {
+  return fetchJson<LearningStats>('/api/learning/stats')
+}
+

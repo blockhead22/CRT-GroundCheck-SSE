@@ -15,11 +15,13 @@ import {
   respondToContradiction,
   resolveContradiction,
   searchMemories,
+  getLearningStats,
   type ContradictionListItem,
   type ContradictionNextResponse,
   type DashboardOverview,
   type JobListItem,
   type JobsStatusResponse,
+  type LearningStats,
   type MemoryListItem,
   type TrustHistoryRow,
 } from '../lib/api'
@@ -42,6 +44,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
   const [contras, setContras] = useState<ContradictionListItem[]>([])
   const [jobsStatus, setJobsStatus] = useState<JobsStatusResponse | null>(null)
   const [threadJobs, setThreadJobs] = useState<JobListItem[]>([])
+  const [learningStats, setLearningStats] = useState<LearningStats | null>(null)
   const [nextContra, setNextContra] = useState<ContradictionNextResponse | null>(null)
   const [contraAnswer, setContraAnswer] = useState('')
   const [contraBusy, setContraBusy] = useState(false)
@@ -109,19 +112,21 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
   async function refresh() {
     setError(null)
     const tid = props.threadId
-    const [o, m, c, js, jl, nxt] = await Promise.all([
+    const [o, m, c, js, jl, nxt, ls] = await Promise.all([
       getDashboardOverview(tid),
       listRecentMemories(tid, 25),
       listOpenContradictions(tid, 50),
       getJobsStatus().catch(() => null),
       listJobs({ status: null, limit: 100, offset: 0 }).catch(() => ({ jobs: [] })),
       getContradictionNext(tid).catch(() => null),
+      getLearningStats().catch(() => null),
     ])
     setOverview(o)
     setMemories(m)
     setContras(c)
     setJobsStatus(js)
     setNextContra(nxt)
+    setLearningStats(ls)
 
     const byThread = (jl.jobs || []).filter((j) => {
       const payload = (j.payload || {}) as Record<string, unknown>
@@ -425,6 +430,40 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 </div>
               </div>
             </div>
+
+            {learningStats && (
+              <div className="mt-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-semibold text-violet-200">Active Learning</div>
+                  {learningStats.model_loaded && (
+                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-semibold text-emerald-200">
+                      Model v{learningStats.model_version} loaded
+                    </span>
+                  )}
+                  {learningStats.pending_training && (
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-200">
+                      Ready to retrain
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs text-white/50">Gate Events</div>
+                    <div className="mt-1 font-semibold text-white">{learningStats.total_events.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/50">Corrections</div>
+                    <div className="mt-1 font-semibold text-white">{learningStats.total_corrections.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-white/50">Model Accuracy</div>
+                    <div className="mt-1 font-semibold text-white">
+                      {learningStats.model_accuracy ? `${(learningStats.model_accuracy * 100).toFixed(1)}%` : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-start justify-between gap-3">

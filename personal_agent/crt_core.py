@@ -452,8 +452,9 @@ class CRTMath:
                 return False, f"factual_memory_fail (align={memory_align:.3f} < 0.35)"
             # Only check grounding if answer is long (>50 chars)
             # Short answers are likely direct fact extractions
-            if grounding_score < 0.4:
-                return False, f"factual_grounding_fail (score={grounding_score:.3f} < 0.4)"
+            # Lowered from 0.4 to 0.30 to reduce false rejections with ML classifier
+            if grounding_score < 0.30:
+                return False, f"factual_grounding_fail (score={grounding_score:.3f} < 0.30)"
         
         elif response_type == "explanatory":
             # Relaxed gates for explanations/synthesis
