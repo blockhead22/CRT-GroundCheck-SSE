@@ -257,8 +257,19 @@ class CRTEnhancedRAG:
         if not retrieved_memories or not answer:
             return 0.0
         
-        answer_lower = answer.lower()
+        answer_lower = answer.lower().strip()
         memory_text = " ".join(mem.text.lower() for mem, _ in retrieved_memories[:3])
+        
+        # If answer is very short (likely a fact extraction), check substring match
+        if len(answer) < 30:
+            # Check if answer appears in memory (e.g., "Alex Chen" in "My name is Alex Chen")
+            if answer_lower in memory_text:
+                return 1.0
+            # Check if most answer words appear in memory
+            answer_words = set(answer_lower.split())
+            memory_words = set(memory_text.split())
+            if answer_words and len(answer_words & memory_words) == len(answer_words):
+                return 0.95  # All words present
         
         answer_words = set(answer_lower.split())
         memory_words = set(memory_text.split())
@@ -271,11 +282,14 @@ class CRTEnhancedRAG:
         
         # Bonus for direct quotes
         has_quotes = '"' in answer or "'" in answer
-        quote_bonus = 0.2 if has_quotes else 0.0
+        quote_bonus = 0.15 if has_quotes else 0.0
         
-        # Penalty if answer is much longer than grounding
-        len_ratio = len(answer) / max(len(memory_text), 1)
-        length_penalty = 0.2 if len_ratio > 2.0 else 0.0
+        # No penalty for short answers - they're expected for factual queries
+        length_penalty = 0.0
+        if len(answer) > 100:  # Only penalize very long answers
+            len_ratio = len(answer) / max(len(memory_text), 1)
+            if len_ratio > 3.0:
+                length_penalty = 0.1
         
         grounding_score = min(1.0, overlap_ratio + quote_bonus - length_penalty)
         return max(0.0, grounding_score)
@@ -1299,13 +1313,7 @@ class CRTEnhancedRAG:
                     candidate_vector = encode_vector(candidate_output)
 
                     intent_align = reasoning_result['confidence']
-                    memory_align = self.crt_math.memory_alignment(
-                        output_vector=candidate_vector,
-                        retrieved_memories=[
-                            {'vector': mem.vector} for mem, _ in retrieved
-                        ],
-                        retrieval_scores=[score for _, score in retrieved]
-                    )
+                    memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                     # Predict response type using active learning
                     response_type_pred = "factual"  # Default for slot queries
@@ -1421,13 +1429,7 @@ class CRTEnhancedRAG:
                         candidate_vector = encode_vector(candidate_output)
 
                         intent_align = 0.95
-                        memory_align = self.crt_math.memory_alignment(
-                            output_vector=candidate_vector,
-                            retrieved_memories=[
-                                {'vector': mem.vector} for mem, _ in retrieved
-                            ],
-                            retrieval_scores=[score for _, score in retrieved]
-                        )
+                        memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
                         response_type_pred = "factual"
@@ -1558,13 +1560,7 @@ class CRTEnhancedRAG:
                         candidate_vector = encode_vector(candidate_output)
 
                         intent_align = 0.95
-                        memory_align = self.crt_math.memory_alignment(
-                            output_vector=candidate_vector,
-                            retrieved_memories=[
-                                {'vector': mem.vector} for mem, _ in retrieved
-                            ],
-                            retrieval_scores=[score for _, score in retrieved]
-                        )
+                        memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
                         response_type_pred = "factual"
@@ -1847,13 +1843,7 @@ class CRTEnhancedRAG:
         intent_align = reasoning_result['confidence']
         
         # Memory alignment (output → retrieved memories)
-        memory_align = self.crt_math.memory_alignment(
-            output_vector=candidate_vector,
-            retrieved_memories=[
-                {'vector': mem.vector} for mem, _ in retrieved
-            ],
-            retrieval_scores=[score for _, score in retrieved]
-        )
+        memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
         
         # Predict response type and compute grounding
         response_type_pred = "conversational"
@@ -3219,6 +3209,7 @@ class CRTEnhancedRAG:
     def get_reflection_queue(self) -> List[Dict]:
         """Get pending reflections."""
         return self.ledger.get_reflection_queue()
+
 
 
 
