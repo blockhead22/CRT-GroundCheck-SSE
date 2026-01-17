@@ -29,6 +29,7 @@ from personal_agent.jobs_db import (
 from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
+from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 
 
 def _sanitize_thread_id(value: str) -> str:
@@ -346,6 +347,7 @@ def create_app() -> FastAPI:
         interval_seconds=10,
         auto_resolve_contradictions_enabled=bool(jobs_cfg.get("auto_resolve_contradictions_enabled", False)),
         auto_web_research_enabled=bool(jobs_cfg.get("auto_web_research_enabled", False)),
+        auto_learning_enabled=bool(jobs_cfg.get("auto_learning_enabled", True)),
     )
     app.state.idle_scheduler = idle_scheduler
 
@@ -612,6 +614,89 @@ def create_app() -> FastAPI:
 
         kicked = training_loop.trigger_async()
         return {"ok": bool(kicked), "running": training_loop.status().running}
+    
+    # ========================================================================
+    # ACTIVE LEARNING ENDPOINTS
+    # ========================================================================
+    
+    class LearningStatsResponse(BaseModel):
+        total_events: int
+        total_corrections: int
+        model_loaded: bool
+        model_version: Optional[int]
+        model_accuracy: Optional[float]
+        pending_training: bool
+        recent_gate_pass_rate: Optional[float]
+        recent_events_24h: int
+    
+    class CorrectionItem(BaseModel):
+        event_id: int
+        question: str
+        predicted_type: str
+        corrected_type: str
+        timestamp: str
+    
+    @app.get("/api/learning/stats", response_model=LearningStatsResponse)
+    def learning_stats() -> LearningStatsResponse:
+        """Get active learning statistics."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            stats: LearningStats = coordinator.get_stats()
+            
+            return LearningStatsResponse(
+                total_events=stats.total_events,
+                total_corrections=stats.total_corrections,
+                model_loaded=stats.model_loaded,
+                model_version=stats.model_version,
+                model_accuracy=stats.model_accuracy,
+                pending_training=stats.pending_training,
+                recent_gate_pass_rate=stats.recent_gate_pass_rate,
+                recent_events_24h=stats.recent_events_24h,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get learning stats: {e}")
+    
+    @app.get("/api/learning/corrections", response_model=list[CorrectionItem])
+    def learning_corrections(limit: int = Query(default=10, ge=1, le=100)) -> list[CorrectionItem]:
+        """Get recent user corrections."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            corrections = coordinator.get_recent_corrections(limit=limit)
+            
+            return [
+                CorrectionItem(
+                    event_id=c["event_id"],
+                    question=c["question"],
+                    predicted_type=c["predicted_type"],
+                    corrected_type=c["corrected_type"],
+                    timestamp=c["timestamp"],
+                )
+                for c in corrections
+            ]
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get corrections: {e}")
+    
+    class CorrectionRequest(BaseModel):
+        corrected_type: str = Field(description="Correct response type: factual/explanatory/conversational")
+    
+    @app.post("/api/learning/correct/{event_id}")
+    def learning_correct(event_id: int, req: CorrectionRequest) -> Dict[str, Any]:
+        """Submit user correction for a gate event."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            coordinator.record_user_correction(
+                event_id=event_id,
+                corrected_type=req.corrected_type,
+            )
+            
+            stats = coordinator.get_stats()
+            return {
+                "ok": True,
+                "pending_training": stats.pending_training,
+                "total_corrections": stats.total_corrections,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to record correction: {e}")
 
     def _is_architecture_explanation_request(text: str) -> bool:
         t = (text or '').strip().lower()

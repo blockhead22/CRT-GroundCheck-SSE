@@ -29,6 +29,7 @@ from .reasoning import ReasoningEngine, ReasoningMode
 from .fact_slots import extract_fact_slots
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
+from .active_learning import get_active_learning_coordinator
 
 
 class CRTEnhancedRAG:
@@ -64,6 +65,12 @@ class CRTEnhancedRAG:
         # Optional learned suggestions (metadata-only).
         self.learned_suggestions = LearnedSuggestionEngine()
         self.runtime_config = get_runtime_config()
+        
+        # Active learning coordinator (graceful degradation if unavailable)
+        try:
+            self.active_learning = get_active_learning_coordinator()
+        except Exception:
+            self.active_learning = None
         
         # Session tracking
         import uuid
@@ -240,6 +247,57 @@ class CRTEnhancedRAG:
         name = (user_name or "").strip().lower()
         if not q or not name:
             return False
+    
+    def _compute_grounding_score(
+        self,
+        answer: str,
+        retrieved_memories: List[Tuple[MemoryItem, float]],
+    ) -> float:
+        """Compute grounding score (0-1) for an answer based on memory overlap."""
+        if not retrieved_memories or not answer:
+            return 0.0
+        
+        answer_lower = answer.lower()
+        memory_text = " ".join(mem.text.lower() for mem, _ in retrieved_memories[:3])
+        
+        answer_words = set(answer_lower.split())
+        memory_words = set(memory_text.split())
+        
+        if not answer_words:
+            return 0.0
+        
+        overlap = len(answer_words & memory_words)
+        overlap_ratio = overlap / len(answer_words)
+        
+        # Bonus for direct quotes
+        has_quotes = '"' in answer or "'" in answer
+        quote_bonus = 0.2 if has_quotes else 0.0
+        
+        # Penalty if answer is much longer than grounding
+        len_ratio = len(answer) / max(len(memory_text), 1)
+        length_penalty = 0.2 if len_ratio > 2.0 else 0.0
+        
+        grounding_score = min(1.0, overlap_ratio + quote_bonus - length_penalty)
+        return max(0.0, grounding_score)
+    
+    def _classify_contradiction_severity(
+        self,
+        open_contradictions: List,
+        query_slots: Set[str],
+    ) -> str:
+        """Classify contradiction severity: blocking/note/none."""
+        if not open_contradictions:
+            return "none"
+        
+        # Check if any contradictions affect the query slots
+        for contra in open_contradictions:
+            affects_slots_str = getattr(contra, "affects_slots", None)
+            if affects_slots_str and query_slots:
+                affects_slots = set(affects_slots_str.split(","))
+                if affects_slots & query_slots:
+                    return "blocking"
+        
+        return "note"
 
         # Consider full name and first token as acceptable matches.
         variants: List[str] = []
@@ -1249,9 +1307,42 @@ class CRTEnhancedRAG:
                         retrieval_scores=[score for _, score in retrieved]
                     )
 
-                    gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
-                        intent_align, memory_align
+                    # Predict response type using active learning
+                    response_type_pred = "factual"  # Default for slot queries
+                    if self.active_learning:
+                        try:
+                            response_type_pred = self.active_learning.predict_response_type(user_query)
+                        except Exception:
+                            pass
+                    
+                    # Compute grounding score
+                    grounding_score = self._compute_grounding_score(candidate_output, retrieved)
+                    
+                    # Use gradient gates v2
+                    gates_passed, gate_reason = self.crt_math.check_reconstruction_gates_v2(
+                        intent_align=intent_align,
+                        memory_align=memory_align,
+                        response_type=response_type_pred,
+                        grounding_score=grounding_score,
+                        contradiction_severity="none",
                     )
+                    
+                    # Log gate event for active learning
+                    if self.active_learning:
+                        try:
+                            self.active_learning.record_gate_event(
+                                question=user_query,
+                                response_type_predicted=response_type_pred,
+                                intent_align=intent_align,
+                                memory_align=memory_align,
+                                grounding_score=grounding_score,
+                                gates_passed=gates_passed,
+                                gate_reason=gate_reason,
+                                thread_id="",
+                                session_id=self.session_id,
+                            )
+                        except Exception:
+                            pass
 
                     # Do not append provenance footers into the answer text.
                     final_answer = slot_answer
@@ -1338,9 +1429,45 @@ class CRTEnhancedRAG:
                             retrieval_scores=[score for _, score in retrieved]
                         )
 
-                        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
-                            intent_align, memory_align
+                        # Predict response type and compute grounding
+                        response_type_pred = "factual"
+                        if self.active_learning:
+                            try:
+                                response_type_pred = self.active_learning.predict_response_type(user_query)
+                            except Exception:
+                                pass
+                        
+                        grounding_score = self._compute_grounding_score(candidate_output, retrieved)
+                        open_contradictions = self.ledger.get_open_contradictions()
+                        query_slots = set(extract_fact_slots(user_query).keys())
+                        contradiction_severity = self._classify_contradiction_severity(
+                            open_contradictions, query_slots
                         )
+
+                        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates_v2(
+                            intent_align=intent_align,
+                            memory_align=memory_align,
+                            response_type=response_type_pred,
+                            grounding_score=grounding_score,
+                            contradiction_severity=contradiction_severity,
+                        )
+                        
+                        # Log gate event
+                        if self.active_learning:
+                            try:
+                                self.active_learning.record_gate_event(
+                                    question=user_query,
+                                    response_type_predicted=response_type_pred,
+                                    intent_align=intent_align,
+                                    memory_align=memory_align,
+                                    grounding_score=grounding_score,
+                                    gates_passed=gates_passed,
+                                    gate_reason=gate_reason,
+                                    thread_id="default",
+                                    session_id=self.session_id,
+                                )
+                            except Exception:
+                                pass
 
                         response_type = "belief" if gates_passed else "speech"
                         source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
@@ -1439,9 +1566,45 @@ class CRTEnhancedRAG:
                             retrieval_scores=[score for _, score in retrieved]
                         )
 
-                        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
-                            intent_align, memory_align
+                        # Predict response type and compute grounding
+                        response_type_pred = "factual"
+                        if self.active_learning:
+                            try:
+                                response_type_pred = self.active_learning.predict_response_type(user_query)
+                            except Exception:
+                                pass
+                        
+                        grounding_score = self._compute_grounding_score(candidate_output, retrieved)
+                        open_contradictions = self.ledger.get_open_contradictions()
+                        query_slots = set(extract_fact_slots(user_query).keys())
+                        contradiction_severity = self._classify_contradiction_severity(
+                            open_contradictions, query_slots
                         )
+
+                        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates_v2(
+                            intent_align=intent_align,
+                            memory_align=memory_align,
+                            response_type=response_type_pred,
+                            grounding_score=grounding_score,
+                            contradiction_severity=contradiction_severity,
+                        )
+                        
+                        # Log gate event
+                        if self.active_learning:
+                            try:
+                                self.active_learning.record_gate_event(
+                                    question=user_query,
+                                    response_type_predicted=response_type_pred,
+                                    intent_align=intent_align,
+                                    memory_align=memory_align,
+                                    grounding_score=grounding_score,
+                                    gates_passed=gates_passed,
+                                    gate_reason=gate_reason,
+                                    thread_id="default",
+                                    session_id=self.session_id,
+                                )
+                            except Exception:
+                                pass
 
                         response_type = "belief" if gates_passed else "speech"
                         source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
@@ -1692,9 +1855,45 @@ class CRTEnhancedRAG:
             retrieval_scores=[score for _, score in retrieved]
         )
         
-        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates(
-            intent_align, memory_align
+        # Predict response type and compute grounding
+        response_type_pred = "conversational"
+        if self.active_learning:
+            try:
+                response_type_pred = self.active_learning.predict_response_type(user_query)
+            except Exception:
+                pass
+        
+        grounding_score = self._compute_grounding_score(candidate_output, retrieved)
+        open_contradictions = self.ledger.get_open_contradictions()
+        query_slots = set(extract_fact_slots(user_query).keys())
+        contradiction_severity = self._classify_contradiction_severity(
+            open_contradictions, query_slots
         )
+        
+        gates_passed, gate_reason = self.crt_math.check_reconstruction_gates_v2(
+            intent_align=intent_align,
+            memory_align=memory_align,
+            response_type=response_type_pred,
+            grounding_score=grounding_score,
+            contradiction_severity=contradiction_severity,
+        )
+        
+        # Log gate event
+        if self.active_learning:
+            try:
+                self.active_learning.record_gate_event(
+                    question=user_query,
+                    response_type_predicted=response_type_pred,
+                    intent_align=intent_align,
+                    memory_align=memory_align,
+                    grounding_score=grounding_score,
+                    gates_passed=gates_passed,
+                    gate_reason=gate_reason,
+                    thread_id="default",
+                    session_id=self.session_id,
+                )
+            except Exception:
+                pass
         
         # Calibrate confidence based on gate failures
         # This ensures confidence aligns with gate pass/fail status
@@ -3020,5 +3219,6 @@ class CRTEnhancedRAG:
     def get_reflection_queue(self) -> List[Dict]:
         """Get pending reflections."""
         return self.ledger.get_reflection_queue()
+
 
 

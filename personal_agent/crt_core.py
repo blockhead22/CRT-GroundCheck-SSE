@@ -368,21 +368,14 @@ class CRTMath:
         has_extraction_issues: bool = False
     ) -> Tuple[bool, str]:
         """
-        Check if reconstruction passes gates.
+        Check if reconstruction passes gates (legacy v1).
+        
+        DEPRECATED: Use check_reconstruction_gates_v2 with response_type awareness.
         
         Accept if:
             A_intent ≥ θ_intent AND A_mem ≥ θ_mem
         
         Returns (passed, reason)
-        
-        Reason types for better diagnostics:
-        - grounding_fail: used a fact not in memory
-        - contradiction_fail: answered despite unresolved contradiction
-        - extraction_fail: couldn't parse slot/value
-        - narration_fail: explanation contradicts ledger (not yet implemented here, handled upstream)
-        - intent_fail: low confidence/intent alignment
-        - memory_fail: low memory alignment
-        - gates_passed: all checks passed
         """
         # Priority order: specific fails before general alignment fails
         if has_grounding_issues:
@@ -399,6 +392,72 @@ class CRTMath:
         
         if memory_align < self.config.theta_mem:
             return False, f"memory_fail (align={memory_align:.3f} < {self.config.theta_mem})"
+        
+        return True, "gates_passed"
+    
+    def check_reconstruction_gates_v2(
+        self,
+        intent_align: float,
+        memory_align: float,
+        response_type: str,
+        grounding_score: float = 1.0,
+        contradiction_severity: str = "none",
+    ) -> Tuple[bool, str]:
+        """
+        Gradient gates with response-type awareness (v2).
+        
+        Key improvements over v1:
+        1. Different thresholds for factual/explanatory/conversational
+        2. Grounding score (0-1) instead of binary check
+        3. Contradiction severity levels (blocking/note/none)
+        
+        Response types:
+        - factual: Strict gates for factual claims (What is my X?)
+        - explanatory: Relaxed gates for synthesis/explanation (How/Why questions)
+        - conversational: Minimal gates for chat/acknowledgment
+        
+        Args:
+            intent_align: Intent alignment score (0-1)
+            memory_align: Memory alignment score (0-1)
+            response_type: "factual" | "explanatory" | "conversational"
+            grounding_score: How well grounded in memory (0-1)
+            contradiction_severity: "blocking" | "note" | "none"
+        
+        Returns:
+            (passed, reason)
+        """
+        # Blocking contradictions always fail
+        if contradiction_severity == "blocking":
+            return False, "contradiction_fail"
+        
+        # Response-type specific thresholds
+        if response_type == "factual":
+            # Strict gates for factual claims
+            if intent_align < 0.6:
+                return False, f"factual_intent_fail (align={intent_align:.3f} < 0.6)"
+            if memory_align < 0.5:
+                return False, f"factual_memory_fail (align={memory_align:.3f} < 0.5)"
+            if grounding_score < 0.8:
+                return False, f"factual_grounding_fail (score={grounding_score:.3f} < 0.8)"
+        
+        elif response_type == "explanatory":
+            # Relaxed gates for explanations/synthesis
+            if intent_align < 0.4:
+                return False, f"explanatory_intent_fail (align={intent_align:.3f} < 0.4)"
+            if memory_align < 0.25:
+                return False, f"explanatory_memory_fail (align={memory_align:.3f} < 0.25)"
+            if grounding_score < 0.5:
+                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < 0.5)"
+        
+        else:  # conversational
+            # Minimal gates for chat/acknowledgment
+            if intent_align < 0.3:
+                return False, f"conversational_intent_fail (align={intent_align:.3f} < 0.3)"
+            # No memory/grounding requirements for conversational
+        
+        # Non-blocking contradictions pass but add metadata
+        if contradiction_severity == "note":
+            return True, "gates_passed_with_contradiction_note"
         
         return True, "gates_passed"
     

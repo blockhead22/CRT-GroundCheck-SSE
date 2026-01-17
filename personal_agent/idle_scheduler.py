@@ -10,6 +10,12 @@ from typing import Any, Dict, Optional
 from personal_agent.artifact_store import now_iso_utc
 from personal_agent.jobs_db import enqueue_job, init_jobs_db
 
+try:
+    from personal_agent.active_learning import get_active_learning_coordinator
+    ACTIVE_LEARNING_AVAILABLE = True
+except ImportError:
+    ACTIVE_LEARNING_AVAILABLE = False
+
 
 def _safe_int(x: Any, default: int) -> int:
     try:
@@ -68,6 +74,7 @@ class CRTIdleScheduler:
         interval_seconds: int = 10,
         auto_resolve_contradictions_enabled: bool = False,
         auto_web_research_enabled: bool = False,
+        auto_learning_enabled: bool = True,
     ):
         self.repo_root = Path(repo_root)
         self.jobs_db_path = str(jobs_db_path)
@@ -76,6 +83,7 @@ class CRTIdleScheduler:
         self.interval_seconds = max(2, int(interval_seconds))
         self.auto_resolve_contradictions_enabled = bool(auto_resolve_contradictions_enabled)
         self.auto_web_research_enabled = bool(auto_web_research_enabled)
+        self.auto_learning_enabled = bool(auto_learning_enabled) and ACTIVE_LEARNING_AVAILABLE
 
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
@@ -155,3 +163,20 @@ class CRTIdleScheduler:
 
             # auto_web_research_enabled is intentionally a no-op for now.
             # We need a user-approved trigger (e.g., explicit queued research tasks) to avoid surprise.
+        
+        # Active learning: retrain during idle time if needed
+        if self.auto_learning_enabled and ACTIVE_LEARNING_AVAILABLE:
+            try:
+                coordinator = get_active_learning_coordinator()
+                stats = coordinator.get_stats()
+                
+                # Only retrain if:
+                # 1. Not currently training
+                # 2. Have enough corrections (50+)
+                # 3. No model or accuracy < 80%
+                if stats.pending_training and not stats.model_loaded:
+                    coordinator._trigger_training()
+                elif stats.pending_training and stats.model_accuracy and stats.model_accuracy < 0.80:
+                    coordinator._trigger_training()
+            except Exception:
+                pass  # Graceful degradation
