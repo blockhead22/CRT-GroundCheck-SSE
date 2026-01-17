@@ -1,164 +1,160 @@
-# SSE-v0 (Semantic String Engine v0)
+# CRT (working name)
 
-Local prototype for meaning-preserving semantic compression of text with explicit preservation of ambiguity and contradictions.
+**A truthful personal AI system with explicit uncertainty handling and contradiction tracking.**
 
-## Quick Start
+CRT implements a "two-lane memory" architecture that separates grounded beliefs from conversational speech, enabling an AI assistant that knows what it knows, admits what it doesn't, and asks for clarification when faced with contradictions.
 
-For the CRT (truthful personal AI) workflow (background jobs → proposals → approvals → apply), see:
-- [CRT_HOW_TO_USE.md](CRT_HOW_TO_USE.md)
+## 🎯 Core Features
+
+- **Two-Lane Memory**: BELIEF (grounded facts) vs SPEECH (conversational responses)
+- **Contradiction Tracking**: Durable ledger detects and resolves conflicting information
+- **Safety Gates**: Prevents hallucinated claims with validation checks
+- **Background Learning (M2)**: Contradictions automatically become learning goals
+- **Trust-Weighted Reasoning**: Not just RAG - retrieval weighted by confidence scores
+- **Evidence Packets**: Every claim links to source evidence with provenance
+
+## 🚀 Quick Start
 
 ### Installation
 
 ```bash
+# Clone and setup
 python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On Linux/Mac:
-source .venv/bin/activate
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Linux/Mac
 
 pip install -r requirements.txt
 pip install -e .
 ```
 
-### Commands
+### Run the System
 
-#### Compress a text file
+**Option 1: Full Stack (Recommended)**
 ```bash
-sse compress --input notes.txt --out ./index_dir
+# Terminal 1: Start API server
+python -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8123
+
+# Terminal 2: Start frontend
+cd frontend
+npm install
+npm run dev
+# Open http://localhost:5173
 ```
 
-Options:
-- `--max-chars`: Maximum characters per chunk (default: 800)
-- `--overlap`: Overlap size in characters (default: 200)
-- `--embed-model`: Sentence transformer model (default: all-MiniLM-L6-v2)
-- `--cluster-method`: hdbscan, agg, or kmeans (default: hdbscan)
-- `--use-ollama`: Enable local Ollama LLM for NLI-based contradiction detection
-
-#### Query the index
+**Option 2: CLI Chat**
 ```bash
-sse query --index ./index_dir/index.json --query "What are the main points?" --k 5
+python personal_agent_cli.py
 ```
 
-Returns top-k clusters with their claims, contradictions, and open questions.
-
-#### Evaluate compression quality
+**Option 3: Streamlit GUI**
 ```bash
-sse eval --input notes.txt --index ./index_dir/index.json
+streamlit run crt_chat_gui.py
 ```
 
-Reports: compression ratio, semantic coverage, quote retention rate, contradiction count.
+## 📖 Documentation
 
-## Output Format
+**Essential Reading:**
+- [CRT_HOW_TO_USE.md](CRT_HOW_TO_USE.md) - Complete usage guide
+- [CRT_WHITEPAPER.md](CRT_WHITEPAPER.md) - System architecture and design philosophy
+- [CRT_QUICK_REFERENCE.md](CRT_QUICK_REFERENCE.md) - API reference and examples
 
-The compressed index is a single JSON file (`index.json`) containing:
+**Frontend:**
+- [frontend/README.md](frontend/README.md) - React/TypeScript web interface
 
-```json
-{
-  "doc_id": "...",
-  "timestamp": "...",
-  "chunks": [
-    {
-      "chunk_id": "c0",
-      "text": "...",
-      "start_char": 0,
-      "end_char": 123,
-      "embedding_id": "e0"
-    }
-  ],
-  "clusters": [
-    {
-      "cluster_id": "cl0",
-      "chunk_ids": ["c0", "c1"],
-      "centroid_embedding_id": "cent0"
-    }
-  ],
-  "claims": [
-    {
-      "claim_id": "clm0",
-      "claim_text": "...",
-      "supporting_quotes": [
-        {
-          "quote_text": "...",
-          "chunk_id": "c0",
-          "start_char": 0,
-          "end_char": 50
-        }
-      ],
-      "ambiguity": {
-        "hedge_score": 0.0,
-        "contains_conflict_markers": false,
-        "open_questions": []
-      }
-    }
-  ],
-  "contradictions": [
-    {
-      "pair": {
-        "claim_id_a": "clm0",
-        "claim_id_b": "clm1"
-      },
-      "label": "contradiction|entails|unrelated",
-      "evidence_quotes": [...]
-    }
-  ]
-}
+**Advanced:**
+- [CRT_BACKGROUND_LEARNING.md](CRT_BACKGROUND_LEARNING.md) - M2 learning system
+- [CRT_COMPANION_CONSTITUTION.md](CRT_COMPANION_CONSTITUTION.md) - AI safety principles
+
+## 🏗️ Architecture
+
+```
+┌─────────────────┐
+│   Frontend UI   │  React + TypeScript (localhost:5173)
+└────────┬────────┘
+         │ HTTP/REST
+┌────────▼────────┐
+│   FastAPI       │  crt_api.py (localhost:8123)
+│   Server        │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │ CRT Core│
+    └────┬────┘
+         │
+    ┌────┴─────────────┬──────────────┬─────────────┐
+    │                  │              │             │
+┌───▼────┐      ┌─────▼──────┐  ┌───▼──────┐  ┌──▼─────┐
+│Memory  │      │Contradiction│  │ Research │  │  Jobs  │
+│ System │      │   Ledger    │  │  Engine  │  │ Worker │
+└────────┘      └─────────────┘  └──────────┘  └────────┘
+   (SQLite)          (SQLite)       (Hybrid)    (Background)
 ```
 
-## Architecture
+## 📂 Project Structure
 
-### Pipeline
+```
+/crt_api.py              # FastAPI server (production entry point)
+/personal_agent/         # Core library modules
+  ├── crt_rag.py         # Main CRT retrieval logic
+  ├── crt_memory.py      # Memory storage & retrieval
+  ├── crt_ledger.py      # Contradiction tracking
+  ├── research_engine.py # External knowledge integration
+  └── jobs_worker.py     # Background task processor
+/frontend/               # React web interface
+/tests/                  # Pytest test suite
+/docs/                   # Additional documentation
+/artifacts/              # Stress test reports & analysis
+```
 
-1. **Chunking**: Sentence-aware chunking with configurable overlap; preserves character offsets for citation.
-2. **Embeddings**: Local sentence-transformers (all-MiniLM-L6-v2 default) or TF-IDF fallback; stored as numpy arrays.
-3. **Clustering**: HDBSCAN (preferred) or Agglomerative/KMeans with cosine metric.
-4. **Claim extraction**: Rule-based; extracts assertive sentences, deduplicates by cosine similarity, each claim has 1+ supporting quote with offsets.
-5. **Ambiguity detection**: Hedge score (lexicon-based), open questions (sentences ending with ?).
-6. **Contradiction detection**: Two-stage: cluster-limited comparisons; optional local LLM (Ollama) or negation heuristic fallback.
-7. **Retrieval**: Query by embedding similarity; returns top-k clusters with filtered claims, contradictions, and open questions.
-8. **Evaluation**: Compression ratio, semantic coverage, quote retention, contradiction count.
 
-### Key Design Principles
+## 🧪 Testing
 
-- **Deterministic**: No randomness where possible; reproducible results.
-- **Local-only**: No remote APIs; can run entirely offline.
+```bash
+# Run test suite
+pytest
+
+# Run specific test
+pytest tests/test_crt_conversation.py -v
+
+# Stress test (100 turns)
+python crt_stress_test.py --use-api --api-base-url http://127.0.0.1:8123 --turns 100
+```
+
+## 📊 Current Status
+
+**Version:** 0.85 (M2 Complete)  
+**Last Updated:** January 16, 2026
+
+### What's Working ✅
+- Two-lane memory (BELIEF/SPEECH separation)
+- Contradiction detection & resolution (M2: 12-33% auto-success)
+- FastAPI backend + React frontend
+- Background jobs system
+- Safety gates (preventing hallucinations)
+- Multi-turn conversation with memory
+
+### Known Issues ⚠️
+- Gate pass rate at 33% (needs tuning - many false positives)
+- M2 followup automation at 12% (working but needs improvement)
+- Some contradiction classification edge cases
+
+### Roadmap 🗺️
+- **M2 Hardening:** Improve gate logic, boost M2 success to 70%+
+- **M3 - Evidence Packets:** Web research with citations
+- **M4 - Permissions:** Tiered background task safety
+- **M5 - Multi-modal:** Image/document understanding
+
+## 🤝 Contributing
+
+This is a research prototype. Core modules are in [personal_agent/](personal_agent/). Tests use pytest. See archived docs in [archive/](archive/) for development history.
+
+## 📄 License
+
+[Add your license here]
 
 ---
 
-## CRT (Truthful Personal AI) — Current Status & Next Steps
-
-**CRT** is a local-first, trust-weighted memory system that **doesn't lie**. Instead of hallucinating, it tracks contradictions explicitly and asks clarifying questions.
-
-### ✅ What's Working Now (v0.85)
-
-**Core Engine (Milestone M0-M2):**
-- ✅ Trust-weighted memory with belief/speech separation
-- ✅ Contradiction ledger (no silent overwrites)
-- ✅ HTTP API (FastAPI) with `/api/chat`, `/api/contradictions`, `/api/jobs`
-- ✅ React/Vite frontend (Chat, Dashboard, Docs, Jobs pages)
-- ✅ Background jobs queue with SQLite persistence
-- ✅ M2 contradiction resolution: 85%+ success rate in 100-turn tests
-- ✅ Scope isolation: contradictions don't leak across unrelated topics
-- ✅ Learned suggestion engine (metadata-only, never overwrites facts)
-- ✅ Stress testing harness (200+ turn validation)
-
-**What This Means:**
-You can chat with CRT, it remembers what you tell it, flags contradictions instead of silently changing history, and asks you to resolve conflicts. Works locally, no cloud required.
-
-### 🔧 Known Limitations & Polish Opportunities
-
-**M2 Remaining Work (to reach 95%+):**
-1. **Gate pass rate**: Currently 14-33% (target: 70%+)
-   - Many legitimate queries flagged as "instructions" 
-   - Needs gate logic review in `crt_rag.py`
-2. **Contradiction classification polish**:
-   - CONFLICT/REVISION/REFINEMENT/TEMPORAL types exist but need edge case tuning
-3. **M2 edge cases**: 
-   - Better handling of multi-slot contradictions
-   - Improved clarification question templates
-
-**Next Major Features (M3+):**
-- **M3 - Evidence Packets**: Web research with citations (search → fetch → quote → cite)
-- **M4 - Background Task Permissions**: Tier-based safety (read-only → notes → tools)
+**Built with:** Python 3.10+, FastAPI, React, SQLite, sentence-transformers
 - **M5 - Learning Polish**: User-facing controls for suggestions, export/import
 
 ### 📚 Documentation

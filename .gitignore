@@ -1,3 +1,59 @@
-crt_stress_test.py
-crt_stress_test.py
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+*.log
+*.db-journal
+*_test*.db
+*_stress*.db
+*_t_*.db
+contradiction_stress_test_output/
+integration_test_output/
+output_index/
+
+# Cache
+.sse_cache.json
+.sse_multi_cache.json
+*.cache
+
+# Frontend
 /frontend/node_modules
+/frontend/dist
+/frontend/.env.local
+/sse-chat-ui/node_modules
+/sse-chat-ui/dist
+
+# Artifacts (keep in repo but ignore old reports)
+# artifacts/crt_stress_report.*.md
+
+# Keep main production databases
+!personal_agent/crt_memory.db
+!personal_agent/crt_ledger.db
+
+# Temporary files
+*.tmp
+temp_*
+debug_*
+test_*.py
+!tests/test_*.py

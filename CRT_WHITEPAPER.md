@@ -1,5 +1,5 @@
 # CRT Whitepaper
-## Cognitive Reflective Transformer: Memory Governance for Conversational AI
+## Memory Governance for Conversational AI
 
 **Date:** January 10, 2026  
 **Status:** Draft (engineering-oriented)  
@@ -10,7 +10,7 @@
 
 Most “LLM memory” systems today are storage + retrieval wrapped around a chatbot. In practice, they fail in predictable ways: identity drift, false contradiction flags, stale facts, and confident hallucinations.
 
-CRT (Cognitive Reflective Transformer) is an architecture for **memory governance** in conversational AI. It treats user statements as evolving claims, maintains a contradiction ledger, updates trust over time, and uses explicit gates to decide when the system can answer with commitment versus when it must ask for clarification.
+CRT is an architecture for **memory governance** in conversational AI. It treats user statements as evolving claims, maintains a contradiction ledger, updates trust over time, and uses explicit gates to decide when the system can answer with commitment versus when it must ask for clarification.
 
 CRT is not a foundation model. It is a **policy + data layer** that makes an underlying LLM behave more consistently over long horizons.
 
