@@ -2,51 +2,56 @@
 Active Learning Achievement Summary
 =====================================
 
-## FINAL RESULTS (Jan 17, 2026)
+## FINAL RESULTS (Jan 17, 2026) ✅
+
+### Performance Summary
+
+| Approach | Training Data | Test Accuracy | System Pass Rate | Status |
+|----------|--------------|---------------|------------------|--------|
+| **Heuristics (FINAL)** | Rule-based | N/A | **89.5%** | ✅ **Deployed** |
+| ML Classifier v1 | 55 manual | 72.7% | 57.9% | ❌ Underperformed |
+| ML Classifier v2 | 147 manual | 86.7% | 63.2% | ❌ Underperformed |
+| ML Classifier v0 | 288 auto | 98.3% | 68.4% | ❌ Noisy data |
+
+**Key Finding:** Simple heuristics outperform ML at this scale (<200 examples)
 
 ### Core Infrastructure ✅ COMPLETE
 - **Event Logging**: All gate decisions logged to active_learning.db
-- **Correction Collection**: SQLite schema for user corrections  
-- **Model Training**: Automated retraining pipeline with scikit-learn
+- **Correction Collection**: SQLite schema with 147 labeled examples
+- **Model Training**: Automated retraining pipeline (train_classifier.py)
 - **Hot-Reload**: Model updates without API restart
 - **Dashboard UI**: Real-time learning stats visualization
+- **Smart Classification**: Rule-based batch correction tools
 
-### ML Classifier Experiment ✅ COMPLETE
-- **Initial Training**: 288 auto-labeled examples → 98.3% test accuracy → 68.4% system pass rate
-- **Clean Retraining**: 55 manual corrections → 72.7% test accuracy → 57.9% system pass rate  
-- **Heuristic Baseline**: 73.7% system pass rate
-- **Integration**: Built and tested in crt_rag.py (4 call sites)
-- **Graceful Degradation**: Falls back to heuristics if model unavailable
-- **Model**: TF-IDF vectorizer + Logistic Regression
+### Final Configuration
+- **Response Classification**: ✅ Heuristics (89.5% pass rate)
+- **Active Learning**: ✅ Still logging all gate events
+- **Database**: 147 corrected examples ready for future ML
+- **Next ML Attempt**: When corrections reach 300-500+
 
-### Performance Comparison
+### Lessons Learned
 
-| Approach | Test Accuracy | System Pass Rate | Status |
-|----------|--------------|------------------|--------|
-| **Heuristics** | N/A | **73.7%** | ✅ Current |
-| ML (288 auto) | 98.3% | 68.4% | ❌ Noisy data |
-| ML (55 manual) | 72.7% | 57.9% | ❌ Insufficient data |
+1. **Test Accuracy ≠ System Performance**
+   - ML model: 86.7% test accuracy → 63.2% system pass rate
+   - Heuristics: N/A test accuracy → 89.5% system pass rate
+   - Edge cases and failure modes matter more than average accuracy
 
-### Key Findings ⚠️
+2. **ML Needs Scale to Beat Simple Rules**
+   - 55 examples: Too few, high variance (57.9%)
+   - 147 examples: Better but still insufficient (63.2%)
+   - Need 300-500+ examples to outperform hand-crafted heuristics
 
-**ML Classifier Underperforms Heuristics:**
-- 55 examples insufficient to learn query type patterns
-- Heuristics use simple rules (greetings, question words, help requests)
-- ML needs 200-500+ examples to outperform hand-crafted rules
-- Small dataset → high variance, poor generalization
+3. **Data Quality > Data Quantity**
+   - Auto-labeled (288): 98.3% test acc but noisy patterns
+   - Manual labeled (147): 86.7% test acc but cleaner
+   - Still not enough to capture edge cases
 
-**Lessons Learned:**
-1. ✅ Active learning infrastructure works perfectly
-2. ✅ Can collect corrections and retrain automatically
-3. ⚠️ ML needs scale to beat simple heuristics
-4. ✅ Proof of concept: self-improvement capability exists
-5. 📊 Need passive collection through normal use
-
-### Current Configuration
-- **Response Classification**: Reverted to heuristics (73.7% pass rate)
-- **Active Learning**: Still logging all gate events
-- **Database**: 145 total events, 55 corrections collected
-- **Next ML Attempt**: When corrections reach 200+
+4. **Infrastructure Success**
+   - ✅ Event collection works perfectly
+   - ✅ Training pipeline automated
+   - ✅ Model integration tested
+   - ✅ Proof of concept: system CAN learn and improve
+   - 📊 Ready for passive data collection at scale
 
 ## Architecture Achievements
 
