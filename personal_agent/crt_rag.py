@@ -1104,7 +1104,8 @@ class CRTEnhancedRAG:
         # Special-case: prompts that explicitly demand chat-grounded recall or memory citation.
         # We answer deterministically from retrieved/prompt memory text to avoid hallucinations
         # and to avoid claiming "no memories" when context exists.
-        if user_input_kind in ("question", "instruction") and self._is_memory_citation_request(user_query):
+        # ALSO applies to synthesis queries which need to combine multiple facts.
+        if user_input_kind in ("question", "instruction") and (self._is_memory_citation_request(user_query) or is_synthesis):
             prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=2)
             candidate_output = self._build_memory_citation_answer(
                 user_query=user_query,
@@ -1130,7 +1131,7 @@ class CRTEnhancedRAG:
                 'confidence': 0.8,
                 'response_type': 'speech',
                 'gates_passed': False,
-                'gate_reason': 'memory_citation',
+                'gate_reason': 'memory_citation_or_synthesis',
                 'intent_alignment': 0.9,
                 'memory_alignment': 1.0,
                 'contradiction_detected': False,
