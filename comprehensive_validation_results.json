@@ -1,7 +1,7 @@
 {
-  "timestamp": 1768755621.385378,
-  "overall_pass_rate": 52.63157894736842,
-  "total_passed": 10,
+  "timestamp": 1768768650.2171383,
+  "overall_pass_rate": 84.21052631578948,
+  "total_passed": 16,
   "total_queries": 19,
   "phase_results": [
     {
@@ -74,12 +74,12 @@
           "query": "Hi, how are you?",
           "expected_type": "conversational",
           "difficulty": "easy",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
-          "answer": "I'm doing well, thanks for asking! It's great to catch up with you. By the way, I've got a meeting at TechCorp today, so I'm looking forward to that. How about you?",
-          "gate_reason": "explanatory_memory_fail (align=0.179 < 0.25)",
-          "answer_length": 164
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "\"Hello! I'm doing well, thanks for asking. How can I assist you today?\" \n\nI directly responded with a friendly greeting because the conversation started with a question that likely seeks social interaction, and my primary goal is to establish a connection with the user while also being helpful. My response doesn't require any further analysis since there were no contradictions or conflicting information retrieved from memory.",
+          "gate_reason": "gates_passed",
+          "answer_length": 429
         },
         {
           "query": "Can you help me?",
@@ -88,9 +88,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "Hey, I'm CRT. What's on your mind? You're Alex Chen, right? From what I've got stored, you work at TechCorp in San Francisco. How can I help you today?",
+          "answer": "What's on your mind, Alex? I'm here to help. You work at TechCorp, right?",
           "gate_reason": "gates_passed",
-          "answer_length": 151
+          "answer_length": 73
         },
         {
           "query": "Thanks for the information!",
@@ -99,9 +99,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You're welcome! I'm glad I could provide some helpful info. It's always a pleasure to assist you with your questions. How can I help you today?",
+          "answer": "You're welcome! I've stored your thanks in my memory with a trust score of 1, indicating that you seem to appreciate the info I provided. Would you like to share something else?",
           "gate_reason": "gates_passed",
-          "answer_length": 143
+          "answer_length": 177
         },
         {
           "query": "Tell me about yourself",
@@ -110,14 +110,14 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "Hi, I'm Alex Chen. Nice to meet you!",
+          "answer": "Hi, I'm Alex Chen. That's all I know about myself for now.",
           "gate_reason": "gates_passed",
-          "answer_length": 36
+          "answer_length": 58
         }
       ],
-      "passed": 3,
+      "passed": 4,
       "total": 4,
-      "pass_rate": 75.0
+      "pass_rate": 100.0
     },
     {
       "phase_name": "phase3_synthesis",
@@ -127,22 +127,22 @@
           "expected_type": "synthesis",
           "difficulty": "medium",
           "passed": false,
-          "gates_passed": false,
+          "gates_passed": true,
           "is_meaningful": false,
-          "answer": "I don't have any information on your personal interests. Can you tell me more about what you're interested in? I'll do my best to help!",
-          "gate_reason": "factual_memory_fail (align=0.214 < 0.35)",
-          "answer_length": 135
+          "answer": "I don't have information on your interests.",
+          "gate_reason": "gates_passed",
+          "answer_length": 43
         },
         {
           "query": "What technologies am I into?",
           "expected_type": "synthesis",
           "difficulty": "medium",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
-          "answer": "You work at TechCorp! I don't have information on the specific technologies you're into, though. Can you tell me more about what you do there?",
-          "gate_reason": "factual_grounding_fail (score=0.280 < 0.30)",
-          "answer_length": 142
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "Hi, I'm CRT! Nice to chat with you about your interests.\n\nFrom what I remember, you work at TechCorp... that's all I have on the topic of your employer. Can you tell me a bit more about yourself? What do you like to do in your free time?",
+          "gate_reason": "gates_passed",
+          "answer_length": 237
         },
         {
           "query": "Can you summarize what you know about me?",
@@ -151,14 +151,14 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "So, I've got a pretty basic summary of who you are. You're Alex Chen, and according to my memory, your favorite color is blue. That's about it for now - if you'd like to share more about yourself, I'm all ears!",
+          "answer": "So, Alex Chen is your name, right? That's all I've got on that for now.",
           "gate_reason": "gates_passed",
-          "answer_length": 210
+          "answer_length": 71
         }
       ],
-      "passed": 1,
+      "passed": 2,
       "total": 3,
-      "pass_rate": 33.333333333333336
+      "pass_rate": 66.66666666666667
     },
     {
       "phase_name": "phase4_question_words",
@@ -167,12 +167,12 @@
           "query": "When did I graduate?",
           "expected_type": "question_word",
           "difficulty": "easy",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
-          "answer": "You graduated twice - once in 2019 (I have a single memory of this, but the others are more recent), but the exact date isn't specified for that one; however, I do know you graduated multiple times in 2020.",
-          "gate_reason": "factual_grounding_fail (score=0.238 < 0.30)",
-          "answer_length": 206
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You graduated in 2020. You've actually mentioned that multiple times!",
+          "gate_reason": "gates_passed",
+          "answer_length": 69
         },
         {
           "query": "What is my project called?",
@@ -181,31 +181,31 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "Your project is called CRT, but I've noticed a discrepancy in the trust scores - it seems like you've mentioned this multiple times with varying levels of confidence (scores range from 0 to 1). Can you help me clarify which version is the most accurate?",
+          "answer": "You've told me a few times that your project is called CRT, but I don't have any additional information about it beyond what you've shared with me. Your project is indeed called CRT.",
           "gate_reason": "gates_passed",
-          "answer_length": 253
+          "answer_length": 182
         },
         {
           "query": "How many languages do I speak?",
           "expected_type": "question_word",
           "difficulty": "medium",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
-          "answer": "You mentioned that earlier. You spoke in four languages, not three. Does that sound right?",
-          "gate_reason": "explanatory_grounding_fail (score=0.000 < 0.25)",
-          "answer_length": 90
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You speak five languages.",
+          "gate_reason": "gates_passed",
+          "answer_length": 25
         },
         {
           "query": "Why am I working on this project?",
           "expected_type": "question_word",
           "difficulty": "hard",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
-          "answer": "It seems like you're working on a project because it's related to your interests in machine learning and programming. You mentioned enjoying programming in Python, which might be the foundation for this project. Does that sound about right?",
-          "gate_reason": "explanatory_grounding_fail (score=0.177 < 0.25)",
-          "answer_length": 240
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "You're working on the CRT project because it's related to your interest in machine learning, and it might be a career opportunity for you.",
+          "gate_reason": "gates_passed",
+          "answer_length": 138
         },
         {
           "query": "How does CRT work?",
@@ -219,9 +219,9 @@
           "answer_length": 1645
         }
       ],
-      "passed": 1,
+      "passed": 4,
       "total": 5,
-      "pass_rate": 20.0
+      "pass_rate": 80.0
     },
     {
       "phase_name": "phase5_contradictions",
@@ -231,40 +231,40 @@
           "expected_type": "contradiction",
           "difficulty": "hard",
           "passed": false,
-          "gates_passed": false,
+          "gates_passed": true,
           "is_meaningful": false,
-          "answer": "I don't have information on your happiness at TechCorp in my memory. Can you tell me more about what you're looking for?",
-          "gate_reason": "factual_grounding_fail (score=0.286 < 0.30)",
-          "answer_length": 120
+          "answer": "Sorry, I don't have that information in my memory. Can you tell me more about your experience at TechCorp? I'll do my best to help!",
+          "gate_reason": "gates_passed",
+          "answer_length": 131
         },
         {
           "query": "What's going on with my job?",
           "expected_type": "contradiction",
           "difficulty": "hard",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
-          "answer": "Sorry to hear that you're feeling uncertain about your job. Unfortunately, I don't have specific information about what's going on with your employment at TechCorp. Can you tell me more about what's concerning you? I'm here to listen and help if I can.",
-          "gate_reason": "factual_grounding_fail (score=0.258 < 0.30)",
-          "answer_length": 252
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
+          "answer": "Hey, I'm glad you reached out about your job at TechCorp. From what I recall, that's the company where you work. Can you tell me a bit more about what's going on? What specifically are you concerned about?",
+          "gate_reason": "gates_passed",
+          "answer_length": 205
         }
       ],
-      "passed": 0,
+      "passed": 1,
       "total": 2,
-      "pass_rate": 0.0
+      "pass_rate": 50.0
     }
   ],
   "by_difficulty": {
     "easy": {
-      "passed": 8,
+      "passed": 10,
       "total": 10
     },
     "medium": {
-      "passed": 1,
+      "passed": 3,
       "total": 4
     },
     "hard": {
-      "passed": 1,
+      "passed": 3,
       "total": 5
     }
   }

@@ -1095,7 +1095,11 @@ class CRTEnhancedRAG:
         # Compute relevant slots for contradiction filtering
         relevant_slots_set = set(inferred_slots or []) | set((asserted_facts or {}).keys())
         
-        retrieved = self.retrieve(user_query, k=5, relevant_slots=relevant_slots_set if relevant_slots_set else None)
+        # Use broader retrieval (k=15) for synthesis queries that need to gather multiple related facts
+        is_synthesis = self._is_synthesis_query(user_query)
+        retrieval_k = 15 if is_synthesis else 5
+        
+        retrieved = self.retrieve(user_query, k=retrieval_k, relevant_slots=relevant_slots_set if relevant_slots_set else None)
 
         # Special-case: prompts that explicitly demand chat-grounded recall or memory citation.
         # We answer deterministically from retrieved/prompt memory text to avoid hallucinations
@@ -2814,6 +2818,34 @@ class CRTEnhancedRAG:
     # ========================================================================
     # Grounded memory citation helpers
     # ========================================================================
+
+    def _is_synthesis_query(self, text: str) -> bool:
+        """True if the user asks to synthesize/summarize multiple facts.
+        
+        These queries need broader retrieval (higher k) to gather related facts.
+        Examples:
+        - "What do you know about my interests?"
+        - "What technologies am I into?"
+        - "Tell me what you remember about me"
+        """
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+        
+        # Pattern 1: "what do you know about X"
+        if "what do you know about" in t or "what do you remember about" in t:
+            return True
+        
+        # Pattern 2: Summary requests
+        if ("summarize" in t or "summary" in t or "tell me about" in t) and ("me" in t or "my" in t or "i" in t):
+            return True
+        
+        # Pattern 3: Category queries asking for multiple facts
+        if any(word in t for word in ["interests", "hobbies", "technologies", "skills", "languages", "preferences"]):
+            if any(word in t for word in ["what", "tell", "list", "show"]):
+                return True
+        
+        return False
 
     def _is_memory_citation_request(self, text: str) -> bool:
         """True if the user explicitly asks for chat-grounded recall/citation.
