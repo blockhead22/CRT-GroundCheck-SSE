@@ -1063,7 +1063,7 @@ def create_app() -> FastAPI:
             )
         return out
 
-    def _thread_db_paths(tid: str) -> Dict[str, Path]:
+    def _thread_db_paths_map(tid: str) -> Dict[str, Path]:
         return {
             "memory": (root / f"personal_agent/crt_memory_{tid}.db"),
             "ledger": (root / f"personal_agent/crt_ledger_{tid}.db"),
@@ -1911,7 +1911,7 @@ def create_app() -> FastAPI:
         if target not in {"memory", "ledger", "all"}:
             target = "all"
 
-        paths = _thread_db_paths(tid)
+        paths = _thread_db_paths_map(tid)
         deleted: Dict[str, bool] = {}
 
         def _delete_path(name: str) -> None:
@@ -1951,7 +1951,7 @@ def create_app() -> FastAPI:
         engines.pop(tid, None)
 
         sources = [str(s) for s in (req.sources or [])]
-        paths = _thread_db_paths(tid)
+        paths = _thread_db_paths_map(tid)
         deleted_memories, deleted_trust_log = _purge_memory_sources(paths["memory"], sources)
 
         return ThreadPurgeMemoriesResponse(

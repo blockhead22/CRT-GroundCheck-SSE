@@ -18,8 +18,9 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-# Ensure imports work regardless of OS / working directory
-PROJECT_ROOT = Path(__file__).resolve().parent
+# Ensure imports work regardless of OS / working directory.
+# Repo root is the parent of tools/.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

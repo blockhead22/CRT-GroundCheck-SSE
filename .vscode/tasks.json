@@ -146,10 +146,9 @@
 		{
 			"label": "CRT Stress Test (API quick)",
 			"type": "shell",
-			"command": "py",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"args": [
-				"-3",
-				"d:\\AI_round2\\crt_stress_test.py",
+				"tools/crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
 				"http://127.0.0.1:8123",
@@ -161,6 +160,9 @@
 				"--sleep",
 				"0.05"
 			],
+			"options": {
+				"cwd": "D:/AI_round2"
+			},
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
@@ -168,10 +170,9 @@
 		{
 			"label": "CRT Stress Test (API quick)",
 			"type": "shell",
-			"command": "py",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"args": [
-				"-3",
-				"d:\\AI_round2\\crt_stress_test.py",
+				"tools/crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
 				"http://127.0.0.1:8123",
@@ -183,6 +184,9 @@
 				"--sleep",
 				"0.05"
 			],
+			"options": {
+				"cwd": "D:/AI_round2"
+			},
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
@@ -190,10 +194,9 @@
 		{
 			"label": "CRT Stress Test (API full 30)",
 			"type": "shell",
-			"command": "py",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"args": [
-				"-3",
-				"d:\\AI_round2\\crt_stress_test.py",
+				"tools/crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
 				"http://127.0.0.1:8123",
@@ -205,6 +208,9 @@
 				"--sleep",
 				"0.1"
 			],
+			"options": {
+				"cwd": "D:/AI_round2"
+			},
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
@@ -212,11 +218,13 @@
 		{
 			"label": "Build CRT Stress Report (latest)",
 			"type": "shell",
-			"command": "py",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"args": [
-				"-3",
-				"d:\\AI_round2\\artifacts\\build_crt_stress_report.py"
+				"artifacts/build_crt_stress_report.py"
 			],
+			"options": {
+				"cwd": "D:/AI_round2"
+			},
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
@@ -224,10 +232,9 @@
 		{
 			"label": "CRT Stress Test (API 30 after padding fix)",
 			"type": "shell",
-			"command": "py",
+			"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"args": [
-				"-3",
-				"d:\\AI_round2\\crt_stress_test.py",
+				"tools/crt_stress_test.py",
 				"--use-api",
 				"--api-base-url",
 				"http://127.0.0.1:8123",
@@ -239,6 +246,9 @@
 				"--sleep",
 				"0.05"
 			],
+			"options": {
+				"cwd": "D:/AI_round2"
+			},
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "test"
@@ -256,11 +266,13 @@
 			"group": "test"
 		},
 		{
-			"label": "Build CRT Stress Report (latest)",
+				"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"type": "shell",
-			"command": "py",
-			"args": [
+					"artifacts/build_crt_stress_report.py"
 				"-3",
+				"options": {
+					"cwd": "D:/AI_round2"
+				},
 				"d:\\AI_round2\\artifacts\\build_crt_stress_report.py"
 			],
 			"isBackground": false,
@@ -268,10 +280,9 @@
 			"group": "test"
 		},
 		{
-			"label": "Build CRT Stress Report (latest)",
+				"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			"type": "shell",
-			"command": "py",
-			"args": [
+					"tools/crt_stress_test.py",
 				"-3",
 				"d:\\AI_round2\\artifacts\\build_crt_stress_report.py"
 			],
@@ -283,6 +294,9 @@
 			"label": "crt api (uvicorn)",
 			"type": "shell",
 			"command": "D:/AI_round2/.venv/Scripts/python.exe",
+				"options": {
+					"cwd": "D:/AI_round2"
+				},
 			"args": [
 				"-m",
 				"uvicorn",
@@ -290,11 +304,13 @@
 				"--host",
 				"127.0.0.1",
 				"--port",
-				"8123"
+				"command": "D:/AI_round2/.venv/Scripts/python.exe",
 			],
-			"isBackground": true,
-			"problemMatcher": [],
+					"artifacts/build_crt_stress_report.py"
 			"group": "build"
+				"options": {
+					"cwd": "D:/AI_round2"
+				},
 		},
 		{
 			"label": "CRT Stress Test (API 30 contradiction inventory fix)",
