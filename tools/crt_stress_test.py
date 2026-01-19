@@ -68,6 +68,17 @@ parser.add_argument(
     action="store_true",
     help="Run a deterministic M2 scenario (create contradiction -> next -> asked -> respond) and exit 0/2.",
 )
+parser.add_argument(
+    "--system-message",
+    default=None,
+    help="Sending an initial system message/instruction as the first user turn.",
+)
+parser.add_argument(
+    "--scenario",
+    default="standard",
+    choices=["standard", "skeptical"],
+    help="Choose the test scenario: 'standard' (Sarah/Seattle) or 'skeptical' (System Review).",
+)
 args = parser.parse_args()
 
 art_dir = Path(args.artifacts_dir)
@@ -785,6 +796,43 @@ def _run_m2_smoke() -> None:
 
 if use_api and bool(getattr(args, "m2_smoke", False)):
     _run_m2_smoke()
+
+if args.system_message:
+    print("\nSYSTEM MESSAGE / INSTRUCTION")
+    print("-" * 80)
+    query_and_track(
+        args.system_message,
+        "System Message provided via arguments",
+        "System Setup"
+    )
+
+if args.scenario == "skeptical":
+    print("\nSCENARIO: SKEPTICAL SYSTEMS REVIEWER")
+    print("-" * 80)
+    
+    # Read development logs
+    logs = []
+    for fname in ["ACTIVE_LEARNING_STATUS.md", "ACTIVE_LEARNING_ACHIEVEMENT.md"]:
+        fpath = PROJECT_ROOT / fname
+        if fpath.exists():
+            print(f"Loading log: {fname}")
+            logs.append(f"=== {fname} ===\n{fpath.read_text(encoding='utf-8')}")
+        else:
+            print(f"Warning: {fname} not found at {fpath}")
+    
+    full_log = "\n\n".join(logs)
+    if not full_log:
+        print("Error: No development logs found to test.")
+        sys.exit(1)
+        
+    query_and_track(
+        f"Here is the development log and system description:\n\n```text\n{full_log}\n```\n\nPlease PROVIDE THE VERDICT NOW based on the instructions.",
+        "Providing development logs for review",
+        "Log Analysis"
+    )
+    
+    print("\nSkeptical review complete (1 turn). Exiting.")
+    sys.exit(0)
 
 print("\nPHASE 1: BASELINE FACT ESTABLISHMENT")
 print("-" * 80)

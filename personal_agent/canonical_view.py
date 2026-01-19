@@ -30,7 +30,10 @@ class ContradictionRow:
 
 
 def _safe_str(v: Any) -> str:
-    return str(v or "").strip()
+    # Only treat None as empty; preserve False and 0
+    if v is None:
+        return ""
+    return str(v).strip()
 
 
 def _parse_slots_csv(csv: str) -> List[str]:

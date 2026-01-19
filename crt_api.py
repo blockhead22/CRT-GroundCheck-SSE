@@ -711,6 +711,11 @@ def create_app() -> FastAPI:
         t = (text or '').strip().lower()
         if not t:
             return False
+        
+        # If the input is very long (e.g., pasting logs), it's likely not a simple Q&A lookup.
+        if len(t) > 1000:
+            return False
+
         needles = (
             # Direct "what is memory" questions about the system.
             'what is memory to you',
