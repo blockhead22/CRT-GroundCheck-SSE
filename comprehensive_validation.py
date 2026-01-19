@@ -12,10 +12,12 @@ import requests
 import time
 import json
 import re
+import uuid
 from typing import Dict, List, Tuple
 
 API_BASE = "http://localhost:8123"
-THREAD_ID = "comprehensive_validation"
+# Use unique thread ID per run to avoid contamination
+THREAD_ID = f"validation_{uuid.uuid4().hex[:8]}"
 
 # Test progression: easy → medium → hard
 TEST_PHASES = {
@@ -86,7 +88,7 @@ def reset_thread():
     """Reset test thread to clean slate."""
     try:
         response = requests.post(
-            f"{API_BASE}/api/chat/reset",
+            f"{API_BASE}/api/thread/reset",
             json={"thread_id": THREAD_ID},
             timeout=10
         )

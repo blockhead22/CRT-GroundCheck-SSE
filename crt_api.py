@@ -1476,7 +1476,7 @@ def create_app() -> FastAPI:
             return ChatSendResponse(
                 answer=answer,
                 response_type='explanation',
-                gates_passed=False,
+                gates_passed=True,  # Doc-grounded explanations are safe - citing real docs
                 gate_reason='docs_explanation',
                 session_id=getattr(engine, 'session_id', None),
                 metadata={

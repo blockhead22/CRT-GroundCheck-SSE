@@ -273,5 +273,48 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     if m:
         school = m.group(1).strip()
         facts["masters_school"] = ExtractedFact("masters_school", school, _norm_text(school))
+    
+    # Siblings
+    # Examples:
+    # - "I have two siblings"
+    # - "I have 3 siblings"
+    m = re.search(r"\bi have\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+sibling", text, flags=re.IGNORECASE)
+    if m:
+        count_str = m.group(1).strip()
+        # Convert words to numbers
+        word_to_num = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                       "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"}
+        count_normalized = word_to_num.get(count_str.lower(), count_str)
+        facts["siblings"] = ExtractedFact("siblings", count_normalized, count_normalized)
+    
+    # Languages spoken
+    # Examples:
+    # - "I speak three languages"
+    # - "I speak 5 languages"
+    m = re.search(r"\bi speak\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+language", text, flags=re.IGNORECASE)
+    if m:
+        count_str = m.group(1).strip()
+        word_to_num = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+                       "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10"}
+        count_normalized = word_to_num.get(count_str.lower(), count_str)
+        facts["languages_spoken"] = ExtractedFact("languages_spoken", count_normalized, count_normalized)
+    
+    # Graduation year
+    # Examples:
+    # - "I graduated in 2020"
+    # - "I graduated from Stanford in 2018"
+    m = re.search(r"\bi graduated\s+(?:in|from.*in)\s+(19\d{2}|20\d{2})\b", text, flags=re.IGNORECASE)
+    if m:
+        year = m.group(1).strip()
+        facts["graduation_year"] = ExtractedFact("graduation_year", year, year)
+    
+    # Project name
+    # Examples:
+    # - "My project is called CRT"
+    # - "My project's name is PyBuilder"
+    m = re.search(r"\bmy project\s+(?:is\s+called|'?s\s+name\s+is|name\s+is)\s+([A-Z][A-Za-z0-9+_.#-]{1,40})\b", text, flags=re.IGNORECASE)
+    if m:
+        project = m.group(1).strip()
+        facts["project_name"] = ExtractedFact("project_name", project, _norm_text(project))
 
     return facts

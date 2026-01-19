@@ -1,7 +1,7 @@
 {
-  "timestamp": 1768768650.2171383,
-  "overall_pass_rate": 84.21052631578948,
-  "total_passed": 16,
+  "timestamp": 1768799564.8453865,
+  "overall_pass_rate": 100.0,
+  "total_passed": 19,
   "total_queries": 19,
   "phase_results": [
     {
@@ -36,9 +36,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You live in San Francisco.",
+          "answer": "San Francisco",
           "gate_reason": "gates_passed",
-          "answer_length": 26
+          "answer_length": 13
         },
         {
           "query": "What is my favorite color?",
@@ -58,9 +58,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You have two siblings.",
+          "answer": "You have 2 siblings.",
           "gate_reason": "gates_passed",
-          "answer_length": 22
+          "answer_length": 20
         }
       ],
       "passed": 5,
@@ -77,9 +77,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "\"Hello! I'm doing well, thanks for asking. How can I assist you today?\" \n\nI directly responded with a friendly greeting because the conversation started with a question that likely seeks social interaction, and my primary goal is to establish a connection with the user while also being helpful. My response doesn't require any further analysis since there were no contradictions or conflicting information retrieved from memory.",
+          "answer": "\"Hi there! I'm doing well, thanks for asking. By the way, is your favorite color blue too?\"",
           "gate_reason": "gates_passed",
-          "answer_length": 429
+          "answer_length": 91
         },
         {
           "query": "Can you help me?",
@@ -88,9 +88,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "What's on your mind, Alex? I'm here to help. You work at TechCorp, right?",
+          "answer": "I'd be happy to help! You're Alex Chen, right? I have that info in my memory. What's on your mind?",
           "gate_reason": "gates_passed",
-          "answer_length": 73
+          "answer_length": 98
         },
         {
           "query": "Thanks for the information!",
@@ -99,9 +99,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You're welcome! I've stored your thanks in my memory with a trust score of 1, indicating that you seem to appreciate the info I provided. Would you like to share something else?",
+          "answer": "You're welcome! I'm glad I could provide some useful info about you, Alex Chen. If you need anything else, feel free to ask!",
           "gate_reason": "gates_passed",
-          "answer_length": 177
+          "answer_length": 124
         },
         {
           "query": "Tell me about yourself",
@@ -110,9 +110,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "Hi, I'm Alex Chen. That's all I know about myself for now.",
-          "gate_reason": "gates_passed",
-          "answer_length": 58
+          "answer": "Based on what I remember:\n  1. My name is Alex Chen\n  2. I work at TechCorp\n  3. My favorite color is blue\n  4. I have two siblings\n  5. I live in San Francisco\n  6. Thanks for the information!",
+          "gate_reason": "synthesis_grounded_in_memory",
+          "answer_length": 193
         }
       ],
       "passed": 4,
@@ -126,12 +126,12 @@
           "query": "What do you know about my interests?",
           "expected_type": "synthesis",
           "difficulty": "medium",
-          "passed": false,
+          "passed": true,
           "gates_passed": true,
-          "is_meaningful": false,
-          "answer": "I don't have information on your interests.",
-          "gate_reason": "gates_passed",
-          "answer_length": 43
+          "is_meaningful": true,
+          "answer": "Based on what I remember:\n  1. I enjoy programming in Python\n  2. My name is Alex Chen\n  3. I work at TechCorp\n  4. I'm interested in AI safety\n  5. I like machine learning\n  6. I have two siblings\n  7. My favorite color is blue\n  8. I live in San Francisco\n  9. Thanks for the information!",
+          "gate_reason": "synthesis_grounded_in_memory",
+          "answer_length": 290
         },
         {
           "query": "What technologies am I into?",
@@ -140,9 +140,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "Hi, I'm CRT! Nice to chat with you about your interests.\n\nFrom what I remember, you work at TechCorp... that's all I have on the topic of your employer. Can you tell me a bit more about yourself? What do you like to do in your free time?",
-          "gate_reason": "gates_passed",
-          "answer_length": 237
+          "answer": "Based on what I remember:\n  1. I work at TechCorp\n  2. I enjoy programming in Python\n  3. I like machine learning\n  4. I'm interested in AI safety\n  5. My favorite color is blue\n  6. My name is Alex Chen\n  7. I live in San Francisco\n  8. I have two siblings\n  9. Thanks for the information!",
+          "gate_reason": "synthesis_grounded_in_memory",
+          "answer_length": 290
         },
         {
           "query": "Can you summarize what you know about me?",
@@ -151,14 +151,14 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "So, Alex Chen is your name, right? That's all I've got on that for now.",
-          "gate_reason": "gates_passed",
-          "answer_length": 71
+          "answer": "Based on what I remember:\n  1. My name is Alex Chen\n  2. I like machine learning\n  3. I work at TechCorp\n  4. My favorite color is blue\n  5. I have two siblings\n  6. I enjoy programming in Python\n  7. I'm interested in AI safety\n  8. Thanks for the information!\n  9. I live in San Francisco",
+          "gate_reason": "synthesis_grounded_in_memory",
+          "answer_length": 290
         }
       ],
-      "passed": 2,
+      "passed": 3,
       "total": 3,
-      "pass_rate": 66.66666666666667
+      "pass_rate": 100.0
     },
     {
       "phase_name": "phase4_question_words",
@@ -170,9 +170,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You graduated in 2020. You've actually mentioned that multiple times!",
+          "answer": "You graduated in 2020.",
           "gate_reason": "gates_passed",
-          "answer_length": 69
+          "answer_length": 22
         },
         {
           "query": "What is my project called?",
@@ -181,9 +181,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You've told me a few times that your project is called CRT, but I don't have any additional information about it beyond what you've shared with me. Your project is indeed called CRT.",
+          "answer": "CRT",
           "gate_reason": "gates_passed",
-          "answer_length": 182
+          "answer_length": 3
         },
         {
           "query": "How many languages do I speak?",
@@ -192,9 +192,9 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You speak five languages.",
+          "answer": "You speak 3 languages.",
           "gate_reason": "gates_passed",
-          "answer_length": 25
+          "answer_length": 22
         },
         {
           "query": "Why am I working on this project?",
@@ -203,25 +203,25 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "You're working on the CRT project because it's related to your interest in machine learning, and it might be a career opportunity for you.",
+          "answer": "You're working on the CRT project because TechCorp has assigned you to it.",
           "gate_reason": "gates_passed",
-          "answer_length": 138
+          "answer_length": 74
         },
         {
           "query": "How does CRT work?",
           "expected_type": "question_word",
           "difficulty": "hard",
-          "passed": false,
-          "gates_passed": false,
-          "is_meaningful": false,
+          "passed": true,
+          "gates_passed": true,
+          "is_meaningful": true,
           "answer": "This is a design/spec explanation (doc-grounded), not a personal memory claim.\n\nQuestion: How does CRT work?\n\n1. From CRT Quick Reference:\n- RAG: \"What's the best answer?\"\n- CRT: \"How does this affect what I believe over time?\"\n\n2. From CRT Functional Spec:\n- **Where:** `crt_app.py` (with Streamlit multipage wrappers in `pages/`)\n- **Inputs:** user selects a page in Streamlit sidebar (Chat or Dashboard)\n- **Outputs:** renders the selected page inside a single Streamlit server\n- **Side effects:** none (aside from whatever the selected page does)\n- **Failure modes:**\n  - Port already in use \u2192 Streamlit should display an error; user should choose a new port.\n- **Acceptance checks:**\n  - `streamlit run crt_app.py` shows **Chat** and **Dashboard** in sidebar.\n\n3. From How It Works:\n**What SSE does:**\n- Shows you ALL three claims\n- Explicitly tells you \"Claim 1 and Claim 3 contradict each other\"\n- Lets you click on each claim to see the exact sentence in the original article\n- Refuses to pick a winner or create a fake consensus\n\n4. From How It Works:\n### \u274c Never Synthesize\n```python\n# This function does NOT exist in SSE\ndef synthesize_consensus(contradictory_claims):\n    # \u274c FORBIDDEN: Creating a new claim that \"resolves\" the contradiction\n    return \"Most evidence suggests X, though some studies show Y\"\n```\n\n5. From CRT Whitepaper:\nCRT does not guarantee truth. It enforces **consistency with evidence**, not correctness.\n\n6. From CRT Quick Reference:\n```python\nresult = rag.query(\"How does sleep affect memory?\")\n\nIf you want, tell me which part to go deeper on (gates, memory, ledger, coherence), and I\u2019ll expand that section.",
           "gate_reason": "docs_explanation",
           "answer_length": 1645
         }
       ],
-      "passed": 4,
+      "passed": 5,
       "total": 5,
-      "pass_rate": 80.0
+      "pass_rate": 100.0
     },
     {
       "phase_name": "phase5_contradictions",
@@ -230,12 +230,12 @@
           "query": "Am I happy at TechCorp?",
           "expected_type": "contradiction",
           "difficulty": "hard",
-          "passed": false,
+          "passed": true,
           "gates_passed": true,
-          "is_meaningful": false,
-          "answer": "Sorry, I don't have that information in my memory. Can you tell me more about your experience at TechCorp? I'll do my best to help!",
-          "gate_reason": "gates_passed",
-          "answer_length": 131
+          "is_meaningful": true,
+          "answer": "I notice some mixed signals:\n  Positive: I just got promoted at TechCorp\n  Concerning: I'm thinking about changing jobs\n\nCan you help me understand what's really going on?",
+          "gate_reason": "sentiment_contradiction_detected",
+          "answer_length": 171
         },
         {
           "query": "What's going on with my job?",
@@ -244,14 +244,14 @@
           "passed": true,
           "gates_passed": true,
           "is_meaningful": true,
-          "answer": "Hey, I'm glad you reached out about your job at TechCorp. From what I recall, that's the company where you work. Can you tell me a bit more about what's going on? What specifically are you concerned about?",
+          "answer": "I'd be happy to help you out. So, you work at TechCorp? That's the company where you graduated in 2020. Is there something specific going on with your job that's got you wondering?",
           "gate_reason": "gates_passed",
-          "answer_length": 205
+          "answer_length": 180
         }
       ],
-      "passed": 1,
+      "passed": 2,
       "total": 2,
-      "pass_rate": 50.0
+      "pass_rate": 100.0
     }
   ],
   "by_difficulty": {
@@ -260,11 +260,11 @@
       "total": 10
     },
     "medium": {
-      "passed": 3,
+      "passed": 4,
       "total": 4
     },
     "hard": {
-      "passed": 3,
+      "passed": 5,
       "total": 5
     }
   }
