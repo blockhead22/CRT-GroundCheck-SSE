@@ -1112,6 +1112,7 @@ class CRTEnhancedRAG:
                             # Reuse existing embeddings from stored memories; do not invoke the embedder here.
                             user_vector = user_memory.vector
                             drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
+                            logger.info(f"[CONTRADICTION_DETECTION] Name contradiction: new='{new_name.value}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
                             contradiction_entry = self.ledger.record_contradiction(
                                 old_memory_id=selected_prev.memory_id,
                                 new_memory_id=user_memory.memory_id,
@@ -1125,7 +1126,8 @@ class CRTEnhancedRAG:
                                 new_vector=user_vector,
                             )
                             contradiction_detected = True
-                except Exception:
+                except Exception as e:
+                    logger.warning(f"[CONTRADICTION_DETECTION] Name contradiction check failed: {e}")
                     contradiction_detected = False
                     contradiction_entry = None
 
@@ -2281,6 +2283,7 @@ class CRTEnhancedRAG:
 
                 if selected_prev is not None:
                     drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
+                    logger.info(f"[CONTRADICTION_DETECTION] Generic fact contradiction detected: query='{user_query[:60]}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
 
                     contradiction_entry = self.ledger.record_contradiction(
                         old_memory_id=selected_prev.memory_id,

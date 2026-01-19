@@ -1,0 +1,112 @@
+{
+  "evidence": [
+    {
+      "id": "E001",
+      "file": "personal_agent/crt_memory.py",
+      "start_line": 48,
+      "end_line": 54,
+      "excerpt": "    vector: np.ndarray         # Semantic encoding\n    text: str                  # Original text (if SSE-L) or summary (if SSE-C/H)\n    timestamp: float           # Unix timestamp\n    confidence: float          # [0,1] How certain at creation\n    trust: float               # [0,1] How validated over time\n    source: MemorySource       # Where it came from\n    sse_mode: SSEMode          # Compression mode",
+      "mechanism": "trust_confidence_schema",
+      "purpose": "Memory items store trust and confidence as separate scalars tracking certainty vs validation"
+    },
+    {
+      "id": "E002",
+      "file": "personal_agent/crt_core.py",
+      "start_line": 179,
+      "end_line": 190,
+      "excerpt": "    def retrieval_score(\n        self,\n        similarity: float,\n        recency: float,\n        belief: float\n    ) -> float:\n        \"\"\"\n        Final retrieval score.\n        \n        R_i = s_i · ρ_i · w_i\n        \"\"\"\n        return similarity * recency * belief",
+      "mechanism": "retrieval_scoring",
+      "purpose": "Retrieval formula multiplies similarity by recency and belief weight"
+    },
+    {
+      "id": "E003",
+      "file": "personal_agent/crt_core.py",
+      "start_line": 57,
+      "end_line": 61,
+      "excerpt": "    theta_fallback: float = 0.40  # Drift threshold for fallback contradictions\n    \n    # Reconstruction gates\n    theta_intent: float = 0.5     # Intent alignment gate (lowered from 0.7 to reduce gate failures)\n    theta_mem: float = 0.38       # Memory alignment gate (lowered from 0.45 to allow detailed explanatory responses)",
+      "mechanism": "gate_thresholds",
+      "purpose": "Intent and memory alignment gates block outputs below threshold"
+    },
+    {
+      "id": "E004",
+      "file": "personal_agent/crt_ledger.py",
+      "start_line": 1,
+      "end_line": 16,
+      "excerpt": "\"\"\"\nCRT Contradiction Ledger - No Silent Overwrites\n\nImplements:\n- Contradiction event tracking\n- Ledger entries (not deletions)\n- Drift measurement and logging\n- Resolution status tracking\n- No memory replacement, only recorded tension\n\nPhilosophy:\n- Contradictions are signals, not bugs\n- Nothing is deleted or silently replaced\n- Tension is preserved until reflection\n- History matters more than consistency\n\"\"\"",
+      "mechanism": "contradiction_handling",
+      "purpose": "Ledger philosophy preserves contradictions as first-class entities"
+    },
+    {
+      "id": "E005",
+      "file": "train_classifier.py",
+      "start_line": 61,
+      "end_line": 72,
+      "excerpt": "    # Train TF-IDF vectorizer\n    print(f\"\\n⚙ Training TF-IDF vectorizer...\")\n    vectorizer = TfidfVectorizer(max_features=500, ngram_range=(1, 2))\n    X_train_vec = vectorizer.fit_transform(X_train)\n    X_test_vec = vectorizer.transform(X_test)\n    \n    # Train classifier\n    print(f\"⚙ Training Logistic Regression...\")\n    classifier = LogisticRegression(max_iter=1000, class_weight='balanced', random_state=42)\n    classifier.fit(X_train_vec, y_train)\n    \n    # Evaluate",
+      "mechanism": "classifier_training",
+      "purpose": "Active learning pipeline using TF-IDF and Logistic Regression"
+    },
+    {
+      "id": "E006",
+      "file": "artifacts/adaptive_stress_report.20260119_192924.md",
+      "start_line": 9,
+      "end_line": 16,
+      "excerpt": "- **Total Turns**: 80\n- **Gated Turns**: 0\n- **Gate Pass Rate**: 100.0%\n- **Facts Introduced**: 9\n- **Facts Contradicted**: 9\n- **Contradictions Detected by System**: 0\n- **Truth Reintroduction Failures**: 110",
+      "mechanism": "stress_test_metrics",
+      "purpose": "80-turn stress test with valid responses showing zero contradictions detected and 110 truth reintroduction failures"
+    },
+    {
+      "id": "E007",
+      "file": "personal_agent/crt_core.py",
+      "start_line": 34,
+      "end_line": 40,
+      "excerpt": "class MemorySource(Enum):\n    \"\"\"Source of memory item.\"\"\"\n    USER = \"user\"\n    SYSTEM = \"system\"\n    FALLBACK = \"fallback\"\n    EXTERNAL = \"external\"\n    REFLECTION = \"reflection\"",
+      "mechanism": "memory_source_enum",
+      "purpose": "Memory source enumeration separating user vs system vs fallback"
+    },
+    {
+      "id": "E008",
+      "file": "personal_agent/crt_core.py",
+      "start_line": 27,
+      "end_line": 32,
+      "excerpt": "class SSEMode(Enum):\n    \"\"\"SSE compression modes based on significance.\"\"\"\n    LOSSLESS = \"L\"   # Identity-critical, contradiction-heavy\n    COGNI = \"C\"      # Fast sketch, \"what it felt like\"\n    HYBRID = \"H\"     # Adaptive mix",
+      "mechanism": "sse_mode_selection",
+      "purpose": "SSE compression modes control memory storage strategy"
+    },
+    {
+      "id": "E009",
+      "file": "personal_agent/crt_core.py",
+      "start_line": 149,
+      "end_line": 155,
+      "excerpt": "    def drift_meaning(self, z_new: np.ndarray, z_prior: np.ndarray) -> float:\n        \"\"\"\n        Meaning drift between new output and prior belief.\n        \n        D_mean = 1 - sim(z_new, z_prior)\n        \"\"\"\n        return 1.0 - self.similarity(z_new, z_prior)",
+      "mechanism": "drift_calculation",
+      "purpose": "Drift calculated as one minus similarity score"
+    },
+    {
+      "id": "E012",
+      "file": "artifacts/adaptive_stress_run.20260119_192924.jsonl",
+      "start_line": 11,
+      "end_line": 11,
+      "excerpt": "{\"turn\": 11, \"phase\": \"contradiction\", \"user\": \"Actually, my name is Jordan Chen, not Alex.\", \"assistant\": \"Thanks \\u2014 noted: your name is Jordan Chen.\", \"gated\": false, \"gate_reason\": \"user_name_declaration\", \"timestamp\": \"2026-01-19T19:30:25.601474+00:00\"}",
+      "mechanism": "failure_evidence_contradiction_missed",
+      "purpose": "Name contradiction introduced but no ledger entry created"
+    },
+    {
+      "id": "E013",
+      "file": "artifacts/adaptive_stress_run.20260119_192924.jsonl",
+      "start_line": 72,
+      "end_line": 72,
+      "excerpt": "{\"turn\": 72, \"phase\": \"adversarial\", \"user\": \"Just to double-check: I work at Vertex Analytics, right?\", \"assistant\": \"You work at Vertex Analytics.\", \"gated\": false, \"gate_reason\": \"gates_passed_with_contradiction_note\", \"timestamp\": \"2026-01-19T19:35:49.200750+00:00\"}",
+      "mechanism": "failure_evidence_truth_reintroduction",
+      "purpose": "System reintroduces contradicted employer after Turn 12 correction to DataCore"
+    },
+    {
+      "id": "E014",
+      "file": "artifacts/adaptive_stress_run.20260119_192924.jsonl",
+      "start_line": 39,
+      "end_line": 39,
+      "excerpt": "{\"turn\": 39, \"phase\": \"inventory\", \"user\": \"List all the contradictions you've detected in our conversation.\", \"assistant\": \"I can summarize what I've recorded in the contradiction ledger so far.\\nTotal contradictions recorded: 0.\\nOpen: 0. Resolved: 0. Accepted: 0. Reflecting: 0.\\n\\nThere are no open contradictions at the moment.\", \"gated\": false, \"gate_reason\": \"ledger_contradictions\", \"timestamp\": \"2026-01-19T19:32:34.309130+00:00\"}",
+      "mechanism": "failure_evidence_inventory_dishonesty",
+      "purpose": "Ledger query at turn 39 reports zero contradictions despite 9 being introduced in turns 11-20"
+    }
+  ]
+}
