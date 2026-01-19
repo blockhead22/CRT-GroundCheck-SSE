@@ -1471,7 +1471,8 @@ def create_app() -> FastAPI:
                 metadata={
                     "mode": "uncertainty",
                     "confidence": 0.65,
-                    "contradiction_detected": bool(open_count),
+                    # This is a ledger status QUERY, not a newly detected contradiction event.
+                    "contradiction_detected": False,
                     "unresolved_contradictions_total": open_count,
                     "unresolved_hard_conflicts": hard_conflicts,
                     "retrieved_memories": [],

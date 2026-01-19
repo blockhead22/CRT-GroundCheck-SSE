@@ -1,0 +1,1 @@
+{"run_id": "20260119_132705", "turn": 1, "thread_id": "stress_patch_verify", "test_name": "Initial Introduction", "question": "Hello! I'm a software engineer. My name is Sarah.", "answer": "Thanks — noted: your name is Sarah.", "mode": "quick", "confidence": 0.95, "gates_passed": false, "contradiction_detected": false, "learned_suggestions": [], "heuristic_suggestions": []}

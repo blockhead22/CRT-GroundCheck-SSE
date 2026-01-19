@@ -225,6 +225,16 @@ def build_canonical_slot_view(
                 if v and v not in vals:
                     vals.append(v)
 
+            # Fallback: also consider the latest observed value for this slot
+            # (helps when one side of the ledger references a memory we can't load).
+            try:
+                lv = latest.get(slot, {}).get("value") if isinstance(latest, dict) else None
+                lv_s = _safe_str(lv)
+                if lv_s and lv_s not in vals:
+                    vals.insert(0, lv_s)
+            except Exception:
+                pass
+
             view[slot] = {
                 "status": "open",
                 "values": vals,
