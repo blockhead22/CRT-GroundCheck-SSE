@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "../Side_AI/crt-mvp"
+		},
+		{
+			"path": "../lumi_ai/lumi_ai"
 		}
 	],
 	"settings": {
