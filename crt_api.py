@@ -1426,32 +1426,41 @@ def create_app() -> FastAPI:
         # Deterministic ledger-backed contradiction inventory.
         # This is intentionally handled outside the LLM path for auditability.
         if _is_contradiction_inventory_request(req.message):
+            from personal_agent.canonical_view import get_contradiction_counts
+
+            ledger_db_path = str(getattr(engine.ledger, "db_path", "") or "")
+            counts = get_contradiction_counts(ledger_db_path)
+            open_count = int(counts.get("open", 0))
+            resolved_count = int(counts.get("resolved", 0))
+            accepted_count = int(counts.get("accepted", 0))
+            reflecting_count = int(counts.get("reflecting", 0))
+            total = int(sum(counts.values()))
+
             try:
                 open_entries = engine.ledger.get_open_contradictions(limit=50)
             except Exception:
                 open_entries = []
 
-            open_count = len(open_entries)
             hard_conflicts = sum(1 for e in open_entries if (getattr(e, "contradiction_type", "") or "") == "conflict")
 
-            if open_entries:
-                lines = [
-                    "I can summarize what I've recorded in the contradiction ledger so far.",
-                    f"Open contradictions: {open_count}.",
-                    "",
-                    "Most recent open items:",
-                ]
+            lines = [
+                "I can summarize what I've recorded in the contradiction ledger so far.",
+                f"Total contradictions recorded: {total}.",
+                f"Open: {open_count}. Resolved: {resolved_count}. Accepted: {accepted_count}. Reflecting: {reflecting_count}.",
+            ]
+
+            if open_count > 0 and open_entries:
+                lines.extend(["", "Most recent open items:"])
                 for e in open_entries[:10]:
                     typ = getattr(e, "contradiction_type", None) or "conflict"
                     status = getattr(e, "status", None) or "open"
                     summary = getattr(e, "summary", None) or "(no summary)"
                     lines.append(f"- [{typ}/{status}] {summary}")
-                answer = "\n".join(lines)
-            else:
-                answer = (
-                    "I don't currently have any open contradictions recorded in the ledger. "
-                    "If you think something conflicts, point it out and I'll log it explicitly."
-                )
+            elif open_count == 0:
+                lines.append("")
+                lines.append("There are no open contradictions at the moment.")
+
+            answer = "\n".join(lines)
 
             return ChatSendResponse(
                 answer=answer,

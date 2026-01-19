@@ -335,6 +335,85 @@ class CRTEnhancedRAG:
         
         answer_lower = answer.lower().strip()
         memory_text = " ".join(mem.text.lower() for mem, _ in retrieved_memories[:3])
+
+        # Slot-match shortcut: structured answers like
+        #   name: sarah
+        #   masters school: mit
+        # should score 1.0 if they exactly match the retrieved slot values.
+        # This avoids verbosity bias for canonical short answers.
+        try:
+            slot_label_map = {
+                "name": "name",
+                "employer": "employer",
+                "work": "employer",
+                "company": "employer",
+                "job": "title",
+                "title": "title",
+                "location": "location",
+                "city": "location",
+                "first language": "first_language",
+                "first_language": "first_language",
+                "masters school": "masters_school",
+                "master's school": "masters_school",
+                "masters school": "masters_school",
+                "masters_school": "masters_school",
+                "undergrad school": "undergrad_school",
+                "undergraduate school": "undergrad_school",
+                "undergrad_school": "undergrad_school",
+                "programming years": "programming_years",
+                "years programming": "programming_years",
+                "programming_years": "programming_years",
+                "remote preference": "remote_preference",
+                "remote_preference": "remote_preference",
+            }
+
+            structured: List[Tuple[str, str]] = []
+            for ln in (answer or "").splitlines():
+                m = re.match(r"^\s*([A-Za-z_ ][A-Za-z_ ]{0,40})\s*:\s*(.+?)\s*$", ln)
+                if not m:
+                    continue
+                raw_label = (m.group(1) or "").strip().lower()
+                raw_value = (m.group(2) or "").strip()
+                if not raw_label or not raw_value:
+                    continue
+                slot = slot_label_map.get(raw_label) or slot_label_map.get(raw_label.replace("_", " "))
+                if not slot:
+                    continue
+                structured.append((slot, raw_value))
+
+            if structured:
+                # Build best-effort retrieved slot values.
+                retrieved_slot_norms: Dict[str, set[str]] = {}
+                for mem, _s in retrieved_memories[:5]:
+                    facts = extract_fact_slots(getattr(mem, "text", "") or "") or {}
+                    for slot, f in facts.items():
+                        s = str(slot).strip().lower()
+                        norm = str(getattr(f, "normalized", "") or "").strip().lower()
+                        if not s or not norm:
+                            continue
+                        retrieved_slot_norms.setdefault(s, set()).add(norm)
+
+                def _norm_answer_value(slot: str, v: str) -> str:
+                    vv = re.sub(r"\s+", " ", (v or "").strip().lower())
+                    if slot == "remote_preference":
+                        if "remote" in vv:
+                            return "remote"
+                        if "office" in vv or "in the office" in vv:
+                            return "office"
+                    return vv
+
+                matches = 0
+                for slot, raw_value in structured:
+                    want = _norm_answer_value(slot, raw_value)
+                    have = retrieved_slot_norms.get(slot, set())
+                    if want and want in have:
+                        matches += 1
+
+                if matches == len(structured) and matches > 0:
+                    return 1.0
+        except Exception:
+            # Non-fatal: fall back to word-overlap grounding.
+            pass
         
         # EXACT MATCH gets 1.0 immediately - fixes brevity penalty
         for mem, _ in retrieved_memories[:3]:
@@ -2175,22 +2254,29 @@ class CRTEnhancedRAG:
                         candidates_by_slot.setdefault(slot, []).append((prev_mem, fact))
 
                 # Only create a contradiction if the asserted value is NEW for that slot.
-                # If it matches ANY prior value for the slot (even if older conflicts exist),
-                # treat it as reinforcement/clarification rather than another contradiction.
+                # If it matches the MOST RECENT prior value for the slot, treat it as reinforcement.
+                # If it differs from the most recent value (even if it matches an older value),
+                # record a contradiction: this captures explicit reversions/corrections like
+                # "12 was wrong; it's 8".
                 selected_prev: Optional[MemoryItem] = None
                 for slot, new_fact in new_facts.items():
                     prior = candidates_by_slot.get(slot) or []
                     if not prior:
                         continue
 
-                    if any(getattr(f, "normalized", None) == new_fact.normalized for _m, f in prior):
-                        continue
-
-                    # Pick the most recent conflicting prior memory for this slot.
-                    selected_prev, _prev_fact = max(
+                    # Compare against the most recent value for this slot.
+                    latest_mem, latest_fact = max(
                         prior,
                         key=lambda mf: (getattr(mf[0], "timestamp", 0.0), getattr(mf[0], "trust", 0.0)),
                     )
+
+                    latest_norm = getattr(latest_fact, "normalized", None)
+                    new_norm = getattr(new_fact, "normalized", None)
+                    if latest_norm == new_norm:
+                        continue
+
+                    # New asserted value conflicts with the latest value => contradiction.
+                    selected_prev = latest_mem
                     break
 
                 if selected_prev is not None:
@@ -3188,7 +3274,51 @@ class CRTEnhancedRAG:
         2. Combine them into a natural synthesis
         """
         from .crt_core import MemorySource
+        from .canonical_view import build_canonical_slot_view, format_slot_view
         
+        ql = (user_query or "").strip().lower()
+
+        # For full-profile summary requests, use a canonical ledger-backed slot view
+        # to prevent reintroducing superseded facts.
+        if "summar" in ql and ("everything" in ql or "all" in ql) and ("about me" in ql or "about my" in ql or "about" in ql and "me" in ql):
+            try:
+                all_mems = self.memory._load_all_memories()
+            except Exception:
+                all_mems = []
+
+            view = build_canonical_slot_view(
+                user_memories=all_mems,
+                memory_get_by_id=self.memory.get_memory_by_id,
+                ledger_db_path=str(getattr(self.ledger, "db_path", "") or ""),
+                scope_slots=[
+                    "name",
+                    "location",
+                    "employer",
+                    "title",
+                    "programming_years",
+                    "first_language",
+                    "undergrad_school",
+                    "masters_school",
+                    "remote_preference",
+                ],
+            )
+            ordered = [
+                "name",
+                "location",
+                "employer",
+                "title",
+                "programming_years",
+                "first_language",
+                "undergrad_school",
+                "masters_school",
+                "remote_preference",
+            ]
+            lines = ["Based on what I have recorded:"]
+            lines.extend(format_slot_view(view, ordered_slots=ordered))
+            if len(lines) == 1:
+                return "I don't have any stored profile facts about you yet."
+            return "\n".join(lines)
+
         # Get USER memories (facts the user told us)
         user_memories = [m for m, _s in (retrieved or []) if getattr(m, "source", None) == MemorySource.USER]
         

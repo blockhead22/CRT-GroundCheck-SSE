@@ -264,6 +264,18 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             facts["favorite_color"] = ExtractedFact("favorite_color", color_raw, _norm_text(color_raw))
 
     # Education (very rough; enough for Stanford vs MIT undergrad contradictions)
+    # Combined pattern: "both my undergrad and Master's were from MIT"
+    m = re.search(
+        r"\bboth\s+my\s+(?:undergrad|undergraduate)(?:\s+degree)?\s+and\s+(?:my\s+)?master'?s(?:\s+degree)?\s+(?:were|was)?\s*(?:from|at)\s+([A-Z][A-Za-z .'-]{2,60})\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        school = m.group(1).strip()
+        if school:
+            facts["undergrad_school"] = ExtractedFact("undergrad_school", school, _norm_text(school))
+            facts["masters_school"] = ExtractedFact("masters_school", school, _norm_text(school))
+
     m = re.search(r"\bundergraduate (?:degree )?was from\s+([A-Z][A-Za-z .'-]{2,60})\b", text, flags=re.IGNORECASE)
     if m:
         school = m.group(1).strip()
