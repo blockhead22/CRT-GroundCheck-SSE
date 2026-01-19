@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../Side_AI/crt-mvp"
 		}
 	],
 	"settings": {
