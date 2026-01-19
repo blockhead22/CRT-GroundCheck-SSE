@@ -170,7 +170,13 @@ class CRTEnhancedRAG:
 
         # Over-fetch then filter, so excluding sources doesn't starve results.
         candidate_k = max(int(k) * 5, int(k))
-        retrieved = self.memory.retrieve_memories(query, candidate_k, min_trust)
+        retrieved = self.memory.retrieve_memories(
+            query, 
+            candidate_k, 
+            min_trust,
+            exclude_deprecated=True,
+            ledger=self.ledger
+        )
 
         # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
         # not new world facts) to prevent recursive quoting and prompt pollution.
@@ -329,6 +335,19 @@ class CRTEnhancedRAG:
         
         answer_lower = answer.lower().strip()
         memory_text = " ".join(mem.text.lower() for mem, _ in retrieved_memories[:3])
+        
+        # EXACT MATCH gets 1.0 immediately - fixes brevity penalty
+        for mem, _ in retrieved_memories[:3]:
+            mem_text_lower = mem.text.lower().strip()
+            # Direct exact match
+            if answer_lower == mem_text_lower:
+                return 1.0
+            # Answer is complete substring of memory (not vice versa)
+            # This handles "Amazon" matching "I work at Amazon"
+            if answer_lower in mem_text_lower and len(answer_lower) > 2:
+                # Ensure it's not the reverse (memory substring of answer = hallucination)
+                if mem_text_lower not in answer_lower or answer_lower == mem_text_lower:
+                    return 1.0
         
         # If answer is very short (likely a fact extraction), check substring match
         if len(answer) < 30:

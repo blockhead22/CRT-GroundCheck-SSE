@@ -272,7 +272,9 @@ class CRTMemorySystem:
         self,
         query: str,
         k: int = 5,
-        min_trust: float = 0.0
+        min_trust: float = 0.0,
+        exclude_deprecated: bool = True,
+        ledger = None
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using trust-weighted scoring.
@@ -283,12 +285,35 @@ class CRTMemorySystem:
         - ρ_i = recency weight
         - w_i = belief weight (α·trust + (1-α)·confidence)
         
+        Args:
+            exclude_deprecated: If True, filter out memories that are old values from resolved contradictions
+            ledger: CRT ledger instance for checking resolved contradictions
+        
         Returns list of (memory, score) tuples.
         """
         query_vector = encode_vector(query)
         
         # Load all memories
         memories = self._load_all_memories()
+        
+        # Filter deprecated contradiction sources (SSE invariant: no truth reintroduction)
+        if exclude_deprecated and ledger is not None:
+            try:
+                from .crt_ledger import ContradictionStatus
+                resolved = ledger.get_resolved_contradictions(limit=500)
+                # Collect old_memory_ids from resolved contradictions that were "replaced"
+                deprecated_ids = set()
+                for contra in resolved:
+                    # Only exclude if resolution method indicates replacement
+                    method = getattr(contra, 'resolution_method', None)
+                    if method and 'clarif' in method.lower() or 'replace' in method.lower():
+                        deprecated_ids.add(contra.old_memory_id)
+                
+                if deprecated_ids:
+                    memories = [m for m in memories if m.memory_id not in deprecated_ids]
+            except Exception:
+                # Graceful degradation if ledger unavailable
+                pass
         
         # Filter by minimum trust
         memories = [m for m in memories if m.trust >= min_trust]

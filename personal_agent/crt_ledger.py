@@ -223,6 +223,46 @@ class ContradictionLedger:
         conn.commit()
         conn.close()
 
+    def get_resolved_contradictions(self, limit: int = 100) -> List[ContradictionEntry]:
+        """Get all resolved contradictions for filtering deprecated values."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT ledger_id, old_memory_id, new_memory_id, similarity, timestamp, 
+                   status, contradiction_type, affects_slots, query, summary,
+                   resolution_timestamp, resolution_method, merged_memory_id
+            FROM contradictions
+            WHERE status = 'resolved'
+            ORDER BY resolution_timestamp DESC
+            LIMIT ?
+        """, (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        entries = []
+        for row in rows:
+            entry = ContradictionEntry(
+                ledger_id=row[0],
+                old_memory_id=row[1],
+                new_memory_id=row[2],
+                similarity=row[3],
+                timestamp=row[4],
+                status=ContradictionStatus(row[5]),
+                contradiction_type=ContradictionType(row[6]) if row[6] else ContradictionType.CONFLICT,
+                affects_slots=row[7],
+                query=row[8],
+                summary=row[9]
+            )
+            # Add resolution metadata
+            entry.resolution_timestamp = row[10]
+            entry.resolution_method = row[11]
+            entry.merged_memory_id = row[12]
+            entries.append(entry)
+        
+        return entries
+    
     def get_contradiction_worklog(self, ledger_id: str) -> Dict[str, Optional[object]]:
         """Return worklog fields for a contradiction (or defaults if absent)."""
         conn = sqlite3.connect(self.db_path)

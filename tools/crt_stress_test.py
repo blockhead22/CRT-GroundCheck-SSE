@@ -340,6 +340,7 @@ metrics = {
     'eval_checks': 0,
     'm2_followups_attempted': 0,
     'm2_followups_succeeded': 0,
+    'turns_data': [],  # Store turn data for analysis
 }
 
 
@@ -664,6 +665,13 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             record["m2_followup"] = m2_event
         jsonl_fp.write(json.dumps(record, ensure_ascii=False) + "\n")
         jsonl_fp.flush()
+    
+    # Store turn data for analysis
+    metrics['turns_data'].append({
+        'question': question,
+        'contradiction_detected': result.get('contradiction_detected', False)
+    })
+    
     return result
 
 
@@ -1318,7 +1326,31 @@ print(f"\nOVERALL METRICS:")
 print(f"  Total Turns: {metrics['total_turns']}")
 print(f"  Gates Passed: {metrics['gates_passed']} ({100*metrics['gates_passed']/metrics['total_turns']:.1f}%)")
 print(f"  Gates Failed: {metrics['gates_failed']} ({100*metrics['gates_failed']/metrics['total_turns']:.1f}%)")
-print(f"  Contradictions Detected: {metrics['contradictions_detected']}")
+
+# P4: Classify contradiction events - distinguish new contradictions from ledger queries
+new_contradictions = 0
+ledger_queries = 0
+for turn_data in metrics['turns_data']:
+    question = turn_data.get('question', '').lower()
+    # Meta-queries about contradictions
+    meta_patterns = [
+        'what contradictions',
+        'any contradictions',
+        'contradictions have you detected',
+        'conflicts in our conversation'
+    ]
+    is_meta_query = any(p in question for p in meta_patterns)
+    
+    if turn_data.get('contradiction_detected'):
+        if is_meta_query:
+            ledger_queries += 1
+        else:
+            new_contradictions += 1
+
+print(f"  Contradictions Detected: {new_contradictions} (new events)")
+if ledger_queries > 0:
+    print(f"  Ledger Queries: {ledger_queries} (meta-queries excluded from count)")
+print(f"  Total Contradiction Flags: {metrics['contradictions_detected']}")
 print(f"  Contradictions Introduced: {len(metrics['contradictions_introduced'])}")
 print(f"  Avg Confidence: {sum(metrics['avg_confidence'])/len(metrics['avg_confidence']):.3f}")
 if metrics['trust_scores']:
