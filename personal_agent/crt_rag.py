@@ -18,10 +18,13 @@ Philosophy:
 
 import numpy as np
 import re
+import logging
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
 import time
 import joblib
+
+logger = logging.getLogger(__name__)
 
 from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
@@ -1042,6 +1045,7 @@ class CRTEnhancedRAG:
             # Deterministic safe ack: user name declarations should not be embellished.
             # (e.g., never add a location like "New York" unless the user said it.)
             if self._is_user_name_declaration(user_query):
+                print(f"[CRT_DEBUG][NAME_DECLARATION] Detected: '{user_query[:80]}'")
                 # Prefer the name declared in this message (avoids echoing stale prior names
                 # from the DB/profile seed).
                 declared_facts = extract_fact_slots(user_query) or {}
@@ -1067,9 +1071,11 @@ class CRTEnhancedRAG:
                 # If the user previously stated a different name, record a contradiction entry.
                 contradiction_detected = False
                 contradiction_entry = None
+                print(f"[CRT_DEBUG][NAME_CONTRADICTION_CHECK] Starting (user_memory={user_memory is not None})")
                 try:
                     new_facts = extract_fact_slots(user_query) or {}
                     new_name = new_facts.get("name")
+                    print(f"[CRT_DEBUG][NAME_CONTRADICTION_CHECK] Extracted name: {new_name}")
                     if new_name is not None:
                         all_memories = self.memory._load_all_memories()
                         previous_user_memories = [
@@ -1105,6 +1111,7 @@ class CRTEnhancedRAG:
                                 prior_names.append(prev_mem)
 
                         if (not prior_same_exists) and prior_names:
+                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] Found prior name conflict!")
                             selected_prev = max(
                                 prior_names,
                                 key=lambda m: (getattr(m, "timestamp", 0.0), getattr(m, "trust", 0.0)),
@@ -1112,7 +1119,8 @@ class CRTEnhancedRAG:
                             # Reuse existing embeddings from stored memories; do not invoke the embedder here.
                             user_vector = user_memory.vector
                             drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
-                            logger.info(f"[CONTRADICTION_DETECTION] Name contradiction: new='{new_name.value}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
+                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] new='{new_name.value}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
+                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] Calling ledger.record_contradiction...")
                             contradiction_entry = self.ledger.record_contradiction(
                                 old_memory_id=selected_prev.memory_id,
                                 new_memory_id=user_memory.memory_id,
@@ -1125,8 +1133,10 @@ class CRTEnhancedRAG:
                                 old_vector=selected_prev.vector,
                                 new_vector=user_vector,
                             )
+                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] Ledger returned: {contradiction_entry}")
                             contradiction_detected = True
                 except Exception as e:
+                    print(f"[CRT_DEBUG][NAME_CONTRADICTION_CHECK] Exception: {e}")
                     logger.warning(f"[CONTRADICTION_DETECTION] Name contradiction check failed: {e}")
                     contradiction_detected = False
                     contradiction_entry = None
@@ -2229,11 +2239,13 @@ class CRTEnhancedRAG:
         contradiction_detected = False
         contradiction_entry = None
         
+        print(f"[CRT_DEBUG][GENERIC_CONTRADICTION_CHECK] user_input_kind={user_input_kind}, user_memory={user_memory is not None}")
         if user_input_kind != "question" and user_memory is not None:
             # Prefer claim-level contradiction detection for common personal-profile facts.
             # This avoids false positives from pure embedding drift, and catches true conflicts
             # even when retrieval does not surface the relevant prior memory.
             new_facts = extract_fact_slots(user_query)
+            print(f"[CRT_DEBUG][GENERIC_CONTRADICTION_CHECK] new_facts extracted: {list(new_facts.keys()) if new_facts else None}")
             if new_facts:
                 user_vector = encode_vector(user_query)
 
@@ -2274,6 +2286,7 @@ class CRTEnhancedRAG:
 
                     latest_norm = getattr(latest_fact, "normalized", None)
                     new_norm = getattr(new_fact, "normalized", None)
+                    print(f"[CRT_DEBUG][FACT_COMPARISON] slot={slot}, latest_norm='{latest_norm}', new_norm='{new_norm}', match={latest_norm == new_norm}")
                     if latest_norm == new_norm:
                         continue
 
@@ -2281,6 +2294,7 @@ class CRTEnhancedRAG:
                     selected_prev = latest_mem
                     break
 
+                print(f"[CRT_DEBUG][CONTRADICTION_RESULT] selected_prev={selected_prev is not None}")
                 if selected_prev is not None:
                     drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
                     logger.info(f"[CONTRADICTION_DETECTION] Generic fact contradiction detected: query='{user_query[:60]}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")

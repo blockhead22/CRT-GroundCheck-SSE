@@ -1300,6 +1300,36 @@ def create_app() -> FastAPI:
         items.sort(key=_priority_key)
         return ContradictionNextResponse(thread_id=_sanitize_thread_id(thread_id), has_item=True, item=items[0])
 
+    @app.get("/api/contradictions")
+    def get_contradictions(thread_id: str = Query(default="default")) -> Dict[str, Any]:
+        """Get all contradictions for a thread (for stress testing)"""
+        tid = _sanitize_thread_id(thread_id)
+        ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+        
+        try:
+            import sqlite3
+            conn = sqlite3.connect(ledger_db)
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM contradictions")
+            rows = cursor.fetchall()
+            
+            # Get column names
+            columns = [desc[0] for desc in cursor.description]
+            
+            # Convert to dicts
+            contradictions = []
+            for row in rows:
+                contradictions.append(dict(zip(columns, row)))
+            
+            conn.close()
+            
+            return {
+                "contradictions": contradictions,
+                "count": len(contradictions)
+            }
+        except Exception as e:
+            return {"contradictions": [], "count": 0, "error": str(e)}
+
     @app.post("/api/contradictions/asked")
     def contradiction_mark_asked(req: ContradictionAskedRequest) -> Dict[str, Any]:
         engine = get_engine(req.thread_id)

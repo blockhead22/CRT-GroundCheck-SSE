@@ -266,53 +266,6 @@
 			"group": "test"
 		},
 		{
-				"command": "D:/AI_round2/.venv/Scripts/python.exe",
-			"type": "shell",
-					"artifacts/build_crt_stress_report.py"
-				"-3",
-				"options": {
-					"cwd": "D:/AI_round2"
-				},
-				"d:\\AI_round2\\artifacts\\build_crt_stress_report.py"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-				"command": "D:/AI_round2/.venv/Scripts/python.exe",
-			"type": "shell",
-					"tools/crt_stress_test.py",
-				"-3",
-				"d:\\AI_round2\\artifacts\\build_crt_stress_report.py"
-			],
-			"isBackground": false,
-			"problemMatcher": [],
-			"group": "test"
-		},
-		{
-			"label": "crt api (uvicorn)",
-			"type": "shell",
-			"command": "D:/AI_round2/.venv/Scripts/python.exe",
-				"options": {
-					"cwd": "D:/AI_round2"
-				},
-			"args": [
-				"-m",
-				"uvicorn",
-				"crt_api:app",
-				"--host",
-				"127.0.0.1",
-				"--port",
-				"command": "D:/AI_round2/.venv/Scripts/python.exe",
-			],
-					"artifacts/build_crt_stress_report.py"
-			"group": "build"
-				"options": {
-					"cwd": "D:/AI_round2"
-				},
-		},
-		{
 			"label": "CRT Stress Test (API 30 contradiction inventory fix)",
 			"type": "shell",
 			"command": "py",

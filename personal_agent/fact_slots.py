@@ -166,12 +166,17 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Employer
     # Examples:
     # - "I work at Microsoft as a senior developer."
+    # - "I work as a data scientist at Vertex Analytics."
     # - "I work at Amazon, not Microsoft."
+    # Try "I work at/for X" first, then fallback to "at X" pattern for compound sentences
     m = re.search(
         r"\b(?:i work at|i work for)\s+([^\n\r\.;,]+)",
         text,
         flags=re.IGNORECASE,
     )
+    if not m:
+        # Fallback: look for "at [company]" anywhere (for "I work as X at Y" patterns)
+        m = re.search(r"\bat\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+(?:as|and|but|in|on|for|with|where|,|\.|;)|\s*$)", text)
     if m:
         employer_raw = m.group(1)
         # Trim at common continuations
@@ -192,7 +197,10 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Examples:
     # - "I live in Seattle, Washington."
     # - "I live in the Seattle metro area, specifically in Bellevue."
+    # - "I moved to Denver last month"
     m = re.search(r"\bi live in\s+([^\n\r\.;]+)", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bi moved to\s+([A-Z][a-zA-Z .'-]{2,60})", text, flags=re.IGNORECASE)
     if m:
         loc_raw = m.group(1).strip()
         # Prefer the last "in X" if present ("specifically in Bellevue")
@@ -200,7 +208,8 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         if m2:
             loc_value = m2.group(1).strip()
         else:
-            loc_value = re.split(r"[,\.]", loc_raw, maxsplit=1)[0].strip()
+            # Split on temporal markers or punctuation
+            loc_value = re.split(r"\s+(?:last|this|in|on|during)\s+|\.|,", loc_raw, maxsplit=1)[0].strip()
         if loc_value:
             facts["location"] = ExtractedFact("location", loc_value, _norm_text(loc_value))
 
@@ -320,13 +329,105 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         year = m.group(1).strip()
         facts["graduation_year"] = ExtractedFact("graduation_year", year, year)
     
-    # Project name
+    # Project name/description
     # Examples:
     # - "My project is called CRT"
-    # - "My project's name is PyBuilder"
-    m = re.search(r"\bmy project\s+(?:is\s+called|'?s\s+name\s+is|name\s+is)\s+([A-Z][A-Za-z0-9+_.#-]{1,40})\b", text, flags=re.IGNORECASE)
+    # - "My current project is building a recommendation engine"
+    # - "My project focus has shifted to real-time anomaly detection"
+    m = re.search(r"\bmy (?:current )?project\s+(?:is\s+called|'?s\s+name\s+is|name\s+is|is\s+building)\s+(?:a\s+)?([A-Za-z][A-Za-z0-9+_.#\s-]{1,60}?)(?:\.|,|;|\s+for|\s+that|\s+to|\s*$)", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bmy project focus\s+(?:has\s+)?shifted to\s+([A-Za-z][A-Za-z0-9+_.#\s-]{1,60}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if m:
         project = m.group(1).strip()
-        facts["project_name"] = ExtractedFact("project_name", project, _norm_text(project))
+        facts["project"] = ExtractedFact("project", project, _norm_text(project))
+
+    # School (standalone "graduated from X" without year)
+    # Examples:
+    # - "I graduated from MIT"
+    # - "I graduated from Stanford in 2018" (captured by graduation_year above, also here)
+    m = re.search(r"\bi graduated from\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+in\s+\d{4}|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if m:
+        school = m.group(1).strip()
+        facts["school"] = ExtractedFact("school", school, _norm_text(school))
+    
+    # Favorite programming language
+    # Examples:
+    # - "My favorite programming language is Rust"
+    # - "Python is my favorite language"
+    # - "Python is actually my favorite language now"
+    # - "I prefer Python"
+    m = re.search(r"\bmy favorite (?:programming )?language is\s+([A-Z][A-Za-z0-9+#]{1,20})\b", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\b([A-Z][A-Za-z0-9+#]{1,20})\s+is (?:actually )?my favorite (?:programming )?language", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bi prefer\s+([A-Z][A-Za-z0-9+#]{1,20})\b", text, flags=re.IGNORECASE)
+    if m:
+        lang = m.group(1).strip()
+        facts["programming_language"] = ExtractedFact("programming_language", lang, _norm_text(lang))
+    
+    # Pet (type and name)
+    # Examples:
+    # - "I have a golden retriever named Murphy"
+    # - "My dog is a labrador"
+    # - "Murphy is a labrador, not a golden retriever"
+    m = re.search(r"\bi have a\s+([a-z]+(?:\s+[a-z]+)?)\s+named\s+([A-Z][a-z]+)", text, flags=re.IGNORECASE)
+    if m:
+        pet_type = m.group(1).strip()
+        pet_name = m.group(2).strip()
+        facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+        facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
+    else:
+        # Try just pet type
+        m = re.search(r"\bmy (?:dog|cat|pet) is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
+        if not m:
+            # Try "[name] is a [breed]" pattern
+            m = re.search(r"\b([A-Z][a-z]+)\s+is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
+            if m:
+                pet_name = m.group(1).strip()
+                pet_type = m.group(2).strip()
+                facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+                facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
+        if m and not facts.get("pet"):
+            pet_type = m.group(1).strip()
+            facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+    
+    # Coffee preference
+    # Examples:
+    # - "I prefer dark roast coffee"
+    # - "My coffee preference is light roast"
+    # - "I've switched to light roast lately"
+    m = re.search(r"\bi prefer\s+(dark|light|medium)\s+roast", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bmy coffee preference is\s+(dark|light|medium)\s+roast", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bswitched to\s+(dark|light|medium)\s+roast", text, flags=re.IGNORECASE)
+    if m:
+        coffee = m.group(1).strip() + " roast"
+        facts["coffee"] = ExtractedFact("coffee", coffee, _norm_text(coffee))
+    
+    # Hobby
+    # Examples:
+    # - "My weekend hobby is rock climbing"
+    # - "I enjoy trail running"
+    # - "I've taken up trail running instead of climbing"
+    m = re.search(r"\bmy (?:weekend )?hobby is\s+([a-z][a-z\s-]{2,40}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bi enjoy\s+([a-z][a-z\s-]{2,40}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\btaken up\s+([a-z][a-z\s-]{2,40}?)(?:\s+instead|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if m:
+        hobby = m.group(1).strip()
+        facts["hobby"] = ExtractedFact("hobby", hobby, _norm_text(hobby))
+    
+    # Book currently reading
+    # Examples:
+    # - "I'm reading 'Designing Data-Intensive Applications'"
+    # - "Now reading 'The Pragmatic Programmer'"
+    m = re.search(r"\bi'?m reading ['\"]([^'\"]{5,80})['\"]", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bnow reading ['\"]([^'\"]{5,80})['\"]", text, flags=re.IGNORECASE)
+    if m:
+        book = m.group(1).strip()
+        facts["book"] = ExtractedFact("book", book, _norm_text(book))
 
     return facts

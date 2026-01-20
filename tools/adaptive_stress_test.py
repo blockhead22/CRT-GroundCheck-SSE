@@ -118,11 +118,18 @@ class AdaptiveStressTest:
             })
         
         # Phase progression based on turn count
-        if self.turn_count < 10:
+        # Turn 1: Greeting
+        # Turns 2-11: Intro facts (10 facts)
+        # Turns 12-21: Contradictions (10 contradictions)
+        # Turns 22-40: Inventory
+        # Turns 41+: Adversarial
+        if self.turn_count <= 1:
             self.phase = "intro"
-        elif self.turn_count < 25:
+        elif self.turn_count <= 11:
+            self.phase = "intro"
+        elif self.turn_count <= 21:
             self.phase = "contradiction"
-        elif self.turn_count < 40:
+        elif self.turn_count <= 40:
             self.phase = "inventory"
         else:
             self.phase = "adversarial"
@@ -152,14 +159,16 @@ class AdaptiveStressTest:
             "I'm reading 'Designing Data-Intensive Applications'."
         ]
         
-        if self.turn_count < len(intros):
-            fact = intros[self.turn_count]
+        # Turn count is 1-based, intro phase is turns 1-10 (greeting already sent as turn 1)
+        # So turns 2-11 map to intros[0-9]
+        intro_idx = self.turn_count - 2  # Turn 2 = index 0
+        if intro_idx >= 0 and intro_idx < len(intros):
+            fact = intros[intro_idx]
             # Track fact
             fact_key = self._extract_fact_key(fact)
             self.introduced_facts[fact_key] = {
                 'value': fact,
-                'turn': self.turn_count,
-                'contradicted_turn': None
+                'turn': self.turn_count
             }
             return fact
         else:
@@ -169,8 +178,8 @@ class AdaptiveStressTest:
         """Introduce contradictions and test detection"""
         
         contradictions = [
-            ("name", "Actually, my name is Jordan Chen, not Alex."),
-            ("company", "I should clarify - I work at DataCore, not Vertex Analytics."),
+            ("name", "Actually, my name is Jordan Chen."),
+            ("company", "I should clarify - I work at DataCore."),
             ("language", "I've been rethinking my stance. Python is actually my favorite language now."),
             ("city", "I need to update you - I moved to Denver last month."),
             ("pet", "Sorry, I misspoke earlier. Murphy is a labrador, not a golden retriever."),
@@ -181,9 +190,10 @@ class AdaptiveStressTest:
             ("book", "I finished that book. Now reading 'The Pragmatic Programmer'.")
         ]
         
-        # Introduce contradiction
-        if self.turn_count - 10 < len(contradictions):
-            fact_key, contradiction = contradictions[self.turn_count - 10]
+        # Introduce contradiction (turns 12-21 contradict facts from turns 2-11)
+        contradiction_idx = self.turn_count - 12  # Turn 12 = index 0
+        if 0 <= contradiction_idx < len(contradictions):
+            fact_key, contradiction = contradictions[contradiction_idx]
             if fact_key in self.introduced_facts:
                 self.introduced_facts[fact_key]['contradicted_turn'] = self.turn_count
                 self.last_contradiction_fact = fact_key
@@ -334,6 +344,7 @@ class AdaptiveStressTest:
         while self.turn_count < self.max_turns:
             self.turn_count += 1
             
+            
             print(f"\n{'='*80}")
             print(f" TURN {self.turn_count} | Phase: {self.phase.upper()} ".center(80, "="))
             print(f"{'='*80}")
@@ -474,7 +485,7 @@ class AdaptiveStressTest:
             
             # Check if user asked about a contradicted fact
             for fact_key, fact_data in self.introduced_facts.items():
-                if fact_data['contradicted_turn'] is not None and turn['turn'] > fact_data['contradicted_turn']:
+                if fact_data.get('contradicted_turn') is not None and turn['turn'] > fact_data['contradicted_turn']:
                     # Check if assistant reintroduced the old value
                     old_value = fact_data['value'].lower()
                     if any(word in assistant_msg for word in old_value.split() if len(word) > 3):
@@ -536,12 +547,17 @@ class AdaptiveStressTest:
                 f.write("*No gate failures*\n\n")
             
             f.write("## Phase Breakdown\n\n")
+            f.write(f"- **Greeting** (Turn 1): Initial contact\n")
+            f.write(f"- **Intro** (Turns 2-11): Fact introduction (10 facts)\n")
+            f.write(f"- **Contradiction** (Turns 12-21): Contradiction injection & detection (10 contradictions)\n")
+            f.write(f"- **Inventory** (Turns 22-40): Meta-queries & inventory honesty\n")
+            f.write(f"- **Adversarial** (Turns 41+): Advanced adversarial tests\n\n")
             f.write(f"- **Intro** (Turns 1-10): Fact introduction\n")
             f.write(f"- **Contradiction** (Turns 11-25): Contradiction injection & detection\n")
             f.write(f"- **Inventory** (Turns 26-40): Meta-queries & inventory honesty\n")
             f.write(f"- **Adversarial** (Turns 41+): Advanced adversarial tests\n\n")
         
-        print(f"\n✅ Report written to: {report_path}")
+        print(f"\nReport written to: {report_path}")
 
 
 def main():
