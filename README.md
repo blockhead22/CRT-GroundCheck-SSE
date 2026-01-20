@@ -1,17 +1,19 @@
-# CRT (working name)
+# CRT - Evidence-First Memory
 
-**A truthful personal AI system with explicit uncertainty handling and contradiction tracking.**
+**Memory governance for conversational AI. Contradiction-preserving. Uncertainty-honest.**
 
-CRT implements a "two-lane memory" architecture that separates grounded beliefs from conversational speech, enabling an AI assistant that knows what it knows, admits what it doesn't, and asks for clarification when faced with contradictions.
+CRT exists because coherence over time matters more than sounding good right now. It implements a "two-lane memory" architecture that separates grounded beliefs from conversational speech, preserves contradictions instead of hiding them, and treats "I don't know" as a valid answer.
 
-## 🎯 Core Features
+**Philosophy**: [Read why CRT exists →](CRT_PHILOSOPHY.md)
 
-- **Two-Lane Memory**: BELIEF (grounded facts) vs SPEECH (conversational responses)
-- **Contradiction Tracking**: Durable ledger detects and resolves conflicting information
-- **Safety Gates**: Prevents hallucinated claims with validation checks
-- **Background Learning (M2)**: Contradictions automatically become learning goals
-- **Trust-Weighted Reasoning**: Not just RAG - retrieval weighted by confidence scores
-- **Evidence Packets**: Every claim links to source evidence with provenance
+## 🎯 Core Principles
+
+- **Contradictions Are Information**: Never silently overwrite conflicting facts
+- **Uncertainty Is Valid**: "I don't know" is better than confident hallucination
+- **Evidence-First**: Every claim traceable to source memory
+- **Trust-Weighted Retrieval**: Not just similarity - weighted by confidence and recency
+- **Gates Prevent Drift**: Validate before storing or speaking belief-level claims
+- **Two-Lane Memory**: BELIEF (high-trust facts) vs SPEECH (conversational fallback)
 
 ## 🚀 Quick Start
 
@@ -52,6 +54,13 @@ streamlit run crt_chat_gui.py
 ```
 
 ## 📖 Documentation
+
+**Navigation**: [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) - Complete documentation map
+
+**Start Here:**
+- [CRT_PHILOSOPHY.md](CRT_PHILOSOPHY.md) - ⭐ **Why CRT exists and what it stands for**
+- [QUICKSTART.md](QUICKSTART.md) - Get running in 5 minutes
+- [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) - Current beta limitations
 
 **Essential Reading:**
 - [CRT_HOW_TO_USE.md](CRT_HOW_TO_USE.md) - Complete usage guide
