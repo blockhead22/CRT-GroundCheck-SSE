@@ -31,6 +31,19 @@
    - Business case and technical feasibility
    - ~15 min read
 
+4. **[AI_MARKET_VALUE_ASSESSMENT.md](AI_MARKET_VALUE_ASSESSMENT.md)** - **NEW: Comprehensive market analysis**
+   - **What's valuable?** Market size ($15-25B TAM), competitive positioning
+   - **What's impressive?** Zero-violation invariant, novel architecture, philosophical depth
+   - **What's different?** No commercial competitors, policy-driven vs prompt-driven
+   - **Where it helps:** Enterprise AI, regulated industries, customer service, productivity
+   - Target markets, monetization strategy, investment thesis
+   - ~25 min read
+
+5. **[AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md](AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md)** - **Quick executive summary**
+   - Condensed version for decision-makers
+   - Key findings, recommendations, immediate next steps
+   - ~5 min read
+
 ---
 
 ## 🚀 Getting Started
@@ -164,6 +177,12 @@
 1. [ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)
 2. [CRT_WHITEPAPER.md](CRT_WHITEPAPER.md)
 3. [CRT_REINTRODUCTION_INVARIANT.md](CRT_REINTRODUCTION_INVARIANT.md)
+
+### For Investors & Business Leaders: "What's the market opportunity?"
+1. [AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md](AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md) ⭐ **Start here**
+2. [AI_MARKET_VALUE_ASSESSMENT.md](AI_MARKET_VALUE_ASSESSMENT.md)
+3. [ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)
+4. [PURPOSE.md](PURPOSE.md)
 
 ### For Developers: "How does it work?"
 1. [README.md](README.md)
