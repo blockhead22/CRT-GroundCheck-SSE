@@ -165,7 +165,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
 
     # Compound introduction: "I am a Web Developer from Milwaukee Wisconsin"
     compound_intro = re.search(
-        r"\bI (?:am|'m) (?:a |an )?(?P<occupation>[^,]+?)\\s+(?:from|in)\\s+(?P<location>.+?)(?:\\.|$|,)",
+        r"\bI (?:am|'m) (?:a |an )?(?P<occupation>[^,]+?)\s+(?:from|in)\s+(?P<location>.+?)(?:\.|$|,)",
         text,
         re.IGNORECASE
     )

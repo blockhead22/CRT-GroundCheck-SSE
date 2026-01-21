@@ -1110,7 +1110,9 @@ class CRTEnhancedRAG:
         is_memory_inventory = self._is_memory_inventory_request(user_query)
 
         user_input_kind = self._classify_user_input(user_query)
+        logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind} | Query: {user_query[:100]}")
         if user_input_kind == "assertion" and (is_memory_citation or is_contradiction_status or is_memory_inventory):
+            logger.info(f"[PROFILE_DEBUG] Reclassifying assertion → instruction (special query type)")
             user_input_kind = "instruction"
 
         # Deterministic safe path: refuse prompt/system-instruction disclosure.
@@ -1144,6 +1146,7 @@ class CRTEnhancedRAG:
                 'session_id': self.session_id,
             }
         if user_input_kind == "assertion":
+            logger.info(f"[PROFILE_DEBUG] Processing assertion - about to store memory and update profile")
             user_memory = self.memory.store_memory(
                 text=user_query,
                 confidence=0.95,  # User assertions are high confidence
@@ -1151,13 +1154,16 @@ class CRTEnhancedRAG:
                 context={"type": "user_input", "kind": user_input_kind},
                 user_marked_important=user_marked_important
             )
+            logger.info(f"[PROFILE_DEBUG] Memory stored, now updating user profile...")
             
             # Also update global user profile with extracted facts
             # This enables cross-thread memory (e.g., name persists across chats)
             try:
+                logger.info(f"[PROFILE_DEBUG] Calling user_profile.update_from_text with: {user_query[:100]}")
                 self.user_profile.update_from_text(user_query, thread_id="current")
+                logger.info(f"[PROFILE_DEBUG] ✅ Profile update completed successfully")
             except Exception as e:
-                logger.warning(f"Failed to update user profile: {e}")
+                logger.error(f"[PROFILE_DEBUG] ❌ Failed to update user profile: {e}", exc_info=True)
 
             # If the user is clarifying a previously-detected hard conflict, mark it resolved.
             # This is intentionally conservative: only hard CONFLICT types, and only when
@@ -1322,6 +1328,7 @@ class CRTEnhancedRAG:
         inferred_slots: List[str] = []
         if user_input_kind in ("question", "instruction"):
             inferred_slots = self._infer_slots_from_query(user_query)
+            logger.info(f"[PROFILE_DEBUG] Inferred slots from query: {inferred_slots}")
         
         # Parse any explicit first-person fact assertions (used for relevance checks).
         # For most questions this will be empty, which is fine.
@@ -1688,8 +1695,11 @@ class CRTEnhancedRAG:
         # can miss the most recent correction (e.g., Amazon vs Microsoft). If the query
         # looks like it targets a known slot, explicitly pull the best candidate memory
         # for that slot from the full store and merge it into retrieved.
-        if user_input_kind in ("question", "instruction") and retrieved and inferred_slots:
+        # CRITICAL: Do this even if retrieved is empty - profile facts should be available!
+        if user_input_kind in ("question", "instruction") and inferred_slots:
+            logger.info(f"[PROFILE_DEBUG] Augmenting retrieval with slot memories for slots: {inferred_slots} (current retrieved count: {len(retrieved)})")
             retrieved = self._augment_retrieval_with_slot_memories(retrieved, inferred_slots)
+            logger.info(f"[PROFILE_DEBUG] After augmentation, retrieved count: {len(retrieved)}")
 
         # M2: If the user is asking about a slot with an OPEN hard CONFLICT, do not silently
         # pick the "most recent" value. Turn the contradiction into an explicit next action.
@@ -2925,7 +2935,8 @@ class CRTEnhancedRAG:
         allowed_sources: Optional[set] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """Merge best per-slot memories into the retrieved list."""
-        if not retrieved or not slots:
+        # Allow augmentation even if retrieved is empty - profile facts are valuable!
+        if not slots:
             return retrieved
 
         # Slot augmentation is meant to make user-profile questions more stable
@@ -2951,7 +2962,9 @@ class CRTEnhancedRAG:
         
         # First, check global user profile for these slots
         try:
+            logger.info(f"[PROFILE_DEBUG] Checking global profile for slots: {slots}")
             profile_facts = self.user_profile.get_facts_for_slots(slots)
+            logger.info(f"[PROFILE_DEBUG] Retrieved {len(profile_facts)} facts from profile: {list(profile_facts.keys())}")
             for slot, fact in profile_facts.items():
                 # Create a synthetic memory item from profile fact
                 synthetic_mem = MemoryItem(
@@ -2962,13 +2975,14 @@ class CRTEnhancedRAG:
                     confidence=fact.confidence,
                     trust=0.95,  # High trust for profile facts
                     source=MemorySource.USER,
-                    sse_mode=SSEMode.L
+                    sse_mode=SSEMode.LOSSLESS  # Identity-critical fact
                 )
                 if synthetic_mem.memory_id not in retrieved_ids:
+                    logger.info(f"[PROFILE_DEBUG] Injecting profile fact: {slot} = {fact.value}")
                     injected.append((synthetic_mem, 1.0))
                     retrieved_ids.add(synthetic_mem.memory_id)
         except Exception as e:
-            logger.warning(f"Failed to augment with profile facts: {e}")
+            logger.error(f"[PROFILE_DEBUG] Failed to augment with profile facts: {e}", exc_info=True)
         
         # Then check thread-local memories
         for slot in slots:
