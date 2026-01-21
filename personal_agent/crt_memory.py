@@ -167,6 +167,27 @@ class CRTMemorySystem:
             )
         """)
         
+        # Performance indexes - avoid full table scans
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_source 
+            ON memories(source)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_timestamp 
+            ON memories(timestamp DESC)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_thread 
+            ON memories(thread_id)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_trust_log_memory 
+            ON trust_log(memory_id, timestamp)
+        """)
+        
         conn.commit()
         conn.close()
     
@@ -518,10 +539,87 @@ class CRTMemorySystem:
         
         return memories
     
+    def _load_memories_filtered(
+        self,
+        source: Optional[MemorySource] = None,
+        thread_id: Optional[str] = None,
+        limit: Optional[int] = None
+    ) -> List[MemoryItem]:
+        """
+        Load memories with SQL-level filtering to avoid loading entire database.
+        
+        Performance optimization: Use this instead of _load_all_memories() when
+        you need to filter by source, thread, or limit results.
+        
+        Args:
+            source: Filter by memory source (USER, SYSTEM, etc.)
+            thread_id: Filter by thread
+            limit: Maximum number of results
+            
+        Returns:
+            Filtered list of MemoryItem objects
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Build query with filters
+        query = "SELECT * FROM memories WHERE 1=1"
+        params = []
+        
+        if source is not None:
+            query += " AND source = ?"
+            params.append(source.value)
+            
+        if thread_id is not None:
+            query += " AND thread_id = ?"
+            params.append(thread_id)
+            
+        # Order by timestamp descending for latest-first behavior
+        query += " ORDER BY timestamp DESC"
+        
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        memories = []
+        for row in rows:
+            memories.append(MemoryItem(
+                memory_id=row[0],
+                vector=np.array(json.loads(row[1])),
+                text=row[2],
+                timestamp=row[3],
+                confidence=row[4],
+                trust=row[5],
+                source=MemorySource(row[6]),
+                sse_mode=SSEMode(row[7]),
+                context=json.loads(row[8]) if row[8] else None,
+                tags=json.loads(row[9]) if row[9] else None,
+                thread_id=row[10]
+            ))
+        
+        return memories
+    
     def _get_all_vectors(self) -> List[np.ndarray]:
-        """Get all memory vectors."""
-        memories = self._load_all_memories()
-        return [m.vector for m in memories]
+        """
+        Get all memory vectors efficiently.
+        
+        Optimized to load only vector data without deserializing other fields.
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Only fetch vectors, skip other columns
+        cursor.execute("SELECT vector_json FROM memories")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Deserialize only the vectors
+        vectors = [np.array(json.loads(row[0])) for row in rows]
+        return vectors
 
     def get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
         """Fetch a single memory by ID (or None if missing)."""

@@ -219,19 +219,23 @@ class CRTEnhancedRAG:
         return filtered
 
     def _get_latest_user_slot_value(self, slot: str) -> Optional[str]:
+        """
+        Get the latest value for a given slot from USER memories.
+        
+        Optimized: Uses filtered query to load only USER memories instead of all memories.
+        """
         slot = (slot or "").strip().lower()
         if not slot:
             return None
         try:
-            all_memories = self.memory._load_all_memories()
+            # OPTIMIZATION: Load only USER memories instead of all memories
+            user_memories = self.memory._load_memories_filtered(source=MemorySource.USER)
         except Exception:
             return None
 
         best_val: Optional[str] = None
         best_ts: float = -1.0
-        for mem in all_memories:
-            if mem.source != MemorySource.USER:
-                continue
+        for mem in user_memories:
             facts = extract_fact_slots(mem.text)
             if not facts or slot not in facts:
                 continue
@@ -246,13 +250,17 @@ class CRTEnhancedRAG:
         return best_val or None
 
     def _get_latest_user_name_guess(self) -> Optional[str]:
-        """Best-effort user name extraction from USER memories.
+        """
+        Best-effort user name extraction from USER memories.
 
         Prefer structured "FACT: name = ..." if present; otherwise fall back to
         simple textual patterns like "my name is ...".
+        
+        Optimized: Uses filtered query to load only USER memories.
         """
         try:
-            all_memories = self.memory._load_all_memories()
+            # OPTIMIZATION: Load only USER memories instead of all memories
+            user_memories = self.memory._load_memories_filtered(source=MemorySource.USER)
         except Exception:
             return None
 
@@ -260,9 +268,7 @@ class CRTEnhancedRAG:
         best_ts: float = -1.0
         name_pat = r"([A-Z][a-zA-Z'-]{1,40}(?:\s+[A-Z][a-zA-Z'-]{1,40}){0,2})"
 
-        for mem in all_memories:
-            if mem.source != MemorySource.USER:
-                continue
+        for mem in user_memories:
             text = (mem.text or "").strip()
             if not text:
                 continue

@@ -184,6 +184,27 @@ class ContradictionLedger:
             )
         """)
         
+        # Performance indexes to avoid full table scans
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_contradictions_status 
+            ON contradictions(status)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_contradictions_old_memory 
+            ON contradictions(old_memory_id)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_contradictions_new_memory 
+            ON contradictions(new_memory_id)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reflection_queue_processed 
+            ON reflection_queue(processed, priority)
+        """)
+        
         conn.commit()
         conn.close()
 
