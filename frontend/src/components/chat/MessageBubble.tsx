@@ -132,6 +132,15 @@ export function MessageBubble(props: {
               </span>
             ) : null}
 
+            {meta?.reintroduced_claims_count > 0 ? (
+              <span
+                className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
+                title={`This answer uses ${meta.reintroduced_claims_count} contradicted ${meta.reintroduced_claims_count === 1 ? 'memory' : 'memories'}`}
+              >
+                ⚠️ CONTRADICTED CLAIMS ({meta.reintroduced_claims_count})
+              </span>
+            ) : null}
+
             {grounding ? (
               <span
                 className={
@@ -197,6 +206,11 @@ export function MessageBubble(props: {
                     <li key={i} className="text-white/70">
                       <span className="font-mono text-violet-300">T:{m.trust.toFixed(2)}</span>
                       <span className="mx-1 text-white/40">·</span>
+                      {m.reintroduced_claim ? (
+                        <span className="inline-flex items-center rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium text-amber-200 mr-1">
+                          ⚠️ CONTRADICTED
+                        </span>
+                      ) : null}
                       <span className="line-clamp-1">{m.text}</span>
                     </li>
                   ))}
