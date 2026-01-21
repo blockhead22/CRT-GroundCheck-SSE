@@ -39,6 +39,11 @@
    - Target markets, monetization strategy, investment thesis
    - ~25 min read
 
+5. **[AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md](AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md)** - **Quick executive summary**
+   - Condensed version for decision-makers
+   - Key findings, recommendations, immediate next steps
+   - ~5 min read
+
 ---
 
 ## 🚀 Getting Started
@@ -174,9 +179,10 @@
 3. [CRT_REINTRODUCTION_INVARIANT.md](CRT_REINTRODUCTION_INVARIANT.md)
 
 ### For Investors & Business Leaders: "What's the market opportunity?"
-1. [AI_MARKET_VALUE_ASSESSMENT.md](AI_MARKET_VALUE_ASSESSMENT.md)
-2. [ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)
-3. [PURPOSE.md](PURPOSE.md)
+1. [AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md](AI_MARKET_ASSESSMENT_EXECUTIVE_SUMMARY.md) ⭐ **Start here**
+2. [AI_MARKET_VALUE_ASSESSMENT.md](AI_MARKET_VALUE_ASSESSMENT.md)
+3. [ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)
+4. [PURPOSE.md](PURPOSE.md)
 
 ### For Developers: "How does it work?"
 1. [README.md](README.md)
