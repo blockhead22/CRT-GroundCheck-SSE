@@ -707,6 +707,115 @@ def create_app() -> FastAPI:
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to record correction: {e}")
+    
+    # ========================================================================
+    # PHASE 1: FEEDBACK API ENDPOINTS
+    # ========================================================================
+    
+    class FeedbackThumbsRequest(BaseModel):
+        interaction_id: str = Field(description="ID of the interaction to rate")
+        thumbs_up: bool = Field(description="True for thumbs up, False for thumbs down")
+        comment: Optional[str] = Field(default=None, description="Optional feedback comment")
+    
+    @app.post("/api/feedback/thumbs")
+    def feedback_thumbs(req: FeedbackThumbsRequest) -> Dict[str, Any]:
+        """Submit thumbs up/down feedback for an interaction."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            success = coordinator.record_feedback_thumbs(
+                interaction_id=req.interaction_id,
+                thumbs_up=req.thumbs_up,
+                comment=req.comment,
+            )
+            
+            return {
+                "ok": success,
+                "interaction_id": req.interaction_id,
+                "feedback": "thumbs_up" if req.thumbs_up else "thumbs_down",
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to record feedback: {e}")
+    
+    class FeedbackCorrectionRequest(BaseModel):
+        interaction_id: str = Field(description="ID of the interaction to correct")
+        correction_type: str = Field(description="Type: fact, slot, response, other")
+        field_name: Optional[str] = Field(default=None, description="Field being corrected (e.g., 'name')")
+        incorrect_value: Optional[str] = Field(default=None, description="The incorrect value")
+        correct_value: Optional[str] = Field(default=None, description="The correct value")
+        comment: Optional[str] = Field(default=None, description="Additional context")
+    
+    @app.post("/api/feedback/correction")
+    def feedback_correction(req: FeedbackCorrectionRequest) -> Dict[str, Any]:
+        """Submit a correction for an interaction (e.g., 'Actually, my name is Alice')."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            correction_id = coordinator.record_feedback_correction(
+                interaction_id=req.interaction_id,
+                correction_type=req.correction_type,
+                field_name=req.field_name,
+                incorrect_value=req.incorrect_value,
+                correct_value=req.correct_value,
+                user_comment=req.comment,
+            )
+            
+            return {
+                "ok": True,
+                "correction_id": correction_id,
+                "interaction_id": req.interaction_id,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to record correction: {e}")
+    
+    class FeedbackReportRequest(BaseModel):
+        interaction_id: str = Field(description="ID of the interaction to report")
+        issue_type: str = Field(description="Type of issue: incorrect, offensive, other")
+        description: str = Field(description="Describe the issue")
+    
+    @app.post("/api/feedback/report")
+    def feedback_report(req: FeedbackReportRequest) -> Dict[str, Any]:
+        """Report an issue with an interaction."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            # Record as a special type of feedback
+            report_details = json.dumps({
+                "issue_type": req.issue_type,
+                "description": req.description,
+            })
+            
+            success = coordinator.record_feedback_thumbs(
+                interaction_id=req.interaction_id,
+                thumbs_up=False,
+                comment=report_details,
+            )
+            
+            # Update to 'report' reaction type
+            conn = sqlite3.connect(str(coordinator.db_path))
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE interaction_logs
+                SET user_reaction = 'report'
+                WHERE interaction_id = ?
+            """, (req.interaction_id,))
+            conn.commit()
+            conn.close()
+            
+            return {
+                "ok": success,
+                "interaction_id": req.interaction_id,
+                "reported": True,
+            }
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to record report: {e}")
+    
+    @app.get("/api/feedback/stats")
+    def feedback_stats(hours: int = Query(default=24, ge=1, le=168)) -> Dict[str, Any]:
+        """Get feedback statistics for the last N hours."""
+        try:
+            coordinator = get_active_learning_coordinator()
+            stats = coordinator.get_interaction_stats(hours=hours)
+            return stats
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to get stats: {e}")
 
     def _is_architecture_explanation_request(text: str) -> bool:
         t = (text or '').strip().lower()
@@ -1692,6 +1801,45 @@ def create_app() -> FastAPI:
                     pass
         except Exception:
             pass
+
+        # PHASE 1: Log complete interaction for active learning
+        interaction_id = None
+        try:
+            coordinator = get_active_learning_coordinator()
+            
+            # Extract slots from result if available
+            slots_inferred = result.get("slots_extracted") or result.get("facts") or {}
+            
+            # Get facts that were injected into the prompt
+            facts_injected = [
+                {
+                    "memory_id": m.get("memory_id"),
+                    "text": m.get("text"),
+                    "confidence": m.get("confidence"),
+                }
+                for m in prompt_mems
+                if isinstance(m, dict) and m.get("memory_id")
+            ]
+            
+            interaction_id = coordinator.record_interaction(
+                thread_id=req.thread_id,
+                query=req.message,
+                response=str(result.get("answer") or ""),
+                response_type=str(result.get("response_type") or "speech"),
+                confidence=float(result.get("confidence") or 0.0),
+                gates_passed=bool(result.get("gates_passed")),
+                slots_inferred=slots_inferred if isinstance(slots_inferred, dict) else None,
+                facts_injected=facts_injected if facts_injected else None,
+                session_id=str(result.get("session_id") or "default"),
+            )
+        except Exception as e:
+            # Don't fail the request if logging fails
+            print(f"[Phase1] Failed to log interaction: {e}")
+            pass
+
+        # Add interaction_id to metadata for feedback linking
+        if interaction_id:
+            metadata["interaction_id"] = interaction_id
 
         return ChatSendResponse(
             answer=str(result.get("answer") or ""),

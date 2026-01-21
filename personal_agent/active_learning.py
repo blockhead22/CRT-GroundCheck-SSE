@@ -186,6 +186,67 @@ class ActiveLearningCoordinator:
             )
         """)
         
+        # PHASE 1: Interaction logs table (complete interaction logging)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interaction_logs (
+                interaction_id TEXT PRIMARY KEY,
+                timestamp REAL NOT NULL,
+                thread_id TEXT NOT NULL,
+                session_id TEXT,
+                query TEXT NOT NULL,
+                slots_inferred TEXT,  -- JSON: {"name": "Alice", "employer": "Amazon"}
+                facts_injected TEXT,  -- JSON: [{"memory_id": "...", "text": "..."}]
+                response TEXT NOT NULL,
+                response_type TEXT,
+                confidence REAL,
+                gates_passed INTEGER,
+                user_reaction TEXT,  -- thumbs_up, thumbs_down, correction, report, None
+                reaction_timestamp REAL,
+                reaction_details TEXT  -- JSON: additional feedback data
+            )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interaction_timestamp ON interaction_logs(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interaction_thread ON interaction_logs(thread_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interaction_reaction ON interaction_logs(user_reaction)")
+        
+        # PHASE 1: User corrections table (specific correction data)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS corrections (
+                correction_id TEXT PRIMARY KEY,
+                interaction_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                thread_id TEXT NOT NULL,
+                correction_type TEXT NOT NULL,  -- fact, slot, response, other
+                field_name TEXT,  -- e.g., "name", "employer"
+                incorrect_value TEXT,
+                correct_value TEXT,
+                user_comment TEXT,
+                FOREIGN KEY (interaction_id) REFERENCES interaction_logs(interaction_id)
+            )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_correction_timestamp ON corrections(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_correction_type ON corrections(correction_type)")
+        
+        # PHASE 1: Conflict resolutions table (how users resolve contradictions)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS conflict_resolutions (
+                resolution_id TEXT PRIMARY KEY,
+                timestamp REAL NOT NULL,
+                thread_id TEXT NOT NULL,
+                ledger_id TEXT,  -- contradiction ledger ID
+                old_fact TEXT NOT NULL,
+                new_fact TEXT NOT NULL,
+                user_action TEXT NOT NULL,  -- accept_new, keep_old, merge, ask_later
+                context TEXT,  -- Additional context about the resolution
+                auto_resolved INTEGER DEFAULT 0  -- 1 if auto-resolved, 0 if user chose
+            )
+        """)
+        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_resolution_timestamp ON conflict_resolutions(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_resolution_action ON conflict_resolutions(user_action)")
+        
         conn.commit()
         conn.close()
     
@@ -654,6 +715,224 @@ class ActiveLearningCoordinator:
         
         conn.close()
         return events
+    
+    # ========================================================================
+    # PHASE 1: INTERACTION LOGGING METHODS
+    # ========================================================================
+    
+    def record_interaction(
+        self,
+        thread_id: str,
+        query: str,
+        response: str,
+        response_type: str,
+        confidence: float,
+        gates_passed: bool,
+        slots_inferred: Optional[Dict[str, str]] = None,
+        facts_injected: Optional[List[Dict[str, Any]]] = None,
+        session_id: str = "default",
+    ) -> str:
+        """
+        Record a complete interaction for training data collection.
+        
+        This is Phase 1 of the Active Learning Track.
+        Returns interaction_id for later feedback tracking.
+        """
+        import uuid
+        
+        interaction_id = str(uuid.uuid4())
+        timestamp = time.time()
+        
+        # Serialize slots and facts to JSON
+        slots_json = json.dumps(slots_inferred) if slots_inferred else None
+        facts_json = json.dumps(facts_injected) if facts_injected else None
+        
+        with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO interaction_logs (
+                    interaction_id, timestamp, thread_id, session_id,
+                    query, slots_inferred, facts_injected, response,
+                    response_type, confidence, gates_passed,
+                    user_reaction, reaction_timestamp, reaction_details
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                interaction_id, timestamp, thread_id, session_id,
+                query, slots_json, facts_json, response,
+                response_type, confidence, 1 if gates_passed else 0,
+                None, None, None
+            ))
+            conn.commit()
+            conn.close()
+        
+        return interaction_id
+    
+    def record_feedback_thumbs(
+        self,
+        interaction_id: str,
+        thumbs_up: bool,
+        comment: Optional[str] = None,
+    ) -> bool:
+        """
+        Record thumbs up/down feedback for an interaction.
+        
+        Returns True if successful.
+        """
+        reaction = "thumbs_up" if thumbs_up else "thumbs_down"
+        reaction_details = json.dumps({"comment": comment}) if comment else None
+        
+        with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE interaction_logs
+                SET user_reaction = ?,
+                    reaction_timestamp = ?,
+                    reaction_details = ?
+                WHERE interaction_id = ?
+            """, (reaction, time.time(), reaction_details, interaction_id))
+            
+            success = cursor.rowcount > 0
+            conn.commit()
+            conn.close()
+            
+        return success
+    
+    def record_feedback_correction(
+        self,
+        interaction_id: str,
+        correction_type: str,
+        field_name: Optional[str] = None,
+        incorrect_value: Optional[str] = None,
+        correct_value: Optional[str] = None,
+        user_comment: Optional[str] = None,
+    ) -> str:
+        """
+        Record a user correction (e.g., "Actually, my name is Alice, not Alison").
+        
+        Returns correction_id.
+        """
+        import uuid
+        
+        correction_id = str(uuid.uuid4())
+        timestamp = time.time()
+        
+        with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Get thread_id from interaction
+            cursor.execute("SELECT thread_id FROM interaction_logs WHERE interaction_id = ?", (interaction_id,))
+            row = cursor.fetchone()
+            thread_id = row[0] if row else "default"
+            
+            # Insert correction
+            cursor.execute("""
+                INSERT INTO corrections (
+                    correction_id, interaction_id, timestamp, thread_id,
+                    correction_type, field_name, incorrect_value, correct_value, user_comment
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                correction_id, interaction_id, timestamp, thread_id,
+                correction_type, field_name, incorrect_value, correct_value, user_comment
+            ))
+            
+            # Update interaction log
+            cursor.execute("""
+                UPDATE interaction_logs
+                SET user_reaction = 'correction',
+                    reaction_timestamp = ?
+                WHERE interaction_id = ?
+            """, (timestamp, interaction_id))
+            
+            conn.commit()
+            conn.close()
+        
+        return correction_id
+    
+    def record_conflict_resolution(
+        self,
+        thread_id: str,
+        old_fact: str,
+        new_fact: str,
+        user_action: str,
+        ledger_id: Optional[str] = None,
+        context: Optional[str] = None,
+        auto_resolved: bool = False,
+    ) -> str:
+        """
+        Record how a user resolved a contradiction.
+        
+        This helps Phase 4 learn user preferences for conflict resolution.
+        Returns resolution_id.
+        """
+        import uuid
+        
+        resolution_id = str(uuid.uuid4())
+        timestamp = time.time()
+        
+        with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO conflict_resolutions (
+                    resolution_id, timestamp, thread_id, ledger_id,
+                    old_fact, new_fact, user_action, context, auto_resolved
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                resolution_id, timestamp, thread_id, ledger_id,
+                old_fact, new_fact, user_action, context, 1 if auto_resolved else 0
+            ))
+            conn.commit()
+            conn.close()
+        
+        return resolution_id
+    
+    def get_interaction_stats(self, hours: int = 24) -> Dict[str, Any]:
+        """Get interaction statistics for the last N hours."""
+        cutoff = time.time() - (hours * 3600)
+        
+        with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            
+            # Total interactions
+            cursor.execute("""
+                SELECT COUNT(*) FROM interaction_logs
+                WHERE timestamp > ?
+            """, (cutoff,))
+            total = cursor.fetchone()[0]
+            
+            # Feedback breakdown
+            cursor.execute("""
+                SELECT user_reaction, COUNT(*)
+                FROM interaction_logs
+                WHERE timestamp > ? AND user_reaction IS NOT NULL
+                GROUP BY user_reaction
+            """, (cutoff,))
+            reactions = dict(cursor.fetchall())
+            
+            # Corrections by type
+            cursor.execute("""
+                SELECT correction_type, COUNT(*)
+                FROM corrections
+                WHERE timestamp > ?
+                GROUP BY correction_type
+            """, (cutoff,))
+            corrections_by_type = dict(cursor.fetchall())
+            
+            conn.close()
+        
+        return {
+            "total_interactions": total,
+            "thumbs_up": reactions.get("thumbs_up", 0),
+            "thumbs_down": reactions.get("thumbs_down", 0),
+            "corrections": reactions.get("correction", 0),
+            "reports": reactions.get("report", 0),
+            "corrections_by_type": corrections_by_type,
+            "period_hours": hours,
+        }
 
 
 # Singleton instance for global access
