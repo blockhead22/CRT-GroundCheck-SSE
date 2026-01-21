@@ -18,6 +18,7 @@ Philosophy:
 
 import sqlite3
 import json
+import logging
 import numpy as np
 from typing import List, Dict, Optional, Any, Tuple, Set
 from datetime import datetime
@@ -29,6 +30,8 @@ from .crt_core import (
     encode_vector, extract_emotion_intensity, extract_future_relevance
 )
 from .policy import validate_external_memory_context
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -331,7 +334,7 @@ class CRTMemorySystem:
                 for contra in resolved:
                     # Only exclude if resolution method indicates replacement
                     method = getattr(contra, 'resolution_method', None)
-                    if method and ('clarif' in method.lower() or 'replace' in method.lower()):
+                    if method and (('clarif' in method.lower()) or ('replace' in method.lower())):
                         deprecated_ids.add(contra.old_memory_id)
             except Exception:
                 # Graceful degradation if ledger unavailable
@@ -617,9 +620,22 @@ class CRTMemorySystem:
         Get all memory vectors efficiently.
         
         Optimized to load only vector data without deserializing other fields.
+        
+        Note: For very large databases (>50k memories), consider using
+        paginated/streamed loading to prevent OOM errors. This loads all
+        vectors into memory at once.
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
+        
+        # Check count first to warn about large loads
+        cursor.execute("SELECT COUNT(*) FROM memories")
+        count = cursor.fetchone()[0]
+        
+        if count > 50_000:
+            logger.warning(
+                f"Loading {count} vectors into memory. Consider pagination for large datasets."
+            )
         
         # Only fetch vectors, skip other columns
         cursor.execute("SELECT vector_json FROM memories")

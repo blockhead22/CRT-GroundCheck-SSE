@@ -21,6 +21,7 @@ import re
 import logging
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
+from collections import OrderedDict
 import time
 import joblib
 
@@ -88,25 +89,43 @@ class CRTEnhancedRAG:
         import uuid
         self.session_id = str(uuid.uuid4())[:8]
         
-        # Performance: Cache for fact extraction to avoid repeated regex parsing
-        self._fact_extraction_cache: Dict[str, Dict[str, Any]] = {}
+        # Performance: LRU cache for fact extraction to avoid repeated regex parsing
+        # Using OrderedDict for efficient LRU eviction (move_to_end + popitem)
+        self._fact_extraction_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._max_cache_entries = 1000
+        self._max_text_size = 10_000  # Skip caching very large texts
     
     def _extract_facts_cached(self, text: str) -> Dict[str, Any]:
         """
-        Extract fact slots with caching to avoid repeated regex parsing.
+        Extract fact slots with LRU caching to avoid repeated regex parsing.
         
         Performance optimization: The same memory text may be parsed multiple times
-        during retrieval and contradiction detection. Cache results to avoid waste.
+        during retrieval and contradiction detection. Uses LRU cache to avoid waste.
+        
+        Args:
+            text: Memory text to extract facts from
+            
+        Returns:
+            Dictionary of extracted facts (slot -> ExtractedFact)
         """
-        if text not in self._fact_extraction_cache:
-            self._fact_extraction_cache[text] = extract_fact_slots(text) or {}
-            # Limit cache size to prevent memory bloat
-            if len(self._fact_extraction_cache) > 1000:
-                # Remove oldest 20% of entries (simple FIFO eviction)
-                items_to_remove = len(self._fact_extraction_cache) // 5
-                for key in list(self._fact_extraction_cache.keys())[:items_to_remove]:
-                    del self._fact_extraction_cache[key]
-        return self._fact_extraction_cache[text]
+        # Skip caching for very large texts to prevent memory bloat
+        if len(text) > self._max_text_size:
+            return extract_fact_slots(text) or {}
+        
+        # Check cache (LRU: move to end on access)
+        if text in self._fact_extraction_cache:
+            self._fact_extraction_cache.move_to_end(text)
+            return self._fact_extraction_cache[text]
+        
+        # Cache miss: extract and store
+        result = extract_fact_slots(text) or {}
+        self._fact_extraction_cache[text] = result
+        
+        # LRU eviction: remove oldest entry when cache is full
+        if len(self._fact_extraction_cache) > self._max_cache_entries:
+            self._fact_extraction_cache.popitem(last=False)  # Remove oldest (FIFO)
+        
+        return result
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""
