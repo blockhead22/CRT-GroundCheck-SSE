@@ -8,6 +8,11 @@
 
 **Yes.** Start here to understand why:
 
+0. **[ELEVATOR_PITCH.md](ELEVATOR_PITCH.md)** - 30-second summary
+   - Problem, solution, why it matters
+   - Links to deeper documentation
+   - ~30 sec read
+
 1. **[PURPOSE.md](PURPOSE.md)** - Direct answer to "why does this exist?"
    - The problem: AI memory systems lie by omission
    - CRT's solution: Contradiction-preserving memory with transparency
@@ -144,6 +149,7 @@
 ## 📖 Reading Paths
 
 ### For Skeptics: "Does this really matter?"
+0. [ELEVATOR_PITCH.md](ELEVATOR_PITCH.md) (30 seconds)
 1. [PURPOSE.md](PURPOSE.md)
 2. [BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)
 3. [CRT_PHILOSOPHY.md](CRT_PHILOSOPHY.md)
@@ -171,6 +177,7 @@
 
 **Answer:** Yes. Most AI memory systems lie by omission (they hide contradictory information). CRT never does. It preserves contradictions, flags them in data, and discloses them in language. If you need an AI system you can actually trust over 100+ conversations, CRT is the solution.
 
+**30-second version:** [ELEVATOR_PITCH.md](ELEVATOR_PITCH.md)  
 **Start:** [PURPOSE.md](PURPOSE.md) → [BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md) → [QUICKSTART.md](QUICKSTART.md)
 
 ---

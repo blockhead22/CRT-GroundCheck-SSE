@@ -107,6 +107,7 @@ curl -X POST $API -H "Content-Type: application/json" \
 **→ [Full Documentation Index](DOCUMENTATION_INDEX.md)** - Complete navigation guide
 
 ### Start Here
+- **[ELEVATOR_PITCH.md](ELEVATOR_PITCH.md)** - **30-second summary** of problem, solution, and why it matters
 - **[PURPOSE.md](PURPOSE.md)** - **Why does this project exist?** (Read this first if you're skeptical)
 - **[BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)** - **Side-by-side comparison** showing the difference CRT makes
 - **[BETA_STARTER_KIT.md](BETA_STARTER_KIT.md)** - Beta tester guide with 5-minute demo
