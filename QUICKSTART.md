@@ -1,16 +1,38 @@
-# Quickstart - CRT Beta
+# Quickstart - CRT v0.9-beta
 **Get running in 5 minutes**
 
 ---
 
 ## Prerequisites
-- Python 3.10+
-- Node.js 18+ (for web UI only)
+
+### Required
+- **Python 3.10+**
+- **Ollama** (for natural language responses)
+  - Download: https://ollama.com/download
+  - Install model: `ollama pull llama3.2:latest`
+  - Start server: `ollama serve`
+
+### Optional
+- **Node.js 18+** (for web UI only)
+
+### System
 - 2GB RAM minimum
+- 5GB disk space (for Ollama model)
+
+**Note:** Without Ollama running, API will return `[Ollama error: ...]` messages but memory storage, contradiction detection, and invariant flags still work.
 
 ---
 
 ## Option 1: Full Stack (Recommended)
+
+### Step 0: Start Ollama (if not running)
+```bash
+# In a separate terminal
+ollama serve
+
+# Verify
+ollama list  # Should show llama3.2:latest
+```
 
 ### Step 1: Install Python Dependencies
 ```bash

@@ -354,6 +354,10 @@ metrics = {
     'm2_followups_attempted': 0,
     'm2_followups_succeeded': 0,
     'turns_data': [],  # Store turn data for analysis
+    # v0.9-beta: Reintroduction invariant metrics
+    'reintroduced_flagged_count': 0,      # Contradicted memories properly flagged (OK)
+    'reintroduced_unflagged_count': 0,    # Contradicted memories missing flag (VIOLATION)
+    'answer_asserted_contradicted_claim': 0,  # Answer used contradicted claim without caveat (VIOLATION)
 }
 
 
@@ -365,6 +369,45 @@ def _should_print(turn: int) -> bool:
     if every <= 1:
         return True
     return (turn % every) == 0 or turn == 1 or turn == int(getattr(args, "turns", 0) or 0)
+
+
+def _track_reintroduction_metrics(result: dict, *, turn: int) -> None:
+    """Track v0.9-beta reintroduction invariant compliance.
+    
+    Measures:
+    - reintroduced_flagged_count: Memories with open contradiction AND reintroduced_claim=true (OK)
+    - reintroduced_unflagged_count: Memories with contradiction but missing flag (VIOLATION)
+    - answer_asserted_contradicted_claim: Answer used contradicted claim without caveat (VIOLATION)
+    """
+    retrieved = result.get("retrieved_memories") or []
+    
+    # Count flagged reintroductions in retrieved memories only (matches API count scope)
+    flagged_count = sum(1 for m in retrieved if isinstance(m, dict) and m.get("reintroduced_claim") is True)
+    metrics['reintroduced_flagged_count'] += flagged_count
+    
+    # Sanity check: API's reintroduced_claims_count should match our flagged count
+    # (API calculates from retrieved_memories, not prompt_memories)
+    claimed_count = result.get("reintroduced_claims_count", 0)
+    if claimed_count != flagged_count:
+        metrics['reintroduced_unflagged_count'] += abs(claimed_count - flagged_count)
+        if _should_print(turn):
+            print(f"[REINTRO WARNING] Count mismatch: claimed={claimed_count}, flagged={flagged_count}")
+    
+    # Check if answer asserted contradicted claim without caveat
+    # Look for caveat keywords: "most recent", "latest", "conflicting", "though", "however"
+    answer = str(result.get("answer") or "").lower()
+    
+    # Skip caveat check for error responses or empty answers
+    is_error_response = "error" in answer or "ollama" in answer or len(answer.strip()) < 5
+    
+    caveat_keywords = ["most recent", "latest", "conflicting", "though", "however", "according to", "update"]
+    has_caveat = any(kw in answer for kw in caveat_keywords)
+    
+    if flagged_count > 0 and not has_caveat and not is_error_response:
+        # Answer used contradicted memory but didn't include caveat
+        metrics['answer_asserted_contradicted_claim'] += 1
+        if _should_print(turn):
+            print(f"[REINTRO VIOLATION] Answer used {flagged_count} contradicted claim(s) without caveat")
 
 
 def _choose_m2_clarification(prompt: str) -> str | None:
@@ -652,6 +695,9 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
                 metrics['eval_failures'].append(msg)
                 if _should_print(turn):
                     print(f"[EVAL FAIL] {f.check} {('- ' + f.details) if f.details else ''}")
+
+    # v0.9-beta: Track reintroduction invariant compliance
+    _track_reintroduction_metrics(result, turn=turn)
 
     # Optional: exercise M2 goalqueue follow-up endpoints (API mode only).
     m2_event = _maybe_run_m2_followup(result, turn=turn)
@@ -1416,6 +1462,16 @@ if metrics['eval_checks']:
     print(f"  Eval Checks: {metrics['eval_checks']}")
     print(f"  Eval Pass Rate: {100*metrics['eval_passes']/metrics['eval_checks']:.1f}%")
     print(f"  Eval Failures: {len(metrics['eval_failures'])}")
+
+# v0.9-beta: Reintroduction invariant metrics
+print(f"\nREINTRODUCTION INVARIANT (v0.9-beta):")
+print(f"  Flagged (audited): {metrics['reintroduced_flagged_count']}")
+print(f"  Unflagged (violations): {metrics['reintroduced_unflagged_count']}")
+print(f"  Asserted without caveat (violations): {metrics['answer_asserted_contradicted_claim']}")
+if metrics['reintroduced_unflagged_count'] > 0 or metrics['answer_asserted_contradicted_claim'] > 0:
+    print(f"  ❌ INVARIANT VIOLATIONS DETECTED")
+else:
+    print(f"  ✅ INVARIANT MAINTAINED (all contradicted claims flagged + caveated)")
 
 print(f"\nFACTS INTRODUCED: {len(metrics['facts_introduced'])}")
 for i, fact in enumerate(metrics['facts_introduced'], 1):

@@ -301,7 +301,7 @@ class ResearchPromoteResponse(BaseModel):
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="CRT API", version="0.1.0")
+    app = FastAPI(title="CRT API", version="0.9-beta")
 
     runtime_cfg = get_runtime_config()
     reflection_cfg = (runtime_cfg.get("reflection") or {}) if isinstance(runtime_cfg, dict) else {}
@@ -1661,7 +1661,7 @@ def create_app() -> FastAPI:
         # Build X-Ray data (memory transparency mode)
         xray_data = None
         try:
-            retrieved_mems = result.get("retrieved_memories") or []
+            # Use processed retrieved_mems (already has flags) for X-Ray
             if retrieved_mems:
                 xray_data = {
                     "memories_used": [
@@ -1676,7 +1676,7 @@ def create_app() -> FastAPI:
                         if isinstance(m, dict)
                     ],
                     "conflicts_detected": [],
-                    "reintroduced_claims_count": result.get("reintroduced_claims_count", 0),  # AUDIT METRIC
+                    "reintroduced_claims_count": reintro_count,  # Use calculated count, not raw result
                 }
                 
                 # Add open contradictions
