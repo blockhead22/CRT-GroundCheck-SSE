@@ -278,11 +278,13 @@ pytest tests/ -v
 
 #### **Active Learning Track** (Progressive Enhancement)
 
-**Phase 1: Data Collection Infrastructure** (Week 1-2)
-- [ ] Add interaction logging layer (query, slots_inferred, facts_injected, response, user_reaction)
-- [ ] Implement feedback capture API (`/feedback` endpoint for thumbs up/down, corrections)
-- [ ] Create training data storage (SQLite: `interaction_logs`, `corrections`, `conflict_resolutions`)
-- [ ] Log slot extraction confidence scores alongside binary extraction results
+**Phase 1: Data Collection Infrastructure** ✅ **COMPLETE** (Week 1-2)
+- [x] Add interaction logging layer (query, slots_inferred, facts_injected, response, user_reaction)
+- [x] Implement feedback capture API (`/feedback` endpoint for thumbs up/down, corrections)
+- [x] Create training data storage (SQLite: `interaction_logs`, `corrections`, `conflict_resolutions`)
+- [x] Log slot extraction confidence scores alongside binary extraction results
+
+📄 **[Phase 1 Documentation](docs/PHASE1_DATA_COLLECTION.md)** - Complete implementation guide
 
 **Phase 2: Query→Slot Learning** (Week 3-4)
 - [ ] Build baseline dataset from logged interactions (which slots were actually useful per query)
