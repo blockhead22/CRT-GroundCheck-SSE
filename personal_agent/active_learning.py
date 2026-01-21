@@ -760,7 +760,7 @@ class ActiveLearningCoordinator:
             """, (
                 interaction_id, timestamp, thread_id, session_id,
                 query, slots_json, facts_json, response,
-                response_type, confidence, 1 if gates_passed else 0,
+                response_type, confidence, 1 if gates_passed else 0,  # SQLite uses INTEGER for boolean
                 None, None, None
             ))
             conn.commit()
@@ -850,6 +850,39 @@ class ActiveLearningCoordinator:
             conn.close()
         
         return correction_id
+    
+    def record_feedback_report(
+        self,
+        interaction_id: str,
+        issue_type: str,
+        description: str,
+    ) -> bool:
+        """
+        Record a user report of an issue with an interaction.
+        
+        Returns True if successful.
+        """
+        report_details = json.dumps({
+            "issue_type": issue_type,
+            "description": description,
+        })
+        
+        with self._lock:
+            conn = sqlite3.connect(str(self.db_path))
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE interaction_logs
+                SET user_reaction = 'report',
+                    reaction_timestamp = ?,
+                    reaction_details = ?
+                WHERE interaction_id = ?
+            """, (time.time(), report_details, interaction_id))
+            
+            success = cursor.rowcount > 0
+            conn.commit()
+            conn.close()
+            
+        return success
     
     def record_conflict_resolution(
         self,

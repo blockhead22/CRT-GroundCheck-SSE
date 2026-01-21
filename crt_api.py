@@ -3,6 +3,7 @@ import re
 import sqlite3
 import time
 import uuid
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -776,28 +777,11 @@ def create_app() -> FastAPI:
         """Report an issue with an interaction."""
         try:
             coordinator = get_active_learning_coordinator()
-            # Record as a special type of feedback
-            report_details = json.dumps({
-                "issue_type": req.issue_type,
-                "description": req.description,
-            })
-            
-            success = coordinator.record_feedback_thumbs(
+            success = coordinator.record_feedback_report(
                 interaction_id=req.interaction_id,
-                thumbs_up=False,
-                comment=report_details,
+                issue_type=req.issue_type,
+                description=req.description,
             )
-            
-            # Update to 'report' reaction type
-            conn = sqlite3.connect(str(coordinator.db_path))
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE interaction_logs
-                SET user_reaction = 'report'
-                WHERE interaction_id = ?
-            """, (req.interaction_id,))
-            conn.commit()
-            conn.close()
             
             return {
                 "ok": success,
@@ -1834,7 +1818,7 @@ def create_app() -> FastAPI:
             )
         except Exception as e:
             # Don't fail the request if logging fails
-            print(f"[Phase1] Failed to log interaction: {e}")
+            logging.warning(f"[Phase1] Failed to log interaction: {e}")
             pass
 
         # Add interaction_id to metadata for feedback linking
