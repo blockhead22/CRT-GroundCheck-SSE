@@ -91,6 +91,19 @@ export type CtrMessageMeta = {
   agent_activated?: boolean | null
   agent_answer?: string | null
   agent_trace?: AgentTrace | null
+  xray?: {
+    memories_used?: Array<{
+      text: string
+      trust: number
+      confidence: number
+      timestamp?: number | null
+    }>
+    conflicts_detected?: Array<{
+      old: string
+      new: string
+      status: string
+    }>
+  } | null
 }
 
 export type ChatMessage = {

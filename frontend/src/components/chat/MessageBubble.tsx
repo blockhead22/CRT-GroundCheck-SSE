@@ -14,6 +14,7 @@ export function MessageBubble(props: {
   selected?: boolean
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
+  xrayMode?: boolean
 }) {
   const isUser = props.msg.role === 'user'
   const meta = props.msg.crt
@@ -181,6 +182,42 @@ export function MessageBubble(props: {
               {prov.id && prov.text ? <span className="text-white/40"> · </span> : null}
               {prov.text || '—'}
             </div>
+          </div>
+        ) : null}
+
+        {props.xrayMode && meta?.xray && isAssistant ? (
+          <div className="mt-3 rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-3 text-[11px]">
+            <div className="font-semibold tracking-wide text-violet-300">🔬 X-RAY MODE</div>
+            
+            {meta.xray.memories_used && meta.xray.memories_used.length > 0 ? (
+              <div className="mt-2">
+                <div className="text-white/50">Memories Used:</div>
+                <ul className="mt-1 space-y-1">
+                  {meta.xray.memories_used.map((m, i) => (
+                    <li key={i} className="text-white/70">
+                      <span className="font-mono text-violet-300">T:{m.trust.toFixed(2)}</span>
+                      <span className="mx-1 text-white/40">·</span>
+                      <span className="line-clamp-1">{m.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            
+            {meta.xray.conflicts_detected && meta.xray.conflicts_detected.length > 0 ? (
+              <div className="mt-3">
+                <div className="text-rose-300">⚠️ Conflicts Detected:</div>
+                <ul className="mt-1 space-y-2">
+                  {meta.xray.conflicts_detected.map((c, i) => (
+                    <li key={i} className="rounded border border-rose-500/20 bg-rose-500/10 p-2">
+                      <div className="text-white/60"><span className="font-semibold">Old:</span> {c.old}</div>
+                      <div className="text-white/60 mt-1"><span className="font-semibold">New:</span> {c.new}</div>
+                      <div className="text-rose-300 mt-1 text-[10px]">Status: {c.status}</div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         ) : null}
 

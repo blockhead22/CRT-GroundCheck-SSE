@@ -20,6 +20,7 @@ export function ChatThreadView(props: {
   researching?: boolean
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
+  xrayMode?: boolean
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
@@ -93,6 +94,7 @@ export function ChatThreadView(props: {
                       selected={m.id === selectedMessageId}
                       onOpenSourceInspector={props.onOpenSourceInspector}
                       onOpenAgentPanel={props.onOpenAgentPanel}
+                      xrayMode={props.xrayMode}
                     />
                   </div>
                 ))}

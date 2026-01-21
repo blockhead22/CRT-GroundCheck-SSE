@@ -591,6 +591,30 @@ class CRTEnhancedRAG:
 
         return False
 
+    def _get_memory_conflicts(self, memory_id: Optional[str] = None) -> List[Any]:
+        """Check if a memory has open contradictions.
+        
+        Args:
+            memory_id: Optional specific memory to check. If None, returns all open contradictions.
+            
+        Returns:
+            List of contradiction entries
+        """
+        try:
+            open_contras = self.ledger.get_open_contradictions(limit=100)
+            
+            if memory_id is None:
+                return open_contras
+                
+            # Filter to just this memory's contradictions
+            return [
+                c for c in open_contras 
+                if (hasattr(c, 'claim_a_id') and c.claim_a_id == memory_id) or
+                   (hasattr(c, 'claim_b_id') and c.claim_b_id == memory_id)
+            ]
+        except Exception:
+            return []
+
     def _build_user_named_reference_answer(self, user_query: str, inferred_slots: List[str]) -> str:
         cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
         responses = (cfg.get("responses") or {}) if isinstance(cfg.get("responses"), dict) else {}
@@ -1045,7 +1069,7 @@ class CRTEnhancedRAG:
             # Deterministic safe ack: user name declarations should not be embellished.
             # (e.g., never add a location like "New York" unless the user said it.)
             if self._is_user_name_declaration(user_query):
-                print(f"[CRT_DEBUG][NAME_DECLARATION] Detected: '{user_query[:80]}'")
+                logger.debug("Name declaration detected: %s", user_query[:80])
                 # Prefer the name declared in this message (avoids echoing stale prior names
                 # from the DB/profile seed).
                 declared_facts = extract_fact_slots(user_query) or {}
@@ -1071,11 +1095,11 @@ class CRTEnhancedRAG:
                 # If the user previously stated a different name, record a contradiction entry.
                 contradiction_detected = False
                 contradiction_entry = None
-                print(f"[CRT_DEBUG][NAME_CONTRADICTION_CHECK] Starting (user_memory={user_memory is not None})")
+                logger.debug("Name contradiction check starting (user_memory=%s)", user_memory is not None)
                 try:
                     new_facts = extract_fact_slots(user_query) or {}
                     new_name = new_facts.get("name")
-                    print(f"[CRT_DEBUG][NAME_CONTRADICTION_CHECK] Extracted name: {new_name}")
+                    logger.debug("Extracted name from query: %s", new_name)
                     if new_name is not None:
                         all_memories = self.memory._load_all_memories()
                         previous_user_memories = [
@@ -1111,7 +1135,7 @@ class CRTEnhancedRAG:
                                 prior_names.append(prev_mem)
 
                         if (not prior_same_exists) and prior_names:
-                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] Found prior name conflict!")
+                            logger.debug("Name contradiction detected between declarations")
                             selected_prev = max(
                                 prior_names,
                                 key=lambda m: (getattr(m, "timestamp", 0.0), getattr(m, "trust", 0.0)),
@@ -1119,8 +1143,7 @@ class CRTEnhancedRAG:
                             # Reuse existing embeddings from stored memories; do not invoke the embedder here.
                             user_vector = user_memory.vector
                             drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
-                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] new='{new_name.value}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
-                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] Calling ledger.record_contradiction...")
+                            logger.debug("Name contradiction: new='%s' vs old='%s', drift=%.3f", new_name.value, selected_prev.text[:60], drift)
                             contradiction_entry = self.ledger.record_contradiction(
                                 old_memory_id=selected_prev.memory_id,
                                 new_memory_id=user_memory.memory_id,
@@ -1133,10 +1156,10 @@ class CRTEnhancedRAG:
                                 old_vector=selected_prev.vector,
                                 new_vector=user_vector,
                             )
-                            print(f"[CRT_DEBUG][NAME_CONTRADICTION] Ledger returned: {contradiction_entry}")
+                            logger.debug("Ledger recorded contradiction entry: %s", contradiction_entry)
                             contradiction_detected = True
                 except Exception as e:
-                    print(f"[CRT_DEBUG][NAME_CONTRADICTION_CHECK] Exception: {e}")
+                    logger.debug("Name contradiction check exception: %s", e)
                     logger.warning(f"[CONTRADICTION_DETECTION] Name contradiction check failed: {e}")
                     contradiction_detected = False
                     contradiction_entry = None
@@ -2239,13 +2262,13 @@ class CRTEnhancedRAG:
         contradiction_detected = False
         contradiction_entry = None
         
-        print(f"[CRT_DEBUG][GENERIC_CONTRADICTION_CHECK] user_input_kind={user_input_kind}, user_memory={user_memory is not None}")
+        logger.debug("Generic contradiction check: user_input_kind=%s, user_memory=%s", user_input_kind, user_memory is not None)
         if user_input_kind != "question" and user_memory is not None:
             # Prefer claim-level contradiction detection for common personal-profile facts.
             # This avoids false positives from pure embedding drift, and catches true conflicts
             # even when retrieval does not surface the relevant prior memory.
             new_facts = extract_fact_slots(user_query)
-            print(f"[CRT_DEBUG][GENERIC_CONTRADICTION_CHECK] new_facts extracted: {list(new_facts.keys()) if new_facts else None}")
+            logger.debug("Extracted fact slots: %s", list(new_facts.keys()) if new_facts else None)
             if new_facts:
                 user_vector = encode_vector(user_query)
 
@@ -2286,7 +2309,7 @@ class CRTEnhancedRAG:
 
                     latest_norm = getattr(latest_fact, "normalized", None)
                     new_norm = getattr(new_fact, "normalized", None)
-                    print(f"[CRT_DEBUG][FACT_COMPARISON] slot={slot}, latest_norm='{latest_norm}', new_norm='{new_norm}', match={latest_norm == new_norm}")
+                    logger.debug("Fact comparison: slot=%s, latest='%s', new='%s', match=%s", slot, latest_norm, new_norm, latest_norm == new_norm)
                     if latest_norm == new_norm:
                         continue
 
@@ -2294,7 +2317,7 @@ class CRTEnhancedRAG:
                     selected_prev = latest_mem
                     break
 
-                print(f"[CRT_DEBUG][CONTRADICTION_RESULT] selected_prev={selected_prev is not None}")
+                logger.debug("Contradiction detection result: selected_prev=%s", selected_prev is not None)
                 if selected_prev is not None:
                     drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
                     logger.info(f"[CONTRADICTION_DETECTION] Generic fact contradiction detected: query='{user_query[:60]}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
@@ -3242,7 +3265,7 @@ class CRTEnhancedRAG:
         prompt_docs: List[Dict[str, Any]],
         max_lines: int = 8,
     ) -> str:
-        """Deterministic safe memory-inventory response.
+        """Deterministic safe memory-inventory response with conflict awareness.
 
         We do NOT expose internal memory IDs here; we only cite stored text snippets.
         """
@@ -3254,9 +3277,18 @@ class CRTEnhancedRAG:
             lines.append("I don't have any stored memories to cite yet.")
             return "\n".join(lines)
 
-        lines.append("here is the stored text i can cite:")
+        # Check for open contradictions
+        open_contras = self._get_memory_conflicts()
+        has_conflicts = len(open_contras) > 0
+
+        if has_conflicts:
+            lines.append("here is what i have stored (note: some facts have conflicts):")
+        else:
+            lines.append("here is the stored text i can cite:")
 
         added = 0
+        conflict_marked_ids = set()
+        
         for d in (prompt_docs or []):
             txt = str((d or {}).get("text") or "").strip()
             if not txt:
@@ -3270,10 +3302,32 @@ class CRTEnhancedRAG:
             if not (is_fact or is_user):
                 continue
 
+            # Check if this specific memory has a conflict
+            memory_id = (d or {}).get("memory_id")
+            if memory_id and has_conflicts:
+                try:
+                    if self.ledger.has_open_contradiction(memory_id):
+                        txt = f"{txt} ⚠️"
+                        conflict_marked_ids.add(memory_id)
+                except Exception:
+                    pass
+
             lines.append(f"- {txt}")
             added += 1
             if added >= max_lines:
                 break
+
+        # If we marked conflicts, add a note
+        if conflict_marked_ids:
+            lines.append("\n⚠️ = has conflicting information")
+
+        # List top conflicts if space permits
+        if has_conflicts and added < max_lines:
+            lines.append("\nopen conflicts:")
+            for contra in open_contras[:min(3, max_lines - added)]:
+                claim_a = (contra.claim_a_text or "")[:60]
+                claim_b = (contra.claim_b_text or "")[:60]
+                lines.append(f"- '{claim_a}' vs '{claim_b}'")
 
         return "\n".join(lines)
     
@@ -3330,9 +3384,21 @@ class CRTEnhancedRAG:
                 "masters_school",
                 "remote_preference",
             ]
-            lines = ["Based on what I have recorded:"]
+            
+            # Check if there are any conflicts
+            open_contras = self._get_memory_conflicts()
+            if open_contras:
+                lines = ["Based on what I have recorded (note: some information has conflicts):"]
+            else:
+                lines = ["Based on what I have recorded:"]
+                
             lines.extend(format_slot_view(view, ordered_slots=ordered))
-            if len(lines) == 1:
+            
+            # Add conflict summary if present
+            if open_contras:
+                lines.append("\nConflicting information exists for some facts. Ask me about specific contradictions for details.")
+                
+            if len(lines) <= 2:  # Just header + conflict note
                 return "I don't have any stored profile facts about you yet."
             return "\n".join(lines)
 
@@ -3389,9 +3455,25 @@ class CRTEnhancedRAG:
         from .crt_core import MemorySource
 
         user_retrieved = [m for m, _s in (retrieved or []) if getattr(m, "source", None) == MemorySource.USER]
+        
+        # Check for conflicts with these memories
+        conflict_ids = set()
+        for mem in user_retrieved:
+            mem_id = getattr(mem, "id", None)
+            if mem_id:
+                try:
+                    if self.ledger.has_open_contradiction(mem_id):
+                        conflict_ids.add(mem_id)
+                except Exception:
+                    pass
+        
         for mem in user_retrieved[: max(1, max_lines)]:
             mt = (mem.text or "").strip()
             if mt:
+                # Mark if this memory has a conflict
+                mem_id = getattr(mem, "id", None)
+                if mem_id and mem_id in conflict_ids:
+                    mt = f"{mt} (note: conflicting info exists)"
                 lines.append(mt)
             if len(lines) >= max_lines:
                 break

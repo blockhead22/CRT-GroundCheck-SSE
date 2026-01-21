@@ -8,6 +8,8 @@ export function Topbar(props: {
   apiStatus: 'checking' | 'connected' | 'disconnected'
   apiBaseUrl: string
   onChangeApiBaseUrl: (v: string) => void
+  xrayMode?: boolean
+  onToggleXray?: () => void
 }) {
   const initial = (props.userName?.trim()?.[0] || 'U').toUpperCase()
   const statusColor =
@@ -63,6 +65,20 @@ export function Topbar(props: {
             className="w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
           />
         </div>
+        {props.onToggleXray ? (
+          <button
+            onClick={props.onToggleXray}
+            className={
+              'rounded-xl border px-3 py-2 text-sm transition-colors ' +
+              (props.xrayMode
+                ? 'border-violet-500/50 bg-violet-500/20 text-violet-200 hover:bg-violet-500/30'
+                : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10')
+            }
+            title="Toggle X-Ray mode (show memory evidence and conflicts)"
+          >
+            {props.xrayMode ? '🔬 X-Ray ON' : '🔬 X-Ray'}
+          </button>
+        ) : null}
         <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70 hover:bg-white/10" title="Notifications">
           🔔
         </button>

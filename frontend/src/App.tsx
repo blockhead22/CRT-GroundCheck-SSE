@@ -43,6 +43,7 @@ export default function App() {
   const [sourceInspectorMemoryId, setSourceInspectorMemoryId] = useState<string | null>(null)
   const [researching, setResearching] = useState(false)
   const [agentPanelMessageId, setAgentPanelMessageId] = useState<string | null>(null)
+  const [xrayMode, setXrayMode] = useState(false)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -243,6 +244,7 @@ export default function App() {
           agent_activated: res.metadata?.agent_activated ?? null,
           agent_answer: res.metadata?.agent_answer ?? null,
           agent_trace: res.metadata?.agent_trace ?? null,
+          xray: res.metadata?.xray ?? null,
         },
       }
       upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
@@ -374,6 +376,8 @@ export default function App() {
               apiStatus={apiStatus}
               apiBaseUrl={apiBaseUrl}
               onChangeApiBaseUrl={setApiBaseUrl}
+              xrayMode={xrayMode}
+              onToggleXray={() => setXrayMode((v) => !v)}
             />
 
             <div className="relative min-h-0 flex-1">
@@ -395,6 +399,7 @@ export default function App() {
                       researching={researching}
                       onOpenSourceInspector={setSourceInspectorMemoryId}
                       onOpenAgentPanel={setAgentPanelMessageId}
+                      xrayMode={xrayMode}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

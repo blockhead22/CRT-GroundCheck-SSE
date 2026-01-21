@@ -54,6 +54,7 @@ class ChatSendResponse(BaseModel):
     gate_reason: Optional[str] = None
     session_id: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    xray: Optional[Dict[str, Any]] = Field(default=None, description="X-Ray mode: memory evidence and conflicts")
 
 
 class DocListItem(BaseModel):
@@ -1636,6 +1637,39 @@ def create_app() -> FastAPI:
             ],
         }
 
+        # Build X-Ray data (memory transparency mode)
+        xray_data = None
+        try:
+            retrieved_mems = result.get("retrieved_memories") or []
+            if retrieved_mems:
+                xray_data = {
+                    "memories_used": [
+                        {
+                            "text": (m.get("text") if isinstance(m, dict) else "")[:100],
+                            "trust": m.get("trust") if isinstance(m, dict) else 0,
+                            "confidence": m.get("confidence") if isinstance(m, dict) else 0,
+                            "timestamp": m.get("timestamp") if isinstance(m, dict) else None,
+                        }
+                        for m in retrieved_mems[:5]
+                        if isinstance(m, dict)
+                    ],
+                    "conflicts_detected": []
+                }
+                
+                # Add open contradictions
+                try:
+                    open_contras = engine.ledger.get_open_contradictions(limit=10)
+                    for c in open_contras:
+                        xray_data["conflicts_detected"].append({
+                            "old": (c.claim_a_text or "")[:100],
+                            "new": (c.claim_b_text or "")[:100],
+                            "status": c.status.value if hasattr(c.status, 'value') else str(c.status),
+                        })
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
         return ChatSendResponse(
             answer=str(result.get("answer") or ""),
             response_type=str(result.get("response_type") or "speech"),
@@ -1643,6 +1677,7 @@ def create_app() -> FastAPI:
             gate_reason=(result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None),
             session_id=(result.get("session_id") if isinstance(result.get("session_id"), str) else None),
             metadata=metadata,
+            xray=xray_data,
         )
 
     # ========================================================================

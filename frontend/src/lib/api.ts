@@ -69,6 +69,19 @@ export type ChatSendResponse = {
       started_at: string
       completed_at: string | null
     } | null
+    xray?: {
+      memories_used?: Array<{
+        text: string
+        trust: number
+        confidence: number
+        timestamp?: number | null
+      }>
+      conflicts_detected?: Array<{
+        old: string
+        new: string
+        status: string
+      }>
+    } | null
   }
 }
 

@@ -1,6 +1,7 @@
 # Beta Release Checklist - CRT v0.9-beta
 **Date**: 2026-01-20  
-**Last Verified**: Today's stress test (20260120_172425)  
+**Last Verified**: Truth coherence test (20260120_221434)  
+**Status**: BETA READY (with documented limitations)  
 
 ---
 
