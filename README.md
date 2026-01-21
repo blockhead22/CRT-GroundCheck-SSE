@@ -54,6 +54,7 @@ python -m uvicorn crt_api:app --reload --host 127.0.0.1 --port 8123
 
 ### Quick Demo (2 Minutes)
 
+**PowerShell (Windows):**
 ```powershell
 # Create contradiction
 $thread = "quick_demo"
@@ -73,6 +74,25 @@ Write-Host "Answer: $($r.answer)"
 # Expected: "Amazon (most recent update)"
 Write-Host "Contradicted claims: $($r.metadata.reintroduced_claims_count)"
 # Expected: 2
+```
+
+**bash/curl (Linux/macOS/WSL):**
+```bash
+# Create contradiction
+THREAD="quick_demo"
+API="http://127.0.0.1:8123/api/chat/send"
+
+curl -X POST $API -H "Content-Type: application/json" \
+  -d "{\"thread_id\":\"$THREAD\",\"message\":\"I work at Microsoft.\"}"
+
+curl -X POST $API -H "Content-Type: application/json" \
+  -d "{\"thread_id\":\"$THREAD\",\"message\":\"Actually, I work at Amazon, not Microsoft.\"}"
+
+# Recall contradicted fact (pipe to jq for pretty JSON)
+curl -X POST $API -H "Content-Type: application/json" \
+  -d "{\"thread_id\":\"$THREAD\",\"message\":\"Where do I work?\"}" | jq '.answer, .metadata.reintroduced_claims_count'
+
+# Expected: "Amazon (most recent update)" and 2
 ```
 
 **✅ Success:** Answer includes caveat, count = 2, both memories flagged
