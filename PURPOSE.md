@@ -167,6 +167,7 @@ If you've ever:
 
 ## Next Steps
 
+- **See concrete examples:** [BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)  
 - **Try the 5-minute demo:** [QUICKSTART.md](QUICKSTART.md)  
 - **Understand the philosophy:** [CRT_PHILOSOPHY.md](CRT_PHILOSOPHY.md)  
 - **See the technical specs:** [CRT_REINTRODUCTION_INVARIANT.md](CRT_REINTRODUCTION_INVARIANT.md)  
