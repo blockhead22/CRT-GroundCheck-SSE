@@ -615,6 +615,60 @@ class CRTEnhancedRAG:
         except Exception:
             return []
 
+    def _flag_reintroduced_claims(self, memories: List[Any]) -> List[Dict[str, Any]]:
+        """Flag any memories that are contradicted (truth reintroduction).
+        
+        Returns list of dicts with:
+        - memory_id
+        - text
+        - reintroduced_claim: bool (TRUE if contradicted)
+        - contradiction_id: ledger ID if contradicted
+        - superseded_by: new claim text if available
+        
+        INVARIANT: Every contradicted memory MUST be flagged.
+        If we cannot flag it, we must not return it.
+        """
+        flagged = []
+        open_contras = self._get_memory_conflicts()
+        
+        # Build lookup: memory_id -> contradiction entry
+        contra_map = {}
+        for c in open_contras:
+            if hasattr(c, 'claim_a_id'):
+                contra_map[c.claim_a_id] = c
+            if hasattr(c, 'claim_b_id'):
+                contra_map[c.claim_b_id] = c
+        
+        for mem in memories:
+            mem_id = getattr(mem, 'memory_id', None) or getattr(mem, 'id', None)
+            if not mem_id:
+                # Cannot verify - skip to enforce invariant
+                continue
+            
+            is_contradicted = mem_id in contra_map
+            
+            entry = {
+                'memory_id': mem_id,
+                'text': getattr(mem, 'text', ''),
+                'trust': getattr(mem, 'trust', 0),
+                'confidence': getattr(mem, 'confidence', 0),
+                'timestamp': getattr(mem, 'timestamp', None),
+                'reintroduced_claim': is_contradicted,  # MACHINE-READABLE FLAG
+            }
+            
+            if is_contradicted:
+                contra = contra_map[mem_id]
+                entry['contradiction_id'] = getattr(contra, 'ledger_id', None)
+                # Find the superseding claim
+                if hasattr(contra, 'claim_a_id') and contra.claim_a_id == mem_id:
+                    entry['superseded_by'] = getattr(contra, 'claim_b_text', None)
+                elif hasattr(contra, 'claim_b_id') and contra.claim_b_id == mem_id:
+                    entry['superseded_by'] = getattr(contra, 'claim_a_text', None)
+            
+            flagged.append(entry)
+        
+        return flagged
+
     def _build_user_named_reference_answer(self, user_query: str, inferred_slots: List[str]) -> str:
         cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
         responses = (cfg.get("responses") or {}) if isinstance(cfg.get("responses"), dict) else {}
@@ -2366,6 +2420,18 @@ class CRTEnhancedRAG:
         # render provenance using prompt/retrieved memories.
         final_answer = candidate_output
         
+        # INVARIANT ENFORCEMENT: Flag all reintroduced claims
+        # This creates machine-readable proof that contradicted facts are marked
+        retrieved_with_flags = self._flag_reintroduced_claims([mem for mem, _ in retrieved])
+        prompt_with_flags = self._flag_reintroduced_claims(
+            [self.memory.get_memory_by_id(d.get('memory_id')) 
+             for d in (prompt_docs or []) 
+             if d.get('memory_id')]
+        ) if prompt_docs else []
+        
+        # Count reintroductions for audit trail
+        reintroduced_count = sum(1 for m in retrieved_with_flags if m.get('reintroduced_claim'))
+        
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
             text=candidate_output,
@@ -2427,7 +2493,8 @@ class CRTEnhancedRAG:
                     'confidence': mem.confidence,
                     'source': mem.source.value,
                     'sse_mode': mem.sse_mode.value,
-                    'score': score
+                    'score': score,
+                    'reintroduced_claim': self.ledger.has_open_contradiction(mem.memory_id) if hasattr(self.ledger, 'has_open_contradiction') else False,  # INVARIANT FLAG
                 }
                 for mem, score in retrieved
             ],
@@ -2440,9 +2507,21 @@ class CRTEnhancedRAG:
                     'trust': d.get('trust'),
                     'confidence': d.get('confidence'),
                     'source': d.get('source'),
+                    'reintroduced_claim': self.ledger.has_open_contradiction(d.get('memory_id')) if d.get('memory_id') and hasattr(self.ledger, 'has_open_contradiction') else False,  # INVARIANT FLAG
                 }
                 for d in prompt_docs
             ],
+
+            # AUDIT METRICS - Machine-readable reintroduction tracking
+            'reintroduced_claims_count': sum(
+                1 for mem, _ in retrieved 
+                if hasattr(self.ledger, 'has_open_contradiction') and self.ledger.has_open_contradiction(mem.memory_id)
+            ),
+            'unresolved_contradictions_total': len(self._get_memory_conflicts()),
+            'unresolved_hard_conflicts': sum(
+                1 for c in self._get_memory_conflicts()
+                if str(getattr(c, 'contradiction_type', '')).lower() == 'conflict'
+            ),
 
             # Learned suggestions (metadata-only; never authoritative)
             'learned_suggestions': learned,

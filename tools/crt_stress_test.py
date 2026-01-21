@@ -670,6 +670,9 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             "confidence": result.get("confidence"),
             "gates_passed": result.get("gates_passed"),
             "contradiction_detected": result.get("contradiction_detected"),
+            "retrieved_memories": result.get("retrieved_memories") or [],
+            "prompt_memories": result.get("prompt_memories") or [],
+            "reintroduced_claims_count": result.get("reintroduced_claims_count", 0),
             "learned_suggestions": learned_suggestions or [],
             "heuristic_suggestions": heuristic_suggestions or [],
         }

@@ -1620,6 +1620,7 @@ def create_app() -> FastAPI:
                     "timestamp": (m.get("timestamp") if isinstance(m, dict) else None),
                     "sse_mode": (m.get("sse_mode") if isinstance(m, dict) else None),
                     "score": (m.get("score") if isinstance(m, dict) else None),
+                    "reintroduced_claim": (m.get("reintroduced_claim") if isinstance(m, dict) else False),  # INVARIANT FLAG
                 }
                 for m in (result.get("retrieved_memories") or [])
                 if isinstance(m, dict)
@@ -1631,10 +1632,12 @@ def create_app() -> FastAPI:
                     "source": (m.get("source") if isinstance(m, dict) else None),
                     "trust": (m.get("trust") if isinstance(m, dict) else None),
                     "confidence": (m.get("confidence") if isinstance(m, dict) else None),
+                    "reintroduced_claim": (m.get("reintroduced_claim") if isinstance(m, dict) else False),  # INVARIANT FLAG
                 }
                 for m in (result.get("prompt_memories") or [])
                 if isinstance(m, dict)
             ],
+            "reintroduced_claims_count": result.get("reintroduced_claims_count", 0),  # AUDIT METRIC
         }
 
         # Build X-Ray data (memory transparency mode)
@@ -1649,11 +1652,13 @@ def create_app() -> FastAPI:
                             "trust": m.get("trust") if isinstance(m, dict) else 0,
                             "confidence": m.get("confidence") if isinstance(m, dict) else 0,
                             "timestamp": m.get("timestamp") if isinstance(m, dict) else None,
+                            "reintroduced_claim": m.get("reintroduced_claim") if isinstance(m, dict) else False,  # INVARIANT FLAG
                         }
                         for m in retrieved_mems[:5]
                         if isinstance(m, dict)
                     ],
-                    "conflicts_detected": []
+                    "conflicts_detected": [],
+                    "reintroduced_claims_count": result.get("reintroduced_claims_count", 0),  # AUDIT METRIC
                 }
                 
                 # Add open contradictions
