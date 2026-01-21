@@ -104,6 +104,8 @@ curl -X POST $API -H "Content-Type: application/json" \
 
 ## 📖 Documentation
 
+**→ [Full Documentation Index](DOCUMENTATION_INDEX.md)** - Complete navigation guide
+
 ### Start Here
 - **[PURPOSE.md](PURPOSE.md)** - **Why does this project exist?** (Read this first if you're skeptical)
 - **[BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)** - **Side-by-side comparison** showing the difference CRT makes
