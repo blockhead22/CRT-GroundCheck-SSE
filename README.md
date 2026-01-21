@@ -110,6 +110,7 @@ curl -X POST $API -H "Content-Type: application/json" \
 - **[ELEVATOR_PITCH.md](ELEVATOR_PITCH.md)** - **30-second summary** of problem, solution, and why it matters
 - **[PURPOSE.md](PURPOSE.md)** - **Why does this project exist?** (Read this first if you're skeptical)
 - **[BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)** - **Side-by-side comparison** showing the difference CRT makes
+- **[ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)** - **Would this work for ChatGPT/Claude/Copilot?** (Enterprise scalability analysis)
 - **[BETA_STARTER_KIT.md](BETA_STARTER_KIT.md)** - Beta tester guide with 5-minute demo
 - **[QUICKSTART.md](QUICKSTART.md)** - Detailed installation + setup
 - **[DEMO_5_TURN.md](DEMO_5_TURN.md)** - Quick contradiction demonstration

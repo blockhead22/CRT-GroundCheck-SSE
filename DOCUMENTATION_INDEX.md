@@ -25,6 +25,12 @@
    - Concrete examples across use cases
    - ~5 min read
 
+3. **[ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)** - Would this work for ChatGPT/Claude/Copilot?
+   - Assessment of applicability to enterprise AI systems
+   - Scalability considerations and required adaptations
+   - Business case and technical feasibility
+   - ~15 min read
+
 ---
 
 ## 🚀 Getting Started
@@ -153,6 +159,11 @@
 1. [PURPOSE.md](PURPOSE.md)
 2. [BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)
 3. [CRT_PHILOSOPHY.md](CRT_PHILOSOPHY.md)
+
+### For Enterprise AI Architects: "Would this scale?"
+1. [ENTERPRISE_AI_ASSESSMENT.md](ENTERPRISE_AI_ASSESSMENT.md)
+2. [CRT_WHITEPAPER.md](CRT_WHITEPAPER.md)
+3. [CRT_REINTRODUCTION_INVARIANT.md](CRT_REINTRODUCTION_INVARIANT.md)
 
 ### For Developers: "How does it work?"
 1. [README.md](README.md)
