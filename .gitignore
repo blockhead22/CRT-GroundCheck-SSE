@@ -48,8 +48,8 @@ output_index/
 /sse-chat-ui/node_modules
 /sse-chat-ui/dist
 
-# Archived documentation
-/archive/legacy_docs/
+# Archived legacy code and documentation
+/archive/
 
 # Artifacts (keep in repo but ignore old reports)
 # artifacts/crt_stress_report.*.md
