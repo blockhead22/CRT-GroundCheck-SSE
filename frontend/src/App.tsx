@@ -9,6 +9,7 @@ import { ProfileNameLightbox } from './components/ProfileNameLightbox'
 import { ThreadRenameLightbox } from './components/ThreadRenameLightbox'
 import { SourceInspector } from './components/SourceInspector'
 import { AgentPanel } from './components/AgentPanel'
+import { DemoModeLightbox } from './components/DemoModeLightbox'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
@@ -44,6 +45,7 @@ export default function App() {
   const [researching, setResearching] = useState(false)
   const [agentPanelMessageId, setAgentPanelMessageId] = useState<string | null>(null)
   const [xrayMode, setXrayMode] = useState(false)
+  const [demoModeOpen, setDemoModeOpen] = useState(false)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -378,6 +380,7 @@ export default function App() {
               onChangeApiBaseUrl={setApiBaseUrl}
               xrayMode={xrayMode}
               onToggleXray={() => setXrayMode((v) => !v)}
+              onOpenDemoMode={() => setDemoModeOpen(true)}
             />
 
             <div className="relative min-h-0 flex-1">
@@ -461,6 +464,12 @@ export default function App() {
           return msg?.crt?.agent_answer ?? null
         })()}
         onClose={() => setAgentPanelMessageId(null)}
+      />
+
+      <DemoModeLightbox
+        open={demoModeOpen}
+        onClose={() => setDemoModeOpen(false)}
+        onSendMessage={handleSend}
       />
     </div>
   )

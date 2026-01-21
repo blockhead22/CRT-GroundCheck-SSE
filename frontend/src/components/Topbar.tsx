@@ -10,6 +10,7 @@ export function Topbar(props: {
   onChangeApiBaseUrl: (v: string) => void
   xrayMode?: boolean
   onToggleXray?: () => void
+  onOpenDemoMode?: () => void
 }) {
   const initial = (props.userName?.trim()?.[0] || 'U').toUpperCase()
   const statusColor =
@@ -65,6 +66,15 @@ export function Topbar(props: {
             className="w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
           />
         </div>
+        {props.onOpenDemoMode ? (
+          <button
+            onClick={props.onOpenDemoMode}
+            className="rounded-xl border border-emerald-500/30 bg-emerald-500/20 px-3 py-2 text-sm text-emerald-200 hover:bg-emerald-500/30"
+            title="Demo Mode: Quick 5-turn contradiction demonstration"
+          >
+            🎬 Demo
+          </button>
+        ) : null}
         {props.onToggleXray ? (
           <button
             onClick={props.onToggleXray}
