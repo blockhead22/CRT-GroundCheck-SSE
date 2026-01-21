@@ -34,6 +34,7 @@ from .fact_slots import extract_fact_slots
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
 from .active_learning import get_active_learning_coordinator
+from .user_profile import GlobalUserProfile
 
 
 class CRTEnhancedRAG:
@@ -62,6 +63,9 @@ class CRTEnhancedRAG:
         # CRT components
         self.memory = CRTMemorySystem(memory_db, self.config)
         self.ledger = ContradictionLedger(ledger_db, self.config)
+        
+        # Global user profile (shared across all threads)
+        self.user_profile = GlobalUserProfile()
         
         # Reasoning engine
         self.reasoning = ReasoningEngine(llm_client)
@@ -1144,6 +1148,15 @@ class CRTEnhancedRAG:
                 text=user_query,
                 confidence=0.95,  # User assertions are high confidence
                 source=MemorySource.USER,
+                user_marked_important=user_marked_important
+            )
+            
+            # Also update global user profile with extracted facts
+            # This enables cross-thread memory (e.g., name persists across chats)
+            try:
+                self.user_profile.update_from_text(user_query, thread_id="current")
+            except Exception as e:
+                logger.warning(f"Failed to update user profile: {e}")
                 context={"type": "user_input", "kind": user_input_kind},
                 user_marked_important=user_marked_important
             )
@@ -2937,6 +2950,29 @@ class CRTEnhancedRAG:
             return 1
 
         injected: List[Tuple[MemoryItem, float]] = []
+        
+        # First, check global user profile for these slots
+        try:
+            profile_facts = self.user_profile.get_facts_for_slots(slots)
+            for slot, fact in profile_facts.items():
+                # Create a synthetic memory item from profile fact
+                synthetic_mem = MemoryItem(
+                    memory_id=f"profile_{slot}",
+                    vector=encode_vector(f"FACT: {slot} = {fact.value}"),
+                    text=f"FACT: {slot.replace('_', ' ')} = {fact.value}",
+                    timestamp=fact.timestamp,
+                    confidence=fact.confidence,
+                    trust=0.95,  # High trust for profile facts
+                    source=MemorySource.USER,
+                    sse_mode=SSEMode.L
+                )
+                if synthetic_mem.memory_id not in retrieved_ids:
+                    injected.append((synthetic_mem, 1.0))
+                    retrieved_ids.add(synthetic_mem.memory_id)
+        except Exception as e:
+            logger.warning(f"Failed to augment with profile facts: {e}")
+        
+        # Then check thread-local memories
         for slot in slots:
             best: Optional[MemoryItem] = None
             best_key: Optional[Tuple[int, float, float]] = None
