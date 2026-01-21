@@ -3,6 +3,18 @@
 
 ---
 
+## Why CRT?
+
+**Most AI memory systems lie by omission.** They silently overwrite contradictory information, then confidently present uncertain facts as truth.
+
+CRT is different: When the system has conflicting information, **you see it—always**. Contradicted memories are flagged in data and disclosed in language.
+
+**→ Read [PURPOSE.md](PURPOSE.md) for the full "why this matters" explanation**
+
+This guide shows you **how to run CRT**. The philosophy doc shows you **why it exists**.
+
+---
+
 ## Prerequisites
 
 ### Required
