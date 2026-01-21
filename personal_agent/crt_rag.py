@@ -2833,6 +2833,9 @@ class CRTEnhancedRAG:
         patterns = (
             r"\bwho\s+are\s+you\b",
             r"\bwhat\s+are\s+you\b",
+            r"\bwhat\s+is\s+your\s+name\b",
+            r"\bwhat('?s|\s+is)\s+your\s+name\b",
+            r"\bdo\s+you\s+have\s+a\s+name\b",
             r"\bwhat\s+is\s+your\s+(occupation|job|role|purpose)\b",
             r"\bwhat\s+do\s+you\s+do\b",
             # Background/experience questions about the assistant (not the user).
@@ -2863,6 +2866,13 @@ class CRTEnhancedRAG:
             return fallback
 
         q = (user_query or "").strip().lower()
+
+        # Handle name questions
+        if re.search(r"\b(name)\b", q) and not re.search(r"\b(my|user|their)\b", q):
+            return _resp(
+                "name",
+                "I'm an AI assistant. I don't have a personal name, but you can call me CRT or GitHub Copilot.",
+            )
 
         if re.search(r"\b(occupation|job|role)\b", q):
             return _resp(

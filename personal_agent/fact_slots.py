@@ -163,6 +163,21 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         if tokens and not has_stopword and not looks_like_infinitive:
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
 
+    # Compound introduction: "I am a Web Developer from Milwaukee Wisconsin"
+    compound_intro = re.search(
+        r"\bI (?:am|'m) (?:a |an )?(?P<occupation>[^,]+?)\\s+(?:from|in)\\s+(?P<location>.+?)(?:\\.|$|,)",
+        text,
+        re.IGNORECASE
+    )
+    if compound_intro:
+        occ = compound_intro.group("occupation").strip()
+        loc = compound_intro.group("location").strip()
+        # Only extract if occupation looks like a job title (not a state of being)
+        if occ and len(occ) > 2 and not any(word in occ.lower() for word in ["going", "coming", "person", "student", "happy", "sad"]):
+            facts["occupation"] = ExtractedFact("occupation", occ, occ.lower())
+        if loc and len(loc) > 2:
+            facts["location"] = ExtractedFact("location", loc, loc.lower())
+
     # Employer
     # Examples:
     # - "I work at Microsoft as a senior developer."
