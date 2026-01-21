@@ -168,29 +168,53 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "I work at Microsoft as a senior developer."
     # - "I work as a data scientist at Vertex Analytics."
     # - "I work at Amazon, not Microsoft."
-    # Try "I work at/for X" first, then fallback to "at X" pattern for compound sentences
-    m = re.search(
-        r"\b(?:i work at|i work for)\s+([^\n\r\.;,]+)",
-        text,
-        flags=re.IGNORECASE,
-    )
-    if not m:
-        # Fallback: look for "at [company]" anywhere (for "I work as X at Y" patterns)
-        m = re.search(r"\bat\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+(?:as|and|but|in|on|for|with|where|,|\.|;)|\s*$)", text)
-    if m:
-        employer_raw = m.group(1)
-        # Trim at common continuations
-        employer_raw = re.split(r"\b(?:as|and|but|though|however|,|\.|;|\(|\))\b", employer_raw, maxsplit=1, flags=re.IGNORECASE)[0]
-        employer_raw = employer_raw.strip()
-        if employer_raw:
-            facts["employer"] = ExtractedFact("employer", employer_raw, _norm_text(employer_raw))
+    # - "I run a sticker shop called The Printing Lair"
+    # - "I work for myself" / "I'm self-employed"
+    
+    # Check for self-employment first
+    if re.search(r"\b(?:i work for myself|i'm self[- ]?employed|i am self[- ]?employed)", text, flags=re.IGNORECASE):
+        facts["employer"] = ExtractedFact("employer", "self-employed", "self-employed")
+    
+    # Check for "I run [business]" pattern
+    m = re.search(r"\bi run (?:a |an )?([^\n\r\.;,]+?)(?:\s+(?:called|and|but|,|\.|;)|\s*$)", text, flags=re.IGNORECASE)
+    if m and "employer" not in facts:
+        business = m.group(1).strip()
+        # Extract business name if "called X" follows
+        m2 = re.search(r"called\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+(?:and|but|,|\.|;\()|\s*$)", text)
+        if m2:
+            business = m2.group(1).strip()
+        if business:
+            facts["employer"] = ExtractedFact("employer", f"self-employed ({business})", _norm_text(business))
+    
+    # Try "I work at/for X" pattern
+    if "employer" not in facts:
+        m = re.search(
+            r"\b(?:i work at|i work for)\s+([^\n\r\.;,]+)",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if not m:
+            # Fallback: look for "at [company]" anywhere (for "I work as X at Y" patterns)
+            m = re.search(r"\bat\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+(?:as|and|but|in|on|for|with|where|,|\.|;)|\s*$)", text)
+        if m:
+            employer_raw = m.group(1)
+            # Trim at common continuations
+            employer_raw = re.split(r"\b(?:as|and|but|though|however|,|\.|;|\(|\))\b", employer_raw, maxsplit=1, flags=re.IGNORECASE)[0]
+            employer_raw = employer_raw.strip()
+            if employer_raw:
+                facts["employer"] = ExtractedFact("employer", employer_raw, _norm_text(employer_raw))
 
-    # Job title / role
+    # Job title / role / occupation
     m = re.search(r"\bmy (?:role|job title|title) is\s+([^\n\r\.;,]+)", text, flags=re.IGNORECASE)
+    if not m:
+        # Match "I am a [title]" or "[title] by degree/trade/profession"
+        m = re.search(r"\b(?:i am a|i'm a)\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:by|at|for|and)|\s*$)", text)
+        if not m:
+            m = re.search(r"\b([A-Z][A-Za-z\s]+?)\s+by\s+(?:degree|trade|profession)", text)
     if m:
         title_raw = m.group(1).strip()
-        title_raw = re.split(r"\b(?:at|for|in)\b", title_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
-        if title_raw:
+        title_raw = re.split(r"\b(?:at|for|in|by)\b", title_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        if title_raw and len(title_raw.split()) <= 4:  # Keep it reasonable (1-4 words)
             facts["title"] = ExtractedFact("title", title_raw, _norm_text(title_raw))
 
     # Location
