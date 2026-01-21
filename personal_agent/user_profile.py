@@ -52,10 +52,12 @@ class GlobalUserProfile:
     
     def __init__(self, db_path: str = "personal_agent/crt_user_profile.db"):
         self.db_path = db_path
+        print(f"[DEBUG] GlobalUserProfile init: db_path={self.db_path}")
         self._init_db()
     
     def _init_db(self):
         """Initialize profile database."""
+        print(f"[DEBUG] GlobalUserProfile creating DB at: {self.db_path}")
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -87,7 +89,9 @@ class GlobalUserProfile:
         Returns:
             Dictionary of slot -> value for facts that were updated
         """
+        print(f"[DEBUG] GlobalUserProfile.update_from_text called: text='{text[:50]}'")
         facts = extract_fact_slots(text)
+        print(f"[DEBUG] Extracted {len(facts)} facts: {list(facts.keys())}")
         if not facts:
             return {}
         
