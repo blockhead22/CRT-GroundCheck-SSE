@@ -1148,6 +1148,7 @@ class CRTEnhancedRAG:
                 text=user_query,
                 confidence=0.95,  # User assertions are high confidence
                 source=MemorySource.USER,
+                context={"type": "user_input", "kind": user_input_kind},
                 user_marked_important=user_marked_important
             )
             
@@ -1157,9 +1158,6 @@ class CRTEnhancedRAG:
                 self.user_profile.update_from_text(user_query, thread_id="current")
             except Exception as e:
                 logger.warning(f"Failed to update user profile: {e}")
-                context={"type": "user_input", "kind": user_input_kind},
-                user_marked_important=user_marked_important
-            )
 
             # If the user is clarifying a previously-detected hard conflict, mark it resolved.
             # This is intentionally conservative: only hard CONFLICT types, and only when
