@@ -260,16 +260,61 @@ pytest tests/ -v
    - Design approved, implementation post-beta
 
 ### 🗺️ Roadmap
-- **Post-beta improvements:**
-  - Semantic caveat detection (upgrade from keywords)
-  - No-LLM demo mode (testing without Ollama)
-  - UI hover preview (context fork visualization)
-  - Wider beta (10-20 testers)
 
-- **Future milestones:**
-  - M3: Evidence packets (web research with citations)
-  - M4: Permissions (tiered background task safety)
-  - M5: Learning polish (user-facing controls)
+#### **Post-Beta Improvements**
+- Semantic caveat detection (upgrade from keywords)
+- No-LLM demo mode (testing without Ollama)
+- UI hover preview (context fork visualization)
+- Wider beta (10-20 testers)
+
+#### **Active Learning Track** (Progressive Enhancement)
+
+**Phase 1: Data Collection Infrastructure** (Week 1-2)
+- [ ] Add interaction logging layer (query, slots_inferred, facts_injected, response, user_reaction)
+- [ ] Implement feedback capture API (`/feedback` endpoint for thumbs up/down, corrections)
+- [ ] Create training data storage (SQLite: `interaction_logs`, `corrections`, `conflict_resolutions`)
+- [ ] Log slot extraction confidence scores alongside binary extraction results
+
+**Phase 2: Query→Slot Learning** (Week 3-4)
+- [ ] Build baseline dataset from logged interactions (which slots were actually useful per query)
+- [ ] Train lightweight classifier: Query embedding (384d) → Slot probabilities (15d)
+- [ ] A/B test: Rule-based vs learned slot inference on subset of queries
+- [ ] Deploy learned model alongside rules, use learned scores to augment hard-coded patterns
+
+**Phase 3: Fact Extraction Fine-Tuning** (Week 5-6)
+- [ ] Collect user corrections as negative examples ("No, my name is Alice, not Alison")
+- [ ] Train confidence predictor: Text + candidate slot → Extraction confidence (0-1)
+- [ ] Replace binary regex with probabilistic extraction (threshold = 0.7)
+- [ ] Use low-confidence extractions to trigger confirmation ("Did you mean your name is X?")
+
+**Phase 4: Conflict Resolution Learning** (Week 7-8)
+- [ ] Log user responses to contradiction prompts (accept/reject/ask later)
+- [ ] Train policy: (old_fact, new_fact, context, user_history) → Action (auto-update/prompt/ignore)
+- [ ] Learn per-user preferences (some users hate prompts, others want verification)
+- [ ] Implement adaptive conflict resolution based on learned policy
+
+**Phase 5: Cross-Thread Relevance** (Week 9-10)
+- [ ] Track which injected profile facts actually influenced responses (via LLM attention/usage)
+- [ ] Train relevance scorer: (current_thread_context, historical_fact) → Relevance (0-1)
+- [ ] Filter global profile facts by learned relevance before injection
+- [ ] Implement thread-aware fact retrieval (work thread → boost job facts, personal thread → boost hobbies)
+
+**Phase 6: Fact Staleness Prediction** (Week 11-12)
+- [ ] Collect temporal training data (facts corrected after T days since storage)
+- [ ] Train decay model: (fact_type, age_days, update_frequency) → Staleness probability
+- [ ] Auto-prompt for revalidation when staleness > 0.8 ("You mentioned X last year, is this still true?")
+- [ ] Implement confidence decay for volatile slots (favorite_color) vs stable slots (name)
+
+**Success Metrics:**
+- Query→Slot accuracy: >90% vs baseline rule-based
+- User correction rate: <5% for extracted facts (down from current ~15% estimated)
+- Conflict auto-resolution accuracy: >85% matches user preference
+- Cross-thread retrieval precision: >80% of injected facts used in response
+
+#### **Traditional Milestones**
+- M3: Evidence packets (web research with citations)
+- M4: Permissions (tiered background task safety)
+- M5: Learning polish (user-facing controls)
 
 ---
 
