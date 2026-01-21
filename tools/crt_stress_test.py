@@ -280,6 +280,7 @@ class _ApiCrtClient:
             "unresolved_hard_conflicts": meta.get("unresolved_hard_conflicts"),
             "retrieved_memories": meta.get("retrieved_memories") or [],
             "prompt_memories": meta.get("prompt_memories") or [],
+            "reintroduced_claims_count": meta.get("reintroduced_claims_count", 0),
             "learned_suggestions": meta.get("learned_suggestions") or [],
             "heuristic_suggestions": meta.get("heuristic_suggestions") or [],
         }

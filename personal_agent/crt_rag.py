@@ -615,6 +615,43 @@ class CRTEnhancedRAG:
         except Exception:
             return []
 
+    def _add_reintroduction_flags(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Add reintroduced_claim flags to all memories in a query result.
+        
+        INVARIANT: Every memory with an open contradiction MUST be flagged.
+        This method ensures ALL query result paths include the flags.
+        """
+        # Flag retrieved_memories
+        if 'retrieved_memories' in result and isinstance(result['retrieved_memories'], list):
+            for mem in result['retrieved_memories']:
+                if isinstance(mem, dict):
+                    mem_id = mem.get('memory_id')
+                    if mem_id and hasattr(self.ledger, 'has_open_contradiction'):
+                        mem['reintroduced_claim'] = self.ledger.has_open_contradiction(mem_id)
+                    else:
+                        mem['reintroduced_claim'] = False
+        
+        # Flag prompt_memories
+        if 'prompt_memories' in result and isinstance(result['prompt_memories'], list):
+            for mem in result['prompt_memories']:
+                if isinstance(mem, dict):
+                    mem_id = mem.get('memory_id')
+                    if mem_id and hasattr(self.ledger, 'has_open_contradiction'):
+                        mem['reintroduced_claim'] = self.ledger.has_open_contradiction(mem_id)
+                    else:
+                        mem['reintroduced_claim'] = False
+        
+        # Calculate reintroduced_claims_count
+        reintro_count = 0
+        if 'retrieved_memories' in result and isinstance(result['retrieved_memories'], list):
+            reintro_count = sum(
+                1 for m in result['retrieved_memories']
+                if isinstance(m, dict) and m.get('reintroduced_claim') is True
+            )
+        result['reintroduced_claims_count'] = reintro_count
+        
+        return result
+
     def _flag_reintroduced_claims(self, memories: List[Any]) -> List[Dict[str, Any]]:
         """Flag any memories that are contradicted (truth reintroduction).
         
@@ -1771,7 +1808,7 @@ class CRTEnhancedRAG:
 
                     learned = self._get_learned_suggestions_for_slots(inferred_slots)
 
-                    return {
+                    return self._add_reintroduction_flags({
                         'answer': final_answer,
                         'thinking': None,
                         'mode': 'quick',
@@ -1810,7 +1847,7 @@ class CRTEnhancedRAG:
                         'heuristic_suggestions': self._get_heuristic_suggestions_for_slots(inferred_slots),
                         'best_prior_trust': best_prior.trust if best_prior else None,
                         'session_id': self.session_id,
-                    }
+                    })
 
             # Summary-style instructions: answer from canonical resolved USER facts.
             if user_input_kind == "instruction":
@@ -2465,7 +2502,7 @@ class CRTEnhancedRAG:
             )
         
         # 8. Return comprehensive result
-        return {
+        return self._add_reintroduction_flags({
             # User-facing
             'answer': final_answer,
             'thinking': reasoning_result.get('thinking'),
@@ -2532,7 +2569,7 @@ class CRTEnhancedRAG:
             
             # Session
             'session_id': self.session_id
-        }
+        })
 
     def _get_learned_suggestions_for_slots(self, slots: List[str]) -> List[Dict[str, Any]]:
         ls_cfg = (self.runtime_config or {}).get("learned_suggestions", {})

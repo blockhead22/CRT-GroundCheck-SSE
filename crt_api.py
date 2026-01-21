@@ -1597,6 +1597,49 @@ def create_app() -> FastAPI:
             pass
 
         # Keep the payload compact and UI-friendly.
+        # Build comprehensive metadata with reintroduction flags
+        retrieved_mems = [
+            {
+                "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
+                "text": (m.get("text") if isinstance(m, dict) else None),
+                "source": (m.get("source") if isinstance(m, dict) else None),
+                "trust": (m.get("trust") if isinstance(m, dict) else None),
+                "confidence": (m.get("confidence") if isinstance(m, dict) else None),
+                "timestamp": (m.get("timestamp") if isinstance(m, dict) else None),
+                "sse_mode": (m.get("sse_mode") if isinstance(m, dict) else None),
+                "score": (m.get("score") if isinstance(m, dict) else None),
+                "reintroduced_claim": (
+                    engine.ledger.has_open_contradiction(m.get("memory_id"))
+                    if isinstance(m, dict) and m.get("memory_id") and hasattr(engine.ledger, 'has_open_contradiction')
+                    else m.get("reintroduced_claim", False) if isinstance(m, dict)
+                    else False
+                ),  # INVARIANT FLAG
+            }
+            for m in (result.get("retrieved_memories") or [])
+            if isinstance(m, dict)
+        ]
+        
+        prompt_mems = [
+            {
+                "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
+                "text": (m.get("text") if isinstance(m, dict) else None),
+                "source": (m.get("source") if isinstance(m, dict) else None),
+                "trust": (m.get("trust") if isinstance(m, dict) else None),
+                "confidence": (m.get("confidence") if isinstance(m, dict) else None),
+                "reintroduced_claim": (
+                    engine.ledger.has_open_contradiction(m.get("memory_id"))
+                    if isinstance(m, dict) and m.get("memory_id") and hasattr(engine.ledger, 'has_open_contradiction')
+                    else m.get("reintroduced_claim", False) if isinstance(m, dict)
+                    else False
+                ),  # INVARIANT FLAG
+            }
+            for m in (result.get("prompt_memories") or [])
+            if isinstance(m, dict)
+        ]
+        
+        # Calculate reintroduction count from processed list
+        reintro_count = sum(1 for m in retrieved_mems if m.get("reintroduced_claim") is True)
+        
         metadata: Dict[str, Any] = {
             "mode": result.get("mode"),
             "confidence": result.get("confidence"),
@@ -1610,34 +1653,9 @@ def create_app() -> FastAPI:
             "agent_activated": agent_activated,
             "agent_answer": agent_answer,
             "agent_trace": agent_trace_data,
-            "retrieved_memories": [
-                {
-                    "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
-                    "text": (m.get("text") if isinstance(m, dict) else None),
-                    "source": (m.get("source") if isinstance(m, dict) else None),
-                    "trust": (m.get("trust") if isinstance(m, dict) else None),
-                    "confidence": (m.get("confidence") if isinstance(m, dict) else None),
-                    "timestamp": (m.get("timestamp") if isinstance(m, dict) else None),
-                    "sse_mode": (m.get("sse_mode") if isinstance(m, dict) else None),
-                    "score": (m.get("score") if isinstance(m, dict) else None),
-                    "reintroduced_claim": (m.get("reintroduced_claim") if isinstance(m, dict) else False),  # INVARIANT FLAG
-                }
-                for m in (result.get("retrieved_memories") or [])
-                if isinstance(m, dict)
-            ],
-            "prompt_memories": [
-                {
-                    "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
-                    "text": (m.get("text") if isinstance(m, dict) else None),
-                    "source": (m.get("source") if isinstance(m, dict) else None),
-                    "trust": (m.get("trust") if isinstance(m, dict) else None),
-                    "confidence": (m.get("confidence") if isinstance(m, dict) else None),
-                    "reintroduced_claim": (m.get("reintroduced_claim") if isinstance(m, dict) else False),  # INVARIANT FLAG
-                }
-                for m in (result.get("prompt_memories") or [])
-                if isinstance(m, dict)
-            ],
-            "reintroduced_claims_count": result.get("reintroduced_claims_count", 0),  # AUDIT METRIC
+            "retrieved_memories": retrieved_mems,
+            "prompt_memories": prompt_mems,
+            "reintroduced_claims_count": reintro_count,  # AUDIT METRIC
         }
 
         # Build X-Ray data (memory transparency mode)
