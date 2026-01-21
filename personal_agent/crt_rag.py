@@ -87,6 +87,26 @@ class CRTEnhancedRAG:
         # Session tracking
         import uuid
         self.session_id = str(uuid.uuid4())[:8]
+        
+        # Performance: Cache for fact extraction to avoid repeated regex parsing
+        self._fact_extraction_cache: Dict[str, Dict[str, Any]] = {}
+    
+    def _extract_facts_cached(self, text: str) -> Dict[str, Any]:
+        """
+        Extract fact slots with caching to avoid repeated regex parsing.
+        
+        Performance optimization: The same memory text may be parsed multiple times
+        during retrieval and contradiction detection. Cache results to avoid waste.
+        """
+        if text not in self._fact_extraction_cache:
+            self._fact_extraction_cache[text] = extract_fact_slots(text) or {}
+            # Limit cache size to prevent memory bloat
+            if len(self._fact_extraction_cache) > 1000:
+                # Remove oldest 20% of entries (simple FIFO eviction)
+                items_to_remove = len(self._fact_extraction_cache) // 5
+                for key in list(self._fact_extraction_cache.keys())[:items_to_remove]:
+                    del self._fact_extraction_cache[key]
+        return self._fact_extraction_cache[text]
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""
@@ -175,24 +195,22 @@ class CRTEnhancedRAG:
                     excluded_mem_ids.add(contra.old_memory_id)
                     excluded_mem_ids.add(contra.new_memory_id)
 
-        # Over-fetch then filter, so excluding sources doesn't starve results.
-        candidate_k = max(int(k) * 5, int(k))
+        # OPTIMIZATION: Pass excluded IDs to retrieve_memories to filter at database level
+        # Reduced over-fetch multiplier from 5x to 2x since we now filter more efficiently
+        candidate_k = max(int(k) * 2, int(k))
         retrieved = self.memory.retrieve_memories(
             query, 
             candidate_k, 
             min_trust,
             exclude_deprecated=True,
-            ledger=self.ledger
+            ledger=self.ledger,
+            excluded_ids=excluded_mem_ids if exclude_contradiction_sources else None
         )
 
         # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
         # not new world facts) to prevent recursive quoting and prompt pollution.
         filtered: List[Tuple[MemoryItem, float]] = []
         for mem, score in retrieved:
-            # Exclude contradiction source memories (prevents semantic pollution from unrelated contradictions)
-            if exclude_contradiction_sources and mem.memory_id in excluded_mem_ids:
-                continue
-            
             if getattr(mem, "source", None) not in allowed_sources:
                 continue
             try:
@@ -236,7 +254,7 @@ class CRTEnhancedRAG:
         best_val: Optional[str] = None
         best_ts: float = -1.0
         for mem in user_memories:
-            facts = extract_fact_slots(mem.text)
+            facts = self._extract_facts_cached(mem.text)
             if not facts or slot not in facts:
                 continue
             try:

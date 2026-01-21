@@ -5,8 +5,6 @@ comparing only facts that refer to the same attribute ("slot").
 
 This is intentionally heuristic (no ML) and is tuned to the kinds of personal
 profile facts used in CRT stress tests.
-
-Performance: Uses LRU cache to avoid repeated regex parsing of the same text.
 """
 
 from __future__ import annotations
@@ -14,7 +12,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
-from functools import lru_cache
 
 
 @dataclass(frozen=True)
@@ -74,13 +71,12 @@ def is_question(text: str) -> bool:
     ))
 
 
-@lru_cache(maxsize=1024)
 def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     """
     Extract a small set of personal-profile fact slots from free text.
     
-    Performance: Cached with LRU to avoid repeated regex parsing of identical text.
-    Cache size of 1024 entries is sufficient for typical memory workloads.
+    Note: Regex parsing is relatively expensive. Consider caching results
+    at the call site if the same text is processed multiple times.
     """
     facts: Dict[str, ExtractedFact] = {}
 
