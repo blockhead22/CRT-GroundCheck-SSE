@@ -64,3 +64,4 @@ temp_*
 debug_*
 test_*.py
 !tests/test_*.py
+!groundcheck/tests/test_*.py
