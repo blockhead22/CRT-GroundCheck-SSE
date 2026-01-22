@@ -1,0 +1,2 @@
+# Minimal dependencies for GroundCheck
+# No ML libraries required - pure Python implementation
