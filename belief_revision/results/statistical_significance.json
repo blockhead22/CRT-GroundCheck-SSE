@@ -1,0 +1,34 @@
+{
+  "category_comparisons": {
+    "Stateless": {
+      "p_value": 4.318767565791859e-14,
+      "significant": true
+    },
+    "Override": {
+      "p_value": 1.1945999744966684e-13,
+      "significant": true
+    },
+    "NLI": {
+      "p_value": 1.9872992140790302e-13,
+      "significant": true
+    },
+    "Heuristic Policies": {
+      "p_value": 1.0,
+      "significant": false
+    }
+  },
+  "policy_comparisons": {
+    "Override": {
+      "p_value": 7.025158232920603e-12,
+      "significant": true
+    },
+    "NLI": {
+      "p_value": 7.025158232920603e-12,
+      "significant": true
+    },
+    "Heuristic Policies": {
+      "p_value": 5.497824417943775e-13,
+      "significant": true
+    }
+  }
+}
