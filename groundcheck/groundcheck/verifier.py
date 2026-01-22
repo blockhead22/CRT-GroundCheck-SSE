@@ -5,7 +5,7 @@ import re
 from difflib import SequenceMatcher
 
 from .types import Memory, VerificationReport, ExtractedFact
-from .fact_extractor import extract_fact_slots, _split_compound_values
+from .fact_extractor import extract_fact_slots, split_compound_values
 from .utils import (
     normalize_text,
     has_memory_claim,
@@ -133,7 +133,11 @@ class GroundCheck:
                 if supported_norm in memory_map:
                     return memory_map[supported_norm]
         
-        # Return any memory ID from the map as fallback
+        # Fallback: Return any memory ID from the slot when fuzzy match succeeded
+        # but exact normalized value isn't in the map. This can happen when
+        # similarity scoring matched but the values differ slightly.
+        # Since fuzzy matching already validated the semantic similarity,
+        # any memory from this slot is a reasonable attribution.
         if memory_map:
             return next(iter(memory_map.values()))
         
@@ -187,7 +191,7 @@ class GroundCheck:
             memory_facts = extract_fact_slots(memory.text)
             for slot, fact in memory_facts.items():
                 # Split compound values in memories too
-                fact_values = _split_compound_values(str(fact.value))
+                fact_values = split_compound_values(str(fact.value))
                 for val in fact_values:
                     val_norm = self._normalize_value(val)
                     if val_norm:
@@ -200,7 +204,7 @@ class GroundCheck:
             supported_values = memory_facts_by_slot.get(slot_l, set())
             
             # Split compound values from the generated text
-            fact_values = _split_compound_values(str(fact.value))
+            fact_values = split_compound_values(str(fact.value))
             
             # Track which individual values are supported
             all_supported = True
@@ -303,7 +307,7 @@ class GroundCheck:
             if claim.slot in memory_facts:
                 memory_fact = memory_facts[claim.slot]
                 # Use fuzzy matching
-                memory_values = _split_compound_values(str(memory_fact.value))
+                memory_values = split_compound_values(str(memory_fact.value))
                 if self._is_value_supported(str(claim.value), set(memory_values)):
                     return memory
             

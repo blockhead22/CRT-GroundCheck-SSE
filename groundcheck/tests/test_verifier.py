@@ -275,9 +275,7 @@ def test_paraphrase_fuzzy_matching():
     assert result.passed == True
     assert len(result.hallucinations) == 0
     
-    # Test "Stanford University" vs "Stanford"
-    # Note: Compound predicates ("studied... and work...") are not fully supported
-    # so we test simpler cases
+    # Test "Stanford University" vs "Stanford" with fuzzy matching
     memories = [Memory(id="m1", text="User graduated from Stanford University")]
     result = verifier.verify("You studied at Stanford", memories)
     assert "Stanford" not in result.hallucinations

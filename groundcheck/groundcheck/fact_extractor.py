@@ -18,14 +18,23 @@ from .types import ExtractedFact
 _WS_RE = re.compile(r"\s+")
 
 
-def _split_compound_values(text: str) -> list[str]:
+def split_compound_values(text: str) -> list[str]:
     """Split compound values like 'A, B, and C' into ['A', 'B', 'C'].
+    
+    This is a public utility function used for splitting comma-separated or
+    conjunction-separated values in extracted facts.
     
     Args:
         text: String that may contain comma-separated or conjunction-separated values
         
     Returns:
         List of individual values
+        
+    Examples:
+        >>> split_compound_values("Python, JavaScript, and Ruby")
+        ['Python', 'JavaScript', 'Ruby']
+        >>> split_compound_values("Python or Go")
+        ['Python', 'Go']
     """
     if not text:
         return []
@@ -39,6 +48,10 @@ def _split_compound_values(text: str) -> list[str]:
     
     # Remove empty strings and common filler words
     return [p for p in parts if p and p.lower() not in ('the', 'a', 'an')]
+
+
+# Common company names to exclude from title extraction
+_COMMON_COMPANY_NAMES = {'microsoft', 'google', 'amazon', 'apple', 'facebook', 'meta', 'netflix'}
 
 
 _NAME_STOPWORDS = {
@@ -219,8 +232,8 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     m = re.search(r"\bas\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+(?:and|but|in|at|graduated)|\s*$)", text, flags=re.IGNORECASE)
     if m:
         title_raw = m.group(1).strip()
-        # Avoid capturing company names
-        if len(title_raw.split()) <= 4 and title_raw.lower() not in ['microsoft', 'google', 'amazon', 'apple', 'facebook']:
+        # Avoid capturing company names as titles
+        if len(title_raw.split()) <= 4 and title_raw.lower() not in _COMMON_COMPANY_NAMES:
             facts["title"] = ExtractedFact("title", title_raw, _norm_text(title_raw))
     
     if "title" not in facts:
@@ -378,7 +391,9 @@ def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
         facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
     else:
         m = re.search(r"\bmy (?:dog|cat|pet) is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
-        # Skip the overly generic "[Name] is a [thing]" pattern as it causes false positives
+        # Note: Removed generic "[Name] is a [thing]" pattern that was matching
+        # professional roles like "User is a Software Engineer". Only specific
+        # pet-related patterns are used to avoid false positives.
     
     # Coffee preference
     m = re.search(r"\bi prefer\s+(dark|light|medium)\s+roast", text, flags=re.IGNORECASE)

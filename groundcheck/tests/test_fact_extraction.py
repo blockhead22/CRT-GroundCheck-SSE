@@ -230,26 +230,26 @@ def test_empty_input():
 
 def test_compound_value_splitting():
     """Test splitting of compound values."""
-    from groundcheck.fact_extractor import _split_compound_values
+    from groundcheck.fact_extractor import split_compound_values
     
     # Test comma-separated values
-    result = _split_compound_values("Python, JavaScript, Ruby")
+    result = split_compound_values("Python, JavaScript, Ruby")
     assert result == ["Python", "JavaScript", "Ruby"]
     
     # Test "and" conjunction
-    result = _split_compound_values("Python and JavaScript")
+    result = split_compound_values("Python and JavaScript")
     assert result == ["Python", "JavaScript"]
     
     # Test "or" conjunction
-    result = _split_compound_values("Python or Go")
+    result = split_compound_values("Python or Go")
     assert result == ["Python", "Go"]
     
     # Test mixed
-    result = _split_compound_values("Python, JavaScript, and Go")
+    result = split_compound_values("Python, JavaScript, and Go")
     assert result == ["Python", "JavaScript", "Go"]
     
     # Test single value
-    result = _split_compound_values("Python")
+    result = split_compound_values("Python")
     assert result == ["Python"]
 
 
