@@ -21,6 +21,10 @@ class GroundCheck:
     It detects hallucinations by extracting claims from generated text and checking
     if they are supported by the provided memories.
     
+    Attributes:
+        MUTUALLY_EXCLUSIVE_SLOTS: Fact slots where only one value can be true at a time
+        TRUST_DIFFERENCE_THRESHOLD: Minimum trust difference to require contradiction disclosure
+    
     Example:
         >>> verifier = GroundCheck()
         >>> memories = [Memory(id="m1", text="User works at Microsoft")]
@@ -28,6 +32,28 @@ class GroundCheck:
         >>> print(result.passed)  # False
         >>> print(result.hallucinations)  # ["Amazon"]
     """
+    
+    # Fact slots where multiple values are contradictory (mutually exclusive)
+    # vs. slots where multiple values are additive (complementary)
+    MUTUALLY_EXCLUSIVE_SLOTS = {
+        'employer',      # Can only work at one place at a time
+        'location',      # Can only live in one place at a time  
+        'name',          # Person has one name
+        'title',         # One job title at a time
+        'occupation',    # One occupation at a time
+        'coffee',        # One preference at a time
+        'hobby',         # Primary hobby (though people can have multiple)
+        'favorite_color',# One favorite
+        'pet',           # Primary pet type
+        'school',        # Current/most recent school
+        'undergrad_school',
+        'masters_school',
+        'project',       # Current project
+    }
+    
+    # Trust difference threshold: if trust scores differ by more than this,
+    # the low-trust memory is considered unreliable and doesn't require disclosure
+    TRUST_DIFFERENCE_THRESHOLD = 0.5
     
     def __init__(self):
         """Initialize the GroundCheck verifier."""
@@ -158,24 +184,6 @@ class GroundCheck:
         from collections import defaultdict
         from .types import ContradictionDetail
         
-        # Define slots where multiple values are contradictory (mutually exclusive)
-        # vs. slots where multiple values are additive (complementary)
-        MUTUALLY_EXCLUSIVE_SLOTS = {
-            'employer',      # Can only work at one place at a time
-            'location',      # Can only live in one place at a time  
-            'name',          # Person has one name
-            'title',         # One job title at a time
-            'occupation',    # One occupation at a time
-            'coffee',        # One preference at a time
-            'hobby',         # Primary hobby (though people can have multiple)
-            'favorite_color',# One favorite
-            'pet',           # Primary pet type
-            'school',        # Current/most recent school
-            'undergrad_school',
-            'masters_school',
-            'project',       # Current project
-        }
-        
         # Group memories by fact slot
         slot_to_facts = defaultdict(list)
         
@@ -183,7 +191,7 @@ class GroundCheck:
             facts = extract_fact_slots(memory.text)
             for slot, fact in facts.items():
                 # Only track mutually exclusive slots for contradiction detection
-                if slot in MUTUALLY_EXCLUSIVE_SLOTS:
+                if slot in self.MUTUALLY_EXCLUSIVE_SLOTS:
                     slot_to_facts[slot].append({
                         'value': fact.normalized,
                         'memory_id': memory.id,
@@ -437,7 +445,7 @@ class GroundCheck:
                         # Check trust score difference - if very high, don't require disclosure
                         # This handles cases where one memory is essentially noise (e.g., trust=0.3 vs 0.95)
                         trust_diff = max(contradiction.trust_scores) - min(contradiction.trust_scores)
-                        if trust_diff < 0.5:  # Significant contradiction - both memories are credible
+                        if trust_diff < self.TRUST_DIFFERENCE_THRESHOLD:  # Significant contradiction - both memories are credible
                             # Check if output acknowledges the contradiction
                             has_disclosure = self._check_contradiction_disclosure(
                                 generated_text,

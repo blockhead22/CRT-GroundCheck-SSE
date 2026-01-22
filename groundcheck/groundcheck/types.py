@@ -60,15 +60,16 @@ class ContradictionDetail:
         Uses timestamps if available, otherwise falls back to highest trust score.
         """
         if not self.timestamps or all(t is None for t in self.timestamps):
-            # No timestamps - use highest trust
-            max_idx = self.trust_scores.index(max(self.trust_scores))
-            return self.values[max_idx]
+            # No timestamps - use highest trust (same as most_trusted_value)
+            return self.most_trusted_value
         
         # Filter out None timestamps and pair with values
         valid_pairs = [(t, v) for t, v in zip(self.timestamps, self.values) if t is not None]
         if valid_pairs:
             return max(valid_pairs, key=lambda x: x[0])[1]
-        return self.values[0]
+        
+        # All timestamps are None, fall back to trust
+        return self.most_trusted_value
     
     @property
     def most_trusted_value(self) -> str:
