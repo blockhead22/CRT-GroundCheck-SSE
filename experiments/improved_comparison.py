@@ -264,7 +264,7 @@ if __name__ == "__main__":
     output_dir = Path(__file__).parent / "results"
     output_dir.mkdir(exist_ok=True)
     
-    with open(output_dir / "improved_comparison.md", "w") as f:
+    with open(output_dir / "improved_comparison.md", "w", encoding="utf-8") as f:
         f.write(report)
     
     # Save raw results
