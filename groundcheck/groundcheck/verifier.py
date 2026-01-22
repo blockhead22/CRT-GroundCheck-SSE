@@ -63,8 +63,17 @@ class GroundCheck:
     MINIMUM_TRUST_FOR_DISCLOSURE = 0.75
     
     def __init__(self):
-        """Initialize the GroundCheck verifier."""
+        """Initialize the GroundCheck verifier with semantic matching support."""
         self.memory_claim_regex = create_memory_claim_regex()
+        self.semantic_threshold = 0.85  # Similarity threshold for paraphrases
+        
+        # Load embedding model for semantic matching
+        try:
+            from sentence_transformers import SentenceTransformer
+            self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        except Exception:
+            # If model loading fails, semantic matching will be skipped
+            self.embedding_model = None
     
     def _normalize_value(self, value: str) -> str:
         """Normalize value for fuzzy matching.
@@ -88,14 +97,21 @@ class GroundCheck:
         self,
         claimed: str,
         supported_values: Set[str],
-        threshold: float = 0.85
+        threshold: float = 0.85,
+        use_semantic: bool = True
     ) -> bool:
-        """Check if a claimed value is supported with fuzzy matching.
+        """Check if a claimed value is supported with fuzzy and semantic matching.
+        
+        Uses three-tier matching:
+        1. Exact match (fastest, highest precision)
+        2. Substring match (fast, medium precision)
+        3. Semantic similarity (slower, handles paraphrases)
         
         Args:
             claimed: The claimed value to check
             supported_values: Set of supported normalized values
             threshold: Similarity threshold for fuzzy matching (default: 0.85)
+            use_semantic: Whether to use embedding similarity (default True)
             
         Returns:
             True if value is supported (exact or fuzzy match), False otherwise
@@ -106,7 +122,7 @@ class GroundCheck:
         if not claimed_norm:
             return False
         
-        # Check each supported value
+        # Tier 1: Check each supported value
         for supported in supported_values:
             supported_norm = self._normalize_value(supported)
             
@@ -130,6 +146,34 @@ class GroundCheck:
                 overlap = len(claimed_terms & supported_terms) / len(claimed_terms)
                 if overlap >= 0.7:  # 70% term overlap
                     return True
+        
+        # Tier 3: Semantic similarity (handles paraphrases)
+        if use_semantic and hasattr(self, 'embedding_model') and self.embedding_model is not None:
+            try:
+                from sentence_transformers import util
+                
+                # Encode claimed value
+                claimed_emb = self.embedding_model.encode(
+                    claimed, 
+                    convert_to_tensor=True
+                )
+                
+                # Check similarity with each memory value
+                for mem_val in supported_values:
+                    mem_emb = self.embedding_model.encode(
+                        mem_val,
+                        convert_to_tensor=True
+                    )
+                    
+                    similarity = util.cos_sim(claimed_emb, mem_emb).item()
+                    
+                    # Use threshold for semantic matching
+                    if similarity >= self.semantic_threshold:
+                        return True
+                        
+            except Exception:
+                # Fall back to non-semantic matching if embeddings fail
+                pass
         
         return False
     
