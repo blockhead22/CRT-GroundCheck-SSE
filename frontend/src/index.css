@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import CRT Design System */
+@import './styles/design-system.css';
+@import './styles/animations.css';
+
 :root {
   color-scheme: dark;
 }

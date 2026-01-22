@@ -72,7 +72,12 @@ def is_question(text: str) -> bool:
 
 
 def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
-    """Extract a small set of personal-profile fact slots from free text."""
+    """
+    Extract a small set of personal-profile fact slots from free text.
+    
+    Note: Regex parsing is relatively expensive. Consider caching results
+    at the call site if the same text is processed multiple times.
+    """
     facts: Dict[str, ExtractedFact] = {}
 
     if not text or not text.strip():

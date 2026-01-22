@@ -10,9 +10,11 @@ import { ThreadRenameLightbox } from './components/ThreadRenameLightbox'
 import { SourceInspector } from './components/SourceInspector'
 import { AgentPanel } from './components/AgentPanel'
 import { DemoModeLightbox } from './components/DemoModeLightbox'
+import { WelcomeTutorial } from './components/onboarding/WelcomeTutorial'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
+import { ShowcasePage } from './pages/ShowcasePage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
@@ -46,6 +48,7 @@ export default function App() {
   const [agentPanelMessageId, setAgentPanelMessageId] = useState<string | null>(null)
   const [xrayMode, setXrayMode] = useState(false)
   const [demoModeOpen, setDemoModeOpen] = useState(false)
+  const [tutorialOpen, setTutorialOpen] = useState(false)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -159,6 +162,16 @@ export default function App() {
       mounted = false
     }
   }, [selectedThread?.id, selectedThreadId])
+
+  useEffect(() => {
+    // Show tutorial on first visit
+    const tutorialCompleted = localStorage.getItem('crt-tutorial-completed')
+    if (!tutorialCompleted && threads.length > 0) {
+      // Delay slightly to let the UI settle
+      const timer = setTimeout(() => setTutorialOpen(true), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [threads.length])
 
   useEffect(() => {
     setEffectiveApiBaseUrl(apiBaseUrl)
@@ -411,6 +424,8 @@ export default function App() {
                   <DashboardPage threadId={selectedThread?.id ?? 'default'} onOpenJobs={() => setNavActive('jobs')} />
                 ) : navActive === 'jobs' ? (
                   <JobsPage threadId={selectedThread?.id ?? 'default'} />
+                ) : navActive === 'showcase' ? (
+                  <ShowcasePage />
                 ) : (
                   <DocsPage />
                 )}
@@ -470,6 +485,13 @@ export default function App() {
         open={demoModeOpen}
         onClose={() => setDemoModeOpen(false)}
         onSendMessage={handleSend}
+      />
+
+      <WelcomeTutorial
+        open={tutorialOpen}
+        onClose={() => setTutorialOpen(false)}
+        onSendMessage={handleSend}
+        onNavigateToDashboard={() => setNavActive('dashboard')}
       />
     </div>
   )
