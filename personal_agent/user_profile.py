@@ -16,11 +16,14 @@ Architecture:
 import sqlite3
 import json
 import time
+import logging
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass
 
 from .fact_slots import extract_fact_slots, ExtractedFact
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -52,12 +55,12 @@ class GlobalUserProfile:
     
     def __init__(self, db_path: str = "personal_agent/crt_user_profile.db"):
         self.db_path = db_path
-        print(f"[DEBUG] GlobalUserProfile init: db_path={self.db_path}")
+        logger.debug(f"GlobalUserProfile init: db_path={self.db_path}")
         self._init_db()
     
     def _init_db(self):
         """Initialize profile database."""
-        print(f"[DEBUG] GlobalUserProfile creating DB at: {self.db_path}")
+        logger.debug(f"GlobalUserProfile creating DB at: {self.db_path}")
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -88,19 +91,26 @@ class GlobalUserProfile:
             ON user_profile_multi(timestamp DESC)
         """)
         
-        # Migrate old single-value table if it exists
+        # Migrate old single-value table if it exists (one-time migration)
+        # Check if migration has already been done by looking for a marker
         cursor.execute("""
             SELECT name FROM sqlite_master 
             WHERE type='table' AND name='user_profile'
         """)
         if cursor.fetchone():
-            # Migrate existing data to multi table
-            cursor.execute("""
-                INSERT OR IGNORE INTO user_profile_multi 
-                (slot, value, normalized, timestamp, source_thread, confidence)
-                SELECT slot, value, normalized, timestamp, source_thread, confidence
-                FROM user_profile
-            """)
+            # Check if we already migrated (look for data in multi table)
+            cursor.execute("SELECT COUNT(*) FROM user_profile_multi")
+            already_migrated = cursor.fetchone()[0] > 0
+            
+            if not already_migrated:
+                # Migrate existing data to multi table
+                cursor.execute("""
+                    INSERT OR IGNORE INTO user_profile_multi 
+                    (slot, value, normalized, timestamp, source_thread, confidence)
+                    SELECT slot, value, normalized, timestamp, source_thread, confidence
+                    FROM user_profile
+                """)
+                logger.info(f"Migrated {cursor.rowcount} facts from old user_profile table")
         
         conn.commit()
         conn.close()
@@ -115,9 +125,9 @@ class GlobalUserProfile:
         Returns:
             Dictionary of slot -> value for facts that were updated/added
         """
-        print(f"[DEBUG] GlobalUserProfile.update_from_text called: text='{text[:50]}'")
+        logger.debug(f"GlobalUserProfile.update_from_text called: text='{text[:50]}'")
         facts = extract_fact_slots(text)
-        print(f"[DEBUG] Extracted {len(facts)} facts: {list(facts.keys())}")
+        logger.debug(f"Extracted {len(facts)} facts: {list(facts.keys())}")
         if not facts:
             return {}
         
@@ -142,7 +152,7 @@ class GlobalUserProfile:
                     SET timestamp = ?, source_thread = ?
                     WHERE id = ?
                 """, (time.time(), thread_id, existing[0]))
-                print(f"[DEBUG] Updated existing fact: {slot} = {existing[1]}")
+                logger.debug(f"Updated existing fact: {slot} = {existing[1]}")
             else:
                 # Insert new value (allows multiple values per slot)
                 try:
@@ -159,10 +169,10 @@ class GlobalUserProfile:
                         0.9
                     ))
                     updated[slot] = fact.value
-                    print(f"[DEBUG] Added new fact: {slot} = {fact.value}")
+                    logger.debug(f"Added new fact: {slot} = {fact.value}")
                 except sqlite3.IntegrityError:
                     # Duplicate entry (shouldn't happen due to check above, but handle gracefully)
-                    print(f"[DEBUG] Duplicate fact skipped: {slot} = {fact.value}")
+                    logger.debug(f"Duplicate fact skipped: {slot} = {fact.value}")
         
         conn.commit()
         conn.close()

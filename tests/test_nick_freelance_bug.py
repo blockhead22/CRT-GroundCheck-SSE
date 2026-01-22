@@ -57,11 +57,9 @@ def test_nick_freelance_bug_minimal():
         employer_facts = facts2.get("employer", [])
         print(f"Employer facts found: {[f.value for f in employer_facts]}")
         
-        # This is the bug - we should have 2 employer facts but currently only have 1
-        assert len(employer_facts) >= 2 or \
-               any("freelance" in f.value.lower() or "self-employed" in f.value.lower() 
-                   for f in employer_facts), \
-               f"BUG: Freelance fact was overwritten! Only found: {[f.value for f in employer_facts]}"
+        # Split assertion for clarity
+        assert len(employer_facts) >= 2, \
+            f"Expected at least 2 employers, got {len(employer_facts)}: {[f.value for f in employer_facts]}"
         
         # Verify we can retrieve the freelance fact
         has_freelance = any(
