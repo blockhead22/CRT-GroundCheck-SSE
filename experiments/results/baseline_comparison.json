@@ -2,7 +2,7 @@
   "groundcheck": {
     "method": "groundcheck",
     "total": 50,
-    "correct": 38,
+    "correct": 35,
     "total_latency_ms": 0,
     "total_cost": 0,
     "by_category": {
@@ -12,9 +12,9 @@
         "accuracy": 0.8
       },
       "contradictions": {
-        "correct": 9,
+        "correct": 6,
         "total": 10,
-        "accuracy": 0.9
+        "accuracy": 0.6
       },
       "partial_grounding": {
         "correct": 4,
@@ -32,15 +32,15 @@
         "accuracy": 1.0
       }
     },
-    "accuracy": 0.76,
+    "accuracy": 0.7,
     "avg_latency_ms": 0.0,
     "avg_cost_per_example": 0.0
   },
   "vanilla_rag": {
     "method": "vanilla_rag",
     "total": 50,
-    "correct": 33,
-    "total_latency_ms": 0.051021575927734375,
+    "correct": 27,
+    "total_latency_ms": 0.06532669067382812,
     "total_cost": 0.0,
     "by_category": {
       "factual_grounding": {
@@ -49,9 +49,9 @@
         "accuracy": 0.4
       },
       "contradictions": {
-        "correct": 10,
+        "correct": 4,
         "total": 10,
-        "accuracy": 1.0
+        "accuracy": 0.4
       },
       "partial_grounding": {
         "correct": 0,
@@ -69,15 +69,15 @@
         "accuracy": 1.0
       }
     },
-    "accuracy": 0.66,
-    "avg_latency_ms": 0.0010204315185546875,
+    "accuracy": 0.54,
+    "avg_latency_ms": 0.0013065338134765625,
     "avg_cost_per_example": 0.0
   },
   "selfcheck_gpt": {
     "method": "selfcheck_gpt",
     "total": 50,
-    "correct": 40,
-    "total_latency_ms": 7.694244384765625,
+    "correct": 34,
+    "total_latency_ms": 7.707834243774414,
     "total_cost": 0.0,
     "by_category": {
       "factual_grounding": {
@@ -86,9 +86,9 @@
         "accuracy": 0.8
       },
       "contradictions": {
-        "correct": 9,
+        "correct": 3,
         "total": 10,
-        "accuracy": 0.9
+        "accuracy": 0.3
       },
       "partial_grounding": {
         "correct": 4,
@@ -106,15 +106,15 @@
         "accuracy": 1.0
       }
     },
-    "accuracy": 0.8,
-    "avg_latency_ms": 0.1538848876953125,
+    "accuracy": 0.68,
+    "avg_latency_ms": 0.15415668487548828,
     "avg_cost_per_example": 0.0
   },
   "cove": {
     "method": "cove",
     "total": 50,
-    "correct": 40,
-    "total_latency_ms": 7.73930549621582,
+    "correct": 34,
+    "total_latency_ms": 7.670402526855469,
     "total_cost": 0.0,
     "by_category": {
       "factual_grounding": {
@@ -123,9 +123,9 @@
         "accuracy": 0.8
       },
       "contradictions": {
-        "correct": 9,
+        "correct": 3,
         "total": 10,
-        "accuracy": 0.9
+        "accuracy": 0.3
       },
       "partial_grounding": {
         "correct": 4,
@@ -143,8 +143,8 @@
         "accuracy": 1.0
       }
     },
-    "accuracy": 0.8,
-    "avg_latency_ms": 0.1547861099243164,
+    "accuracy": 0.68,
+    "avg_latency_ms": 0.15340805053710938,
     "avg_cost_per_example": 0.0
   }
 }
