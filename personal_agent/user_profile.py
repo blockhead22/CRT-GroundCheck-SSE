@@ -136,7 +136,7 @@ class GlobalUserProfile:
         logger.debug(f"GlobalUserProfile.update_from_text called: text='{text[:50]}'")
         
         # Guard rail: Skip temporal/temporary statements
-        if self._is_temporal_statement(text):
+        if self.is_temporal_statement(text):
             logger.debug(f"Skipping temporal statement: {text[:50]}")
             return {}
         
@@ -193,9 +193,11 @@ class GlobalUserProfile:
         
         return updated
     
-    def _is_temporal_statement(self, text: str) -> bool:
+    def is_temporal_statement(self, text: str) -> bool:
         """
         Detect temporal/temporary statements that shouldn't be stored as permanent facts.
+        
+        Public method to allow testing and external validation of temporal filtering.
         
         Examples of what this catches:
         - "I'm working on homework tonight"

@@ -126,14 +126,14 @@ def test_temporal_detection_examples():
     
     print("\nShould be detected as TEMPORAL (filtered out):")
     for text in temporal_examples:
-        is_temporal = profile._is_temporal_statement(text)
+        is_temporal = profile.is_temporal_statement(text)
         status = "✓ Filtered" if is_temporal else "✗ NOT filtered (BUG)"
         print(f"  {status}: {text}")
         assert is_temporal, f"Should detect as temporal: {text}"
     
     print("\nShould be detected as PERMANENT (allowed):")
     for text in permanent_examples:
-        is_temporal = profile._is_temporal_statement(text)
+        is_temporal = profile.is_temporal_statement(text)
         status = "✓ Allowed" if not is_temporal else "✗ Filtered (BUG)"
         print(f"  {status}: {text}")
         assert not is_temporal, f"Should allow as permanent: {text}"
