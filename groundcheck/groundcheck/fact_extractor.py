@@ -204,8 +204,8 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             flags=re.IGNORECASE,
         )
         if not m:
-            # Fallback: look for "at [company]" anywhere
-            m = re.search(r"\bat\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|,|\.|;)|\s*$)", text)
+            # Try "User is a [title] at [company]" pattern
+            m = re.search(r"\b(?:user|he|she|they|i|you)\s+(?:is|am|are|was|were)\s+a\s+[A-Z][A-Za-z\s]+?\s+at\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+and|\s+in|,|\.|;|\s*$)", text, flags=re.IGNORECASE)
         if m:
             employer_raw = m.group(1)
             # Trim at common continuations (redundant now but kept for safety)
@@ -228,6 +228,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         if not m:
             m = re.search(r"\b(?:i am a|i'm a)\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:by|at|for|and)|\s*$)", text)
             if not m:
+                # Try "User is a [title]" pattern
+                m = re.search(r"\b(?:user|he|she|they)\s+(?:is|was)\s+a\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:at|for|in|and|with)|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+            if not m:
                 m = re.search(r"\b([A-Z][A-Za-z\s]+?)\s+by\s+(?:degree|trade|profession)", text)
         if m:
             title_raw = m.group(1).strip()
@@ -237,7 +240,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
 
     # Location (first, second, and third person)
     # Try explicit location patterns first
-    m = re.search(r"\b(?:i|you|user|he|she|they) lives? in\s+(?:a\s+)?(?:\d+-bedroom\s+apartment\s+in\s+)?([A-Z][a-zA-Z .'-]+?)(?:\s+near|\s+with|\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    m = re.search(r"\b(?:i|you|user|he|she|they) (?:lives?|resides?|moved to) in\s+(?:a\s+)?(?:\d+-bedroom\s+apartment\s+in\s+)?([A-Z][a-zA-Z .'-]+?)(?:\s+near|\s+with|\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
         m = re.search(r"\b(?:i|you|user|he|she|they) moved to\s+([A-Z][a-zA-Z .'-]+?)(?:\s+near|\s+with|\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m and "employer" in facts:
@@ -333,9 +336,13 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
         year = m.group(1).strip()
         facts["graduation_year"] = ExtractedFact("graduation_year", year, year)
     
-    # School (standalone "graduated from X" pattern - more flexible)
+    # School (standalone "graduated from X" or "studied at X" patterns)
     if "school" not in facts:
+        # Try "graduated from X" first
         m = re.search(r"\b(?:i\s+|you\s+)?graduated from\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+in\s+\d{4}|\s+with|\.|,|;|\s+and|\s*$)", text, flags=re.IGNORECASE)
+        if not m:
+            # Try "studied at X" pattern
+            m = re.search(r"\b(?:i\s+|you\s+)?studied\s+(?:[A-Z]+|[a-z\s]+)\s+at\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
         if m:
             school = m.group(1).strip()
             facts["school"] = ExtractedFact("school", school, _norm_text(school))
@@ -371,16 +378,7 @@ def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
         facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
     else:
         m = re.search(r"\bmy (?:dog|cat|pet) is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
-        if not m:
-            m = re.search(r"\b([A-Z][a-z]+)\s+is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
-            if m:
-                pet_name = m.group(1).strip()
-                pet_type = m.group(2).strip()
-                facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
-                facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
-        if m and not facts.get("pet"):
-            pet_type = m.group(1).strip()
-            facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+        # Skip the overly generic "[Name] is a [thing]" pattern as it causes false positives
     
     # Coffee preference
     m = re.search(r"\bi prefer\s+(dark|light|medium)\s+roast", text, flags=re.IGNORECASE)
