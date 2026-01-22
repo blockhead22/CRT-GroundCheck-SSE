@@ -199,12 +199,24 @@ class GroundCheck:
             
             if len(unique_values) > 1:
                 # Contradiction detected!
+                # Build aligned lists to ensure values, memory_ids, timestamps, and trust_scores match
+                values = []
+                memory_ids = []
+                timestamps = []
+                trust_scores = []
+                
+                for fact in facts:
+                    values.append(fact['value'])
+                    memory_ids.append(fact['memory_id'])
+                    timestamps.append(fact['timestamp'])
+                    trust_scores.append(fact['trust'])
+                
                 contradiction = ContradictionDetail(
                     slot=slot,
-                    values=list(unique_values),
-                    memory_ids=[f['memory_id'] for f in facts],
-                    timestamps=[f['timestamp'] for f in facts],
-                    trust_scores=[f['trust'] for f in facts]
+                    values=values,
+                    memory_ids=memory_ids,
+                    timestamps=timestamps,
+                    trust_scores=trust_scores
                 )
                 contradictions.append(contradiction)
         
