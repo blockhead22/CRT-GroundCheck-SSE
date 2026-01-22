@@ -292,3 +292,104 @@ def test_extract_programming_languages_list():
     value = facts["programming_language"].value
     assert "Python" in value
     assert "JavaScript" in value
+
+
+def test_extract_children():
+    """Test extraction of children count."""
+    facts = extract_fact_slots("User lives with 2 kids")
+    assert "children" in facts
+    assert facts["children"].value == "2"
+
+
+def test_extract_relationship():
+    """Test extraction of relationship status."""
+    facts = extract_fact_slots("User is married to my wife")
+    assert "relationship" in facts
+    assert "wife" in facts["relationship"].normalized
+
+
+def test_extract_phone():
+    """Test extraction of phone number."""
+    facts = extract_fact_slots("Your phone number is 555-1234")
+    assert "phone" in facts
+    assert "555-1234" in facts["phone"].value
+
+
+def test_extract_email():
+    """Test extraction of email address."""
+    facts = extract_fact_slots("Your email is alice@example.com")
+    assert "email" in facts
+    assert facts["email"].value == "alice@example.com"
+
+
+def test_extract_major():
+    """Test extraction of major/degree field."""
+    facts = extract_fact_slots("You have a degree in Computer Science")
+    assert "major" in facts
+    assert facts["major"].value == "Computer Science"
+
+
+def test_extract_major_studied():
+    """Test extraction of major from 'studied' pattern."""
+    facts = extract_fact_slots("User studied Computer Science")
+    assert "major" in facts
+    assert facts["major"].value == "Computer Science"
+
+
+def test_extract_minor():
+    """Test extraction of minor field."""
+    facts = extract_fact_slots("You graduated with a minor in Mathematics")
+    assert "minor" in facts
+    assert facts["minor"].value == "Mathematics"
+
+
+def test_extract_previous_employer():
+    """Test extraction of previous employer."""
+    facts = extract_fact_slots("You previously worked at Amazon")
+    assert "previous_employer" in facts
+    assert facts["previous_employer"].value == "Amazon"
+
+
+def test_extract_promoted_title():
+    """Test extraction of promoted title."""
+    facts = extract_fact_slots("You were promoted to Senior Engineer")
+    assert "title" in facts
+    assert facts["title"].value == "Senior Engineer"
+
+
+def test_extract_skill_with_proficiency():
+    """Test extraction of skills with proficiency levels."""
+    facts = extract_fact_slots("User is proficient in Python and JavaScript")
+    assert "skill" in facts
+    assert "Python" in facts["skill"].value
+
+
+def test_extract_compound_sentence():
+    """Test extraction from compound sentences with 'and'."""
+    facts = extract_fact_slots("User lives in Seattle and works at Microsoft")
+    assert "location" in facts
+    assert facts["location"].value == "Seattle"
+    assert "employer" in facts
+    assert facts["employer"].value == "Microsoft"
+
+
+def test_extract_third_person_employer():
+    """Test extraction from third-person references."""
+    facts = extract_fact_slots("John is a Software Engineer at Microsoft")
+    assert "employer" in facts
+    assert facts["employer"].value == "Microsoft"
+
+
+def test_extract_currently_works():
+    """Test extraction with 'currently' modifier."""
+    facts = extract_fact_slots("You currently work at Microsoft")
+    assert "employer" in facts
+    assert facts["employer"].value == "Microsoft"
+
+
+def test_extract_hobby_compound():
+    """Test extraction of compound hobbies."""
+    facts = extract_fact_slots("You enjoy hiking and cooking")
+    assert "hobby" in facts
+    # Should capture the compound value
+    assert "hiking" in facts["hobby"].value.lower()
