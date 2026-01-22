@@ -4,8 +4,8 @@ import pytest
 import sys
 from pathlib import Path
 
-# Add experiments to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add experiments directory to path to find baselines
+sys.path.insert(0, str(Path(__file__).parent))
 
 from baselines.vanilla_rag import VanillaRAG, BaselineResult
 from baselines.selfcheck_gpt import SelfCheckGPT

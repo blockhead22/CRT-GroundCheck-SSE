@@ -80,7 +80,10 @@ class SelfCheckGPT:
             "latency_ms": (time.time() - start) * 1000,
             "api_cost": api_cost,
             "num_samples": self.num_samples,
-            "consistency_threshold": self.consistency_threshold
+            "consistency_threshold": self.consistency_threshold,
+            "grounding_map": {},
+            "contradicted_claims": [],
+            "requires_disclosure": False  # SelfCheckGPT doesn't detect contradictions in context
         }
     
     def _generate_samples(self, retrieved_memories: List[Dict]) -> List[str]:
@@ -165,5 +168,8 @@ class SelfCheckGPT:
             "method": "selfcheck_gpt_mock",
             "latency_ms": (time.time() - start_time) * 1000,
             "api_cost": 0.0,
-            "note": "Mock implementation - OpenAI API key not available"
+            "note": "Mock implementation - OpenAI API key not available",
+            "grounding_map": {},
+            "contradicted_claims": [],
+            "requires_disclosure": False  # SelfCheckGPT doesn't detect contradictions in context
         }

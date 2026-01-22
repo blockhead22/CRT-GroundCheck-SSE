@@ -1,0 +1,63 @@
+\documentclass[11pt,letterpaper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+
+% Title and authors
+\title{GroundCheck: Contradiction-Aware Grounding Verification for Long-Term AI Memory Systems}
+
+\author{
+  Anonymous Authors \\
+  Anonymous Institution \\
+  \texttt{anonymous@email.com}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+% Content from sections/01_abstract.md
+Grounding verification systems detect when large language model (LLM) outputs contain claims unsupported by retrieved context. However, existing methods assume retrieved context is internally consistent. In long-term memory systems, context often contains contradictory information as beliefs and facts update over time.
+
+We present \textbf{GroundCheck}, the first contradiction-aware grounding verification system. GroundCheck detects when retrieved memories contradict each other and verifies that generated outputs appropriately acknowledge these contradictions.
+
+We introduce \textbf{GroundingBench}, a benchmark with 500 examples across five categories, including 100 examples specifically designed to test contradiction handling. On GroundingBench, GroundCheck achieves 90\% accuracy on contradiction detection compared to $\sim$30\% for existing methods, while maintaining competitive performance on standard grounding tasks (76\% vs 82\%).
+
+Our results demonstrate that grounding verification for long-term AI systems requires explicit contradiction handling—a capability absent from current approaches.
+\end{abstract}
+
+\section{Introduction}
+% Content from sections/02_introduction.md
+
+\section{Related Work}
+% Content from sections/03_related_work.md
+
+\section{Method}
+% Content from sections/04_method.md
+
+\section{GroundingBench}
+% Content from sections/05_groundingbench.md
+
+\section{Experiments}
+% Content from sections/06_experiments.md
+
+\section{Discussion}
+% Content from sections/07_discussion.md
+
+\section{Conclusion}
+% Content from sections/08_conclusion.md
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}

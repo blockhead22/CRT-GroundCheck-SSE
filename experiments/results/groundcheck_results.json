@@ -1,0 +1,35 @@
+{
+  "method": "groundcheck",
+  "overall": {
+    "correct": 35,
+    "total": 50,
+    "accuracy": 0.7
+  },
+  "by_category": {
+    "factual_grounding": {
+      "correct": 8,
+      "total": 10,
+      "accuracy": 0.8
+    },
+    "contradictions": {
+      "correct": 6,
+      "total": 10,
+      "accuracy": 0.6
+    },
+    "partial_grounding": {
+      "correct": 4,
+      "total": 10,
+      "accuracy": 0.4
+    },
+    "paraphrasing": {
+      "correct": 7,
+      "total": 10,
+      "accuracy": 0.7
+    },
+    "multi_hop": {
+      "correct": 10,
+      "total": 10,
+      "accuracy": 1.0
+    }
+  }
+}
