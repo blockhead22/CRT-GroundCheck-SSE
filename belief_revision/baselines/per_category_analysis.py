@@ -85,24 +85,29 @@ def get_baseline_predictions(cat_test_data):
     print("\nGenerating baseline predictions...")
     
     # Import baseline modules from same directory
-    from . import stateless_baseline, override_baseline, nli_baseline
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    
+    from stateless_baseline import predict_category_stateless
+    from override_baseline import predict_category_override
+    from nli_baseline import predict_category_nli
     
     # Stateless predictions
     stateless_preds = []
     for ex in cat_test_data:
-        pred = stateless_baseline.predict_category_stateless(ex['new_value'])
+        pred = predict_category_stateless(ex['new_value'])
         stateless_preds.append(CATEGORY_MAP[pred])
     
     # Override predictions
     override_preds = []
     for ex in cat_test_data:
-        pred = override_baseline.predict_category_override(ex['old_value'], ex['new_value'])
+        pred = predict_category_override(ex['old_value'], ex['new_value'])
         override_preds.append(CATEGORY_MAP[pred])
     
     # NLI predictions
     nli_preds = []
     for ex in cat_test_data:
-        pred = nli_baseline.predict_category_nli(ex['old_value'], ex['new_value'])
+        pred = predict_category_nli(ex['old_value'], ex['new_value'])
         nli_preds.append(CATEGORY_MAP[pred])
     
     print("✓ Generated all baseline predictions")

@@ -102,7 +102,9 @@ def benchmark_stateless(cat_test_data, num_iterations=NUM_ITERATIONS):
     """Benchmark stateless baseline."""
     print(f"\nBenchmarking Stateless baseline ({num_iterations} iterations)...")
     
-    from . import stateless_baseline
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    from stateless_baseline import predict_category_stateless
     
     times = []
     
@@ -111,7 +113,7 @@ def benchmark_stateless(cat_test_data, num_iterations=NUM_ITERATIONS):
         ex = cat_test_data[i % len(cat_test_data)]
         
         start = time.perf_counter()
-        _ = stateless_baseline.predict_category_stateless(ex['new_value'])
+        _ = predict_category_stateless(ex['new_value'])
         end = time.perf_counter()
         
         times.append((end - start) * 1000)  # Convert to milliseconds
@@ -123,7 +125,9 @@ def benchmark_override(cat_test_data, num_iterations=NUM_ITERATIONS):
     """Benchmark override baseline."""
     print(f"Benchmarking Override baseline ({num_iterations} iterations)...")
     
-    from . import override_baseline
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    from override_baseline import predict_category_override, predict_policy_override
     
     times = []
     
@@ -132,7 +136,7 @@ def benchmark_override(cat_test_data, num_iterations=NUM_ITERATIONS):
         ex = cat_test_data[i % len(cat_test_data)]
         
         start = time.perf_counter()
-        _ = override_baseline.predict_category_override(ex['old_value'], ex['new_value'])
+        _ = predict_category_override(ex['old_value'], ex['new_value'])
         end = time.perf_counter()
         
         times.append((end - start) * 1000)  # Convert to milliseconds
@@ -144,7 +148,9 @@ def benchmark_nli(cat_test_data, num_iterations=NUM_ITERATIONS):
     """Benchmark NLI baseline."""
     print(f"Benchmarking NLI baseline ({num_iterations} iterations)...")
     
-    from . import nli_baseline
+    import sys
+    sys.path.append(str(Path(__file__).parent))
+    from nli_baseline import predict_category_nli, predict_policy_nli
     
     times = []
     
@@ -153,7 +159,7 @@ def benchmark_nli(cat_test_data, num_iterations=NUM_ITERATIONS):
         ex = cat_test_data[i % len(cat_test_data)]
         
         start = time.perf_counter()
-        _ = nli_baseline.predict_category_nli(ex['old_value'], ex['new_value'])
+        _ = predict_category_nli(ex['old_value'], ex['new_value'])
         end = time.perf_counter()
         
         times.append((end - start) * 1000)  # Convert to milliseconds
