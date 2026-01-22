@@ -150,6 +150,7 @@ class GroundCheck:
         # Tier 3: Semantic similarity (handles paraphrases)
         if use_semantic and hasattr(self, 'embedding_model') and self.embedding_model is not None:
             try:
+                # Import at function level to avoid issues if package not installed
                 from sentence_transformers import util
                 
                 # Encode claimed value

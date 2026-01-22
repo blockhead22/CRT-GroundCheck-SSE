@@ -64,7 +64,8 @@ def evaluate_improved_groundcheck():
         
         if requires_disclosure:
             # For contradiction cases, check if disclosure is required
-            correct = result.requires_disclosure
+            # Use hasattr to safely check if attribute exists
+            correct = hasattr(result, 'requires_disclosure') and result.requires_disclosure
         else:
             # For standard grounding cases, check if verification passed matches expectation
             correct = (result.passed == expected_grounded)
