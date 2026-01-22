@@ -475,7 +475,8 @@ def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
     m = re.search(r"\bmy (?:weekend )?hobby is\s+([a-z][a-z\s-]{2,40}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
         # "you enjoy X and Y" or "you love X"
-        m = re.search(r"\b(?:you|user|i) (?:enjoy|love|like)(?:s)?\s+([a-z][a-z\s,and-]{2,80}?)(?:\s+and\s+you|\.|,\s+and\s+you|,\s+and|$)", text, flags=re.IGNORECASE)
+        # Capture hobby text up to terminators (handles compounds like "hiking and cooking")
+        m = re.search(r"\b(?:you|user|i) (?:enjoy|love|like)(?:s)?\s+([a-z][a-z\s,\-]+?)(?:\s+and\s+you|\.|,\s+and\s+you|$)", text, flags=re.IGNORECASE)
     if not m:
         m = re.search(r"\bi enjoy\s+([a-z][a-z\s-]{2,40}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
