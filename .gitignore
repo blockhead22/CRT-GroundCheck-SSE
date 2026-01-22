@@ -66,3 +66,9 @@ test_*.py
 !tests/test_*.py
 !groundcheck/tests/test_*.py
 !experiments/test_*.py
+
+# Belief revision generated data (can be regenerated with phase1 scripts)
+belief_revision/data/synthetic_belief_updates.json
+belief_revision/data/raw_*.json
+belief_revision/data/potential_belief_updates.json
+belief_revision/data/extraction_report.md

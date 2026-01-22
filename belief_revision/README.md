@@ -34,6 +34,8 @@ python belief_revision/scripts/phase1_generate_synthetic.py
 **Output:**
 - `data/synthetic_belief_updates.json` - 600 template-generated examples
 
+**Note:** This file is generated and not tracked in git. If missing, run the script above to regenerate it.
+
 **What to check:**
 - Are the 4 categories balanced? (150 each)
 - Do examples look realistic?
