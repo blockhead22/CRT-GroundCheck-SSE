@@ -143,6 +143,162 @@ class GroundCheck:
         
         return None
     
+    def _detect_contradictions(self, retrieved_memories: List[Memory]) -> List['ContradictionDetail']:
+        """Detect contradictions in retrieved memories.
+        
+        Identifies cases where multiple memories have the same fact slot but different values,
+        for slots where only one value should be true at a time (mutually exclusive facts).
+        
+        Args:
+            retrieved_memories: List of Memory objects to analyze
+            
+        Returns:
+            List of ContradictionDetail objects for each detected contradiction
+        """
+        from collections import defaultdict
+        from .types import ContradictionDetail
+        
+        # Define slots where multiple values are contradictory (mutually exclusive)
+        # vs. slots where multiple values are additive (complementary)
+        MUTUALLY_EXCLUSIVE_SLOTS = {
+            'employer',      # Can only work at one place at a time
+            'location',      # Can only live in one place at a time  
+            'name',          # Person has one name
+            'title',         # One job title at a time
+            'occupation',    # One occupation at a time
+            'coffee',        # One preference at a time
+            'hobby',         # Primary hobby (though people can have multiple)
+            'favorite_color',# One favorite
+            'pet',           # Primary pet type
+            'school',        # Current/most recent school
+            'undergrad_school',
+            'masters_school',
+            'project',       # Current project
+        }
+        
+        # Group memories by fact slot
+        slot_to_facts = defaultdict(list)
+        
+        for memory in retrieved_memories:
+            facts = extract_fact_slots(memory.text)
+            for slot, fact in facts.items():
+                # Only track mutually exclusive slots for contradiction detection
+                if slot in MUTUALLY_EXCLUSIVE_SLOTS:
+                    slot_to_facts[slot].append({
+                        'value': fact.normalized,
+                        'memory_id': memory.id,
+                        'timestamp': memory.timestamp,
+                        'trust': memory.trust
+                    })
+        
+        # Find slots with multiple different values
+        contradictions = []
+        for slot, facts in slot_to_facts.items():
+            # Get unique values
+            unique_values = set(f['value'] for f in facts)
+            
+            if len(unique_values) > 1:
+                # Contradiction detected!
+                contradiction = ContradictionDetail(
+                    slot=slot,
+                    values=list(unique_values),
+                    memory_ids=[f['memory_id'] for f in facts],
+                    timestamps=[f['timestamp'] for f in facts],
+                    trust_scores=[f['trust'] for f in facts]
+                )
+                contradictions.append(contradiction)
+        
+        return contradictions
+    
+    def _check_contradiction_disclosure(
+        self,
+        generated_text: str,
+        contradicted_claim: str,
+        contradiction: 'ContradictionDetail'
+    ) -> bool:
+        """Check if generated text acknowledges a contradiction.
+        
+        Looks for disclosure language patterns like:
+        - "changed from X to Y"
+        - "previously X, now Y"
+        - "was X, is now Y"
+        
+        Args:
+            generated_text: The generated text to check
+            contradicted_claim: The specific claim being checked
+            contradiction: The ContradictionDetail object
+            
+        Returns:
+            True if text contains adequate disclosure, False otherwise
+        """
+        text_lower = generated_text.lower()
+        
+        # Disclosure keywords
+        disclosure_patterns = [
+            'changed from',
+            'updated from',
+            'previously',
+            'was',
+            'used to',
+            'formerly',
+            'switched from',
+            'moved from',
+            'before'
+        ]
+        
+        # Check if text contains disclosure language
+        has_disclosure_keyword = any(pattern in text_lower for pattern in disclosure_patterns)
+        
+        if not has_disclosure_keyword:
+            return False
+        
+        # Check if text mentions multiple contradicting values
+        values_mentioned = sum(1 for val in contradiction.values if val.lower() in text_lower)
+        
+        # Good disclosure mentions at least 2 of the contradicting values
+        return values_mentioned >= 2
+    
+    def _generate_disclosure_text(
+        self,
+        claim_value: str,
+        contradiction: 'ContradictionDetail'
+    ) -> str:
+        """Generate suggested disclosure text for a contradicted claim.
+        
+        Args:
+            claim_value: The value being claimed
+            contradiction: The ContradictionDetail object
+            
+        Returns:
+            Suggested disclosure text (e.g., "Amazon (changed from Microsoft)")
+        """
+        # Find which value is being claimed
+        other_values = [v for v in contradiction.values if v != claim_value.lower()]
+        
+        if not other_values:
+            return claim_value
+        
+        # Build disclosure text
+        disclosure = claim_value
+        
+        # Add temporal context if available
+        if contradiction.timestamps and any(t is not None for t in contradiction.timestamps):
+            most_recent = contradiction.most_recent_value
+            if most_recent == claim_value.lower():
+                # Current value is most recent
+                old_value = other_values[0]
+                disclosure += f" (changed from {old_value})"
+            else:
+                disclosure += f" (previously {other_values[0]})"
+        else:
+            # No timestamps - just mention the conflict
+            if len(other_values) == 1:
+                disclosure += f" (previously {other_values[0]})"
+            else:
+                disclosure += f" (conflicting information: {', '.join(other_values)})"
+        
+        return disclosure
+    
     def verify(
         self,
         generated_text: str,
@@ -151,13 +307,15 @@ class GroundCheck:
     ) -> VerificationReport:
         """Verify that generated text is grounded in retrieved memories.
         
+        Enhanced with contradiction detection and disclosure verification.
+        
         Args:
             generated_text: The text to verify
             retrieved_memories: List of Memory objects containing supporting context
             mode: Verification mode - "strict" (generates corrections) or "permissive"
             
         Returns:
-            VerificationReport with verification results
+            VerificationReport with verification results and contradiction analysis
         """
         if not generated_text or not generated_text.strip():
             return VerificationReport(
@@ -166,6 +324,9 @@ class GroundCheck:
                 confidence=1.0
             )
         
+        # Step 1: Detect contradictions in retrieved context
+        contradictions = self._detect_contradictions(retrieved_memories)
+        
         # Extract facts from generated text
         facts_extracted = extract_fact_slots(generated_text)
         
@@ -173,6 +334,7 @@ class GroundCheck:
         hallucinations = []
         grounding_map = {}
         supported_facts = {}
+        contradicted_claims = []
         
         # Parse supported facts from memories
         memory_facts_by_slot: Dict[str, Set[str]] = {}
@@ -219,6 +381,16 @@ class GroundCheck:
                     memory_id = self._find_memory_for_value(val, supported_values, memory_id_by_slot_value.get(slot_l, {}))
                     if memory_id:
                         grounding_map[val] = memory_id
+                    
+                    # Step 2: Check if this claim involves a contradiction
+                    slot_contradiction = next(
+                        (c for c in contradictions if c.slot == slot_l),
+                        None
+                    )
+                    
+                    if slot_contradiction and val_norm in slot_contradiction.values:
+                        # This claim uses a contradicted fact
+                        contradicted_claims.append(val)
                 else:
                     # This value is not supported - it's a hallucination
                     hallucinations.append(val)
@@ -234,7 +406,47 @@ class GroundCheck:
             if slot not in supported_facts
         }
         
-        passed = len(hallucinations) == 0
+        # Step 3: Check if contradicted claims are properly disclosed
+        requires_disclosure = False
+        expected_disclosure = None
+        
+        if contradicted_claims:
+            for claim in contradicted_claims:
+                # Find the contradiction details
+                slot = None
+                for s, fact in facts_extracted.items():
+                    if str(fact.value) == claim or claim in split_compound_values(str(fact.value)):
+                        slot = s.lower()
+                        break
+                
+                if slot:
+                    contradiction = next((c for c in contradictions if c.slot == slot), None)
+                    if contradiction:
+                        # Check trust score difference - if very high, don't require disclosure
+                        # This handles cases where one memory is essentially noise (e.g., trust=0.3 vs 0.95)
+                        trust_diff = max(contradiction.trust_scores) - min(contradiction.trust_scores)
+                        if trust_diff < 0.5:  # Significant contradiction - both memories are credible
+                            # Check if output acknowledges the contradiction
+                            has_disclosure = self._check_contradiction_disclosure(
+                                generated_text,
+                                claim,
+                                contradiction
+                            )
+                            
+                            if not has_disclosure:
+                                requires_disclosure = True
+                                expected_disclosure = self._generate_disclosure_text(
+                                    claim,
+                                    contradiction
+                                )
+                                # Only show one expected disclosure for simplicity
+                                break
+        
+        # Step 4: Determine if verification passed
+        passed = (
+            len(hallucinations) == 0 and  # No hallucinations
+            not requires_disclosure  # No undisclosed contradictions
+        )
         
         # Calculate confidence based on trust scores of supporting memories
         confidence = self._calculate_confidence(
@@ -244,14 +456,16 @@ class GroundCheck:
             retrieved_memories
         )
         
-        # Generate corrected text if in strict mode and there are hallucinations
+        # Step 5: Generate corrected text if in strict mode and there are issues
         corrected_text = None
         if mode == "strict" and not passed:
             corrected_text = self._generate_correction(
                 generated_text,
                 unsupported_facts,
                 supported_facts,
-                retrieved_memories
+                retrieved_memories,
+                contradicted_claims,
+                contradictions
             )
         
         return VerificationReport(
@@ -262,7 +476,11 @@ class GroundCheck:
             grounding_map=grounding_map,
             confidence=confidence,
             facts_extracted=facts_extracted,
-            facts_supported=supported_facts
+            facts_supported=supported_facts,
+            contradicted_claims=contradicted_claims,
+            contradiction_details=contradictions,
+            requires_disclosure=requires_disclosure,
+            expected_disclosure=expected_disclosure
         )
     
     def extract_claims(self, text: str) -> Dict[str, ExtractedFact]:
@@ -382,27 +600,58 @@ class GroundCheck:
         original_text: str,
         unsupported_facts: Dict[str, ExtractedFact],
         supported_facts: Dict[str, ExtractedFact],
-        memories: List[Memory]
+        memories: List[Memory],
+        contradicted_claims: List[str] = None,
+        contradictions: List['ContradictionDetail'] = None
     ) -> str:
-        """Generate corrected text by replacing unsupported claims.
+        """Generate corrected text by replacing unsupported claims and adding disclosure.
         
-        This is a simple heuristic approach that replaces unsupported values
-        with supported ones from the same slot if available.
+        Handles both hallucinations and undisclosed contradictions.
+        
+        Args:
+            original_text: The original text to correct
+            unsupported_facts: Facts that are not grounded in memories
+            supported_facts: Facts that are grounded in memories
+            memories: List of memories
+            contradicted_claims: Claims that involve contradictions
+            contradictions: List of contradiction details
+            
+        Returns:
+            Corrected text with replacements and disclosure
         """
-        if not unsupported_facts:
-            return original_text
+        if contradicted_claims is None:
+            contradicted_claims = []
+        if contradictions is None:
+            contradictions = []
+            
+        corrected = original_text
         
-        # Check if this is a memory claim that should be sanitized
-        if not has_memory_claim(original_text):
-            # Simple replacement approach
-            return self._simple_correction(
-                original_text, unsupported_facts, supported_facts, memories
-            )
+        # Handle hallucinations first
+        if unsupported_facts:
+            # Check if this is a memory claim that should be sanitized
+            if not has_memory_claim(original_text):
+                # Simple replacement approach
+                corrected = self._simple_correction(
+                    corrected, unsupported_facts, supported_facts, memories
+                )
+            else:
+                # For memory claims, use stricter sanitization
+                corrected = self._sanitize_memory_claims(
+                    corrected, unsupported_facts, supported_facts, memories
+                )
         
-        # For memory claims, use stricter sanitization
-        return self._sanitize_memory_claims(
-            original_text, unsupported_facts, supported_facts, memories
-        )
+        # Add disclosure for contradicted claims
+        for claim in contradicted_claims:
+            # Find the contradiction for this claim
+            for c in contradictions:
+                claim_norm = self._normalize_value(claim)
+                if claim_norm in c.values:
+                    disclosure = self._generate_disclosure_text(claim, c)
+                    # Replace the claim with the disclosure version
+                    corrected = corrected.replace(claim, disclosure)
+                    break
+        
+        return corrected
     
     def _simple_correction(
         self,
