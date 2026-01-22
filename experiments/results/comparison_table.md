@@ -6,7 +6,7 @@
 |--------|----------|-------------|----------|-------|
 | groundcheck | 76.0% | 0.00ms | $0.000000 | Deterministic |
 | vanilla_rag | 66.0% | 0.00ms | $0.000000 | Deterministic |
-| selfcheck_gpt | 80.0% | 0.16ms | $0.000000 | Deterministic |
+| selfcheck_gpt | 80.0% | 0.15ms | $0.000000 | Deterministic |
 | cove | 80.0% | 0.15ms | $0.000000 | Deterministic |
 
 ## Category Breakdown
