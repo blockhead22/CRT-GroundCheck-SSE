@@ -1,17 +1,65 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ComparisonView } from '../components/premium/ComparisonView'
 import { ExamplesGallery } from '../components/premium/ExamplesGallery'
 import { IntegrationCodeWidget } from '../components/premium/IntegrationCodeWidget'
 import { MemoryLaneVisualizer } from '../components/premium/MemoryLaneVisualizer'
 import { TrustScoreCard } from '../components/premium/TrustScoreCard'
+import { ContradictionLedger, ContradictionBadge } from '../components/premium/ContradictionLedger'
+import { listRecentMemories, listOpenContradictions, type MemoryListItem, type ContradictionListItem } from '../lib/api'
 
-type ShowcaseSection = 'comparison' | 'examples' | 'integration' | 'memory-lanes' | 'trust-scores'
+type ShowcaseSection = 'comparison' | 'examples' | 'integration' | 'memory-lanes' | 'trust-scores' | 'ledger'
 
 export function ShowcasePage() {
   const [activeSection, setActiveSection] = useState<ShowcaseSection>('comparison')
+  const [stableMemories, setStableMemories] = useState<MemoryListItem[]>([])
+  const [candidateMemories, setCandidateMemories] = useState<MemoryListItem[]>([])
+  const [contradictions, setContradictions] = useState<ContradictionListItem[]>([])
+  const [ledgerOpen, setLedgerOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Sample data for visualizations
+  // Fetch real memories and contradictions on mount
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  async function fetchData() {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Fetch memories and contradictions in parallel
+      const [memories, contras] = await Promise.all([
+        listRecentMemories('default', 100),
+        listOpenContradictions('default', 50),
+      ])
+      
+      // Split memories by trust threshold (0.75)
+      const stable = memories.filter((m) => m.trust >= 0.75)
+      const candidate = memories.filter((m) => m.trust < 0.75)
+      
+      setStableMemories(stable)
+      setCandidateMemories(candidate)
+      setContradictions(contras)
+    } catch (err) {
+      console.error('Failed to fetch data:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch data')
+      // Use empty arrays on error
+      setStableMemories([])
+      setCandidateMemories([])
+      setContradictions([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Helper function to calculate confirmations from confidence
+  function getConfirmations(confidence?: number): number | undefined {
+    return confidence !== undefined ? Math.round(confidence * 10) : undefined
+  }
+
+  // Sample data for comparison and examples sections only
   const sampleStableMemories = [
     {
       id: 'm1',
@@ -72,6 +120,7 @@ export function ShowcasePage() {
           {[
             { id: 'comparison' as ShowcaseSection, label: 'Comparison View', icon: '⚖️' },
             { id: 'examples' as ShowcaseSection, label: 'Examples Gallery', icon: '📚' },
+            { id: 'ledger' as ShowcaseSection, label: 'Contradiction Ledger', icon: '🔍' },
             { id: 'memory-lanes' as ShowcaseSection, label: 'Memory Lanes', icon: '🛡️' },
             { id: 'trust-scores' as ShowcaseSection, label: 'Trust Scores', icon: '📊' },
             { id: 'integration' as ShowcaseSection, label: 'Integration', icon: '💻' },
@@ -139,6 +188,93 @@ export function ShowcasePage() {
             </div>
           )}
 
+          {activeSection === 'ledger' && (
+            <div className="mx-auto max-w-6xl space-y-6">
+              <div className="rounded-xl bg-white/5 p-4">
+                <h2 className="mb-2 text-lg font-semibold text-white">Contradiction Ledger</h2>
+                <p className="text-sm text-white/60">
+                  Real-time audit trail of all detected contradictions. Click the badge to open the full ledger panel.
+                </p>
+              </div>
+
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="mb-4 text-4xl">⏳</div>
+                    <div className="text-white/60">Loading contradictions...</div>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <div className="mb-2 text-sm font-semibold text-red-300">Failed to load contradictions</div>
+                  <div className="mb-3 text-xs text-red-400">{error}</div>
+                  <button
+                    onClick={fetchData}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-center">
+                    <ContradictionBadge count={contradictions.length} onClick={() => setLedgerOpen(true)} />
+                  </div>
+
+                  {contradictions.length > 0 ? (
+                    <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-6">
+                      <div className="mb-4 flex items-center gap-3">
+                        <div className="text-4xl">⚠️</div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">
+                            {contradictions.length} {contradictions.length === 1 ? 'Contradiction' : 'Contradictions'}{' '}
+                            Detected
+                          </h3>
+                          <p className="text-sm text-white/60">Click the badge above to view the full ledger</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        {contradictions.slice(0, 3).map((c) => (
+                          <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="font-mono text-xs text-white/50">
+                                {c.contradiction_id || c.ledger_id}
+                              </span>
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                  c.status === 'disclosed'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-orange-500/20 text-orange-400'
+                                }`}
+                              >
+                                {c.status === 'disclosed' ? 'DISCLOSED' : 'PENDING'}
+                              </span>
+                            </div>
+                            {c.slot && <div className="text-sm text-white/80">Slot: {c.slot}</div>}
+                            {c.summary && <div className="mt-1 text-xs text-white/60">{c.summary}</div>}
+                          </div>
+                        ))}
+                        {contradictions.length > 3 && (
+                          <div className="text-center text-sm text-white/50">
+                            + {contradictions.length - 3} more contradictions
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+                      <div className="mb-4 text-6xl opacity-20">✓</div>
+                      <div className="text-lg font-medium text-white/60">No contradictions detected</div>
+                      <div className="mt-2 text-sm text-white/40">
+                        Start chatting with the CRT to see how contradictions are tracked
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {activeSection === 'memory-lanes' && (
             <div className="mx-auto max-w-6xl space-y-6">
               <div className="rounded-xl bg-white/5 p-4">
@@ -149,11 +285,43 @@ export function ShowcasePage() {
                 </p>
               </div>
 
-              <MemoryLaneVisualizer
-                stableMemories={sampleStableMemories}
-                candidateMemories={sampleCandidateMemories}
-                onPromoteMemory={(id) => console.log('Promote memory:', id)}
-              />
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="mb-4 text-4xl">⏳</div>
+                    <div className="text-white/60">Loading memories...</div>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <div className="mb-2 text-sm font-semibold text-red-300">Failed to load memories</div>
+                  <div className="mb-3 text-xs text-red-400">{error}</div>
+                  <button
+                    onClick={fetchData}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <MemoryLaneVisualizer
+                  stableMemories={stableMemories.map((m) => ({
+                    id: m.memory_id,
+                    text: m.text,
+                    trust: m.trust,
+                    timestamp: m.timestamp * 1000, // Convert to milliseconds
+                    source: m.source,
+                  }))}
+                  candidateMemories={candidateMemories.map((m) => ({
+                    id: m.memory_id,
+                    text: m.text,
+                    trust: m.trust,
+                    timestamp: m.timestamp * 1000, // Convert to milliseconds
+                    source: m.source,
+                  }))}
+                  onPromoteMemory={(id) => console.log('Promote memory:', id)}
+                />
+              )}
             </div>
           )}
 
@@ -167,39 +335,58 @@ export function ShowcasePage() {
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <TrustScoreCard
-                  label="Employer"
-                  currentValue="Amazon"
-                  currentTrust={0.9}
-                  source="User stated directly"
-                  confirmations={3}
-                  lastUpdated={now - dayMs * 5}
-                  history={[
-                    { timestamp: now - dayMs * 30, trust: 0.5, event: 'Initial mention' },
-                    { timestamp: now - dayMs * 20, trust: 0.7, event: 'Confirmed' },
-                    { timestamp: now - dayMs * 10, trust: 0.85, event: 'Re-confirmed' },
-                    { timestamp: now - dayMs * 5, trust: 0.9, event: 'Third confirmation' },
-                  ]}
-                />
-
-                <TrustScoreCard
-                  label="Employer"
-                  currentValue="Microsoft"
-                  currentTrust={0.6}
-                  source="User stated directly"
-                  confirmations={1}
-                  lastUpdated={now - dayMs * 35}
-                  superseded
-                  supersededBy="Amazon"
-                  history={[
-                    { timestamp: now - dayMs * 60, trust: 0.9, event: 'Initial trust' },
-                    { timestamp: now - dayMs * 45, trust: 0.85, event: 'Slight decay' },
-                    { timestamp: now - dayMs * 35, trust: 0.7, event: 'Superseded' },
-                    { timestamp: now - dayMs * 5, trust: 0.6, event: 'Further decay' },
-                  ]}
-                />
-              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="mb-4 text-4xl">⏳</div>
+                    <div className="text-white/60">Loading memories...</div>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <div className="mb-2 text-sm font-semibold text-red-300">Failed to load memories</div>
+                  <div className="mb-3 text-xs text-red-400">{error}</div>
+                  <button
+                    onClick={fetchData}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : stableMemories.length === 0 && candidateMemories.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+                  <div className="mb-4 text-6xl opacity-20">📊</div>
+                  <div className="text-lg font-medium text-white/60">No memories to display</div>
+                  <div className="mt-2 text-sm text-white/40">
+                    Start chatting with the CRT to create memories with trust scores
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {stableMemories.slice(0, 2).map((memory) => (
+                    <TrustScoreCard
+                      key={memory.memory_id}
+                      label={memory.source || 'Memory'}
+                      currentValue={memory.text}
+                      currentTrust={memory.trust}
+                      source={memory.source}
+                      confirmations={getConfirmations(memory.confidence)}
+                      lastUpdated={memory.timestamp * 1000}
+                    />
+                  ))}
+                  {candidateMemories.slice(0, 2).map((memory) => (
+                    <TrustScoreCard
+                      key={memory.memory_id}
+                      label={memory.source || 'Memory'}
+                      currentValue={memory.text}
+                      currentTrust={memory.trust}
+                      source={memory.source}
+                      confirmations={getConfirmations(memory.confidence)}
+                      lastUpdated={memory.timestamp * 1000}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -231,6 +418,23 @@ export function ShowcasePage() {
           )}
         </motion.div>
       </div>
+
+      {/* Contradiction Ledger Panel */}
+      <ContradictionLedger
+        open={ledgerOpen}
+        onClose={() => setLedgerOpen(false)}
+        contradictions={contradictions}
+        onExport={() => {
+          const dataStr = JSON.stringify(contradictions, null, 2)
+          const dataBlob = new Blob([dataStr], { type: 'application/json' })
+          const url = URL.createObjectURL(dataBlob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = 'contradictions-ledger.json'
+          link.click()
+          URL.revokeObjectURL(url)
+        }}
+      />
     </div>
   )
 }
