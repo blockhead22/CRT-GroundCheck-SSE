@@ -122,10 +122,24 @@ class GlobalUserProfile:
         Now supports multiple values per slot (e.g., multiple employers).
         Uses UNIQUE(slot, normalized) to prevent exact duplicates.
         
+        Filters out temporal/temporary statements to avoid storing:
+        - "I'm working on homework tonight" (temporary activity)
+        - "I'm currently reviewing code" (temporary state)
+        
+        Only stores durable identity facts like:
+        - "I work at Walmart" (permanent employer)
+        - "I'm a freelance web developer" (occupation)
+        
         Returns:
             Dictionary of slot -> value for facts that were updated/added
         """
         logger.debug(f"GlobalUserProfile.update_from_text called: text='{text[:50]}'")
+        
+        # Guard rail: Skip temporal/temporary statements
+        if self._is_temporal_statement(text):
+            logger.debug(f"Skipping temporal statement: {text[:50]}")
+            return {}
+        
         facts = extract_fact_slots(text)
         logger.debug(f"Extracted {len(facts)} facts: {list(facts.keys())}")
         if not facts:
@@ -178,6 +192,58 @@ class GlobalUserProfile:
         conn.close()
         
         return updated
+    
+    def _is_temporal_statement(self, text: str) -> bool:
+        """
+        Detect temporal/temporary statements that shouldn't be stored as permanent facts.
+        
+        Examples of what this catches:
+        - "I'm working on homework tonight"
+        - "I'm currently reviewing code"
+        - "I'm studying for exams this week"
+        - "I'm doing some freelance work today"
+        - "I'm learning about Python recently"
+        
+        Examples of what this allows:
+        - "I work at Walmart" (permanent employer)
+        - "I'm a freelance web developer" (occupation/identity)
+        - "I graduated from MIT" (historical fact)
+        
+        Returns:
+            True if the statement appears temporal/temporary, False otherwise
+        """
+        text_lower = text.lower()
+        
+        # Temporal markers indicating temporary activity
+        temporal_markers = [
+            'tonight', 'today', 'this week', 'this month', 'this year',
+            'right now', 'at the moment', 'currently',
+            'this morning', 'this afternoon', 'this evening',
+            'these days', 'lately', 'recently',
+        ]
+        
+        # Check for temporal markers
+        has_temporal = any(marker in text_lower for marker in temporal_markers)
+        
+        # Activity verbs that indicate temporary actions (not identity)
+        # when combined with temporal markers
+        temporary_activities = [
+            'working on', 'studying', 'reviewing', 'reading about',
+            'learning about', 'practicing', 'preparing for',
+            'doing some', 'helping with', 'finishing up',
+        ]
+        
+        has_temporary_activity = any(activity in text_lower for activity in temporary_activities)
+        
+        # If both temporal marker AND temporary activity, it's likely temporary
+        if has_temporal and has_temporary_activity:
+            return True
+        
+        # "working on" without "work at/for" is usually temporary
+        if 'working on' in text_lower and not ('work at' in text_lower or 'work for' in text_lower):
+            return True
+        
+        return False
     
     def get_fact(self, slot: str) -> Optional[UserProfileFact]:
         """
