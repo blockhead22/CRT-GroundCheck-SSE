@@ -231,3 +231,72 @@ def test_no_facts_extracted():
     # No facts to verify, so should pass
     assert result.passed == True
     assert len(result.hallucinations) == 0
+
+
+def test_compound_value_splitting():
+    """Test that compound values are split and verified individually."""
+    verifier = GroundCheck()
+    memories = [
+        Memory(id="m1", text="User knows Python"),
+        Memory(id="m2", text="User knows JavaScript")
+    ]
+    
+    # Test with all supported values
+    result = verifier.verify("You use Python and JavaScript", memories)
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
+    assert "Python" in result.grounding_map
+    assert "JavaScript" in result.grounding_map
+    
+    # Test with partially supported values
+    result = verifier.verify("You use Python, JavaScript, Ruby, and Go", memories)
+    assert result.passed == False
+    assert "Ruby" in result.hallucinations
+    assert "Go" in result.hallucinations
+    assert "Python" not in result.hallucinations
+    assert "JavaScript" not in result.hallucinations
+    assert result.grounding_map.get("Python") == "m1"
+    assert result.grounding_map.get("JavaScript") == "m2"
+
+
+def test_paraphrase_fuzzy_matching():
+    """Test that paraphrases are recognized via fuzzy matching."""
+    verifier = GroundCheck()
+    
+    # Test "employed by" vs "work at"
+    memories = [Memory(id="m1", text="User is employed by Microsoft")]
+    result = verifier.verify("You work at Microsoft", memories)
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
+    
+    # Test "resides in" vs "live in"
+    memories = [Memory(id="m1", text="User resides in Seattle, Washington")]
+    result = verifier.verify("You live in Seattle", memories)
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
+    
+    # Test "Stanford University" vs "Stanford" with fuzzy matching
+    memories = [Memory(id="m1", text="User graduated from Stanford University")]
+    result = verifier.verify("You studied at Stanford", memories)
+    assert "Stanford" not in result.hallucinations
+    assert result.passed == True
+    
+
+def test_partial_grounding_with_details():
+    """Test detection of hallucinated details in partially grounded statements."""
+    verifier = GroundCheck()
+    
+    # Test location with extra details
+    memories = [Memory(id="m1", text="User lives in Seattle")]
+    result = verifier.verify("You live in Seattle", memories)
+    assert result.passed == True
+    
+    # Test employer with wrong title
+    memories = [
+        Memory(id="m1", text="User works at Microsoft"),
+        Memory(id="m2", text="User is a Software Engineer")
+    ]
+    result = verifier.verify("You work at Microsoft as a Product Manager", memories)
+    assert result.passed == False
+    assert "Product Manager" in result.hallucinations
+    assert "Microsoft" not in result.hallucinations

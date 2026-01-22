@@ -18,6 +18,42 @@ from .types import ExtractedFact
 _WS_RE = re.compile(r"\s+")
 
 
+def split_compound_values(text: str) -> list[str]:
+    """Split compound values like 'A, B, and C' into ['A', 'B', 'C'].
+    
+    This is a public utility function used for splitting comma-separated or
+    conjunction-separated values in extracted facts.
+    
+    Args:
+        text: String that may contain comma-separated or conjunction-separated values
+        
+    Returns:
+        List of individual values
+        
+    Examples:
+        >>> split_compound_values("Python, JavaScript, and Ruby")
+        ['Python', 'JavaScript', 'Ruby']
+        >>> split_compound_values("Python or Go")
+        ['Python', 'Go']
+    """
+    if not text:
+        return []
+    
+    # Normalize conjunctions to commas
+    text = re.sub(r'\s+and\s+', ', ', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+or\s+', ', ', text, flags=re.IGNORECASE)
+    
+    # Split on commas
+    parts = [p.strip() for p in text.split(',')]
+    
+    # Remove empty strings and common filler words
+    return [p for p in parts if p and p.lower() not in ('the', 'a', 'an')]
+
+
+# Common company names to exclude from title extraction
+_COMMON_COMPANY_NAMES = {'microsoft', 'google', 'amazon', 'apple', 'facebook', 'meta', 'netflix'}
+
+
 _NAME_STOPWORDS = {
     # Common non-name tokens that appear after "I'm ..." in normal sentences.
     "a", "an", "the", "ai", "back", "building", "build", "busy", "fine",
@@ -176,13 +212,13 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # "I work at/for X" pattern (first, second, and third person)
     if "employer" not in facts:
         m = re.search(
-            r"\b(?:(?:i|you|user|he|she|they) works? (?:at|for)|you're working (?:at|for))\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|,|\.|;)|\s*$)",
+            r"\b(?:(?:i|you|user|he|she|they) (?:works?|is|am|are) (?:at|for|employed by)|you're working (?:at|for))\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|,|\.|;)|\s*$)",
             text,
             flags=re.IGNORECASE,
         )
         if not m:
-            # Fallback: look for "at [company]" anywhere
-            m = re.search(r"\bat\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|,|\.|;)|\s*$)", text)
+            # Try "User is a [title] at [company]" pattern
+            m = re.search(r"\b(?:user|he|she|they|i|you)\s+(?:is|am|are|was|were)\s+a\s+[A-Z][A-Za-z\s]+?\s+at\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+and|\s+in|,|\.|;|\s*$)", text, flags=re.IGNORECASE)
         if m:
             employer_raw = m.group(1)
             # Trim at common continuations (redundant now but kept for safety)
@@ -192,34 +228,45 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
                 facts["employer"] = ExtractedFact("employer", employer_raw, _norm_text(employer_raw))
 
     # Job title / role / occupation
-    m = re.search(r"\bmy (?:role|job title|title) is\s+([^\n\r\.;,]+)", text, flags=re.IGNORECASE)
-    if not m:
-        m = re.search(r"\b(?:i am a|i'm a)\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:by|at|for|and)|\s*$)", text)
-        if not m:
-            m = re.search(r"\b([A-Z][A-Za-z\s]+?)\s+by\s+(?:degree|trade|profession)", text)
+    # Try to extract from "as X" patterns first
+    m = re.search(r"\bas\s+(?:a\s+)?([A-Z][A-Za-z\s]+?)(?:\s+(?:and|but|in|at|graduated)|\s*$)", text, flags=re.IGNORECASE)
     if m:
         title_raw = m.group(1).strip()
-        title_raw = re.split(r"\b(?:at|for|in|by)\b", title_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
-        if title_raw and len(title_raw.split()) <= 4:  # Keep it reasonable (1-4 words)
+        # Avoid capturing company names as titles
+        if len(title_raw.split()) <= 4 and title_raw.lower() not in _COMMON_COMPANY_NAMES:
             facts["title"] = ExtractedFact("title", title_raw, _norm_text(title_raw))
+    
+    if "title" not in facts:
+        m = re.search(r"\bmy (?:role|job title|title) is\s+([^\n\r\.;,]+)", text, flags=re.IGNORECASE)
+        if not m:
+            m = re.search(r"\b(?:i am a|i'm a)\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:by|at|for|and)|\s*$)", text)
+            if not m:
+                # Try "User is a [title]" pattern
+                m = re.search(r"\b(?:user|he|she|they)\s+(?:is|was)\s+a\s+([A-Z][A-Za-z\s]+?)(?:\s+(?:at|for|in|and|with)|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+            if not m:
+                m = re.search(r"\b([A-Z][A-Za-z\s]+?)\s+by\s+(?:degree|trade|profession)", text)
+        if m:
+            title_raw = m.group(1).strip()
+            title_raw = re.split(r"\b(?:at|for|in|by)\b", title_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+            if title_raw and len(title_raw.split()) <= 4:  # Keep it reasonable (1-4 words)
+                facts["title"] = ExtractedFact("title", title_raw, _norm_text(title_raw))
 
     # Location (first, second, and third person)
     # Try explicit location patterns first
-    m = re.search(r"\b(?:i|you|user|he|she|they) lives? in\s+([^\n\r\.;,]+)", text, flags=re.IGNORECASE)
+    m = re.search(r"\b(?:i|you|user|he|she|they) (?:lives?|resides?|moved to) in\s+(?:a\s+)?(?:\d+-bedroom\s+apartment\s+in\s+)?([A-Z][a-zA-Z .'-]+?)(?:\s+near|\s+with|\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
-        m = re.search(r"\b(?:i|you|user|he|she|they) moved to\s+([A-Z][a-zA-Z .'-]{2,60})", text, flags=re.IGNORECASE)
+        m = re.search(r"\b(?:i|you|user|he|she|they) moved to\s+([A-Z][a-zA-Z .'-]+?)(?:\s+near|\s+with|\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m and "employer" in facts:
         # Check for "work at [company] in [location]" pattern
-        m = re.search(r"\bworks? (?:at|for)\s+[A-Za-z0-9\s&\-\.]+?\s+in\s+([A-Z][a-zA-Z .'-]{2,60})(?:\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+        m = re.search(r"\bworks? (?:at|for)\s+[A-Za-z0-9\s&\-\.]+?\s+in\s+([A-Z][a-zA-Z .'-]+?)(?:\s+near|\s+with|\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if m:
-        loc_raw = m.group(1).strip()
-        # Prefer the last "in X" if present
-        m2 = re.search(r"\bin\s+([A-Z][a-zA-Z .'-]{2,60})\b", loc_raw)
-        if m2:
-            loc_value = m2.group(1).strip()
-        else:
-            # Split on temporal markers or punctuation and take first part
-            loc_value = re.split(r"\s+(?:and|last|this|in|on|during)\s+|\.|,", loc_raw, maxsplit=1)[0].strip()
+        loc_value = m.group(1).strip()
+        # Remove "in" prefix if present
+        loc_value = re.sub(r'^\s*in\s+', '', loc_value, flags=re.IGNORECASE).strip()
+        # Trim at common spatial modifiers (safety)
+        loc_value = re.split(r'\s+(?:near|with)\s+', loc_value, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+        # Split on temporal markers or punctuation and take first part
+        loc_value = re.split(r"\s+(?:and|last|this|on|during)\s+|\.|,", loc_value, maxsplit=1)[0].strip()
         if loc_value:
             facts["location"] = ExtractedFact("location", loc_value, _norm_text(loc_value))
 
@@ -297,16 +344,22 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
         facts["masters_school"] = ExtractedFact("masters_school", school, _norm_text(school))
     
     # Graduation year
-    m = re.search(r"\bi graduated\s+(?:in|from.*in)\s+(19\d{2}|20\d{2})\b", text, flags=re.IGNORECASE)
+    m = re.search(r"\b(?:i\s+)?graduated\s+(?:from.*)?(?:in|from.*in)\s+(19\d{2}|20\d{2})\b", text, flags=re.IGNORECASE)
     if m:
         year = m.group(1).strip()
         facts["graduation_year"] = ExtractedFact("graduation_year", year, year)
     
-    # School (standalone "graduated from X" without year)
-    m = re.search(r"\bi graduated from\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+in\s+\d{4}|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
-    if m:
-        school = m.group(1).strip()
-        facts["school"] = ExtractedFact("school", school, _norm_text(school))
+    # School (standalone "graduated from X" or "studied at X" patterns)
+    if "school" not in facts:
+        # Try "graduated from X" first
+        m = re.search(r"\b(?:i\s+|you\s+)?graduated from\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+in\s+\d{4}|\s+with|\.|,|;|\s+and|\s*$)", text, flags=re.IGNORECASE)
+        if not m:
+            # Try "studied at X" pattern
+            m = re.search(r"\b(?:i\s+|you\s+)?studied\s+(?:[A-Z]+|[a-z\s]+)\s+at\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+        if m:
+            school = m.group(1).strip()
+            facts["school"] = ExtractedFact("school", school, _norm_text(school))
+
 
 
 def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
@@ -338,16 +391,9 @@ def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
         facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
     else:
         m = re.search(r"\bmy (?:dog|cat|pet) is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
-        if not m:
-            m = re.search(r"\b([A-Z][a-z]+)\s+is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
-            if m:
-                pet_name = m.group(1).strip()
-                pet_type = m.group(2).strip()
-                facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
-                facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
-        if m and not facts.get("pet"):
-            pet_type = m.group(1).strip()
-            facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+        # Note: Removed generic "[Name] is a [thing]" pattern that was matching
+        # professional roles like "User is a Software Engineer". Only specific
+        # pet-related patterns are used to avoid false positives.
     
     # Coffee preference
     m = re.search(r"\bi prefer\s+(dark|light|medium)\s+roast", text, flags=re.IGNORECASE)
@@ -397,3 +443,17 @@ def _extract_professional_facts(text: str, facts: Dict[str, ExtractedFact]) -> N
     if m:
         lang = m.group(1).strip()
         facts["programming_language"] = ExtractedFact("programming_language", lang, _norm_text(lang))
+    
+    # Programming languages/technologies from "use/know/works with" patterns (can be lists)
+    # "You use Python, JavaScript, Ruby, and Go"
+    # "User knows Python and JavaScript"
+    if "programming_language" not in facts:
+        m = re.search(
+            r"\b(?:(?:i|you|user|he|she|they) (?:use|uses|know|knows|works? with)|user knows)\s+([A-Z][A-Za-z0-9+#,\s&-]+?)(?:\s*$|\.|\!)",
+            text,
+            flags=re.IGNORECASE
+        )
+        if m:
+            lang_str = m.group(1).strip()
+            # Store as single value for now - will be split by verifier if needed
+            facts["programming_language"] = ExtractedFact("programming_language", lang_str, _norm_text(lang_str))

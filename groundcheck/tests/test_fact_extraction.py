@@ -226,3 +226,69 @@ def test_empty_input():
     
     facts = extract_fact_slots("   ")
     assert len(facts) == 0
+
+
+def test_compound_value_splitting():
+    """Test splitting of compound values."""
+    from groundcheck.fact_extractor import split_compound_values
+    
+    # Test comma-separated values
+    result = split_compound_values("Python, JavaScript, Ruby")
+    assert result == ["Python", "JavaScript", "Ruby"]
+    
+    # Test "and" conjunction
+    result = split_compound_values("Python and JavaScript")
+    assert result == ["Python", "JavaScript"]
+    
+    # Test "or" conjunction
+    result = split_compound_values("Python or Go")
+    assert result == ["Python", "Go"]
+    
+    # Test mixed
+    result = split_compound_values("Python, JavaScript, and Go")
+    assert result == ["Python", "JavaScript", "Go"]
+    
+    # Test single value
+    result = split_compound_values("Python")
+    assert result == ["Python"]
+
+
+def test_extract_employer_employed_by():
+    """Test extraction of employer from 'employed by' pattern."""
+    facts = extract_fact_slots("User is employed by Microsoft as a Software Engineer")
+    assert "employer" in facts
+    assert facts["employer"].value == "Microsoft"
+
+
+def test_extract_title_from_as_pattern():
+    """Test extraction of job title from 'as X' pattern."""
+    facts = extract_fact_slots("You work at Microsoft as a Product Manager")
+    assert "title" in facts
+    assert facts["title"].value == "Product Manager"
+    assert "employer" in facts
+    assert facts["employer"].value == "Microsoft"
+
+
+def test_extract_location_resides():
+    """Test extraction of location from 'resides in' pattern."""
+    facts = extract_fact_slots("User resides in Seattle, Washington")
+    assert "location" in facts
+    # Should extract just the city, not the state
+    assert "Seattle" in facts["location"].value
+
+
+def test_extract_school_studied_at():
+    """Test extraction of school from 'studied at' pattern."""
+    facts = extract_fact_slots("You studied CS at Stanford")
+    assert "school" in facts
+    assert facts["school"].value == "Stanford"
+
+
+def test_extract_programming_languages_list():
+    """Test extraction of programming languages from 'use/know' patterns."""
+    facts = extract_fact_slots("You use Python, JavaScript, Ruby, and Go")
+    assert "programming_language" in facts
+    # The value should contain all the languages
+    value = facts["programming_language"].value
+    assert "Python" in value
+    assert "JavaScript" in value
