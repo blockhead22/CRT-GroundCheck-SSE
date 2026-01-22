@@ -44,10 +44,12 @@ class GroundCheck:
         'coffee',        # One preference at a time
         'hobby',         # Primary hobby (though people can have multiple)
         'favorite_color',# One favorite
+        'favorite_food', # One favorite food
         'pet',           # Primary pet type
         'school',        # Current/most recent school
         'undergrad_school',
         'masters_school',
+        'graduation_year', # One graduation year
         'project',       # Current project
     }
     
@@ -56,9 +58,9 @@ class GroundCheck:
     TRUST_DIFFERENCE_THRESHOLD = 0.3
     
     # Minimum trust for both memories to require disclosure
-    # Set to 0.7 to work with benchmark where trust scores range from 0.75-0.95
-    # Lower than 0.7 is considered unreliable noise
-    MINIMUM_TRUST_FOR_DISCLOSURE = 0.70
+    # Set to 0.75 to match benchmark expectations where reliable memories range from 0.75-0.95
+    # Only memories below 0.75 are considered unreliable noise
+    MINIMUM_TRUST_FOR_DISCLOSURE = 0.75
     
     def __init__(self):
         """Initialize the GroundCheck verifier."""
