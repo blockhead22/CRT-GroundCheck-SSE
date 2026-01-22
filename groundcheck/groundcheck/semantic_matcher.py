@@ -4,7 +4,9 @@ from typing import List, Optional, Set, Tuple
 from difflib import SequenceMatcher
 import re
 
-# Lazy load embedding model
+# Global cache: Intentionally shared across instances to avoid reloading heavy models.
+# This is standard practice in ML libraries to save memory and startup time.
+# Thread safety: SentenceTransformer models are thread-safe for encoding.
 _embedding_model = None
 
 class SemanticMatcher:

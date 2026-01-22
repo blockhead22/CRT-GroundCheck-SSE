@@ -86,14 +86,14 @@ def generate_paraphrasing_examples(count: int) -> List[Dict]:
     
     paraphrases = {
         "employer": [
-            ("works at", "employed by"),
-            ("job at", "works for"),
-            ("employee of", "working at"),
+            ("works at", "work for"),
+            ("job at", "are employed by"),
+            ("employee of", "work at"),
         ],
         "location": [
-            ("lives in", "resides in"),
-            ("based in", "located in"),
-            ("from", "originally from"),
+            ("lives in", "reside in"),
+            ("based in", "are located in"),
+            ("from", "are originally from"),
         ],
     }
     
@@ -102,13 +102,24 @@ def generate_paraphrasing_examples(count: int) -> List[Dict]:
         phrase_a, phrase_b = random.choice(paraphrases[slot])
         value = random.choice(SAMPLE_VALUES.get(slot.replace("employer", "company"), ["Seattle"]))
         
+        # Ensure proper grammar - add "are" or "do" as needed
+        output_phrase = phrase_b
+        if not any(helper in output_phrase for helper in ["are", "do", "work"]):
+            # For phrases without helping verbs, add appropriate one
+            if "reside" in output_phrase or "located" in output_phrase:
+                output_phrase = output_phrase
+            elif output_phrase.startswith("work"):
+                output_phrase = output_phrase  # "work for" is correct
+            else:
+                output_phrase = f"are {output_phrase}"
+        
         example = {
             "id": f"paraphrase_{i}",
             "query": f"Where do I work?" if slot == "employer" else "Where do I live?",
             "memories": [
                 {"id": "m1", "text": f"User {phrase_a} {value}", "trust": 0.9}
             ],
-            "output": f"You {phrase_b} {value}",
+            "output": f"You {output_phrase} {value}",
             "expected_grounded": True,
         }
         examples.append(example)

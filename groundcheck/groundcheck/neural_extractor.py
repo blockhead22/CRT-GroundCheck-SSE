@@ -5,6 +5,9 @@ from dataclasses import dataclass
 import re
 
 # Lazy imports for optional dependencies
+# Global cache: Intentionally shared across instances to avoid reloading heavy models.
+# This is standard practice in ML libraries (e.g., transformers, sentence-transformers).
+# Thread safety: Pipelines are stateless and safe for concurrent inference.
 _ner_pipeline = None
 _embedding_model = None
 
