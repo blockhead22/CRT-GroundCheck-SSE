@@ -19,13 +19,19 @@ _WS_RE = re.compile(r"\s+")
 
 
 def split_compound_values(text: str) -> list[str]:
-    """Split compound values like 'A, B, and C' into ['A', 'B', 'C'].
+    """Split compound values into individual claims.
     
-    This is a public utility function used for splitting comma-separated or
-    conjunction-separated values in extracted facts.
+    Handles multiple separators:
+    - Commas: "Python, JavaScript, Ruby"
+    - "and": "Python and JavaScript"
+    - "or": "Python or JavaScript"
+    - Slashes: "Python/JavaScript"
+    - Semicolons: "Python; JavaScript"
+    - Newlines/bullets: Multi-line lists
+    - Mixed: "Python, JavaScript, and Ruby"
     
     Args:
-        text: String that may contain comma-separated or conjunction-separated values
+        text: String that may contain compound values
         
     Returns:
         List of individual values
@@ -33,21 +39,55 @@ def split_compound_values(text: str) -> list[str]:
     Examples:
         >>> split_compound_values("Python, JavaScript, and Ruby")
         ['Python', 'JavaScript', 'Ruby']
-        >>> split_compound_values("Python or Go")
-        ['Python', 'Go']
+        >>> split_compound_values("Python/JavaScript")
+        ['Python', 'JavaScript']
+        >>> split_compound_values("Python")
+        ['Python']
     """
-    if not text:
+    if not text or not str(text).strip():
         return []
     
-    # Normalize conjunctions to commas
-    text = re.sub(r'\s+and\s+', ', ', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s+or\s+', ', ', text, flags=re.IGNORECASE)
+    text = str(text)
     
-    # Split on commas
-    parts = [p.strip() for p in text.split(',')]
+    # Handle newlines/bullets first (multi-line claims)
+    if '\n' in text:
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        # Recursively split each line
+        result = []
+        for line in lines:
+            result.extend(split_compound_values(line))
+        return result
     
-    # Remove empty strings and common filler words
-    return [p for p in parts if p and p.lower() not in ('the', 'a', 'an')]
+    # Replace multiple separators with commas for uniform splitting
+    # Order matters: process "and"/"or" before other separators
+    normalized = text
+    
+    # Handle "X, Y, and Z" pattern (Oxford comma)
+    normalized = re.sub(r',\s+and\s+', ', ', normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r',\s+or\s+', ', ', normalized, flags=re.IGNORECASE)
+    
+    # Handle standalone "and"/"or"
+    normalized = re.sub(r'\s+and\s+', ', ', normalized, flags=re.IGNORECASE)
+    normalized = re.sub(r'\s+or\s+', ', ', normalized, flags=re.IGNORECASE)
+    
+    # Handle slashes and semicolons
+    normalized = normalized.replace('/', ', ')
+    normalized = normalized.replace(';', ', ')
+    
+    # Handle bullets (•, -, *)
+    normalized = re.sub(r'[•\-\*]\s*', '', normalized)
+    
+    # Split on commas and clean
+    parts = [p.strip() for p in normalized.split(',')]
+    
+    # Filter out empty strings and common list artifacts
+    cleaned = []
+    for part in parts:
+        part = part.strip()
+        if part and part.lower() not in ['and', 'or', '&', 'the', 'a', 'an']:
+            cleaned.append(part)
+    
+    return cleaned if cleaned else [text]
 
 
 # Common company names to exclude from title extraction

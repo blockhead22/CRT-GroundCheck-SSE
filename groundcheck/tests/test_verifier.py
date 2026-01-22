@@ -300,3 +300,123 @@ def test_partial_grounding_with_details():
     assert result.passed == False
     assert "Product Manager" in result.hallucinations
     assert "Microsoft" not in result.hallucinations
+
+
+def test_compound_splitting_various_separators():
+    """Test splitting with different separators."""
+    from groundcheck.fact_extractor import split_compound_values
+    
+    # Commas
+    assert split_compound_values("Python, JavaScript, Ruby") == ["Python", "JavaScript", "Ruby"]
+    
+    # "and"
+    assert split_compound_values("Python and JavaScript") == ["Python", "JavaScript"]
+    
+    # "or"
+    assert split_compound_values("Python or JavaScript") == ["Python", "JavaScript"]
+    
+    # Slashes
+    assert split_compound_values("Python/JavaScript") == ["Python", "JavaScript"]
+    
+    # Mixed (Oxford comma)
+    assert split_compound_values("Python, JavaScript, and Ruby") == ["Python", "JavaScript", "Ruby"]
+    
+    # Semicolons
+    assert split_compound_values("Python; JavaScript") == ["Python", "JavaScript"]
+    
+    # Single value (no splitting)
+    assert split_compound_values("Python") == ["Python"]
+
+
+def test_partial_grounding_accuracy():
+    """Test partial grounding detection (some claims true, some false)."""
+    verifier = GroundCheck()
+    
+    memories = [
+        Memory(id="m1", text="User knows Python", trust=0.9),
+        Memory(id="m2", text="User knows JavaScript", trust=0.9)
+    ]
+    
+    # Test with all supported programming languages (should pass)
+    result = verifier.verify("You use Python and JavaScript", memories)
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
+    
+    # Test with partially supported programming languages (2 correct, 2 hallucinations)
+    result = verifier.verify("You use Python, JavaScript, Ruby, and Go", memories)
+    assert result.passed == False  # Should fail due to Ruby and Go
+    assert "Ruby" in result.hallucinations
+    assert "Go" in result.hallucinations
+    # Ensure Python and JavaScript are NOT in hallucinations
+    assert "Python" not in result.hallucinations
+    assert "JavaScript" not in result.hallucinations
+
+
+def test_semantic_paraphrase_matching():
+    """Test that semantic paraphrases are correctly matched."""
+    verifier = GroundCheck()
+    
+    # Only run if embedding model is available
+    if not hasattr(verifier, 'embedding_model') or verifier.embedding_model is None:
+        pytest.skip("Semantic matching not available (embedding model not loaded)")
+    
+    # Test employer paraphrases
+    memories = [
+        Memory(id="m1", text="User works at Google", trust=0.9)
+    ]
+    
+    paraphrases = [
+        "You are employed by Google",
+        "You work for Google",
+        "Your employer is Google",
+    ]
+    
+    for paraphrase in paraphrases:
+        result = verifier.verify(paraphrase, memories)
+        assert result.passed, f"Should accept paraphrase: {paraphrase}"
+
+
+def test_semantic_location_paraphrases():
+    """Test location paraphrases."""
+    verifier = GroundCheck()
+    
+    # Only run if embedding model is available
+    if not hasattr(verifier, 'embedding_model') or verifier.embedding_model is None:
+        pytest.skip("Semantic matching not available (embedding model not loaded)")
+    
+    memories = [
+        Memory(id="m1", text="User lives in Seattle", trust=0.9)
+    ]
+    
+    paraphrases = [
+        "You reside in Seattle",
+        "You are based in Seattle",
+        "You are located in Seattle",
+    ]
+    
+    for paraphrase in paraphrases:
+        result = verifier.verify(paraphrase, memories)
+        assert result.passed, f"Should accept paraphrase: {paraphrase}"
+
+
+def test_semantic_threshold_prevents_false_positives():
+    """Test that semantic threshold prevents false positives."""
+    verifier = GroundCheck()
+    
+    # Only run if embedding model is available
+    if not hasattr(verifier, 'embedding_model') or verifier.embedding_model is None:
+        pytest.skip("Semantic matching not available (embedding model not loaded)")
+    
+    memories = [
+        Memory(id="m1", text="User works at Google", trust=0.9)
+    ]
+    
+    # Should NOT match (semantically different)
+    false_matches = [
+        "You work at Microsoft",  # Different company
+    ]
+    
+    for text in false_matches:
+        result = verifier.verify(text, memories)
+        # These should fail (hallucination)
+        assert result.passed == False, f"Should reject false match: {text}"
