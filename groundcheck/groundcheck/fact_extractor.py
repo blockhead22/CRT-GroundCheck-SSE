@@ -252,17 +252,20 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # "I work at/for X" pattern (first, second, and third person)
     if "employer" not in facts:
         m = re.search(
-            r"\b(?:(?:i|you|user|he|she|they) (?:works?|is|am|are) (?:at|for|employed by)|you're working (?:at|for))\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|,|\.|;)|\s*$)",
+            r"\b(?:i|you|user|he|she|they) (?:currently )?(?:work(?:s)? (?:at|for)|(?:is|am|are) employed by)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|\s*,|\.|;|\s+previously)|\s*$)",
             text,
             flags=re.IGNORECASE,
         )
+        if not m:
+            # Try "you're working at/for X" pattern
+            m = re.search(r"\byou're working (?:at|for)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|,|\.|;)|\s*$)", text, flags=re.IGNORECASE)
         if not m:
             # Try "User is a [title] at [company]" pattern
             m = re.search(r"\b(?:user|he|she|they|i|you)\s+(?:is|am|are|was|were)\s+a\s+[A-Z][A-Za-z\s]+?\s+at\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+and|\s+in|,|\.|;|\s*$)", text, flags=re.IGNORECASE)
         if m:
             employer_raw = m.group(1)
             # Trim at common continuations (redundant now but kept for safety)
-            employer_raw = re.split(r"\b(?:as|and|but|in|though|however)\b|[,\.;]", employer_raw, maxsplit=1, flags=re.IGNORECASE)[0]
+            employer_raw = re.split(r"\b(?:as|and|but|in|though|however|previously)\b|[,\.;]", employer_raw, maxsplit=1, flags=re.IGNORECASE)[0]
             employer_raw = employer_raw.strip()
             if employer_raw:
                 facts["employer"] = ExtractedFact("employer", employer_raw, _norm_text(employer_raw))
@@ -399,6 +402,22 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
         if m:
             school = m.group(1).strip()
             facts["school"] = ExtractedFact("school", school, _norm_text(school))
+    
+    # Major/Degree field
+    m = re.search(r"\b(?:degree|major)\s+in\s+([A-Z][A-Za-z\s]{2,40}?)(?:\s+and|\s+with|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if not m:
+        m = re.search(r"\bstudied\s+([A-Z][A-Za-z\s]{2,40}?)\s+at", text, flags=re.IGNORECASE)
+    if m:
+        major = m.group(1).strip()
+        # Filter out common false positives
+        if major.lower() not in ['university', 'college', 'school', 'institute']:
+            facts["major"] = ExtractedFact("major", major, _norm_text(major))
+    
+    # Minor
+    m = re.search(r"\bminor\s+in\s+([A-Z][A-Za-z\s]{2,40}?)(?:\.|,|;|\s+and|\s*$)", text, flags=re.IGNORECASE)
+    if m:
+        minor = m.group(1).strip()
+        facts["minor"] = ExtractedFact("minor", minor, _norm_text(minor))
 
 
 
@@ -445,8 +464,11 @@ def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
         coffee = m.group(1).strip() + " roast"
         facts["coffee"] = ExtractedFact("coffee", coffee, _norm_text(coffee))
     
-    # Hobby
+    # Hobby (with compound value support)
     m = re.search(r"\bmy (?:weekend )?hobby is\s+([a-z][a-z\s-]{2,40}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if not m:
+        # "you enjoy X and Y" or "you love X"
+        m = re.search(r"\b(?:you|user|i) (?:enjoy|love|like)(?:s)?\s+([a-z][a-z\s,and-]{2,80}?)(?:\s+and\s+you|\.|,\s+and\s+you|,\s+and|$)", text, flags=re.IGNORECASE)
     if not m:
         m = re.search(r"\bi enjoy\s+([a-z][a-z\s-]{2,40}?)(?:\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
@@ -462,6 +484,34 @@ def _extract_personal_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
     if m:
         book = m.group(1).strip()
         facts["book"] = ExtractedFact("book", book, _norm_text(book))
+    
+    # Children/family information
+    # "with 2 kids", "have 3 children", "my son", "my daughter"
+    m = re.search(r"\b(?:with|have|has)\s+(\d+|one|two|three|four|five)\s+(?:kid|child|children)s?", text, flags=re.IGNORECASE)
+    if m:
+        count_str = m.group(1).strip()
+        word_to_num = {"one": "1", "two": "2", "three": "3", "four": "4", "five": "5"}
+        count_normalized = word_to_num.get(count_str.lower(), count_str)
+        facts["children"] = ExtractedFact("children", count_normalized, count_normalized)
+    
+    # Relationships: "my wife", "my husband", "married to"
+    m = re.search(r"\b(?:my|married to|with my)\s+(wife|husband|partner|spouse)", text, flags=re.IGNORECASE)
+    if m:
+        rel_type = m.group(1).strip()
+        facts["relationship"] = ExtractedFact("relationship", rel_type, _norm_text(rel_type))
+    
+    # Phone number
+    m = re.search(r"\b(?:phone number|phone|cell|mobile)(?:\s+is|\s+:)?\s+([0-9\-\(\)\s]{7,20})", text, flags=re.IGNORECASE)
+    if m:
+        phone = m.group(1).strip()
+        facts["phone"] = ExtractedFact("phone", phone, _norm_text(phone))
+    
+    # Email (already might be extracted elsewhere, but add for completeness)
+    if "email" not in facts:
+        m = re.search(r"\b(?:email|e-mail)(?:\s+is|\s+:)?\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})", text, flags=re.IGNORECASE)
+        if m:
+            email = m.group(1).strip()
+            facts["email"] = ExtractedFact("email", email, _norm_text(email))
 
 
 def _extract_professional_facts(text: str, facts: Dict[str, ExtractedFact]) -> None:
@@ -497,3 +547,24 @@ def _extract_professional_facts(text: str, facts: Dict[str, ExtractedFact]) -> N
             lang_str = m.group(1).strip()
             # Store as single value for now - will be split by verifier if needed
             facts["programming_language"] = ExtractedFact("programming_language", lang_str, _norm_text(lang_str))
+    
+    # Employment history: "previously at X", "worked at X"
+    m = re.search(r"\b(?:previously|formerly)\s+(?:at|worked at|employed by)\s+([A-Z][A-Za-z0-9\s&\-.]+?)(?:\s+and|\s+before|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    if m:
+        prev_employer = m.group(1).strip()
+        facts["previous_employer"] = ExtractedFact("previous_employer", prev_employer, _norm_text(prev_employer))
+    
+    # Job title hierarchy: "Senior X", "Lead X", "promoted to X"
+    m = re.search(r"\bpromoted to\s+([A-Z][A-Za-z\s]{2,40}?)(?:\.|,|;|\s+at|\s*$)", text, flags=re.IGNORECASE)
+    if m:
+        promoted_title = m.group(1).strip()
+        # This is the new title after promotion
+        if "title" not in facts:
+            facts["title"] = ExtractedFact("title", promoted_title, _norm_text(promoted_title))
+    
+    # Skills with proficiency levels
+    # "expert in Python", "proficient in JavaScript"
+    m = re.search(r"\b(?:expert|proficient|skilled|experienced)\s+(?:in|with)\s+([A-Z][A-Za-z0-9+#,\s&-]+?)(?:\s*$|\.|\!|,\s+and)", text, flags=re.IGNORECASE)
+    if m:
+        skill_str = m.group(1).strip()
+        facts["skill"] = ExtractedFact("skill", skill_str, _norm_text(skill_str))
