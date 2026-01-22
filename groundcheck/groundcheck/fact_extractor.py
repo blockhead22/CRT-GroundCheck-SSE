@@ -251,17 +251,24 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     
     # "I work at/for X" pattern (first, second, and third person)
     if "employer" not in facts:
+        # Primary pattern with subject pronoun
         m = re.search(
             r"\b(?:i|you|user|he|she|they) (?:currently )?(?:work(?:s)? (?:at|for)|(?:is|am|are) employed by)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|\s+on|\s+for|\s+with|\s+where|\s*,|\.|;|\s+previously)|\s*$)",
             text,
             flags=re.IGNORECASE,
         )
         if not m:
+            # Pattern for continuation after "and" (e.g., "lives in X and works at Y")
+            m = re.search(r"\band\s+work(?:s)? (?:at|for)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|\s+in|,|\.|;)|\s*$)", text, flags=re.IGNORECASE)
+        if not m:
             # Try "you're working at/for X" pattern
             m = re.search(r"\byou're working (?:at|for)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:(?:\s+as|\s+and|\s+but|,|\.|;)|\s*$)", text, flags=re.IGNORECASE)
         if not m:
             # Try "User is a [title] at [company]" pattern
             m = re.search(r"\b(?:user|he|she|they|i|you)\s+(?:is|am|are|was|were)\s+a\s+[A-Z][A-Za-z\s]+?\s+at\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+and|\s+in|,|\.|;|\s*$)", text, flags=re.IGNORECASE)
+        if not m:
+            # Try "[Name] is a [title] at [company]" pattern (for third-person references)
+            m = re.search(r"\b[A-Z][a-z]+\s+(?:is|was)\s+a\s+[A-Z][A-Za-z\s]+?\s+at\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+and|\s+in|,|\.|;|\s*$)", text, flags=re.IGNORECASE)
         if m:
             employer_raw = m.group(1)
             # Trim at common continuations (redundant now but kept for safety)
