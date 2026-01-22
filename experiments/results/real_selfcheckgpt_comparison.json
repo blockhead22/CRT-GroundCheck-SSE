@@ -1,0 +1,29 @@
+{
+  "groundcheck": {
+    "overall_accuracy": 0.72,
+    "category_accuracy": {
+      "factual_grounding": 0.8,
+      "contradictions": 0.7,
+      "partial_grounding": 0.4,
+      "paraphrasing": 0.7,
+      "multi_hop": 1.0
+    },
+    "avg_latency_ms": 0.9922647476196288,
+    "total_examples": 50,
+    "correct_examples": 36
+  },
+  "selfcheckgpt": {
+    "overall_accuracy": 0.62,
+    "category_accuracy": {
+      "factual_grounding": 0.8,
+      "contradictions": 0.1,
+      "partial_grounding": 0.9,
+      "paraphrasing": 0.8,
+      "multi_hop": 0.5
+    },
+    "avg_latency_ms": 3085.166172981262,
+    "total_examples": 50,
+    "correct_examples": 31,
+    "errors": null
+  }
+}
