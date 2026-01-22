@@ -16,11 +16,14 @@ Architecture:
 import sqlite3
 import json
 import time
+import logging
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass
 
 from .fact_slots import extract_fact_slots, ExtractedFact
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -52,32 +55,62 @@ class GlobalUserProfile:
     
     def __init__(self, db_path: str = "personal_agent/crt_user_profile.db"):
         self.db_path = db_path
-        print(f"[DEBUG] GlobalUserProfile init: db_path={self.db_path}")
+        logger.debug(f"GlobalUserProfile init: db_path={self.db_path}")
         self._init_db()
     
     def _init_db(self):
         """Initialize profile database."""
-        print(f"[DEBUG] GlobalUserProfile creating DB at: {self.db_path}")
+        logger.debug(f"GlobalUserProfile creating DB at: {self.db_path}")
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # New multi-value table: allows multiple values per slot (e.g., multiple employers)
+        # Uses composite key (slot, normalized) to prevent exact duplicates
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_profile (
-                slot TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS user_profile_multi (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slot TEXT NOT NULL,
                 value TEXT NOT NULL,
                 normalized TEXT NOT NULL,
                 timestamp REAL NOT NULL,
                 source_thread TEXT NOT NULL,
                 confidence REAL DEFAULT 0.9,
-                updated_count INTEGER DEFAULT 1
+                active INTEGER DEFAULT 1,
+                UNIQUE(slot, normalized)
             )
         """)
         
-        # Index for fast lookups
+        # Indexes for fast lookups
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_timestamp 
-            ON user_profile(timestamp DESC)
+            CREATE INDEX IF NOT EXISTS idx_multi_slot 
+            ON user_profile_multi(slot, active, timestamp DESC)
         """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_multi_timestamp 
+            ON user_profile_multi(timestamp DESC)
+        """)
+        
+        # Migrate old single-value table if it exists (one-time migration)
+        # Check if migration has already been done by looking for a marker
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='user_profile'
+        """)
+        if cursor.fetchone():
+            # Check if we already migrated (look for data in multi table)
+            cursor.execute("SELECT COUNT(*) FROM user_profile_multi")
+            already_migrated = cursor.fetchone()[0] > 0
+            
+            if not already_migrated:
+                # Migrate existing data to multi table
+                cursor.execute("""
+                    INSERT OR IGNORE INTO user_profile_multi 
+                    (slot, value, normalized, timestamp, source_thread, confidence)
+                    SELECT slot, value, normalized, timestamp, source_thread, confidence
+                    FROM user_profile
+                """)
+                logger.info(f"Migrated {cursor.rowcount} facts from old user_profile table")
         
         conn.commit()
         conn.close()
@@ -86,12 +119,29 @@ class GlobalUserProfile:
         """
         Extract facts from user text and update profile.
         
+        Now supports multiple values per slot (e.g., multiple employers).
+        Uses UNIQUE(slot, normalized) to prevent exact duplicates.
+        
+        Filters out temporal/temporary statements to avoid storing:
+        - "I'm working on homework tonight" (temporary activity)
+        - "I'm currently reviewing code" (temporary state)
+        
+        Only stores durable identity facts like:
+        - "I work at Walmart" (permanent employer)
+        - "I'm a freelance web developer" (occupation)
+        
         Returns:
-            Dictionary of slot -> value for facts that were updated
+            Dictionary of slot -> value for facts that were updated/added
         """
-        print(f"[DEBUG] GlobalUserProfile.update_from_text called: text='{text[:50]}'")
+        logger.debug(f"GlobalUserProfile.update_from_text called: text='{text[:50]}'")
+        
+        # Guard rail: Skip temporal/temporary statements
+        if self.is_temporal_statement(text):
+            logger.debug(f"Skipping temporal statement: {text[:50]}")
+            return {}
+        
         facts = extract_fact_slots(text)
-        print(f"[DEBUG] Extracted {len(facts)} facts: {list(facts.keys())}")
+        logger.debug(f"Extracted {len(facts)} facts: {list(facts.keys())}")
         if not facts:
             return {}
         
@@ -100,53 +150,119 @@ class GlobalUserProfile:
         cursor = conn.cursor()
         
         for slot, fact in facts.items():
-            # Check if slot already exists
-            cursor.execute("SELECT value, normalized FROM user_profile WHERE slot = ?", (slot,))
+            new_norm = fact.normalized if hasattr(fact, 'normalized') else fact.value.lower()
+            
+            # Check if this exact value already exists (using normalized form)
+            cursor.execute("""
+                SELECT id, value FROM user_profile_multi 
+                WHERE slot = ? AND normalized = ? AND active = 1
+            """, (slot, new_norm))
             existing = cursor.fetchone()
             
             if existing:
-                old_value, old_norm = existing
-                new_norm = fact.normalized if hasattr(fact, 'normalized') else fact.value.lower()
-                
-                # Only update if value actually changed
-                if old_norm != new_norm:
-                    cursor.execute("""
-                        UPDATE user_profile 
-                        SET value = ?, normalized = ?, timestamp = ?, 
-                            source_thread = ?, updated_count = updated_count + 1
-                        WHERE slot = ?
-                    """, (fact.value, new_norm, time.time(), thread_id, slot))
-                    updated[slot] = fact.value
-            else:
-                # Insert new fact
+                # Update timestamp to show this value was recently mentioned
                 cursor.execute("""
-                    INSERT INTO user_profile 
-                    (slot, value, normalized, timestamp, source_thread, confidence)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (
-                    slot,
-                    fact.value,
-                    fact.normalized if hasattr(fact, 'normalized') else fact.value.lower(),
-                    time.time(),
-                    thread_id,
-                    0.9
-                ))
-                updated[slot] = fact.value
+                    UPDATE user_profile_multi 
+                    SET timestamp = ?, source_thread = ?
+                    WHERE id = ?
+                """, (time.time(), thread_id, existing[0]))
+                logger.debug(f"Updated existing fact: {slot} = {existing[1]}")
+            else:
+                # Insert new value (allows multiple values per slot)
+                try:
+                    cursor.execute("""
+                        INSERT INTO user_profile_multi 
+                        (slot, value, normalized, timestamp, source_thread, confidence)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (
+                        slot,
+                        fact.value,
+                        new_norm,
+                        time.time(),
+                        thread_id,
+                        0.9
+                    ))
+                    updated[slot] = fact.value
+                    logger.debug(f"Added new fact: {slot} = {fact.value}")
+                except sqlite3.IntegrityError:
+                    # Duplicate entry (shouldn't happen due to check above, but handle gracefully)
+                    logger.debug(f"Duplicate fact skipped: {slot} = {fact.value}")
         
         conn.commit()
         conn.close()
         
         return updated
     
+    def is_temporal_statement(self, text: str) -> bool:
+        """
+        Detect temporal/temporary statements that shouldn't be stored as permanent facts.
+        
+        Public method to allow testing and external validation of temporal filtering.
+        
+        Examples of what this catches:
+        - "I'm working on homework tonight"
+        - "I'm currently reviewing code"
+        - "I'm studying for exams this week"
+        - "I'm doing some freelance work today"
+        - "I'm learning about Python recently"
+        
+        Examples of what this allows:
+        - "I work at Walmart" (permanent employer)
+        - "I'm a freelance web developer" (occupation/identity)
+        - "I graduated from MIT" (historical fact)
+        
+        Returns:
+            True if the statement appears temporal/temporary, False otherwise
+        """
+        text_lower = text.lower()
+        
+        # Temporal markers indicating temporary activity
+        temporal_markers = [
+            'tonight', 'today', 'this week', 'this month', 'this year',
+            'right now', 'at the moment', 'currently',
+            'this morning', 'this afternoon', 'this evening',
+            'these days', 'lately', 'recently',
+        ]
+        
+        # Check for temporal markers
+        has_temporal = any(marker in text_lower for marker in temporal_markers)
+        
+        # Activity verbs that indicate temporary actions (not identity)
+        # when combined with temporal markers
+        temporary_activities = [
+            'working on', 'studying', 'reviewing', 'reading about',
+            'learning about', 'practicing', 'preparing for',
+            'doing some', 'helping with', 'finishing up',
+        ]
+        
+        has_temporary_activity = any(activity in text_lower for activity in temporary_activities)
+        
+        # If both temporal marker AND temporary activity, it's likely temporary
+        if has_temporal and has_temporary_activity:
+            return True
+        
+        # "working on" without "work at/for" is usually temporary
+        if 'working on' in text_lower and not ('work at' in text_lower or 'work for' in text_lower):
+            return True
+        
+        return False
+    
     def get_fact(self, slot: str) -> Optional[UserProfileFact]:
-        """Get a single fact by slot name."""
+        """
+        Get the most recent fact for a slot.
+        
+        Note: If there are multiple values for a slot (e.g., multiple employers),
+        this returns only the most recent one. Use get_all_facts_for_slot() to get all.
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute("""
             SELECT slot, value, normalized, timestamp, source_thread, confidence
-            FROM user_profile
-            WHERE slot = ?
+            FROM user_profile_multi
+            WHERE slot = ? AND active = 1
+            ORDER BY timestamp DESC
+            LIMIT 1
         """, (slot,))
         
         row = cursor.fetchone()
@@ -164,20 +280,98 @@ class GlobalUserProfile:
             confidence=row[5]
         )
     
-    def get_all_facts(self) -> Dict[str, UserProfileFact]:
-        """Get all stored user profile facts."""
+    def get_all_facts_for_slot(self, slot: str) -> List[UserProfileFact]:
+        """
+        Get ALL facts for a specific slot (e.g., all employers).
+        
+        Returns list sorted by timestamp (most recent first).
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         cursor.execute("""
             SELECT slot, value, normalized, timestamp, source_thread, confidence
-            FROM user_profile
+            FROM user_profile_multi
+            WHERE slot = ? AND active = 1
             ORDER BY timestamp DESC
+        """, (slot,))
+        
+        facts = []
+        for row in cursor.fetchall():
+            facts.append(UserProfileFact(
+                slot=row[0],
+                value=row[1],
+                normalized=row[2],
+                timestamp=row[3],
+                source_thread=row[4],
+                confidence=row[5]
+            ))
+        
+        conn.close()
+        return facts
+    
+    def get_all_facts(self) -> Dict[str, UserProfileFact]:
+        """
+        Get all stored user profile facts.
+        
+        Note: If a slot has multiple values (e.g., multiple employers), 
+        this returns only the most recent one per slot.
+        For all values, iterate through slots and call get_all_facts_for_slot().
+        
+        Returns dict of slot -> most recent fact
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Get most recent fact per slot using subquery
+        cursor.execute("""
+            SELECT upf.slot, upf.value, upf.normalized, upf.timestamp, upf.source_thread, upf.confidence
+            FROM user_profile_multi upf
+            INNER JOIN (
+                SELECT slot, MAX(timestamp) as max_ts
+                FROM user_profile_multi
+                WHERE active = 1
+                GROUP BY slot
+            ) latest ON upf.slot = latest.slot AND upf.timestamp = latest.max_ts
+            WHERE upf.active = 1
+            ORDER BY upf.timestamp DESC
         """)
         
         facts = {}
         for row in cursor.fetchall():
-            facts[row[0]] = UserProfileFact(
+            # Only keep first (most recent) entry per slot
+            if row[0] not in facts:
+                facts[row[0]] = UserProfileFact(
+                    slot=row[0],
+                    value=row[1],
+                    normalized=row[2],
+                    timestamp=row[3],
+                    source_thread=row[4],
+                    confidence=row[5]
+                )
+        
+        conn.close()
+        return facts
+    
+    def get_all_facts_expanded(self) -> Dict[str, List[UserProfileFact]]:
+        """
+        Get ALL stored facts including multiple values per slot.
+        
+        Returns dict of slot -> list of facts (newest first)
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT slot, value, normalized, timestamp, source_thread, confidence
+            FROM user_profile_multi
+            WHERE active = 1
+            ORDER BY slot, timestamp DESC
+        """)
+        
+        facts: Dict[str, List[UserProfileFact]] = {}
+        for row in cursor.fetchall():
+            fact = UserProfileFact(
                 slot=row[0],
                 value=row[1],
                 normalized=row[2],
@@ -185,20 +379,31 @@ class GlobalUserProfile:
                 source_thread=row[4],
                 confidence=row[5]
             )
+            facts.setdefault(row[0], []).append(fact)
         
         conn.close()
         return facts
     
     def get_facts_for_slots(self, slots: List[str]) -> Dict[str, UserProfileFact]:
-        """Get facts for specific slots."""
+        """
+        Get facts for specific slots (most recent value per slot).
+        
+        For slots with multiple values, use get_all_facts_for_slot() instead.
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         placeholders = ','.join('?' * len(slots))
         cursor.execute(f"""
-            SELECT slot, value, normalized, timestamp, source_thread, confidence
-            FROM user_profile
-            WHERE slot IN ({placeholders})
+            SELECT upf.slot, upf.value, upf.normalized, upf.timestamp, upf.source_thread, upf.confidence
+            FROM user_profile_multi upf
+            INNER JOIN (
+                SELECT slot, MAX(timestamp) as max_ts
+                FROM user_profile_multi
+                WHERE slot IN ({placeholders}) AND active = 1
+                GROUP BY slot
+            ) latest ON upf.slot = latest.slot AND upf.timestamp = latest.max_ts
+            WHERE upf.active = 1
         """, slots)
         
         facts = {}
@@ -219,7 +424,7 @@ class GlobalUserProfile:
         """Clear all profile data (for testing)."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM user_profile")
+        cursor.execute("DELETE FROM user_profile_multi")
         conn.commit()
         conn.close()
     
@@ -227,15 +432,17 @@ class GlobalUserProfile:
         """
         Convert profile facts to memory-like text format.
         
+        Includes ALL values for multi-value slots (e.g., all employers).
+        
         Returns:
             List of "FACT: slot = value" strings suitable for memory retrieval
         """
-        facts = self.get_all_facts()
+        all_facts = self.get_all_facts_expanded()
         texts = []
         
-        for slot, fact in facts.items():
-            # Format as memory text
+        for slot, fact_list in all_facts.items():
             slot_label = slot.replace('_', ' ')
-            texts.append(f"FACT: {slot_label} = {fact.value}")
+            for fact in fact_list:
+                texts.append(f"FACT: {slot_label} = {fact.value}")
         
         return texts

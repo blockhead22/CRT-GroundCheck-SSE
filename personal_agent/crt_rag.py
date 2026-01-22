@@ -3004,26 +3004,31 @@ class CRTEnhancedRAG:
         injected: List[Tuple[MemoryItem, float]] = []
         
         # First, check global user profile for these slots
+        # NOTE: For slots with multiple values (e.g., multiple employers), inject ALL of them
         try:
             logger.info(f"[PROFILE_DEBUG] Checking global profile for slots: {slots}")
-            profile_facts = self.user_profile.get_facts_for_slots(slots)
-            logger.info(f"[PROFILE_DEBUG] Retrieved {len(profile_facts)} facts from profile: {list(profile_facts.keys())}")
-            for slot, fact in profile_facts.items():
-                # Create a synthetic memory item from profile fact
-                synthetic_mem = MemoryItem(
-                    memory_id=f"profile_{slot}",
-                    vector=encode_vector(f"FACT: {slot} = {fact.value}"),
-                    text=f"FACT: {slot.replace('_', ' ')} = {fact.value}",
-                    timestamp=fact.timestamp,
-                    confidence=fact.confidence,
-                    trust=0.95,  # High trust for profile facts
-                    source=MemorySource.USER,
-                    sse_mode=SSEMode.LOSSLESS  # Identity-critical fact
-                )
-                if synthetic_mem.memory_id not in retrieved_ids:
-                    logger.info(f"[PROFILE_DEBUG] Injecting profile fact: {slot} = {fact.value}")
-                    injected.append((synthetic_mem, 1.0))
-                    retrieved_ids.add(synthetic_mem.memory_id)
+            # Get ALL facts for each slot (not just most recent)
+            for slot in slots:
+                slot_facts = self.user_profile.get_all_facts_for_slot(slot)
+                logger.info(f"[PROFILE_DEBUG] Retrieved {len(slot_facts)} facts for slot '{slot}'")
+                
+                for idx, fact in enumerate(slot_facts):
+                    # Create a synthetic memory item from profile fact
+                    # Use unique memory_id for each value (slot_0, slot_1, etc.)
+                    synthetic_mem = MemoryItem(
+                        memory_id=f"profile_{slot}_{idx}",
+                        vector=encode_vector(f"FACT: {slot} = {fact.value}"),
+                        text=f"FACT: {slot.replace('_', ' ')} = {fact.value}",
+                        timestamp=fact.timestamp,
+                        confidence=fact.confidence,
+                        trust=0.95,  # High trust for profile facts
+                        source=MemorySource.USER,
+                        sse_mode=SSEMode.LOSSLESS  # Identity-critical fact
+                    )
+                    if synthetic_mem.memory_id not in retrieved_ids:
+                        logger.info(f"[PROFILE_DEBUG] Injecting profile fact: {slot} = {fact.value}")
+                        injected.append((synthetic_mem, 1.0))
+                        retrieved_ids.add(synthetic_mem.memory_id)
         except Exception as e:
             logger.error(f"[PROFILE_DEBUG] Failed to augment with profile facts: {e}", exc_info=True)
         
