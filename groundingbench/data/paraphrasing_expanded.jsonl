@@ -1,0 +1,100 @@
+{"id": "paraphrase_0", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Portland", "trust": 0.9}], "output": "You are located in Portland", "expected_grounded": true}
+{"id": "paraphrase_1", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from New York", "trust": 0.9}], "output": "You are originally from New York", "expected_grounded": true}
+{"id": "paraphrase_2", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Apple", "trust": 0.9}], "output": "You work at Apple", "expected_grounded": true}
+{"id": "paraphrase_3", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Chicago", "trust": 0.9}], "output": "You reside in Chicago", "expected_grounded": true}
+{"id": "paraphrase_4", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from San Francisco", "trust": 0.9}], "output": "You are originally from San Francisco", "expected_grounded": true}
+{"id": "paraphrase_5", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from San Francisco", "trust": 0.9}], "output": "You are originally from San Francisco", "expected_grounded": true}
+{"id": "paraphrase_6", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Tesla", "trust": 0.9}], "output": "You work for Tesla", "expected_grounded": true}
+{"id": "paraphrase_7", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Anthropic", "trust": 0.9}], "output": "You are employed by Anthropic", "expected_grounded": true}
+{"id": "paraphrase_8", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Netflix", "trust": 0.9}], "output": "You work for Netflix", "expected_grounded": true}
+{"id": "paraphrase_9", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Boston", "trust": 0.9}], "output": "You are located in Boston", "expected_grounded": true}
+{"id": "paraphrase_10", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Meta", "trust": 0.9}], "output": "You work at Meta", "expected_grounded": true}
+{"id": "paraphrase_11", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Chicago", "trust": 0.9}], "output": "You are located in Chicago", "expected_grounded": true}
+{"id": "paraphrase_12", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in New York", "trust": 0.9}], "output": "You reside in New York", "expected_grounded": true}
+{"id": "paraphrase_13", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Tesla", "trust": 0.9}], "output": "You work for Tesla", "expected_grounded": true}
+{"id": "paraphrase_14", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Boston", "trust": 0.9}], "output": "You reside in Boston", "expected_grounded": true}
+{"id": "paraphrase_15", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Portland", "trust": 0.9}], "output": "You are located in Portland", "expected_grounded": true}
+{"id": "paraphrase_16", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Austin", "trust": 0.9}], "output": "You are originally from Austin", "expected_grounded": true}
+{"id": "paraphrase_17", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Seattle", "trust": 0.9}], "output": "You are located in Seattle", "expected_grounded": true}
+{"id": "paraphrase_18", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_19", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of OpenAI", "trust": 0.9}], "output": "You work at OpenAI", "expected_grounded": true}
+{"id": "paraphrase_20", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Austin", "trust": 0.9}], "output": "You are located in Austin", "expected_grounded": true}
+{"id": "paraphrase_21", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in New York", "trust": 0.9}], "output": "You reside in New York", "expected_grounded": true}
+{"id": "paraphrase_22", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Boston", "trust": 0.9}], "output": "You are originally from Boston", "expected_grounded": true}
+{"id": "paraphrase_23", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Google", "trust": 0.9}], "output": "You work for Google", "expected_grounded": true}
+{"id": "paraphrase_24", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Austin", "trust": 0.9}], "output": "You reside in Austin", "expected_grounded": true}
+{"id": "paraphrase_25", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Chicago", "trust": 0.9}], "output": "You are located in Chicago", "expected_grounded": true}
+{"id": "paraphrase_26", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Boston", "trust": 0.9}], "output": "You are originally from Boston", "expected_grounded": true}
+{"id": "paraphrase_27", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Chicago", "trust": 0.9}], "output": "You are originally from Chicago", "expected_grounded": true}
+{"id": "paraphrase_28", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Seattle", "trust": 0.9}], "output": "You reside in Seattle", "expected_grounded": true}
+{"id": "paraphrase_29", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Boston", "trust": 0.9}], "output": "You are located in Boston", "expected_grounded": true}
+{"id": "paraphrase_30", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Google", "trust": 0.9}], "output": "You are employed by Google", "expected_grounded": true}
+{"id": "paraphrase_31", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Seattle", "trust": 0.9}], "output": "You reside in Seattle", "expected_grounded": true}
+{"id": "paraphrase_32", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from New York", "trust": 0.9}], "output": "You are originally from New York", "expected_grounded": true}
+{"id": "paraphrase_33", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Amazon", "trust": 0.9}], "output": "You work for Amazon", "expected_grounded": true}
+{"id": "paraphrase_34", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Tesla", "trust": 0.9}], "output": "You work at Tesla", "expected_grounded": true}
+{"id": "paraphrase_35", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Anthropic", "trust": 0.9}], "output": "You are employed by Anthropic", "expected_grounded": true}
+{"id": "paraphrase_36", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Boston", "trust": 0.9}], "output": "You are originally from Boston", "expected_grounded": true}
+{"id": "paraphrase_37", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Microsoft", "trust": 0.9}], "output": "You work for Microsoft", "expected_grounded": true}
+{"id": "paraphrase_38", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Apple", "trust": 0.9}], "output": "You are employed by Apple", "expected_grounded": true}
+{"id": "paraphrase_39", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Amazon", "trust": 0.9}], "output": "You work for Amazon", "expected_grounded": true}
+{"id": "paraphrase_40", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Portland", "trust": 0.9}], "output": "You are located in Portland", "expected_grounded": true}
+{"id": "paraphrase_41", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Spotify", "trust": 0.9}], "output": "You work for Spotify", "expected_grounded": true}
+{"id": "paraphrase_42", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Austin", "trust": 0.9}], "output": "You are located in Austin", "expected_grounded": true}
+{"id": "paraphrase_43", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Denver", "trust": 0.9}], "output": "You are originally from Denver", "expected_grounded": true}
+{"id": "paraphrase_44", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_45", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Netflix", "trust": 0.9}], "output": "You work for Netflix", "expected_grounded": true}
+{"id": "paraphrase_46", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_47", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Google", "trust": 0.9}], "output": "You are employed by Google", "expected_grounded": true}
+{"id": "paraphrase_48", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Austin", "trust": 0.9}], "output": "You are located in Austin", "expected_grounded": true}
+{"id": "paraphrase_49", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Portland", "trust": 0.9}], "output": "You are located in Portland", "expected_grounded": true}
+{"id": "paraphrase_50", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Seattle", "trust": 0.9}], "output": "You reside in Seattle", "expected_grounded": true}
+{"id": "paraphrase_51", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in New York", "trust": 0.9}], "output": "You are located in New York", "expected_grounded": true}
+{"id": "paraphrase_52", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Google", "trust": 0.9}], "output": "You work for Google", "expected_grounded": true}
+{"id": "paraphrase_53", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Apple", "trust": 0.9}], "output": "You work at Apple", "expected_grounded": true}
+{"id": "paraphrase_54", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in San Francisco", "trust": 0.9}], "output": "You are located in San Francisco", "expected_grounded": true}
+{"id": "paraphrase_55", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_56", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Google", "trust": 0.9}], "output": "You work for Google", "expected_grounded": true}
+{"id": "paraphrase_57", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Austin", "trust": 0.9}], "output": "You are originally from Austin", "expected_grounded": true}
+{"id": "paraphrase_58", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Boston", "trust": 0.9}], "output": "You reside in Boston", "expected_grounded": true}
+{"id": "paraphrase_59", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Austin", "trust": 0.9}], "output": "You are originally from Austin", "expected_grounded": true}
+{"id": "paraphrase_60", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Boston", "trust": 0.9}], "output": "You are originally from Boston", "expected_grounded": true}
+{"id": "paraphrase_61", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Meta", "trust": 0.9}], "output": "You work at Meta", "expected_grounded": true}
+{"id": "paraphrase_62", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_63", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Austin", "trust": 0.9}], "output": "You are originally from Austin", "expected_grounded": true}
+{"id": "paraphrase_64", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Meta", "trust": 0.9}], "output": "You are employed by Meta", "expected_grounded": true}
+{"id": "paraphrase_65", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Chicago", "trust": 0.9}], "output": "You are located in Chicago", "expected_grounded": true}
+{"id": "paraphrase_66", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of OpenAI", "trust": 0.9}], "output": "You work at OpenAI", "expected_grounded": true}
+{"id": "paraphrase_67", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Seattle", "trust": 0.9}], "output": "You reside in Seattle", "expected_grounded": true}
+{"id": "paraphrase_68", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Spotify", "trust": 0.9}], "output": "You work for Spotify", "expected_grounded": true}
+{"id": "paraphrase_69", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Microsoft", "trust": 0.9}], "output": "You work at Microsoft", "expected_grounded": true}
+{"id": "paraphrase_70", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Apple", "trust": 0.9}], "output": "You are employed by Apple", "expected_grounded": true}
+{"id": "paraphrase_71", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from San Francisco", "trust": 0.9}], "output": "You are originally from San Francisco", "expected_grounded": true}
+{"id": "paraphrase_72", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from New York", "trust": 0.9}], "output": "You are originally from New York", "expected_grounded": true}
+{"id": "paraphrase_73", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Portland", "trust": 0.9}], "output": "You reside in Portland", "expected_grounded": true}
+{"id": "paraphrase_74", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Chicago", "trust": 0.9}], "output": "You reside in Chicago", "expected_grounded": true}
+{"id": "paraphrase_75", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Seattle", "trust": 0.9}], "output": "You reside in Seattle", "expected_grounded": true}
+{"id": "paraphrase_76", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Denver", "trust": 0.9}], "output": "You reside in Denver", "expected_grounded": true}
+{"id": "paraphrase_77", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_78", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of OpenAI", "trust": 0.9}], "output": "You work at OpenAI", "expected_grounded": true}
+{"id": "paraphrase_79", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in San Francisco", "trust": 0.9}], "output": "You are located in San Francisco", "expected_grounded": true}
+{"id": "paraphrase_80", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from San Francisco", "trust": 0.9}], "output": "You are originally from San Francisco", "expected_grounded": true}
+{"id": "paraphrase_81", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in Boston", "trust": 0.9}], "output": "You are located in Boston", "expected_grounded": true}
+{"id": "paraphrase_82", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Microsoft", "trust": 0.9}], "output": "You are employed by Microsoft", "expected_grounded": true}
+{"id": "paraphrase_83", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Seattle", "trust": 0.9}], "output": "You reside in Seattle", "expected_grounded": true}
+{"id": "paraphrase_84", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of OpenAI", "trust": 0.9}], "output": "You work at OpenAI", "expected_grounded": true}
+{"id": "paraphrase_85", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Meta", "trust": 0.9}], "output": "You work at Meta", "expected_grounded": true}
+{"id": "paraphrase_86", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Google", "trust": 0.9}], "output": "You are employed by Google", "expected_grounded": true}
+{"id": "paraphrase_87", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User based in San Francisco", "trust": 0.9}], "output": "You are located in San Francisco", "expected_grounded": true}
+{"id": "paraphrase_88", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Google", "trust": 0.9}], "output": "You are employed by Google", "expected_grounded": true}
+{"id": "paraphrase_89", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Netflix", "trust": 0.9}], "output": "You work for Netflix", "expected_grounded": true}
+{"id": "paraphrase_90", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Amazon", "trust": 0.9}], "output": "You work at Amazon", "expected_grounded": true}
+{"id": "paraphrase_91", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User job at Amazon", "trust": 0.9}], "output": "You are employed by Amazon", "expected_grounded": true}
+{"id": "paraphrase_92", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Boston", "trust": 0.9}], "output": "You reside in Boston", "expected_grounded": true}
+{"id": "paraphrase_93", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User from Seattle", "trust": 0.9}], "output": "You are originally from Seattle", "expected_grounded": true}
+{"id": "paraphrase_94", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in Austin", "trust": 0.9}], "output": "You reside in Austin", "expected_grounded": true}
+{"id": "paraphrase_95", "query": "Where do I live?", "memories": [{"id": "m1", "text": "User lives in San Francisco", "trust": 0.9}], "output": "You reside in San Francisco", "expected_grounded": true}
+{"id": "paraphrase_96", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Google", "trust": 0.9}], "output": "You work for Google", "expected_grounded": true}
+{"id": "paraphrase_97", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Microsoft", "trust": 0.9}], "output": "You work for Microsoft", "expected_grounded": true}
+{"id": "paraphrase_98", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User works at Tesla", "trust": 0.9}], "output": "You work for Tesla", "expected_grounded": true}
+{"id": "paraphrase_99", "query": "Where do I work?", "memories": [{"id": "m1", "text": "User employee of Netflix", "trust": 0.9}], "output": "You work at Netflix", "expected_grounded": true}

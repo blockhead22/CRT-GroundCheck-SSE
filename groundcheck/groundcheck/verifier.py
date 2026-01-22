@@ -67,7 +67,27 @@ class GroundCheck:
         self.memory_claim_regex = create_memory_claim_regex()
         self.semantic_threshold = 0.85  # Similarity threshold for paraphrases
         
-        # Load embedding model for semantic matching
+        # Initialize hybrid extractor (graceful fallback if neural unavailable)
+        try:
+            from .neural_extractor import HybridFactExtractor
+            self.hybrid_extractor = HybridFactExtractor(
+                confidence_threshold=0.8,
+                use_neural=True
+            )
+        except ImportError:
+            self.hybrid_extractor = None
+        
+        # Initialize semantic matcher (graceful fallback if embeddings unavailable)
+        try:
+            from .semantic_matcher import SemanticMatcher
+            self.semantic_matcher = SemanticMatcher(
+                use_embeddings=True,
+                embedding_threshold=0.85
+            )
+        except ImportError:
+            self.semantic_matcher = None
+        
+        # Load embedding model for semantic matching (backward compatibility)
         try:
             from sentence_transformers import SentenceTransformer
             self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -97,6 +117,7 @@ class GroundCheck:
         self,
         claimed: str,
         supported_values: Set[str],
+        slot: str = "",
         threshold: float = 0.85,
         use_semantic: bool = True
     ) -> bool:
@@ -110,12 +131,21 @@ class GroundCheck:
         Args:
             claimed: The claimed value to check
             supported_values: Set of supported normalized values
+            slot: Optional fact slot for context-aware matching
             threshold: Similarity threshold for fuzzy matching (default: 0.85)
             use_semantic: Whether to use embedding similarity (default True)
             
         Returns:
             True if value is supported (exact or fuzzy match), False otherwise
         """
+        # Try new semantic matcher if available
+        if hasattr(self, 'semantic_matcher') and self.semantic_matcher is not None:
+            is_match, method, matched = self.semantic_matcher.is_match(
+                claimed, supported_values, slot
+            )
+            return is_match
+        
+        # Fallback to original implementation
         claimed_norm = self._normalize_value(claimed)
         
         # Empty claim is not supported
@@ -448,7 +478,7 @@ class GroundCheck:
                     continue
                 
                 # Check if this individual value is supported (with fuzzy matching)
-                if self._is_value_supported(val, supported_values):
+                if self._is_value_supported(val, supported_values, slot=slot_l):
                     # Find which memory supports this value
                     memory_id = self._find_memory_for_value(val, supported_values, memory_id_by_slot_value.get(slot_l, {}))
                     if memory_id:
@@ -602,7 +632,7 @@ class GroundCheck:
                 slot, value = parsed
                 if slot == claim.slot:
                     # Use fuzzy matching for structured facts
-                    if self._is_value_supported(str(claim.value), {value}):
+                    if self._is_value_supported(str(claim.value), {value}, slot=slot):
                         return memory
             
             # Extract facts from memory text
@@ -611,7 +641,7 @@ class GroundCheck:
                 memory_fact = memory_facts[claim.slot]
                 # Use fuzzy matching
                 memory_values = split_compound_values(str(memory_fact.value))
-                if self._is_value_supported(str(claim.value), set(memory_values)):
+                if self._is_value_supported(str(claim.value), set(memory_values), slot=claim.slot):
                     return memory
             
             # Fallback: fuzzy text matching in memory text

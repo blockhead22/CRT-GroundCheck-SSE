@@ -35,5 +35,15 @@ setup(
             "pytest>=7.0.0",
             "pytest-cov>=4.0.0",
         ],
+        "neural": [
+            "transformers>=4.30.0",
+            "torch>=2.0.0",
+            "sentence-transformers>=2.2.0",
+        ],
+        "all": [
+            "transformers>=4.30.0",
+            "torch>=2.0.0",
+            "sentence-transformers>=2.2.0",
+        ],
     },
 )

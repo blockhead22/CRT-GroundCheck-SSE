@@ -21,10 +21,29 @@ from .types import Memory, VerificationReport, ExtractedFact
 from .verifier import GroundCheck
 from .fact_extractor import extract_fact_slots
 
+# Neural extraction and semantic matching (optional)
+try:
+    from .neural_extractor import HybridFactExtractor, NeuralExtractionResult
+    from .semantic_matcher import SemanticMatcher
+    from .semantic_contradiction import SemanticContradictionDetector, ContradictionResult
+    _NEURAL_AVAILABLE = True
+except ImportError:
+    _NEURAL_AVAILABLE = False
+    HybridFactExtractor = None
+    NeuralExtractionResult = None
+    SemanticMatcher = None
+    SemanticContradictionDetector = None
+    ContradictionResult = None
+
 __all__ = [
     "GroundCheck",
     "Memory",
     "VerificationReport",
     "ExtractedFact",
     "extract_fact_slots",
+    "HybridFactExtractor",
+    "NeuralExtractionResult",
+    "SemanticMatcher",
+    "SemanticContradictionDetector",
+    "ContradictionResult",
 ]
