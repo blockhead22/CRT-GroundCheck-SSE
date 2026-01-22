@@ -1,0 +1,233 @@
+"""Core tests for GroundCheck verifier."""
+
+import pytest
+from groundcheck import GroundCheck, Memory
+
+
+def test_basic_grounding_pass():
+    """Test that correctly grounded text passes verification."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft")]
+    
+    result = verifier.verify("You work at Microsoft", memories)
+    
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
+
+
+def test_basic_grounding_fail():
+    """Test that hallucinated claims are detected."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft")]
+    
+    result = verifier.verify("You work at Amazon", memories)
+    
+    assert result.passed == False
+    assert "Amazon" in result.hallucinations
+
+
+def test_partial_grounding():
+    """Test mixed grounded and ungrounded claims."""
+    verifier = GroundCheck()
+    memories = [
+        Memory(id="m1", text="User works at Microsoft"),
+        Memory(id="m2", text="User lives in Seattle")
+    ]
+    
+    result = verifier.verify(
+        "You work at Amazon and live in Seattle", 
+        memories
+    )
+    
+    assert result.passed == False
+    assert "Amazon" in result.hallucinations
+    assert "Seattle" not in result.hallucinations
+    assert result.grounding_map.get("Seattle") == "m2"
+
+
+def test_correction_mode():
+    """Test that corrections are generated in strict mode."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft")]
+    
+    result = verifier.verify(
+        "You work at Amazon", 
+        memories, 
+        mode="strict"
+    )
+    
+    assert result.corrected is not None
+    assert "Microsoft" in result.corrected
+    assert "Amazon" not in result.corrected
+
+
+def test_fact_slot_extraction():
+    """Test that fact slots are correctly extracted."""
+    from groundcheck.fact_extractor import extract_fact_slots
+    
+    facts = extract_fact_slots("My name is Alice and I work at Microsoft")
+    
+    assert "name" in facts
+    assert facts["name"].value == "Alice"
+    assert "employer" in facts
+    assert facts["employer"].value == "Microsoft"
+
+
+def test_empty_memories():
+    """Test behavior with no retrieved context."""
+    verifier = GroundCheck()
+    
+    result = verifier.verify("You work at Microsoft", [])
+    
+    assert result.passed == False
+    assert "Microsoft" in result.hallucinations
+
+
+def test_confidence_scoring():
+    """Test confidence scores are calculated."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft", trust=0.9)]
+    
+    result = verifier.verify("You work at Microsoft", memories)
+    
+    assert result.confidence > 0.8
+
+
+def test_paraphrase_detection():
+    """Test that paraphrases are recognized as grounded.
+    
+    Note: This test uses simple string matching. More sophisticated
+    semantic matching could be added as an optional feature.
+    """
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="I work at Microsoft")]
+    
+    result = verifier.verify("You work at Microsoft", memories)
+    
+    # Should recognize the fact even with different phrasing
+    assert result.passed == True
+
+
+def test_multiple_memory_support():
+    """Test claim supported by multiple memories."""
+    verifier = GroundCheck()
+    memories = [
+        Memory(id="m1", text="User works at Microsoft"),
+        Memory(id="m2", text="I work at Microsoft")
+    ]
+    
+    result = verifier.verify("You work at Microsoft", memories)
+    
+    assert result.passed == True
+    assert result.grounding_map.get("Microsoft") in ["m1", "m2"]
+
+
+def test_trust_weighted_verification():
+    """Test that low-trust memories are handled appropriately."""
+    verifier = GroundCheck()
+    memories = [
+        Memory(id="m1", text="User works at Microsoft", trust=0.2),
+        Memory(id="m2", text="User works at Amazon", trust=0.9)
+    ]
+    
+    result = verifier.verify("You work at Amazon", memories)
+    
+    # Should prefer high-trust memory
+    assert result.confidence > 0.8
+
+
+def test_structured_fact_format():
+    """Test that structured FACT: format is recognized."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="FACT: employer = Microsoft")]
+    
+    result = verifier.verify("You work at Microsoft", memories)
+    
+    assert result.passed == True
+
+
+def test_permissive_mode():
+    """Test that permissive mode doesn't generate corrections."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft")]
+    
+    result = verifier.verify(
+        "You work at Amazon",
+        memories,
+        mode="permissive"
+    )
+    
+    assert result.passed == False
+    assert "Amazon" in result.hallucinations
+    assert result.corrected is None
+
+
+def test_extract_claims():
+    """Test the extract_claims method."""
+    verifier = GroundCheck()
+    
+    claims = verifier.extract_claims("My name is Bob and I live in Denver")
+    
+    assert "name" in claims
+    assert claims["name"].value == "Bob"
+    assert "location" in claims
+    assert claims["location"].value == "Denver"
+
+
+def test_find_support():
+    """Test the find_support method."""
+    verifier = GroundCheck()
+    memories = [
+        Memory(id="m1", text="User works at Microsoft"),
+        Memory(id="m2", text="User lives in Seattle")
+    ]
+    
+    # Extract a claim
+    claims = verifier.extract_claims("I work at Microsoft")
+    employer_claim = claims["employer"]
+    
+    # Find supporting memory
+    support = verifier.find_support(employer_claim, memories)
+    
+    assert support is not None
+    assert support.id == "m1"
+
+
+def test_build_grounding_map():
+    """Test the build_grounding_map method."""
+    verifier = GroundCheck()
+    memories = [
+        Memory(id="m1", text="User works at Microsoft"),
+        Memory(id="m2", text="User lives in Seattle")
+    ]
+    
+    claims = verifier.extract_claims("I work at Microsoft and live in Seattle")
+    grounding_map = verifier.build_grounding_map(claims, memories)
+    
+    assert "Microsoft" in grounding_map
+    assert "Seattle" in grounding_map
+    assert grounding_map["Microsoft"] == "m1"
+    assert grounding_map["Seattle"] == "m2"
+
+
+def test_empty_text():
+    """Test verification with empty text."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft")]
+    
+    result = verifier.verify("", memories)
+    
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
+
+
+def test_no_facts_extracted():
+    """Test text with no extractable facts."""
+    verifier = GroundCheck()
+    memories = [Memory(id="m1", text="User works at Microsoft")]
+    
+    result = verifier.verify("Hello, how are you today?", memories)
+    
+    # No facts to verify, so should pass
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
