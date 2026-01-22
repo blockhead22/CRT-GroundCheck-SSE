@@ -104,6 +104,15 @@ class ContradictionListItem(BaseModel):
     query: Optional[str] = None
     old_memory_id: str
     new_memory_id: str
+    # Enhanced fields for UI
+    contradiction_id: Optional[str] = None  # Alias for ledger_id
+    slot: Optional[str] = None
+    old_value: Optional[str] = None
+    new_value: Optional[str] = None
+    old_trust: Optional[float] = None
+    new_trust: Optional[float] = None
+    detected_at: Optional[float] = None  # Alias for timestamp
+    policy: Optional[str] = None
 
 
 class ResolveContradictionRequest(BaseModel):
@@ -1363,7 +1372,47 @@ def create_app() -> FastAPI:
             entries = engine.ledger.get_open_contradictions(limit=limit)
         except Exception:
             entries = []
-        return [ContradictionListItem(**e.to_dict()) for e in entries]
+        
+        # Enhance entries with memory details for UI
+        result = []
+        for e in entries:
+            data = e.to_dict()
+            # Add aliases for frontend compatibility
+            data['contradiction_id'] = data['ledger_id']
+            data['detected_at'] = data['timestamp']
+            
+            # Fetch memory details to populate old_value, new_value, trust scores
+            try:
+                old_mem = engine.memory.get_memory(data['old_memory_id'])
+                if old_mem:
+                    data['old_value'] = old_mem.get('text', '')
+                    data['old_trust'] = old_mem.get('trust', 0.0)
+            except Exception:
+                data['old_value'] = data['old_memory_id']
+                data['old_trust'] = 0.0
+            
+            try:
+                new_mem = engine.memory.get_memory(data['new_memory_id'])
+                if new_mem:
+                    data['new_value'] = new_mem.get('text', '')
+                    data['new_trust'] = new_mem.get('trust', 0.0)
+            except Exception:
+                data['new_value'] = data['new_memory_id']
+                data['new_trust'] = 0.0
+            
+            # Extract slot from affects_slots field (first slot if multiple)
+            if data.get('affects_slots'):
+                slots = str(data['affects_slots']).split(',')
+                data['slot'] = slots[0].strip() if slots else 'unknown'
+            else:
+                data['slot'] = 'unknown'
+            
+            # Set policy from contradiction_type
+            data['policy'] = data.get('contradiction_type', 'conflict')
+            
+            result.append(ContradictionListItem(**data))
+        
+        return result
 
     @app.get("/api/contradictions/work-items", response_model=list[ContradictionWorkItem])
     def contradiction_work_items(

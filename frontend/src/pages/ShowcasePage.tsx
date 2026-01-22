@@ -1,17 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ComparisonView } from '../components/premium/ComparisonView'
 import { ExamplesGallery } from '../components/premium/ExamplesGallery'
 import { IntegrationCodeWidget } from '../components/premium/IntegrationCodeWidget'
 import { MemoryLaneVisualizer } from '../components/premium/MemoryLaneVisualizer'
 import { TrustScoreCard } from '../components/premium/TrustScoreCard'
+import { listRecentMemories, type MemoryListItem } from '../lib/api'
 
 type ShowcaseSection = 'comparison' | 'examples' | 'integration' | 'memory-lanes' | 'trust-scores'
 
 export function ShowcasePage() {
   const [activeSection, setActiveSection] = useState<ShowcaseSection>('comparison')
+  const [stableMemories, setStableMemories] = useState<MemoryListItem[]>([])
+  const [candidateMemories, setCandidateMemories] = useState<MemoryListItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Sample data for visualizations
+  // Fetch real memories on mount
+  useEffect(() => {
+    fetchMemories()
+  }, [])
+
+  async function fetchMemories() {
+    try {
+      setLoading(true)
+      setError(null)
+      const memories = await listRecentMemories('default', 100)
+      
+      // Split by trust threshold (0.75)
+      const stable = memories.filter((m) => m.trust >= 0.75)
+      const candidate = memories.filter((m) => m.trust < 0.75)
+      
+      setStableMemories(stable)
+      setCandidateMemories(candidate)
+    } catch (err) {
+      console.error('Failed to fetch memories:', err)
+      setError(err instanceof Error ? err.message : 'Failed to fetch memories')
+      // Use empty arrays on error
+      setStableMemories([])
+      setCandidateMemories([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Sample data for visualizations (keep for other sections)
   const sampleStableMemories = [
     {
       id: 'm1',
@@ -149,11 +182,43 @@ export function ShowcasePage() {
                 </p>
               </div>
 
-              <MemoryLaneVisualizer
-                stableMemories={sampleStableMemories}
-                candidateMemories={sampleCandidateMemories}
-                onPromoteMemory={(id) => console.log('Promote memory:', id)}
-              />
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="mb-4 text-4xl">⏳</div>
+                    <div className="text-white/60">Loading memories...</div>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <div className="mb-2 text-sm font-semibold text-red-300">Failed to load memories</div>
+                  <div className="mb-3 text-xs text-red-400">{error}</div>
+                  <button
+                    onClick={fetchMemories}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <MemoryLaneVisualizer
+                  stableMemories={stableMemories.map((m) => ({
+                    id: m.memory_id,
+                    text: m.text,
+                    trust: m.trust,
+                    timestamp: m.timestamp * 1000, // Convert to milliseconds
+                    source: m.source,
+                  }))}
+                  candidateMemories={candidateMemories.map((m) => ({
+                    id: m.memory_id,
+                    text: m.text,
+                    trust: m.trust,
+                    timestamp: m.timestamp * 1000, // Convert to milliseconds
+                    source: m.source,
+                  }))}
+                  onPromoteMemory={(id) => console.log('Promote memory:', id)}
+                />
+              )}
             </div>
           )}
 
