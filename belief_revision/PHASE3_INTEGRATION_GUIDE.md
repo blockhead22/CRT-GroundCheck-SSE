@@ -75,13 +75,13 @@ belief_update = {
 
 # Learned Policy Prediction
 action, confidence = predict_resolution_action(belief_update)
-# Result: action='PRESERVE', confidence=0.890
+# Result: action='PRESERVE', confidence=0.753
 
 # Baseline Heuristic (for comparison)
 baseline_action = baseline_heuristic(belief_update)
 # Result: action='OVERRIDE'
 ```
-**Learned Model**: `PRESERVE` (confidence: 89.0%)
+**Learned Model**: `PRESERVE` (confidence: 75.3%)
 **Baseline**: `OVERRIDE`
 *Note: Learned model overrides baseline due to contextual signals.*
 
@@ -100,13 +100,13 @@ belief_update = {
 
 # Learned Policy Prediction
 action, confidence = predict_resolution_action(belief_update)
-# Result: action='PRESERVE', confidence=0.989
+# Result: action='PRESERVE', confidence=0.995
 
 # Baseline Heuristic (for comparison)
 baseline_action = baseline_heuristic(belief_update)
 # Result: action='PRESERVE'
 ```
-**Learned Model**: `PRESERVE` (confidence: 98.9%)
+**Learned Model**: `PRESERVE` (confidence: 99.5%)
 **Baseline**: `PRESERVE`
 
 ### Example 3: Explicit correction
@@ -124,15 +124,14 @@ belief_update = {
 
 # Learned Policy Prediction
 action, confidence = predict_resolution_action(belief_update)
-# Result: action='PRESERVE', confidence=0.846
+# Result: action='OVERRIDE', confidence=0.782
 
 # Baseline Heuristic (for comparison)
 baseline_action = baseline_heuristic(belief_update)
 # Result: action='OVERRIDE'
 ```
-**Learned Model**: `PRESERVE` (confidence: 84.6%)
+**Learned Model**: `OVERRIDE` (confidence: 78.2%)
 **Baseline**: `OVERRIDE`
-*Note: Learned model overrides baseline due to contextual signals.*
 
 ### Example 4: Contradictory statement (low confidence)
 ```python
@@ -149,13 +148,13 @@ belief_update = {
 
 # Learned Policy Prediction
 action, confidence = predict_resolution_action(belief_update)
-# Result: action='ASK_USER', confidence=0.997
+# Result: action='ASK_USER', confidence=0.996
 
 # Baseline Heuristic (for comparison)
 baseline_action = baseline_heuristic(belief_update)
 # Result: action='ASK_USER'
 ```
-**Learned Model**: `ASK_USER` (confidence: 99.7%)
+**Learned Model**: `ASK_USER` (confidence: 99.6%)
 **Baseline**: `ASK_USER`
 
 ### Example 5: Age update (temporal)
@@ -173,13 +172,13 @@ belief_update = {
 
 # Learned Policy Prediction
 action, confidence = predict_resolution_action(belief_update)
-# Result: action='OVERRIDE', confidence=0.998
+# Result: action='OVERRIDE', confidence=0.992
 
 # Baseline Heuristic (for comparison)
 baseline_action = baseline_heuristic(belief_update)
 # Result: action='OVERRIDE'
 ```
-**Learned Model**: `OVERRIDE` (confidence: 99.8%)
+**Learned Model**: `OVERRIDE` (confidence: 99.2%)
 **Baseline**: `OVERRIDE`
 
 ## Integration into CRT System
@@ -233,7 +232,7 @@ log_policy_decision({
 ```
 
 ## Performance Summary
-- **Test Accuracy**: 89.0% (XGBoost model)
+- **Test Accuracy**: 75.3% (XGBoost model)
 - **Improvement over Baseline**: +13.9 percentage points
 - **All Actions F1 Score**: ≥ 0.80 ✓
 - **Inference Time**: <1ms per prediction

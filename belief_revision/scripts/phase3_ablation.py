@@ -330,7 +330,7 @@ def save_results(results_df, feature_importance):
     ])
     
     # Write summary
-    with open(ABLATION_SUMMARY_MD, 'w') as f:
+    with open(ABLATION_SUMMARY_MD, 'w', encoding='utf-8') as f:
         f.write(''.join(lines))
     
     print(f"✓ Ablation summary: {ABLATION_SUMMARY_MD}")

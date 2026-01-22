@@ -245,7 +245,7 @@ For each example, provide one of: `REFINEMENT`, `REVISION`, `TEMPORAL`, `CONFLIC
 *Version 1.0 - Generated for Phase 2 Belief Revision Classifier*
 """
     
-    with open(ANNOTATION_GUIDE, 'w') as f:
+    with open(ANNOTATION_GUIDE, 'w', encoding='utf-8') as f:
         f.write(guide)
     
     print(f"✓ Saved to {ANNOTATION_GUIDE}")

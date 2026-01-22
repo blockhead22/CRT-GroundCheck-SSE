@@ -20,14 +20,14 @@ the contribution of different feature groups to the belief revision classifier.
 |------------|----------|-----------------|---------------|
 | All Features | 1.0000 | +0.0000 | 18 |
 | No Semantic | 1.0000 | +0.0000 | 16 |
-| No Temporal | 1.0000 | +0.0000 | 15 |
+| No Temporal | 0.9944 | -0.0056 | 15 |
 | No Linguistic | 1.0000 | +0.0000 | 11 |
 | Top 5 Only | 1.0000 | +0.0000 | 5 |
 
 ## Key Findings
 
-1. **Most Critical Feature Group**: No Semantic
-   - Removing this group caused the largest accuracy drop: 0.0000
+1. **Most Critical Feature Group**: No Temporal
+   - Removing this group caused the largest accuracy drop: 0.0056
    - Demonstrates the importance of these features for classification
 
 2. **Semantic Features Impact**:
@@ -36,8 +36,8 @@ the contribution of different feature groups to the belief revision classifier.
    - Semantic similarity features (query-to-old, cross-memory) have moderate impact
 
 3. **Temporal Features Impact**:
-   - Accuracy without temporal features: 1.0000
-   - Delta: 0.0000
+   - Accuracy without temporal features: 0.9944
+   - Delta: -0.0056
    - Time-based features (time_delta, recency, update_frequency) have moderate impact
 
 4. **Linguistic Features Impact**:
@@ -55,16 +55,16 @@ the contribution of different feature groups to the belief revision classifier.
 
 Top 10 features by Random Forest importance:
 
-3. **time_delta_days**: 0.1628
-4. **recency_score**: 0.1626
-18. **drift_score**: 0.1486
-9. **word_count_delta**: 0.1089
-17. **trust_score**: 0.0830
-16. **memory_confidence**: 0.0708
-10. **negation_in_new**: 0.0692
-12. **negation_delta**: 0.0583
-1. **query_to_old_similarity**: 0.0484
-5. **update_frequency**: 0.0429
+3. **time_delta_days**: 0.1774
+4. **recency_score**: 0.1700
+18. **drift_score**: 0.1656
+9. **word_count_delta**: 0.1018
+12. **negation_delta**: 0.0706
+16. **memory_confidence**: 0.0698
+17. **trust_score**: 0.0640
+10. **negation_in_new**: 0.0513
+5. **update_frequency**: 0.0413
+1. **query_to_old_similarity**: 0.0327
 
 ## Recommendations
 

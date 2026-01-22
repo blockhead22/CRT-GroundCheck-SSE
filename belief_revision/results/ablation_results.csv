@@ -1,6 +1,6 @@
 Feature_Set,Accuracy,Delta_from_Full,Features_Used
 All Features,1.0,0.0,18
 No Semantic,1.0,0.0,16
-No Temporal,1.0,0.0,15
+No Temporal,0.9944444444444445,-0.005555555555555536,15
 No Linguistic,1.0,0.0,11
 Top 5 Only,1.0,0.0,5

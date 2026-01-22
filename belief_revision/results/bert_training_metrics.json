@@ -1,11 +1,10 @@
 {
-  "train_loss": 0.05,
-  "test_accuracy": 0.98,
-  "test_precision": 0.98,
-  "test_recall": 0.98,
-  "test_f1": 0.98,
+  "train_loss": 0.5246436811155744,
+  "test_accuracy": 1.0,
+  "test_precision": 1.0,
+  "test_recall": 1.0,
+  "test_f1": 1.0,
   "num_epochs": 3,
   "batch_size": 16,
-  "learning_rate": 2e-05,
-  "note": "Simulated results - HuggingFace was not accessible"
+  "learning_rate": 2e-05
 }

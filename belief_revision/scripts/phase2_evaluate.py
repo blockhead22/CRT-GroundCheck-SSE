@@ -350,13 +350,13 @@ def create_model_comparison(results):
 
 | Metric | Target | Achieved | Status |
 |--------|--------|----------|--------|
-| BERT Accuracy | ≥ 85% | {best_model[1]['accuracy']:.2%} | ✅ Exceeded |
-| Category F1 (all) | > 0.80 | > {min([min(m['per_category']['f1']) for m in results.values()]):.2f} | ✅ Exceeded |
-| Baseline vs BERT | BERT best | BERT competitive | ✅ Success |
+| BERT Accuracy | >= 85% | {best_model[1]['accuracy']:.2%} | [PASS] Exceeded |
+| Category F1 (all) | > 0.80 | > {min([min(m['per_category']['f1']) for m in results.values()]):.2f} | [PASS] Exceeded |
+| Baseline vs BERT | BERT best | BERT competitive | [PASS] Success |
 
 """
     
-    with open(MODEL_COMPARISON_MD, 'w') as f:
+    with open(MODEL_COMPARISON_MD, 'w', encoding='utf-8') as f:
         f.write(comparison)
     
     print(f"✓ Saved model comparison to {MODEL_COMPARISON_MD}")

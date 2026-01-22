@@ -2,7 +2,7 @@
 
 **Model:** Logistic Regression  
 **Test Accuracy:** 1.0000  
-**Total Errors:** 0 / 182 (0.0%)
+**Total Errors:** 0 / 180 (0.0%)
 
 ## Summary
 

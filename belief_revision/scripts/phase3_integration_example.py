@@ -439,7 +439,7 @@ def generate_integration_guide():
     ])
     
     # Write to file
-    with open(INTEGRATION_GUIDE_MD, 'w') as f:
+    with open(INTEGRATION_GUIDE_MD, 'w', encoding='utf-8') as f:
         f.write(''.join(lines))
     
     print(f"✓ Integration guide: {INTEGRATION_GUIDE_MD}")

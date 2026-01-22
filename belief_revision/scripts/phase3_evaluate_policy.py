@@ -281,7 +281,7 @@ def generate_model_comparison(models_dict, baseline):
     ])
     
     # Write to file
-    with open(MODEL_COMPARISON_MD, 'w') as f:
+    with open(MODEL_COMPARISON_MD, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     
     print(f"✓ Saved model comparison: {MODEL_COMPARISON_MD}")
@@ -409,7 +409,7 @@ def error_analysis(xgb_model, X_test, y_test, test_data, feature_cols):
         lines.append("- No misclassifications found!\n")
     
     # Write to file
-    with open(ERROR_ANALYSIS_MD, 'w') as f:
+    with open(ERROR_ANALYSIS_MD, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     
     print(f"✓ Saved error analysis: {ERROR_ANALYSIS_MD}")
