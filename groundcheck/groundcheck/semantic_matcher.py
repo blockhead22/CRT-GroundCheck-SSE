@@ -101,7 +101,17 @@ class SemanticMatcher:
         
         try:
             embeddings = model.encode([claimed, supported])
-            similarity = float(embeddings[0] @ embeddings[1])
+            # Use cosine similarity (normalized dot product)
+            import numpy as np
+            emb1, emb2 = embeddings[0], embeddings[1]
+            norm1 = np.linalg.norm(emb1)
+            norm2 = np.linalg.norm(emb2)
+            
+            # Handle zero vectors
+            if norm1 == 0 or norm2 == 0:
+                return False
+            
+            similarity = float(np.dot(emb1, emb2) / (norm1 * norm2))
             return similarity >= self.embedding_threshold
         except Exception:
             return False

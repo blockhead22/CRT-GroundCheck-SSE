@@ -129,18 +129,32 @@ class TestSemanticMatcher:
         is_match, method, matched = matcher.is_match("the Microsoft", {"Microsoft"})
         assert is_match
     
-    @pytest.mark.skipif(True, reason="Requires sentence-transformers")
     def test_embedding_match(self):
-        """Test embedding-based matching (only when dependencies available)."""
-        matcher = SemanticMatcher(use_embeddings=True)
-        is_match, method, matched = matcher.is_match(
-            "employed by Google",
-            {"works at Google"}
-        )
-        # This would only work if sentence-transformers is installed
-        if matcher.use_embeddings:
+        """Test embedding-based matching with proper cosine similarity."""
+        try:
+            matcher = SemanticMatcher(use_embeddings=True)
+            
+            # Only run if sentence-transformers is available and model loaded
+            if not matcher.use_embeddings or matcher._get_embedding_model() is None:
+                pytest.skip("sentence-transformers not installed or model not available")
+            
+            # Test semantic similarity
+            is_match, method, matched = matcher.is_match(
+                "employed by Google",
+                {"works at Google"}
+            )
             assert is_match
             assert method == "embedding"
+            
+            # Test non-match
+            is_match, method, matched = matcher.is_match(
+                "software engineer",
+                {"data scientist"}
+            )
+            # These shouldn't match even with embeddings
+            assert not is_match
+        except ImportError:
+            pytest.skip("SemanticMatcher not available")
 
 
 class TestNeuralExtractionResult:
