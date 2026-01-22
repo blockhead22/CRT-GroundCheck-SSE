@@ -1,0 +1,722 @@
+[
+  {
+    "id": "synthetic_revision_032",
+    "query": "I live in Seoul",
+    "old_memory": "I live in Tokyo",
+    "new_memory": "I live in Seoul",
+    "context": "User mentioned this after 46 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_047",
+    "query": "My role is Data Scientist",
+    "old_memory": "My role is Data Analyst",
+    "new_memory": "My role is Data Scientist",
+    "context": "User mentioned this after 55 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_039",
+    "query": "I'm 29 years old",
+    "old_memory": "I'm 28 years old",
+    "new_memory": "I'm 29 years old",
+    "context": "User mentioned this after 393 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_034",
+    "query": "I've never used Docker",
+    "old_memory": "I use Docker",
+    "new_memory": "I've never used Docker",
+    "context": "User mentioned this after 51 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_014",
+    "query": "I like running and swimming",
+    "old_memory": "I like running",
+    "new_memory": "I like running and swimming",
+    "context": "User mentioned this after 22 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_038",
+    "query": "My role is Data Scientist",
+    "old_memory": "My role is Data Analyst",
+    "new_memory": "My role is Data Scientist",
+    "context": "User mentioned this after 174 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_001",
+    "query": "My role is Senior Software Engineer",
+    "old_memory": "My role is Software Engineer",
+    "new_memory": "My role is Senior Software Engineer",
+    "context": "User mentioned this after 117 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_029",
+    "query": "I'm 26 years old",
+    "old_memory": "I'm 25 years old",
+    "new_memory": "I'm 26 years old",
+    "context": "User mentioned this after 388 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_006",
+    "query": "I like movies and series",
+    "old_memory": "I like movies",
+    "new_memory": "I like movies and series",
+    "context": "User mentioned this after 12 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_019",
+    "query": "I live in Seoul",
+    "old_memory": "I live in Tokyo",
+    "new_memory": "I live in Seoul",
+    "context": "User mentioned this after 153 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_013",
+    "query": "I don't like morning meetings",
+    "old_memory": "I prefer morning meetings",
+    "new_memory": "I don't like morning meetings",
+    "context": "User mentioned this after 18 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_049",
+    "query": "My role is Director of Product",
+    "old_memory": "My role is Product Manager",
+    "new_memory": "My role is Director of Product",
+    "context": "User mentioned this after 119 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_073",
+    "query": "Currently working on backend optimization",
+    "old_memory": "Currently working on frontend redesign",
+    "new_memory": "Currently working on backend optimization",
+    "context": "User mentioned this after 393 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_038",
+    "query": "I've never used TypeScript",
+    "old_memory": "I use TypeScript",
+    "new_memory": "I've never used TypeScript",
+    "context": "User mentioned this after 51 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_063",
+    "query": "I like reading and writing",
+    "old_memory": "I like reading",
+    "new_memory": "I like reading and writing",
+    "context": "User mentioned this after 30 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_054",
+    "query": "I like Python and JavaScript",
+    "old_memory": "I like Python",
+    "new_memory": "I like Python and JavaScript",
+    "context": "User mentioned this after 29 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_032",
+    "query": "I work with Python, Docker, and Kubernetes",
+    "old_memory": "I work with Python",
+    "new_memory": "I work with Python, Docker, and Kubernetes",
+    "context": "User mentioned this after 24 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_008",
+    "query": "I live in San Francisco",
+    "old_memory": "I live in Seattle",
+    "new_memory": "I live in San Francisco",
+    "context": "User mentioned this after 85 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_009",
+    "query": "I'm 26 years old",
+    "old_memory": "I'm 25 years old",
+    "new_memory": "I'm 26 years old",
+    "context": "User mentioned this after 329 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_012",
+    "query": "I'm 29 years old",
+    "old_memory": "I'm 28 years old",
+    "new_memory": "I'm 29 years old",
+    "context": "User mentioned this after 360 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_014",
+    "query": "I don't like pair programming",
+    "old_memory": "I prefer pair programming",
+    "new_memory": "I don't like pair programming",
+    "context": "User mentioned this after 28 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_001",
+    "query": "I've never used Docker",
+    "old_memory": "I use Docker",
+    "new_memory": "I've never used Docker",
+    "context": "User mentioned this after 36 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_075",
+    "query": "I've never used TypeScript",
+    "old_memory": "I use TypeScript",
+    "new_memory": "I've never used TypeScript",
+    "context": "User mentioned this after 36 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_045",
+    "query": "My role is Senior Software Engineer",
+    "old_memory": "My role is Software Engineer",
+    "new_memory": "My role is Senior Software Engineer",
+    "context": "User mentioned this after 111 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_042",
+    "query": "I work at Meta",
+    "old_memory": "I work at Google",
+    "new_memory": "I work at Meta",
+    "context": "User mentioned this after 144 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_040",
+    "query": "I like running and swimming",
+    "old_memory": "I like running",
+    "new_memory": "I like running and swimming",
+    "context": "User mentioned this after 1 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_025",
+    "query": "Currently working on database migration",
+    "old_memory": "Currently working on API redesign",
+    "new_memory": "Currently working on database migration",
+    "context": "User mentioned this after 385 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_012",
+    "query": "I don't like working remotely",
+    "old_memory": "I prefer working remotely",
+    "new_memory": "I don't like working remotely",
+    "context": "User mentioned this after 57 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_021",
+    "query": "I live in Austin",
+    "old_memory": "I live in New York",
+    "new_memory": "I live in Austin",
+    "context": "User mentioned this after 128 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_023",
+    "query": "I don't like morning meetings",
+    "old_memory": "I prefer morning meetings",
+    "new_memory": "I don't like morning meetings",
+    "context": "User mentioned this after 9 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_036",
+    "query": "I work with React, Vue, and Angular",
+    "old_memory": "I work with React",
+    "new_memory": "I work with React, Vue, and Angular",
+    "context": "User mentioned this after 8 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_050",
+    "query": "I've never used TypeScript",
+    "old_memory": "I use TypeScript",
+    "new_memory": "I've never used TypeScript",
+    "context": "User mentioned this after 53 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_064",
+    "query": "I work with Python, Docker, and Kubernetes",
+    "old_memory": "I work with Python",
+    "new_memory": "I work with Python, Docker, and Kubernetes",
+    "context": "User mentioned this after 13 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_030",
+    "query": "I work at Lyft",
+    "old_memory": "I work at Uber",
+    "new_memory": "I work at Lyft",
+    "context": "User mentioned this after 62 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_052",
+    "query": "I'm 29 years old",
+    "old_memory": "I'm 28 years old",
+    "new_memory": "I'm 29 years old",
+    "context": "User mentioned this after 376 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_027",
+    "query": "I work with Python, Docker, and Kubernetes",
+    "old_memory": "I work with Python",
+    "new_memory": "I work with Python, Docker, and Kubernetes",
+    "context": "User mentioned this after 24 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_034",
+    "query": "I'm 29 years old",
+    "old_memory": "I'm 28 years old",
+    "new_memory": "I'm 29 years old",
+    "context": "User mentioned this after 323 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_050",
+    "query": "My role is Director of Product",
+    "old_memory": "My role is Product Manager",
+    "new_memory": "My role is Director of Product",
+    "context": "User mentioned this after 94 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_048",
+    "query": "I work with PostgreSQL, Redis, and MongoDB",
+    "old_memory": "I work with PostgreSQL",
+    "new_memory": "I work with PostgreSQL, Redis, and MongoDB",
+    "context": "User mentioned this after 25 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_006",
+    "query": "I don't like pair programming",
+    "old_memory": "I prefer pair programming",
+    "new_memory": "I don't like pair programming",
+    "context": "User mentioned this after 28 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_027",
+    "query": "My role is Director of Product",
+    "old_memory": "My role is Product Manager",
+    "new_memory": "My role is Director of Product",
+    "context": "User mentioned this after 75 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_070",
+    "query": "I work with PostgreSQL, Redis, and MongoDB",
+    "old_memory": "I work with PostgreSQL",
+    "new_memory": "I work with PostgreSQL, Redis, and MongoDB",
+    "context": "User mentioned this after 19 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_070",
+    "query": "I've never used TypeScript",
+    "old_memory": "I use TypeScript",
+    "new_memory": "I've never used TypeScript",
+    "context": "User mentioned this after 41 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_037",
+    "query": "My role is Senior Software Engineer",
+    "old_memory": "My role is Software Engineer",
+    "new_memory": "My role is Senior Software Engineer",
+    "context": "User mentioned this after 55 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_009",
+    "query": "Currently working on feature development",
+    "old_memory": "Currently working on user research",
+    "new_memory": "Currently working on feature development",
+    "context": "User mentioned this after 391 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_027",
+    "query": "I like movies and series",
+    "old_memory": "I like movies",
+    "new_memory": "I like movies and series",
+    "context": "User mentioned this after 28 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_023",
+    "query": "I live in Berlin",
+    "old_memory": "I live in London",
+    "new_memory": "I live in Berlin",
+    "context": "User mentioned this after 177 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_075",
+    "query": "I like running and swimming",
+    "old_memory": "I like running",
+    "new_memory": "I like running and swimming",
+    "context": "User mentioned this after 10 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_017",
+    "query": "I like Python and JavaScript",
+    "old_memory": "I like Python",
+    "new_memory": "I like Python and JavaScript",
+    "context": "User mentioned this after 23 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_006",
+    "query": "I live in Berlin",
+    "old_memory": "I live in London",
+    "new_memory": "I live in Berlin",
+    "context": "User mentioned this after 82 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_008",
+    "query": "I work with Python, Docker, and Kubernetes",
+    "old_memory": "I work with Python",
+    "new_memory": "I work with Python, Docker, and Kubernetes",
+    "context": "User mentioned this after 26 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_073",
+    "query": "I don't like working remotely",
+    "old_memory": "I prefer working remotely",
+    "new_memory": "I don't like working remotely",
+    "context": "User mentioned this after 33 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_006",
+    "query": "I work with React, Vue, and Angular",
+    "old_memory": "I work with React",
+    "new_memory": "I work with React, Vue, and Angular",
+    "context": "User mentioned this after 18 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_034",
+    "query": "Currently working on database migration",
+    "old_memory": "Currently working on API redesign",
+    "new_memory": "Currently working on database migration",
+    "context": "User mentioned this after 304 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_020",
+    "query": "I work at Lyft",
+    "old_memory": "I work at Uber",
+    "new_memory": "I work at Lyft",
+    "context": "User mentioned this after 38 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_039",
+    "query": "I've never used Kubernetes",
+    "old_memory": "I use Kubernetes",
+    "new_memory": "I've never used Kubernetes",
+    "context": "User mentioned this after 57 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_022",
+    "query": "I don't like working remotely",
+    "old_memory": "I prefer working remotely",
+    "new_memory": "I don't like working remotely",
+    "context": "User mentioned this after 48 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_066",
+    "query": "I'm 26 years old",
+    "old_memory": "I'm 25 years old",
+    "new_memory": "I'm 26 years old",
+    "context": "User mentioned this after 345 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_013",
+    "query": "I work at Spotify",
+    "old_memory": "I work at Netflix",
+    "new_memory": "I work at Spotify",
+    "context": "User mentioned this after 40 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_048",
+    "query": "I'm 29 years old",
+    "old_memory": "I'm 28 years old",
+    "new_memory": "I'm 29 years old",
+    "context": "User mentioned this after 332 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_068",
+    "query": "Currently working on backend optimization",
+    "old_memory": "Currently working on frontend redesign",
+    "new_memory": "Currently working on backend optimization",
+    "context": "User mentioned this after 317 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_050",
+    "query": "I'm 26 years old",
+    "old_memory": "I'm 25 years old",
+    "new_memory": "I'm 26 years old",
+    "context": "User mentioned this after 390 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_016",
+    "query": "I've never used Docker",
+    "old_memory": "I use Docker",
+    "new_memory": "I've never used Docker",
+    "context": "User mentioned this after 43 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_045",
+    "query": "I like reading and writing",
+    "old_memory": "I like reading",
+    "new_memory": "I like reading and writing",
+    "context": "User mentioned this after 20 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_035",
+    "query": "I don't like working remotely",
+    "old_memory": "I prefer working remotely",
+    "new_memory": "I don't like working remotely",
+    "context": "User mentioned this after 36 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_042",
+    "query": "I live in Berlin",
+    "old_memory": "I live in London",
+    "new_memory": "I live in Berlin",
+    "context": "User mentioned this after 97 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_074",
+    "query": "I'm 26 years old",
+    "old_memory": "I'm 25 years old",
+    "new_memory": "I'm 26 years old",
+    "context": "User mentioned this after 362 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_063",
+    "query": "Currently working on backend optimization",
+    "old_memory": "Currently working on frontend redesign",
+    "new_memory": "Currently working on backend optimization",
+    "context": "User mentioned this after 364 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_032",
+    "query": "I've never used TypeScript",
+    "old_memory": "I use TypeScript",
+    "new_memory": "I've never used TypeScript",
+    "context": "User mentioned this after 54 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_015",
+    "query": "I'm 31 years old",
+    "old_memory": "I'm 30 years old",
+    "new_memory": "I'm 31 years old",
+    "context": "User mentioned this after 315 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_034",
+    "query": "I live in San Francisco",
+    "old_memory": "I live in Seattle",
+    "new_memory": "I live in San Francisco",
+    "context": "User mentioned this after 143 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_057",
+    "query": "I don't like morning meetings",
+    "old_memory": "I prefer morning meetings",
+    "new_memory": "I don't like morning meetings",
+    "context": "User mentioned this after 54 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_033",
+    "query": "Currently working on feature development",
+    "old_memory": "Currently working on user research",
+    "new_memory": "Currently working on feature development",
+    "context": "User mentioned this after 300 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_030",
+    "query": "I'm 26 years old",
+    "old_memory": "I'm 25 years old",
+    "new_memory": "I'm 26 years old",
+    "context": "User mentioned this after 375 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_058",
+    "query": "I don't like pair programming",
+    "old_memory": "I prefer pair programming",
+    "new_memory": "I don't like pair programming",
+    "context": "User mentioned this after 49 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_021",
+    "query": "My role is Director of Product",
+    "old_memory": "My role is Product Manager",
+    "new_memory": "My role is Director of Product",
+    "context": "User mentioned this after 88 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_001",
+    "query": "I live in Austin",
+    "old_memory": "I live in New York",
+    "new_memory": "I live in Austin",
+    "context": "User mentioned this after 63 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_010",
+    "query": "I like running and swimming",
+    "old_memory": "I like running",
+    "new_memory": "I like running and swimming",
+    "context": "User mentioned this after 8 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_041",
+    "query": "Currently working on database migration",
+    "old_memory": "Currently working on API redesign",
+    "new_memory": "Currently working on database migration",
+    "context": "User mentioned this after 307 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_011",
+    "query": "I work with React, Vue, and Angular",
+    "old_memory": "I work with React",
+    "new_memory": "I work with React, Vue, and Angular",
+    "context": "User mentioned this after 10 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_049",
+    "query": "I work with Python, Docker, and Kubernetes",
+    "old_memory": "I work with Python",
+    "new_memory": "I work with Python, Docker, and Kubernetes",
+    "context": "User mentioned this after 20 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_revision_031",
+    "query": "My role is Director of Product",
+    "old_memory": "My role is Product Manager",
+    "new_memory": "My role is Director of Product",
+    "context": "User mentioned this after 151 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_048",
+    "query": "I've never used TypeScript",
+    "old_memory": "I use TypeScript",
+    "new_memory": "I've never used TypeScript",
+    "context": "User mentioned this after 55 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_066",
+    "query": "I've never used Docker",
+    "old_memory": "I use Docker",
+    "new_memory": "I've never used Docker",
+    "context": "User mentioned this after 39 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_067",
+    "query": "I don't like pair programming",
+    "old_memory": "I prefer pair programming",
+    "new_memory": "I don't like pair programming",
+    "context": "User mentioned this after 22 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_056",
+    "query": "I like movies and series",
+    "old_memory": "I like movies",
+    "new_memory": "I like movies and series",
+    "context": "User mentioned this after 9 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_050",
+    "query": "Currently working on database migration",
+    "old_memory": "Currently working on API redesign",
+    "new_memory": "Currently working on database migration",
+    "context": "User mentioned this after 382 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_conflict_005",
+    "query": "I don't like pair programming",
+    "old_memory": "I prefer pair programming",
+    "new_memory": "I don't like pair programming",
+    "context": "User mentioned this after 14 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_refinement_003",
+    "query": "I work with PostgreSQL, Redis, and MongoDB",
+    "old_memory": "I work with PostgreSQL",
+    "new_memory": "I work with PostgreSQL, Redis, and MongoDB",
+    "context": "User mentioned this after 13 days",
+    "label": ""
+  },
+  {
+    "id": "synthetic_temporal_015",
+    "query": "Currently working on backend optimization",
+    "old_memory": "Currently working on frontend redesign",
+    "new_memory": "Currently working on backend optimization",
+    "context": "User mentioned this after 351 days",
+    "label": ""
+  }
+]
