@@ -1,117 +1,219 @@
 # Discussion
 
-## Key Contributions
+We discuss applications of contradiction-aware grounding, acknowledge limitations of our approach, and outline future research directions.
 
-### 1. First Contradiction-Aware Grounding System
+## 7.1 Applications
 
-GroundCheck introduces explicit contradiction handling to grounding verification:
-- Detects when retrieved memories contain conflicting information
-- Verifies that outputs appropriately acknowledge contradictions
-- Resolves conflicts using temporal and trust-based reasoning
+Contradiction-aware grounding is essential for four application domains where context evolves over time and contradictions are inevitable.
 
-### 2. Demonstrates Fundamental Limitation of Existing Methods
+### Personal AI Assistants
 
-Our experiments reveal that existing grounding verification systems fail when retrieved context contains contradictions:
-- SelfCheckGPT: 30% accuracy (vs 90% for GroundCheck)
-- CoVe: 35% accuracy (vs 90% for GroundCheck)
+**Current state:** ChatGPT Memory, Claude Projects, and GitHub Copilot Chat all store user context across sessions. These systems accumulate thousands of memories per user over months of interaction. As users update preferences, change jobs, or correct misconceptions, memories inevitably contradict.
 
-This 3x performance gap shows that contradiction handling is not an incremental improvement—it's a fundamental requirement for long-term memory systems.
+**Problem without contradiction detection:** When a user changes jobs from Microsoft to Amazon, the system retrieves both memories without acknowledging the conflict. Responses might say "You work at Amazon" without mentioning the change, potentially confusing users who remember discussing Microsoft previously. Or the system might randomly alternate between companies across conversations, appearing inconsistent.
 
-### 3. Practical Efficiency
+**GroundCheck solution:** Explicit contradiction detection enables proper disclosure: "You work at Amazon (changed from Microsoft in March)." This acknowledges the temporal evolution transparently, building user trust. Users understand the system tracks changes over time rather than presenting contradictions as static facts.
 
-GroundCheck achieves:
-- <10ms latency (250x faster than LLM-based methods)
-- Zero API costs
-- Deterministic behavior
+**Impact:** Personal AI assistants are shifting from stateless (ChatGPT) to stateful (ChatGPT Memory, Claude Projects). As this trend accelerates, contradiction handling becomes critical infrastructure. GroundCheck demonstrates that contradiction detection is practical at production scale (<10ms, zero API cost).
 
-This makes contradiction-aware grounding practical for production deployment.
+### Healthcare Records
 
-## Limitations
+**Current state:** Electronic health records (EHR) systems accumulate patient data over decades: diagnoses, medications, lab results, treatment plans. Medical information frequently evolves: diagnoses are refined based on new tests, medications are adjusted for side effects, treatment plans change as conditions improve or worsen.
 
-### 1. Paraphrasing Detection
+**Problem without contradiction detection:** An AI assistant querying EHR might retrieve both "diagnosed with suspected pneumonia" (initial visit) and "confirmed viral pneumonia" (after lab results). Without contradiction detection, the system might report either diagnosis without acknowledging the evolution. This violates HIPAA requirements for accurate record-keeping and could mislead clinicians.
 
-GroundCheck uses exact matching with normalization, which misses semantic paraphrases:
-- "Software Engineer" ≠ "developer"
-- "lives in Seattle" ≠ "Seattle resident"
+**GroundCheck solution:** Detect contradictions in diagnoses and require disclosure: "Patient has viral pneumonia (diagnosis refined from suspected pneumonia after lab results)." This provides clinicians with complete context about diagnostic evolution.
 
-**Future work:** Integrate semantic similarity models while maintaining speed.
+**Impact:** Healthcare AI must track contradictions for compliance and safety. GroundCheck provides the verification infrastructure needed for trustworthy medical AI systems. Future work should extend GroundCheck to medical-specific fact types (diagnosis codes, medication names, lab value ranges).
 
-### 2. Partial Grounding Strategy
+### Legal Case Management
 
-Current conservative approach flags partial facts as hallucinations. Alternative: Allow partial grounding with explicit acknowledgment of missing information.
+**Current state:** Legal databases contain witness testimony, evidence logs, case facts, and investigation notes. During discovery and trial, facts frequently change: witnesses revise testimony, new evidence contradicts earlier assumptions, case theories evolve.
 
-### 3. Fact Slot Coverage
+**Problem without contradiction detection:** An AI legal assistant might retrieve contradictory testimony—"The meeting was at 3pm" vs "The meeting was at 2pm"—without flagging the conflict. Attorneys need explicit contradiction tracking for cross-examination, audit trails, and conflict resolution. Missing contradictions could result in malpractice claims.
 
-Predefined fact slots may miss domain-specific attributes. **Future work:** Learn fact slots from data or use open-ended extraction.
+**GroundCheck solution:** Detect contradictory testimony and require disclosure: "Witness stated meeting was at 2pm (revised from initial testimony of 3pm)." This enables attorneys to identify inconsistencies and prepare cross-examination questions.
 
-### 4. Multi-hop Reasoning
+**Impact:** Legal AI requires rigorous contradiction tracking. GroundCheck demonstrates that contradiction detection can operate at production speed and cost. Future work should add legal-specific patterns (statutory citations, case precedents, evidentiary standards).
 
-Simple fact-based approach may miss complex reasoning chains. Current accuracy: 100% on GroundingBench, but benchmark has limited complexity.
+### Customer Service Platforms
 
-## Broader Implications
+**Current state:** Customer service AI systems access account histories: shipping addresses, payment methods, subscription plans, support tickets. Account information changes frequently: customers move, update payment cards, upgrade/downgrade plans.
 
-### Long-Term AI Systems Require New Paradigms
+**Problem without contradiction detection:** An AI assistant might retrieve both "shipping address: 123 Main St" (old) and "shipping address: 456 Oak Ave" (new) without recognizing the conflict. Responses like "We have you at two addresses—which is current?" confuse customers and erode trust.
 
-Our work demonstrates that techniques designed for stateless QA don't translate to stateful, long-term memory systems. Key differences:
+**GroundCheck solution:** Detect address contradictions and use most recent with disclosure: "Your shipping address is 456 Oak Ave (updated from 123 Main St on March 15)." This confirms the current address while acknowledging the change, building customer confidence.
 
-| Stateless QA | Long-Term Memory |
-|--------------|------------------|
-| Single retrieval session | Continuous memory updates |
-| Consistent documents | Evolving facts |
-| No temporal dimension | Time-based resolution |
-| Static trust | Dynamic trust scores |
+**Impact:** Customer-facing AI must handle contradictions gracefully to maintain trust. GroundCheck shows contradiction detection is practical for high-volume customer service (millions of daily interactions). Future work should integrate with CRM systems and support multi-lingual contradiction patterns.
 
-### Contradiction Handling as a Core Capability
+## 7.2 Limitations
 
-For personal AI assistants, healthcare systems, and legal case management:
-- Users change jobs, preferences, addresses
-- Medical conditions evolve with new diagnoses
-- Legal facts emerge incrementally
+GroundCheck has three main limitations that future work should address.
 
-Without contradiction handling, these systems produce confusing or incorrect outputs.
+### Regex-Based Extraction
 
-## Societal Impact
+**Limitation:** GroundCheck uses regex patterns to extract facts from natural language text. This approach has several drawbacks:
 
-### Positive Impacts
-- More reliable personal AI assistants
-- Better medical record comprehension
-- Improved legal case tracking
-- Transparent handling of evolving information
+1. **Limited coverage:** Only handles 20+ predefined slot types (employer, location, title, etc.). Cannot extract domain-specific facts without manual pattern engineering.
 
-### Potential Risks
-- Over-reliance on automated contradiction resolution
-- Privacy concerns with temporal tracking
-- Bias in trust score assignment
+2. **Brittle to linguistic variation:** Patterns like "works at X" miss variations like "employed by X since 2020" or "recently joined X." Each variation requires a new pattern.
 
-**Mitigation:** GroundCheck provides transparency (shows which memories conflict) and allows human override of resolution strategies.
+3. **Substring matching errors:** "Software Engineer" matches "Senior Software Engineer" (substring), causing false negatives on title changes.
 
-## Future Directions
+4. **No semantic understanding:** Cannot handle paraphrases like "software engineer" vs "software developer" without explicit patterns for each.
 
-### 1. Learned Contradiction Resolution
-Current: Rule-based (timestamp > trust > random)
-Future: Learn from user feedback which contradictions matter
+**Impact:** GroundCheck achieves 70% paraphrasing accuracy vs 90% for LLM-based methods. Regex limitations account for most paraphrasing failures.
 
-### 2. Hierarchical Memory
-Handle contradictions at different time scales:
-- Short-term: Conversation corrections
-- Medium-term: Preference changes
-- Long-term: Life events
+**Future work:** Replace regex with neural fact extraction (Section 7.3). Use pre-trained models fine-tuned on fact extraction tasks to handle arbitrary linguistic variation and semantic equivalence.
 
-### 3. Multi-Agent Contradiction Handling
-Extend to systems with multiple information sources:
-- Different users providing conflicting info
-- Multiple documents with competing claims
-- Expert disagreement in specialized domains
+### 70% Overall Accuracy
 
-### 4. Active Learning for Ambiguity
-When contradictions are unresolvable, ask clarifying questions:
-- "I have two different employers on record. Which is current?"
-- "Your graduation year is listed as both 2019 and 2020. Can you confirm?"
+**Limitation:** GroundCheck achieves 70% overall accuracy on GroundingBench, lower than SelfCheckGPT (82% on standard benchmarks) and CoVe (79%). This gap reflects trade-offs in our design:
 
-## Conclusion
+1. **Paraphrasing:** 70% vs 90% for baselines (regex limitations)
+2. **Partial grounding:** 40% (same as baselines, all methods struggle)
 
-GroundCheck demonstrates that contradiction-aware grounding verification is both:
-1. **Necessary:** 3x better performance on contradiction handling
-2. **Practical:** Fast, cost-free, deterministic
+**Interpretation:** GroundCheck is not state-of-the-art on basic grounding tasks. It trades some accuracy for contradiction handling—a capability entirely absent from baselines.
 
-Our work opens a new research direction: designing grounding verification systems for long-term, stateful AI applications where context evolves over time.
+**Acceptable trade-off:** For long-term memory systems where contradictions are inevitable, 2x improvement on contradiction detection (60% vs 30%) justifies slightly lower accuracy on paraphrasing. Systems needing state-of-the-art basic grounding should combine GroundCheck with existing methods (Section 7.3).
+
+**Future work:** Improve paraphrasing via neural extraction while preserving contradiction detection. Target: 80%+ overall accuracy with 60%+ contradiction detection.
+
+### Trust-Weighting Heuristics
+
+**Limitation:** GroundCheck uses fixed thresholds for trust-weighted contradiction filtering:
+- Trust threshold: 0.75 (only consider high-trust memories)
+- Trust difference threshold: 0.3 (only flag similar-trust pairs)
+
+These thresholds were manually tuned on development examples. They may not generalize to:
+
+1. **Different domains:** Healthcare memories might have different trust distributions than customer service
+2. **Different trust scoring methods:** Systems using different trust models (recency-based, source-based, etc.)
+3. **User preferences:** Some users might prefer strict filtering (avoid false positives), others prefer permissive (avoid false negatives)
+
+**Impact:** Ablation studies (Section 6.6) show threshold choice significantly affects contradiction detection (50%-70% accuracy across threshold values). Fixed thresholds are suboptimal.
+
+**Future work:** Learn trust thresholds from data rather than manual tuning. Possible approaches:
+- Active learning: Query users when confidence is low, learn thresholds from feedback
+- Supervised learning: Train on labeled contradiction examples, optimize thresholds for F1 score
+- User personalization: Allow per-user threshold configuration based on preferences
+
+## 7.3 Future Work
+
+We outline three high-impact research directions for extending GroundCheck.
+
+### Neural Fact Extraction
+
+**Goal:** Replace regex patterns with learned fact extractors that handle arbitrary linguistic variation.
+
+**Approach:** Fine-tune pre-trained models (BERT, RoBERTa, T5) on fact extraction tasks:
+1. Span extraction: Identify fact value spans in text ("works at [Microsoft]")
+2. Slot classification: Classify span slot types ([Microsoft] → employer)
+3. Relation extraction: Extract (subject, relation, object) triples from text
+
+**Benefits:**
+- **Arbitrary slot types:** Extract domain-specific facts without manual patterns
+- **Semantic paraphrasing:** Recognize "software engineer" ≈ "software developer" via embeddings
+- **Robustness:** Handle linguistic variation ("employed by X since 2020") automatically
+
+**Challenges:**
+- **Training data:** Requires labeled fact extraction datasets for fine-tuning
+- **Speed:** Neural models are slower than regex (10-100ms vs <1ms)
+- **Cost:** Requires model hosting infrastructure
+
+**Target performance:** 80%+ paraphrasing accuracy (vs current 70%) while maintaining 60%+ contradiction detection.
+
+### Multi-Modal Contradictions
+
+**Goal:** Extend contradiction detection to multi-modal contexts where text, images, audio, and video may contradict.
+
+**Examples:**
+- Text memory: "User has brown hair"
+- Profile image: Shows user with blonde hair
+- Contradiction: Visual evidence contradicts textual claim
+
+**Approach:**
+1. Extract facts from multiple modalities (OCR for images, transcription for audio, etc.)
+2. Align facts across modalities (link text "brown hair" to image hair color)
+3. Detect cross-modal contradictions using unified fact representation
+
+**Applications:**
+- Social media profile verification (bio vs photos)
+- Medical records (written notes vs X-ray images)
+- Legal evidence (testimony vs video footage)
+
+**Challenges:**
+- **Cross-modal alignment:** Matching facts across modalities is hard
+- **Multi-modal extraction:** Requires models for each modality (vision, audio, etc.)
+- **Ambiguity:** Images might be from different times (old photo vs current description)
+
+### Active Learning and Conflict Resolution
+
+**Goal:** Enable systems to query users when contradictions are detected, learning resolution preferences.
+
+**Approach:**
+1. Detect contradiction in memories
+2. Query user: "We have you at Microsoft (January) and Amazon (March). Which is current?"
+3. User response: "Amazon—I changed jobs"
+4. Update: Mark Microsoft memory as outdated, prefer Amazon, log preference for recency-based resolution
+
+**Benefits:**
+- **Disambiguation:** Resolve contradictions interactively rather than guessing
+- **Preference learning:** Learn user-specific resolution strategies (prefer recent, prefer high-trust, etc.)
+- **Trust calibration:** Use user feedback to calibrate trust scores
+
+**Applications:**
+- Personal AI: Clarify contradictory preferences ("Did your favorite color change or did we misunderstand?")
+- Healthcare: Confirm diagnostic updates with clinicians
+- Legal: Flag contradictory testimony for attorney review
+
+**Challenges:**
+- **User burden:** Excessive queries frustrate users
+- **Query selection:** Which contradictions to query vs auto-resolve?
+- **Feedback integration:** How to update trust/preference models from user responses?
+
+**Research questions:**
+- What is the optimal query frequency? (minimize burden while maximizing accuracy)
+- Can we predict which contradictions users care about? (query important conflicts, auto-resolve minor ones)
+- How to generalize from user feedback? (learn rules like "always prefer recent" vs case-by-case resolution)
+
+## 7.4 Integration with Production Systems
+
+**Deployment considerations:**
+
+**API design:** GroundCheck should integrate with existing RAG pipelines via simple API:
+```python
+report = groundcheck.verify(
+    generated_text=output,
+    memories=retrieved_context
+)
+if not report.grounded:
+    # Reject output or prompt for revision
+```
+
+**Scalability:** Deterministic operation (<10ms) enables millions of verifications per day. Deploy as microservice with caching for common patterns.
+
+**Observability:** Log contradiction detections for debugging and analysis. Track contradiction frequency over time to identify data quality issues.
+
+**Gradual rollout:** Start with shadow mode (detect contradictions but don't reject outputs), analyze false positive rate, then enable rejection for high-confidence contradictions.
+
+**A/B testing:** Compare user satisfaction between GroundCheck-enabled and baseline systems. Measure trust, transparency, and task completion rates.
+
+## 7.5 Broader Impact
+
+**Positive impacts:**
+- **Transparency:** Users understand how AI memory evolves over time
+- **Trust:** Explicit contradiction disclosure builds confidence in AI systems
+- **Compliance:** Healthcare and legal AI can track contradictions for regulatory requirements
+
+**Potential risks:**
+- **Over-disclosure:** Excessive contradiction warnings might overwhelm users
+- **Privacy:** Contradiction detection might reveal sensitive information evolution (e.g., relationship status changes)
+- **Adversarial gaming:** Users might intentionally create contradictions to confuse systems
+
+**Mitigation strategies:**
+- Tune disclosure verbosity based on user preferences
+- Apply privacy-preserving filters to contradiction detection
+- Monitor for adversarial patterns and apply trust penalties
+
+Contradiction-aware grounding is a step toward more transparent, trustworthy long-term AI systems. As AI shifts from stateless to stateful, explicit contradiction handling will become essential infrastructure.
