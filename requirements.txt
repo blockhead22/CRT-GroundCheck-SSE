@@ -1,6 +1,6 @@
-numpy
-scikit-learn
-sentence-transformers
+numpy>=1.24.0
+scikit-learn>=1.3.0
+sentence-transformers>=2.2.0
 jsonschema
 pytest
 hdbscan
@@ -9,8 +9,10 @@ fastapi
 uvicorn[standard]
 beautifulsoup4
 requests
+transformers>=4.30.0
+datasets>=2.14.0
 xgboost>=2.0.0
-pandas>=2.0.0
+torch>=2.0.0
 matplotlib>=3.7.0
 seaborn>=0.12.0
-joblib>=1.3.0
+pandas>=2.0.0
