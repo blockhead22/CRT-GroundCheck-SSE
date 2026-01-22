@@ -1,0 +1,35 @@
+{
+  "method": "cove",
+  "overall": {
+    "correct": 34,
+    "total": 50,
+    "accuracy": 0.68
+  },
+  "by_category": {
+    "factual_grounding": {
+      "correct": 8,
+      "total": 10,
+      "accuracy": 0.8
+    },
+    "contradictions": {
+      "correct": 3,
+      "total": 10,
+      "accuracy": 0.3
+    },
+    "partial_grounding": {
+      "correct": 4,
+      "total": 10,
+      "accuracy": 0.4
+    },
+    "paraphrasing": {
+      "correct": 9,
+      "total": 10,
+      "accuracy": 0.9
+    },
+    "multi_hop": {
+      "correct": 10,
+      "total": 10,
+      "accuracy": 1.0
+    }
+  }
+}
