@@ -32,7 +32,7 @@ def extract_interactions_with_slots():
     # Get interactions with slot data
     query = """
     SELECT 
-        id,
+        interaction_id as id,
         query,
         slots_inferred,
         facts_injected,
@@ -300,7 +300,7 @@ See START_HERE.md for detailed guidance on each step.
     
     # Save report
     output_file = OUTPUT_DIR / "extraction_report.md"
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         f.write(report)
     
     print(report)
