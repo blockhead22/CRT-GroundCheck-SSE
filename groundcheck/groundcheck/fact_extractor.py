@@ -411,9 +411,9 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
             facts["school"] = ExtractedFact("school", school, _norm_text(school))
     
     # Major/Degree field
-    m = re.search(r"\b(?:degree|major)\s+in\s+([A-Z][A-Za-z\s]{2,40}?)(?:\s+and|\s+with|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+    m = re.search(r"\b(?:degree|major)\s+in\s+([A-Z][A-Za-z\s]{2,40}?)(?:\s+from|\s+and|\s+with|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
-        m = re.search(r"\bstudied\s+([A-Z][A-Za-z\s]{2,40}?)\s+at", text, flags=re.IGNORECASE)
+        m = re.search(r"\bstudied\s+([A-Z][A-Za-z\s]{2,40}?)(?:\s+at|\s*$)", text, flags=re.IGNORECASE)
     if m:
         major = m.group(1).strip()
         # Filter out common false positives
