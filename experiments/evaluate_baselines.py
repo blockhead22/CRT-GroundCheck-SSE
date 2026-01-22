@@ -84,7 +84,25 @@ def evaluate_method(method, examples: List[Dict], method_name: str) -> Dict:
         
         # Check correctness
         expected = example["label"]["grounded"]
-        correct = (passed == expected)
+        requires_disclosure = example["label"].get("requires_contradiction_disclosure", False)
+        
+        # For contradiction cases, check if system detected the need for disclosure
+        if requires_disclosure:
+            # System should detect contradiction and require disclosure
+            if method_name == "groundcheck":
+                # GroundCheck should detect this
+                correct = (passed == expected and result.requires_disclosure)
+            else:
+                # Baselines don't detect contradictions well
+                # They're correct only if they happen to require disclosure
+                if isinstance(result, dict):
+                    system_requires_disclosure = result.get("requires_disclosure", False)
+                else:
+                    system_requires_disclosure = getattr(result, "requires_disclosure", False)
+                correct = (passed == expected and system_requires_disclosure)
+        else:
+            # Standard grounding check
+            correct = (passed == expected)
         
         if correct:
             results["correct"] += 1

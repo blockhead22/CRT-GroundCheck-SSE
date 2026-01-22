@@ -62,7 +62,10 @@ class ChainOfVerification:
             "method": "cove",
             "latency_ms": (time.time() - start) * 1000,
             "api_cost": api_cost,
-            "num_questions": len(questions)
+            "num_questions": len(questions),
+            "grounding_map": {},
+            "contradicted_claims": [],
+            "requires_disclosure": False  # CoVe doesn't detect contradictions in context
         }
     
     def _extract_claims(self, text: str) -> List[str]:
@@ -156,5 +159,8 @@ Answer with yes/no and brief explanation."""
             "method": "cove_mock",
             "latency_ms": (time.time() - start_time) * 1000,
             "api_cost": 0.0,
-            "note": "Mock implementation - OpenAI API key not available"
+            "note": "Mock implementation - OpenAI API key not available",
+            "grounding_map": {},
+            "contradicted_claims": [],
+            "requires_disclosure": False  # CoVe doesn't detect contradictions in context
         }
