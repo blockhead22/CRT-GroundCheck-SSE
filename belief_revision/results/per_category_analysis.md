@@ -9,7 +9,7 @@ showing where our CRT + Learned approach excels.
 |--------|---------------|------------|--------|
 | Stateless | 0.205 | 0.263 | 0.219 |
 | Override | 0.264 | 0.288 | 0.240 |
-| NLI | 0.326 | 0.301 | 0.295 |
+| NLI | 0.207 | 0.278 | 0.196 |
 | **CRT + Learned (Ours)** | 1.000 | 1.000 | 1.000 |
 
 ## Per-Category Detailed Analysis
@@ -21,8 +21,8 @@ showing where our CRT + Learned approach excels.
 **Accuracy by method**:
 
 - ✓ CRT + Learned (Ours): **100.0%**
+-   NLI: **75.0%**
 -   Stateless: **55.0%**
--   NLI: **25.0%**
 -   Override: **0.0%**
 
 **Precision, Recall, F1**:
@@ -31,16 +31,16 @@ showing where our CRT + Learned approach excels.
 |--------|-----------|--------|-----|
 | Stateless | 0.250 | 0.550 | 0.344 |
 | Override | 0.000 | 0.000 | 0.000 |
-| NLI | 0.192 | 0.250 | 0.217 |
+| NLI | 0.263 | 0.750 | 0.390 |
 | **CRT + Learned (Ours)** | 1.000 | 1.000 | 1.000 |
 
-**Unique successes** (only our method correct): 9/20
+**Unique successes** (only our method correct): 3/20
 
 **Example cases where only our approach succeeds**:
 
-1. Old: "I prefer working remotely" → New: "I don't like working remotely"
-2. Old: "I prefer working remotely" → New: "I don't like working remotely"
-3. Old: "I prefer morning meetings" → New: "I don't like morning meetings"
+1. Old: "Currently working on user research" → New: "Currently working on feature development"
+2. Old: "Currently working on user research" → New: "Currently working on feature development"
+3. Old: "I prefer pair programming" → New: "I don't like pair programming"
 
 **Why our approach succeeds**:
 
@@ -56,8 +56,8 @@ showing where our CRT + Learned approach excels.
 
 - ✓ CRT + Learned (Ours): **100.0%**
 -   Override: **70.0%**
--   NLI: **50.0%**
 -   Stateless: **0.0%**
+-   NLI: **0.0%**
 
 **Precision, Recall, F1**:
 
@@ -65,7 +65,7 @@ showing where our CRT + Learned approach excels.
 |--------|-----------|--------|-----|
 | Stateless | 0.000 | 0.000 | 0.000 |
 | Override | 0.280 | 0.700 | 0.400 |
-| NLI | 0.333 | 0.500 | 0.400 |
+| NLI | 0.000 | 0.000 | 0.000 |
 | **CRT + Learned (Ours)** | 1.000 | 1.000 | 1.000 |
 
 **Unique successes** (only our method correct): 6/20
@@ -89,9 +89,9 @@ showing where our CRT + Learned approach excels.
 **Accuracy by method**:
 
 - ✓ CRT + Learned (Ours): **100.0%**
+-   NLI: **31.6%**
 -   Stateless: **26.3%**
 -   Override: **26.3%**
--   NLI: **26.3%**
 
 **Precision, Recall, F1**:
 
@@ -99,10 +99,10 @@ showing where our CRT + Learned approach excels.
 |--------|-----------|--------|-----|
 | Stateless | 0.333 | 0.263 | 0.294 |
 | Override | 0.333 | 0.263 | 0.294 |
-| NLI | 0.333 | 0.263 | 0.294 |
+| NLI | 0.316 | 0.316 | 0.316 |
 | **CRT + Learned (Ours)** | 1.000 | 1.000 | 1.000 |
 
-**Unique successes** (only our method correct): 14/19
+**Unique successes** (only our method correct): 13/19
 
 **Example cases where only our approach succeeds**:
 
@@ -125,7 +125,7 @@ showing where our CRT + Learned approach excels.
 - ✓ CRT + Learned (Ours): **100.0%**
 -   Stateless: **23.8%**
 -   Override: **19.0%**
--   NLI: **19.0%**
+-   NLI: **4.8%**
 
 **Precision, Recall, F1**:
 
@@ -133,7 +133,7 @@ showing where our CRT + Learned approach excels.
 |--------|-----------|--------|-----|
 | Stateless | 0.238 | 0.238 | 0.238 |
 | Override | 0.444 | 0.190 | 0.267 |
-| NLI | 0.444 | 0.190 | 0.267 |
+| NLI | 0.250 | 0.048 | 0.080 |
 | **CRT + Learned (Ours)** | 1.000 | 1.000 | 1.000 |
 
 **Unique successes** (only our method correct): 16/21

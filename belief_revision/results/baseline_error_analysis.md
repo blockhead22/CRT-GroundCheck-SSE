@@ -9,7 +9,7 @@ and highlights cases where only our approach succeeds.
 
 - **Stateless**: 59/80 errors (73.8%)
 - **Override**: 57/80 errors (71.2%)
-- **NLI**: 56/80 errors (70.0%)
+- **NLI**: 58/80 errors (72.5%)
 - **Heuristic Policies**: 0/80 errors (0.0%)
 - **CRT + Learned (Ours)**: 0/80 errors (0.0%)
 

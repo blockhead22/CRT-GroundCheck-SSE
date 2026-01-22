@@ -355,7 +355,7 @@ def generate_analysis_report(metrics_results, category_analysis):
     lines.append("relying on hand-crafted rules. The combination of semantic, temporal, and")
     lines.append("behavioral features provides robust, accurate belief revision classification.\n")
     
-    with open(OUTPUT_ANALYSIS_MD, 'w') as f:
+    with open(OUTPUT_ANALYSIS_MD, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     
     print(f"✓ Saved analysis report: {OUTPUT_ANALYSIS_MD}")

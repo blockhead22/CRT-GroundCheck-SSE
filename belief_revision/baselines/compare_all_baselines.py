@@ -301,7 +301,7 @@ def generate_comparison_table(all_results):
             f"{row['Size']} |"
         )
     
-    with open(OUTPUT_COMPARISON_TABLE_MD, 'w') as f:
+    with open(OUTPUT_COMPARISON_TABLE_MD, 'w', encoding='utf-8') as f:
         f.write('\n'.join(md_lines))
     
     print(f"✓ Saved Markdown: {OUTPUT_COMPARISON_TABLE_MD}")
@@ -427,7 +427,7 @@ def generate_error_analysis(all_predictions, y_cat_true, y_policy_true, cat_test
     lines.append("- ✅ Combination of category + policy learning is powerful")
     lines.append("- ❌ Baselines fail on complex cases requiring context understanding")
     
-    with open(OUTPUT_ERROR_ANALYSIS, 'w') as f:
+    with open(OUTPUT_ERROR_ANALYSIS, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines))
     
     print(f"✓ Saved error analysis: {OUTPUT_ERROR_ANALYSIS}")
@@ -476,7 +476,7 @@ def generate_statistical_tests(all_predictions, y_cat_true, y_policy_true):
                 
                 print(f"  {baseline} vs Ours (policy): p={p_value:.4f} {'✓ Significant' if p_value < 0.05 else '✗ Not significant'}")
     
-    with open(OUTPUT_STATISTICAL, 'w') as f:
+    with open(OUTPUT_STATISTICAL, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=2)
     
     print(f"✓ Saved statistical tests: {OUTPUT_STATISTICAL}")

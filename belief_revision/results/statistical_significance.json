@@ -9,7 +9,7 @@
       "significant": true
     },
     "NLI": {
-      "p_value": 1.9872992140790302e-13,
+      "p_value": 7.183142969324763e-14,
       "significant": true
     },
     "Heuristic Policies": {
@@ -23,7 +23,7 @@
       "significant": true
     },
     "NLI": {
-      "p_value": 7.025158232920603e-12,
+      "p_value": 3.305133944309091e-13,
       "significant": true
     },
     "Heuristic Policies": {
