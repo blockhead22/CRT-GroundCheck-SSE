@@ -18,8 +18,9 @@ Philosophy:
 
 import sqlite3
 import json
+import logging
 import numpy as np
-from typing import List, Dict, Optional, Any, Tuple
+from typing import List, Dict, Optional, Any, Tuple, Set
 from datetime import datetime
 from dataclasses import dataclass, asdict
 import time
@@ -29,6 +30,8 @@ from .crt_core import (
     encode_vector, extract_emotion_intensity, extract_future_relevance
 )
 from .policy import validate_external_memory_context
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -167,6 +170,27 @@ class CRTMemorySystem:
             )
         """)
         
+        # Performance indexes - avoid full table scans
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_source 
+            ON memories(source)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_timestamp 
+            ON memories(timestamp DESC)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_thread 
+            ON memories(thread_id)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_trust_log_memory 
+            ON trust_log(memory_id, timestamp)
+        """)
+        
         conn.commit()
         conn.close()
     
@@ -274,7 +298,8 @@ class CRTMemorySystem:
         k: int = 5,
         min_trust: float = 0.0,
         exclude_deprecated: bool = True,
-        ledger = None
+        ledger = None,
+        excluded_ids: Optional[Set[str]] = None
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using trust-weighted scoring.
@@ -288,6 +313,7 @@ class CRTMemorySystem:
         Args:
             exclude_deprecated: If True, filter out memories that are old values from resolved contradictions
             ledger: CRT ledger instance for checking resolved contradictions
+            excluded_ids: Additional memory IDs to exclude from retrieval
         
         Returns list of (memory, score) tuples.
         """
@@ -296,24 +322,31 @@ class CRTMemorySystem:
         # Load all memories
         memories = self._load_all_memories()
         
+        # Build set of IDs to exclude
+        deprecated_ids = set()
+        
         # Filter deprecated contradiction sources (SSE invariant: no truth reintroduction)
         if exclude_deprecated and ledger is not None:
             try:
                 from .crt_ledger import ContradictionStatus
                 resolved = ledger.get_resolved_contradictions(limit=500)
                 # Collect old_memory_ids from resolved contradictions that were "replaced"
-                deprecated_ids = set()
                 for contra in resolved:
                     # Only exclude if resolution method indicates replacement
                     method = getattr(contra, 'resolution_method', None)
-                    if method and 'clarif' in method.lower() or 'replace' in method.lower():
+                    if method and (('clarif' in method.lower()) or ('replace' in method.lower())):
                         deprecated_ids.add(contra.old_memory_id)
-                
-                if deprecated_ids:
-                    memories = [m for m in memories if m.memory_id not in deprecated_ids]
             except Exception:
                 # Graceful degradation if ledger unavailable
                 pass
+        
+        # Add any additional excluded IDs
+        if excluded_ids:
+            deprecated_ids.update(excluded_ids)
+        
+        # Filter out deprecated and excluded memories
+        if deprecated_ids:
+            memories = [m for m in memories if m.memory_id not in deprecated_ids]
         
         # Filter by minimum trust
         memories = [m for m in memories if m.trust >= min_trust]
@@ -518,10 +551,100 @@ class CRTMemorySystem:
         
         return memories
     
+    def _load_memories_filtered(
+        self,
+        source: Optional[MemorySource] = None,
+        thread_id: Optional[str] = None,
+        limit: Optional[int] = None
+    ) -> List[MemoryItem]:
+        """
+        Load memories with SQL-level filtering to avoid loading entire database.
+        
+        Performance optimization: Use this instead of _load_all_memories() when
+        you need to filter by source, thread, or limit results.
+        
+        Args:
+            source: Filter by memory source (USER, SYSTEM, etc.)
+            thread_id: Filter by thread
+            limit: Maximum number of results
+            
+        Returns:
+            Filtered list of MemoryItem objects
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Build query with filters
+        query = "SELECT * FROM memories WHERE 1=1"
+        params = []
+        
+        if source is not None:
+            query += " AND source = ?"
+            params.append(source.value)
+            
+        if thread_id is not None:
+            query += " AND thread_id = ?"
+            params.append(thread_id)
+            
+        # Order by timestamp descending for latest-first behavior
+        query += " ORDER BY timestamp DESC"
+        
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        memories = []
+        for row in rows:
+            memories.append(MemoryItem(
+                memory_id=row[0],
+                vector=np.array(json.loads(row[1])),
+                text=row[2],
+                timestamp=row[3],
+                confidence=row[4],
+                trust=row[5],
+                source=MemorySource(row[6]),
+                sse_mode=SSEMode(row[7]),
+                context=json.loads(row[8]) if row[8] else None,
+                tags=json.loads(row[9]) if row[9] else None,
+                thread_id=row[10]
+            ))
+        
+        return memories
+    
     def _get_all_vectors(self) -> List[np.ndarray]:
-        """Get all memory vectors."""
-        memories = self._load_all_memories()
-        return [m.vector for m in memories]
+        """
+        Get all memory vectors efficiently.
+        
+        Optimized to load only vector data without deserializing other fields.
+        
+        Note: For very large databases (>50k memories), consider using
+        paginated/streamed loading to prevent OOM errors. This loads all
+        vectors into memory at once.
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Check count first to warn about large loads
+        cursor.execute("SELECT COUNT(*) FROM memories")
+        count = cursor.fetchone()[0]
+        
+        if count > 50_000:
+            logger.warning(
+                f"Loading {count} vectors into memory. Consider pagination for large datasets."
+            )
+        
+        # Only fetch vectors, skip other columns
+        cursor.execute("SELECT vector_json FROM memories")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        # Deserialize only the vectors
+        vectors = [np.array(json.loads(row[0])) for row in rows]
+        return vectors
 
     def get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
         """Fetch a single memory by ID (or None if missing)."""

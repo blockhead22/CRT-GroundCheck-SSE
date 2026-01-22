@@ -21,6 +21,7 @@ import re
 import logging
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
+from collections import OrderedDict
 import time
 import joblib
 
@@ -87,6 +88,44 @@ class CRTEnhancedRAG:
         # Session tracking
         import uuid
         self.session_id = str(uuid.uuid4())[:8]
+        
+        # Performance: LRU cache for fact extraction to avoid repeated regex parsing
+        # Using OrderedDict for efficient LRU eviction (move_to_end + popitem)
+        self._fact_extraction_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self._max_cache_entries = 1000
+        self._max_text_size = 10_000  # Skip caching very large texts
+    
+    def _extract_facts_cached(self, text: str) -> Dict[str, Any]:
+        """
+        Extract fact slots with LRU caching to avoid repeated regex parsing.
+        
+        Performance optimization: The same memory text may be parsed multiple times
+        during retrieval and contradiction detection. Uses LRU cache to avoid waste.
+        
+        Args:
+            text: Memory text to extract facts from
+            
+        Returns:
+            Dictionary of extracted facts (slot -> ExtractedFact)
+        """
+        # Skip caching for very large texts to prevent memory bloat
+        if len(text) > self._max_text_size:
+            return extract_fact_slots(text) or {}
+        
+        # Check cache (LRU: move to end on access)
+        if text in self._fact_extraction_cache:
+            self._fact_extraction_cache.move_to_end(text)
+            return self._fact_extraction_cache[text]
+        
+        # Cache miss: extract and store
+        result = extract_fact_slots(text) or {}
+        self._fact_extraction_cache[text] = result
+        
+        # LRU eviction: remove oldest entry when cache is full
+        if len(self._fact_extraction_cache) > self._max_cache_entries:
+            self._fact_extraction_cache.popitem(last=False)  # Remove oldest (FIFO)
+        
+        return result
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""
@@ -175,24 +214,22 @@ class CRTEnhancedRAG:
                     excluded_mem_ids.add(contra.old_memory_id)
                     excluded_mem_ids.add(contra.new_memory_id)
 
-        # Over-fetch then filter, so excluding sources doesn't starve results.
-        candidate_k = max(int(k) * 5, int(k))
+        # OPTIMIZATION: Pass excluded IDs to retrieve_memories to filter at database level
+        # Reduced over-fetch multiplier from 5x to 2x since we now filter more efficiently
+        candidate_k = max(int(k) * 2, int(k))
         retrieved = self.memory.retrieve_memories(
             query, 
             candidate_k, 
             min_trust,
             exclude_deprecated=True,
-            ledger=self.ledger
+            ledger=self.ledger,
+            excluded_ids=excluded_mem_ids if exclude_contradiction_sources else None
         )
 
         # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
         # not new world facts) to prevent recursive quoting and prompt pollution.
         filtered: List[Tuple[MemoryItem, float]] = []
         for mem, score in retrieved:
-            # Exclude contradiction source memories (prevents semantic pollution from unrelated contradictions)
-            if exclude_contradiction_sources and mem.memory_id in excluded_mem_ids:
-                continue
-            
             if getattr(mem, "source", None) not in allowed_sources:
                 continue
             try:
@@ -219,20 +256,24 @@ class CRTEnhancedRAG:
         return filtered
 
     def _get_latest_user_slot_value(self, slot: str) -> Optional[str]:
+        """
+        Get the latest value for a given slot from USER memories.
+        
+        Optimized: Uses filtered query to load only USER memories instead of all memories.
+        """
         slot = (slot or "").strip().lower()
         if not slot:
             return None
         try:
-            all_memories = self.memory._load_all_memories()
+            # OPTIMIZATION: Load only USER memories instead of all memories
+            user_memories = self.memory._load_memories_filtered(source=MemorySource.USER)
         except Exception:
             return None
 
         best_val: Optional[str] = None
         best_ts: float = -1.0
-        for mem in all_memories:
-            if mem.source != MemorySource.USER:
-                continue
-            facts = extract_fact_slots(mem.text)
+        for mem in user_memories:
+            facts = self._extract_facts_cached(mem.text)
             if not facts or slot not in facts:
                 continue
             try:
@@ -246,13 +287,17 @@ class CRTEnhancedRAG:
         return best_val or None
 
     def _get_latest_user_name_guess(self) -> Optional[str]:
-        """Best-effort user name extraction from USER memories.
+        """
+        Best-effort user name extraction from USER memories.
 
         Prefer structured "FACT: name = ..." if present; otherwise fall back to
         simple textual patterns like "my name is ...".
+        
+        Optimized: Uses filtered query to load only USER memories.
         """
         try:
-            all_memories = self.memory._load_all_memories()
+            # OPTIMIZATION: Load only USER memories instead of all memories
+            user_memories = self.memory._load_memories_filtered(source=MemorySource.USER)
         except Exception:
             return None
 
@@ -260,9 +305,7 @@ class CRTEnhancedRAG:
         best_ts: float = -1.0
         name_pat = r"([A-Z][a-zA-Z'-]{1,40}(?:\s+[A-Z][a-zA-Z'-]{1,40}){0,2})"
 
-        for mem in all_memories:
-            if mem.source != MemorySource.USER:
-                continue
+        for mem in user_memories:
             text = (mem.text or "").strip()
             if not text:
                 continue
