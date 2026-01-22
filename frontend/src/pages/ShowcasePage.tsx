@@ -54,7 +54,12 @@ export function ShowcasePage() {
     }
   }
 
-  // Sample data for visualizations (keep for other sections)
+  // Helper function to calculate confirmations from confidence
+  function getConfirmations(confidence?: number): number | undefined {
+    return confidence !== undefined ? Math.round(confidence * 10) : undefined
+  }
+
+  // Sample data for comparison and examples sections only
   const sampleStableMemories = [
     {
       id: 'm1',
@@ -365,7 +370,7 @@ export function ShowcasePage() {
                       currentValue={memory.text}
                       currentTrust={memory.trust}
                       source={memory.source}
-                      confirmations={memory.confidence ? Math.round(memory.confidence * 10) : undefined}
+                      confirmations={getConfirmations(memory.confidence)}
                       lastUpdated={memory.timestamp * 1000}
                     />
                   ))}
@@ -376,7 +381,7 @@ export function ShowcasePage() {
                       currentValue={memory.text}
                       currentTrust={memory.trust}
                       source={memory.source}
-                      confirmations={memory.confidence ? Math.round(memory.confidence * 10) : undefined}
+                      confirmations={getConfirmations(memory.confidence)}
                       lastUpdated={memory.timestamp * 1000}
                     />
                   ))}

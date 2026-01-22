@@ -1373,6 +1373,18 @@ def create_app() -> FastAPI:
         except Exception:
             entries = []
         
+        def _get_memory_details(memory_id: str) -> tuple[str, float]:
+            """Helper to fetch memory text and trust score."""
+            try:
+                mem = engine.memory.get_memory(memory_id)
+                if mem:
+                    return mem.get('text', memory_id), mem.get('trust', 0.0)
+            except (KeyError, AttributeError, ValueError) as e:
+                # Log specific errors for debugging
+                import logging
+                logging.warning(f"Failed to fetch memory {memory_id}: {e}")
+            return memory_id, 0.0
+        
         # Enhance entries with memory details for UI
         result = []
         for e in entries:
@@ -1381,24 +1393,9 @@ def create_app() -> FastAPI:
             data['contradiction_id'] = data['ledger_id']
             data['detected_at'] = data['timestamp']
             
-            # Fetch memory details to populate old_value, new_value, trust scores
-            try:
-                old_mem = engine.memory.get_memory(data['old_memory_id'])
-                if old_mem:
-                    data['old_value'] = old_mem.get('text', '')
-                    data['old_trust'] = old_mem.get('trust', 0.0)
-            except Exception:
-                data['old_value'] = data['old_memory_id']
-                data['old_trust'] = 0.0
-            
-            try:
-                new_mem = engine.memory.get_memory(data['new_memory_id'])
-                if new_mem:
-                    data['new_value'] = new_mem.get('text', '')
-                    data['new_trust'] = new_mem.get('trust', 0.0)
-            except Exception:
-                data['new_value'] = data['new_memory_id']
-                data['new_trust'] = 0.0
+            # Fetch memory details for old and new memories
+            data['old_value'], data['old_trust'] = _get_memory_details(data['old_memory_id'])
+            data['new_value'], data['new_trust'] = _get_memory_details(data['new_memory_id'])
             
             # Extract slot from affects_slots field (first slot if multiple)
             if data.get('affects_slots'):
