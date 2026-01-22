@@ -1,0 +1,150 @@
+{
+  "groundcheck": {
+    "method": "groundcheck",
+    "total": 50,
+    "correct": 38,
+    "total_latency_ms": 0,
+    "total_cost": 0,
+    "by_category": {
+      "factual_grounding": {
+        "correct": 8,
+        "total": 10,
+        "accuracy": 0.8
+      },
+      "contradictions": {
+        "correct": 9,
+        "total": 10,
+        "accuracy": 0.9
+      },
+      "partial_grounding": {
+        "correct": 4,
+        "total": 10,
+        "accuracy": 0.4
+      },
+      "paraphrasing": {
+        "correct": 7,
+        "total": 10,
+        "accuracy": 0.7
+      },
+      "multi_hop": {
+        "correct": 10,
+        "total": 10,
+        "accuracy": 1.0
+      }
+    },
+    "accuracy": 0.76,
+    "avg_latency_ms": 0.0,
+    "avg_cost_per_example": 0.0
+  },
+  "vanilla_rag": {
+    "method": "vanilla_rag",
+    "total": 50,
+    "correct": 33,
+    "total_latency_ms": 0.034332275390625,
+    "total_cost": 0.0,
+    "by_category": {
+      "factual_grounding": {
+        "correct": 4,
+        "total": 10,
+        "accuracy": 0.4
+      },
+      "contradictions": {
+        "correct": 10,
+        "total": 10,
+        "accuracy": 1.0
+      },
+      "partial_grounding": {
+        "correct": 0,
+        "total": 10,
+        "accuracy": 0.0
+      },
+      "paraphrasing": {
+        "correct": 9,
+        "total": 10,
+        "accuracy": 0.9
+      },
+      "multi_hop": {
+        "correct": 10,
+        "total": 10,
+        "accuracy": 1.0
+      }
+    },
+    "accuracy": 0.66,
+    "avg_latency_ms": 0.0006866455078125,
+    "avg_cost_per_example": 0.0
+  },
+  "selfcheck_gpt": {
+    "method": "selfcheck_gpt",
+    "total": 50,
+    "correct": 40,
+    "total_latency_ms": 7.9364776611328125,
+    "total_cost": 0.0,
+    "by_category": {
+      "factual_grounding": {
+        "correct": 8,
+        "total": 10,
+        "accuracy": 0.8
+      },
+      "contradictions": {
+        "correct": 9,
+        "total": 10,
+        "accuracy": 0.9
+      },
+      "partial_grounding": {
+        "correct": 4,
+        "total": 10,
+        "accuracy": 0.4
+      },
+      "paraphrasing": {
+        "correct": 9,
+        "total": 10,
+        "accuracy": 0.9
+      },
+      "multi_hop": {
+        "correct": 10,
+        "total": 10,
+        "accuracy": 1.0
+      }
+    },
+    "accuracy": 0.8,
+    "avg_latency_ms": 0.15872955322265625,
+    "avg_cost_per_example": 0.0
+  },
+  "cove": {
+    "method": "cove",
+    "total": 50,
+    "correct": 40,
+    "total_latency_ms": 7.743358612060547,
+    "total_cost": 0.0,
+    "by_category": {
+      "factual_grounding": {
+        "correct": 8,
+        "total": 10,
+        "accuracy": 0.8
+      },
+      "contradictions": {
+        "correct": 9,
+        "total": 10,
+        "accuracy": 0.9
+      },
+      "partial_grounding": {
+        "correct": 4,
+        "total": 10,
+        "accuracy": 0.4
+      },
+      "paraphrasing": {
+        "correct": 9,
+        "total": 10,
+        "accuracy": 0.9
+      },
+      "multi_hop": {
+        "correct": 10,
+        "total": 10,
+        "accuracy": 1.0
+      }
+    },
+    "accuracy": 0.8,
+    "avg_latency_ms": 0.15486717224121094,
+    "avg_cost_per_example": 0.0
+  }
+}
