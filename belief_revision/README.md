@@ -1,20 +1,28 @@
-# Belief Revision Bench - Complete Pipeline
+# Belief Revision Bench
 
-**Status:** Phase 3 Complete ✅  
+**Status:** Phase 1 Complete, Phase 3 Complete ✅  
 **Latest:** Policy Learning Implementation (100% test accuracy)
 
 ---
 
 ## Overview
 
-This project implements a complete belief revision system with three phases:
-- **Phase 1**: Data collection and synthetic generation (600 examples)
+This project implements a belief revision system with multiple phases:
+- **Phase 1**: Data collection and synthetic generation (600 examples) ✅
 - **Phase 2**: Belief update classification (4 categories) - *Referenced but not implemented here*
 - **Phase 3**: Policy learning for resolution actions (OVERRIDE, PRESERVE, ASK_USER) ✅ **COMPLETE**
 
 ---
 
-## Quick Start - Phase 3 (Policy Learning)
+## Table of Contents
+- [Phase 1: Data Collection](#phase-1-data-collection)
+- [Phase 3: Policy Learning](#phase-3-policy-learning)
+
+---
+
+## Phase 3: Policy Learning
+
+### Quick Start
 
 ### Run Complete Pipeline
 
@@ -189,13 +197,45 @@ See **[PHASE3_INTEGRATION_GUIDE.md](PHASE3_INTEGRATION_GUIDE.md)** for complete 
 ---
 ---
 
-## Phase 1 (Historical Reference)
+## Phase 1: Data Collection
 
-Phase 1 focused on data collection. Scripts available:
-- `scripts/phase1_extract_data.py` - Extract from CRT logs
-- `scripts/phase1_generate_synthetic.py` - Generate synthetic examples
+**Goal:** Create BeliefRevisionBench dataset (800 labeled examples)  
+**Timeline:** Week 1-2  
+**Status:** ✅ Complete
 
-Output: `data/synthetic_belief_updates.json` (600 examples)
+### Quick Start
+
+#### Step 1: Extract Real Data (30 minutes)
+
+```bash
+cd /home/runner/work/AI_round2/AI_round2
+python belief_revision/scripts/phase1_extract_data.py
+```
+
+**Output:**
+- `data/raw_interactions.json` - All interactions with slot data
+- `data/raw_contradictions.json` - Tracked contradictions
+- `data/potential_belief_updates.json` - Identified belief changes
+- `data/extraction_report.md` - Summary report
+
+#### Step 2: Generate Synthetic Data (1 hour)
+
+```bash
+python belief_revision/scripts/phase1_generate_synthetic.py
+```
+
+**Output:**
+- `data/synthetic_belief_updates.json` - 600 template-generated examples
+
+**What to check:**
+- Are the 4 categories balanced? (150 each)
+- Do examples look realistic?
+
+### Phase 1 Results
+
+- ✓ Generated 600 synthetic examples
+- ✓ Examples balanced across 4 categories (REFINEMENT, REVISION, TEMPORAL, CONFLICT)
+- ✓ Data ready for Phase 3 policy learning
 
 ---
 
