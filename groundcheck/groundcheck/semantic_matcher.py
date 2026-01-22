@@ -3,6 +3,7 @@
 from typing import List, Optional, Set, Tuple
 from difflib import SequenceMatcher
 import re
+import numpy as np
 
 # Global cache: Intentionally shared across instances to avoid reloading heavy models.
 # This is standard practice in ML libraries to save memory and startup time.
@@ -102,7 +103,6 @@ class SemanticMatcher:
         try:
             embeddings = model.encode([claimed, supported])
             # Use cosine similarity (normalized dot product)
-            import numpy as np
             emb1, emb2 = embeddings[0], embeddings[1]
             norm1 = np.linalg.norm(emb1)
             norm2 = np.linalg.norm(emb2)
