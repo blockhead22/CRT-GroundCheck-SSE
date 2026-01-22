@@ -2,9 +2,10 @@
 
 from typing import Dict, List, Optional, Set
 import re
+from difflib import SequenceMatcher
 
 from .types import Memory, VerificationReport, ExtractedFact
-from .fact_extractor import extract_fact_slots
+from .fact_extractor import extract_fact_slots, _split_compound_values
 from .utils import (
     normalize_text,
     has_memory_claim,
@@ -32,6 +33,112 @@ class GroundCheck:
         """Initialize the GroundCheck verifier."""
         self.memory_claim_regex = create_memory_claim_regex()
     
+    def _normalize_value(self, value: str) -> str:
+        """Normalize value for fuzzy matching.
+        
+        Args:
+            value: String value to normalize
+            
+        Returns:
+            Normalized lowercase string with articles removed
+        """
+        if not value:
+            return ""
+        v = str(value).lower().strip()
+        # Remove articles
+        v = re.sub(r'\b(a|an|the)\b', '', v)
+        # Normalize whitespace
+        v = ' '.join(v.split())
+        return v
+    
+    def _is_value_supported(
+        self,
+        claimed: str,
+        supported_values: Set[str],
+        threshold: float = 0.85
+    ) -> bool:
+        """Check if a claimed value is supported with fuzzy matching.
+        
+        Args:
+            claimed: The claimed value to check
+            supported_values: Set of supported normalized values
+            threshold: Similarity threshold for fuzzy matching (default: 0.85)
+            
+        Returns:
+            True if value is supported (exact or fuzzy match), False otherwise
+        """
+        claimed_norm = self._normalize_value(claimed)
+        
+        # Empty claim is not supported
+        if not claimed_norm:
+            return False
+        
+        # Check each supported value
+        for supported in supported_values:
+            supported_norm = self._normalize_value(supported)
+            
+            # Exact match
+            if claimed_norm == supported_norm:
+                return True
+            
+            # Substring match (either direction)
+            if claimed_norm in supported_norm or supported_norm in claimed_norm:
+                return True
+            
+            # Fuzzy similarity match
+            similarity = SequenceMatcher(None, claimed_norm, supported_norm).ratio()
+            if similarity >= threshold:
+                return True
+            
+            # Term overlap check (for phrases)
+            claimed_terms = set(claimed_norm.split())
+            supported_terms = set(supported_norm.split())
+            if claimed_terms and supported_terms:
+                overlap = len(claimed_terms & supported_terms) / len(claimed_terms)
+                if overlap >= 0.7:  # 70% term overlap
+                    return True
+        
+        return False
+    
+    def _find_memory_for_value(
+        self,
+        value: str,
+        supported_values: Set[str],
+        memory_map: Dict[str, str]
+    ) -> Optional[str]:
+        """Find which memory ID supports a given value.
+        
+        Args:
+            value: The value to find support for
+            supported_values: Set of supported normalized values
+            memory_map: Map from normalized value to memory ID
+            
+        Returns:
+            Memory ID that supports this value, or None
+        """
+        value_norm = self._normalize_value(value)
+        
+        # Try exact match first
+        if value_norm in memory_map:
+            return memory_map[value_norm]
+        
+        # Try fuzzy match
+        for supported in supported_values:
+            supported_norm = self._normalize_value(supported)
+            # Check if they match (using same logic as _is_value_supported)
+            if value_norm == supported_norm or \
+               value_norm in supported_norm or \
+               supported_norm in value_norm:
+                # Return the memory ID for this supported value
+                if supported_norm in memory_map:
+                    return memory_map[supported_norm]
+        
+        # Return any memory ID from the map as fallback
+        if memory_map:
+            return next(iter(memory_map.values()))
+        
+        return None
+    
     def verify(
         self,
         generated_text: str,
@@ -58,20 +165,70 @@ class GroundCheck:
         # Extract facts from generated text
         facts_extracted = extract_fact_slots(generated_text)
         
-        # Build grounding map from memories
-        supported_facts, grounding_map = self._build_grounding_map(
-            facts_extracted, retrieved_memories
-        )
+        # Build grounding map and collect hallucinations
+        hallucinations = []
+        grounding_map = {}
+        supported_facts = {}
         
-        # Identify hallucinations (unsupported facts)
+        # Parse supported facts from memories
+        memory_facts_by_slot: Dict[str, Set[str]] = {}
+        memory_id_by_slot_value: Dict[str, Dict[str, str]] = {}
+        
+        for memory in retrieved_memories:
+            # Try parsing structured FACT: format
+            parsed = parse_fact_from_memory_text(memory.text)
+            if parsed:
+                slot, value = parsed
+                value_norm = normalize_text(value)
+                memory_facts_by_slot.setdefault(slot, set()).add(value_norm)
+                memory_id_by_slot_value.setdefault(slot, {})[value_norm] = memory.id
+            
+            # Also extract facts from memory text
+            memory_facts = extract_fact_slots(memory.text)
+            for slot, fact in memory_facts.items():
+                # Split compound values in memories too
+                fact_values = _split_compound_values(str(fact.value))
+                for val in fact_values:
+                    val_norm = self._normalize_value(val)
+                    if val_norm:
+                        memory_facts_by_slot.setdefault(slot, set()).add(val_norm)
+                        memory_id_by_slot_value.setdefault(slot, {})[val_norm] = memory.id
+        
+        # Check each extracted fact against memories
+        for slot, fact in facts_extracted.items():
+            slot_l = slot.lower()
+            supported_values = memory_facts_by_slot.get(slot_l, set())
+            
+            # Split compound values from the generated text
+            fact_values = _split_compound_values(str(fact.value))
+            
+            # Track which individual values are supported
+            all_supported = True
+            for val in fact_values:
+                val_norm = self._normalize_value(val)
+                if not val_norm:
+                    continue
+                
+                # Check if this individual value is supported (with fuzzy matching)
+                if self._is_value_supported(val, supported_values):
+                    # Find which memory supports this value
+                    memory_id = self._find_memory_for_value(val, supported_values, memory_id_by_slot_value.get(slot_l, {}))
+                    if memory_id:
+                        grounding_map[val] = memory_id
+                else:
+                    # This value is not supported - it's a hallucination
+                    hallucinations.append(val)
+                    all_supported = False
+            
+            # Only mark the fact as supported if ALL values are supported
+            if all_supported and fact_values:
+                supported_facts[slot] = fact
+        
+        # Identify fully unsupported facts (for correction generation)
         unsupported_facts = {
             slot: fact for slot, fact in facts_extracted.items()
             if slot not in supported_facts
         }
-        
-        hallucinations = [
-            str(fact.value) for fact in unsupported_facts.values()
-        ]
         
         passed = len(hallucinations) == 0
         
@@ -129,25 +286,31 @@ class GroundCheck:
         Returns:
             Supporting Memory if found, None otherwise
         """
-        claim_norm = claim.normalized
+        claim_norm = self._normalize_value(str(claim.value))
         
         for memory in memories:
             # Parse structured facts from memory
             parsed = parse_fact_from_memory_text(memory.text)
             if parsed:
                 slot, value = parsed
-                if slot == claim.slot and normalize_text(value) == claim_norm:
-                    return memory
+                if slot == claim.slot:
+                    # Use fuzzy matching for structured facts
+                    if self._is_value_supported(str(claim.value), {value}):
+                        return memory
             
             # Extract facts from memory text
             memory_facts = extract_fact_slots(memory.text)
             if claim.slot in memory_facts:
                 memory_fact = memory_facts[claim.slot]
-                if memory_fact.normalized == claim_norm:
+                # Use fuzzy matching
+                memory_values = _split_compound_values(str(memory_fact.value))
+                if self._is_value_supported(str(claim.value), set(memory_values)):
                     return memory
             
-            # Fallback: simple text matching
-            if claim_norm in normalize_text(memory.text):
+            # Fallback: fuzzy text matching in memory text
+            memory_norm = self._normalize_value(memory.text)
+            if claim_norm and (claim_norm in memory_norm or 
+                              SequenceMatcher(None, claim_norm, memory_norm).ratio() > 0.6):
                 return memory
         
         return None
@@ -175,52 +338,7 @@ class GroundCheck:
         
         return grounding_map
     
-    def _build_grounding_map(
-        self,
-        facts: Dict[str, ExtractedFact],
-        memories: List[Memory]
-    ) -> tuple[Dict[str, ExtractedFact], Dict[str, str]]:
-        """Build grounding map and identify supported facts.
         
-        Returns:
-            Tuple of (supported_facts, grounding_map)
-        """
-        supported_facts = {}
-        grounding_map = {}
-        
-        # Parse supported facts from memories
-        memory_facts_by_slot: Dict[str, Set[str]] = {}
-        memory_id_by_slot_value: Dict[str, Dict[str, str]] = {}
-        
-        for memory in memories:
-            # Try parsing structured FACT: format
-            parsed = parse_fact_from_memory_text(memory.text)
-            if parsed:
-                slot, value = parsed
-                value_norm = normalize_text(value)
-                memory_facts_by_slot.setdefault(slot, set()).add(value_norm)
-                memory_id_by_slot_value.setdefault(slot, {})[value_norm] = memory.id
-            
-            # Also extract facts from memory text
-            memory_facts = extract_fact_slots(memory.text)
-            for slot, fact in memory_facts.items():
-                memory_facts_by_slot.setdefault(slot, set()).add(fact.normalized)
-                memory_id_by_slot_value.setdefault(slot, {})[fact.normalized] = memory.id
-        
-        # Check each extracted fact against memories
-        for slot, fact in facts.items():
-            slot_l = slot.lower()
-            supported = memory_facts_by_slot.get(slot_l, set())
-            
-            if fact.normalized in supported:
-                supported_facts[slot] = fact
-                # Map the claim value to the memory ID
-                memory_id = memory_id_by_slot_value.get(slot_l, {}).get(fact.normalized)
-                if memory_id:
-                    grounding_map[str(fact.value)] = memory_id
-        
-        return supported_facts, grounding_map
-    
     def _calculate_confidence(
         self,
         all_facts: Dict[str, ExtractedFact],
