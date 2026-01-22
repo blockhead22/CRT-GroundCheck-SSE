@@ -1,8 +1,30 @@
 # GroundCheck
 
-**Verify that LLM outputs are grounded in retrieved context.**
+**Grounding verification for LLM outputs with contradiction detection.**
 
-GroundCheck is a lightweight Python library that detects hallucinations in LLM-generated text by verifying that factual claims are supported by retrieved memories or context. It uses deterministic fact extraction and matching—no additional ML models required.
+GroundCheck is a lightweight Python library that verifies LLM-generated text is grounded in retrieved context, with special focus on detecting and handling contradictory information. It uses deterministic fact extraction and matching—no additional ML models required.
+
+## What It Does
+
+**Basic grounding:** Verifies factual claims are supported by retrieved memories  
+**Contradiction detection:** Identifies when retrieved memories contradict each other  
+**Fast:** <10ms overhead, pure Python, zero API costs  
+**Deterministic:** Regex-based patterns, explainable results
+
+## What It Doesn't Do
+
+**Limitations:**
+- Only handles 20+ predefined fact types (employer, location, name, etc.)
+- Cannot extract domain-specific or arbitrary facts
+- Regex-based (misses complex linguistic patterns)
+- 70% overall accuracy (vs ~82% for SelfCheckGPT on basic grounding)
+- 60% contradiction detection (still misses 4/10 cases)
+
+**Not for:**
+- Arbitrary fact verification beyond predefined slots
+- Production systems requiring >90% accuracy
+- Non-English text
+- Multi-modal contradiction detection
 
 ## Installation
 
@@ -39,12 +61,17 @@ print(result.hallucinations)  # ["Amazon"]
 ## Features
 
 - 🎯 **Claim-level grounding verification** - Extracts and verifies individual factual claims
-- 🔍 **Automatic hallucination detection** - Identifies unsupported facts in generated text
+- 🔍 **Contradiction detection** - Identifies contradictory information in retrieved context (60% accuracy)
 - ✅ **Fact extraction and mapping** - Maps claims to supporting memories
 - 🚀 **Fast** - Pure Python, no ML models (<10ms overhead)
 - 🔧 **Model-agnostic** - Works with any LLM output
 - 📦 **Zero ML dependencies** - No sentence-transformers, no embeddings required
-- 🧪 **Well-tested** - Comprehensive test suite included
+- 🧪 **Well-tested** - 86 tests, 90% coverage
+
+**Performance:**
+- Overall grounding: 70% accuracy (GroundingBench)
+- Contradiction detection: 60% accuracy (vs 30% for baselines)
+- Trade-off: Speed + contradiction handling vs raw accuracy
 
 ## Usage
 
@@ -107,13 +134,42 @@ print(result.confidence)  # High confidence score due to strong memory support
 
 ## Supported Fact Types
 
-GroundCheck can extract and verify many types of personal and professional facts:
+GroundCheck can extract and verify specific types of personal and professional facts:
 
 - **Personal**: name, location, siblings, languages spoken
 - **Professional**: employer, job title, project, programming experience
 - **Education**: school, graduation year, degree information
 - **Preferences**: favorite color, coffee preference, hobbies
-- And many more (see `fact_extractor.py` for full list)
+
+**Limitations:** Only handles predefined slots listed above. Cannot extract arbitrary or domain-specific facts without manual pattern engineering.
+
+See `fact_extractor.py` for full list of supported patterns.
+
+## Known Limitations
+
+### Accuracy
+- **Overall grounding:** 70% (vs 82% for SelfCheckGPT on basic tasks)
+- **Contradiction detection:** 60% (misses 4/10 cases)
+- **Paraphrasing:** 70% (vs 90% for LLM-based methods)
+- **Partial grounding:** 40% (same as baselines)
+
+### Regex Limitations
+- Only 20+ predefined fact types
+- Substring matching issues ("Software Engineer" matches "Senior Software Engineer")
+- Misses linguistic variations ("works at X" vs "employed by X since 2020")
+- No semantic understanding (cannot recognize "software engineer" ≈ "software developer" without explicit patterns)
+
+### Scope
+- Text-only (no multi-modal)
+- English-only
+- Fixed trust thresholds (not learned)
+- Research prototype (not production-hardened)
+
+### When NOT to Use This
+- Need >90% accuracy on basic grounding → Use SelfCheckGPT instead
+- Need arbitrary fact extraction → Use neural fact extractors
+- Production system with strict requirements → Not ready
+- Non-English text → Not supported
 
 ## API Reference
 
@@ -154,8 +210,25 @@ A retrieved context item.
 1. **Fact Extraction**: Extracts factual claims from generated text using regex patterns
 2. **Memory Parsing**: Parses supporting facts from retrieved memories
 3. **Grounding Check**: Matches extracted claims against memory facts
-4. **Hallucination Detection**: Identifies claims not supported by memories
-5. **Correction** (strict mode): Replaces unsupported claims with grounded alternatives
+4. **Contradiction Detection**: Identifies conflicts between memories (if trust-weighted)
+5. **Hallucination Detection**: Identifies claims not supported by memories
+6. **Correction** (strict mode): Replaces unsupported claims with grounded alternatives
+
+**Note:** Regex-based extraction limits coverage to predefined patterns. See limitations above.
+
+## When to Use This
+
+**Good for:**
+- Long-term AI memory systems where contradictions accumulate over time
+- Applications needing fast, deterministic verification (<10ms)
+- Scenarios where zero API cost matters
+- Research prototypes exploring contradiction handling
+
+**Not good for:**
+- Production systems requiring >90% accuracy
+- Arbitrary fact domains without predefined patterns
+- Multi-modal or non-English applications
+- Critical systems where 60% contradiction detection isn't enough
 
 ## Development
 

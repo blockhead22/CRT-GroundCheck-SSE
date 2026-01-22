@@ -1,180 +1,171 @@
 # Does This Project Actually Serve a Purpose?
 
-**Yes. Here's why it matters.**
+**The honest answer: Maybe. It depends on your use case.**
 
 ---
 
-## The Problem: AI Memory Systems Lie By Omission
+## The Problem We Address
 
-Most conversational AI systems with memory fail in a predictable way:
+Long-term AI assistants accumulate contradictory facts as user information updates over time. When a user changes jobs from Microsoft to Amazon, most systems either:
+1. Silently overwrite the old fact (losing history)
+2. Randomly pick between contradicting values (appearing inconsistent)
+3. Present one value as truth without acknowledging the conflict
 
-**Monday:**
-> You: "I work at Microsoft."  
-> AI: "Got it! You work at Microsoft."
+This creates trust problems in long-term AI interactions.
 
-**Tuesday:**
-> You: "Actually, I work at Amazon now."  
-> AI: "Understood! You work at Amazon."
+## Our Approach
 
-**Wednesday:**
-> You: "Where do I work?"  
-> AI: "You work at Amazon."  
-> *(No mention that this contradicts what you said on Monday)*
+**CRT + GroundCheck** provides an end-to-end pipeline:
 
-**The AI just lied to you.** Not by stating a falsehood, but by presenting contradictory information as if it were certain truth.
+1. **CRT** preserves contradictions in a queryable ledger
+2. **GroundCheck** verifies that outputs acknowledge contradictions
 
----
+**Example:**
+- Monday: "I work at Microsoft"
+- Tuesday: "Actually, I work at Amazon"
+- Wednesday: System responds "You work at Amazon (changed from Microsoft)"
 
-## Why This Matters
+## What We Can Prove
 
-### 1. **Trust Erosion Over Time**
-When AI systems silently overwrite memories without acknowledging conflicts, users lose trust. After 100 conversations, you can't verify if the AI remembers what you *actually* said or what it *thinks* you meant.
+**Contradiction detection:**
+- 60% accuracy on contradiction category (GroundingBench, 6/10 examples)
+- Baselines (SelfCheckGPT-style, CoVe-style): 30% (3/10 examples)
+- 2x improvement on this specific capability
 
-### 2. **Identity Drift**
-Personal assistants gradually invent facts about you that you never stated. The system "connects dots" that don't exist, creating a false narrative about your life, work, or preferences.
+**System properties:**
+- 86 tests passing (groundcheck library)
+- 97 tests passing (full CRT system)
+- 1000+ contradiction ledger entries tracked without loss (stress test)
+- <10ms verification speed, zero API costs
 
-### 3. **Unaccountable Decisions**
-In domains like healthcare, legal, or customer service, decisions based on contradictory information without disclosure are not just misleading—they're dangerous.
+**Overall grounding:**
+- 70% accuracy on GroundingBench (35/50 examples)
+- Competitive but not state-of-art (SelfCheckGPT ~82%)
 
-### 4. **The Confidence Problem**
-Current AI systems are optimized to *always sound confident*. They'll confidently tell you contradictory things on different days without ever saying "I have conflicting information about this."
+## Limitations (Being Honest)
 
----
+**Fact extraction:**
+- Regex-based, limited to 20+ predefined slots (employer, location, etc.)
+- Cannot extract domain-specific or arbitrary fact types
+- Misses complex linguistic patterns
 
-## What CRT Does Differently
+**Accuracy:**
+- 70% overall grounding (vs 82% for SelfCheckGPT on basic grounding)
+- 60% contradiction detection (still misses 4/10 cases)
+- Known failures: substring matching, missing patterns, complex paraphrases
 
-**CRT (Contradiction-Preserving Memory)** solves this with one core principle:
+**Scope:**
+- Text-only (no multi-modal contradiction detection)
+- Trust thresholds (0.75, 0.3) chosen empirically, not learned
+- English-only patterns
+- Research prototype, not production-hardened
 
-> **If a memory has an open contradiction, the system MUST NOT present it as unqualified truth.**
+## Where This Could Help
 
-### How It Works
+**Personal AI assistants:**
+- Prevent gaslighting when facts change
+- Build trust through transparency
+- Show history, not just current state
 
-Using the same example:
+**Healthcare:**
+- Track diagnosis evolution (initial positive → retest negative)
+- Audit trail for contradictory test results
+- Disclosure compliance (HIPAA)
 
-**Monday:**
-> You: "I work at Microsoft."  
-> CRT: Stores with high trust → `{company: "Microsoft", trust: 0.9}`
+**Legal:**
+- Flag contradictory witness statements
+- Track testimony evolution
+- Discovery compliance
 
-**Tuesday:**
-> You: "Actually, I work at Amazon now."  
-> CRT: Detects contradiction → Logs conflict in ledger  
-> CRT: Preserves BOTH memories (Microsoft + Amazon)
+**Enterprise knowledge:**
+- Detect conflicting documentation
+- Version tracking for policies
 
-**Wednesday:**
-> You: "Where do I work?"  
-> CRT: "**Amazon** *(most recent update)*"
-> 
-> *Behind the scenes:*  
-> - Both memories retrieved  
-> - Both flagged as `reintroduced_claim: true`  
-> - System adds inline caveat to acknowledge conflict  
-> - Metadata shows: `reintroduced_claims_count: 2`
+**Customer service:**
+- Acknowledge account history changes
+- Transparent updates ("shipping address changed from...")
 
-**The difference:** CRT tells you it has conflicting information. You always know when uncertainty exists.
+## What We Don't Know
 
----
+**User preferences:**
+- Do users prefer disclosure to confident errors?
+- Is transparency worth the verbosity?
+- Will contradiction warnings feel helpful or annoying?
 
-## The Real-World Impact
+**Real-world frequency:**
+- How common are contradictions in actual usage?
+- Are they frequent enough to justify this infrastructure?
 
-### ✅ **Personal Assistants**
-Track evolving facts about users (job changes, relocations, preference updates) without losing history or pretending conflicts don't exist.
+**Production viability:**
+- Can this scale beyond SQLite and regex?
+- What are real-world false positive/negative rates?
+- Will regulations eventually require this?
 
-### ✅ **Customer Service**
-Maintain conversation histories across months without silent overwrites when customer details change.
+## What Would Need to Be True
 
-### ✅ **Compliance & Audit**
-Legal/medical domains where contradictory evidence must be preserved and disclosed, not hidden.
+**For this to matter:**
+- Long-term AI memory becomes widespread (ChatGPT Memory, Claude Projects suggest this is happening)
+- Users value transparency over confident-but-wrong answers
+- Contradictions occur frequently enough to be a real problem
+- OR: Regulatory pressure emerges (HIPAA, legal compliance)
 
-### ✅ **Research Assistants**
-Manage conflicting evidence from multiple sources without auto-resolving to a "consensus" that may be wrong.
+**What would invalidate this:**
+- LLM accuracy improves such that contradictions rarely occur
+- Users consistently prefer confident wrong answers
+- Better solutions appear (neural, end-to-end)
+- No regulatory pressure emerges
 
----
+## Why We're Publishing
 
-## What Makes CRT Unique
+**We're publishing because:**
+- The problem is real (AI memory has contradictions)
+- The approach is novel (first explicit contradiction tracking)
+- Others can evaluate if it helps their use case
+- Research should be reproducible and extensible
 
-1. **Contradiction Ledger**: Durable, append-only log of all conflicts detected  
-2. **Reintroduction Invariant**: Automated enforcement—contradicted claims *must* be flagged in data and disclosed in language  
-3. **Trust-Weighted Retrieval**: Memories ranked by similarity × recency × trust  
-4. **X-Ray Transparency**: See exactly which memories built each answer and which are contradicted  
-5. **Two-Lane Memory**: Separate storage for high-confidence beliefs vs conversational speech  
+**We're NOT claiming:**
+- This will definitely be adopted
+- It's better for all use cases
+- It's production-ready
+- Everyone needs this
 
----
+## Technical Differentiators
 
-## Why Not Just Use [Insert Popular AI Framework Here]?
+**vs. SelfCheckGPT:**
+- They: Check output consistency via LLM sampling
+- We: Check retrieved memory for contradictions
+- Trade-off: We're faster + cheaper, they're more accurate on basic grounding
 
-| Feature | Standard RAG | Vector DB + LLM | CRT |
-|---------|-------------|-----------------|-----|
-| **Detects contradictions** | ❌ | ❌ | ✅ |
-| **Preserves conflicting memories** | ❌ | ⚠️ Stores but doesn't track | ✅ Tracked in ledger |
-| **Discloses conflicts in responses** | ❌ | ❌ | ✅ Inline caveats |
-| **Prevents silent overwrites** | ❌ | ❌ | ✅ |
-| **Traceable provenance** | ⚠️ Manual | ⚠️ Manual | ✅ Built-in |
-| **Trust scoring** | ❌ | ❌ | ✅ |
+**vs. Chain-of-Verification:**
+- They: LLM generates verification questions
+- We: Deterministic pattern matching + contradiction ledger
+- Trade-off: We're deterministic + explainable, they handle arbitrary claims
 
-**Bottom line:** Existing tools can store and retrieve. CRT adds *memory governance*—the policies and enforcement that prevent drift and dishonesty.
+**vs. ChatGPT Memory / Claude Projects:**
+- They: Overwrite or randomly pick between conflicts
+- We: Preserve contradictions + enforce disclosure
+- Unique: Explicit contradiction tracking + policy enforcement
 
----
+## Does This Serve a Purpose?
 
-## Proof It Works
+**Short answer: For some use cases, yes. For others, no.**
 
-From recent stress testing (15 turns, multiple contradictions):
+**If you're working on:**
+- Long-term AI memory → This might help
+- Regulated AI (healthcare, legal) → This might help
+- Personal assistants → This might help
+- One-shot QA → This probably doesn't help
+- Stateless chatbots → This doesn't help
 
-```
-REINTRODUCTION INVARIANT ENFORCEMENT:
-  Flagged contradicted memories (audited): 8
-  Unflagged contradicted memories (violations): 0
-  Asserted without caveat (violations): 0
-  ✅ INVARIANT MAINTAINED
-```
-
-**Zero violations.** Every contradicted memory was flagged. Every answer using contradicted claims included a caveat.
-
-See: `artifacts/crt_stress_run.*.jsonl` for full audit trails.
-
----
-
-## The North Star Goal
-
-**After 100 conversations, can you inspect the system's memory and say:**  
-*"Yes, this is exactly what I told you. Nothing invented. Nothing hidden."*
-
-If the answer is **yes**, CRT succeeded.  
-If the answer is *"Where did you get that idea?"*, CRT failed.
-
-Most AI memory systems optimize for fluency and coverage. CRT optimizes for **coherence and honesty over time**.
-
----
-
-## So, Does This Project Serve a Purpose?
-
-**Absolutely.**
-
-CRT exists because:
-- **Current AI memory systems are untrustworthy** (they lie by omission)
-- **Users deserve transparency** (know when the system is uncertain)
-- **Contradictions are information, not noise** (preserve them, don't hide them)
-- **Coherence over time matters more than sounding good once** (100-turn consistency > 1-turn perfection)
-
-If you've ever:
-- Had an AI assistant "forget" something you told it
-- Gotten conflicting answers on different days without explanation
-- Wondered "where did it learn that about me?"
-- Needed a system that says "I don't know" instead of guessing
-
-...then **yes, this project serves a purpose that no other system currently addresses**.
+**Try it. Evaluate it. Extend it if useful. Ignore it if not.**
 
 ---
 
-## Next Steps
-
-- **See concrete examples:** [BEFORE_AND_AFTER.md](BEFORE_AND_AFTER.md)  
-- **Try the 5-minute demo:** [QUICKSTART.md](QUICKSTART.md)  
-- **Understand the philosophy:** [CRT_PHILOSOPHY.md](CRT_PHILOSOPHY.md)  
-- **See the technical specs:** [CRT_REINTRODUCTION_INVARIANT.md](CRT_REINTRODUCTION_INVARIANT.md)  
-- **Read the white paper:** [CRT_WHITEPAPER.md](CRT_WHITEPAPER.md)
+**Next steps:**
+- Try the demo: [QUICKSTART.md](QUICKSTART.md)
+- Understand the architecture: [README.md](README.md)
+- Read the brutal honesty: [docs/HONEST_ASSESSMENT.md](docs/HONEST_ASSESSMENT.md)
 
 ---
 
-*Last updated: 2026-01-21*  
-*This document directly answers: "Does this project actually serve a purpose?"*  
-*Short answer: Yes. Long answer: Read above.*
+*Last updated: 2026-01-22*

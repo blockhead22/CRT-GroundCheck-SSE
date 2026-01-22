@@ -177,7 +177,114 @@ We outline three high-impact research directions for extending GroundCheck.
 - Can we predict which contradictions users care about? (query important conflicts, auto-resolve minor ones)
 - How to generalize from user feedback? (learn rules like "always prefer recent" vs case-by-case resolution)
 
-## 7.4 Integration with Production Systems
+## 7.4 Will This Actually Help?
+
+We acknowledge this work addresses a narrow problem: contradiction handling in long-term memory systems. Its value depends on several assumptions that remain unvalidated.
+
+### Assumption 1: Long-term AI memory becomes widespread
+
+**Current evidence:** ChatGPT Memory and Claude Projects suggest stateful AI assistants are emerging.
+
+**Uncertain:** Will mainstream users adopt long-term AI, or will most usage remain one-shot interactions?
+
+**Implication:** If most AI interactions stay stateless, contradiction handling is irrelevant.
+
+### Assumption 2: Users prefer transparency over confidence
+
+**Current evidence:** None. We have no user study data.
+
+**Uncertain:** Users might find disclosure verbose or annoying. They might prefer confident (wrong) answers to uncertain (honest) ones.
+
+**Implication:** If users consistently reject transparency, this approach fails regardless of technical merit.
+
+### Assumption 3: Contradictions are common enough to matter
+
+**Current evidence:** Our examples (job changes, location moves) are plausible, but frequency in actual usage is unknown.
+
+**Uncertain:** In 100 conversations with a long-term AI assistant, how many contradictions occur? Is it 1? 10? 50?
+
+**Implication:** If contradictions are rare (< 1% of interactions), the infrastructure overhead isn't justified.
+
+### Assumption 4: Regulatory pressure increases
+
+**Current evidence:** HIPAA, SOX, and EU AI Act suggest compliance requirements are increasing.
+
+**Uncertain:** Will regulations explicitly require contradiction tracking? Will enforcement be strict? Will market care without enforcement?
+
+**Implication:** Without regulatory forcing function, adoption may remain limited to niche applications.
+
+### What would validate this approach
+
+**User study showing preference for disclosure:**
+- A/B test comparing disclosure vs confident answers
+- Evidence that transparency improves user trust
+- Threshold: p < 0.05, effect size > 0.3
+
+**Real-world deployment showing contradiction frequency:**
+- Production data from long-term AI system
+- Contradiction rate > 5% of interactions
+- Evidence contradictions cause user confusion without disclosure
+
+**Compliance requirement mandating audit trails:**
+- Regulation explicitly requiring contradiction tracking
+- Adoption by regulated industry (healthcare, legal)
+- Market demand driven by compliance needs
+
+**Adoption by production AI system:**
+- Integration with ChatGPT Memory, Claude Projects, or similar
+- Evidence of improved user satisfaction
+- Sustained usage over 6+ months
+
+### What would invalidate this approach
+
+**LLM accuracy improves such that contradictions rarely occur:**
+- Next-generation models (GPT-6, Claude 5) achieve near-perfect factual consistency
+- Contradiction rate drops below 0.1%
+- Problem becomes negligible
+
+**Users consistently prefer confident wrong answers:**
+- User studies show disclosure reduces satisfaction
+- Evidence that transparency feels verbose or annoying
+- Market rejects "uncertain AI"
+
+**Better solutions appear:**
+- Neural, end-to-end systems that handle contradictions more accurately
+- Methods that don't require manual pattern engineering
+- Approaches that achieve > 90% contradiction detection
+
+**No regulatory pressure emerges:**
+- AI regulation remains minimal
+- Market doesn't demand compliance
+- No forcing function for adoption after 12+ months
+
+### The honest answer
+
+**We don't know yet if this will actually help.**
+
+**What we know:**
+- Contradiction detection works (60% vs 30% baselines)
+- System is fast (<10ms) and cheap (zero API cost)
+- Architecture is sound (0 invariant violations)
+
+**What we don't know:**
+- Will users prefer disclosure to confident errors?
+- Are contradictions common enough to matter?
+- Will regulations require this?
+- Can this scale to production?
+
+**We publish this work to enable evaluation, not to claim definitive answers.**
+
+The validation (or invalidation) will come from:
+- User studies testing preference for transparency
+- Real-world deployments measuring contradiction frequency
+- Regulatory developments requiring audit trails
+- Market adoption by production systems
+
+**We'll know in 12 months if this matters.**
+
+---
+
+## 7.5 Integration with Production Systems
 
 **Deployment considerations:**
 
@@ -199,7 +306,7 @@ if not report.grounded:
 
 **A/B testing:** Compare user satisfaction between GroundCheck-enabled and baseline systems. Measure trust, transparency, and task completion rates.
 
-## 7.5 Broader Impact
+## 7.6 Broader Impact
 
 **Positive impacts:**
 - **Transparency:** Users understand how AI memory evolves over time
