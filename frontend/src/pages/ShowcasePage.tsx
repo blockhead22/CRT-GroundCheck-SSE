@@ -232,39 +232,58 @@ export function ShowcasePage() {
                 </p>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <TrustScoreCard
-                  label="Employer"
-                  currentValue="Amazon"
-                  currentTrust={0.9}
-                  source="User stated directly"
-                  confirmations={3}
-                  lastUpdated={now - dayMs * 5}
-                  history={[
-                    { timestamp: now - dayMs * 30, trust: 0.5, event: 'Initial mention' },
-                    { timestamp: now - dayMs * 20, trust: 0.7, event: 'Confirmed' },
-                    { timestamp: now - dayMs * 10, trust: 0.85, event: 'Re-confirmed' },
-                    { timestamp: now - dayMs * 5, trust: 0.9, event: 'Third confirmation' },
-                  ]}
-                />
-
-                <TrustScoreCard
-                  label="Employer"
-                  currentValue="Microsoft"
-                  currentTrust={0.6}
-                  source="User stated directly"
-                  confirmations={1}
-                  lastUpdated={now - dayMs * 35}
-                  superseded
-                  supersededBy="Amazon"
-                  history={[
-                    { timestamp: now - dayMs * 60, trust: 0.9, event: 'Initial trust' },
-                    { timestamp: now - dayMs * 45, trust: 0.85, event: 'Slight decay' },
-                    { timestamp: now - dayMs * 35, trust: 0.7, event: 'Superseded' },
-                    { timestamp: now - dayMs * 5, trust: 0.6, event: 'Further decay' },
-                  ]}
-                />
-              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <div className="mb-4 text-4xl">⏳</div>
+                    <div className="text-white/60">Loading memories...</div>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                  <div className="mb-2 text-sm font-semibold text-red-300">Failed to load memories</div>
+                  <div className="mb-3 text-xs text-red-400">{error}</div>
+                  <button
+                    onClick={fetchMemories}
+                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : stableMemories.length === 0 && candidateMemories.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+                  <div className="mb-4 text-6xl opacity-20">📊</div>
+                  <div className="text-lg font-medium text-white/60">No memories to display</div>
+                  <div className="mt-2 text-sm text-white/40">
+                    Start chatting with the CRT to create memories with trust scores
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {stableMemories.slice(0, 2).map((memory) => (
+                    <TrustScoreCard
+                      key={memory.memory_id}
+                      label={memory.source || 'Memory'}
+                      currentValue={memory.text}
+                      currentTrust={memory.trust}
+                      source={memory.source}
+                      confirmations={memory.confidence ? Math.round(memory.confidence * 10) : undefined}
+                      lastUpdated={memory.timestamp * 1000}
+                    />
+                  ))}
+                  {candidateMemories.slice(0, 2).map((memory) => (
+                    <TrustScoreCard
+                      key={memory.memory_id}
+                      label={memory.source || 'Memory'}
+                      currentValue={memory.text}
+                      currentTrust={memory.trust}
+                      source={memory.source}
+                      confirmations={memory.confidence ? Math.round(memory.confidence * 10) : undefined}
+                      lastUpdated={memory.timestamp * 1000}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
