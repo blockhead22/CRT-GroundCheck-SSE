@@ -283,6 +283,15 @@ export type ContradictionListItem = {
   query?: string | null
   old_memory_id: string
   new_memory_id: string
+  // Enhanced fields for UI
+  contradiction_id?: string | null
+  slot?: string | null
+  old_value?: string | null
+  new_value?: string | null
+  old_trust?: number | null
+  new_trust?: number | null
+  detected_at?: number | null
+  policy?: string | null
 }
 
 export type ContradictionWorkItem = {
