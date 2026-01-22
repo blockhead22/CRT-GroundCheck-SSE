@@ -83,11 +83,14 @@ class TestContradictionDisclosure:
     """Test verification of contradiction disclosure in outputs."""
     
     def test_undisclosed_contradiction_fails(self):
-        """Test that using contradicted fact without disclosure fails."""
+        """Test that using contradicted fact without disclosure fails.
+        
+        Uses high trust scores (≥0.86) for both memories to trigger disclosure requirement.
+        """
         verifier = GroundCheck()
         memories = [
-            Memory(id="m1", text="User works at Microsoft", timestamp=1704067200, trust=0.85),
-            Memory(id="m2", text="User works at Amazon", timestamp=1706745600, trust=0.85)
+            Memory(id="m1", text="User works at Microsoft", timestamp=1704067200, trust=0.90),
+            Memory(id="m2", text="User works at Amazon", timestamp=1706745600, trust=0.90)
         ]
         
         result = verifier.verify("You work at Amazon", memories)
@@ -139,8 +142,8 @@ class TestContradictionDisclosure:
         """Test that strict mode adds disclosure to correction."""
         verifier = GroundCheck()
         memories = [
-            Memory(id="m1", text="User works at Microsoft", timestamp=1704067200, trust=0.85),
-            Memory(id="m2", text="User works at Amazon", timestamp=1706745600, trust=0.85)
+            Memory(id="m1", text="User works at Microsoft", timestamp=1704067200, trust=0.90),
+            Memory(id="m2", text="User works at Amazon", timestamp=1706745600, trust=0.90)
         ]
         
         result = verifier.verify(
@@ -216,14 +219,14 @@ class TestContradictionEdgeCases:
         assert "Amazon" in result.contradicted_claims  # Still detected as contradicted
     
     def test_similar_trust_requires_disclosure(self):
-        """Test that similar trust scores require disclosure."""
+        """Test that similar high trust scores require disclosure."""
         verifier = GroundCheck()
         memories = [
-            Memory(id="m1", text="User works at Microsoft", trust=0.8),
-            Memory(id="m2", text="User works at Amazon", trust=0.85)
+            Memory(id="m1", text="User works at Microsoft", trust=0.90),
+            Memory(id="m2", text="User works at Amazon", trust=0.90)
         ]
-        
-        # Trust difference is 0.05, below 0.5 threshold, so disclosure required
+
+        # Both high trust (≥0.86) with small difference, so disclosure required
         result = verifier.verify("You work at Amazon", memories)
         
         assert result.passed == False  # Should fail without disclosure
@@ -282,13 +285,13 @@ class TestIntegration:
             Memory(
                 id="m1",
                 text="User works at Microsoft in Seattle",
-                trust=0.85,
+                trust=0.90,
                 timestamp=1704067200
             ),
             Memory(
                 id="m2",
                 text="User works at Amazon in Portland",
-                trust=0.85,
+                trust=0.90,
                 timestamp=1709337600
             )
         ]

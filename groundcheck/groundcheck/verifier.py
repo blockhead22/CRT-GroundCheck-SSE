@@ -53,7 +53,12 @@ class GroundCheck:
     
     # Trust difference threshold: if trust scores differ by more than this,
     # the low-trust memory is considered unreliable and doesn't require disclosure
-    TRUST_DIFFERENCE_THRESHOLD = 0.5
+    TRUST_DIFFERENCE_THRESHOLD = 0.3
+    
+    # Minimum trust for both memories to require disclosure
+    # If either memory is below this, it's considered unreliable noise
+    # Set high (0.86) to only require disclosure for very close, very confident contradictions
+    MINIMUM_TRUST_FOR_DISCLOSURE = 0.86
     
     def __init__(self):
         """Initialize the GroundCheck verifier."""
@@ -442,25 +447,38 @@ class GroundCheck:
                 if slot:
                     contradiction = next((c for c in contradictions if c.slot == slot), None)
                     if contradiction:
-                        # Check trust score difference - if very high, don't require disclosure
-                        # This handles cases where one memory is essentially noise (e.g., trust=0.3 vs 0.95)
+                        # Check trust scores to determine if disclosure is needed
+                        # Only require disclosure if BOTH memories are credible
                         trust_diff = max(contradiction.trust_scores) - min(contradiction.trust_scores)
-                        if trust_diff < self.TRUST_DIFFERENCE_THRESHOLD:  # Significant contradiction - both memories are credible
-                            # Check if output acknowledges the contradiction
-                            has_disclosure = self._check_contradiction_disclosure(
-                                generated_text,
+                        min_trust = min(contradiction.trust_scores)
+                        max_trust = max(contradiction.trust_scores)
+                        
+                        # Skip disclosure requirement if:
+                        # 1. Large trust difference (one memory is clearly more reliable)
+                        # 2. Low-trust memory is below reliability threshold
+                        if trust_diff >= self.TRUST_DIFFERENCE_THRESHOLD:
+                            # Large gap - low-trust memory is noise, no disclosure needed
+                            continue
+                        elif min_trust < self.MINIMUM_TRUST_FOR_DISCLOSURE:
+                            # At least one memory is unreliable, no disclosure needed
+                            continue
+                        
+                        # Both memories are credible with similar trust - disclosure required
+                        # Check if output acknowledges the contradiction
+                        has_disclosure = self._check_contradiction_disclosure(
+                            generated_text,
+                            claim,
+                            contradiction
+                        )
+                        
+                        if not has_disclosure:
+                            requires_disclosure = True
+                            expected_disclosure = self._generate_disclosure_text(
                                 claim,
                                 contradiction
                             )
-                            
-                            if not has_disclosure:
-                                requires_disclosure = True
-                                expected_disclosure = self._generate_disclosure_text(
-                                    claim,
-                                    contradiction
-                                )
-                                # Only show one expected disclosure for simplicity
-                                break
+                            # Only show one expected disclosure for simplicity
+                            break
         
         # Step 4: Determine if verification passed
         passed = (
