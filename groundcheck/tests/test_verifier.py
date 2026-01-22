@@ -333,20 +333,23 @@ def test_partial_grounding_accuracy():
     verifier = GroundCheck()
     
     memories = [
-        Memory(id="m1", text="User works at Microsoft", trust=0.9),
-        Memory(id="m2", text="User lives in Seattle", trust=0.9)
+        Memory(id="m1", text="User knows Python", trust=0.9),
+        Memory(id="m2", text="User knows JavaScript", trust=0.9)
     ]
     
-    # Partially correct output (2 correct, 1 hallucination)
-    result = verifier.verify(
-        "You work at Microsoft, live in Seattle, and have 2 kids",
-        memories
-    )
+    # Test with all supported programming languages (should pass)
+    result = verifier.verify("You use Python and JavaScript", memories)
+    assert result.passed == True
+    assert len(result.hallucinations) == 0
     
-    assert result.passed == False  # Should fail due to "2 kids"
-    # Check for hallucination indicators (the phrase might be split differently)
-    hallucinations_str = " ".join(result.hallucinations).lower()
-    assert "kids" in hallucinations_str or "2" in hallucinations_str
+    # Test with partially supported programming languages (2 correct, 2 hallucinations)
+    result = verifier.verify("You use Python, JavaScript, Ruby, and Go", memories)
+    assert result.passed == False  # Should fail due to Ruby and Go
+    assert "Ruby" in result.hallucinations
+    assert "Go" in result.hallucinations
+    # Ensure Python and JavaScript are NOT in hallucinations
+    assert "Python" not in result.hallucinations
+    assert "JavaScript" not in result.hallucinations
 
 
 def test_semantic_paraphrase_matching():
