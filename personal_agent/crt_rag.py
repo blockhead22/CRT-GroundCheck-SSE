@@ -19,6 +19,7 @@ Philosophy:
 import numpy as np
 import re
 import logging
+import sqlite3
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
 from collections import OrderedDict
@@ -1338,7 +1339,6 @@ class CRTEnhancedRAG:
         Returns: True if a contradiction was resolved, False otherwise.
         """
         from .crt_ledger import ContradictionStatus, ContradictionType
-        import sqlite3
         
         # Resolution intent patterns
         resolution_patterns = [
