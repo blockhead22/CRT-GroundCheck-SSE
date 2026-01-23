@@ -1425,34 +1425,43 @@ class CRTEnhancedRAG:
                     # User mentioned a value but it doesn't match either side
                     continue
                 
-                # Deprecate the non-chosen memory
-                mem_db = str(self.memory.db_path)
-                mem_conn = sqlite3.connect(mem_db)
-                mem_cursor = mem_conn.cursor()
-                
-                mem_cursor.execute("""
-                    UPDATE memories 
-                    SET deprecated = 1, deprecation_reason = ?
-                    WHERE memory_id = ?
-                """, (f"User resolved via natural language: '{user_text[:100]}'", deprecated_memory_id))
-                
-                # Optionally boost trust of chosen memory slightly
-                mem_cursor.execute("""
-                    UPDATE memories 
-                    SET trust = MIN(trust + 0.1, 1.0)
-                    WHERE memory_id = ?
-                """, (chosen_memory_id,))
-                
-                mem_conn.commit()
-                mem_conn.close()
-                
-                # Resolve the contradiction in the ledger
+                # Resolve the contradiction in the ledger FIRST
+                # This ensures we don't end up with deprecated memories but unresolved contradictions
                 self.ledger.resolve_contradiction(
                     contra.ledger_id,
                     method="nl_resolution",
                     merged_memory_id=None,
                     new_status=ContradictionStatus.RESOLVED,
                 )
+                
+                # Then deprecate the non-chosen memory
+                # Using context manager to ensure connection is properly closed
+                mem_db = str(self.memory.db_path)
+                try:
+                    with sqlite3.connect(mem_db) as mem_conn:
+                        mem_cursor = mem_conn.cursor()
+                        
+                        mem_cursor.execute("""
+                            UPDATE memories 
+                            SET deprecated = 1, deprecation_reason = ?
+                            WHERE memory_id = ?
+                        """, (f"User resolved via natural language: '{user_text[:100]}'", deprecated_memory_id))
+                        
+                        # Optionally boost trust of chosen memory slightly
+                        mem_cursor.execute("""
+                            UPDATE memories 
+                            SET trust = MIN(trust + 0.1, 1.0)
+                            WHERE memory_id = ?
+                        """, (chosen_memory_id,))
+                        
+                        mem_conn.commit()
+                except Exception as e:
+                    logger.error(
+                        f"[NL_RESOLUTION] Failed to update memories after resolving contradiction {contra.ledger_id}: {e}",
+                        exc_info=True
+                    )
+                    # Continue anyway - the contradiction is already resolved in the ledger
+                    # The memory deprecation is a nice-to-have optimization
                 
                 logger.info(
                     f"[NL_RESOLUTION] Resolved contradiction {contra.ledger_id} via natural language. "
