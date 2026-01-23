@@ -107,6 +107,9 @@ class CRTMemorySystem:
     - Trust evolution over time
     """
     
+    # Contested memory trust cap multiplier (90% reduction)
+    CONTESTED_TRUST_MULTIPLIER = 0.1
+    
     def __init__(
         self,
         db_path: str = "personal_agent/crt_memory.db",
@@ -402,8 +405,9 @@ class CRTMemorySystem:
         # Import here to avoid circular dependency
         from pathlib import Path
         
-        # Get the ledger database path (same directory as memory db)
-        ledger_db = Path(self.db_path).parent / "crt_ledger.db"
+        # Derive ledger database path from memory database path
+        # Replace 'crt_memory' with 'crt_ledger' to get corresponding ledger DB
+        ledger_db = Path(self.db_path.replace('crt_memory', 'crt_ledger'))
         
         if not ledger_db.exists():
             return False
@@ -452,7 +456,7 @@ class CRTMemorySystem:
             delta = new_trust - old_trust
             
             # Apply contested multiplier (reduce updates by 90%)
-            capped_delta = delta * 0.1
+            capped_delta = delta * self.CONTESTED_TRUST_MULTIPLIER
             actual_new_trust = old_trust + capped_delta
             
             # Ensure within bounds

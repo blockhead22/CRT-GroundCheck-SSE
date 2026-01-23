@@ -3,6 +3,7 @@ import re
 import sqlite3
 import time
 import uuid
+import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -31,6 +32,9 @@ from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
+
+# Constants for resolution policies
+RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
 
 
 def _sanitize_thread_id(value: str) -> str:
@@ -1684,9 +1688,9 @@ def create_app() -> FastAPI:
             # Boost trust of chosen memory
             mem_cursor.execute("""
                 UPDATE memories 
-                SET trust = LEAST(trust + 0.1, 1.0)
+                SET trust = LEAST(trust + ?, 1.0)
                 WHERE memory_id = ?
-            """, (active_id,))
+            """, (RESOLUTION_TRUST_BOOST, active_id,))
             
             mem_conn.commit()
             mem_conn.close()
@@ -1706,7 +1710,6 @@ def create_app() -> FastAPI:
                 row = mem_cursor.fetchone()
                 if row:
                     tags_json = row[0] or '[]'
-                    import json
                     tags = json.loads(tags_json)
                     if 'resolved_both_valid' not in tags:
                         tags.append('resolved_both_valid')
@@ -1730,7 +1733,6 @@ def create_app() -> FastAPI:
             row = cursor.fetchone()
             metadata = {}
             if row and row[0]:
-                import json
                 metadata = json.loads(row[0]) if isinstance(row[0], str) else row[0]
             
             metadata['user_deferred'] = 'true'

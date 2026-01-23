@@ -39,26 +39,24 @@ def resolve_contradiction(ledger_id, resolution, chosen_memory_id=None, user_fee
 
 def query_ledger():
     """Query contradiction ledger."""
-    conn = sqlite3.connect('personal_agent/crt_ledger_test_resolution.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM contradictions ORDER BY timestamp DESC LIMIT 5")
-    results = cursor.fetchall()
-    conn.close()
+    with sqlite3.connect('personal_agent/crt_ledger_test_resolution.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM contradictions ORDER BY timestamp DESC LIMIT 5")
+        results = cursor.fetchall()
     return results
 
 def query_memories(slot):
     """Query memories by slot."""
-    conn = sqlite3.connect('personal_agent/crt_memory_test_resolution.db')
-    cursor = conn.cursor()
-    # Note: Using text search since we don't have a slot column directly
-    cursor.execute("""
-        SELECT memory_id, text, trust, deprecated, deprecation_reason
-        FROM memories
-        WHERE text LIKE ?
-        ORDER BY timestamp DESC
-    """, (f'%{slot}%',))
-    results = cursor.fetchall()
-    conn.close()
+    with sqlite3.connect('personal_agent/crt_memory_test_resolution.db') as conn:
+        cursor = conn.cursor()
+        # Note: Using text search since we don't have a slot column directly
+        cursor.execute("""
+            SELECT memory_id, text, trust, deprecated, deprecation_reason
+            FROM memories
+            WHERE text LIKE ?
+            ORDER BY timestamp DESC
+        """, (f'%{slot}%',))
+        results = cursor.fetchall()
     return results
 
 def export_sql_dumps(suffix=""):
@@ -77,11 +75,10 @@ def export_sql_dumps(suffix=""):
         output_file = f"test_results/{db_name.replace('.db', '')}_{suffix}_{timestamp}.sql"
         
         # Export with UTF-8 encoding (fix for Problem A)
-        conn = sqlite3.connect(db_path)
-        with open(output_file, 'w', encoding='utf-8') as f:
-            for line in conn.iterdump():
-                f.write(f"{line}\n")
-        conn.close()
+        with sqlite3.connect(db_path) as conn:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                for line in conn.iterdump():
+                    f.write(f"{line}\n")
         
         print(f"✓ Exported: {output_file}")
 
@@ -232,21 +229,19 @@ print("FINAL SUMMARY")
 print("="*60)
 
 try:
-    conn = sqlite3.connect('personal_agent/crt_ledger_test_resolution.db')
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT ledger_id, status, resolution_method, contradiction_type
-        FROM contradictions
-        ORDER BY timestamp
-    """)
-    all_contradictions = cursor.fetchall()
+    with sqlite3.connect('personal_agent/crt_ledger_test_resolution.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT ledger_id, status, resolution_method, contradiction_type
+            FROM contradictions
+            ORDER BY timestamp
+        """)
+        all_contradictions = cursor.fetchall()
 
-    print(f"\nTotal contradictions tracked: {len(all_contradictions)}")
-    for contra in all_contradictions:
-        ledger_id, status, resolution, contra_type = contra
-        print(f"  {ledger_id}: {status} ({contra_type}) → {resolution or 'N/A'}")
-
-    conn.close()
+        print(f"\nTotal contradictions tracked: {len(all_contradictions)}")
+        for contra in all_contradictions:
+            ledger_id, status, resolution, contra_type = contra
+            print(f"  {ledger_id}: {status} ({contra_type}) → {resolution or 'N/A'}")
 except Exception as e:
     print(f"⚠ Could not load final summary: {e}")
 

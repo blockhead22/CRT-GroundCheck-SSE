@@ -14,13 +14,11 @@ def export_db_utf8(db_path, output_path):
         print(f"⚠ Skipping {db_path} (not found)")
         return
     
-    conn = sqlite3.connect(db_path)
+    with sqlite3.connect(db_path) as conn:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            for line in conn.iterdump():
+                f.write(f"{line}\n")
     
-    with open(output_path, 'w', encoding='utf-8') as f:
-        for line in conn.iterdump():
-            f.write(f"{line}\n")
-    
-    conn.close()
     print(f"✓ Exported {db_path} → {output_path} (UTF-8)")
 
 
