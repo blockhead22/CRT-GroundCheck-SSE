@@ -167,6 +167,25 @@ class ContradictionRespondResponse(BaseModel):
     next: ContradictionNextResponse
 
 
+class ResolveContradictionPolicyRequest(BaseModel):
+    """Request for policy-driven contradiction resolution."""
+    thread_id: str = Field(default="default")
+    ledger_id: str
+    resolution: str = Field(description="OVERRIDE | PRESERVE | ASK_USER")
+    chosen_memory_id: Optional[str] = Field(default=None, description="Required for OVERRIDE")
+    user_confirmation: str = Field(default="", description="User feedback/explanation")
+
+
+class ResolveContradictionPolicyResponse(BaseModel):
+    """Response from policy-driven contradiction resolution."""
+    status: str
+    ledger_id: str
+    resolution: str
+    deprecated_memory: Optional[str] = None
+    active_memory: Optional[str] = None
+    message: Optional[str] = None
+
+
 class ThreadListItem(BaseModel):
     id: str
     title: str
@@ -1590,6 +1609,182 @@ def create_app() -> FastAPI:
             new_status=req.new_status,
         )
         return {"ok": True}
+
+    @app.post("/api/resolve_contradiction", response_model=ResolveContradictionPolicyResponse)
+    def resolve_contradiction_policy(req: ResolveContradictionPolicyRequest) -> ResolveContradictionPolicyResponse:
+        """
+        Resolve an open contradiction with user feedback using policy-driven approach.
+        
+        Policies:
+        - OVERRIDE: Deprecate old memory, keep chosen memory
+        - PRESERVE: Keep both memories as valid
+        - ASK_USER: Defer decision, keep contradiction open
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        engine = get_engine(req.thread_id)
+        ledger_id = req.ledger_id
+        resolution = req.resolution
+        chosen_memory_id = req.chosen_memory_id
+        user_confirmation = req.user_confirmation
+        
+        logger.info(f"\n[RESOLUTION] Starting resolution for {ledger_id}")
+        logger.info(f"[RESOLUTION] Policy: {resolution}")
+        logger.info(f"[RESOLUTION] User says: {user_confirmation}")
+        
+        # Load contradiction from ledger
+        ledger_db = str(engine.ledger.db_path)
+        conn = sqlite3.connect(ledger_db)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT old_memory_id, new_memory_id, contradiction_type, status
+            FROM contradictions
+            WHERE ledger_id = ?
+        """, (ledger_id,))
+        
+        result = cursor.fetchone()
+        if not result:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Contradiction not found")
+        
+        old_memory_id, new_memory_id, contra_type, status = result
+        
+        if status != 'open':
+            conn.close()
+            raise HTTPException(status_code=400, detail="Contradiction already resolved")
+        
+        deprecated_id = None
+        active_id = None
+        message = None
+        
+        # Apply resolution policy
+        if resolution == "OVERRIDE":
+            if not chosen_memory_id:
+                conn.close()
+                raise HTTPException(status_code=400, detail="chosen_memory_id required for OVERRIDE")
+            
+            # Deprecate the non-chosen memory, keep the chosen one
+            deprecated_id = old_memory_id if chosen_memory_id == new_memory_id else new_memory_id
+            active_id = chosen_memory_id
+            
+            # Update memory database
+            mem_db = str(engine.memory.db_path)
+            mem_conn = sqlite3.connect(mem_db)
+            mem_cursor = mem_conn.cursor()
+            
+            # Deprecate old memory
+            mem_cursor.execute("""
+                UPDATE memories 
+                SET deprecated = 1, deprecation_reason = ?
+                WHERE memory_id = ?
+            """, (f"Overridden by {active_id} - user confirmed", deprecated_id))
+            
+            # Boost trust of chosen memory
+            mem_cursor.execute("""
+                UPDATE memories 
+                SET trust = LEAST(trust + 0.1, 1.0)
+                WHERE memory_id = ?
+            """, (active_id,))
+            
+            mem_conn.commit()
+            mem_conn.close()
+            
+            logger.info(f"[OVERRIDE] Deprecated {deprecated_id}, kept {active_id}")
+        
+        elif resolution == "PRESERVE":
+            # Keep both memories, mark as complementary
+            mem_db = str(engine.memory.db_path)
+            mem_conn = sqlite3.connect(mem_db)
+            mem_cursor = mem_conn.cursor()
+            
+            # Tag both as "resolved_both_valid"
+            for mem_id in [old_memory_id, new_memory_id]:
+                # Get current tags
+                mem_cursor.execute("SELECT tags_json FROM memories WHERE memory_id = ?", (mem_id,))
+                row = mem_cursor.fetchone()
+                if row:
+                    tags_json = row[0] or '[]'
+                    import json
+                    tags = json.loads(tags_json)
+                    if 'resolved_both_valid' not in tags:
+                        tags.append('resolved_both_valid')
+                    mem_cursor.execute("""
+                        UPDATE memories 
+                        SET tags_json = ?
+                        WHERE memory_id = ?
+                    """, (json.dumps(tags), mem_id))
+            
+            mem_conn.commit()
+            mem_conn.close()
+            
+            logger.info(f"[PRESERVE] Both memories marked as valid")
+            message = "Both memories preserved as valid"
+        
+        elif resolution == "ASK_USER":
+            # User deferred decision, keep contradiction open but note user was asked
+            cursor.execute("""
+                SELECT metadata FROM contradictions WHERE ledger_id = ?
+            """, (ledger_id,))
+            row = cursor.fetchone()
+            metadata = {}
+            if row and row[0]:
+                import json
+                metadata = json.loads(row[0]) if isinstance(row[0], str) else row[0]
+            
+            metadata['user_deferred'] = 'true'
+            
+            cursor.execute("""
+                UPDATE contradictions
+                SET metadata = ?
+                WHERE ledger_id = ?
+            """, (json.dumps(metadata), ledger_id))
+            conn.commit()
+            conn.close()
+            
+            logger.info(f"[ASK_USER] User deferred resolution for {ledger_id}")
+            
+            return ResolveContradictionPolicyResponse(
+                status="deferred",
+                ledger_id=ledger_id,
+                resolution=resolution,
+                message="User deferred resolution. Contradiction remains open."
+            )
+        else:
+            conn.close()
+            raise HTTPException(status_code=400, detail=f"Unknown resolution policy: {resolution}")
+        
+        # Update ledger to mark resolved (for OVERRIDE and PRESERVE)
+        cursor.execute("""
+            UPDATE contradictions
+            SET 
+                status = 'resolved',
+                resolution_method = ?,
+                resolution_timestamp = ?
+            WHERE ledger_id = ?
+        """, (resolution, time.time(), ledger_id))
+        
+        # Log to conflict_resolutions table
+        cursor.execute("""
+            INSERT INTO conflict_resolutions 
+            (ledger_id, resolution_method, chosen_memory_id, user_feedback, timestamp)
+            VALUES (?, ?, ?, ?, ?)
+        """, (ledger_id, resolution, chosen_memory_id, user_confirmation, time.time()))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.info(f"[RESOLUTION] Completed: {ledger_id} → {resolution}")
+        
+        return ResolveContradictionPolicyResponse(
+            status="resolved",
+            ledger_id=ledger_id,
+            resolution=resolution,
+            deprecated_memory=deprecated_id,
+            active_memory=active_id,
+            message=message
+        )
 
     @app.post("/api/chat/send", response_model=ChatSendResponse)
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:
