@@ -426,7 +426,9 @@ class ContradictionLedger:
         old_text: Optional[str] = None,
         new_text: Optional[str] = None,
         old_vector: Optional[np.ndarray] = None,
-        new_vector: Optional[np.ndarray] = None
+        new_vector: Optional[np.ndarray] = None,
+        contradiction_type: Optional[str] = None,
+        suggested_policy: Optional[str] = None
     ) -> ContradictionEntry:
         """
         Record contradiction event with classification.
@@ -434,13 +436,14 @@ class ContradictionLedger:
         NO DELETION. NO REPLACEMENT.
         Just create ledger entry preserving both memories.
         """
-        # Classify the contradiction type
-        if old_text and new_text:
-            contradiction_type = self._classify_contradiction(
-                old_text, new_text, drift_mean, old_vector, new_vector
-            )
-        else:
-            contradiction_type = ContradictionType.CONFLICT  # Default
+        # Classify the contradiction type (use provided or auto-detect)
+        if contradiction_type is None:
+            if old_text and new_text:
+                contradiction_type = self._classify_contradiction(
+                    old_text, new_text, drift_mean, old_vector, new_vector
+                )
+            else:
+                contradiction_type = ContradictionType.CONFLICT  # Default
         
         # Extract affected slots from both memories
         affects_slots_set = set()
@@ -472,11 +475,16 @@ class ContradictionLedger:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # Store suggested policy in metadata if provided
+        metadata = {}
+        if suggested_policy:
+            metadata['suggested_policy'] = suggested_policy
+        
         cursor.execute("""
             INSERT INTO contradictions
             (ledger_id, timestamp, old_memory_id, new_memory_id, drift_mean, 
-             drift_reason, confidence_delta, status, contradiction_type, affects_slots, query, summary)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             drift_reason, confidence_delta, status, contradiction_type, affects_slots, query, summary, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             entry.ledger_id,
             entry.timestamp,
@@ -489,7 +497,8 @@ class ContradictionLedger:
             entry.contradiction_type,
             entry.affects_slots,
             query,
-            entry.summary
+            entry.summary,
+            json.dumps(metadata) if metadata else None
         ))
         
         conn.commit()
