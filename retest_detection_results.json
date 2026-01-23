@@ -1,0 +1,1535 @@
+{
+  "detected": 5,
+  "missed": 15,
+  "errors": [],
+  "details": [
+    {
+      "pair": 1,
+      "old": "I work at Microsoft",
+      "new": "I work at Amazon",
+      "detected": true,
+      "category": null
+    },
+    {
+      "pair": 2,
+      "old": "I am 25 years old",
+      "new": "I am 30 years old",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.23243231061310865,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 2,
+        "unresolved_hard_conflicts": 1,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136276043_7394",
+            "text": "I am 30 years old",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136276.043703,
+            "sse_mode": "C",
+            "score": 0.7749993673187021,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136263586_596",
+            "text": "I am 25 years old",
+            "source": "user",
+            "trust": 0.7170662946781639,
+            "confidence": 0.95,
+            "timestamp": 1769136263.5864213,
+            "sse_mode": "C",
+            "score": 0.7213074002442802,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136239787_844",
+            "text": "I work at Microsoft",
+            "source": "user",
+            "trust": 0.7724957721071686,
+            "confidence": 0.95,
+            "timestamp": 1769136239.7872798,
+            "sse_mode": "C",
+            "score": 0.1536794219266138,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136251763_7297",
+            "text": "I work at Amazon",
+            "source": "user",
+            "trust": 0.7056186915251875,
+            "confidence": 0.95,
+            "timestamp": 1769136251.7637749,
+            "sse_mode": "C",
+            "score": 0.10328567769078915,
+            "reintroduced_claim": true
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136251763_7297",
+            "text": "FACT: employer = Amazon",
+            "source": "user",
+            "trust": 0.7056186915251875,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          }
+        ],
+        "reintroduced_claims_count": 2
+      }
+    },
+    {
+      "pair": 3,
+      "old": "I live in Seattle",
+      "new": "I live in New York",
+      "detected": true,
+      "category": null
+    },
+    {
+      "pair": 4,
+      "old": "I prefer coffee",
+      "new": "I hate coffee",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.39716943382201525,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 4,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136322689_1379",
+            "text": "I hate coffee",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136322.6896367,
+            "sse_mode": "C",
+            "score": 0.7749997324582646,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "I prefer coffee",
+            "source": "user",
+            "trust": 0.7706680800341238,
+            "confidence": 0.95,
+            "timestamp": 1769136310.1919959,
+            "sse_mode": "C",
+            "score": 0.6473806349231443,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136287929_917",
+            "text": "I live in Seattle",
+            "source": "user",
+            "trust": 0.7639566350190897,
+            "confidence": 0.95,
+            "timestamp": 1769136287.9299428,
+            "sse_mode": "C",
+            "score": 0.12309785541072633,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136276043_7394",
+            "text": "I am 30 years old",
+            "source": "user",
+            "trust": 0.7097208137367023,
+            "confidence": 0.95,
+            "timestamp": 1769136276.043703,
+            "sse_mode": "C",
+            "score": 0.11348128751100667,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "I live in New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136300.1604018,
+            "sse_mode": "C",
+            "score": 0.11235069702129483,
+            "reintroduced_claim": true
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "FACT: location = New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "FACT: programming_language = coffee",
+            "source": "user",
+            "trust": 0.7706680800341238,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 2
+      }
+    },
+    {
+      "pair": 5,
+      "old": "I like dogs",
+      "new": "I am allergic to dogs",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.32700478427988666,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 4,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136347298_9202",
+            "text": "I am allergic to dogs",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136347.2986634,
+            "sse_mode": "C",
+            "score": 0.7749994343151906,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136334643_4200",
+            "text": "I like dogs",
+            "source": "user",
+            "trust": 0.7406471466462123,
+            "confidence": 0.95,
+            "timestamp": 1769136334.6439762,
+            "sse_mode": "C",
+            "score": 0.337082060383677,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136287929_917",
+            "text": "I live in Seattle",
+            "source": "user",
+            "trust": 0.7660060054972168,
+            "confidence": 0.95,
+            "timestamp": 1769136287.9299428,
+            "sse_mode": "C",
+            "score": 0.20768221424865504,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "I live in New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136300.1604018,
+            "sse_mode": "C",
+            "score": 0.18494185446618394,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136276043_7394",
+            "text": "I am 30 years old",
+            "source": "user",
+            "trust": 0.7097208137367023,
+            "confidence": 0.95,
+            "timestamp": 1769136276.043703,
+            "sse_mode": "C",
+            "score": 0.1614644548816852,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "FACT: location = New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          }
+        ],
+        "reintroduced_claims_count": 2
+      }
+    },
+    {
+      "pair": 6,
+      "old": "I am a vegetarian",
+      "new": "I love steak",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.34774654093808605,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 4,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136371812_3278",
+            "text": "I love steak",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136371.8127997,
+            "sse_mode": "C",
+            "score": 0.7749994242582139,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136334643_4200",
+            "text": "I like dogs",
+            "source": "user",
+            "trust": 0.7610367024818875,
+            "confidence": 0.95,
+            "timestamp": 1769136334.6439762,
+            "sse_mode": "C",
+            "score": 0.3690788834810856,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136359418_8020",
+            "text": "I am a vegetarian",
+            "source": "user",
+            "trust": 0.7742195406888098,
+            "confidence": 0.95,
+            "timestamp": 1769136359.418602,
+            "sse_mode": "C",
+            "score": 0.3485740093429883,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "I prefer coffee",
+            "source": "user",
+            "trust": 0.8405484453815473,
+            "confidence": 0.95,
+            "timestamp": 1769136310.1919959,
+            "sse_mode": "C",
+            "score": 0.261199425805189,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136322689_1379",
+            "text": "I hate coffee",
+            "source": "user",
+            "trust": 0.7621936748933021,
+            "confidence": 0.95,
+            "timestamp": 1769136322.6896367,
+            "sse_mode": "C",
+            "score": 0.2318584099319213,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "FACT: programming_language = coffee",
+            "source": "user",
+            "trust": 0.8405484453815473,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    },
+    {
+      "pair": 7,
+      "old": "I speak English",
+      "new": "I only speak Spanish",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.313511324960022,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 4,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136396096_6294",
+            "text": "I only speak Spanish",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136396.0966234,
+            "sse_mode": "C",
+            "score": 0.7749997866355899,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136383853_1764",
+            "text": "I speak English",
+            "source": "user",
+            "trust": 0.7253357843118287,
+            "confidence": 0.95,
+            "timestamp": 1769136383.8532674,
+            "sse_mode": "C",
+            "score": 0.5568531297131988,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136359418_8020",
+            "text": "I am a vegetarian",
+            "source": "user",
+            "trust": 0.8108000406170991,
+            "confidence": 0.95,
+            "timestamp": 1769136359.418602,
+            "sse_mode": "C",
+            "score": 0.30109235477752283,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "I live in New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136300.1604018,
+            "sse_mode": "C",
+            "score": 0.2384695042506054,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136276043_7394",
+            "text": "I am 30 years old",
+            "source": "user",
+            "trust": 0.7377618904190916,
+            "confidence": 0.95,
+            "timestamp": 1769136276.043703,
+            "sse_mode": "C",
+            "score": 0.2082989865590392,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "FACT: location = New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          }
+        ],
+        "reintroduced_claims_count": 1
+      }
+    },
+    {
+      "pair": 8,
+      "old": "I am single",
+      "new": "I am married",
+      "detected": true,
+      "category": null
+    },
+    {
+      "pair": 9,
+      "old": "I drive a Tesla",
+      "new": "I do not own a car",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.33533395478212275,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 5,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136432769_710",
+            "text": "I do not own a car",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136432.7697582,
+            "sse_mode": "C",
+            "score": 0.7749993885356459,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136420180_545",
+            "text": "I drive a Tesla",
+            "source": "user",
+            "trust": 0.7567170926356966,
+            "confidence": 0.95,
+            "timestamp": 1769136420.180508,
+            "sse_mode": "C",
+            "score": 0.4465332544341048,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136263586_596",
+            "text": "I am 25 years old",
+            "source": "user",
+            "trust": 0.7448728524090624,
+            "confidence": 0.95,
+            "timestamp": 1769136263.5864213,
+            "sse_mode": "C",
+            "score": 0.22726567184607996,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "I live in New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136300.1604018,
+            "sse_mode": "C",
+            "score": 0.2152189089590651,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136383853_1764",
+            "text": "I speak English",
+            "source": "user",
+            "trust": 0.7688210731496005,
+            "confidence": 0.95,
+            "timestamp": 1769136383.8532674,
+            "sse_mode": "C",
+            "score": 0.21419559058883317,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "FACT: location = New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          }
+        ],
+        "reintroduced_claims_count": 1
+      }
+    },
+    {
+      "pair": 10,
+      "old": "I wake up at 6am",
+      "new": "I never wake up before noon",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.1931713661301764,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 5,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136457339_8279",
+            "text": "I never wake up before noon",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136457.339175,
+            "sse_mode": "C",
+            "score": 0.7749985464319062,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136444712_8085",
+            "text": "I wake up at 6am",
+            "source": "user",
+            "trust": 0.7174954225821489,
+            "confidence": 0.95,
+            "timestamp": 1769136444.7130027,
+            "sse_mode": "C",
+            "score": 0.5073854687315538,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136322689_1379",
+            "text": "I hate coffee",
+            "source": "user",
+            "trust": 0.7621936748933021,
+            "confidence": 0.95,
+            "timestamp": 1769136322.6896367,
+            "sse_mode": "C",
+            "score": 0.20409536233983486,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136414594_6398",
+            "text": "I am married",
+            "source": "user",
+            "trust": 0.7044075836355184,
+            "confidence": 0.95,
+            "timestamp": 1769136414.5945868,
+            "sse_mode": "C",
+            "score": 0.18089336176362306,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "I prefer coffee",
+            "source": "user",
+            "trust": 0.8405484453815473,
+            "confidence": 0.95,
+            "timestamp": 1769136310.1919959,
+            "sse_mode": "C",
+            "score": 0.17170083719349022,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136414594_6398",
+            "text": "FACT: name = married",
+            "source": "user",
+            "trust": 0.7044075836355184,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "FACT: programming_language = coffee",
+            "source": "user",
+            "trust": 0.8405484453815473,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 1
+      }
+    },
+    {
+      "pair": 11,
+      "old": "I love winter",
+      "new": "I hate cold weather",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.44630889385775324,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 5,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136482150_307",
+            "text": "I hate cold weather",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136482.1501071,
+            "sse_mode": "C",
+            "score": 0.7749997109903989,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136469769_8895",
+            "text": "I love winter",
+            "source": "user",
+            "trust": 0.7767386837783974,
+            "confidence": 0.95,
+            "timestamp": 1769136469.7695115,
+            "sse_mode": "C",
+            "score": 0.5125061092104162,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136322689_1379",
+            "text": "I hate coffee",
+            "source": "user",
+            "trust": 0.7737047583006976,
+            "confidence": 0.95,
+            "timestamp": 1769136322.6896367,
+            "sse_mode": "C",
+            "score": 0.39581339185703873,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "I prefer coffee",
+            "source": "user",
+            "trust": 0.8405484453815473,
+            "confidence": 0.95,
+            "timestamp": 1769136310.1919959,
+            "sse_mode": "C",
+            "score": 0.26253476742979037,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136334643_4200",
+            "text": "I like dogs",
+            "source": "user",
+            "trust": 0.8115553250445989,
+            "confidence": 0.95,
+            "timestamp": 1769136334.6439762,
+            "sse_mode": "C",
+            "score": 0.2568226056761362,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136310191_5959",
+            "text": "FACT: programming_language = coffee",
+            "source": "user",
+            "trust": 0.8405484453815473,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    },
+    {
+      "pair": 12,
+      "old": "I am an introvert",
+      "new": "I am extremely extroverted",
+      "detected": true,
+      "category": null
+    },
+    {
+      "pair": 13,
+      "old": "I hate flying",
+      "new": "I love airplanes",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.4290276303204612,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 6,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136524866_8874",
+            "text": "I love airplanes",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136524.8668716,
+            "sse_mode": "C",
+            "score": 0.7749998009390487,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136512633_186",
+            "text": "I hate flying",
+            "source": "user",
+            "trust": 0.7861510327042865,
+            "confidence": 0.95,
+            "timestamp": 1769136512.6334717,
+            "sse_mode": "C",
+            "score": 0.5596686684118102,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136469769_8895",
+            "text": "I love winter",
+            "source": "user",
+            "trust": 0.82155878791116,
+            "confidence": 0.95,
+            "timestamp": 1769136469.7695115,
+            "sse_mode": "C",
+            "score": 0.312343458538182,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136334643_4200",
+            "text": "I like dogs",
+            "source": "user",
+            "trust": 0.8115553250445989,
+            "confidence": 0.95,
+            "timestamp": 1769136334.6439762,
+            "sse_mode": "C",
+            "score": 0.308907270133193,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136371812_3278",
+            "text": "I love steak",
+            "source": "user",
+            "trust": 0.7798715216702695,
+            "confidence": 0.95,
+            "timestamp": 1769136371.8127997,
+            "sse_mode": "C",
+            "score": 0.28371875145489367,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136524866_8874",
+            "text": "I love airplanes",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136512633_186",
+            "text": "I hate flying",
+            "source": "user",
+            "trust": 0.7861510327042865,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136469769_8895",
+            "text": "I love winter",
+            "source": "user",
+            "trust": 0.82155878791116,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136334643_4200",
+            "text": "I like dogs",
+            "source": "user",
+            "trust": 0.8115553250445989,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136371812_3278",
+            "text": "I love steak",
+            "source": "user",
+            "trust": 0.7798715216702695,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    },
+    {
+      "pair": 14,
+      "old": "I am a night owl",
+      "new": "I am a morning person",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.43520795375636423,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 6,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136549767_4547",
+            "text": "I am a morning person",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136549.7672305,
+            "sse_mode": "C",
+            "score": 0.7749997665819598,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136444712_8085",
+            "text": "I wake up at 6am",
+            "source": "user",
+            "trust": 0.8150374228852688,
+            "confidence": 0.95,
+            "timestamp": 1769136444.7130027,
+            "sse_mode": "C",
+            "score": 0.5076918766683195,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136457339_8279",
+            "text": "I never wake up before noon",
+            "source": "user",
+            "trust": 0.7893203656417871,
+            "confidence": 0.95,
+            "timestamp": 1769136457.339175,
+            "sse_mode": "C",
+            "score": 0.49435351876107253,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136536659_3078",
+            "text": "I am a night owl",
+            "source": "user",
+            "trust": 0.7567173552702273,
+            "confidence": 0.95,
+            "timestamp": 1769136536.6590245,
+            "sse_mode": "C",
+            "score": 0.45884418995166637,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136414594_6398",
+            "text": "I am married",
+            "source": "user",
+            "trust": 0.7044075836355184,
+            "confidence": 0.95,
+            "timestamp": 1769136414.5945868,
+            "sse_mode": "C",
+            "score": 0.2739680347274267,
+            "reintroduced_claim": true
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136414594_6398",
+            "text": "FACT: name = married",
+            "source": "user",
+            "trust": 0.7044075836355184,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          }
+        ],
+        "reintroduced_claims_count": 1
+      }
+    },
+    {
+      "pair": 15,
+      "old": "I live alone",
+      "new": "I have 5 roommates",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.3827197380236427,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 6,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136574951_1135",
+            "text": "I have 5 roommates",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136574.9514756,
+            "sse_mode": "C",
+            "score": 0.7749993214425825,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136562046_138",
+            "text": "I live alone",
+            "source": "user",
+            "trust": 0.7431365034357925,
+            "confidence": 0.95,
+            "timestamp": 1769136562.0461202,
+            "sse_mode": "C",
+            "score": 0.2746837317991232,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136287929_917",
+            "text": "I live in Seattle",
+            "source": "user",
+            "trust": 0.7693730197947731,
+            "confidence": 0.95,
+            "timestamp": 1769136287.9299428,
+            "sse_mode": "C",
+            "score": 0.19245782212796367,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "I live in New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136300.1604018,
+            "sse_mode": "C",
+            "score": 0.19041389074327209,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136408518_3664",
+            "text": "I am single",
+            "source": "user",
+            "trust": 0.7057397005734692,
+            "confidence": 0.95,
+            "timestamp": 1769136408.5189073,
+            "sse_mode": "C",
+            "score": 0.17550074913871827,
+            "reintroduced_claim": true
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136408518_3664",
+            "text": "FACT: name = single",
+            "source": "user",
+            "trust": 0.7057397005734692,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          },
+          {
+            "memory_id": "mem_1769136300160_2023",
+            "text": "FACT: location = New York",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": true
+          }
+        ],
+        "reintroduced_claims_count": 3
+      }
+    },
+    {
+      "pair": 16,
+      "old": "I am allergic to peanuts",
+      "new": "I eat peanut butter daily",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.5100253260211766,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 6,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136599548_7902",
+            "text": "I eat peanut butter daily",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136599.5484593,
+            "sse_mode": "C",
+            "score": 0.7749993219899758,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136587055_7775",
+            "text": "I am allergic to peanuts",
+            "source": "user",
+            "trust": 0.7805585071747847,
+            "confidence": 0.95,
+            "timestamp": 1769136587.0551758,
+            "sse_mode": "C",
+            "score": 0.5321812644080997,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136359418_8020",
+            "text": "I am a vegetarian",
+            "source": "user",
+            "trust": 0.847834085608751,
+            "confidence": 0.95,
+            "timestamp": 1769136359.418602,
+            "sse_mode": "C",
+            "score": 0.39011183293842705,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136276043_7394",
+            "text": "I am 30 years old",
+            "source": "user",
+            "trust": 0.7568481727226852,
+            "confidence": 0.95,
+            "timestamp": 1769136276.043703,
+            "sse_mode": "C",
+            "score": 0.25994780433083514,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136263586_596",
+            "text": "I am 25 years old",
+            "source": "user",
+            "trust": 0.7578415759153859,
+            "confidence": 0.95,
+            "timestamp": 1769136263.5864213,
+            "sse_mode": "C",
+            "score": 0.2502211433137236,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136599548_7902",
+            "text": "I eat peanut butter daily",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136587055_7775",
+            "text": "I am allergic to peanuts",
+            "source": "user",
+            "trust": 0.7805585071747847,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136359418_8020",
+            "text": "I am a vegetarian",
+            "source": "user",
+            "trust": 0.847834085608751,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136276043_7394",
+            "text": "I am 30 years old",
+            "source": "user",
+            "trust": 0.7568481727226852,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136263586_596",
+            "text": "I am 25 years old",
+            "source": "user",
+            "trust": 0.7578415759153859,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    },
+    {
+      "pair": 17,
+      "old": "I am left-handed",
+      "new": "I am right-handed",
+      "detected": true,
+      "category": null
+    },
+    {
+      "pair": 18,
+      "old": "I hate sports",
+      "new": "I play basketball every day",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.4382500491464598,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 8,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136635949_9930",
+            "text": "I play basketball every day",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136635.94952,
+            "sse_mode": "C",
+            "score": 0.7749997121735674,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136623470_6084",
+            "text": "I hate sports",
+            "source": "user",
+            "trust": 0.7847235905643044,
+            "confidence": 0.95,
+            "timestamp": 1769136623.4708483,
+            "sse_mode": "C",
+            "score": 0.36393159578795153,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136599548_7902",
+            "text": "I eat peanut butter daily",
+            "source": "user",
+            "trust": 0.7739948892207519,
+            "confidence": 0.95,
+            "timestamp": 1769136599.5484593,
+            "sse_mode": "C",
+            "score": 0.3404684009614647,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136562046_138",
+            "text": "I live alone",
+            "source": "user",
+            "trust": 0.7760477774728055,
+            "confidence": 0.95,
+            "timestamp": 1769136562.0461202,
+            "sse_mode": "C",
+            "score": 0.2857557272029531,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136444712_8085",
+            "text": "I wake up at 6am",
+            "source": "user",
+            "trust": 0.8617641406393857,
+            "confidence": 0.95,
+            "timestamp": 1769136444.7130027,
+            "sse_mode": "C",
+            "score": 0.274071045708911,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136635949_9930",
+            "text": "I play basketball every day",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136623470_6084",
+            "text": "I hate sports",
+            "source": "user",
+            "trust": 0.7847235905643044,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136599548_7902",
+            "text": "I eat peanut butter daily",
+            "source": "user",
+            "trust": 0.7739948892207519,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136562046_138",
+            "text": "I live alone",
+            "source": "user",
+            "trust": 0.7760477774728055,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136444712_8085",
+            "text": "I wake up at 6am",
+            "source": "user",
+            "trust": 0.8617641406393857,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    },
+    {
+      "pair": 19,
+      "old": "I am a minimalist",
+      "new": "I am a hoarder",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.3598163495376366,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 8,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136660752_9816",
+            "text": "I am a hoarder",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136660.7527597,
+            "sse_mode": "C",
+            "score": 0.7749997179947004,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136648008_5926",
+            "text": "I am a minimalist",
+            "source": "user",
+            "trust": 0.7521115104605068,
+            "confidence": 0.95,
+            "timestamp": 1769136648.008661,
+            "sse_mode": "C",
+            "score": 0.2680981552184839,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136562046_138",
+            "text": "I live alone",
+            "source": "user",
+            "trust": 0.7884454580792265,
+            "confidence": 0.95,
+            "timestamp": 1769136562.0461202,
+            "sse_mode": "C",
+            "score": 0.2643744669598654,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136494362_6895",
+            "text": "I am an introvert",
+            "source": "user",
+            "trust": 0.7628050637286354,
+            "confidence": 0.95,
+            "timestamp": 1769136494.3620503,
+            "sse_mode": "C",
+            "score": 0.2575811530903453,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136574951_1135",
+            "text": "I have 5 roommates",
+            "source": "user",
+            "trust": 0.7776765083226145,
+            "confidence": 0.95,
+            "timestamp": 1769136574.9514756,
+            "sse_mode": "C",
+            "score": 0.2567300905626441,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136660752_9816",
+            "text": "I am a hoarder",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136648008_5926",
+            "text": "I am a minimalist",
+            "source": "user",
+            "trust": 0.7521115104605068,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136562046_138",
+            "text": "I live alone",
+            "source": "user",
+            "trust": 0.7884454580792265,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136494362_6895",
+            "text": "I am an introvert",
+            "source": "user",
+            "trust": 0.7628050637286354,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136574951_1135",
+            "text": "I have 5 roommates",
+            "source": "user",
+            "trust": 0.7776765083226145,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    },
+    {
+      "pair": 20,
+      "old": "I never drink alcohol",
+      "new": "I drink wine every night",
+      "detected": false,
+      "metadata": {
+        "mode": "quick",
+        "confidence": 0.8,
+        "intent_alignment": 0.8,
+        "memory_alignment": 0.48289801191719706,
+        "contradiction_detected": false,
+        "unresolved_contradictions_total": 8,
+        "unresolved_hard_conflicts": 2,
+        "learned_suggestions": [],
+        "heuristic_suggestions": [],
+        "agent_activated": false,
+        "agent_answer": null,
+        "agent_trace": null,
+        "retrieved_memories": [
+          {
+            "memory_id": "mem_1769136685168_1124",
+            "text": "I drink wine every night",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "timestamp": 1769136685.1689534,
+            "sse_mode": "C",
+            "score": 0.7749997386735129,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136672770_3737",
+            "text": "I never drink alcohol",
+            "source": "user",
+            "trust": 0.7698176489634506,
+            "confidence": 0.95,
+            "timestamp": 1769136672.7703965,
+            "sse_mode": "C",
+            "score": 0.4987534676188561,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136635949_9930",
+            "text": "I play basketball every day",
+            "source": "user",
+            "trust": 0.7710689840050997,
+            "confidence": 0.95,
+            "timestamp": 1769136635.94952,
+            "sse_mode": "C",
+            "score": 0.35519200155905395,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136444712_8085",
+            "text": "I wake up at 6am",
+            "source": "user",
+            "trust": 0.8617641406393857,
+            "confidence": 0.95,
+            "timestamp": 1769136444.7130027,
+            "sse_mode": "C",
+            "score": 0.34253700398821674,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136536659_3078",
+            "text": "I am a night owl",
+            "source": "user",
+            "trust": 0.7567173552702273,
+            "confidence": 0.95,
+            "timestamp": 1769136536.6590245,
+            "sse_mode": "C",
+            "score": 0.3203715308901231,
+            "reintroduced_claim": false
+          }
+        ],
+        "prompt_memories": [
+          {
+            "memory_id": "mem_1769136685168_1124",
+            "text": "I drink wine every night",
+            "source": "user",
+            "trust": 0.7,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136672770_3737",
+            "text": "I never drink alcohol",
+            "source": "user",
+            "trust": 0.7698176489634506,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136635949_9930",
+            "text": "I play basketball every day",
+            "source": "user",
+            "trust": 0.7710689840050997,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136444712_8085",
+            "text": "I wake up at 6am",
+            "source": "user",
+            "trust": 0.8617641406393857,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          },
+          {
+            "memory_id": "mem_1769136536659_3078",
+            "text": "I am a night owl",
+            "source": "user",
+            "trust": 0.7567173552702273,
+            "confidence": 0.95,
+            "reintroduced_claim": false
+          }
+        ],
+        "reintroduced_claims_count": 0
+      }
+    }
+  ]
+}
