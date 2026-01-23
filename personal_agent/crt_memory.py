@@ -60,6 +60,8 @@ class MemoryItem:
     context: Optional[Dict] = None
     tags: Optional[List[str]] = None
     thread_id: Optional[str] = None
+    deprecated: bool = False
+    deprecation_reason: Optional[str] = None
     
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
@@ -141,7 +143,9 @@ class CRTMemorySystem:
                 sse_mode TEXT NOT NULL,
                 context_json TEXT,
                 tags_json TEXT,
-                thread_id TEXT
+                thread_id TEXT,
+                deprecated INTEGER DEFAULT 0,
+                deprecation_reason TEXT
             )
         """)
         
@@ -193,6 +197,38 @@ class CRTMemorySystem:
             CREATE INDEX IF NOT EXISTS idx_trust_log_memory 
             ON trust_log(memory_id, timestamp)
         """)
+        
+        # Index for deprecated column (for filtering)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memories_deprecated
+            ON memories(deprecated)
+        """)
+        
+        conn.commit()
+        conn.close()
+        
+        # Migrate existing databases to add deprecated columns if needed
+        self._migrate_schema()
+    
+    def _migrate_schema(self):
+        """
+        Add deprecated columns to existing memory databases.
+        This migration is safe to run multiple times.
+        """
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Check if columns exist
+        cursor.execute("PRAGMA table_info(memories)")
+        columns = [row[1] for row in cursor.fetchall()]
+        
+        if "deprecated" not in columns:
+            logger.info(f"[MIGRATION] Adding deprecated column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN deprecated INTEGER DEFAULT 0")
+        
+        if "deprecation_reason" not in columns:
+            logger.info(f"[MIGRATION] Adding deprecation_reason column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN deprecation_reason TEXT")
         
         conn.commit()
         conn.close()
@@ -327,6 +363,10 @@ class CRTMemorySystem:
         
         # Build set of IDs to exclude
         deprecated_ids = set()
+        
+        # Filter memories marked as deprecated in the database
+        if exclude_deprecated:
+            memories = [m for m in memories if not getattr(m, 'deprecated', False)]
         
         # Filter deprecated contradiction sources (SSE invariant: no truth reintroduction)
         if exclude_deprecated and ledger is not None:
@@ -607,7 +647,8 @@ class CRTMemorySystem:
         
         memories = []
         for row in rows:
-            memories.append(MemoryItem(
+            # Handle both old and new schema (with/without deprecated columns)
+            memory = MemoryItem(
                 memory_id=row[0],
                 vector=np.array(json.loads(row[1])),
                 text=row[2],
@@ -619,7 +660,14 @@ class CRTMemorySystem:
                 context=json.loads(row[8]) if row[8] else None,
                 tags=json.loads(row[9]) if row[9] else None,
                 thread_id=row[10]
-            ))
+            )
+            # Add deprecated fields if they exist
+            if len(row) > 11:
+                memory.deprecated = row[11] if row[11] is not None else False
+            if len(row) > 12:
+                memory.deprecation_reason = row[12]
+            
+            memories.append(memory)
         
         return memories
     

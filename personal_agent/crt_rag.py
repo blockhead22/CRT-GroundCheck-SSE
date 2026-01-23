@@ -36,6 +36,7 @@ from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
 from .active_learning import get_active_learning_coordinator
 from .user_profile import GlobalUserProfile
+from .ml_contradiction_detector import MLContradictionDetector
 
 
 class CRTEnhancedRAG:
@@ -74,6 +75,14 @@ class CRTEnhancedRAG:
         # Optional learned suggestions (metadata-only).
         self.learned_suggestions = LearnedSuggestionEngine()
         self.runtime_config = get_runtime_config()
+        
+        # ML-based contradiction detector (Phase 2/3 models)
+        try:
+            self.ml_detector = MLContradictionDetector()
+            logger.info("[ML_DETECTOR] ML contradiction detector initialized")
+        except Exception as e:
+            logger.warning(f"[ML_DETECTOR] Failed to initialize ML detector: {e}")
+            self.ml_detector = None
         
         # Active learning coordinator (graceful degradation if unavailable)
         try:
@@ -1012,6 +1021,207 @@ class CRTEnhancedRAG:
                 seen.add(b)
 
         return goals, dedup_beliefs
+    
+    def _check_contradiction_gates(
+        self,
+        user_query: str,
+        inferred_slots: List[str]
+    ) -> Tuple[bool, Optional[str], List[Dict[str, Any]]]:
+        """
+        Bug 2 Fix: Check for unresolved contradictions that should block response.
+        
+        This implements gate blocking - preventing confident answers when
+        contradictions exist in the queried facts.
+        
+        Args:
+            user_query: User's query text
+            inferred_slots: Slots the query is asking about
+            
+        Returns:
+            (gates_passed, clarification_message, contradictions_list)
+        """
+        if not inferred_slots:
+            # No specific slots mentioned, don't block
+            return True, None, []
+        
+        # Get open contradictions from ledger
+        try:
+            open_contradictions = self.ledger.get_open_contradictions(limit=100)
+        except Exception as e:
+            logger.warning(f"[GATE_CHECK] Failed to get open contradictions: {e}")
+            return True, None, []
+        
+        if not open_contradictions:
+            return True, None, []
+        
+        # Check if any open contradictions affect the queried slots
+        blocking_contradictions = []
+        
+        for contra in open_contradictions:
+            # Get affected slots from contradiction
+            affects_slots = getattr(contra, 'affects_slots', None)
+            if not affects_slots:
+                continue
+            
+            affected_slot_list = [s.strip() for s in affects_slots.split(',')]
+            
+            # Check if any affected slot matches queried slots
+            for affected_slot in affected_slot_list:
+                if affected_slot in inferred_slots:
+                    # Load memory texts to build clarification
+                    try:
+                        old_mem = self._get_memory_by_id(contra.old_memory_id)
+                        new_mem = self._get_memory_by_id(contra.new_memory_id)
+                        
+                        if old_mem and new_mem:
+                            blocking_contradictions.append({
+                                'ledger_id': contra.ledger_id,
+                                'slot': affected_slot,
+                                'old_value': old_mem.text,
+                                'new_value': new_mem.text,
+                                'category': contra.contradiction_type
+                            })
+                    except Exception as e:
+                        logger.warning(f"[GATE_CHECK] Failed to load contradiction memories: {e}")
+                        continue
+        
+        if not blocking_contradictions:
+            return True, None, []
+        
+        # Build clarification message
+        messages = []
+        for contra in blocking_contradictions[:3]:  # Limit to 3 for readability
+            slot = contra['slot']
+            old_val = contra['old_value'][:100]  # Truncate for clarity
+            new_val = contra['new_value'][:100]
+            
+            messages.append(
+                f"I have conflicting information about your {slot}:\n"
+                f"  - {old_val}\n"
+                f"  - {new_val}\n"
+                f"Which one is correct?"
+            )
+        
+        clarification = "\n\n".join(messages)
+        
+        logger.info(f"[GATE_CHECK] ✗ Gates blocked: {len(blocking_contradictions)} contradictions")
+        
+        return False, clarification, blocking_contradictions
+    
+    def _get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
+        """Get a specific memory by ID."""
+        all_memories = self.memory._load_all_memories()
+        for mem in all_memories:
+            if mem.memory_id == memory_id:
+                return mem
+        return None
+    
+    def _check_all_fact_contradictions_ml(
+        self, 
+        new_memory: MemoryItem, 
+        user_query: str
+    ) -> Tuple[bool, Optional[ContradictionEntry]]:
+        """
+        Check for contradictions using ML detector (replaces hardcoded slot list).
+        
+        This is the Bug 1 fix: Uses Phase 2/3 ML models to detect contradictions
+        across ALL facts, not just hardcoded slots like employer/location.
+        
+        Args:
+            new_memory: Newly stored memory item
+            user_query: User's input text
+            
+        Returns:
+            (contradiction_detected, contradiction_entry)
+        """
+        if self.ml_detector is None:
+            logger.debug("[ML_CONTRADICTION] ML detector not available, skipping")
+            return False, None
+        
+        # Extract facts from new memory
+        new_facts = extract_fact_slots(user_query) or {}
+        if not new_facts:
+            return False, None
+        
+        # Get all previous user memories
+        all_memories = self.memory._load_all_memories()
+        previous_user_memories = [
+            m for m in all_memories 
+            if m.source == MemorySource.USER and m.memory_id != new_memory.memory_id
+        ]
+        
+        # Check each new fact against previous memories
+        for slot, new_fact in new_facts.items():
+            new_value = getattr(new_fact, "value", str(new_fact))
+            if not new_value:
+                continue
+            
+            # Find previous memories with the same slot
+            for prev_mem in previous_user_memories:
+                prev_facts = extract_fact_slots(prev_mem.text) or {}
+                prev_fact = prev_facts.get(slot)
+                
+                if prev_fact is None:
+                    continue
+                
+                prev_value = getattr(prev_fact, "value", str(prev_fact))
+                if not prev_value:
+                    continue
+                
+                # Check if values are similar enough to skip (avoid nickname issues)
+                if prev_value.lower().strip() == new_value.lower().strip():
+                    continue
+                
+                # Use ML detector to check for contradiction
+                context = {
+                    "query": user_query,
+                    "old_timestamp": prev_mem.timestamp,
+                    "new_timestamp": new_memory.timestamp,
+                    "memory_confidence": prev_mem.confidence,
+                    "trust_score": prev_mem.trust,
+                    "slot": slot
+                }
+                
+                result = self.ml_detector.check_contradiction(
+                    old_value=prev_value,
+                    new_value=new_value,
+                    slot=slot,
+                    context=context
+                )
+                
+                logger.info(
+                    f"[ML_CONTRADICTION] Slot={slot}, Old={prev_value}, New={new_value}, "
+                    f"Category={result['category']}, Policy={result['policy']}, "
+                    f"Confidence={result['confidence']:.3f}"
+                )
+                
+                # Record contradiction if detected
+                if result["is_contradiction"]:
+                    drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+                    
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                        query=user_query,
+                        summary=f"{slot}: {prev_value} → {new_value} ({result['category']})",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=result["category"],
+                        suggested_policy=result["policy"]
+                    )
+                    
+                    logger.info(
+                        f"[ML_CONTRADICTION] ✓ Detected: {slot} contradiction "
+                        f"({result['category']}, policy={result['policy']})"
+                    )
+                    
+                    return True, contradiction_entry
+        
+        return False, None
 
     def _resolve_open_conflicts_from_assertion(self, user_text: str) -> int:
         """Resolve open hard CONFLICT contradictions when the user clarifies.
@@ -1216,6 +1426,16 @@ class CRTEnhancedRAG:
             except Exception:
                 # Resolution is best-effort; never block the main chat loop.
                 pass
+            
+            # BUG 1 FIX: Check for contradictions using ML detector (ALL facts, not hardcoded slots)
+            contradiction_detected = False
+            contradiction_entry = None
+            try:
+                contradiction_detected, contradiction_entry = self._check_all_fact_contradictions_ml(
+                    user_memory, user_query
+                )
+            except Exception as e:
+                logger.warning(f"[ML_CONTRADICTION] Failed to check ML contradictions: {e}", exc_info=True)
 
             # Deterministic safe ack: user name declarations should not be embellished.
             # (e.g., never add a location like "New York" unless the user said it.)
@@ -1244,76 +1464,78 @@ class CRTEnhancedRAG:
                         answer = f"{answer} {profile_answer}"
 
                 # If the user previously stated a different name, record a contradiction entry.
-                contradiction_detected = False
-                contradiction_entry = None
-                logger.debug("Name contradiction check starting (user_memory=%s)", user_memory is not None)
-                try:
-                    new_facts = extract_fact_slots(user_query) or {}
-                    new_name = new_facts.get("name")
-                    logger.debug("Extracted name from query: %s", new_name)
-                    if new_name is not None:
-                        all_memories = self.memory._load_all_memories()
-                        previous_user_memories = [
-                            m
-                            for m in all_memories
-                            if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
-                        ]
-                        # Only record a new contradiction if the user asserts a NEW name
-                        # (i.e., it does not match any prior user-stated name value).
-                        # If the user re-asserts a previously-known name, treat it as
-                        # reinforcement/clarification (and let conflict resolution handle it).
-                        prior_same_exists = False
-                        prior_names: List[MemoryItem] = []
-                        for prev_mem in previous_user_memories:
-                            prev_facts = extract_fact_slots(prev_mem.text) or {}
-                            prev_name = prev_facts.get("name")
-                            if prev_name is None:
-                                continue
-                            prev_norm = str(getattr(prev_name, "normalized", "") or "")
-                            new_norm = str(getattr(new_name, "normalized", "") or "")
+                # NOTE: This is now redundant with ML-based detection above, but kept for
+                # compatibility. The ML detector should catch name contradictions too.
+                # Only run this if ML detection didn't already find a contradiction.
+                if not contradiction_detected:
+                    logger.debug("Name contradiction check starting (user_memory=%s)", user_memory is not None)
+                    try:
+                        new_facts = extract_fact_slots(user_query) or {}
+                        new_name = new_facts.get("name")
+                        logger.debug("Extracted name from query: %s", new_name)
+                        if new_name is not None:
+                            all_memories = self.memory._load_all_memories()
+                            previous_user_memories = [
+                                m
+                                for m in all_memories
+                                if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
+                            ]
+                            # Only record a new contradiction if the user asserts a NEW name
+                            # (i.e., it does not match any prior user-stated name value).
+                            # If the user re-asserts a previously-known name, treat it as
+                            # reinforcement/clarification (and let conflict resolution handle it).
+                            prior_same_exists = False
+                            prior_names: List[MemoryItem] = []
+                            for prev_mem in previous_user_memories:
+                                prev_facts = extract_fact_slots(prev_mem.text) or {}
+                                prev_name = prev_facts.get("name")
+                                if prev_name is None:
+                                    continue
+                                prev_norm = str(getattr(prev_name, "normalized", "") or "")
+                                new_norm = str(getattr(new_name, "normalized", "") or "")
 
-                            # Treat nickname/partial-name cases as the same identity signal
-                            # (e.g., "Nick" vs "Nick Block") to avoid noisy conflicts.
-                            same_or_prefix = (
-                                prev_norm == new_norm
-                                or (prev_norm and new_norm and prev_norm.startswith(new_norm))
-                                or (prev_norm and new_norm and new_norm.startswith(prev_norm))
-                            )
+                                # Treat nickname/partial-name cases as the same identity signal
+                                # (e.g., "Nick" vs "Nick Block") to avoid noisy conflicts.
+                                same_or_prefix = (
+                                    prev_norm == new_norm
+                                    or (prev_norm and new_norm and prev_norm.startswith(new_norm))
+                                    or (prev_norm and new_norm and new_norm.startswith(prev_norm))
+                                )
 
-                            if same_or_prefix:
-                                prior_same_exists = True
-                            else:
-                                prior_names.append(prev_mem)
+                                if same_or_prefix:
+                                    prior_same_exists = True
+                                else:
+                                    prior_names.append(prev_mem)
 
-                        if (not prior_same_exists) and prior_names:
-                            logger.debug("Name contradiction detected between declarations")
-                            selected_prev = max(
-                                prior_names,
-                                key=lambda m: (getattr(m, "timestamp", 0.0), getattr(m, "trust", 0.0)),
-                            )
-                            # Reuse existing embeddings from stored memories; do not invoke the embedder here.
-                            user_vector = user_memory.vector
-                            drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
-                            logger.debug("Name contradiction: new='%s' vs old='%s', drift=%.3f", new_name.value, selected_prev.text[:60], drift)
-                            contradiction_entry = self.ledger.record_contradiction(
-                                old_memory_id=selected_prev.memory_id,
-                                new_memory_id=user_memory.memory_id,
-                                drift_mean=drift,
-                                confidence_delta=float(selected_prev.confidence) - 0.95,
-                                query=user_query,
-                                summary=f"User name changed: {selected_prev.text[:50]}... vs {user_query[:50]}...",
-                                old_text=selected_prev.text,
-                                new_text=user_query,
-                                old_vector=selected_prev.vector,
-                                new_vector=user_vector,
-                            )
-                            logger.debug("Ledger recorded contradiction entry: %s", contradiction_entry)
-                            contradiction_detected = True
-                except Exception as e:
-                    logger.debug("Name contradiction check exception: %s", e)
-                    logger.warning(f"[CONTRADICTION_DETECTION] Name contradiction check failed: {e}")
-                    contradiction_detected = False
-                    contradiction_entry = None
+                            if (not prior_same_exists) and prior_names:
+                                logger.debug("Name contradiction detected between declarations")
+                                selected_prev = max(
+                                    prior_names,
+                                    key=lambda m: (getattr(m, "timestamp", 0.0), getattr(m, "trust", 0.0)),
+                                )
+                                # Reuse existing embeddings from stored memories; do not invoke the embedder here.
+                                user_vector = user_memory.vector
+                                drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
+                                logger.debug("Name contradiction: new='%s' vs old='%s', drift=%.3f", new_name.value, selected_prev.text[:60], drift)
+                                contradiction_entry = self.ledger.record_contradiction(
+                                    old_memory_id=selected_prev.memory_id,
+                                    new_memory_id=user_memory.memory_id,
+                                    drift_mean=drift,
+                                    confidence_delta=float(selected_prev.confidence) - 0.95,
+                                    query=user_query,
+                                    summary=f"User name changed: {selected_prev.text[:50]}... vs {user_query[:50]}...",
+                                    old_text=selected_prev.text,
+                                    new_text=user_query,
+                                    old_vector=selected_prev.vector,
+                                    new_vector=user_vector,
+                                )
+                                logger.debug("Ledger recorded contradiction entry: %s", contradiction_entry)
+                                contradiction_detected = True
+                    except Exception as e:
+                            logger.debug("Name contradiction check exception: %s", e)
+                            logger.warning(f"[CONTRADICTION_DETECTION] Name contradiction check failed: {e}")
+                            # Don't override if ML already detected it
+                            pass
 
                 return {
                     'answer': answer,
@@ -1379,6 +1601,36 @@ class CRTEnhancedRAG:
         
         # Compute relevant slots for contradiction filtering
         relevant_slots_set = set(inferred_slots or []) | set((asserted_facts or {}).keys())
+        
+        # BUG 2 FIX: Check for unresolved contradictions (gate blocking)
+        gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
+            user_query, inferred_slots
+        )
+        
+        if not gates_passed and clarification_message:
+            # Gate blocked - return clarification request instead of confident answer
+            logger.info(f"[GATE_BLOCK] Response blocked due to {len(blocking_contradictions)} contradictions")
+            
+            return {
+                'answer': clarification_message,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.0,
+                'response_type': 'uncertainty',
+                'gates_passed': False,
+                'gate_reason': 'contradiction_blocking',
+                'intent_alignment': 0.5,
+                'memory_alignment': 0.5,
+                'contradiction_detected': True,
+                'unresolved_contradictions_total': len(blocking_contradictions),
+                'unresolved_hard_conflicts': len(blocking_contradictions),
+                'retrieved_memories': [],
+                'prompt_memories': [],
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': None,
+                'session_id': self.session_id,
+            }
         
         # Detect meta-queries about the system itself (not personal questions)
         if "how does crt work" in user_query.lower() or "how does this work" in user_query.lower():
