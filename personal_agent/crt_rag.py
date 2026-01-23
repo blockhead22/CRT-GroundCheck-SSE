@@ -19,6 +19,7 @@ Philosophy:
 import numpy as np
 import re
 import logging
+import sqlite3
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
 from collections import OrderedDict
@@ -1326,6 +1327,152 @@ class CRTEnhancedRAG:
 
         return resolved
     
+    def _detect_and_resolve_nl_resolution(self, user_text: str) -> bool:
+        """Detect and resolve contradictions via natural language resolution statements.
+        
+        Detects patterns like:
+        - "Google is correct, I switched jobs"
+        - "Actually, it's Google now"
+        - "I meant Google, not Microsoft"
+        - "I changed jobs to Google"
+        
+        Returns: True if a contradiction was resolved, False otherwise.
+        """
+        from .crt_ledger import ContradictionStatus, ContradictionType
+        
+        # Resolution intent patterns
+        resolution_patterns = [
+            r'\b(is|was)\s+(correct|right|accurate)\b',
+            r'\bactually\b',
+            r'\bi\s+meant\b',
+            r'\bswitched\s+(jobs|to|companies)\b',
+            r'\bchanged\s+(jobs|to|companies)\b',
+            r'\bmoved\s+to\b',
+            r'\bnow\s+(work|working|at)\b',
+            r'\bcorrect\s+(one|version|answer)\b',
+        ]
+        
+        # Check if user text contains any resolution intent pattern
+        has_resolution_intent = any(
+            re.search(pattern, user_text, re.IGNORECASE) 
+            for pattern in resolution_patterns
+        )
+        
+        if not has_resolution_intent:
+            return False
+        
+        # Extract facts from the user's statement
+        facts = extract_fact_slots(user_text) or {}
+        if not facts:
+            return False
+        
+        # Get open contradictions
+        open_contras = self.ledger.get_open_contradictions(limit=200)
+        if not open_contras:
+            return False
+        
+        # Try to find a matching contradiction and determine which value to keep
+        for contra in open_contras:
+            # Only handle CONFLICT type contradictions for now
+            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+                continue
+            
+            old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
+            new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+            if old_mem is None or new_mem is None:
+                continue
+            
+            old_facts = extract_fact_slots(old_mem.text) or {}
+            new_facts = extract_fact_slots(new_mem.text) or {}
+            
+            # Find slots that appear in all three: old, new, and user's resolution statement
+            shared = set(old_facts.keys()) & set(new_facts.keys()) & set(facts.keys())
+            if not shared:
+                continue
+            
+            # Check if user's fact matches either old or new value
+            for slot in shared:
+                user_fact = facts.get(slot)
+                if user_fact is None:
+                    continue
+                    
+                old_value = old_facts.get(slot)
+                new_value = new_facts.get(slot)
+                if old_value is None or new_value is None:
+                    continue
+                
+                # Normalize for comparison
+                def normalize(val):
+                    if hasattr(val, 'normalized'):
+                        return val.normalized
+                    return str(val).lower().strip()
+                
+                user_normalized = normalize(user_fact)
+                old_normalized = normalize(old_value)
+                new_normalized = normalize(new_value)
+                
+                chosen_memory_id = None
+                deprecated_memory_id = None
+                
+                # Determine which memory to keep based on matching values
+                if user_normalized == new_normalized:
+                    chosen_memory_id = contra.new_memory_id
+                    deprecated_memory_id = contra.old_memory_id
+                elif user_normalized == old_normalized:
+                    chosen_memory_id = contra.old_memory_id
+                    deprecated_memory_id = contra.new_memory_id
+                else:
+                    # User mentioned a value but it doesn't match either side
+                    continue
+                
+                # Resolve the contradiction in the ledger FIRST
+                # This ensures we don't end up with deprecated memories but unresolved contradictions
+                self.ledger.resolve_contradiction(
+                    contra.ledger_id,
+                    method="nl_resolution",
+                    merged_memory_id=None,
+                    new_status=ContradictionStatus.RESOLVED,
+                )
+                
+                # Then deprecate the non-chosen memory
+                # Using context manager to ensure connection is properly closed
+                mem_db = str(self.memory.db_path)
+                try:
+                    with sqlite3.connect(mem_db) as mem_conn:
+                        mem_cursor = mem_conn.cursor()
+                        
+                        mem_cursor.execute("""
+                            UPDATE memories 
+                            SET deprecated = 1, deprecation_reason = ?
+                            WHERE memory_id = ?
+                        """, (f"User resolved via natural language: '{user_text[:100]}'", deprecated_memory_id))
+                        
+                        # Optionally boost trust of chosen memory slightly
+                        mem_cursor.execute("""
+                            UPDATE memories 
+                            SET trust = MIN(trust + 0.1, 1.0)
+                            WHERE memory_id = ?
+                        """, (chosen_memory_id,))
+                        
+                        mem_conn.commit()
+                except Exception as e:
+                    logger.error(
+                        f"[NL_RESOLUTION] Failed to update memories after resolving contradiction {contra.ledger_id}: {e}",
+                        exc_info=True
+                    )
+                    # Continue anyway - the contradiction is already resolved in the ledger
+                    # The memory deprecation is a nice-to-have optimization
+                
+                logger.info(
+                    f"[NL_RESOLUTION] Resolved contradiction {contra.ledger_id} via natural language. "
+                    f"Chose {chosen_memory_id}, deprecated {deprecated_memory_id}. "
+                    f"User said: '{user_text[:100]}'"
+                )
+                
+                return True
+        
+        return False
+    
     # ========================================================================
     # Query with CRT Principles
     # ========================================================================
@@ -1364,6 +1511,22 @@ class CRTEnhancedRAG:
 
         user_input_kind = self._classify_user_input(user_query)
         logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind} | Query: {user_query[:100]}")
+        
+        # Check for natural language contradiction resolution FIRST
+        # This prevents the resolution statement from being stored as a new assertion
+        nl_resolution_occurred = False
+        try:
+            nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_query)
+            if nl_resolution_occurred:
+                logger.info(f"[NL_RESOLUTION] Natural language resolution detected and processed")
+                # If we resolved a contradiction, treat this as an instruction/acknowledgment, not an assertion
+                # This prevents "Google is correct" from being stored as a new fact that creates another contradiction
+                if user_input_kind == "assertion":
+                    logger.info(f"[NL_RESOLUTION] Reclassifying assertion → instruction (NL resolution)")
+                    user_input_kind = "instruction"
+        except Exception as e:
+            logger.warning(f"[NL_RESOLUTION] Failed to detect/resolve NL resolution: {e}", exc_info=True)
+        
         if user_input_kind == "assertion" and (is_memory_citation or is_contradiction_status or is_memory_inventory):
             logger.info(f"[PROFILE_DEBUG] Reclassifying assertion → instruction (special query type)")
             user_input_kind = "instruction"
