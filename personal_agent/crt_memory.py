@@ -107,6 +107,9 @@ class CRTMemorySystem:
     - Trust evolution over time
     """
     
+    # Contested memory trust cap multiplier (90% reduction)
+    CONTESTED_TRUST_MULTIPLIER = 0.1
+    
     def __init__(
         self,
         db_path: str = "personal_agent/crt_memory.db",
@@ -389,6 +392,40 @@ class CRTMemorySystem:
     # Trust Evolution
     # ========================================================================
     
+    def is_memory_contested(self, memory_id: str) -> bool:
+        """
+        Check if a memory is referenced in an open contradiction.
+        
+        Args:
+            memory_id: Memory ID to check
+            
+        Returns:
+            bool: True if memory is in an open contradiction
+        """
+        # Import here to avoid circular dependency
+        from pathlib import Path
+        
+        # Derive ledger database path from memory database path
+        # Replace 'crt_memory' with 'crt_ledger' to get corresponding ledger DB
+        ledger_db = Path(self.db_path.replace('crt_memory', 'crt_ledger'))
+        
+        if not ledger_db.exists():
+            return False
+        
+        conn = sqlite3.connect(str(ledger_db))
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT ledger_id FROM contradictions 
+            WHERE (old_memory_id = ? OR new_memory_id = ?)
+            AND status = 'open'
+        """, (memory_id, memory_id))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        return result is not None
+    
     def update_trust(
         self,
         memory_id: str,
@@ -409,20 +446,55 @@ class CRTMemorySystem:
         
         old_trust = row[0]
         
+        # Check if memory is contested (in open contradiction)
+        # If so, apply contested multiplier to cap trust updates
+        is_contested = self.is_memory_contested(memory_id)
+        actual_new_trust = new_trust
+        
+        if is_contested:
+            # Calculate the delta from current trust
+            delta = new_trust - old_trust
+            
+            # Apply contested multiplier (reduce updates by 90%)
+            capped_delta = delta * self.CONTESTED_TRUST_MULTIPLIER
+            actual_new_trust = old_trust + capped_delta
+            
+            # Ensure within bounds
+            actual_new_trust = max(0.0, min(1.0, actual_new_trust))
+            
+            logger.info(f"[CONTESTED] Memory {memory_id} is in open contradiction")
+            logger.info(f"[CONTESTED] Trust update capped: Δ{delta:.3f} → Δ{capped_delta:.3f}")
+            
+            # Log contested event
+            cursor.execute("""
+                INSERT INTO trust_log (memory_id, timestamp, old_trust, new_trust, reason, drift)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                memory_id, 
+                time.time(), 
+                old_trust, 
+                actual_new_trust, 
+                f"contested_cap_applied: {reason}", 
+                drift
+            ))
+        
         # Update trust
         cursor.execute(
             "UPDATE memories SET trust = ? WHERE memory_id = ?",
-            (new_trust, memory_id)
+            (actual_new_trust, memory_id)
         )
         
-        # Log change
-        cursor.execute("""
-            INSERT INTO trust_log (memory_id, timestamp, old_trust, new_trust, reason, drift)
+        # Log change (if not already logged above for contested case)
+        if not is_contested:
+            cursor.execute("""
+                INSERT INTO trust_log (memory_id, timestamp, old_trust, new_trust, reason, drift)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (memory_id, time.time(), old_trust, new_trust, reason, drift))
+            """, (memory_id, time.time(), old_trust, actual_new_trust, reason, drift))
         
         conn.commit()
         conn.close()
+        
+        logger.info(f"[TRUST] Memory {memory_id}: {old_trust:.3f} → {actual_new_trust:.3f}")
     
     def evolve_trust_for_alignment(
         self,

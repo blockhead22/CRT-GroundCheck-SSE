@@ -154,7 +154,8 @@ class ContradictionLedger:
                 summary TEXT,
                 resolution_timestamp REAL,
                 resolution_method TEXT,
-                merged_memory_id TEXT
+                merged_memory_id TEXT,
+                metadata TEXT
             )
         """)
         
@@ -181,6 +182,18 @@ class ContradictionLedger:
                 ask_count INTEGER DEFAULT 0,
                 last_user_answer TEXT,
                 last_user_answer_at REAL
+            )
+        """)
+        
+        # Conflict resolutions table - tracks user-driven resolution decisions
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS conflict_resolutions (
+                ledger_id TEXT PRIMARY KEY,
+                resolution_method TEXT NOT NULL,
+                chosen_memory_id TEXT,
+                user_feedback TEXT,
+                timestamp REAL NOT NULL,
+                FOREIGN KEY (ledger_id) REFERENCES contradictions(ledger_id)
             )
         """)
         
