@@ -1,0 +1,18 @@
+{
+  "steps": [
+    {
+      "action": "create_initial",
+      "response": "I need to be honest about my uncertainty here.\n\nI might be wrong because I have conflicting informat"
+    },
+    {
+      "action": "create_contradiction",
+      "response": "I need to be honest about my uncertainty here.\n\nI might be wrong because I have conflicting informat"
+    }
+  ],
+  "passed": true,
+  "initial_trust": 0.7,
+  "memory_id": "mem_1769129993560_7331",
+  "trust_after_contradiction": 0.7,
+  "final_trust": 0.7,
+  "trust_change": 0.0
+}
