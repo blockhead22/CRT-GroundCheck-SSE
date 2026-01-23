@@ -132,9 +132,21 @@ class ContradictionLedger:
         
         self._init_db()
     
+    def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
+        """
+        Create a properly configured SQLite connection with:
+        - WAL mode for better concurrent access
+        - Busy timeout to retry on lock conflicts
+        """
+        conn = sqlite3.connect(self.db_path, timeout=timeout)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+        return conn
+    
     def _init_db(self):
         """Initialize database."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Contradiction ledger table
@@ -224,7 +236,7 @@ class ContradictionLedger:
     def mark_contradiction_asked(self, ledger_id: str) -> None:
         """Record that we asked the user to clarify a contradiction."""
         ts = time.time()
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -242,7 +254,7 @@ class ContradictionLedger:
     def record_contradiction_user_answer(self, ledger_id: str, answer: str) -> None:
         """Record a user answer intended to resolve a contradiction (does not auto-resolve)."""
         ts = time.time()
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -259,7 +271,7 @@ class ContradictionLedger:
 
     def get_resolved_contradictions(self, limit: int = 100) -> List[ContradictionEntry]:
         """Get all resolved contradictions for filtering deprecated values."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -299,7 +311,7 @@ class ContradictionLedger:
     
     def get_contradiction_worklog(self, ledger_id: str) -> Dict[str, Optional[object]]:
         """Return worklog fields for a contradiction (or defaults if absent)."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -472,7 +484,7 @@ class ContradictionLedger:
         )
         
         # Store in database
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Store suggested policy in metadata if provided
@@ -605,7 +617,7 @@ class ContradictionLedger:
     
     def get_open_contradictions(self, limit: int = 10) -> List[ContradictionEntry]:
         """Get unresolved contradictions."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -622,7 +634,7 @@ class ContradictionLedger:
     
     def get_contradiction_by_memory(self, memory_id: str) -> List[ContradictionEntry]:
         """Get all contradictions involving a memory."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -661,7 +673,7 @@ class ContradictionLedger:
         - "deprecate_old": Old memory trust degraded, new preferred
         - "deprecate_new": New memory trust degraded, old preferred
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -701,7 +713,7 @@ class ContradictionLedger:
         else:
             priority = "low"
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -715,7 +727,7 @@ class ContradictionLedger:
     
     def get_reflection_queue(self, priority: Optional[str] = None) -> List[Dict]:
         """Get pending reflections, optionally filtered by priority."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         if priority:
@@ -755,7 +767,7 @@ class ContradictionLedger:
     
     def mark_reflection_processed(self, queue_id: int):
         """Mark reflection as processed."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute(
@@ -774,7 +786,7 @@ class ContradictionLedger:
         """Get contradiction statistics."""
         since = time.time() - (days * 86400)
         
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Total contradictions

@@ -19,10 +19,11 @@ from typing import Optional
 
 try:
     from personal_agent.agent_loop import create_agent, AgentTrace
-    from personal_agent.crt_memory import CRTMemoryEngine
+    from personal_agent.crt_memory import CRTMemorySystem
     from personal_agent.research_engine import ResearchEngine
 except ImportError as e:
     print(f"Warning: Import failed in proactive_triggers.py: {e}")
+    CRTMemorySystem = None
 
 
 class TriggerType(str, Enum):
@@ -218,7 +219,7 @@ class AgenticChatMode:
 
     def __init__(
         self,
-        memory_engine: CRTMemoryEngine,
+        memory_engine: CRTMemorySystem,
         research_engine: Optional[ResearchEngine] = None,
         auto_mode: bool = True,
         verbose: bool = False,

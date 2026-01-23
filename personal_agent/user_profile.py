@@ -58,10 +58,22 @@ class GlobalUserProfile:
         logger.debug(f"GlobalUserProfile init: db_path={self.db_path}")
         self._init_db()
     
+    def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
+        """
+        Create a properly configured SQLite connection with:
+        - WAL mode for better concurrent access
+        - Busy timeout to retry on lock conflicts
+        """
+        conn = sqlite3.connect(self.db_path, timeout=timeout)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+        return conn
+    
     def _init_db(self):
         """Initialize profile database."""
         logger.debug(f"GlobalUserProfile creating DB at: {self.db_path}")
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # New multi-value table: allows multiple values per slot (e.g., multiple employers)
@@ -146,7 +158,7 @@ class GlobalUserProfile:
             return {}
         
         updated = {}
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         for slot, fact in facts.items():
@@ -254,7 +266,7 @@ class GlobalUserProfile:
         Note: If there are multiple values for a slot (e.g., multiple employers),
         this returns only the most recent one. Use get_all_facts_for_slot() to get all.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -286,7 +298,7 @@ class GlobalUserProfile:
         
         Returns list sorted by timestamp (most recent first).
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -320,7 +332,7 @@ class GlobalUserProfile:
         
         Returns dict of slot -> most recent fact
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Get most recent fact per slot using subquery
@@ -359,7 +371,7 @@ class GlobalUserProfile:
         
         Returns dict of slot -> list of facts (newest first)
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -390,7 +402,7 @@ class GlobalUserProfile:
         
         For slots with multiple values, use get_all_facts_for_slot() instead.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         placeholders = ','.join('?' * len(slots))
@@ -422,7 +434,7 @@ class GlobalUserProfile:
     
     def clear(self):
         """Clear all profile data (for testing)."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM user_profile_multi")
         conn.commit()

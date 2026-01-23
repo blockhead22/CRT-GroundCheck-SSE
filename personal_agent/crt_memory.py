@@ -125,9 +125,21 @@ class CRTMemorySystem:
         # Initialize database
         self._init_db()
     
+    def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
+        """
+        Create a properly configured SQLite connection with:
+        - WAL mode for better concurrent access
+        - Busy timeout to retry on lock conflicts
+        """
+        conn = sqlite3.connect(self.db_path, timeout=timeout)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+        return conn
+    
     def _init_db(self):
         """Initialize database tables."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Memory items table
@@ -215,7 +227,7 @@ class CRTMemorySystem:
         Add deprecated columns to existing memory databases.
         This migration is safe to run multiple times.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Check if columns exist
@@ -303,7 +315,7 @@ class CRTMemorySystem:
         )
         
         # Store in database
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -452,7 +464,8 @@ class CRTMemorySystem:
         if not ledger_db.exists():
             return False
         
-        conn = sqlite3.connect(str(ledger_db))
+        conn = sqlite3.connect(str(ledger_db), timeout=30.0)
+        conn.execute("PRAGMA busy_timeout=30000")
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -474,7 +487,7 @@ class CRTMemorySystem:
         drift: Optional[float] = None
     ):
         """Update trust score and log the change."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Get current trust
@@ -597,7 +610,7 @@ class CRTMemorySystem:
         
         Only responses passing reconstruction gates become beliefs.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -620,7 +633,7 @@ class CRTMemorySystem:
         
         Speech can be shown to user but doesn't update beliefs.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -638,7 +651,7 @@ class CRTMemorySystem:
     
     def _load_all_memories(self) -> List[MemoryItem]:
         """Load all memories from database."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("SELECT * FROM memories")
@@ -691,7 +704,7 @@ class CRTMemorySystem:
         Returns:
             Filtered list of MemoryItem objects
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Build query with filters
@@ -745,7 +758,7 @@ class CRTMemorySystem:
         paginated/streamed loading to prevent OOM errors. This loads all
         vectors into memory at once.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Check count first to warn about large loads
@@ -768,7 +781,7 @@ class CRTMemorySystem:
 
     def get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
         """Fetch a single memory by ID (or None if missing)."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
 
         cursor.execute("SELECT * FROM memories WHERE memory_id = ?", (memory_id,))
@@ -794,7 +807,7 @@ class CRTMemorySystem:
     
     def get_trust_history(self, memory_id: str) -> List[Dict]:
         """Get trust evolution history for a memory."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -820,7 +833,7 @@ class CRTMemorySystem:
     
     def get_belief_speech_ratio(self, limit: int = 100) -> Dict[str, float]:
         """Get ratio of belief vs speech responses."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -910,7 +923,7 @@ class CRTMemorySystem:
     
     def _update_memory_trust(self, memory_id: str, new_trust: float) -> None:
         """Update trust score for a memory (internal use)."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -961,7 +974,7 @@ class CRTMemorySystem:
     
     def retrieve_by_id(self, memory_id: str) -> Optional[MemoryItem]:
         """Retrieve a specific memory by ID."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""

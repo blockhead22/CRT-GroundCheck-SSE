@@ -128,11 +128,24 @@ class ActiveLearningCoordinator:
         # Start background training worker
         self._start_training_worker()
     
+    def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
+        """
+        Create a properly configured SQLite connection with:
+        - WAL mode for better concurrent access
+        - Busy timeout to retry on lock conflicts
+        - Synchronous NORMAL for performance
+        """
+        conn = sqlite3.connect(str(self.db_path), timeout=timeout)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+        return conn
+    
     def _init_db(self):
         """Initialize SQLite database for event logging."""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Gate events table
@@ -265,7 +278,7 @@ class ActiveLearningCoordinator:
     
     def _get_latest_model_version(self) -> str:
         """Get latest model version from DB."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("""
             SELECT version FROM model_versions 
@@ -314,7 +327,7 @@ class ActiveLearningCoordinator:
         )
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO gate_events (
@@ -347,7 +360,7 @@ class ActiveLearningCoordinator:
         This is a TRAINING SIGNAL - the user told us we got it wrong.
         """
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Update event with correction
@@ -409,7 +422,7 @@ class ActiveLearningCoordinator:
             print(f"[ActiveLearning] Starting model training...")
             
             # Record training run start
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             started_at = time.time()
             
@@ -453,7 +466,7 @@ class ActiveLearningCoordinator:
                             pass
             
             # Update training run record
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE training_runs
@@ -485,7 +498,7 @@ class ActiveLearningCoordinator:
     
     def _export_training_data(self, output_file: Path):
         """Export corrected examples to JSONL for training."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         # Get all events with corrections
@@ -531,7 +544,7 @@ class ActiveLearningCoordinator:
             print(f"[ActiveLearning] Model hot-reloaded: {old_version} → {self._current_model_version}")
             
             # Record new version
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Deactivate old versions
@@ -597,7 +610,7 @@ class ActiveLearningCoordinator:
             return self._stats_cache
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Total events
@@ -660,7 +673,7 @@ class ActiveLearningCoordinator:
     
     def get_recent_corrections(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get recent user corrections for dashboard display."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -687,7 +700,7 @@ class ActiveLearningCoordinator:
     
     def get_events_needing_correction(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent gate events that haven't been corrected yet."""
-        conn = sqlite3.connect(str(self.db_path))
+        conn = self._get_connection()
         cursor = conn.cursor()
         
         cursor.execute("""
@@ -748,7 +761,7 @@ class ActiveLearningCoordinator:
         facts_json = json.dumps(facts_injected) if facts_injected else None
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO interaction_logs (
@@ -783,7 +796,7 @@ class ActiveLearningCoordinator:
         reaction_details = json.dumps({"comment": comment}) if comment else None
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE interaction_logs
@@ -819,7 +832,7 @@ class ActiveLearningCoordinator:
         timestamp = time.time()
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Get thread_id from interaction
@@ -868,7 +881,7 @@ class ActiveLearningCoordinator:
         })
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE interaction_logs
@@ -906,7 +919,7 @@ class ActiveLearningCoordinator:
         timestamp = time.time()
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO conflict_resolutions (
@@ -927,7 +940,7 @@ class ActiveLearningCoordinator:
         cutoff = time.time() - (hours * 3600)
         
         with self._lock:
-            conn = sqlite3.connect(str(self.db_path))
+            conn = self._get_connection()
             cursor = conn.cursor()
             
             # Total interactions

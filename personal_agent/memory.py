@@ -33,9 +33,21 @@ class MemorySystem:
         Path(db_path).parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
     
+    def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
+        """
+        Create a properly configured SQLite connection with:
+        - WAL mode for better concurrent access
+        - Busy timeout to retry on lock conflicts
+        """
+        conn = sqlite3.connect(self.db_path, timeout=timeout)
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA synchronous=NORMAL")
+        conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+        return conn
+    
     def _init_db(self):
         """Create database schema."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         # Conversations table
@@ -102,7 +114,7 @@ class MemorySystem:
         Phase D+ violation: Outcome measurement.
         This tracks conversations to learn patterns.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('''
@@ -129,7 +141,7 @@ class MemorySystem:
         
         Phase D+ violation: State persistence across queries.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('''
@@ -160,7 +172,7 @@ class MemorySystem:
         Phase D+ violation: User modeling.
         This builds a persistent model of the user.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('''
@@ -173,7 +185,7 @@ class MemorySystem:
     
     def get_preference(self, key: str) -> Optional[Dict[str, Any]]:
         """Get a learned preference."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('SELECT value, confidence, last_updated FROM preferences WHERE key = ?', (key,))
@@ -201,7 +213,7 @@ class MemorySystem:
         Phase D+ violation: Outcome measurement and learning.
         This measures success and uses it to improve.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('''
@@ -219,7 +231,7 @@ class MemorySystem:
         Phase D+ violation: Learning from patterns.
         This is how the agent gets better over time.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('''
@@ -255,7 +267,7 @@ class MemorySystem:
         
         Phase D+ violation: Learning user's decision patterns.
         """
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('''
@@ -269,7 +281,7 @@ class MemorySystem:
     
     def get_conversation_count(self) -> int:
         """Get total number of conversations."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         c.execute('SELECT COUNT(*) FROM conversations')
         count = c.fetchone()[0]
@@ -278,7 +290,7 @@ class MemorySystem:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get memory system statistics."""
-        conn = sqlite3.connect(self.db_path)
+        conn = self._get_connection()
         c = conn.cursor()
         
         c.execute('SELECT COUNT(*) FROM conversations')

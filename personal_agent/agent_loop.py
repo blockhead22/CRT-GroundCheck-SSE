@@ -32,13 +32,13 @@ from typing import Any, Callable, Literal, Optional
 
 # Conditional imports
 try:
-    from personal_agent.crt_memory import CRTMemoryEngine
+    from personal_agent.crt_memory import CRTMemorySystem
     from personal_agent.research_engine import ResearchEngine
     from personal_agent.evidence_packet import EvidencePacket
     from personal_agent.ollama_client import get_ollama_client
 except ImportError as e:
     print(f"Warning: Import failed in agent_loop.py: {e}")
-    CRTMemoryEngine = None
+    CRTMemorySystem = None
     ResearchEngine = None
     EvidencePacket = None
     get_ollama_client = None
@@ -133,7 +133,7 @@ class ToolRegistry:
 
     def __init__(
         self,
-        memory_engine: Optional[CRTMemoryEngine] = None,
+        memory_engine: Optional[CRTMemorySystem] = None,
         research_engine: Optional[ResearchEngine] = None,
         workspace_root: Optional[Path] = None,
     ):
@@ -542,7 +542,7 @@ Provide a clear, accurate answer in 2-4 sentences."""
 
 # Convenience functions
 def create_agent(
-    memory_engine: Optional[CRTMemoryEngine] = None,
+    memory_engine: Optional[CRTMemorySystem] = None,
     research_engine: Optional[ResearchEngine] = None,
     workspace_root: Optional[Path] = None,
     max_steps: int = 10,
@@ -586,7 +586,7 @@ def create_agent(
 
 def run_agent(
     query: str,
-    memory_engine: Optional[CRTMemoryEngine] = None,
+    memory_engine: Optional[CRTMemorySystem] = None,
     research_engine: Optional[ResearchEngine] = None,
     workspace_root: Optional[Path] = None,
     max_steps: int = 10,
