@@ -1022,6 +1022,100 @@ class CRTEnhancedRAG:
 
         return goals, dedup_beliefs
     
+    def _check_contradiction_gates(
+        self,
+        user_query: str,
+        inferred_slots: List[str]
+    ) -> Tuple[bool, Optional[str], List[Dict[str, Any]]]:
+        """
+        Bug 2 Fix: Check for unresolved contradictions that should block response.
+        
+        This implements gate blocking - preventing confident answers when
+        contradictions exist in the queried facts.
+        
+        Args:
+            user_query: User's query text
+            inferred_slots: Slots the query is asking about
+            
+        Returns:
+            (gates_passed, clarification_message, contradictions_list)
+        """
+        if not inferred_slots:
+            # No specific slots mentioned, don't block
+            return True, None, []
+        
+        # Get open contradictions from ledger
+        try:
+            open_contradictions = self.ledger.get_open_contradictions(limit=100)
+        except Exception as e:
+            logger.warning(f"[GATE_CHECK] Failed to get open contradictions: {e}")
+            return True, None, []
+        
+        if not open_contradictions:
+            return True, None, []
+        
+        # Check if any open contradictions affect the queried slots
+        blocking_contradictions = []
+        
+        for contra in open_contradictions:
+            # Get affected slots from contradiction
+            affects_slots = getattr(contra, 'affects_slots', None)
+            if not affects_slots:
+                continue
+            
+            affected_slot_list = [s.strip() for s in affects_slots.split(',')]
+            
+            # Check if any affected slot matches queried slots
+            for affected_slot in affected_slot_list:
+                if affected_slot in inferred_slots:
+                    # Load memory texts to build clarification
+                    try:
+                        old_mem = self._get_memory_by_id(contra.old_memory_id)
+                        new_mem = self._get_memory_by_id(contra.new_memory_id)
+                        
+                        if old_mem and new_mem:
+                            blocking_contradictions.append({
+                                'ledger_id': contra.ledger_id,
+                                'slot': affected_slot,
+                                'old_value': old_mem.text,
+                                'new_value': new_mem.text,
+                                'category': contra.contradiction_type
+                            })
+                    except Exception as e:
+                        logger.warning(f"[GATE_CHECK] Failed to load contradiction memories: {e}")
+                        continue
+        
+        if not blocking_contradictions:
+            return True, None, []
+        
+        # Build clarification message
+        messages = []
+        for contra in blocking_contradictions[:3]:  # Limit to 3 for readability
+            slot = contra['slot']
+            old_val = contra['old_value'][:100]  # Truncate for clarity
+            new_val = contra['new_value'][:100]
+            
+            messages.append(
+                f"I have conflicting information about your {slot}:\n"
+                f"  - {old_val}\n"
+                f"  - {new_val}\n"
+                f"Which one is correct?"
+            )
+        
+        clarification = "\n\n".join(messages)
+        
+        logger.info(f"[GATE_CHECK] ✗ Gates blocked: {len(blocking_contradictions)} contradictions")
+        
+        return False, clarification, blocking_contradictions
+    
+    def _get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
+        """Get a specific memory by ID."""
+        all_memories = self.memory._load_all_memories()
+        for mem in all_memories:
+            if mem.memory_id == memory_id:
+                return mem
+        return None
+    
     def _check_all_fact_contradictions_ml(
         self, 
         new_memory: MemoryItem, 
@@ -1507,6 +1601,36 @@ class CRTEnhancedRAG:
         
         # Compute relevant slots for contradiction filtering
         relevant_slots_set = set(inferred_slots or []) | set((asserted_facts or {}).keys())
+        
+        # BUG 2 FIX: Check for unresolved contradictions (gate blocking)
+        gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
+            user_query, inferred_slots
+        )
+        
+        if not gates_passed and clarification_message:
+            # Gate blocked - return clarification request instead of confident answer
+            logger.info(f"[GATE_BLOCK] Response blocked due to {len(blocking_contradictions)} contradictions")
+            
+            return {
+                'answer': clarification_message,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.0,
+                'response_type': 'uncertainty',
+                'gates_passed': False,
+                'gate_reason': 'contradiction_blocking',
+                'intent_alignment': 0.5,
+                'memory_alignment': 0.5,
+                'contradiction_detected': True,
+                'unresolved_contradictions_total': len(blocking_contradictions),
+                'unresolved_hard_conflicts': len(blocking_contradictions),
+                'retrieved_memories': [],
+                'prompt_memories': [],
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': None,
+                'session_id': self.session_id,
+            }
         
         # Detect meta-queries about the system itself (not personal questions)
         if "how does crt work" in user_query.lower() or "how does this work" in user_query.lower():
