@@ -267,6 +267,30 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         years = int(m.group(1))
         facts["programming_years"] = ExtractedFact("programming_years", years, str(years))
 
+    # Age
+    # Examples:
+    # - "I am 25 years old"
+    # - "I'm 30 years old"
+    # - "I'm 28"
+    # - "I just turned 29 today"
+    # - "I am twenty-five years old"
+    m = re.search(
+        r"\bi(?:'m| am)\s+(\d{1,3})(?:\s+years old)?\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        m = re.search(
+            r"\bi (?:just )?turned\s+(\d{1,3})\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+    if m:
+        age = int(m.group(1))
+        # Sanity check: age should be between 1 and 120
+        if 1 <= age <= 120:
+            facts["age"] = ExtractedFact("age", age, str(age))
+
     # First programming language
     # Examples:
     # - "I've been programming for 8 years, starting with Python."

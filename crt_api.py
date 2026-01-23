@@ -1685,10 +1685,10 @@ def create_app() -> FastAPI:
                 WHERE memory_id = ?
             """, (f"Overridden by {active_id} - user confirmed", deprecated_id))
             
-            # Boost trust of chosen memory
+            # Boost trust of chosen memory (SQLite doesn't have LEAST, use MIN instead)
             mem_cursor.execute("""
                 UPDATE memories 
-                SET trust = LEAST(trust + ?, 1.0)
+                SET trust = MIN(trust + ?, 1.0)
                 WHERE memory_id = ?
             """, (RESOLUTION_TRUST_BOOST, active_id,))
             

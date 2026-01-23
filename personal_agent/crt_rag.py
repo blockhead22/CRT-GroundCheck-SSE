@@ -3127,6 +3127,10 @@ class CRTEnhancedRAG:
         # ADDED: Detection for sibling/family queries
         if "sibling" in t or "brother" in t or "sister" in t:
             slots.append("siblings")
+        
+        # ADDED: Detection for age queries
+        if "how old" in t or "age" in t or "years old" in t:
+            slots.append("age")
 
         if "how many" in t and ("engineer" in t or "manage" in t or "team" in t):
             slots.append("team_size")
