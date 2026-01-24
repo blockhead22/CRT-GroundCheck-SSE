@@ -1101,9 +1101,9 @@ class CRTEnhancedRAG:
         """
         # Common patterns
         patterns = [
-            r"(?:work|working) (?:at|for) (\w+)",  # employer
-            r"(?:my )?name is (\w+)",  # name
-            r"(?:programming|coding) for (\d+ \w+)",  # experience
+            r"(?:work|working) (?:at|for) ([\w\s\-']+?)(?:\.|,|$)",  # employer - allows spaces, hyphens, apostrophes
+            r"(?:my )?name is ([\w\s\-']+?)(?:\.|,|$)",  # name
+            r"(?:programming|coding) for (\d+\s+\w+)",  # experience
             r"live in ([^,.]+)",  # location
             r"from ([^,.]+)",  # origin
         ]

@@ -664,20 +664,23 @@ class CRTMemorySystem:
         
         contradicting = []
         
+        # Load all user memories to check for contradictions
+        all_memories = self._load_all_memories()
+        user_memories = [m for m in all_memories if m.source == MemorySource.USER]
+        
         for new_fact in new_facts:
             slot = new_fact.get("slot")
             if not slot:
                 continue
             
-            # Get all memories for this slot from profile_memory
-            if hasattr(self, 'profile_memory') and slot in self.profile_memory:
-                existing_mem_ids = self.profile_memory.get(slot, [])
-                
-                for old_mem_id in existing_mem_ids:
-                    old_mem = self.get_memory_by_id(old_mem_id)
-                    if old_mem and old_mem.text != new_text:
+            # Check each existing memory to see if it has the same slot but different value
+            for old_mem in user_memories:
+                old_facts = extract_fact_slots(old_mem.text)
+                for old_fact in old_facts:
+                    if old_fact.get("slot") == slot and old_mem.text != new_text:
                         # Different value for same slot = contradiction
                         contradicting.append(old_mem)
+                        break  # Only add each memory once
         
         return contradicting
     
