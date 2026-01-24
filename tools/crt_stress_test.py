@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 import urllib.request
 import urllib.error
 import urllib.parse
+import re
 
 # Ensure imports work regardless of OS / working directory.
 # Repo root is the parent of tools/.
@@ -394,14 +395,36 @@ def _track_reintroduction_metrics(result: dict, *, turn: int) -> None:
             print(f"[REINTRO WARNING] Count mismatch: claimed={claimed_count}, flagged={flagged_count}")
     
     # Check if answer asserted contradicted claim without caveat
-    # Look for caveat keywords: "most recent", "latest", "conflicting", "though", "however"
+    # Use regex patterns to match caveat keywords and their variants
     answer = str(result.get("answer") or "").lower()
     
     # Skip caveat check for error responses or empty answers
     is_error_response = "error" in answer or "ollama" in answer or len(answer.strip()) < 5
     
-    caveat_keywords = ["most recent", "latest", "conflicting", "though", "however", "according to", "update"]
-    has_caveat = any(kw in answer for kw in caveat_keywords)
+    # Caveat detection patterns (matches word variants like "update", "updating", "updated")
+    caveat_patterns = [
+        # Original exact matches
+        r"\b(most recent|latest|conflicting|though|however|according to)\b",
+        
+        # Update/correction family
+        r"\b(updat(e|ed|ing)|correct(ed|ing|ion)?|clarif(y|ied|ying))\b",
+        
+        # Temporal references
+        r"\b(earlier|previously|before|prior|former)\b",
+        
+        # Acknowledgment/confirmation
+        r"\b(mentioned|noted|stated|said|established)\b",
+        
+        # Change/revision family
+        r"\b(chang(e|ed|ing)|revis(e|ed|ing)|adjust(ed|ing)?|modif(y|ied|ying))\b",
+        
+        # Contradiction signals
+        r"\b(actually|instead|rather|in fact)\b",
+    ]
+    
+    # Compile regex for performance (cache at module level in production)
+    caveat_regex = re.compile('|'.join(caveat_patterns), re.IGNORECASE)
+    has_caveat = bool(caveat_regex.search(answer))
     
     if flagged_count > 0 and not has_caveat and not is_error_response:
         # Answer used contradicted memory but didn't include caveat
