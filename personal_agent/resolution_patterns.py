@@ -109,7 +109,7 @@ def add_custom_pattern(pattern: str) -> None:
         pattern: Regex pattern string to add
         
     Example:
-        add_custom_pattern(r'\\bswap\\s+to\\s+([A-Za-z0-9\\s]+)')
+        add_custom_pattern(r'\bswap\s+to\s+([A-Za-z0-9\s]+)')
     """
     if pattern not in RESOLUTION_PATTERNS:
         RESOLUTION_PATTERNS.append(pattern)

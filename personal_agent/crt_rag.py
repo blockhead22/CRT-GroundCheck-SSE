@@ -1508,6 +1508,7 @@ class CRTEnhancedRAG:
                 
                 chosen_memory_id = None
                 deprecated_memory_id = None
+                resolution_method = "nl_resolution"  # Default resolution method
                 
                 # Handle synthetic slot from unstructured matching
                 if slot == _UNSTRUCTURED_SLOT_NAME:
@@ -1515,9 +1516,11 @@ class CRTEnhancedRAG:
                     if user_fact == old_mem.text:
                         chosen_memory_id = contra.old_memory_id
                         deprecated_memory_id = contra.new_memory_id
+                        resolution_method = "user_chose_old"
                     elif user_fact == new_mem.text:
                         chosen_memory_id = contra.new_memory_id
                         deprecated_memory_id = contra.old_memory_id
+                        resolution_method = "user_chose_new"
                     else:
                         # Shouldn't happen, but skip if we can't determine
                         continue
@@ -1550,10 +1553,10 @@ class CRTEnhancedRAG:
                     ledger_id=contra.ledger_id,
                     contradiction_type=contradiction_type or "CONFLICT",
                     slot_name=slot if slot != _UNSTRUCTURED_SLOT_NAME else None,
-                    old_value=old_value if slot != _UNSTRUCTURED_SLOT_NAME else old_mem.text[:50],
-                    new_value=new_value if slot != _UNSTRUCTURED_SLOT_NAME else new_mem.text[:50],
+                    old_value=old_value if slot != _UNSTRUCTURED_SLOT_NAME and 'old_value' in locals() else old_mem.text[:50],
+                    new_value=new_value if slot != _UNSTRUCTURED_SLOT_NAME and 'new_value' in locals() else new_mem.text[:50],
                     chosen_value=user_fact if slot != _UNSTRUCTURED_SLOT_NAME else "matched text",
-                    resolution_method=resolution_method if 'resolution_method' in locals() else "nl_resolution"
+                    resolution_method=resolution_method
                 )
                 
                 # Resolve the contradiction in the ledger FIRST

@@ -114,16 +114,17 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         is_core_slot = slot in core_slots
         is_favorite = slot.startswith("favorite_")
         is_preference = slot.endswith("_preference") or slot.startswith("pref_")
-        is_dynamic = (
-            slot.startswith("my_") or 
-            "_name" in slot or 
-            "_type" in slot or
-            "_status" in slot or
-            "_count" in slot
-        )
+        # More specific dynamic patterns to avoid false positives
+        is_my_prefix = slot.startswith("my_") and len(slot) > 3
+        is_name_suffix = slot.endswith("_name") and len(slot) > 5
+        is_type_suffix = slot.endswith("_type") and len(slot) > 5
+        is_status_suffix = slot.endswith("_status") and len(slot) > 7
+        is_count_suffix = slot.endswith("_count") and len(slot) > 6
         
         # Accept if it's a core slot OR a recognized dynamic pattern
-        if (is_core_slot or is_favorite or is_preference or is_dynamic) and value_raw:
+        if (is_core_slot or is_favorite or is_preference or 
+            is_my_prefix or is_name_suffix or is_type_suffix or 
+            is_status_suffix or is_count_suffix) and value_raw:
             facts[slot] = ExtractedFact(slot, value_raw, _norm_text(value_raw))
             return facts
 
@@ -357,6 +358,11 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         if color_raw:
             facts["favorite_color"] = ExtractedFact("favorite_color", color_raw, _norm_text(color_raw))
     
+    # Skip if category is too generic or already handled
+    # Common words that don't make good fact categories
+    # Can be extended as needed for specific use cases
+    _SKIP_FAVORITE_CATEGORIES = {"thing", "one", "part", "time", "way", "place"}
+    
     # Generic favorite X pattern (dynamic fact categories)
     # Examples:
     # - "My favorite snack is popcorn"
@@ -374,9 +380,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             # Trim at common continuations
             value_raw = re.split(r"\b(?:and|but|though|however)\b", value_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
             
-            # Skip if category is too generic or already handled
-            skip_categories = {"thing", "one", "part", "time", "way", "place"}
-            if category not in skip_categories and value_raw:
+            if category not in _SKIP_FAVORITE_CATEGORIES and value_raw:
                 slot_name = f"favorite_{category}"
                 facts[slot_name] = ExtractedFact(slot_name, value_raw, _norm_text(value_raw))
 

@@ -46,11 +46,14 @@ class ContradictionTraceLogger:
             console_output: Whether to also log to console
             log_level: Logging level (DEBUG, INFO, WARNING, etc.)
         """
-        self.logger = logging.getLogger("crt.contradiction_trace")
+        # Use a unique logger name to avoid conflicts
+        self.logger = logging.getLogger(f"crt.contradiction_trace.{id(self)}")
         self.logger.setLevel(log_level)
         
-        # Remove existing handlers to avoid duplicates
-        self.logger.handlers.clear()
+        # Clear handlers only for this specific logger instance
+        if self.logger.handlers:
+            for handler in self.logger.handlers[:]:
+                self.logger.removeHandler(handler)
         
         # File handler
         if log_file:
