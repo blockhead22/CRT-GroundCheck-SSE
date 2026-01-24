@@ -15,7 +15,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.fact_slots import extract_fact_slots
+from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
+from personal_agent.two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from personal_agent.artifact_store import now_iso_utc
 from personal_agent.idle_scheduler import CRTIdleScheduler
 from personal_agent.evidence_packet import Citation, EvidencePacket
@@ -167,8 +168,28 @@ class ContradictionRespondResponse(BaseModel):
     thread_id: str
     ledger_id: str
     recorded: bool = True
-    resolved: bool = False
-    next: ContradictionNextResponse
+
+
+class FactExtractionRequest(BaseModel):
+    text: str = Field(min_length=1, description="Text to extract facts from")
+    skip_llm: bool = Field(default=False, description="If true, only extract hard slots (faster)")
+
+
+class ExtractedFactItem(BaseModel):
+    slot: str
+    value: str
+    normalized: str
+    tier: str  # "hard" or "open"
+    source: str  # "regex" or "llm"
+    confidence: Optional[float] = None
+
+
+class FactExtractionResponse(BaseModel):
+    text: str
+    hard_facts: Dict[str, ExtractedFactItem]
+    open_tuples: List[ExtractedFactItem]
+    extraction_time: float
+    methods_used: List[str]
 
 
 class ResolveContradictionPolicyRequest(BaseModel):
@@ -1112,6 +1133,7 @@ def create_app() -> FastAPI:
         """Best-effort extraction of latest fact slots from user memories.
 
         We treat structured facts like "FACT: name = Nick" as authoritative signals.
+        Uses two-tier extraction to capture both hard slots and open tuples.
         """
         try:
             items = engine.memory._load_all_memories()
@@ -1124,7 +1146,22 @@ def create_app() -> FastAPI:
             if str(src).lower() != "user":
                 continue
             text = str(getattr(mem, "text", "") or "")
-            facts = extract_fact_slots(text)
+            
+            # Use two-tier extraction if available, otherwise fall back to regex
+            if hasattr(engine, 'two_tier_system') and engine.two_tier_system is not None:
+                try:
+                    two_tier_result = engine.two_tier_system.extract_facts(text, skip_llm=True)
+                    facts = two_tier_result.hard_facts
+                    # Also include open tuples as additional slots
+                    for tuple_fact in two_tier_result.open_tuples:
+                        if tuple_fact.attribute not in facts and tuple_fact.confidence >= 0.6:
+                            # Convert tuple to ExtractedFact format using helper
+                            facts[tuple_fact.attribute] = create_simple_fact(tuple_fact.value)
+                except Exception:
+                    facts = extract_fact_slots(text)
+            else:
+                facts = extract_fact_slots(text)
+            
             if not facts:
                 continue
             ts = float(getattr(mem, "timestamp", 0.0) or 0.0)
@@ -1300,6 +1337,86 @@ def create_app() -> FastAPI:
         """Set profile name by sending a FACT message through CRT."""
         # Forward to the main chat endpoint - this ensures proper CRT processing
         return chat_send(req)
+
+    @app.post("/api/facts/extract", response_model=FactExtractionResponse)
+    def extract_facts_endpoint(req: FactExtractionRequest) -> FactExtractionResponse:
+        """
+        Extract facts from text using the two-tier fact extraction system.
+        
+        Returns both hard slots (regex-based) and open tuples (LLM-based) if available.
+        """
+        # Get any engine to access the two-tier system
+        engine = get_engine("default")
+        
+        if not hasattr(engine, 'two_tier_system') or engine.two_tier_system is None:
+            # Fall back to regex-only extraction
+            from personal_agent.fact_slots import extract_fact_slots
+            facts = extract_fact_slots(req.text) or {}
+            
+            hard_facts_dict = {}
+            for slot, fact in facts.items():
+                hard_facts_dict[slot] = ExtractedFactItem(
+                    slot=slot,
+                    value=str(fact.value),
+                    normalized=str(fact.normalized),
+                    tier="hard",
+                    source="regex",
+                    confidence=1.0
+                )
+            
+            return FactExtractionResponse(
+                text=req.text,
+                hard_facts=hard_facts_dict,
+                open_tuples=[],
+                extraction_time=0.0,
+                methods_used=["regex_fallback"]
+            )
+        
+        # Use two-tier system
+        try:
+            result = engine.two_tier_system.extract_facts(req.text, skip_llm=req.skip_llm)
+            
+            # Convert hard facts
+            hard_facts_dict = {}
+            for slot, fact in result.hard_facts.items():
+                hard_facts_dict[slot] = ExtractedFactItem(
+                    slot=slot,
+                    value=str(fact.value),
+                    normalized=str(fact.normalized),
+                    tier="hard",
+                    source="regex",
+                    confidence=1.0
+                )
+            
+            # Convert open tuples
+            open_tuples_list = []
+            for tuple_fact in result.open_tuples:
+                open_tuples_list.append(ExtractedFactItem(
+                    slot=tuple_fact.attribute,
+                    value=str(tuple_fact.value),
+                    normalized=str(tuple_fact.normalized_value),
+                    tier="open",
+                    source="llm",
+                    confidence=tuple_fact.confidence
+                ))
+            
+            return FactExtractionResponse(
+                text=req.text,
+                hard_facts=hard_facts_dict,
+                open_tuples=open_tuples_list,
+                extraction_time=result.extraction_time,
+                methods_used=result.methods_used
+            )
+        except Exception as e:
+            # Error handling - return empty result with error info
+            logger.error(f"[FACT_EXTRACTION] Error extracting facts: {e}")
+            return FactExtractionResponse(
+                text=req.text,
+                hard_facts={},
+                open_tuples=[],
+                extraction_time=0.0,
+                methods_used=["error"]
+            )
 
     @app.get("/api/dashboard/overview", response_model=DashboardOverviewResponse)
     def dashboard_overview(thread_id: str = Query(default="default")) -> DashboardOverviewResponse:

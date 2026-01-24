@@ -49,9 +49,11 @@ If retrieved memory contains mutually exclusive values for the same slot (both a
 ## Limitations (Being Honest)
 
 **Fact extraction:**
-- Regex-based, limited to 20+ predefined slots (employer, location, etc.)
-- Cannot extract domain-specific or arbitrary fact types
-- Misses complex linguistic patterns
+- Two-tier system: Regex for hard slots (20+ predefined) + optional LLM for open tuples
+- Hard slots (Tier A): Deterministic, high precision for critical facts (name, employer, location)
+- Open tuples (Tier B): LLM-based, can extract flexible facts (hobbies, preferences) but requires LLM
+- Cannot extract domain-specific facts without LLM tier
+- English-only patterns for regex tier
 
 **Accuracy:**
 - 70% overall grounding (vs 82% for SelfCheckGPT on basic grounding)
@@ -109,10 +111,14 @@ GroundCheck Verification → Corrected Output (if needed) → User
 - Contradiction ledger (tracks conflicts)
 - Trust evolution (facts age, confirmations boost)
 - Policy engine (MANDATORY_DISCLOSURE, PREFER_NEWER, ASK_USER, MERGE)
+- **Two-tier fact extraction:**
+  - **Tier A (Hard Slots):** Regex-based for critical facts (name, employer, location, etc.)
+  - **Tier B (Open Tuples):** Optional LLM-based for flexible facts (hobbies, preferences, goals)
+  - Graceful degradation: Falls back to regex-only if LLM unavailable
 
 **GroundCheck components:**
-- Fact extractor (regex patterns)
-- Contradiction detector (groups facts by slot, finds conflicts)
+- Fact extractor (two-tier: regex + optional LLM)
+- Contradiction detector (groups facts by slot, finds conflicts across both tiers)
 - Disclosure verifier (checks for acknowledgment patterns)
 - Correction generator (suggests proper disclosure)
 

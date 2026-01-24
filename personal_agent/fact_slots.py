@@ -21,6 +21,26 @@ class ExtractedFact:
     normalized: str
 
 
+def create_simple_fact(value: Any) -> ExtractedFact:
+    """
+    Create a simple ExtractedFact from a value.
+    
+    Useful for converting LLM-extracted tuples to ExtractedFact format
+    for compatibility with existing code.
+    
+    Args:
+        value: The fact value
+        
+    Returns:
+        ExtractedFact with slot="", value=value, normalized=str(value).lower()
+    """
+    return ExtractedFact(
+        slot="",
+        value=value,
+        normalized=str(value).lower().strip()
+    )
+
+
 _WS_RE = re.compile(r"\s+")
 
 

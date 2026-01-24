@@ -33,6 +33,7 @@ from .crt_memory import CRTMemorySystem, MemoryItem
 from .crt_ledger import ContradictionLedger, ContradictionEntry
 from .reasoning import ReasoningEngine, ReasoningMode
 from .fact_slots import extract_fact_slots
+from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
 from .active_learning import get_active_learning_coordinator
@@ -101,6 +102,16 @@ class CRTEnhancedRAG:
         self._classifier_model = None
         self._load_classifier()
         
+        # Two-tier fact extraction system (hard slots + open tuples)
+        try:
+            self.two_tier_system = TwoTierFactSystem(enable_llm=True)
+            logger.info("[TWO_TIER] Two-tier fact extraction system initialized")
+            # Connect two-tier system to ledger for enhanced contradiction detection
+            self.ledger.set_two_tier_system(self.two_tier_system)
+        except Exception as e:
+            logger.warning(f"[TWO_TIER] Failed to initialize two-tier system: {e}")
+            self.two_tier_system = None
+        
         # Session tracking
         import uuid
         self.session_id = str(uuid.uuid4())[:8]
@@ -142,6 +153,50 @@ class CRTEnhancedRAG:
             self._fact_extraction_cache.popitem(last=False)  # Remove oldest (FIFO)
         
         return result
+    
+    def _extract_facts_two_tier(self, text: str, skip_llm: bool = False) -> TwoTierExtractionResult:
+        """
+        Extract facts using two-tier system (hard slots + open tuples).
+        
+        This method uses the TwoTierFactSystem to extract both:
+        - Tier A (Hard Slots): Critical facts via regex (name, employer, location, etc.)
+        - Tier B (Open Tuples): Flexible facts via LLM (hobbies, preferences, etc.)
+        
+        Args:
+            text: Memory text to extract facts from
+            skip_llm: If True, only extract hard slots (faster, no LLM call)
+            
+        Returns:
+            TwoTierExtractionResult containing hard_facts and open_tuples
+        """
+        if self.two_tier_system is None:
+            # Fallback: use regex-only extraction
+            hard_facts = extract_fact_slots(text) or {}
+            result = TwoTierExtractionResult(
+                hard_facts=hard_facts,
+                open_tuples=[],
+                source_text=text,
+                extraction_time=0.0,
+                methods_used=["regex_fallback"]
+            )
+            return result
+        
+        # Use two-tier system
+        try:
+            result = self.two_tier_system.extract_facts(text, skip_llm=skip_llm)
+            return result
+        except Exception as e:
+            logger.warning(f"[TWO_TIER] Extraction failed: {e}, falling back to regex")
+            # Fallback to regex-only
+            hard_facts = extract_fact_slots(text) or {}
+            result = TwoTierExtractionResult(
+                hard_facts=hard_facts,
+                open_tuples=[],
+                source_text=text,
+                extraction_time=0.0,
+                methods_used=["regex_fallback_after_error"]
+            )
+            return result
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""

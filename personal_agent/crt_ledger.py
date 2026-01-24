@@ -24,7 +24,8 @@ from dataclasses import dataclass
 import time
 
 from .crt_core import CRTMath, CRTConfig, MemorySource
-from .fact_slots import extract_fact_slots
+from .fact_slots import extract_fact_slots, create_simple_fact
+from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .crt_semantic_anchor import (
     SemanticAnchor,
     generate_clarification_prompt,
@@ -129,8 +130,38 @@ class ContradictionLedger:
         self.db_path = db_path
         self.config = config or CRTConfig()
         self.crt_math = CRTMath(self.config)
+        self.two_tier_system: Optional[TwoTierFactSystem] = None
         
         self._init_db()
+    
+    def set_two_tier_system(self, system: Optional[TwoTierFactSystem]) -> None:
+        """Set the two-tier fact extraction system for enhanced contradiction detection."""
+        self.two_tier_system = system
+    
+    def _extract_all_facts(self, text: str) -> Dict[str, Any]:
+        """
+        Extract all facts (hard slots + open tuples) from text.
+        
+        Uses two-tier system if available, otherwise falls back to regex-only.
+        Returns a unified dictionary of all facts.
+        """
+        if self.two_tier_system is not None:
+            try:
+                result = self.two_tier_system.extract_facts(text, skip_llm=True)
+                # Combine hard facts and open tuples
+                all_facts = dict(result.hard_facts)
+                # Add open tuples with high confidence
+                for tuple_fact in result.open_tuples:
+                    if tuple_fact.confidence >= 0.6 and tuple_fact.attribute not in all_facts:
+                        # Create a compatible fact object using helper
+                        all_facts[tuple_fact.attribute] = create_simple_fact(tuple_fact.value)
+                return all_facts
+            except Exception as e:
+                # Fall back to regex
+                import logging
+                logging.warning(f"[TWO_TIER] Failed to extract facts, falling back to regex: {e}")
+        
+        return extract_fact_slots(text) or {}
     
     def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
         """
@@ -458,8 +489,8 @@ class ContradictionLedger:
         
         # Check for geographic refinement (city → specific neighborhood/suburb)
         # This prevents "Seattle metro → Bellevue" from being treated as a conflict
-        old_facts = extract_fact_slots(old_text) or {}
-        new_facts = extract_fact_slots(new_text) or {}
+        old_facts = self._extract_all_facts(old_text) or {}
+        new_facts = self._extract_all_facts(new_text) or {}
         
         # Check if location slot is being refined
         if "location" in old_facts and "location" in new_facts:
@@ -544,8 +575,8 @@ class ContradictionLedger:
         # Extract affected slots from both memories
         affects_slots_set = set()
         if old_text and new_text:
-            old_facts = extract_fact_slots(old_text) or {}
-            new_facts = extract_fact_slots(new_text) or {}
+            old_facts = self._extract_all_facts(old_text) or {}
+            new_facts = self._extract_all_facts(new_text) or {}
             # Track slots that appear in both (potential conflicts)
             shared_slots = set(old_facts.keys()) & set(new_facts.keys())
             affects_slots_set.update(shared_slots)
@@ -620,8 +651,8 @@ class ContradictionLedger:
         """
         # Extract slot values if not provided
         if slot_name is None or old_value is None or new_value is None:
-            old_facts = extract_fact_slots(old_text) or {}
-            new_facts = extract_fact_slots(new_text) or {}
+            old_facts = self._extract_all_facts(old_text) or {}
+            new_facts = self._extract_all_facts(new_text) or {}
             shared_slots = set(old_facts.keys()) & set(new_facts.keys())
             
             if shared_slots and slot_name is None:
