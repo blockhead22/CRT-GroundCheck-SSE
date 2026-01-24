@@ -230,6 +230,90 @@ class ContradictionLedger:
             ON reflection_queue(processed, priority)
         """)
         
+        # =================================================================
+        # Schema migrations for Phase 1-3 enhancements
+        # =================================================================
+        
+        # Add fact_tuples column for storing LLM-extracted tuples as JSON
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN fact_tuples TEXT
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Add extraction_method column (regex, llm, or hybrid)
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN extraction_method TEXT DEFAULT 'regex'
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Add lifecycle_state column for contradiction lifecycle tracking
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN lifecycle_state TEXT DEFAULT 'active'
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Add confirmation_count for tracking user confirmations
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN confirmation_count INTEGER DEFAULT 0
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Add disclosure_count for tracking how many times disclosed
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN disclosure_count INTEGER DEFAULT 0
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Add settled_at timestamp for lifecycle tracking
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN settled_at REAL
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Add archived_at timestamp for lifecycle tracking
+        try:
+            cursor.execute("""
+                ALTER TABLE contradictions ADD COLUMN archived_at REAL
+            """)
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+        
+        # Create contradiction_lifecycle table for detailed state tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS contradiction_lifecycle (
+                ledger_id TEXT PRIMARY KEY,
+                state TEXT NOT NULL DEFAULT 'active',
+                detected_at REAL NOT NULL,
+                settled_at REAL,
+                archived_at REAL,
+                confirmation_count INTEGER DEFAULT 0,
+                disclosure_count INTEGER DEFAULT 0,
+                last_mentioned REAL,
+                old_value TEXT,
+                new_value TEXT,
+                freshness_window REAL DEFAULT 604800,
+                FOREIGN KEY (ledger_id) REFERENCES contradictions(ledger_id)
+            )
+        """)
+        
+        # Index on lifecycle state for efficient filtering
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_contradiction_lifecycle_state 
+            ON contradiction_lifecycle(state)
+        """)
+        
         conn.commit()
         conn.close()
 

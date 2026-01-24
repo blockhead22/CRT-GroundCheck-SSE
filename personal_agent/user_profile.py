@@ -458,3 +458,71 @@ class GlobalUserProfile:
                 texts.append(f"FACT: {slot_label} = {fact.value}")
         
         return texts
+
+
+# =============================================================================
+# User Transparency Preferences
+# =============================================================================
+
+class TransparencyLevel:
+    """User preference for transparency/disclosure level."""
+    MINIMAL = "minimal"      # Only disclose critical contradictions
+    BALANCED = "balanced"    # Default: reasonable disclosure
+    AUDIT_HEAVY = "audit_heavy"  # Disclose everything
+
+
+class MemoryStyle:
+    """User preference for how memories are handled."""
+    STICKY = "sticky"        # Memories persist longer, harder to override
+    NORMAL = "normal"        # Default behavior
+    FORGETFUL = "forgetful"  # Memories fade faster, easier to override
+
+
+@dataclass
+class UserTransparencyPrefs:
+    """
+    User preferences for transparency and disclosure.
+    
+    These preferences control how aggressively contradictions are
+    disclosed and how memories are managed.
+    
+    Attributes:
+        transparency_level: How much detail to disclose about contradictions
+        memory_style: How sticky memories should be
+        always_disclose_domains: Domains that always get full disclosure
+        never_nag_domains: Domains where we don't repeat disclosures
+        max_disclosures_per_session: Limit nagging per conversation
+    """
+    transparency_level: str = TransparencyLevel.BALANCED
+    memory_style: str = MemoryStyle.NORMAL
+    always_disclose_domains: List[str] = None
+    never_nag_domains: List[str] = None
+    max_disclosures_per_session: int = 3
+    
+    def __post_init__(self):
+        """Set default values for mutable fields."""
+        if self.always_disclose_domains is None:
+            self.always_disclose_domains = ["medical", "financial", "legal"]
+        if self.never_nag_domains is None:
+            self.never_nag_domains = []
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for storage."""
+        return {
+            "transparency_level": self.transparency_level,
+            "memory_style": self.memory_style,
+            "always_disclose_domains": self.always_disclose_domains,
+            "never_nag_domains": self.never_nag_domains,
+            "max_disclosures_per_session": self.max_disclosures_per_session,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'UserTransparencyPrefs':
+        """Create from dictionary."""
+        return cls(
+            transparency_level=data.get("transparency_level", TransparencyLevel.BALANCED),
+            memory_style=data.get("memory_style", MemoryStyle.NORMAL),
+            always_disclose_domains=data.get("always_disclose_domains", ["medical", "financial", "legal"]),
+            never_nag_domains=data.get("never_nag_domains", []),
+            max_disclosures_per_session=data.get("max_disclosures_per_session", 3),
+        )

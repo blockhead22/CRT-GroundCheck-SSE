@@ -30,6 +30,31 @@ from .crt_memory import CRTMemorySystem, MemoryItem
 from .crt_ledger import ContradictionLedger, ContradictionEntry
 from .crt_rag import CRTEnhancedRAG
 
+# Phase 1: Open-world fact tuples
+from .fact_tuples import FactTuple, FactTupleSet, FactAction
+from .llm_extractor import LLMFactExtractor, LocalLLMFactExtractor
+from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
+
+# Phase 2: Contradiction lifecycle and disclosure
+from .contradiction_lifecycle import (
+    ContradictionLifecycleState,
+    ContradictionLifecycleEntry,
+    ContradictionLifecycle,
+    DisclosurePolicy,
+    UserTransparencyPrefs as LifecycleTransparencyPrefs,
+    TransparencyLevel as LifecycleTransparencyLevel,
+    MemoryStyle as LifecycleMemoryStyle,
+)
+
+# User profile with transparency preferences
+from .user_profile import (
+    GlobalUserProfile,
+    UserProfileFact,
+    UserTransparencyPrefs,
+    TransparencyLevel,
+    MemoryStyle,
+)
+
 __all__ = [
     'PersonalAgent',
     'MemorySystem',
@@ -47,5 +72,27 @@ __all__ = [
     'MemoryItem',
     'ContradictionLedger',
     'ContradictionEntry',
-    'CRTEnhancedRAG'
+    'CRTEnhancedRAG',
+    # Phase 1: Fact Tuples
+    'FactTuple',
+    'FactTupleSet',
+    'FactAction',
+    'LLMFactExtractor',
+    'LocalLLMFactExtractor',
+    'TwoTierFactSystem',
+    'TwoTierExtractionResult',
+    # Phase 2: Contradiction Lifecycle
+    'ContradictionLifecycleState',
+    'ContradictionLifecycleEntry',
+    'ContradictionLifecycle',
+    'DisclosurePolicy',
+    'LifecycleTransparencyPrefs',
+    'LifecycleTransparencyLevel',
+    'LifecycleMemoryStyle',
+    # User Profile
+    'GlobalUserProfile',
+    'UserProfileFact',
+    'UserTransparencyPrefs',
+    'TransparencyLevel',
+    'MemoryStyle',
 ]
