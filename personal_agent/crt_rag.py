@@ -38,6 +38,8 @@ from .runtime_config import get_runtime_config
 from .active_learning import get_active_learning_coordinator
 from .user_profile import GlobalUserProfile
 from .ml_contradiction_detector import MLContradictionDetector
+from .resolution_patterns import has_resolution_intent, get_matched_patterns
+from .contradiction_trace_logger import get_trace_logger
 
 # Constants for NL resolution
 _NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
@@ -1348,30 +1350,16 @@ class CRTEnhancedRAG:
         """
         from .crt_ledger import ContradictionStatus, ContradictionType
         
-        # Resolution intent patterns
-        resolution_patterns = [
-            r'\b(is|was)\s+(correct|right|accurate)\b',
-            r'\bactually\b',
-            r'\bi\s+meant\b',
-            r'\bswitched\s+(jobs|to|companies)\b',
-            r'\bchanged\s+to\b',  # More general: "changed to" anything
-            r'\bchanged\s+(jobs|companies)\b',  # Specific: "changed jobs"
-            r'\bmoved\s+to\b',
-            r'\bnow\s+(work|working|at)\b',
-            r'\bcorrect\s+(one|version|answer|status|value|info|statement)\b',
-            r'\b(that|this)(?:\s*\'s|\s+is)\s+(correct|right|accurate)\b',  # "that's correct"
-            r'\bignore\s+(the|that)\b',  # "ignore the red"
-            r'\b(no|wait)\b.*\b(was|is)\s+(right|correct)\b',  # "no wait, X was right"
-        ]
+        # Get trace logger
+        trace_logger = get_trace_logger()
+        start_time = time.time()
         
         # Check if user text contains any resolution intent pattern
-        has_resolution_intent = any(
-            re.search(pattern, user_text, re.IGNORECASE) 
-            for pattern in resolution_patterns
-        )
-        
-        if not has_resolution_intent:
+        if not has_resolution_intent(user_text):
             return False
+        
+        # Get matched patterns for logging
+        matched_patterns = get_matched_patterns(user_text)
         
         # Extract facts from the user's statement
         facts = extract_fact_slots(user_text) or {}
@@ -1380,6 +1368,16 @@ class CRTEnhancedRAG:
         open_contras = self.ledger.get_open_contradictions(limit=200)
         if not open_contras:
             return False
+        
+        # Log resolution attempt
+        trace_logger.log_resolution_attempt(
+            user_text=user_text,
+            matched_patterns=matched_patterns,
+            open_contradictions_count=len(open_contras)
+        )
+        
+        resolved_count = 0
+        total_open_before = len(open_contras)
         
         # Try to find a matching contradiction and determine which value to keep
         for contra in open_contras:
@@ -1538,20 +1536,45 @@ class CRTEnhancedRAG:
                     if user_normalized == new_normalized:
                         chosen_memory_id = contra.new_memory_id
                         deprecated_memory_id = contra.old_memory_id
+                        resolution_method = "user_chose_new"
                     elif user_normalized == old_normalized:
                         chosen_memory_id = contra.old_memory_id
                         deprecated_memory_id = contra.new_memory_id
+                        resolution_method = "user_chose_old"
                     else:
                         # User mentioned a value but it doesn't match either side
                         continue
                 
+                # Log the matched resolution
+                trace_logger.log_resolution_matched(
+                    ledger_id=contra.ledger_id,
+                    contradiction_type=contradiction_type or "CONFLICT",
+                    slot_name=slot if slot != _UNSTRUCTURED_SLOT_NAME else None,
+                    old_value=old_value if slot != _UNSTRUCTURED_SLOT_NAME else old_mem.text[:50],
+                    new_value=new_value if slot != _UNSTRUCTURED_SLOT_NAME else new_mem.text[:50],
+                    chosen_value=user_fact if slot != _UNSTRUCTURED_SLOT_NAME else "matched text",
+                    resolution_method=resolution_method if 'resolution_method' in locals() else "nl_resolution"
+                )
+                
                 # Resolve the contradiction in the ledger FIRST
                 # This ensures we don't end up with deprecated memories but unresolved contradictions
+                before_status = ContradictionStatus.OPEN
+                after_status = ContradictionStatus.RESOLVED
+                
                 self.ledger.resolve_contradiction(
                     contra.ledger_id,
                     method="nl_resolution",
                     merged_memory_id=None,
-                    new_status=ContradictionStatus.RESOLVED,
+                    new_status=after_status,
+                )
+                
+                # Log ledger update
+                trace_logger.log_ledger_update(
+                    ledger_id=contra.ledger_id,
+                    before_status=before_status,
+                    after_status=after_status,
+                    resolution_method="nl_resolution",
+                    chosen_memory_id=chosen_memory_id
                 )
                 
                 # Then deprecate the non-chosen memory
@@ -1589,9 +1612,31 @@ class CRTEnhancedRAG:
                     f"User said: '{user_text[:100]}'"
                 )
                 
-                return True
+                # Log completion
+                trace_logger.log_resolution_complete(
+                    ledger_id=contra.ledger_id,
+                    success=True,
+                    details=f"Chose {chosen_memory_id}, deprecated {deprecated_memory_id}"
+                )
+                
+                resolved_count += 1
+                
+                # Note: We continue to check for more contradictions instead of returning
+                # This allows resolving multiple contradictions in one statement
         
-        return False
+        # Log summary if any contradictions were resolved
+        if resolved_count > 0:
+            elapsed_time = time.time() - start_time
+            total_open_after = len(self.ledger.get_open_contradictions(limit=200))
+            
+            trace_logger.log_resolution_summary(
+                total_open_before=total_open_before,
+                total_open_after=total_open_after,
+                resolved_count=resolved_count,
+                elapsed_time=elapsed_time
+            )
+        
+        return resolved_count > 0
     
     # ========================================================================
     # Query with CRT Principles
