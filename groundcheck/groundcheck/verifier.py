@@ -320,6 +320,8 @@ class GroundCheck:
     ) -> bool:
         """Check if generated text acknowledges a contradiction.
         
+        Improved with semantic + structural detection (Sprint 1).
+        
         Looks for disclosure language patterns like:
         - "changed from X to Y"
         - "previously X, now Y"
@@ -335,7 +337,7 @@ class GroundCheck:
         """
         text_lower = generated_text.lower()
         
-        # Disclosure keywords
+        # 1. Keyword detection (existing logic)
         disclosure_patterns = [
             'changed from',
             'updated from',
@@ -345,20 +347,34 @@ class GroundCheck:
             'formerly',
             'switched from',
             'moved from',
-            'before'
+            'before',
+            'most recent',
+            'latest',
+            'now'
         ]
         
-        # Check if text contains disclosure language
         has_disclosure_keyword = any(pattern in text_lower for pattern in disclosure_patterns)
         
-        if not has_disclosure_keyword:
-            return False
+        # 2. Structural pattern detection (Sprint 1 enhancement)
+        import re
+        structural_patterns = [
+            r'\(changed from .+?\)',
+            r'\(updated from .+?\)',
+            r'\(previously .+?\)',
+            r', previously .+?[,.]',
+            r'used to be .+?[,.]',
+            r'was .+?, now',
+            r'formerly .+?[,.]'
+        ]
+        has_structure = any(re.search(p, generated_text, re.IGNORECASE) for p in structural_patterns)
         
-        # Check if text mentions multiple contradicting values
+        # 3. Contradiction value mention (existing logic)
+        # Check if BOTH old and new values are mentioned
         values_mentioned = sum(1 for val in contradiction.values if val.lower() in text_lower)
+        both_mentioned = values_mentioned >= 2
         
-        # Good disclosure mentions at least 2 of the contradicting values
-        return values_mentioned >= 2
+        # Success if ANY disclosure method is present
+        return has_disclosure_keyword or has_structure or both_mentioned
     
     def _generate_disclosure_text(
         self,

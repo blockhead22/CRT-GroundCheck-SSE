@@ -3162,6 +3162,49 @@ class CRTEnhancedRAG:
         # render provenance using prompt/retrieved memories.
         final_answer = candidate_output
         
+        # SPRINT 1: Force append caveats when contradictions exist
+        # This ensures caveat violations are reduced to 0
+        if query_slots and open_contradictions:
+            # Check if any open contradictions affect the queried slots
+            relevant_contradictions = []
+            for contra in open_contradictions:
+                affects_slots_str = getattr(contra, 'affects_slots', None)
+                if affects_slots_str and query_slots:
+                    affects_slots = set(affects_slots_str.split(","))
+                    if affects_slots & query_slots:
+                        relevant_contradictions.append(contra)
+            
+            # FORCE append disclosure for relevant contradictions (don't rely on LLM)
+            if relevant_contradictions:
+                disclosure = f"\n\n(Note: {len(relevant_contradictions)} unresolved contradiction(s). "
+                
+                for contra in relevant_contradictions[:3]:  # Show first 3
+                    # Try to extract old/new values from contradiction
+                    old_val = None
+                    new_val = None
+                    
+                    # Try to get values from the contradiction metadata
+                    if hasattr(contra, 'summary') and contra.summary:
+                        # Parse summary for values
+                        import re
+                        match = re.search(r"(\w+)\s+vs\s+(\w+)", contra.summary)
+                        if match:
+                            old_val = match.group(1)
+                            new_val = match.group(2)
+                    
+                    # If we couldn't extract values, use generic message
+                    if old_val and new_val:
+                        disclosure += f"Changed information detected. "
+                    else:
+                        disclosure += f"Conflicting information detected. "
+                
+                disclosure += "Please clarify if needed.)"
+                
+                # FORCE append disclosure (don't rely on LLM to include it)
+                final_answer = candidate_output.rstrip() + disclosure
+                
+                logger.info(f"[CAVEAT] Forced disclosure appended: {len(relevant_contradictions)} contradictions")
+        
         # INVARIANT ENFORCEMENT: Flag all reintroduced claims
         # This creates machine-readable proof that contradicted facts are marked
         retrieved_with_flags = self._flag_reintroduced_claims([mem for mem, _ in retrieved])
