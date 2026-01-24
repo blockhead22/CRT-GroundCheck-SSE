@@ -39,6 +39,10 @@ from .active_learning import get_active_learning_coordinator
 from .user_profile import GlobalUserProfile
 from .ml_contradiction_detector import MLContradictionDetector
 
+# Constants for NL resolution
+_NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
+_UNSTRUCTURED_SLOT_NAME = '_unstructured_'
+
 
 class CRTEnhancedRAG:
     """
@@ -1454,37 +1458,46 @@ class CRTEnhancedRAG:
                     # No extracted slots - try direct keyword matching against memory texts
                     # This handles cases like "I prefer coffee" vs "I prefer tea"
                     # Extract key words from old and new memories (ignore common words)
-                    stopwords = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
-                    
-                    old_words = set(w.lower() for w in re.findall(r'\b\w+\b', old_mem.text) if w.lower() not in stopwords)
-                    new_words = set(w.lower() for w in re.findall(r'\b\w+\b', new_mem.text) if w.lower() not in stopwords)
+                    old_words = set(w.lower() for w in re.findall(r'\b\w+\b', old_mem.text) if w.lower() not in _NL_RESOLUTION_STOPWORDS)
+                    new_words = set(w.lower() for w in re.findall(r'\b\w+\b', new_mem.text) if w.lower() not in _NL_RESOLUTION_STOPWORDS)
                     
                     # Find words that differ between old and new
                     old_unique = old_words - new_words
                     new_unique = new_words - old_words
                     
                     # Check if any of these unique words appear in the resolution text
+                    # Use re.search to ensure word is actually found
                     old_matches = [w for w in old_unique if re.search(r'\b' + re.escape(w) + r'\b', user_text_lower)]
                     new_matches = [w for w in new_unique if re.search(r'\b' + re.escape(w) + r'\b', user_text_lower)]
                     
                     if old_matches or new_matches:
                         # Use a synthetic slot name for unstructured matching
-                        synthetic_slot = '_unstructured_'
-                        shared = {synthetic_slot}
+                        shared = {_UNSTRUCTURED_SLOT_NAME}
                         
                         # Determine which memory to keep based on which words appear
                         if old_matches and new_matches:
                             # Both appear - check which appears first
-                            first_old_pos = min(user_text_lower.find(w) for w in old_matches)
-                            first_new_pos = min(user_text_lower.find(w) for w in new_matches)
-                            if first_old_pos < first_new_pos:
-                                facts[synthetic_slot] = old_mem.text
+                            # Find positions, filtering out -1 (not found) for safety
+                            old_positions = [user_text_lower.find(w) for w in old_matches]
+                            new_positions = [user_text_lower.find(w) for w in new_matches]
+                            old_positions = [p for p in old_positions if p >= 0]
+                            new_positions = [p for p in new_positions if p >= 0]
+                            
+                            if old_positions and new_positions:
+                                first_old_pos = min(old_positions)
+                                first_new_pos = min(new_positions)
+                                if first_old_pos < first_new_pos:
+                                    facts[_UNSTRUCTURED_SLOT_NAME] = old_mem.text
+                                else:
+                                    facts[_UNSTRUCTURED_SLOT_NAME] = new_mem.text
+                            elif old_positions:
+                                facts[_UNSTRUCTURED_SLOT_NAME] = old_mem.text
                             else:
-                                facts[synthetic_slot] = new_mem.text
+                                facts[_UNSTRUCTURED_SLOT_NAME] = new_mem.text
                         elif old_matches:
-                            facts[synthetic_slot] = old_mem.text
+                            facts[_UNSTRUCTURED_SLOT_NAME] = old_mem.text
                         else:
-                            facts[synthetic_slot] = new_mem.text
+                            facts[_UNSTRUCTURED_SLOT_NAME] = new_mem.text
             
             if not shared:
                 continue
@@ -1499,7 +1512,7 @@ class CRTEnhancedRAG:
                 deprecated_memory_id = None
                 
                 # Handle synthetic slot from unstructured matching
-                if slot == '_unstructured_':
+                if slot == _UNSTRUCTURED_SLOT_NAME:
                     # User fact contains the full memory text that should be kept
                     if user_fact == old_mem.text:
                         chosen_memory_id = contra.old_memory_id
