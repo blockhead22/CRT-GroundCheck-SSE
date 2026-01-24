@@ -58,6 +58,12 @@ output_index/
 !personal_agent/crt_memory.db
 !personal_agent/crt_ledger.db
 
+# Ignore runtime-generated databases
+personal_agent/crt_user_profile.db
+personal_agent/active_learning.db
+personal_agent/*.db-shm
+personal_agent/*.db-wal
+
 # Temporary files
 *.tmp
 temp_*
