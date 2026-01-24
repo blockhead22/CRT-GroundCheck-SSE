@@ -1363,8 +1363,6 @@ class CRTEnhancedRAG:
         
         # Extract facts from the user's statement
         facts = extract_fact_slots(user_text) or {}
-        if not facts:
-            return False
         
         # Get open contradictions
         open_contras = self.ledger.get_open_contradictions(limit=200)
@@ -1385,8 +1383,46 @@ class CRTEnhancedRAG:
             old_facts = extract_fact_slots(old_mem.text) or {}
             new_facts = extract_fact_slots(new_mem.text) or {}
             
-            # Find slots that appear in all three: old, new, and user's resolution statement
-            shared = set(old_facts.keys()) & set(new_facts.keys()) & set(facts.keys())
+            # Find slots that are in both old and new (contradiction slots)
+            contra_slots = set(old_facts.keys()) & set(new_facts.keys())
+            if not contra_slots:
+                continue
+            
+            # Try to match user's facts with contradiction slots
+            # First check if user provided explicit facts that match
+            shared = contra_slots & set(facts.keys())
+            
+            # If no explicit facts extracted, try fuzzy matching against values
+            if not shared:
+                # Fallback: check if any value from the contradiction appears in the user text
+                # This handles cases like "Google is correct" where extract_fact_slots doesn't catch it
+                user_text_lower = user_text.lower()
+                for slot in contra_slots:
+                    old_value = old_facts.get(slot)
+                    new_value = new_facts.get(slot)
+                    if old_value is None or new_value is None:
+                        continue
+                    
+                    # Normalize values
+                    def normalize(val):
+                        if hasattr(val, 'normalized'):
+                            return val.normalized
+                        return str(val).lower().strip()
+                    
+                    old_normalized = normalize(old_value)
+                    new_normalized = normalize(new_value)
+                    
+                    # Check if either value appears in the user's text
+                    if old_normalized in user_text_lower or new_normalized in user_text_lower:
+                        # Found a match - add to shared so we process it below
+                        shared = {slot}
+                        # Create a synthetic fact for matching
+                        if old_normalized in user_text_lower:
+                            facts[slot] = old_value
+                        else:
+                            facts[slot] = new_value
+                        break
+            
             if not shared:
                 continue
             
@@ -2755,7 +2791,10 @@ class CRTEnhancedRAG:
         
         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
         open_contradictions = self.ledger.get_open_contradictions()
-        query_slots = set(extract_fact_slots(user_query).keys())
+        # BUG FIX: Use inferred_slots instead of extract_fact_slots for questions
+        # extract_fact_slots only works for assertions like "I work at Google"
+        # but questions like "Where do I work?" need inferred_slots from _infer_slots_from_query
+        query_slots = set(inferred_slots or [])
         contradiction_severity = self._classify_contradiction_severity(
             open_contradictions, query_slots
         )
