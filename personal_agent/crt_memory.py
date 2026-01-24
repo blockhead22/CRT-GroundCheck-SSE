@@ -63,6 +63,10 @@ class MemoryItem:
     deprecated: bool = False
     deprecation_reason: Optional[str] = None
     
+    # Two-tier fact extraction (Sprint 1)
+    fact_tuples: Optional[str] = None  # JSON-serialized list of FactTuple objects
+    extraction_method: Optional[str] = 'regex'  # 'regex', 'llm', or 'none'
+    
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
         return {
@@ -242,6 +246,17 @@ class CRTMemorySystem:
             logger.info(f"[MIGRATION] Adding deprecation_reason column to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN deprecation_reason TEXT")
         
+        # Sprint 1: Add two-tier fact extraction columns
+        if "fact_tuples" not in columns:
+            logger.info(f"[MIGRATION] Adding fact_tuples column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN fact_tuples TEXT")
+        
+        if "extraction_method" not in columns:
+            logger.info(f"[MIGRATION] Adding extraction_method column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN extraction_method TEXT DEFAULT 'regex'")
+            # Add index for performance
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_extraction_method ON memories(extraction_method)")
+        
         conn.commit()
         conn.close()
     
@@ -301,6 +316,39 @@ class CRTMemorySystem:
         
         trust = np.clip(trust, 0.0, 1.0)
         
+        # Sprint 1: Extract facts using two-tier system
+        fact_tuples_json = None
+        extraction_method = 'none'
+        
+        try:
+            from .two_tier_facts import TwoTierFactSystem
+            
+            # Extract facts using two-tier system
+            extractor = TwoTierFactSystem()
+            fact_data = extractor.extract_facts(text)
+            
+            # Determine extraction method based on what was used
+            # Note: Hard facts are already extracted and stored separately in the ledger/fact system
+            # We store open_tuples here because they represent flexible, LLM-extracted facts
+            # that complement the deterministic hard slots
+            if fact_data.hard_facts and fact_data.open_tuples:
+                extraction_method = 'hybrid'  # Both methods used
+            elif fact_data.hard_facts:
+                extraction_method = 'regex'
+            elif fact_data.open_tuples:
+                extraction_method = 'llm'
+            
+            # Serialize open tuples to JSON
+            # Hard facts are handled by the existing fact_slots system and ledger
+            if fact_data.open_tuples:
+                fact_tuples_json = json.dumps([t.to_dict() for t in fact_data.open_tuples])
+                
+            logger.debug(f"[TWO_TIER] Extracted facts: method={extraction_method}, "
+                        f"hard_facts={len(fact_data.hard_facts)}, open_tuples={len(fact_data.open_tuples)}")
+        except Exception as e:
+            logger.warning(f"[TWO_TIER] Failed to extract facts: {e}")
+            extraction_method = 'none'
+        
         # Create memory item
         memory = MemoryItem(
             memory_id=f"mem_{int(time.time() * 1000)}_{hash(text) % 10000}",
@@ -311,7 +359,9 @@ class CRTMemorySystem:
             trust=trust,
             source=source,
             sse_mode=sse_mode,
-            context=context
+            context=context,
+            fact_tuples=fact_tuples_json,
+            extraction_method=extraction_method
         )
         
         # Store in database
@@ -320,8 +370,8 @@ class CRTMemorySystem:
         
         cursor.execute("""
             INSERT INTO memories 
-            (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             memory.memory_id,
             json.dumps(vector.tolist()),
@@ -331,7 +381,9 @@ class CRTMemorySystem:
             trust,
             source.value,
             sse_mode.value,
-            json.dumps(context) if context else None
+            json.dumps(context) if context else None,
+            fact_tuples_json,
+            extraction_method
         ))
         
         conn.commit()
@@ -679,6 +731,11 @@ class CRTMemorySystem:
                 memory.deprecated = row[11] if row[11] is not None else False
             if len(row) > 12:
                 memory.deprecation_reason = row[12]
+            # Add two-tier extraction fields if they exist (Sprint 1)
+            if len(row) > 13:
+                memory.fact_tuples = row[13]
+            if len(row) > 14:
+                memory.extraction_method = row[14] if row[14] else 'regex'
             
             memories.append(memory)
         
@@ -732,7 +789,7 @@ class CRTMemorySystem:
         
         memories = []
         for row in rows:
-            memories.append(MemoryItem(
+            memory = MemoryItem(
                 memory_id=row[0],
                 vector=np.array(json.loads(row[1])),
                 text=row[2],
@@ -744,7 +801,18 @@ class CRTMemorySystem:
                 context=json.loads(row[8]) if row[8] else None,
                 tags=json.loads(row[9]) if row[9] else None,
                 thread_id=row[10]
-            ))
+            )
+            # Add additional fields if they exist
+            if len(row) > 11:
+                memory.deprecated = row[11] if row[11] is not None else False
+            if len(row) > 12:
+                memory.deprecation_reason = row[12]
+            if len(row) > 13:
+                memory.fact_tuples = row[13]
+            if len(row) > 14:
+                memory.extraction_method = row[14] if row[14] else 'regex'
+            
+            memories.append(memory)
         
         return memories
     
