@@ -1335,6 +1335,10 @@ class CRTEnhancedRAG:
         - "Actually, it's Google now"
         - "I meant Google, not Microsoft"
         - "I changed jobs to Google"
+        - "That's the correct status now"
+        - "Blue was right, ignore the red"
+        
+        Handles CONFLICT, REVISION, and TEMPORAL contradiction types.
         
         Returns: True if a contradiction was resolved, False otherwise.
         """
