@@ -1335,6 +1335,10 @@ class CRTEnhancedRAG:
         - "Actually, it's Google now"
         - "I meant Google, not Microsoft"
         - "I changed jobs to Google"
+        - "That's the correct status now"
+        - "Blue was right, ignore the red"
+        
+        Handles CONFLICT, REVISION, and TEMPORAL contradiction types.
         
         Returns: True if a contradiction was resolved, False otherwise.
         """
@@ -1349,7 +1353,8 @@ class CRTEnhancedRAG:
             r'\bchanged\s+(jobs|to|companies)\b',
             r'\bmoved\s+to\b',
             r'\bnow\s+(work|working|at)\b',
-            r'\bcorrect\s+(one|version|answer)\b',
+            r'\bcorrect\s+(one|version|answer|status|value|info|statement)\b',
+            r'\b(that|this)(?:\s*\'s|\s+is)\s+(correct|right|accurate)\b',  # "that's correct"
         ]
         
         # Check if user text contains any resolution intent pattern
@@ -1371,8 +1376,10 @@ class CRTEnhancedRAG:
         
         # Try to find a matching contradiction and determine which value to keep
         for contra in open_contras:
-            # Only handle CONFLICT type contradictions for now
-            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+            # Handle CONFLICT, REVISION, and TEMPORAL contradictions
+            # (REFINEMENT contradictions typically don't need NL resolution)
+            contradiction_type = getattr(contra, "contradiction_type", None)
+            if contradiction_type not in {ContradictionType.CONFLICT, ContradictionType.REVISION, ContradictionType.TEMPORAL}:
                 continue
             
             old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
