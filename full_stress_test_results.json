@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-23T23:51:45.858263",
+  "timestamp": "2026-01-24T08:08:08.418036",
   "tests": {
     "basic_memory": {
       "passed": true,
@@ -24,14 +24,14 @@
     "nl_resolution": {
       "passed": false,
       "details": {
-        "X is correct": false,
+        "X is correct": true,
         "Actually...": true,
-        "I meant...": false,
+        "I meant...": true,
         "changed to...": false,
         "explicit confirm": false,
         "keep OLD value": false
       },
-      "score": "1/6"
+      "score": "3/6"
     },
     "api_resolution": {
       "passed": true,
