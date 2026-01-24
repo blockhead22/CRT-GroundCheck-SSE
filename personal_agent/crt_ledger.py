@@ -24,7 +24,7 @@ from dataclasses import dataclass
 import time
 
 from .crt_core import CRTMath, CRTConfig, MemorySource
-from .fact_slots import extract_fact_slots
+from .fact_slots import extract_fact_slots, create_simple_fact
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .crt_semantic_anchor import (
     SemanticAnchor,
@@ -153,11 +153,8 @@ class ContradictionLedger:
                 # Add open tuples with high confidence
                 for tuple_fact in result.open_tuples:
                     if tuple_fact.confidence >= 0.6 and tuple_fact.attribute not in all_facts:
-                        # Create a compatible fact object
-                        class FakeFact:
-                            def __init__(self, val):
-                                self.value = val
-                        all_facts[tuple_fact.attribute] = FakeFact(tuple_fact.value)
+                        # Create a compatible fact object using helper
+                        all_facts[tuple_fact.attribute] = create_simple_fact(tuple_fact.value)
                 return all_facts
             except Exception as e:
                 # Fall back to regex

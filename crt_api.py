@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.fact_slots import extract_fact_slots
+from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
 from personal_agent.two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from personal_agent.artifact_store import now_iso_utc
 from personal_agent.idle_scheduler import CRTIdleScheduler
@@ -190,8 +190,6 @@ class FactExtractionResponse(BaseModel):
     open_tuples: List[ExtractedFactItem]
     extraction_time: float
     methods_used: List[str]
-    resolved: bool = False
-    next: ContradictionNextResponse
 
 
 class ResolveContradictionPolicyRequest(BaseModel):
@@ -1157,11 +1155,8 @@ def create_app() -> FastAPI:
                     # Also include open tuples as additional slots
                     for tuple_fact in two_tier_result.open_tuples:
                         if tuple_fact.attribute not in facts and tuple_fact.confidence >= 0.6:
-                            # Convert tuple to ExtractedFact-like dict for compatibility
-                            class FakeFact:
-                                def __init__(self, val):
-                                    self.value = val
-                            facts[tuple_fact.attribute] = FakeFact(tuple_fact.value)
+                            # Convert tuple to ExtractedFact format using helper
+                            facts[tuple_fact.attribute] = create_simple_fact(tuple_fact.value)
                 except Exception:
                     facts = extract_fact_slots(text)
             else:

@@ -171,9 +171,6 @@ class CRTEnhancedRAG:
         """
         if self.two_tier_system is None:
             # Fallback: use regex-only extraction
-            from .two_tier_facts import TwoTierExtractionResult
-            from .fact_slots import ExtractedFact
-            
             hard_facts = extract_fact_slots(text) or {}
             result = TwoTierExtractionResult(
                 hard_facts=hard_facts,
@@ -192,7 +189,6 @@ class CRTEnhancedRAG:
             logger.warning(f"[TWO_TIER] Extraction failed: {e}, falling back to regex")
             # Fallback to regex-only
             hard_facts = extract_fact_slots(text) or {}
-            from .two_tier_facts import TwoTierExtractionResult
             result = TwoTierExtractionResult(
                 hard_facts=hard_facts,
                 open_tuples=[],
