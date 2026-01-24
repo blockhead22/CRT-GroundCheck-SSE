@@ -1414,16 +1414,26 @@ class CRTEnhancedRAG:
                     
                     # Use word boundary matching to avoid false positives
                     # e.g., "Go" shouldn't match "Google"
-                    import re
-                    old_pattern = r'\b' + re.escape(old_normalized) + r'\b'
-                    new_pattern = r'\b' + re.escape(new_normalized) + r'\b'
+                    old_pattern = re.compile(r'\b' + re.escape(old_normalized) + r'\b')
+                    new_pattern = re.compile(r'\b' + re.escape(new_normalized) + r'\b')
+                    
+                    old_match = old_pattern.search(user_text_lower)
+                    new_match = new_pattern.search(user_text_lower)
                     
                     # Check if either value appears in the user's text
-                    if re.search(old_pattern, user_text_lower) or re.search(new_pattern, user_text_lower):
+                    # If both match, prefer the one that appears first in the text
+                    if old_match or new_match:
                         # Found a match - add to shared so we process it below
                         shared = {slot}
                         # Create a synthetic fact for matching
-                        if re.search(old_pattern, user_text_lower):
+                        # If both match, prefer the one that appears first
+                        if old_match and new_match:
+                            # Both values appear - choose based on position
+                            if old_match.start() < new_match.start():
+                                facts[slot] = old_value
+                            else:
+                                facts[slot] = new_value
+                        elif old_match:
                             facts[slot] = old_value
                         else:
                             facts[slot] = new_value
