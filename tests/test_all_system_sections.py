@@ -5,16 +5,15 @@ This test module provides unit tests for each and every section of the system.
 It is designed to run locally and test all major components:
 
 Sections Tested:
-1. Personal Agent Core (personal_agent/core.py)
-2. Memory System (personal_agent/memory.py)
-3. CRT Core - Mathematical Framework (personal_agent/crt_core.py)
-4. Fact Slots Extraction (personal_agent/fact_slots.py)
-5. Agent Loop - ReAct Pattern (personal_agent/agent_loop.py)
-6. SSE Components (sse/)
-7. Evidence Packet (personal_agent/evidence_packet.py)
-8. Resolution Patterns (personal_agent/resolution_patterns.py)
-9. Embeddings (personal_agent/embeddings.py)
-10. Runtime Config (personal_agent/runtime_config.py)
+1. Memory System (personal_agent/memory.py)
+2. CRT Core - Mathematical Framework (personal_agent/crt_core.py)
+3. Fact Slots Extraction (personal_agent/fact_slots.py)
+4. Agent Loop - ReAct Pattern (personal_agent/agent_loop.py)
+5. SSE Components (sse/)
+6. Evidence Packet (personal_agent/evidence_packet.py)
+7. Resolution Patterns (personal_agent/resolution_patterns.py)
+8. Embeddings (personal_agent/embeddings.py)
+9. Runtime Config (personal_agent/runtime_config.py)
 
 Usage:
     pytest tests/test_all_system_sections.py -v
@@ -88,6 +87,8 @@ class TestMemorySystem:
         recent = memory.get_recent_conversations(limit=2)
         
         assert len(recent) == 2
+        # get_recent_conversations returns most recent conversations in chronological order
+        # (oldest first among the recent ones), so with limit=2, we get Message 2 and 3
         assert recent[0]['user_message'] == "Message 2"
         assert recent[1]['user_message'] == "Message 3"
     
@@ -592,7 +593,10 @@ class TestEvidencePacket:
         assert packet.query == "What color is the sky?"
         assert packet.summary == "The sky is blue"
         assert len(packet.citations) == 1
-        assert packet.trust == 0.4  # TOOL sources start quarantined
+        # TOOL sources start with trust=0.4 (quarantined) per CRT design
+        # This is a conservative default to prevent unverified external data 
+        # from being treated as high-trust user memories
+        assert packet.trust == 0.4
         assert packet.lane == "notes"
 
 
@@ -830,5 +834,5 @@ class TestSystemSummary:
         for section in expected_minimum:
             assert section in sections, f"Missing critical section: {section}"
         
-        print(f"\n✓ All {len(sections)} system sections are accessible")
-        print(f"  Sections: {', '.join(sections)}")
+        # Verify expected section count (at least 5 core sections)
+        assert len(sections) >= 5, f"Expected at least 5 sections, got {len(sections)}"
