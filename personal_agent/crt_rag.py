@@ -106,6 +106,8 @@ class CRTEnhancedRAG:
         try:
             self.two_tier_system = TwoTierFactSystem(enable_llm=True)
             logger.info("[TWO_TIER] Two-tier fact extraction system initialized")
+            # Connect two-tier system to ledger for enhanced contradiction detection
+            self.ledger.set_two_tier_system(self.two_tier_system)
         except Exception as e:
             logger.warning(f"[TWO_TIER] Failed to initialize two-tier system: {e}")
             self.two_tier_system = None
