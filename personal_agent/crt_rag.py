@@ -1353,10 +1353,8 @@ class CRTEnhancedRAG:
             r'\bchanged\s+(jobs|to|companies)\b',
             r'\bmoved\s+to\b',
             r'\bnow\s+(work|working|at)\b',
-            r'\bcorrect\s+(one|version|answer|status|value|info)\b',  # Expanded to include "status"
-            r'\b(that|this)\s*\'?s\s+(correct|right|accurate)\b',   # "that's correct", "this is right"
-            r'\bignore\s+(the\s+)?(\w+)\b',                          # "ignore the X"
-            r'\bforget\s+(?:about\s+)?(?:the\s+)?(\w+)\b',          # "forget the X"
+            r'\bcorrect\s+(one|version|answer|status|value|info|statement)\b',
+            r'\b(that|this)(?:\s*\'s|\s+is)\s+(correct|right|accurate)\b',  # "that's correct"
         ]
         
         # Check if user text contains any resolution intent pattern
@@ -1381,7 +1379,7 @@ class CRTEnhancedRAG:
             # Handle CONFLICT, REVISION, and TEMPORAL contradictions
             # (REFINEMENT contradictions typically don't need NL resolution)
             contradiction_type = getattr(contra, "contradiction_type", None)
-            if contradiction_type == ContradictionType.REFINEMENT:
+            if contradiction_type not in {ContradictionType.CONFLICT, ContradictionType.REVISION, ContradictionType.TEMPORAL}:
                 continue
             
             old_mem = self.memory.get_memory_by_id(contra.old_memory_id)
