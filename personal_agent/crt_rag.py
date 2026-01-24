@@ -1084,6 +1084,128 @@ class CRTEnhancedRAG:
 
         return goals, dedup_beliefs
     
+    def _extract_value_from_memory_text(self, text: str) -> Optional[str]:
+        """
+        Extract the factual value from a memory text.
+        
+        Examples:
+            "I work at Microsoft" → "Microsoft"
+            "My name is Sarah" → "Sarah"
+            "I've been programming for 8 years" → "8 years"
+        
+        Args:
+            text: Memory text
+            
+        Returns:
+            Extracted value or None
+        """
+        # Common patterns
+        patterns = [
+            r"(?:work|working) (?:at|for) (\w+)",  # employer
+            r"(?:my )?name is (\w+)",  # name
+            r"(?:programming|coding) for (\d+ \w+)",  # experience
+            r"live in ([^,.]+)",  # location
+            r"from ([^,.]+)",  # origin
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        
+        # Fallback: return last capitalized word or number
+        words = text.split()
+        for word in reversed(words):
+            if word and (word[0].isupper() or word.isdigit()):
+                return word
+        
+        return None
+    
+    def _build_caveat_disclosure(self, resolved_memory: MemoryItem, contradictions: List[ContradictionEntry]) -> str:
+        """
+        Build caveat text acknowledging the contradiction.
+        
+        Args:
+            resolved_memory: The memory we're asserting as true
+            contradictions: List of contradictions involved
+            
+        Returns:
+            Caveat string like "(changed from X)" or "(most recent update)"
+        """
+        # Extract old values
+        old_values = []
+        for contra in contradictions:
+            old_mem = self._get_memory_by_id(contra.old_memory_id)
+            if old_mem and old_mem.memory_id != resolved_memory.memory_id:
+                # Extract just the value part from the memory text
+                old_value = self._extract_value_from_memory_text(old_mem.text)
+                if old_value:
+                    old_values.append(old_value)
+        
+        if not old_values:
+            return "(most recent update)"
+        
+        if len(old_values) == 1:
+            return f"(changed from {old_values[0]})"
+        else:
+            return f"(changed from {', '.join(old_values)})"
+    
+    def _resolve_contradiction_assertively(self, contradictions: List[ContradictionEntry]) -> Optional[MemoryItem]:
+        """
+        Automatically resolve contradiction by picking highest trust + most recent claim.
+        
+        Resolution strategy:
+        1. Sort by trust score (primary)
+        2. Break ties with timestamp (secondary)
+        3. Return winner
+        
+        Args:
+            contradictions: List of contradicting memory items
+            
+        Returns:
+            The winning memory item to assert
+        """
+        if not contradictions:
+            return None
+        
+        # Get all involved memories
+        all_memories = []
+        for contra in contradictions:
+            # Each contradiction has old_memory_id and new_memory_id
+            old_mem = self._get_memory_by_id(contra.old_memory_id)
+            new_mem = self._get_memory_by_id(contra.new_memory_id)
+            if old_mem:
+                all_memories.append(old_mem)
+            if new_mem:
+                all_memories.append(new_mem)
+        
+        # Remove duplicates
+        seen = set()
+        unique_memories = []
+        for mem in all_memories:
+            if mem.memory_id not in seen:
+                seen.add(mem.memory_id)
+                unique_memories.append(mem)
+        
+        if not unique_memories:
+            return None
+        
+        # Sort by trust (primary), then timestamp (secondary)
+        sorted_memories = sorted(
+            unique_memories,
+            key=lambda m: (m.trust, m.timestamp),
+            reverse=True  # Highest trust + most recent first
+        )
+        
+        winner = sorted_memories[0]
+        
+        # Add diagnostic logging
+        logger.info(f"[CONTRADICTION_RESOLVED] Asserting: {winner.text[:60]}")
+        logger.info(f"  Trust: {winner.trust}, Timestamp: {winner.timestamp}")
+        logger.info(f"  Superseded {len(sorted_memories) - 1} other claim(s)")
+        
+        return winner
+    
     def _check_contradiction_gates(
         self,
         user_query: str,
@@ -1150,7 +1272,37 @@ class CRTEnhancedRAG:
         if not blocking_contradictions:
             return True, None, []
         
-        # Build clarification message
+        # SPRINT 1: Assertive contradiction resolution instead of passive questioning
+        # Convert blocking_contradictions back to ContradictionEntry objects
+        relevant_contras = []
+        for contra in open_contradictions:
+            affects_slots = getattr(contra, 'affects_slots', None)
+            if affects_slots:
+                affected_slot_list = [s.strip() for s in affects_slots.split(',')]
+                for affected_slot in affected_slot_list:
+                    if affected_slot in inferred_slots:
+                        relevant_contras.append(contra)
+                        break
+        
+        # Resolve automatically instead of asking
+        resolved_memory = self._resolve_contradiction_assertively(relevant_contras)
+        
+        if resolved_memory:
+            # Extract the answer value
+            answer_value = self._extract_value_from_memory_text(resolved_memory.text)
+            
+            # Build caveat disclosure
+            caveat = self._build_caveat_disclosure(resolved_memory, relevant_contras)
+            
+            # Return assertive answer with caveat as clarification
+            assertive_answer = f"{answer_value} {caveat}" if answer_value else f"{resolved_memory.text} {caveat}"
+            
+            logger.info(f"[GATE_CHECK] ✓ Assertively resolved {len(relevant_contras)} contradiction(s): {assertive_answer}")
+            
+            # Return False to use clarification message, but with assertive resolution instead
+            return False, assertive_answer, blocking_contradictions
+        
+        # Fallback to old behavior if resolution fails
         messages = []
         for contra in blocking_contradictions[:3]:  # Limit to 3 for readability
             slot = contra['slot']

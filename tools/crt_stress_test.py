@@ -420,6 +420,11 @@ def _track_reintroduction_metrics(result: dict, *, turn: int) -> None:
         
         # Contradiction signals
         r"\b(actually|instead|rather|in fact)\b",
+        
+        # SPRINT 1: Explicit caveat format patterns from assertive resolution
+        r"\(changed from",  # "(changed from Microsoft)"
+        r"\(most recent",   # "(most recent update)"
+        r"\(updated",       # "(updated from...)"
     ]
     
     # Compile regex for performance (cache at module level in production)

@@ -286,6 +286,20 @@ class CRTMemorySystem:
         if source == MemorySource.EXTERNAL:
             validate_external_memory_context(context)
 
+        # SPRINT 1: Detect if this is an explicit correction
+        correction_phrases = [
+            "actually", "not", "correction", "correct", "wrong",
+            "i mean", "i meant", "clarify", "to be clear",
+            "changed", "no longer", "instead"
+        ]
+        
+        is_correction = any(phrase in text.lower() for phrase in correction_phrases)
+        
+        # If this is a correction, boost confidence and trust
+        if is_correction:
+            confidence = max(confidence, 0.95)  # Explicit corrections are high confidence
+            logger.info(f"[CORRECTION_DETECTED] Boosting confidence for: {text[:60]}")
+
         # Encode
         vector = encode_vector(text)
         
@@ -388,6 +402,17 @@ class CRTMemorySystem:
         
         conn.commit()
         conn.close()
+        
+        # SPRINT 1: After storing, if correction was detected, decay contradicted memories
+        if is_correction:
+            contradicting = self._find_contradicting_memories(text)
+            
+            for old_mem in contradicting:
+                # Significantly reduce trust of contradicted memory
+                old_trust = old_mem.trust
+                new_trust = old_trust * 0.4
+                self._update_memory_trust(old_mem.memory_id, new_trust)
+                logger.info(f"[TRUST_DECAY] Reduced trust for contradicted memory: {old_mem.text[:60]} (trust: {old_trust:.2f} -> {new_trust:.2f})")
         
         return memory
     
@@ -600,6 +625,61 @@ class CRTMemorySystem:
         conn.close()
         
         logger.info(f"[TRUST] Memory {memory_id}: {old_trust:.3f} → {actual_new_trust:.3f}")
+    
+    def _update_memory_trust(self, memory_id: str, new_trust: float):
+        """
+        Update trust score for a specific memory in database.
+        
+        Args:
+            memory_id: ID of memory to update
+            new_trust: New trust value
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            "UPDATE memories SET trust = ? WHERE memory_id = ?",
+            (new_trust, memory_id)
+        )
+        
+        conn.commit()
+        conn.close()
+    
+    def _find_contradicting_memories(self, new_text: str) -> List[MemoryItem]:
+        """
+        Find memories that contradict the new text.
+        
+        Args:
+            new_text: New memory text to check
+            
+        Returns:
+            List of contradicting memory items
+        """
+        # Use existing fact extraction to get slot
+        from .fact_slots import extract_fact_slots
+        
+        new_facts = extract_fact_slots(new_text)
+        if not new_facts:
+            return []
+        
+        contradicting = []
+        
+        for new_fact in new_facts:
+            slot = new_fact.get("slot")
+            if not slot:
+                continue
+            
+            # Get all memories for this slot from profile_memory
+            if hasattr(self, 'profile_memory') and slot in self.profile_memory:
+                existing_mem_ids = self.profile_memory.get(slot, [])
+                
+                for old_mem_id in existing_mem_ids:
+                    old_mem = self.get_memory_by_id(old_mem_id)
+                    if old_mem and old_mem.text != new_text:
+                        # Different value for same slot = contradiction
+                        contradicting.append(old_mem)
+        
+        return contradicting
     
     def evolve_trust_for_alignment(
         self,
