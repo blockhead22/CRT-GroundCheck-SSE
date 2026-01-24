@@ -297,7 +297,6 @@ class LocalLLMFactExtractor(LLMFactExtractor):
     def __init__(
         self,
         model: str = "llama3.2",
-        host: str = "http://localhost:11434",
         **kwargs
     ):
         """
@@ -305,21 +304,22 @@ class LocalLLMFactExtractor(LLMFactExtractor):
         
         Args:
             model: Name of the Ollama model to use
-            host: Ollama server host URL
             **kwargs: Additional arguments passed to parent
         """
         config = LLMConfig(model=model)
         super().__init__(config=config, **kwargs)
-        self.host = host
         self.model = model
     
     def _create_client(self) -> Optional[Any]:
         """Create Ollama client."""
         try:
             from .ollama_client import OllamaClient
-            return OllamaClient(host=self.host)
+            return OllamaClient(model=self.model)
         except ImportError:
             logger.warning("Ollama client not available.")
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to create Ollama client: {e}")
             return None
     
     def _extract_with_llm(self, text: str) -> List[FactTuple]:
@@ -330,14 +330,14 @@ class LocalLLMFactExtractor(LLMFactExtractor):
         prompt = self.config.prompt_template.format(text=text)
         
         try:
+            # OllamaClient.generate returns a string, not a dict
             response = self.llm_client.generate(
-                model=self.model,
                 prompt=prompt,
-                format="json",
+                temperature=0.1,  # Low temperature for deterministic output
             )
             
-            content = response.get("response", "")
-            return self._parse_llm_response(content, text)
+            # Response is the generated text
+            return self._parse_llm_response(response, text)
             
         except Exception as e:
             logger.warning(f"Local LLM extraction failed: {e}")

@@ -41,6 +41,21 @@ except ImportError:
     HAS_SKLEARN = False
     logger.warning("sklearn not available - probability calibration limited")
 
+# Try to import joblib for model persistence, but make it optional
+try:
+    import joblib
+    HAS_JOBLIB = True
+except ImportError:
+    HAS_JOBLIB = False
+    logger.warning("joblib not available - model persistence disabled")
+try:
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
+    logger.warning("sklearn not available - probability calibration limited")
+
 
 @dataclass
 class ValidationFeatures:
@@ -344,7 +359,8 @@ class ProbabilityCalibrator:
         if self.model is None:
             raise ValueError("No model to save")
         
-        import joblib
+        if not HAS_JOBLIB:
+            raise RuntimeError("joblib is required for model persistence")
         
         data = {
             "model": self.model,
@@ -358,7 +374,8 @@ class ProbabilityCalibrator:
     
     def load(self, path: str) -> None:
         """Load model from file."""
-        import joblib
+        if not HAS_JOBLIB:
+            raise RuntimeError("joblib is required for model persistence")
         
         data = joblib.load(path)
         self.model = data["model"]

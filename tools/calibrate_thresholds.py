@@ -221,22 +221,30 @@ class ThresholdCalibrator:
         
         from datetime import datetime
         
+        def default_stats(default_value: float) -> DistributionStats:
+            """Create default DistributionStats with a uniform value."""
+            return DistributionStats(
+                mean=default_value, std=0, min=default_value, max=default_value,
+                p5=default_value, p25=default_value, p50=default_value,
+                p75=default_value, p95=default_value, count=0
+            )
+        
         return CalibratedThresholds(
             green_zone=float(round(green_zone, 3)),
             yellow_zone=float(round(yellow_zone, 3)),
             red_zone=float(round(red_zone, 3)),
-            exact_match_min=float(round(stats.get("exact_match", DistributionStats(
-                mean=1.0, std=0, min=1.0, max=1.0, p5=1.0, p25=1.0, p50=1.0, p75=1.0, p95=1.0, count=0
-            )).p5, 3)),
-            paraphrase_typical=float(round(stats.get("paraphrase", DistributionStats(
-                mean=0.8, std=0, min=0.8, max=0.8, p5=0.8, p25=0.8, p50=0.8, p75=0.8, p95=0.8, count=0
-            )).p50, 3)),
-            near_miss_max=float(round(stats.get("near_miss", DistributionStats(
-                mean=0.7, std=0, min=0.7, max=0.7, p5=0.7, p25=0.7, p50=0.7, p75=0.7, p95=0.7, count=0
-            )).p95, 3)),
-            contradiction_typical=float(round(stats.get("contradiction", DistributionStats(
-                mean=0.6, std=0, min=0.6, max=0.6, p5=0.6, p25=0.6, p50=0.6, p75=0.6, p95=0.6, count=0
-            )).p50, 3)),
+            exact_match_min=float(round(
+                stats.get("exact_match", default_stats(1.0)).p5, 3
+            )),
+            paraphrase_typical=float(round(
+                stats.get("paraphrase", default_stats(0.8)).p50, 3
+            )),
+            near_miss_max=float(round(
+                stats.get("near_miss", default_stats(0.7)).p95, 3
+            )),
+            contradiction_typical=float(round(
+                stats.get("contradiction", default_stats(0.6)).p50, 3
+            )),
             distributions={k: asdict(v) for k, v in stats.items()},
             model_name=self.model_name,
             dataset_size=len(pairs),
