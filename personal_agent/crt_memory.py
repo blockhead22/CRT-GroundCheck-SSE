@@ -328,16 +328,23 @@ class CRTMemorySystem:
             fact_data = extractor.extract_facts(text)
             
             # Determine extraction method based on what was used
-            if fact_data.hard_facts:
+            # Note: Hard facts are already extracted and stored separately in the ledger/fact system
+            # We store open_tuples here because they represent flexible, LLM-extracted facts
+            # that complement the deterministic hard slots
+            if fact_data.hard_facts and fact_data.open_tuples:
+                extraction_method = 'hybrid'  # Both methods used
+            elif fact_data.hard_facts:
                 extraction_method = 'regex'
             elif fact_data.open_tuples:
                 extraction_method = 'llm'
             
             # Serialize open tuples to JSON
+            # Hard facts are handled by the existing fact_slots system and ledger
             if fact_data.open_tuples:
                 fact_tuples_json = json.dumps([t.to_dict() for t in fact_data.open_tuples])
                 
-            logger.debug(f"[TWO_TIER] Extracted facts: method={extraction_method}, tuples={len(fact_data.open_tuples)}")
+            logger.debug(f"[TWO_TIER] Extracted facts: method={extraction_method}, "
+                        f"hard_facts={len(fact_data.hard_facts)}, open_tuples={len(fact_data.open_tuples)}")
         except Exception as e:
             logger.warning(f"[TWO_TIER] Failed to extract facts: {e}")
             extraction_method = 'none'

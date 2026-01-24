@@ -3185,8 +3185,7 @@ class CRTEnhancedRAG:
                     
                     # Try to get values from the contradiction metadata
                     if hasattr(contra, 'summary') and contra.summary:
-                        # Parse summary for values
-                        import re
+                        # Parse summary for values (re already imported at top of file)
                         match = re.search(r"(\w+)\s+vs\s+(\w+)", contra.summary)
                         if match:
                             old_val = match.group(1)

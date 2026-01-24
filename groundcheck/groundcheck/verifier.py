@@ -356,7 +356,6 @@ class GroundCheck:
         has_disclosure_keyword = any(pattern in text_lower for pattern in disclosure_patterns)
         
         # 2. Structural pattern detection (Sprint 1 enhancement)
-        import re
         structural_patterns = [
             r'\(changed from .+?\)',
             r'\(updated from .+?\)',
