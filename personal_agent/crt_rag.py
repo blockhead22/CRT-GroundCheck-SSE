@@ -1383,6 +1383,12 @@ class CRTEnhancedRAG:
             old_facts = extract_fact_slots(old_mem.text) or {}
             new_facts = extract_fact_slots(new_mem.text) or {}
             
+            # Normalize values helper function (used throughout this loop)
+            def normalize(val):
+                if hasattr(val, 'normalized'):
+                    return val.normalized
+                return str(val).lower().strip()
+            
             # Find slots that are in both old and new (contradiction slots)
             contra_slots = set(old_facts.keys()) & set(new_facts.keys())
             if not contra_slots:
@@ -1403,21 +1409,21 @@ class CRTEnhancedRAG:
                     if old_value is None or new_value is None:
                         continue
                     
-                    # Normalize values
-                    def normalize(val):
-                        if hasattr(val, 'normalized'):
-                            return val.normalized
-                        return str(val).lower().strip()
-                    
                     old_normalized = normalize(old_value)
                     new_normalized = normalize(new_value)
                     
+                    # Use word boundary matching to avoid false positives
+                    # e.g., "Go" shouldn't match "Google"
+                    import re
+                    old_pattern = r'\b' + re.escape(old_normalized) + r'\b'
+                    new_pattern = r'\b' + re.escape(new_normalized) + r'\b'
+                    
                     # Check if either value appears in the user's text
-                    if old_normalized in user_text_lower or new_normalized in user_text_lower:
+                    if re.search(old_pattern, user_text_lower) or re.search(new_pattern, user_text_lower):
                         # Found a match - add to shared so we process it below
                         shared = {slot}
                         # Create a synthetic fact for matching
-                        if old_normalized in user_text_lower:
+                        if re.search(old_pattern, user_text_lower):
                             facts[slot] = old_value
                         else:
                             facts[slot] = new_value
@@ -1436,12 +1442,6 @@ class CRTEnhancedRAG:
                 new_value = new_facts.get(slot)
                 if old_value is None or new_value is None:
                     continue
-                
-                # Normalize for comparison
-                def normalize(val):
-                    if hasattr(val, 'normalized'):
-                        return val.normalized
-                    return str(val).lower().strip()
                 
                 user_normalized = normalize(user_fact)
                 old_normalized = normalize(old_value)
