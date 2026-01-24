@@ -87,6 +87,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Examples:
     # - "FACT: name = Nick"
     # - "PREF: communication_style = concise"
+    # - "FACT: favorite_snack = popcorn" (dynamic category)
     structured = re.search(
         r"\b(?:FACT|PREF):\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*=\s*(.+?)\s*$",
         text.strip(),
@@ -95,8 +96,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     if structured:
         slot = structured.group(1).strip().lower()
         value_raw = structured.group(2).strip()
-        # Keep this conservative: whitelist the slots we intentionally support.
-        allowed = {
+        
+        # Core slots (always allowed)
+        core_slots = {
             "name",
             "employer",
             "title",
@@ -106,7 +108,23 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             "goals",
             "favorite_color",
         }
-        if slot in allowed and value_raw:
+        
+        # Dynamic fact support: Allow any slot name that starts with "favorite_"
+        # or matches common preference patterns, enabling unlimited fact categories
+        is_core_slot = slot in core_slots
+        is_favorite = slot.startswith("favorite_")
+        is_preference = slot.endswith("_preference") or slot.startswith("pref_")
+        # More specific dynamic patterns to avoid false positives
+        is_my_prefix = slot.startswith("my_") and len(slot) > 3
+        is_name_suffix = slot.endswith("_name") and len(slot) > 5
+        is_type_suffix = slot.endswith("_type") and len(slot) > 5
+        is_status_suffix = slot.endswith("_status") and len(slot) > 7
+        is_count_suffix = slot.endswith("_count") and len(slot) > 6
+        
+        # Accept if it's a core slot OR a recognized dynamic pattern
+        if (is_core_slot or is_favorite or is_preference or 
+            is_my_prefix or is_name_suffix or is_type_suffix or 
+            is_status_suffix or is_count_suffix) and value_raw:
             facts[slot] = ExtractedFact(slot, value_raw, _norm_text(value_raw))
             return facts
 
@@ -339,6 +357,32 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         color_raw = re.split(r"\b(?:and|but|though|however)\b", color_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
         if color_raw:
             facts["favorite_color"] = ExtractedFact("favorite_color", color_raw, _norm_text(color_raw))
+    
+    # Skip if category is too generic or already handled
+    # Common words that don't make good fact categories
+    # Can be extended as needed for specific use cases
+    _SKIP_FAVORITE_CATEGORIES = {"thing", "one", "part", "time", "way", "place"}
+    
+    # Generic favorite X pattern (dynamic fact categories)
+    # Examples:
+    # - "My favorite snack is popcorn"
+    # - "My favorite movie is The Matrix"
+    # - "My favourite book is 1984"
+    if "favorite_color" not in facts:  # Don't override specific patterns
+        m = re.search(
+            r"\bmy\s+favou?rite\s+([a-z_]+)\s+is\s+([^\n\r\.;,!\?]{2,60})",
+            text,
+            flags=re.IGNORECASE,
+        )
+        if m:
+            category = m.group(1).strip().lower()
+            value_raw = m.group(2).strip()
+            # Trim at common continuations
+            value_raw = re.split(r"\b(?:and|but|though|however)\b", value_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+            
+            if category not in _SKIP_FAVORITE_CATEGORIES and value_raw:
+                slot_name = f"favorite_{category}"
+                facts[slot_name] = ExtractedFact(slot_name, value_raw, _norm_text(value_raw))
 
     # Education (very rough; enough for Stanford vs MIT undergrad contradictions)
     # Combined pattern: "both my undergrad and Master's were from MIT"
