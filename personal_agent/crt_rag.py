@@ -1350,11 +1350,14 @@ class CRTEnhancedRAG:
             r'\bactually\b',
             r'\bi\s+meant\b',
             r'\bswitched\s+(jobs|to|companies)\b',
-            r'\bchanged\s+(jobs|to|companies)\b',
+            r'\bchanged\s+to\b',  # More general: "changed to" anything
+            r'\bchanged\s+(jobs|companies)\b',  # Specific: "changed jobs"
             r'\bmoved\s+to\b',
             r'\bnow\s+(work|working|at)\b',
             r'\bcorrect\s+(one|version|answer|status|value|info|statement)\b',
             r'\b(that|this)(?:\s*\'s|\s+is)\s+(correct|right|accurate)\b',  # "that's correct"
+            r'\bignore\s+(the|that)\b',  # "ignore the red"
+            r'\b(no|wait)\b.*\b(was|is)\s+(right|correct)\b',  # "no wait, X was right"
         ]
         
         # Check if user text contains any resolution intent pattern
@@ -1398,53 +1401,90 @@ class CRTEnhancedRAG:
             
             # Find slots that are in both old and new (contradiction slots)
             contra_slots = set(old_facts.keys()) & set(new_facts.keys())
-            if not contra_slots:
-                continue
             
             # Try to match user's facts with contradiction slots
             # First check if user provided explicit facts that match
             shared = contra_slots & set(facts.keys())
             
-            # If no explicit facts extracted, try fuzzy matching against values
+            # If no common slots or no explicit facts extracted, try fuzzy matching against values
+            # This handles cases where extract_fact_slots doesn't support the slot type
             if not shared:
                 # Fallback: check if any value from the contradiction appears in the user text
                 # This handles cases like "Google is correct" where extract_fact_slots doesn't catch it
                 user_text_lower = user_text.lower()
-                for slot in contra_slots:
-                    old_value = old_facts.get(slot)
-                    new_value = new_facts.get(slot)
-                    if old_value is None or new_value is None:
-                        continue
-                    
-                    old_normalized = normalize(old_value)
-                    new_normalized = normalize(new_value)
-                    
-                    # Use word boundary matching to avoid false positives
-                    # e.g., "Go" shouldn't match "Google"
-                    old_pattern = re.compile(r'\b' + re.escape(old_normalized) + r'\b')
-                    new_pattern = re.compile(r'\b' + re.escape(new_normalized) + r'\b')
-                    
-                    old_match = old_pattern.search(user_text_lower)
-                    new_match = new_pattern.search(user_text_lower)
-                    
-                    # Check if either value appears in the user's text
-                    # If both match, prefer the one that appears first in the text
-                    if old_match or new_match:
-                        # Found a match - add to shared so we process it below
-                        shared = {slot}
-                        # Create a synthetic fact for matching
-                        # If both match, prefer the one that appears first
-                        if old_match and new_match:
-                            # Both values appear - choose based on position
-                            if old_match.start() < new_match.start():
+                
+                # If we have extracted slots, use them for precise matching
+                if contra_slots:
+                    for slot in contra_slots:
+                        old_value = old_facts.get(slot)
+                        new_value = new_facts.get(slot)
+                        if old_value is None or new_value is None:
+                            continue
+                        
+                        old_normalized = normalize(old_value)
+                        new_normalized = normalize(new_value)
+                        
+                        # Use word boundary matching to avoid false positives
+                        # e.g., "Go" shouldn't match "Google"
+                        old_pattern = re.compile(r'\b' + re.escape(old_normalized) + r'\b')
+                        new_pattern = re.compile(r'\b' + re.escape(new_normalized) + r'\b')
+                        
+                        old_match = old_pattern.search(user_text_lower)
+                        new_match = new_pattern.search(user_text_lower)
+                        
+                        # Check if either value appears in the user's text
+                        # If both match, prefer the one that appears first in the text
+                        if old_match or new_match:
+                            # Found a match - add to shared so we process it below
+                            shared = {slot}
+                            # Create a synthetic fact for matching
+                            # If both match, prefer the one that appears first
+                            if old_match and new_match:
+                                # Both values appear - choose based on position
+                                if old_match.start() < new_match.start():
+                                    facts[slot] = old_value
+                                else:
+                                    facts[slot] = new_value
+                            elif old_match:
                                 facts[slot] = old_value
                             else:
                                 facts[slot] = new_value
-                        elif old_match:
-                            facts[slot] = old_value
+                            break
+                else:
+                    # No extracted slots - try direct keyword matching against memory texts
+                    # This handles cases like "I prefer coffee" vs "I prefer tea"
+                    # Extract key words from old and new memories (ignore common words)
+                    stopwords = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
+                    
+                    old_words = set(w.lower() for w in re.findall(r'\b\w+\b', old_mem.text) if w.lower() not in stopwords)
+                    new_words = set(w.lower() for w in re.findall(r'\b\w+\b', new_mem.text) if w.lower() not in stopwords)
+                    
+                    # Find words that differ between old and new
+                    old_unique = old_words - new_words
+                    new_unique = new_words - old_words
+                    
+                    # Check if any of these unique words appear in the resolution text
+                    old_matches = [w for w in old_unique if re.search(r'\b' + re.escape(w) + r'\b', user_text_lower)]
+                    new_matches = [w for w in new_unique if re.search(r'\b' + re.escape(w) + r'\b', user_text_lower)]
+                    
+                    if old_matches or new_matches:
+                        # Use a synthetic slot name for unstructured matching
+                        synthetic_slot = '_unstructured_'
+                        shared = {synthetic_slot}
+                        
+                        # Determine which memory to keep based on which words appear
+                        if old_matches and new_matches:
+                            # Both appear - check which appears first
+                            first_old_pos = min(user_text_lower.find(w) for w in old_matches)
+                            first_new_pos = min(user_text_lower.find(w) for w in new_matches)
+                            if first_old_pos < first_new_pos:
+                                facts[synthetic_slot] = old_mem.text
+                            else:
+                                facts[synthetic_slot] = new_mem.text
+                        elif old_matches:
+                            facts[synthetic_slot] = old_mem.text
                         else:
-                            facts[slot] = new_value
-                        break
+                            facts[synthetic_slot] = new_mem.text
             
             if not shared:
                 continue
@@ -1454,29 +1494,43 @@ class CRTEnhancedRAG:
                 user_fact = facts.get(slot)
                 if user_fact is None:
                     continue
-                    
-                old_value = old_facts.get(slot)
-                new_value = new_facts.get(slot)
-                if old_value is None or new_value is None:
-                    continue
-                
-                user_normalized = normalize(user_fact)
-                old_normalized = normalize(old_value)
-                new_normalized = normalize(new_value)
                 
                 chosen_memory_id = None
                 deprecated_memory_id = None
                 
-                # Determine which memory to keep based on matching values
-                if user_normalized == new_normalized:
-                    chosen_memory_id = contra.new_memory_id
-                    deprecated_memory_id = contra.old_memory_id
-                elif user_normalized == old_normalized:
-                    chosen_memory_id = contra.old_memory_id
-                    deprecated_memory_id = contra.new_memory_id
+                # Handle synthetic slot from unstructured matching
+                if slot == '_unstructured_':
+                    # User fact contains the full memory text that should be kept
+                    if user_fact == old_mem.text:
+                        chosen_memory_id = contra.old_memory_id
+                        deprecated_memory_id = contra.new_memory_id
+                    elif user_fact == new_mem.text:
+                        chosen_memory_id = contra.new_memory_id
+                        deprecated_memory_id = contra.old_memory_id
+                    else:
+                        # Shouldn't happen, but skip if we can't determine
+                        continue
                 else:
-                    # User mentioned a value but it doesn't match either side
-                    continue
+                    # Handle normal slots with extracted facts
+                    old_value = old_facts.get(slot)
+                    new_value = new_facts.get(slot)
+                    if old_value is None or new_value is None:
+                        continue
+                    
+                    user_normalized = normalize(user_fact)
+                    old_normalized = normalize(old_value)
+                    new_normalized = normalize(new_value)
+                    
+                    # Determine which memory to keep based on matching values
+                    if user_normalized == new_normalized:
+                        chosen_memory_id = contra.new_memory_id
+                        deprecated_memory_id = contra.old_memory_id
+                    elif user_normalized == old_normalized:
+                        chosen_memory_id = contra.old_memory_id
+                        deprecated_memory_id = contra.new_memory_id
+                    else:
+                        # User mentioned a value but it doesn't match either side
+                        continue
                 
                 # Resolve the contradiction in the ledger FIRST
                 # This ensures we don't end up with deprecated memories but unresolved contradictions
