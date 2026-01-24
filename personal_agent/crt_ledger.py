@@ -25,6 +25,7 @@ import time
 
 from .crt_core import CRTMath, CRTConfig, MemorySource
 from .fact_slots import extract_fact_slots
+from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .crt_semantic_anchor import (
     SemanticAnchor,
     generate_clarification_prompt,

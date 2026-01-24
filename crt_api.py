@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots
+from personal_agent.two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from personal_agent.artifact_store import now_iso_utc
 from personal_agent.idle_scheduler import CRTIdleScheduler
 from personal_agent.evidence_packet import Citation, EvidencePacket
@@ -1112,6 +1113,7 @@ def create_app() -> FastAPI:
         """Best-effort extraction of latest fact slots from user memories.
 
         We treat structured facts like "FACT: name = Nick" as authoritative signals.
+        Uses two-tier extraction to capture both hard slots and open tuples.
         """
         try:
             items = engine.memory._load_all_memories()
@@ -1124,7 +1126,25 @@ def create_app() -> FastAPI:
             if str(src).lower() != "user":
                 continue
             text = str(getattr(mem, "text", "") or "")
-            facts = extract_fact_slots(text)
+            
+            # Use two-tier extraction if available, otherwise fall back to regex
+            if hasattr(engine, 'two_tier_system') and engine.two_tier_system is not None:
+                try:
+                    two_tier_result = engine.two_tier_system.extract_facts(text, skip_llm=True)
+                    facts = two_tier_result.hard_facts
+                    # Also include open tuples as additional slots
+                    for tuple_fact in two_tier_result.open_tuples:
+                        if tuple_fact.attribute not in facts and tuple_fact.confidence >= 0.6:
+                            # Convert tuple to ExtractedFact-like dict for compatibility
+                            class FakeFact:
+                                def __init__(self, val):
+                                    self.value = val
+                            facts[tuple_fact.attribute] = FakeFact(tuple_fact.value)
+                except Exception:
+                    facts = extract_fact_slots(text)
+            else:
+                facts = extract_fact_slots(text)
+            
             if not facts:
                 continue
             ts = float(getattr(mem, "timestamp", 0.0) or 0.0)
