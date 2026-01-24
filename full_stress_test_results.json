@@ -1,0 +1,64 @@
+{
+  "timestamp": "2026-01-23T23:51:45.858263",
+  "tests": {
+    "basic_memory": {
+      "passed": true,
+      "details": {
+        "answer_contains_name": true
+      }
+    },
+    "contradiction_detection": {
+      "passed": true,
+      "details": {
+        "metadata_detected": true,
+        "ledger_count": 2
+      }
+    },
+    "gates_blocking": {
+      "passed": true,
+      "details": {
+        "gates_passed": false,
+        "expected": false
+      }
+    },
+    "nl_resolution": {
+      "passed": false,
+      "details": {
+        "X is correct": false,
+        "Actually...": true,
+        "I meant...": false,
+        "changed to...": false,
+        "explicit confirm": false,
+        "keep OLD value": false
+      },
+      "score": "1/6"
+    },
+    "api_resolution": {
+      "passed": true,
+      "details": {
+        "OVERRIDE": true,
+        "PRESERVE": true
+      }
+    },
+    "rapid_fire": {
+      "passed": true,
+      "details": {
+        "detected": 4,
+        "total": 5,
+        "rate": 0.8
+      }
+    },
+    "database_integrity": {
+      "passed": true,
+      "details": {
+        "issues": []
+      }
+    }
+  },
+  "summary": {
+    "passed": 6,
+    "total": 7,
+    "rate": 0.8571428571428571,
+    "verdict": "PASS"
+  }
+}
