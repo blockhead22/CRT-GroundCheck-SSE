@@ -1,0 +1,14 @@
+{
+  "timestamp": 1769211212,
+  "total": 6,
+  "passed": 0,
+  "rate": 0.0,
+  "results": {
+    "employer_correct": false,
+    "location_actually": false,
+    "age_meant": false,
+    "preference_changed": false,
+    "status_explicit": false,
+    "keep_old": false
+  }
+}
