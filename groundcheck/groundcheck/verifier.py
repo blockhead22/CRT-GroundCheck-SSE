@@ -94,6 +94,24 @@ class GroundCheck:
         except Exception:
             # If model loading fails, semantic matching will be skipped
             self.embedding_model = None
+        
+        # Initialize TwoTierFactSystem for enhanced tuple verification
+        # This allows comparing assistant output tuples vs ledger tuples
+        try:
+            import sys
+            import os
+            # Add parent directory to path to import from personal_agent
+            parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            if parent_dir not in sys.path:
+                sys.path.insert(0, parent_dir)
+            
+            from personal_agent.two_tier_facts import TwoTierFactSystem
+            self.two_tier_system = TwoTierFactSystem(enable_llm=False)  # Use regex-only for verification
+        except Exception as e:
+            # Graceful degradation if two-tier system unavailable
+            import logging
+            logging.getLogger(__name__).debug(f"TwoTierFactSystem not available: {e}")
+            self.two_tier_system = None
     
     def _normalize_value(self, value: str) -> str:
         """Normalize value for fuzzy matching.
@@ -257,6 +275,8 @@ class GroundCheck:
         Identifies cases where multiple memories have the same fact slot but different values,
         for slots where only one value should be true at a time (mutually exclusive facts).
         
+        Enhanced with TwoTierFactSystem for comparing both hard facts and open tuples.
+        
         Args:
             retrieved_memories: List of Memory objects to analyze
             
@@ -266,10 +286,48 @@ class GroundCheck:
         from collections import defaultdict
         from .types import ContradictionDetail
         
-        # Group memories by fact slot
+        # Group memories by fact slot (using both regex and two-tier extraction)
         slot_to_facts = defaultdict(list)
         
         for memory in retrieved_memories:
+            # Use TwoTierFactSystem if available for enhanced fact extraction
+            if self.two_tier_system is not None:
+                try:
+                    result = self.two_tier_system.extract_facts(memory.text, skip_llm=True)
+                    
+                    # Process hard facts (Tier A)
+                    for slot, fact in result.hard_facts.items():
+                        if slot in self.MUTUALLY_EXCLUSIVE_SLOTS:
+                            slot_to_facts[slot].append({
+                                'value': fact.normalized,
+                                'memory_id': memory.id,
+                                'timestamp': memory.timestamp,
+                                'trust': memory.trust,
+                                'tier': 'hard'
+                            })
+                    
+                    # Process open tuples (Tier B) with high confidence
+                    for tuple_fact in result.open_tuples:
+                        if tuple_fact.confidence >= 0.7:  # Only high-confidence tuples
+                            # Check if attribute is mutually exclusive
+                            attr = tuple_fact.attribute
+                            if attr in self.MUTUALLY_EXCLUSIVE_SLOTS:
+                                slot_to_facts[attr].append({
+                                    'value': tuple_fact.normalized_value or tuple_fact.value,
+                                    'memory_id': memory.id,
+                                    'timestamp': memory.timestamp,
+                                    'trust': memory.trust,
+                                    'tier': 'open',
+                                    'confidence': tuple_fact.confidence
+                                })
+                except Exception as e:
+                    # Fall back to regex-only extraction
+                    import logging
+                    logging.getLogger(__name__).debug(
+                        f"TwoTier extraction failed for memory {memory.id}: {e}"
+                    )
+            
+            # Also use traditional regex extraction (for backward compatibility)
             facts = extract_fact_slots(memory.text)
             for slot, fact in facts.items():
                 # Only track mutually exclusive slots for contradiction detection
@@ -278,13 +336,14 @@ class GroundCheck:
                         'value': fact.normalized,
                         'memory_id': memory.id,
                         'timestamp': memory.timestamp,
-                        'trust': memory.trust
+                        'trust': memory.trust,
+                        'tier': 'regex'
                     })
         
         # Find slots with multiple different values
         contradictions = []
         for slot, facts in slot_to_facts.items():
-            # Get unique values
+            # Get unique values (normalized)
             unique_values = set(f['value'] for f in facts)
             
             if len(unique_values) > 1:
