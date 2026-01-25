@@ -46,6 +46,12 @@ from .contradiction_trace_logger import get_trace_logger
 _NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
 _UNSTRUCTURED_SLOT_NAME = '_unstructured_'
 
+# Constants for contradiction resolution
+RESOLVED_CONTRADICTION_CONFIDENCE = 0.85  # Confidence level for assertively resolved contradictions
+
+# Constants for value extraction
+_EXTRACTION_STOPWORDS = ["a", "an", "the", "as", "is", "was", "at", "in", "on", "for"]
+
 
 class CRTEnhancedRAG:
     """
@@ -1090,6 +1096,8 @@ class CRTEnhancedRAG:
         
         Examples:
             "I work at Microsoft" → "Microsoft"
+            "I work at Microsoft as a senior developer" → "Microsoft"
+            "I work at Amazon Web Services" → "Amazon Web Services"
             "My name is Sarah" → "Sarah"
             "I've been programming for 8 years" → "8 years"
         
@@ -1099,13 +1107,18 @@ class CRTEnhancedRAG:
         Returns:
             Extracted value or None
         """
-        # Common patterns
+        # Common patterns - made more precise to extract just the key value
         patterns = [
-            r"(?:work|working) (?:at|for) ([\w\s\-']+?)(?:\.|,|$)",  # employer - allows spaces, hyphens, apostrophes
-            r"(?:my )?name is ([\w\s\-']+?)(?:\.|,|$)",  # name
-            r"(?:programming|coding) for (\d+\s+\w+)",  # experience
-            r"live in ([^,.]+)",  # location
-            r"from ([^,.]+)",  # origin
+            # Employer - match company name (1-3 words), stop at role indicators
+            r"(?:work|working) (?:at|for) ((?:\w+(?:\s+\w+){0,2}))(?:\s+(?:as|in|on|for|with|doing)|[,.]|$)",
+            # Name - match full name (1-2 words)
+            r"(?:my )?name is ((?:\w+(?:\s+\w+)?))(?:[,.]|$)",
+            # Experience - match the duration
+            r"(?:programming|coding) for (\d+\s+\w+)",  # e.g., "8 years"
+            # Location - match city/place (1-3 words) using character class for case flexibility
+            r"live in ((?:[A-Za-z]+(?:\s+[A-Za-z]+){0,2}))(?:[,.]|$)",
+            # Origin - same pattern as location
+            r"from ((?:[A-Za-z]+(?:\s+[A-Za-z]+){0,2}))(?:[,.]|$)",
         ]
         
         for pattern in patterns:
@@ -1117,6 +1130,9 @@ class CRTEnhancedRAG:
         words = text.split()
         for word in reversed(words):
             if word and (word[0].isupper() or word.isdigit()):
+                # Skip common stop words
+                if word.lower() in _EXTRACTION_STOPWORDS:
+                    continue
                 return word
         
         return None
@@ -1132,14 +1148,17 @@ class CRTEnhancedRAG:
         Returns:
             Caveat string like "(changed from X)" or "(most recent update)"
         """
-        # Extract old values
+        # Extract old values with deduplication
         old_values = []
+        seen = set()  # Track seen values to avoid duplicates
+        
         for contra in contradictions:
             old_mem = self._get_memory_by_id(contra.old_memory_id)
             if old_mem and old_mem.memory_id != resolved_memory.memory_id:
                 # Extract just the value part from the memory text
                 old_value = self._extract_value_from_memory_text(old_mem.text)
-                if old_value:
+                if old_value and old_value not in seen:
+                    seen.add(old_value)
                     old_values.append(old_value)
         
         if not old_values:
@@ -1299,8 +1318,9 @@ class CRTEnhancedRAG:
             
             logger.info(f"[GATE_CHECK] ✓ Assertively resolved {len(relevant_contras)} contradiction(s): {assertive_answer}")
             
-            # Return False to use clarification message, but with assertive resolution instead
-            return False, assertive_answer, blocking_contradictions
+            # FIX: Return True because contradiction was RESOLVED (not blocked)
+            # Gates pass when we successfully resolve with caveat disclosure
+            return True, assertive_answer, blocking_contradictions
         
         # Fallback to old behavior if resolution fails
         messages = []
@@ -2144,6 +2164,33 @@ class CRTEnhancedRAG:
         gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
             user_query, inferred_slots
         )
+        
+        # Handle resolved contradictions (gates passed with caveat answer)
+        if gates_passed and clarification_message:
+            # Contradiction was RESOLVED - return assertive answer with caveat
+            logger.info(f"[GATE_RESOLVED] Contradiction resolved with caveat: {clarification_message}")
+            
+            return {
+                'answer': clarification_message,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': RESOLVED_CONTRADICTION_CONFIDENCE,  # Good confidence - contradiction resolved with disclosure
+                'response_type': 'speech',  # Regular response, not uncertainty
+                'gates_passed': True,  # Gates passed because we resolved it
+                'gate_reason': 'contradiction_resolved',
+                'intent_alignment': 0.9,
+                'memory_alignment': 0.9,
+                'contradiction_detected': True,  # Yes, contradiction exists
+                'contradiction_resolved': True,  # But we resolved it
+                'unresolved_contradictions_total': 0,  # Zero because we resolved them
+                'unresolved_hard_conflicts': 0,
+                'retrieved_memories': [],
+                'prompt_memories': [],
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': None,
+                'session_id': self.session_id,
+            }
         
         if not gates_passed and clarification_message:
             # Gate blocked - return clarification request instead of confident answer
