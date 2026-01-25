@@ -1112,9 +1112,9 @@ class CRTEnhancedRAG:
             r"(?:my )?name is ((?:\w+(?:\s+\w+)?))(?:[,.]|$)",
             # Experience - match the duration
             r"(?:programming|coding) for (\d+\s+\w+)",  # e.g., "8 years"
-            # Location - match city/place (1-3 words), case-insensitive with re.IGNORECASE
+            # Location - match city/place (1-3 words) using character class for case flexibility
             r"live in ((?:[A-Za-z]+(?:\s+[A-Za-z]+){0,2}))(?:[,.]|$)",
-            # Origin - case-insensitive
+            # Origin - same pattern as location
             r"from ((?:[A-Za-z]+(?:\s+[A-Za-z]+){0,2}))(?:[,.]|$)",
         ]
         
