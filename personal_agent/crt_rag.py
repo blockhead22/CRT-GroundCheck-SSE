@@ -46,6 +46,9 @@ from .contradiction_trace_logger import get_trace_logger
 _NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
 _UNSTRUCTURED_SLOT_NAME = '_unstructured_'
 
+# Constants for contradiction resolution
+RESOLVED_CONTRADICTION_CONFIDENCE = 0.85  # Confidence level for assertively resolved contradictions
+
 
 class CRTEnhancedRAG:
     """
@@ -1091,6 +1094,7 @@ class CRTEnhancedRAG:
         Examples:
             "I work at Microsoft" → "Microsoft"
             "I work at Microsoft as a senior developer" → "Microsoft"
+            "I work at Amazon Web Services" → "Amazon Web Services"
             "My name is Sarah" → "Sarah"
             "I've been programming for 8 years" → "8 years"
         
@@ -1102,16 +1106,16 @@ class CRTEnhancedRAG:
         """
         # Common patterns - made more precise to extract just the key value
         patterns = [
-            # Employer - match just the company name, not the role
-            r"(?:work|working) (?:at|for) (\w+)",  # Just one word (e.g., "Microsoft")
-            # Name - match just the name
-            r"(?:my )?name is (\w+)",  # Just the first name
+            # Employer - match company name (1-3 words), stop at role indicators
+            r"(?:work|working) (?:at|for) ((?:\w+(?:\s+\w+){0,2}))(?:\s+(?:as|in|on|for|with|doing)|[,.]|$)",
+            # Name - match full name (1-2 words)
+            r"(?:my )?name is ((?:\w+(?:\s+\w+)?))(?:[,.]|$)",
             # Experience - match the duration
             r"(?:programming|coding) for (\d+\s+\w+)",  # e.g., "8 years"
-            # Location - match just the city/place (stop at prepositions or qualifiers)
-            r"live in ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",  # City name(s)
-            # Origin
-            r"from ([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)",  # Place name(s)
+            # Location - match city/place (1-3 words), case-insensitive with re.IGNORECASE
+            r"live in ((?:[A-Za-z]+(?:\s+[A-Za-z]+){0,2}))(?:[,.]|$)",
+            # Origin - case-insensitive
+            r"from ((?:[A-Za-z]+(?:\s+[A-Za-z]+){0,2}))(?:[,.]|$)",
         ]
         
         for pattern in patterns:
@@ -2167,7 +2171,7 @@ class CRTEnhancedRAG:
                 'answer': clarification_message,
                 'thinking': None,
                 'mode': 'quick',
-                'confidence': 0.85,  # High confidence - we resolved it
+                'confidence': RESOLVED_CONTRADICTION_CONFIDENCE,  # High confidence - we resolved it
                 'response_type': 'speech',  # Regular response, not uncertainty
                 'gates_passed': True,  # Gates passed because we resolved it
                 'gate_reason': 'contradiction_resolved',
