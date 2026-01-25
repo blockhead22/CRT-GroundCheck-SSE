@@ -11,12 +11,116 @@ import pickle
 import numpy as np
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, Set
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import time
 
 logger = logging.getLogger(__name__)
+
+
+# ============================================================================
+# SEMANTIC EQUIVALENCE DATABASE
+# These synonyms/related terms should NOT trigger contradiction
+# ============================================================================
+
+SEMANTIC_EQUIVALENTS: Dict[str, Set[str]] = {
+    # Education degree synonyms
+    "phd": {"doctorate", "doctoral", "ph.d.", "doctor of philosophy", "doctoral degree"},
+    "doctorate": {"phd", "doctoral", "ph.d.", "doctor of philosophy"},
+    "masters": {"master's", "ms", "ma", "msc", "master of science", "master of arts"},
+    "bachelor": {"bachelor's", "bs", "ba", "bsc", "undergraduate"},
+    
+    # Related fields (changing focus within field is refinement, not contradiction)
+    "ml": {"machine learning", "ai", "artificial intelligence", "deep learning"},
+    "ai": {"artificial intelligence", "ml", "machine learning", "deep learning"},
+    "cs": {"computer science", "computing", "comp sci"},
+    "data science": {"data analytics", "analytics", "data engineering"},
+    
+    # Job title synonyms
+    "developer": {"engineer", "programmer", "coder", "software engineer"},
+    "engineer": {"developer", "programmer", "software developer"},
+    "scientist": {"researcher", "analyst"},
+    
+    # Relationship terms
+    "married": {"spouse", "husband", "wife", "partner"},
+    "dog": {"pup", "puppy", "pet", "canine"},
+    "cat": {"kitty", "kitten", "pet", "feline"},
+}
+
+# Detail enrichment words - adding these is NOT contradiction
+DETAIL_ENRICHMENT_WORDS = {
+    "rescue", "adopted", "beloved", "new", "old", "favorite",
+    "senior", "junior", "lead", "chief", "principal", "staff",
+    "golden", "black", "white", "brown",  # Pet colors
+    "downtown", "metro", "greater",  # Location refinements
+}
+
+
+def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
+    """
+    Check if two values are semantically equivalent (not a contradiction).
+    
+    Examples that should return True:
+    - "PhD" vs "doctorate" (synonyms)
+    - "ML" vs "Machine Learning" (abbreviation)
+    - "dog" vs "rescue dog" (enrichment)
+    """
+    old_lower = str(old_value).lower().strip()
+    new_lower = str(new_value).lower().strip()
+    
+    # Exact match
+    if old_lower == new_lower:
+        return True
+    
+    # One is substring of other (detail enrichment)
+    if old_lower in new_lower or new_lower in old_lower:
+        return True
+    
+    # Check synonym database
+    old_words = set(old_lower.split())
+    new_words = set(new_lower.split())
+    
+    for key, synonyms in SEMANTIC_EQUIVALENTS.items():
+        all_forms = {key} | synonyms
+        old_has = bool(old_words & all_forms) or any(form in old_lower for form in all_forms)
+        new_has = bool(new_words & all_forms) or any(form in new_lower for form in all_forms)
+        if old_has and new_has:
+            return True
+    
+    return False
+
+
+def _is_detail_enrichment(old_value: str, new_value: str) -> bool:
+    """
+    Check if new_value is enriching old_value, not contradicting it.
+    
+    Examples:
+    - "dog" → "rescue dog" (enrichment)
+    - "Max" → "Max, our golden retriever" (enrichment)
+    - "Jordan" → "Jordan, who works at Google" (enrichment)
+    """
+    old_lower = str(old_value).lower().strip()
+    new_lower = str(new_value).lower().strip()
+    
+    # If old value appears in new value, likely enrichment
+    if old_lower in new_lower:
+        return True
+    
+    # Check for common enrichment patterns
+    old_words = set(old_lower.split())
+    new_words = set(new_lower.split())
+    
+    # If new has all old words plus some, check if added words are enrichment
+    if old_words.issubset(new_words):
+        added_words = new_words - old_words
+        if added_words & DETAIL_ENRICHMENT_WORDS:
+            return True
+        # If just adding 1-2 descriptive words, likely enrichment
+        if len(added_words) <= 2:
+            return True
+    
+    return False
 
 
 class MLContradictionDetector:
@@ -115,6 +219,26 @@ class MLContradictionDetector:
             # Get confidence scores
             proba = self.belief_classifier.predict_proba([features])[0]
             confidence = float(proba.max())
+            
+            # Check for semantic equivalence BEFORE flagging as contradiction
+            # This prevents false positives on synonyms and detail enrichment
+            if _is_semantic_equivalent(old_value, new_value):
+                logger.debug(f"[SEMANTIC_EQ] Treating as equivalent: '{old_value}' ≈ '{new_value}'")
+                return {
+                    "is_contradiction": False,
+                    "category": "REFINEMENT",
+                    "policy": "NONE",
+                    "confidence": confidence
+                }
+            
+            if _is_detail_enrichment(old_value, new_value):
+                logger.debug(f"[ENRICHMENT] Treating as enrichment: '{old_value}' → '{new_value}'")
+                return {
+                    "is_contradiction": False,
+                    "category": "REFINEMENT",
+                    "policy": "NONE",
+                    "confidence": confidence
+                }
             
             # Categories REVISION and CONFLICT are contradictions
             is_contradiction = category in ["REVISION", "CONFLICT"]

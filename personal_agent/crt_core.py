@@ -51,10 +51,10 @@ class CRTConfig:
     
     # Thresholds
     theta_align: float = 0.15     # Drift threshold for alignment
-    theta_contra: float = 0.50    # Drift threshold for contradiction (tuned to reduce over-flagging)
+    theta_contra: float = 0.55    # Drift threshold for contradiction (raised for fewer false positives)
     theta_min: float = 0.30       # Minimum drift for confidence-based contradiction
     theta_drop: float = 0.30      # Confidence drop threshold
-    theta_fallback: float = 0.50  # Drift threshold for fallback contradictions
+    theta_fallback: float = 0.55  # Drift threshold for fallback contradictions
     
     # Reconstruction gates
     theta_intent: float = 0.5     # Intent alignment gate (lowered from 0.7 to reduce gate failures)

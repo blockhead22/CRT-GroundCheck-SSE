@@ -44,6 +44,74 @@ def create_simple_fact(value: Any) -> ExtractedFact:
 _WS_RE = re.compile(r"\s+")
 
 
+# ============================================================================
+# NICKNAME MAPPINGS - Used to recognize name relationships
+# ============================================================================
+
+NICKNAME_MAPPINGS = {
+    # Common English nicknames
+    "alex": {"alexander", "alexandra", "alexis", "alejandro", "alessandra"},
+    "bob": {"robert", "bobby", "rob", "robbie"},
+    "bill": {"william", "billy", "will", "willy"},
+    "mike": {"michael", "mickey", "mick"},
+    "nick": {"nicholas", "nicolas", "nicky", "nico"},
+    "kate": {"katherine", "catherine", "kathryn", "kathy", "katie"},
+    "liz": {"elizabeth", "elisabeth", "beth", "betty", "eliza"},
+    "tom": {"thomas", "tommy"},
+    "jim": {"james", "jimmy", "jamie"},
+    "joe": {"joseph", "joey"},
+    "dan": {"daniel", "danny"},
+    "sam": {"samuel", "samantha", "sammy"},
+    "chris": {"christopher", "christine", "christina", "christian"},
+    "matt": {"matthew", "matty"},
+    "dave": {"david", "davy"},
+    "steve": {"steven", "stephen"},
+    "ben": {"benjamin", "benny"},
+    "jen": {"jennifer", "jenny", "jenna"},
+    "meg": {"megan", "margaret", "maggie"},
+    "ed": {"edward", "eddie", "ted", "teddy"},
+    "rick": {"richard", "ricky", "dick"},
+    "tony": {"anthony"},
+    "andy": {"andrew", "drew"},
+    "pat": {"patrick", "patricia", "patty"},
+}
+
+
+def names_are_related(name1: str, name2: str) -> bool:
+    """
+    Check if two names could refer to the same person.
+    
+    Examples that return True:
+    - "Alex" vs "Alexandra" (nickname)
+    - "Alex Chen" vs "Alexandra Chen" (full name with nickname)
+    - "Bob" vs "Robert" (nickname mapping)
+    """
+    n1 = str(name1).lower().strip()
+    n2 = str(name2).lower().strip()
+    
+    # Exact match
+    if n1 == n2:
+        return True
+    
+    # One is substring of other (Alex Chen vs Alexandra Chen)
+    if n1 in n2 or n2 in n1:
+        return True
+    
+    # Extract first names for comparison
+    n1_first = n1.split()[0] if n1 else ""
+    n2_first = n2.split()[0] if n2 else ""
+    
+    # Check nickname mappings
+    for nickname, full_names in NICKNAME_MAPPINGS.items():
+        all_names = {nickname} | full_names
+        n1_match = n1_first in all_names or any(name in n1_first for name in all_names)
+        n2_match = n2_first in all_names or any(name in n2_first for name in all_names)
+        if n1_match and n2_match:
+            return True
+    
+    return False
+
+
 _NAME_STOPWORDS = {
     # Common non-name tokens that appear after "I'm ..." in normal sentences.
     "a",
