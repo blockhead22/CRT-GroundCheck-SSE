@@ -350,18 +350,33 @@ class AdversarialChallenger:
         
         # Evaluate based on challenge type
         challenge_type = challenge.get("challenge_type", "")
+        answer_text = response.get("answer", "").lower()
+        
+        # Check if the response acknowledges contradictions even if not formally flagged
+        acknowledges_conflict = any(phrase in answer_text for phrase in [
+            "conflicting information",
+            "unresolved contradiction",
+            "which one is correct",
+            "there's a discrepancy",
+            "contradicting",
+            "inconsistent",
+        ])
         
         if "correction" in challenge_type or "negation" in challenge_type:
             # These SHOULD trigger contradiction detection
             if response.get("contradiction_detected"):
                 analysis["verdict"] = "CORRECT - detected contradiction"
                 analysis["score"] = 1.0
+            elif acknowledges_conflict:
+                # System acknowledged conflict but confidence was low
+                analysis["verdict"] = "PARTIAL - acknowledged conflict but low confidence"
+                analysis["score"] = 0.75
             else:
                 analysis["verdict"] = "MISSED - should have detected contradiction"
                 analysis["score"] = 0.0
         elif "synonym" in challenge_type or "paraphrase" in challenge_type or "detail_addition" in challenge_type:
             # These should NOT trigger contradiction detection
-            if not response.get("contradiction_detected"):
+            if not response.get("contradiction_detected") and not acknowledges_conflict:
                 analysis["verdict"] = "CORRECT - no false positive"
                 analysis["score"] = 1.0
             else:
