@@ -228,6 +228,37 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "I work at Amazon, not Microsoft."
     # - "I run a sticker shop called The Printing Lair"
     # - "I work for myself" / "I'm self-employed"
+    # - "I don't work at Google anymore" (negation/correction)
+    # - "I'm still at Microsoft" (confirmation)
+    
+    # Check for employer negations first ("I don't work at X anymore")
+    # Also look for "I left X" patterns
+    m = re.search(
+        r"\bi (?:don't|do not|no longer) work (?:at|for)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+anymore|\s+now)?(?:\s*[,\.;]|\s*$)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not m:
+        m = re.search(
+            r"\bi left\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+last|\s+this|\s+a|\s*[,\.;]|\s*$)",
+            text,
+            flags=re.IGNORECASE,
+        )
+    if m:
+        old_employer = m.group(1).strip()
+        # Store in employer slot with "LEFT:" prefix - this allows contradiction detection
+        # against previous employer values
+        facts["employer"] = ExtractedFact("employer", f"LEFT:{old_employer}", f"left {_norm_text(old_employer)}")
+    
+    # Check for employer confirmations ("I'm still at X")
+    m = re.search(
+        r"\bi(?:'m| am) still (?:at|with)\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s*[,\.;]|\s*$)",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if m:
+        employer = m.group(1).strip()
+        facts["employer"] = ExtractedFact("employer", employer, _norm_text(employer))
     
     # Check for self-employment first
     if re.search(r"\b(?:i work for myself|i'm self[- ]?employed|i am self[- ]?employed)", text, flags=re.IGNORECASE):
@@ -296,11 +327,23 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             facts["location"] = ExtractedFact("location", loc_value, _norm_text(loc_value))
 
     # Years programming experience
+    # Examples:
+    # - "I've been programming for 10 years"
+    # - "it's closer to 12 years" (correction)
+    # - "actually 12 years of experience" (correction)
+    # - "more like 12 years" (correction)
     m = re.search(
         r"\b(?:i'?ve been programming for|i have been programming for)\s+(\d{1,3})\s+years\b",
         text,
         flags=re.IGNORECASE,
     )
+    if not m:
+        # Try correction patterns
+        m = re.search(
+            r"(?:it'?s\s+)?(?:closer to|actually|more like|really)\s+(\d{1,3})(?:\s+years)?(?:\s+(?:of\s+)?(?:experience|programming))?",
+            text,
+            flags=re.IGNORECASE,
+        )
     if m:
         years = int(m.group(1))
         facts["programming_years"] = ExtractedFact("programming_years", years, str(years))
@@ -312,11 +355,35 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "I'm 28"
     # - "I just turned 29 today"
     # - "I am twenty-five years old"
+    # - "I'm actually 34, not 32" (correction)
+    # - "Wait, I'm actually 34" (correction)
+    # - "My age is actually 34" (correction)
+    
+    # Try correction patterns first (they're more specific)
     m = re.search(
-        r"\bi(?:'m| am)\s+(\d{1,3})(?:\s+years old)?\b",
+        r"\b(?:i'?m|i am)\s+actually\s+(\d{1,3})(?:\s*,?\s*not\s+\d+)?(?:\s+years old)?\b",
         text,
         flags=re.IGNORECASE,
     )
+    if not m:
+        m = re.search(
+            r"\b(?:wait|actually)[,\s]+(?:i'?m|i am)\s+(?:actually\s+)?(\d{1,3})(?:\s+years old)?\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+    if not m:
+        m = re.search(
+            r"\bmy age is (?:actually\s+)?(\d{1,3})\b",
+            text,
+            flags=re.IGNORECASE,
+        )
+    if not m:
+        # Standard patterns
+        m = re.search(
+            r"\bi(?:'m| am)\s+(\d{1,3})(?:\s+years old)?\b",
+            text,
+            flags=re.IGNORECASE,
+        )
     if not m:
         m = re.search(
             r"\bi (?:just )?turned\s+(\d{1,3})\b",
