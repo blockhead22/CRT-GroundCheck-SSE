@@ -202,6 +202,12 @@ class ContradictionLedger:
             )
         """)
         
+        # Migration: Add metadata column if missing (for existing databases)
+        try:
+            cursor.execute("ALTER TABLE contradictions ADD COLUMN metadata TEXT")
+        except Exception:
+            pass  # Column already exists
+        
         # Reflection queue
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reflection_queue (
