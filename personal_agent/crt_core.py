@@ -38,6 +38,7 @@ class MemorySource(Enum):
     FALLBACK = "fallback"
     EXTERNAL = "external"
     REFLECTION = "reflection"
+    LLM_OUTPUT = "llm_output"
 
 
 @dataclass
@@ -385,7 +386,7 @@ class CRTMath:
         if src == fallback:
             τ = min(τ, τ_fallback_cap)
         """
-        if source == MemorySource.FALLBACK:
+        if source in {MemorySource.FALLBACK, MemorySource.LLM_OUTPUT}:
             return min(tau, self.config.tau_fallback_cap)
         return tau
     
@@ -583,7 +584,7 @@ class CRTMath:
             return True, f"Confidence drop: Δc={delta_c:.3f}, drift={drift:.3f}"
         
         # Rule 3: Fallback source with drift
-        if source == MemorySource.FALLBACK and drift > cfg.theta_fallback:
+        if source in {MemorySource.FALLBACK, MemorySource.LLM_OUTPUT} and drift > cfg.theta_fallback:
             return True, f"Fallback drift: {drift:.3f} > {cfg.theta_fallback}"
         
         return False, "No contradiction"
@@ -648,7 +649,7 @@ class CRTMath:
         if has_open_contradiction:
             return False, "Open contradiction exists"
         
-        if source == MemorySource.FALLBACK:
+        if source in {MemorySource.FALLBACK, MemorySource.LLM_OUTPUT}:
             return False, "Fallback source not verified"
         
         return True, "Safe to train"
