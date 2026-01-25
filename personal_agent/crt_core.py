@@ -88,6 +88,79 @@ class CRTConfig:
     beta_alignment: float = 0.25
     beta_contradiction: float = 0.3
     beta_fallback: float = 0.15
+    
+    @staticmethod
+    def load_from_calibration(
+        calibration_path: str = "artifacts/calibrated_thresholds.json"
+    ) -> 'CRTConfig':
+        """
+        Load CRTConfig with calibrated thresholds from file.
+        
+        Falls back to default values if calibration file is missing or invalid.
+        
+        Args:
+            calibration_path: Path to calibrated thresholds JSON
+            
+        Returns:
+            CRTConfig with calibrated or default thresholds
+        """
+        import json
+        import logging
+        from pathlib import Path
+        
+        logger = logging.getLogger(__name__)
+        config = CRTConfig()  # Start with defaults
+        
+        try:
+            threshold_file = Path(calibration_path)
+            if not threshold_file.exists():
+                logger.info(
+                    f"[CRT_CONFIG] Calibration file not found: {calibration_path}, "
+                    f"using defaults"
+                )
+                return config
+            
+            with open(threshold_file) as f:
+                data = json.load(f)
+            
+            # Update thresholds based on calibrated values
+            # Map calibrated zones to CRT thresholds
+            # Note: Calibrated thresholds are similarity scores (0-1), where high=similar
+            # CRT drift thresholds work inversely: high drift = low similarity
+            # Therefore we invert: drift = 1 - similarity
+            if "green_zone" in data:
+                # Use green_zone as the threshold for high-confidence alignment
+                config.theta_align = 1.0 - data["green_zone"]  # High similarity → low drift
+                logger.info(
+                    f"[CRT_CONFIG] Loaded calibrated theta_align: {config.theta_align:.3f} "
+                    f"(from green_zone: {data['green_zone']:.3f})"
+                )
+            
+            if "red_zone" in data:
+                # Use red_zone as the threshold for contradictions
+                config.theta_contra = 1.0 - data["red_zone"]  # Low similarity → high drift
+                logger.info(
+                    f"[CRT_CONFIG] Loaded calibrated theta_contra: {config.theta_contra:.3f} "
+                    f"(from red_zone: {data['red_zone']:.3f})"
+                )
+            
+            if "yellow_zone" in data:
+                # Use yellow_zone for fallback threshold
+                config.theta_fallback = 1.0 - data["yellow_zone"]
+                logger.info(
+                    f"[CRT_CONFIG] Loaded calibrated theta_fallback: {config.theta_fallback:.3f} "
+                    f"(from yellow_zone: {data['yellow_zone']:.3f})"
+                )
+            
+            logger.info(f"[CRT_CONFIG] Successfully loaded calibrated thresholds from {calibration_path}")
+            
+        except Exception as e:
+            logger.warning(
+                f"[CRT_CONFIG] Failed to load calibration from {calibration_path}: {e}, "
+                f"using defaults"
+            )
+        
+        return config
 
 
 class CRTMath:
