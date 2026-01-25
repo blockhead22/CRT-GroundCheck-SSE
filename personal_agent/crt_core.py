@@ -125,9 +125,12 @@ class CRTConfig:
             
             # Update thresholds based on calibrated values
             # Map calibrated zones to CRT thresholds
+            # Note: Calibrated thresholds are similarity scores (0-1), where high=similar
+            # CRT drift thresholds work inversely: high drift = low similarity
+            # Therefore we invert: drift = 1 - similarity
             if "green_zone" in data:
                 # Use green_zone as the threshold for high-confidence alignment
-                config.theta_align = 1.0 - data["green_zone"]  # Invert: high similarity = low drift
+                config.theta_align = 1.0 - data["green_zone"]  # High similarity → low drift
                 logger.info(
                     f"[CRT_CONFIG] Loaded calibrated theta_align: {config.theta_align:.3f} "
                     f"(from green_zone: {data['green_zone']:.3f})"
@@ -135,7 +138,7 @@ class CRTConfig:
             
             if "red_zone" in data:
                 # Use red_zone as the threshold for contradictions
-                config.theta_contra = 1.0 - data["red_zone"]  # Invert: low similarity = high drift
+                config.theta_contra = 1.0 - data["red_zone"]  # Low similarity → high drift
                 logger.info(
                     f"[CRT_CONFIG] Loaded calibrated theta_contra: {config.theta_contra:.3f} "
                     f"(from red_zone: {data['red_zone']:.3f})"

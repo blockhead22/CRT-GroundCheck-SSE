@@ -98,15 +98,17 @@ class GroundCheck:
         # Initialize TwoTierFactSystem for enhanced tuple verification
         # This allows comparing assistant output tuples vs ledger tuples
         try:
-            import sys
-            import os
+            from pathlib import Path
             # Add parent directory to path to import from personal_agent
-            parent_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            if parent_dir not in sys.path:
-                sys.path.insert(0, parent_dir)
+            parent_dir = Path(__file__).parents[2]
+            import sys
+            if str(parent_dir) not in sys.path:
+                sys.path.insert(0, str(parent_dir))
             
             from personal_agent.two_tier_facts import TwoTierFactSystem
-            self.two_tier_system = TwoTierFactSystem(enable_llm=False)  # Use regex-only for verification
+            # Disable LLM to use only regex-based fact extraction for verification
+            # This ensures deterministic, high-precision verification
+            self.two_tier_system = TwoTierFactSystem(enable_llm=False)
         except Exception as e:
             # Graceful degradation if two-tier system unavailable
             import logging
@@ -312,8 +314,10 @@ class GroundCheck:
                             # Check if attribute is mutually exclusive
                             attr = tuple_fact.attribute
                             if attr in self.MUTUALLY_EXCLUSIVE_SLOTS:
+                                # Safely get normalized_value with fallback to value
+                                normalized = getattr(tuple_fact, 'normalized_value', None) or tuple_fact.value
                                 slot_to_facts[attr].append({
-                                    'value': tuple_fact.normalized_value or tuple_fact.value,
+                                    'value': normalized,
                                     'memory_id': memory.id,
                                     'timestamp': memory.timestamp,
                                     'trust': memory.trust,
