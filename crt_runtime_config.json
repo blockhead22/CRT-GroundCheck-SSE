@@ -6,7 +6,7 @@
     "worker_interval_seconds": 2,
     "idle_scheduler_enabled": false,
     "idle_seconds": 120,
-    "auto_resolve_contradictions_enabled": false,
+    "auto_resolve_contradictions_enabled": true,
     "auto_web_research_enabled": false
   },
   "learned_suggestions": {

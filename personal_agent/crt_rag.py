@@ -1187,7 +1187,11 @@ class CRTEnhancedRAG:
         else:
             return f"(changed from {', '.join(old_values)})"
     
-    def _resolve_contradiction_assertively(self, contradictions: List[ContradictionEntry]) -> Optional[MemoryItem]:
+    def _resolve_contradiction_assertively(
+        self, 
+        contradictions: List[ContradictionEntry],
+        blocking_data: Optional[List[Dict[str, Any]]] = None
+    ) -> Optional[MemoryItem]:
         """
         Automatically resolve contradiction by picking highest trust + most recent claim.
         
@@ -1198,6 +1202,7 @@ class CRTEnhancedRAG:
         
         Args:
             contradictions: List of contradicting memory items
+            blocking_data: Optional list of dicts with old_value/new_value for fallback
             
         Returns:
             The winning memory item to assert
@@ -1225,6 +1230,27 @@ class CRTEnhancedRAG:
                 unique_memories.append(mem)
         
         if not unique_memories:
+            # Fallback: Use blocking_data if memory lookup failed
+            if blocking_data:
+                logger.info("[CONTRADICTION_RESOLVED] Memory lookup failed, using blocking_data fallback")
+                # Pick newest value (most recent is preferred)
+                # blocking_data has structure: {'slot': str, 'old_value': str, 'new_value': str, ...}
+                newest = blocking_data[0] if blocking_data else None
+                if newest and 'new_value' in newest:
+                    # Create synthetic memory item from new_value
+                    from .crt_core import encode_vector, SSEMode
+                    import time
+                    synthetic_mem = MemoryItem(
+                        memory_id=f"synthetic_resolved_{int(time.time())}",
+                        vector=encode_vector(newest['new_value']),
+                        text=newest['new_value'],
+                        timestamp=time.time(),
+                        confidence=RESOLVED_CONTRADICTION_CONFIDENCE,
+                        trust=0.85,
+                        source=MemorySource.USER,
+                        sse_mode=SSEMode.LOSSLESS
+                    )
+                    return synthetic_mem
             return None
         
         # Sort by trust (primary), then timestamp (secondary)
@@ -1322,14 +1348,33 @@ class CRTEnhancedRAG:
                         break
         
         # Resolve automatically instead of asking
-        resolved_memory = self._resolve_contradiction_assertively(relevant_contras)
+        resolved_memory = self._resolve_contradiction_assertively(relevant_contras, blocking_contradictions)
         
         if resolved_memory:
             # Extract the answer value
             answer_value = self._extract_value_from_memory_text(resolved_memory.text)
             
-            # Build caveat disclosure
-            caveat = self._build_caveat_disclosure(resolved_memory, relevant_contras)
+            # Build caveat disclosure from blocking_contradictions if we have it
+            if blocking_contradictions:
+                # Extract old values with deduplication
+                old_values = []
+                seen = set()
+                for contra in blocking_contradictions:
+                    old_val = self._extract_value_from_memory_text(contra.get('old_value', ''))
+                    if old_val and old_val not in seen:
+                        seen.add(old_val)
+                        old_values.append(old_val)
+                
+                if old_values:
+                    if len(old_values) == 1:
+                        caveat = f"(changed from {old_values[0]})"
+                    else:
+                        caveat = f"(changed from {', '.join(old_values)})"
+                else:
+                    caveat = "(most recent update)"
+            else:
+                # Fallback to building caveat from ledger entries
+                caveat = self._build_caveat_disclosure(resolved_memory, relevant_contras)
             
             # Return assertive answer with caveat as clarification
             assertive_answer = f"{answer_value} {caveat}" if answer_value else f"{resolved_memory.text} {caveat}"
@@ -1340,7 +1385,21 @@ class CRTEnhancedRAG:
             # Gates pass when we successfully resolve with caveat disclosure
             return True, assertive_answer, blocking_contradictions
         
-        # Fallback to old behavior if resolution fails
+        # Fallback: Use blocking_contradictions dict data directly 
+        # Pick new_value (more recent) with caveat disclosure
+        if blocking_contradictions:
+            first_contra = blocking_contradictions[0]
+            new_value = self._extract_value_from_memory_text(first_contra.get('new_value', ''))
+            old_value = self._extract_value_from_memory_text(first_contra.get('old_value', ''))
+            
+            if new_value:
+                caveat = f"(changed from {old_value})" if old_value else "(most recent update)"
+                assertive_answer = f"{new_value} {caveat}"
+                
+                logger.info(f"[GATE_CHECK] ✓ Resolved using blocking_data fallback: {assertive_answer}")
+                return True, assertive_answer, blocking_contradictions
+        
+        # Final fallback to old questioning behavior if all else fails
         messages = []
         for contra in blocking_contradictions[:3]:  # Limit to 3 for readability
             slot = contra['slot']
