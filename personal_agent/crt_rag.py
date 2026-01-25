@@ -1186,6 +1186,24 @@ class CRTEnhancedRAG:
             return f"(changed from {old_values[0]})"
         else:
             return f"(changed from {', '.join(old_values)})"
+
+    def _answer_has_caveat(self, answer: str) -> bool:
+        """Check if an answer already includes contradiction caveat language."""
+        if not answer:
+            return False
+        caveat_patterns = [
+            r"\bpreviously\b",
+            r"\bearlier\b",
+            r"\bchanged\b",
+            r"\bupdated\b",
+            r"\bmost recent\b",
+            r"\bcontradict",
+            r"\bconflict",
+            r"\(changed from",
+            r"\(most recent",
+            r"\(updated",
+        ]
+        return bool(re.search("|".join(caveat_patterns), answer, flags=re.IGNORECASE))
     
     def _resolve_contradiction_assertively(
         self, 
@@ -3646,6 +3664,10 @@ class CRTEnhancedRAG:
         
         # Count reintroductions for audit trail
         reintroduced_count = sum(1 for m in retrieved_with_flags if m.get('reintroduced_claim'))
+        if reintroduced_count > 0 and not self._answer_has_caveat(final_answer):
+            is_question = user_input_kind in ("question", "instruction")
+            caveat = "(most recent update)" if is_question else "(changed from prior value)"
+            final_answer = f"{final_answer.rstrip()} {caveat}"
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
