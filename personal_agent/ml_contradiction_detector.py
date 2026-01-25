@@ -240,6 +240,18 @@ class MLContradictionDetector:
                     "confidence": confidence
                 }
             
+            # For name slots, check if names are related (nicknames, full names)
+            if slot in ("name", "user_name", "spouse_name", "pet_name"):
+                from .fact_slots import names_are_related
+                if names_are_related(old_value, new_value):
+                    logger.debug(f"[NAME_RELATED] '{old_value}' and '{new_value}' are related names")
+                    return {
+                        "is_contradiction": False,
+                        "category": "REFINEMENT",
+                        "policy": "NONE",
+                        "confidence": confidence
+                    }
+            
             # Categories REVISION and CONFLICT are contradictions
             is_contradiction = category in ["REVISION", "CONFLICT"]
             

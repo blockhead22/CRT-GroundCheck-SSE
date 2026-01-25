@@ -596,6 +596,29 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         year = m.group(1).strip()
         facts["graduation_year"] = ExtractedFact("graduation_year", year, year)
     
+    # Degree type (PhD vs Master's vs Bachelor's)
+    # Examples:
+    # - "I have a PhD"
+    # - "I have a Master's degree"
+    # - "I have a PhD in Machine Learning"
+    # - "I never said I had a PhD. I have a Master's degree."
+    # - "I do have a PhD"
+    degree_patterns = [
+        (r"\bi have a\s+(phd|ph\.d\.?|doctorate)\b", "PhD"),
+        (r"\bi have a\s+(master'?s?\s*(?:degree)?)", "Masters"),
+        (r"\bi have a\s+(bachelor'?s?\s*(?:degree)?)", "Bachelors"),
+        (r"\bi do have a\s+(phd|ph\.d\.?|doctorate)\b", "PhD"),
+        (r"\bi do have a\s+(master'?s?\s*(?:degree)?)", "Masters"),
+        (r"\bi do have a\s+(bachelor'?s?\s*(?:degree)?)", "Bachelors"),
+        (r"\bcompleted my\s+(doctorate|phd|ph\.d\.?)", "PhD"),
+        (r"\bcompleted my\s+(master'?s)", "Masters"),
+    ]
+    for pattern, degree_type in degree_patterns:
+        m = re.search(pattern, text, flags=re.IGNORECASE)
+        if m:
+            facts["degree_type"] = ExtractedFact("degree_type", degree_type, degree_type.lower())
+            break
+    
     # Project name/description
     # Examples:
     # - "My project is called CRT"

@@ -1,0 +1,608 @@
+{
+  "summary": {
+    "total_score": 17.0,
+    "max_turns": 25,
+    "avg_score": 0.68,
+    "contradictions_detected": 6,
+    "false_positives": 1,
+    "missed_detections": 0
+  },
+  "results": [
+    {
+      "turn": 1,
+      "challenge_type": "baseline",
+      "difficulty": 1,
+      "expected_conflict": null,
+      "contradiction_detected": false,
+      "gates_passed": false,
+      "confidence": 0.3,
+      "answer_snippet": "I need to be honest about my uncertainty here.\n\nI might be wrong because I have conflicting information in our chat history.\n\nI have 1 unresolved contradictions about this\n\nHere are the conflicting no",
+      "verdict": "OK - baseline established",
+      "score": 1.0
+    },
+    {
+      "turn": 2,
+      "challenge_type": "baseline",
+      "difficulty": 1,
+      "expected_conflict": null,
+      "contradiction_detected": true,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "You mentioned earlier that you're 32 years old and live in San Francisco. Is there anything else you'd like to discuss about your life or location? I'm here to help!",
+      "verdict": "OK - baseline established",
+      "score": 1.0
+    },
+    {
+      "turn": 3,
+      "challenge_type": "baseline",
+      "difficulty": 1,
+      "expected_conflict": null,
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "It seems like there's a bit of confusion here. You've provided multiple instances of the same fact, and then repeated it again when you mentioned your response should only use facts from the USER FACT",
+      "verdict": "OK - baseline established",
+      "score": 1.0
+    },
+    {
+      "turn": 4,
+      "challenge_type": "baseline",
+      "difficulty": 1,
+      "expected_conflict": null,
+      "contradiction_detected": true,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "That's interesting! It sounds like the user has a strong background in programming, having started with Java 10 years ago. Is there anything else you'd like to know or discuss about their programming ",
+      "verdict": "OK - baseline established",
+      "score": 1.0
+    },
+    {
+      "turn": 5,
+      "challenge_type": "baseline",
+      "difficulty": 1,
+      "expected_conflict": null,
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "It seems like there's a bit of repetition here! You've mentioned that you're married to someone named Jordan and have a dog named Max. I'll make sure to be consistent with this information going forwa",
+      "verdict": "OK - baseline established",
+      "score": 1.0
+    },
+    {
+      "turn": 6,
+      "challenge_type": "temporal_math",
+      "difficulty": 3,
+      "expected_conflict": "PhD in 2018 + 3 years = 2021, but current year implies different tenure",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "I've noticed that you've mentioned starting at Google 3 years ago, right after your PhD. However, I should clarify that this information is repeated multiple times in our conversation, which may indic",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 7,
+      "challenge_type": "direct_correction",
+      "difficulty": 2,
+      "expected_conflict": "age: 32 vs 34",
+      "contradiction_detected": true,
+      "gates_passed": true,
+      "confidence": 0.85,
+      "answer_snippet": "San Francisco (changed from I)",
+      "verdict": "CORRECT - detected contradiction",
+      "score": 1.0
+    },
+    {
+      "turn": 8,
+      "challenge_type": "temporal_inference",
+      "difficulty": 4,
+      "expected_conflict": "If married 5 years and met at Stanford (grad 2018), timeline is tight",
+      "contradiction_detected": true,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "So, we know that the user is a human who has been married for 5 years and that they attended Stanford as their employer. \n\nCan I ask more questions about your relationship or time at Stanford?",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 9,
+      "challenge_type": "hedged_correction",
+      "difficulty": 2,
+      "expected_conflict": "programming_years: 10 vs 12",
+      "contradiction_detected": true,
+      "gates_passed": true,
+      "confidence": 0.85,
+      "answer_snippet": "10 (changed from I, 10 years)",
+      "verdict": "CORRECT - detected contradiction",
+      "score": 1.0
+    },
+    {
+      "turn": 10,
+      "challenge_type": "temporal_anchor",
+      "difficulty": 3,
+      "expected_conflict": "2019 join vs '3 years ago' (if different)",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "I notice that you've mentioned joining Google in 2019 and being at a startup before that. However, when you reiterate this information, it seems to be slightly inconsistent.\n\nFrom what I have stored i",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 11,
+      "challenge_type": "location_refinement",
+      "difficulty": 4,
+      "expected_conflict": "San Francisco vs Mountain View (both Bay Area)",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "You've mentioned that you work in the Bay Area, specifically Mountain View. However, I want to clarify that this information seems to be consistent across our conversation, but it's worth noting that ",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 12,
+      "challenge_type": "synonym_check",
+      "difficulty": 3,
+      "expected_conflict": "Should NOT conflict with 'Machine Learning' - synonyms",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "You've mentioned that your expertise lies in ML and AI systems. You've also explicitly stated this multiple times, reinforcing your area of specialization. Is there anything else related to your work ",
+      "verdict": "CORRECT - no false positive",
+      "score": 1.0
+    },
+    {
+      "turn": 13,
+      "challenge_type": "role_evolution",
+      "difficulty": 3,
+      "expected_conflict": "data scientist vs senior ML engineer",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "I've noticed that you've mentioned being a senior ML engineer and getting promoted last month multiple times. It seems like this information is consistent across our conversation. However, I also see ",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 14,
+      "challenge_type": "detail_addition",
+      "difficulty": 2,
+      "expected_conflict": "Should NOT conflict - adding detail to existing fact",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "It seems like there's some repetition here about adopting a rescue dog named Max with someone named Jordan.\n\nTo clarify, it appears that the user has adopted a rescue dog named Max and is married to s",
+      "verdict": "CORRECT - no false positive",
+      "score": 1.0
+    },
+    {
+      "turn": 15,
+      "challenge_type": "paraphrase_test",
+      "difficulty": 4,
+      "expected_conflict": "PhD vs doctorate, ML vs CS - subtle differences",
+      "contradiction_detected": true,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "You completed your doctorate in Computer Science (CS) at Stanford.",
+      "verdict": "FALSE POSITIVE - flagged synonym/refinement as contradiction",
+      "score": 0.0
+    },
+    {
+      "turn": 16,
+      "challenge_type": "third_party_intro",
+      "difficulty": 2,
+      "expected_conflict": "None - new entity",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "It seems like there might be some repetition in your statements about your friend Sarah's job at Google. However, based on the information provided, I can tell you that you have confirmed multiple tim",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 17,
+      "challenge_type": "third_party_fact",
+      "difficulty": 2,
+      "expected_conflict": "None - about Sarah, not me",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "I've got a repetitive statement here!\n\nYou mentioned earlier that Sarah is thinking of moving to Seattle. To confirm, I have multiple instances of this information stored in my memory with trust score",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 18,
+      "challenge_type": "hypothetical_vs_fact",
+      "difficulty": 4,
+      "expected_conflict": "San Francisco/Mountain View vs Seattle (hypothetical)",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "It seems like we've established a pattern here. The user is considering moving to Seattle due to Jordan's company having an office there. Would you like to discuss more about your plans or something e",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 19,
+      "challenge_type": "self_reference_third_person",
+      "difficulty": 5,
+      "expected_conflict": "Should recognize Alex = me",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "You've mentioned that you're considering a job change. You've repeated this information multiple times, with each repetition reinforcing your desire to explore new opportunities. Is there something sp",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 20,
+      "challenge_type": "name_expansion",
+      "difficulty": 4,
+      "expected_conflict": "Alex Chen vs Alexandra Chen",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "I have multiple instances of Alexandra Chen stating that her full name is Alexandra Chen and \"Alex\" is just her nickname. I will prioritize consistency across conversations. It appears that there may ",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 21,
+      "challenge_type": "direct_negation",
+      "difficulty": 2,
+      "expected_conflict": "employer: Google vs left Google",
+      "contradiction_detected": false,
+      "gates_passed": false,
+      "confidence": 0.3,
+      "answer_snippet": "I need to be honest about my uncertainty here.\n\nI might be wrong because I have conflicting information in our chat history.\n\nI have 1 unresolved contradictions about this\n\nHere are the conflicting no",
+      "verdict": "PARTIAL - acknowledged conflict but low confidence",
+      "score": 0.75
+    },
+    {
+      "turn": 22,
+      "challenge_type": "correction_of_correction",
+      "difficulty": 3,
+      "expected_conflict": "left Google vs still at Google",
+      "contradiction_detected": false,
+      "gates_passed": false,
+      "confidence": 0.3,
+      "answer_snippet": "I need to be honest about my uncertainty here.\n\nI might be wrong because I have conflicting information in our chat history.\n\nI have 1 unresolved contradictions about this\n\nHere are the conflicting no",
+      "verdict": "PARTIAL - acknowledged conflict but low confidence",
+      "score": 0.75
+    },
+    {
+      "turn": 23,
+      "challenge_type": "denial_of_fact",
+      "difficulty": 4,
+      "expected_conflict": "PhD vs Master's - user denying earlier statement",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "You've repeated that you have a Master's degree. You're correct, and it seems we've established this fact multiple times. Let me summarize: You indeed have a Master's degree, which is a notable aspect",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 24,
+      "challenge_type": "retraction_of_denial",
+      "difficulty": 4,
+      "expected_conflict": "Master's vs PhD (returning to original)",
+      "contradiction_detected": false,
+      "gates_passed": true,
+      "confidence": 0.8,
+      "answer_snippet": "I seem to have encountered a pattern here. It appears that the user has already claimed to have a PhD and then denied it, repeating this cycle multiple times as part of a test.\n\nGiven the facts provid",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    },
+    {
+      "turn": 25,
+      "challenge_type": "double_negative",
+      "difficulty": 5,
+      "expected_conflict": "Triple negative - should parse as 'I work at Google'",
+      "contradiction_detected": false,
+      "gates_passed": false,
+      "confidence": 0.3,
+      "answer_snippet": "I need to be honest about my uncertainty here.\n\nI might be wrong because I have conflicting information in our chat history.\n\nI have 1 unresolved contradictions about this\n\nHere are the conflicting no",
+      "verdict": "EVALUATED - check manually",
+      "score": 0.5
+    }
+  ],
+  "challenge_log": [
+    {
+      "turn": 1,
+      "phase": "baseline",
+      "challenge": {
+        "input": "Hi, I'm Alex Chen. I'm a data scientist at Google.",
+        "establishes": {
+          "name": "Alex Chen",
+          "employer": "Google",
+          "role": "data scientist"
+        },
+        "challenge_type": "baseline",
+        "difficulty": 1
+      },
+      "timestamp": "2026-01-25T07:19:06.817293"
+    },
+    {
+      "turn": 2,
+      "phase": "baseline",
+      "challenge": {
+        "input": "I'm 32 years old and I live in San Francisco.",
+        "establishes": {
+          "age": 32,
+          "location": "San Francisco"
+        },
+        "challenge_type": "baseline",
+        "difficulty": 1
+      },
+      "timestamp": "2026-01-25T07:19:15.487149"
+    },
+    {
+      "turn": 3,
+      "phase": "baseline",
+      "challenge": {
+        "input": "I have a PhD in Machine Learning from Stanford. Graduated in 2018.",
+        "establishes": {
+          "degree": "PhD",
+          "field": "Machine Learning",
+          "school": "Stanford",
+          "grad_year": 2018
+        },
+        "challenge_type": "baseline",
+        "difficulty": 1
+      },
+      "timestamp": "2026-01-25T07:19:17.075808"
+    },
+    {
+      "turn": 4,
+      "phase": "baseline",
+      "challenge": {
+        "input": "I've been programming for 10 years, started with Java.",
+        "establishes": {
+          "programming_years": 10,
+          "first_language": "Java"
+        },
+        "challenge_type": "baseline",
+        "difficulty": 1
+      },
+      "timestamp": "2026-01-25T07:19:51.286267"
+    },
+    {
+      "turn": 5,
+      "phase": "baseline",
+      "challenge": {
+        "input": "I'm married to someone named Jordan. We have a dog named Max.",
+        "establishes": {
+          "spouse": "Jordan",
+          "pet": "Max",
+          "pet_type": "dog"
+        },
+        "challenge_type": "baseline",
+        "difficulty": 1
+      },
+      "timestamp": "2026-01-25T07:20:25.395589"
+    },
+    {
+      "turn": 6,
+      "phase": "temporal",
+      "challenge": {
+        "input": "I started at Google 3 years ago, right after my PhD.",
+        "challenge_type": "temporal_math",
+        "expected_conflict": "PhD in 2018 + 3 years = 2021, but current year implies different tenure",
+        "difficulty": 3
+      },
+      "timestamp": "2026-01-25T07:20:59.494915"
+    },
+    {
+      "turn": 7,
+      "phase": "temporal",
+      "challenge": {
+        "input": "Wait, I'm actually 34, not 32. I always forget my age.",
+        "challenge_type": "direct_correction",
+        "expected_conflict": "age: 32 vs 34",
+        "difficulty": 2
+      },
+      "timestamp": "2026-01-25T07:21:33.607404"
+    },
+    {
+      "turn": 8,
+      "phase": "temporal",
+      "challenge": {
+        "input": "I've been married for 5 years now. We met at Stanford.",
+        "challenge_type": "temporal_inference",
+        "expected_conflict": "If married 5 years and met at Stanford (grad 2018), timeline is tight",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:21:34.955270"
+    },
+    {
+      "turn": 9,
+      "phase": "temporal",
+      "challenge": {
+        "input": "Actually I think I said 10 years of programming but it's closer to 12.",
+        "challenge_type": "hedged_correction",
+        "expected_conflict": "programming_years: 10 vs 12",
+        "difficulty": 2
+      },
+      "timestamp": "2026-01-25T07:22:09.167328"
+    },
+    {
+      "turn": 10,
+      "phase": "temporal",
+      "challenge": {
+        "input": "I joined Google in 2019. Before that I was at a startup.",
+        "challenge_type": "temporal_anchor",
+        "expected_conflict": "2019 join vs '3 years ago' (if different)",
+        "difficulty": 3
+      },
+      "timestamp": "2026-01-25T07:22:12.217477"
+    },
+    {
+      "turn": 11,
+      "phase": "semantic",
+      "challenge": {
+        "input": "I work in the Bay Area, specifically Mountain View.",
+        "challenge_type": "location_refinement",
+        "expected_conflict": "San Francisco vs Mountain View (both Bay Area)",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:22:14.595008"
+    },
+    {
+      "turn": 12,
+      "phase": "semantic",
+      "challenge": {
+        "input": "My expertise is in ML and AI systems.",
+        "challenge_type": "synonym_check",
+        "expected_conflict": "Should NOT conflict with 'Machine Learning' - synonyms",
+        "difficulty": 3
+      },
+      "timestamp": "2026-01-25T07:22:48.952496"
+    },
+    {
+      "turn": 13,
+      "phase": "semantic",
+      "challenge": {
+        "input": "I'm a senior ML engineer now, got promoted last month.",
+        "challenge_type": "role_evolution",
+        "expected_conflict": "data scientist vs senior ML engineer",
+        "difficulty": 3
+      },
+      "timestamp": "2026-01-25T07:23:23.094594"
+    },
+    {
+      "turn": 14,
+      "phase": "semantic",
+      "challenge": {
+        "input": "Jordan and I adopted a rescue dog. His name is Max.",
+        "challenge_type": "detail_addition",
+        "expected_conflict": "Should NOT conflict - adding detail to existing fact",
+        "difficulty": 2
+      },
+      "timestamp": "2026-01-25T07:23:57.645879"
+    },
+    {
+      "turn": 15,
+      "phase": "semantic",
+      "challenge": {
+        "input": "I completed my doctorate at Stanford in CS.",
+        "challenge_type": "paraphrase_test",
+        "expected_conflict": "PhD vs doctorate, ML vs CS - subtle differences",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:24:32.007272"
+    },
+    {
+      "turn": 16,
+      "phase": "identity",
+      "challenge": {
+        "input": "My friend Sarah also works at Google. She's in sales.",
+        "challenge_type": "third_party_intro",
+        "expected_conflict": "None - new entity",
+        "difficulty": 2
+      },
+      "timestamp": "2026-01-25T07:25:06.019124"
+    },
+    {
+      "turn": 17,
+      "phase": "identity",
+      "challenge": {
+        "input": "Sarah told me she's thinking of moving to Seattle.",
+        "challenge_type": "third_party_fact",
+        "expected_conflict": "None - about Sarah, not me",
+        "difficulty": 2
+      },
+      "timestamp": "2026-01-25T07:25:40.734348"
+    },
+    {
+      "turn": 18,
+      "phase": "identity",
+      "challenge": {
+        "input": "I might move to Seattle too actually. Jordan's company has an office there.",
+        "challenge_type": "hypothetical_vs_fact",
+        "expected_conflict": "San Francisco/Mountain View vs Seattle (hypothetical)",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:26:15.174139"
+    },
+    {
+      "turn": 19,
+      "phase": "identity",
+      "challenge": {
+        "input": "Alex mentioned he's considering a job change.",
+        "challenge_type": "self_reference_third_person",
+        "expected_conflict": "Should recognize Alex = me",
+        "difficulty": 5
+      },
+      "timestamp": "2026-01-25T07:26:49.164351"
+    },
+    {
+      "turn": 20,
+      "phase": "identity",
+      "challenge": {
+        "input": "Actually my full name is Alexandra Chen, Alex is just my nickname.",
+        "challenge_type": "name_expansion",
+        "expected_conflict": "Alex Chen vs Alexandra Chen",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:27:22.987716"
+    },
+    {
+      "turn": 21,
+      "phase": "negation",
+      "challenge": {
+        "input": "I don't actually work at Google anymore. I left last week.",
+        "challenge_type": "direct_negation",
+        "expected_conflict": "employer: Google vs left Google",
+        "difficulty": 2
+      },
+      "timestamp": "2026-01-25T07:27:24.526389"
+    },
+    {
+      "turn": 22,
+      "phase": "negation",
+      "challenge": {
+        "input": "Wait, that's not right. I'm still at Google, I was confused.",
+        "challenge_type": "correction_of_correction",
+        "expected_conflict": "left Google vs still at Google",
+        "difficulty": 3
+      },
+      "timestamp": "2026-01-25T07:27:25.417184"
+    },
+    {
+      "turn": 23,
+      "phase": "negation",
+      "challenge": {
+        "input": "I never said I had a PhD. I have a Master's degree.",
+        "challenge_type": "denial_of_fact",
+        "expected_conflict": "PhD vs Master's - user denying earlier statement",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:27:26.244458"
+    },
+    {
+      "turn": 24,
+      "phase": "negation",
+      "challenge": {
+        "input": "Actually no, I do have a PhD. I was testing you.",
+        "challenge_type": "retraction_of_denial",
+        "expected_conflict": "Master's vs PhD (returning to original)",
+        "difficulty": 4
+      },
+      "timestamp": "2026-01-25T07:28:00.314570"
+    },
+    {
+      "turn": 25,
+      "phase": "negation",
+      "challenge": {
+        "input": "It's not that I don't not work at Google.",
+        "challenge_type": "double_negative",
+        "expected_conflict": "Triple negative - should parse as 'I work at Google'",
+        "difficulty": 5
+      },
+      "timestamp": "2026-01-25T07:28:34.791038"
+    }
+  ]
+}

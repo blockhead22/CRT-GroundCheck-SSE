@@ -3447,6 +3447,22 @@ class CRTEnhancedRAG:
                     if latest_norm == new_norm:
                         continue
 
+                    # Values differ - but before flagging as contradiction, check ML detector
+                    # This catches semantic equivalents like "PhD in ML" vs "doctorate in CS"
+                    if self.ml_detector:
+                        ml_result = self.ml_detector.check_contradiction(
+                            old_value=str(getattr(latest_fact, "value", latest_norm)),
+                            new_value=str(getattr(new_fact, "value", new_norm)),
+                            slot=slot
+                        )
+                        if not ml_result.get("is_contradiction", True):
+                            # ML says it's not a contradiction (e.g., semantic equivalence)
+                            logger.debug(
+                                "ML detector says no contradiction for slot=%s: '%s' vs '%s' (category=%s)",
+                                slot, latest_norm, new_norm, ml_result.get("category", "unknown")
+                            )
+                            continue
+
                     # New asserted value conflicts with the latest value => contradiction.
                     selected_prev = latest_mem
                     break

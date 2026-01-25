@@ -362,7 +362,7 @@ class AdversarialChallenger:
             "inconsistent",
         ])
         
-        if "correction" in challenge_type or "negation" in challenge_type:
+        if "correction" in challenge_type or "negation" in challenge_type or "retraction" in challenge_type or "denial" in challenge_type:
             # These SHOULD trigger contradiction detection
             if response.get("contradiction_detected"):
                 analysis["verdict"] = "CORRECT - detected contradiction"
@@ -381,6 +381,14 @@ class AdversarialChallenger:
                 analysis["score"] = 1.0
             else:
                 analysis["verdict"] = "FALSE POSITIVE - flagged synonym/refinement as contradiction"
+                analysis["score"] = 0.0
+        elif "third_party" in challenge_type or "hypothetical" in challenge_type or "name_expansion" in challenge_type or "self_reference" in challenge_type:
+            # These should NOT trigger contradiction detection - they're about other entities or hypotheticals
+            if not response.get("contradiction_detected"):
+                analysis["verdict"] = "CORRECT - no false positive on identity/hypothetical"
+                analysis["score"] = 1.0
+            else:
+                analysis["verdict"] = "FALSE POSITIVE - flagged identity/hypothetical as contradiction"
                 analysis["score"] = 0.0
         elif "baseline" in challenge_type:
             # Baseline should just work
