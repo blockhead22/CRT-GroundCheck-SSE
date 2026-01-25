@@ -26,6 +26,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from personal_agent.runtime_config import load_runtime_config
+from personal_agent.crt_core import MemorySource
+from personal_agent.fact_slots import extract_fact_slots
 import time
 import json
 
@@ -359,7 +361,15 @@ metrics = {
     'reintroduced_flagged_count': 0,      # Contradicted memories properly flagged (OK)
     'reintroduced_unflagged_count': 0,    # Contradicted memories missing flag (VIOLATION)
     'answer_asserted_contradicted_claim': 0,  # Answer used contradicted claim without caveat (VIOLATION)
+    # Inverse harness (LLM self-consistency) metrics
+    'llm_claim_turns': 0,
+    'llm_claims_tracked': 0,
+    'llm_self_contradictions': 0,
+    'llm_contradiction_events': [],
 }
+
+llm_claim_history: dict[str, list[dict]] = {}
+llm_claims_by_turn: dict[int, list[dict]] = {}
 
 
 def _should_print(turn: int) -> bool:
@@ -436,6 +446,80 @@ def _track_reintroduction_metrics(result: dict, *, turn: int) -> None:
         metrics['answer_asserted_contradicted_claim'] += 1
         if _should_print(turn):
             print(f"[REINTRO VIOLATION] Answer used {flagged_count} contradicted claim(s) without caveat")
+
+
+def _track_llm_claims(result: dict, *, turn: int) -> dict:
+    """Track LLM-originated claims (inverse harness)."""
+    answer = str(result.get("answer") or "")
+    claims = extract_fact_slots(answer) or {}
+    tracked: list[dict] = []
+    contradictions: list[dict] = []
+
+    if not claims:
+        return {"claims": tracked, "contradictions": contradictions}
+
+    for slot, fact in claims.items():
+        if fact is None:
+            continue
+        value = getattr(fact, "value", None)
+        if value is None:
+            continue
+        normalized = getattr(fact, "normalized", "") or str(value).strip().lower()
+        entry = {
+            "slot": slot,
+            "value": value,
+            "normalized": normalized,
+            "turn": turn,
+        }
+        tracked.append(entry)
+
+        prior = llm_claim_history.get(slot, [])
+        if prior:
+            last = prior[-1]
+            if last.get("normalized") != normalized:
+                contradictions.append({
+                    "slot": slot,
+                    "old_value": last.get("value"),
+                    "new_value": value,
+                    "old_turn": last.get("turn"),
+                    "turn": turn,
+                })
+
+        prior.append(entry)
+        llm_claim_history[slot] = prior
+
+        if rag is not None:
+            try:
+                rag.memory.store_memory(
+                    text=f"FACT: {slot} = {value}",
+                    confidence=0.35,
+                    source=MemorySource.LLM_OUTPUT,
+                    context={
+                        "slot": slot,
+                        "value": value,
+                        "normalized": normalized,
+                        "turn": turn,
+                        "origin": "llm_output",
+                        "answer_snippet": answer[:200],
+                    },
+                )
+            except Exception:
+                pass
+
+    if tracked:
+        metrics['llm_claim_turns'] += 1
+        metrics['llm_claims_tracked'] += len(tracked)
+
+    if contradictions:
+        metrics['llm_self_contradictions'] += len(contradictions)
+        metrics['llm_contradiction_events'].extend(contradictions)
+        if _should_print(turn):
+            print("\n[LLM SELF-CONTRADICTION]:")
+            for c in contradictions:
+                print(f"  - Slot '{c['slot']}' turn {c['old_turn']} -> {turn}: {c['old_value']} → {c['new_value']}")
+
+    llm_claims_by_turn[turn] = tracked
+    return {"claims": tracked, "contradictions": contradictions}
 
 
 def _choose_m2_clarification(prompt: str) -> str | None:
@@ -726,6 +810,7 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
 
     # v0.9-beta: Track reintroduction invariant compliance
     _track_reintroduction_metrics(result, turn=turn)
+    llm_tracking = _track_llm_claims(result, turn=turn)
 
     # Optional: exercise M2 goalqueue follow-up endpoints (API mode only).
     m2_event = _maybe_run_m2_followup(result, turn=turn)
@@ -750,6 +835,8 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             "reintroduced_claims_count": result.get("reintroduced_claims_count", 0),
             "learned_suggestions": learned_suggestions or [],
             "heuristic_suggestions": heuristic_suggestions or [],
+            "llm_claims": (llm_tracking or {}).get("claims") or [],
+            "llm_self_contradictions": (llm_tracking or {}).get("contradictions") or [],
         }
         if m2_event is not None:
             record["m2_followup"] = m2_event
@@ -1512,6 +1599,15 @@ for contra in metrics['contradictions_introduced']:
 print(f"\nMEMORY FAILURES: {len(metrics['memory_failures'])}")
 for failure in metrics['memory_failures']:
     print(f"  - {failure}")
+
+print(f"\nLLM CLAIM TRACKING:")
+print(f"  Claims tracked: {metrics['llm_claims_tracked']} (across {metrics['llm_claim_turns']} turns)")
+print(f"  Self-contradictions: {metrics['llm_self_contradictions']}")
+if metrics['llm_contradiction_events']:
+    for c in metrics['llm_contradiction_events'][:5]:
+        print(f"  - Slot {c['slot']}: turn {c['old_turn']} -> {c['turn']} ({c['old_value']} → {c['new_value']})")
+    if len(metrics['llm_contradiction_events']) > 5:
+        print(f"  ... ({len(metrics['llm_contradiction_events']) - 5} more)")
 
 print(f"\nEVAL FAILURES: {len(metrics['eval_failures'])}")
 for f in metrics['eval_failures'][:10]:
