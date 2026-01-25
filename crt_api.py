@@ -2099,6 +2099,7 @@ def create_app() -> FastAPI:
             "intent_alignment": result.get("intent_alignment"),
             "memory_alignment": result.get("memory_alignment"),
             "contradiction_detected": result.get("contradiction_detected"),
+            "contradiction_resolved": result.get("contradiction_resolved"),  # NEW: Track if contradiction was resolved
             "unresolved_contradictions_total": result.get("unresolved_contradictions_total"),
             "unresolved_hard_conflicts": result.get("unresolved_hard_conflicts"),
             "learned_suggestions": result.get("learned_suggestions") or [],
