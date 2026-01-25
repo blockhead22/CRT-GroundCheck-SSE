@@ -668,19 +668,18 @@ class CRTMemorySystem:
         all_memories = self._load_all_memories()
         user_memories = [m for m in all_memories if m.source == MemorySource.USER]
         
-        for new_fact in new_facts:
-            slot = new_fact.get("slot")
+        # new_facts is Dict[str, ExtractedFact] - keys are slot names
+        for slot, new_fact in new_facts.items():
             if not slot:
                 continue
             
             # Check each existing memory to see if it has the same slot but different value
             for old_mem in user_memories:
                 old_facts = extract_fact_slots(old_mem.text)
-                for old_fact in old_facts:
-                    if old_fact.get("slot") == slot and old_mem.text != new_text:
-                        # Different value for same slot = contradiction
-                        contradicting.append(old_mem)
-                        break  # Only add each memory once
+                # old_facts is also Dict[str, ExtractedFact]
+                if slot in old_facts and old_mem.text != new_text:
+                    # Different value for same slot = contradiction
+                    contradicting.append(old_mem)
         
         return contradicting
     
