@@ -32,9 +32,18 @@ Thumbs.db
 *_test*.db
 *_stress*.db
 *_t_*.db
+test_output*.txt
+*_results.json
+DIAGNOSTIC_REPORT.json
+RETEST_*.json
 contradiction_stress_test_output/
 integration_test_output/
 output_index/
+
+# Artifacts - ignore generated stress test files
+artifacts/*.db
+artifacts/*.jsonl
+artifacts/stress_test_*.md
 
 # Cache
 .sse_cache.json

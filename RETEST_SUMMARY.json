@@ -1,9 +1,0 @@
-{
-  "detection_rate": 25.0,
-  "gate_blocking_rate": 100.0,
-  "resolution_rate": 33.33333333333333,
-  "overall_rate": 52.77777777777777,
-  "improvement_vs_baseline": -4.2222222222222285,
-  "verdict": "INSUFFICIENT",
-  "timestamp": "2026-01-22T20:37:38.207070"
-}

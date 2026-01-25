@@ -1,7 +1,0 @@
-{
-  "contradiction_detection": "PASS",
-  "gates_blocking": "PASS",
-  "nl_resolution": "FAIL (known bug)",
-  "rapid_fire": "4/5 (80%)",
-  "avg_latency_ms": 63623.80132675171
-}
