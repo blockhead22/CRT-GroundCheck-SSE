@@ -49,6 +49,9 @@ _UNSTRUCTURED_SLOT_NAME = '_unstructured_'
 # Constants for contradiction resolution
 RESOLVED_CONTRADICTION_CONFIDENCE = 0.85  # Confidence level for assertively resolved contradictions
 
+# Constants for value extraction
+_EXTRACTION_STOPWORDS = ["a", "an", "the", "as", "is", "was", "at", "in", "on", "for"]
+
 
 class CRTEnhancedRAG:
     """
@@ -1128,7 +1131,7 @@ class CRTEnhancedRAG:
         for word in reversed(words):
             if word and (word[0].isupper() or word.isdigit()):
                 # Skip common stop words
-                if word.lower() in ["a", "an", "the", "as", "is", "was", "at", "in", "on", "for"]:
+                if word.lower() in _EXTRACTION_STOPWORDS:
                     continue
                 return word
         
@@ -2171,7 +2174,7 @@ class CRTEnhancedRAG:
                 'answer': clarification_message,
                 'thinking': None,
                 'mode': 'quick',
-                'confidence': RESOLVED_CONTRADICTION_CONFIDENCE,  # High confidence - we resolved it
+                'confidence': RESOLVED_CONTRADICTION_CONFIDENCE,  # Good confidence - contradiction resolved with disclosure
                 'response_type': 'speech',  # Regular response, not uncertainty
                 'gates_passed': True,  # Gates passed because we resolved it
                 'gate_reason': 'contradiction_resolved',
