@@ -336,7 +336,7 @@ class CRTMemorySystem:
         sse_mode = self.crt_math.select_sse_mode(significance)
         
         # Initial trust (based on source and significance)
-        if source == MemorySource.FALLBACK:
+        if source in {MemorySource.FALLBACK, MemorySource.LLM_OUTPUT}:
             trust = min(self.config.tau_base * 0.6, self.config.tau_fallback_cap)
         elif source == MemorySource.REFLECTION:
             trust = self.config.tau_base * 1.2  # Reflection gets higher initial trust
