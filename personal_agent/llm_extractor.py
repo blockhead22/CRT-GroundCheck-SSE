@@ -108,6 +108,7 @@ class LLMFactExtractor:
         self.config = config or LLMConfig()
         self._llm_client = llm_client
         self._fallback_extractor: Optional[Callable] = None
+        self._auth_failed = False  # Track persistent auth failures
         
     @property
     def llm_client(self):
@@ -150,13 +151,27 @@ class LLMFactExtractor:
         if not text or not text.strip():
             return []
         
+        # Skip LLM extraction if we've had persistent auth failures
+        if self._auth_failed:
+            return self._try_fallback(text)
+        
         # Try LLM extraction
         if self.llm_client is not None:
             try:
                 return self._extract_with_llm(text)
             except Exception as e:
-                logger.warning(f"LLM extraction failed: {e}")
+                error_str = str(e).lower()
+                # Mark auth failure to avoid repeated attempts
+                if "401" in error_str or "authentication" in error_str or "api key" in error_str:
+                    logger.warning(f"LLM extraction disabled due to auth failure: {e}")
+                    self._auth_failed = True
+                else:
+                    logger.warning(f"LLM extraction failed: {e}")
         
+        return self._try_fallback(text)
+    
+    def _try_fallback(self, text: str) -> List[FactTuple]:
+        """Try fallback extractor if available."""
         # Fall back to alternative extractor if available
         if self._fallback_extractor is not None:
             try:
@@ -186,6 +201,12 @@ class LLMFactExtractor:
                 return self._parse_llm_response(content, text)
                 
             except Exception as e:
+                error_str = str(e).lower()
+                # Don't retry on authentication errors - they will never succeed
+                if "401" in error_str or "authentication" in error_str or "api key" in error_str:
+                    logger.warning(f"LLM extraction failed (auth error, not retrying): {e}")
+                    raise
+                
                 if attempt < self.config.max_retries:
                     logger.debug(f"LLM extraction attempt {attempt + 1} failed: {e}")
                     time.sleep(1.0 * (attempt + 1))  # Exponential backoff

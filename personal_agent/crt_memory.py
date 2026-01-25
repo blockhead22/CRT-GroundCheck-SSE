@@ -214,17 +214,32 @@ class CRTMemorySystem:
             ON trust_log(memory_id, timestamp)
         """)
         
-        # Index for deprecated column (for filtering)
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_memories_deprecated
-            ON memories(deprecated)
-        """)
-        
         conn.commit()
         conn.close()
         
         # Migrate existing databases to add deprecated columns if needed
+        # This must run BEFORE creating deprecated column indexes
         self._migrate_schema()
+        
+        # Create indexes for columns added by migration (safe after migration)
+        self._create_post_migration_indexes()
+    
+    def _create_post_migration_indexes(self):
+        """Create indexes for columns that may have been added by migration."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # Index for deprecated column (for filtering)
+        try:
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_memories_deprecated
+                ON memories(deprecated)
+            """)
+        except Exception as e:
+            logger.debug(f"[MEMORY] Could not create deprecated index: {e}")
+        
+        conn.commit()
+        conn.close()
     
     def _migrate_schema(self):
         """
@@ -337,8 +352,8 @@ class CRTMemorySystem:
         try:
             from .two_tier_facts import TwoTierFactSystem
             
-            # Extract facts using two-tier system
-            extractor = TwoTierFactSystem()
+            # Extract facts using two-tier system (local-only, no external API)
+            extractor = TwoTierFactSystem(enable_llm=False)
             fact_data = extractor.extract_facts(text)
             
             # Determine extraction method based on what was used
@@ -533,28 +548,43 @@ class CRTMemorySystem:
         """
         # Import here to avoid circular dependency
         from pathlib import Path
+        import re
         
         # Derive ledger database path from memory database path
-        # Replace 'crt_memory' with 'crt_ledger' to get corresponding ledger DB
-        ledger_db = Path(self.db_path.replace('crt_memory', 'crt_ledger'))
+        # Handle multiple naming patterns:
+        # 1. 'crt_memory' → 'crt_ledger'
+        # 2. 'crt_stress_memory' → 'crt_stress_ledger'
+        # 3. Any '*_memory*' → '*_ledger*'
+        mem_path = str(self.db_path)
+        ledger_path = re.sub(r'_memory', '_ledger', mem_path)
+        
+        # If no change was made (no '_memory' in path), try simple replacement
+        if ledger_path == mem_path:
+            ledger_path = mem_path.replace('memory', 'ledger')
+        
+        ledger_db = Path(ledger_path)
         
         if not ledger_db.exists():
             return False
         
-        conn = sqlite3.connect(str(ledger_db), timeout=30.0)
-        conn.execute("PRAGMA busy_timeout=30000")
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT ledger_id FROM contradictions 
-            WHERE (old_memory_id = ? OR new_memory_id = ?)
-            AND status = 'open'
-        """, (memory_id, memory_id))
-        
-        result = cursor.fetchone()
-        conn.close()
-        
-        return result is not None
+        try:
+            conn = sqlite3.connect(str(ledger_db), timeout=30.0)
+            conn.execute("PRAGMA busy_timeout=30000")
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT ledger_id FROM contradictions 
+                WHERE (old_memory_id = ? OR new_memory_id = ?)
+                AND status = 'open'
+            """, (memory_id, memory_id))
+            
+            result = cursor.fetchone()
+            conn.close()
+            
+            return result is not None
+        except sqlite3.OperationalError:
+            # Table doesn't exist yet - no contradictions
+            return False
     
     def update_trust(
         self,

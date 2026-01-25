@@ -399,14 +399,14 @@ class YellowZoneHandler:
         >>> print(action)  # "ask_user"
     """
     
-    # Default zone boundaries
-    GREEN_THRESHOLD = 0.90  # Above this = accept
-    RED_THRESHOLD = 0.40    # Below this = reject
+    # Default zone boundaries (tuned for reduced over-flagging)
+    GREEN_THRESHOLD = 0.75  # Above this = accept
+    RED_THRESHOLD = 0.30    # Below this = reject
     
     def __init__(
         self,
-        green_threshold: float = 0.90,
-        red_threshold: float = 0.40,
+        green_threshold: float = 0.75,
+        red_threshold: float = 0.30,
         confirmation_callback: Optional[Callable[[Any], bool]] = None,
     ):
         """

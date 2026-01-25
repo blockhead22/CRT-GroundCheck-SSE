@@ -163,7 +163,7 @@ class TwoTierFactSystem:
         self,
         llm_extractor: Optional[LLMFactExtractor] = None,
         use_local_llm: bool = False,
-        enable_llm: bool = True,
+        enable_llm: bool = False,  # Default to local-only (no external API calls)
         llm_confidence_threshold: float = 0.6,
     ):
         """
@@ -172,14 +172,16 @@ class TwoTierFactSystem:
         Args:
             llm_extractor: Custom LLM extractor (optional)
             use_local_llm: Use local Ollama instead of OpenAI
-            enable_llm: Whether to enable LLM extraction at all
+            enable_llm: Whether to enable LLM extraction at all (default False for local-only)
             llm_confidence_threshold: Minimum confidence for LLM facts
         """
         self.enable_llm = enable_llm
         self.llm_confidence_threshold = llm_confidence_threshold
         
-        # Initialize LLM extractor
-        if llm_extractor is not None:
+        # Initialize LLM extractor only if enabled
+        if not enable_llm:
+            self._llm_extractor = None
+        elif llm_extractor is not None:
             self._llm_extractor = llm_extractor
         elif use_local_llm:
             self._llm_extractor = LocalLLMFactExtractor()
@@ -355,7 +357,7 @@ def get_two_tier_system() -> TwoTierFactSystem:
     """
     global _default_system
     if _default_system is None:
-        _default_system = TwoTierFactSystem(enable_llm=True)
+        _default_system = TwoTierFactSystem(enable_llm=False)  # Local-only: no external API
     return _default_system
 
 

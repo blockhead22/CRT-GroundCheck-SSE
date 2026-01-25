@@ -1,5 +1,40 @@
 # CRT + GroundCheck: Honest AI Memory
 
+> **Contradiction-preserving memory for AI agents. No silent overwrites.**
+
+## Quick Start (30 seconds)
+
+```python
+from personal_agent.crt_rag import CRTEnhancedRAG
+
+# Initialize
+rag = CRTEnhancedRAG()
+
+# Store facts - contradictions are PRESERVED, not overwritten
+rag.process_user_input("I work at Microsoft", thread_id="demo")
+rag.process_user_input("I work at Amazon", thread_id="demo")  # Contradiction!
+
+# Query - system shows BOTH values, asks for clarification
+result = rag.query("Where do I work?", thread_id="demo")
+# → "You mentioned working at Microsoft AND Amazon. Which is current?"
+
+# The system REFUSES to pick a winner silently
+# This is the core invariant: no confident lies about contradicted facts
+```
+
+```bash
+# Install
+pip install -e .
+
+# Run API
+uvicorn crt_api:app --reload --port 8123
+
+# Stress test (30 turns, local only, no API keys needed)
+python tools/crt_stress_test.py --turns 30 --sleep 0.03
+```
+
+---
+
 ## The Problem
 
 Long-term AI assistants accumulate contradictory facts as user information updates over time (job changes, location moves, preference shifts). Most systems silently overwrite old facts or randomly pick between conflicts, presenting uncertain information as confident truth.

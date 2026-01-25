@@ -971,6 +971,66 @@ class ContradictionLedger:
         )
 
     # ========================================================================
+    # Metadata Management
+    # ========================================================================
+    
+    def update_contradiction_metadata(
+        self,
+        ledger_id: str,
+        metadata_updates: Dict[str, Any]
+    ) -> bool:
+        """
+        Update metadata for a contradiction (merges with existing metadata).
+        
+        Args:
+            ledger_id: Contradiction ID
+            metadata_updates: Dict of metadata fields to update/add
+            
+        Returns:
+            True if update succeeded
+        """
+        import json
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Get existing metadata
+            cursor.execute(
+                "SELECT metadata FROM contradictions WHERE ledger_id = ?",
+                (ledger_id,)
+            )
+            row = cursor.fetchone()
+            if not row:
+                return False
+            
+            # Parse existing metadata or start with empty dict
+            existing = {}
+            if row[0]:
+                try:
+                    existing = json.loads(row[0])
+                except json.JSONDecodeError:
+                    existing = {}
+            
+            # Merge updates
+            existing.update(metadata_updates)
+            
+            # Save back
+            cursor.execute(
+                "UPDATE contradictions SET metadata = ? WHERE ledger_id = ?",
+                (json.dumps(existing), ledger_id)
+            )
+            conn.commit()
+            
+            logger.debug(f"[LEDGER] Updated metadata for {ledger_id}: {list(metadata_updates.keys())}")
+            return True
+        except Exception as e:
+            logger.warning(f"[LEDGER] Failed to update metadata for {ledger_id}: {e}")
+            return False
+        finally:
+            conn.close()
+
+    # ========================================================================
     # Lifecycle State Management (P0 Fix)
     # ========================================================================
     

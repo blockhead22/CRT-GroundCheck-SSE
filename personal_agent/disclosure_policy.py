@@ -150,8 +150,8 @@ class DisclosurePolicy:
     
     def __init__(
         self,
-        green_threshold: float = 0.9,
-        yellow_threshold: float = 0.4,
+        green_threshold: float = 0.75,
+        yellow_threshold: float = 0.3,
         enable_budget: bool = True,
         budget: Optional[DisclosureBudget] = None,
     ):

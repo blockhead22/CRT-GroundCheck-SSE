@@ -164,6 +164,10 @@ class MLContradictionDetector:
         17. trust_score
         18. drift_score
         """
+        # Ensure string conversion for int values (e.g., programming_years)
+        old_value = str(old_value)
+        new_value = str(new_value)
+        
         # Semantic similarity
         try:
             tfidf = self.vectorizer.fit_transform([old_value, new_value])
@@ -177,9 +181,9 @@ class MLContradictionDetector:
         time_delta_days = (new_timestamp - old_timestamp) / 86400
         recency_score = np.exp(-time_delta_days / 365.0)  # Exponential decay
         
-        # Linguistic features
-        old_lower = old_value.lower()
-        new_lower = new_value.lower()
+        # Linguistic features - ensure string conversion for int values (e.g., programming_years)
+        old_lower = str(old_value).lower()
+        new_lower = str(new_value).lower()
         
         negation_words = ["not", "never", "don't", "doesn't", "didn't", "won't", 
                          "cannot", "no longer", "n't", "can't"]

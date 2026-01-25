@@ -36,6 +36,12 @@ from .fact_slots import extract_fact_slots
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
+from .disclosure_policy import (
+    DisclosurePolicy,
+    DisclosureAction,
+    DisclosureDecision,
+    create_disclosure_policy_from_calibration,
+)
 from .active_learning import get_active_learning_coordinator
 from .user_profile import GlobalUserProfile
 from .ml_contradiction_detector import MLContradictionDetector
@@ -109,14 +115,26 @@ class CRTEnhancedRAG:
         self._load_classifier()
         
         # Two-tier fact extraction system (hard slots + open tuples)
+        # Set enable_llm=False for local-only operation (no external API calls)
         try:
-            self.two_tier_system = TwoTierFactSystem(enable_llm=True)
-            logger.info("[TWO_TIER] Two-tier fact extraction system initialized")
+            self.two_tier_system = TwoTierFactSystem(enable_llm=False)
+            logger.info("[TWO_TIER] Two-tier fact extraction system initialized (local regex only)")
             # Connect two-tier system to ledger for enhanced contradiction detection
             self.ledger.set_two_tier_system(self.two_tier_system)
         except Exception as e:
             logger.warning(f"[TWO_TIER] Failed to initialize two-tier system: {e}")
             self.two_tier_system = None
+        
+        # Disclosure policy for yellow-zone routing (calibrated thresholds)
+        try:
+            self.disclosure_policy = create_disclosure_policy_from_calibration(
+                calibration_path="artifacts/calibrated_thresholds.json",
+                enable_budget=True
+            )
+            logger.info("[DISCLOSURE_POLICY] Yellow-zone routing initialized")
+        except Exception as e:
+            logger.warning(f"[DISCLOSURE_POLICY] Failed to initialize: {e}")
+            self.disclosure_policy = DisclosurePolicy()  # Use defaults
         
         # Session tracking
         import uuid
@@ -1402,8 +1420,12 @@ class CRTEnhancedRAG:
                 if not prev_value:
                     continue
                 
+                # Ensure string conversion for comparison (handles int values like programming_years)
+                prev_value_str = str(prev_value).lower().strip()
+                new_value_str = str(new_value).lower().strip()
+                
                 # Check if values are similar enough to skip (avoid nickname issues)
-                if prev_value.lower().strip() == new_value.lower().strip():
+                if prev_value_str == new_value_str:
                     continue
                 
                 # Use ML detector to check for contradiction
@@ -1429,9 +1451,41 @@ class CRTEnhancedRAG:
                     f"Confidence={result['confidence']:.3f}"
                 )
                 
-                # Record contradiction if detected
+                # Use disclosure policy to decide action based on confidence
+                p_valid = result['confidence']
+                disclosure_decision = self.disclosure_policy.should_disclose(
+                    p_valid=p_valid,
+                    slot=slot,
+                    old_value=str(prev_value),
+                    new_value=str(new_value),
+                    context={"category": result['category'], "policy": result['policy']}
+                )
+                
+                logger.info(
+                    f"[DISCLOSURE_POLICY] Slot={slot}, P={p_valid:.3f}, "
+                    f"Action={disclosure_decision.action.value}, Zone={disclosure_decision.metadata.get('zone', 'unknown')}"
+                )
+                
+                # Route based on disclosure decision:
+                # - Green zone (high confidence): Skip recording as contradiction (accept as normal update)
+                # - Yellow zone (medium): Record but flag for clarification
+                # - Red zone (low confidence): Record and reject
+                if disclosure_decision.action == DisclosureAction.ACCEPT and not result["is_contradiction"]:
+                    # High confidence AND ML says no contradiction - skip
+                    logger.info(f"[DISCLOSURE_POLICY] ✓ Green zone acceptance for {slot}")
+                    continue
+                
+                # Record contradiction if detected (yellow or red zone, or ML flagged it)
                 if result["is_contradiction"]:
                     drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+                    
+                    # Add clarification context if in yellow zone
+                    suggested_policy_final = result["policy"]
+                    if disclosure_decision.action == DisclosureAction.CLARIFY:
+                        suggested_policy_final = "clarify"  # Override to clarification
+                        logger.info(
+                            f"[DISCLOSURE_POLICY] ⚠ Yellow zone - routing to clarification for {slot}"
+                        )
                     
                     contradiction_entry = self.ledger.record_contradiction(
                         old_memory_id=prev_mem.memory_id,
@@ -1445,12 +1499,22 @@ class CRTEnhancedRAG:
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=result["category"],
-                        suggested_policy=result["policy"]
+                        suggested_policy=suggested_policy_final
                     )
+                    
+                    # Store clarification prompt if available
+                    if disclosure_decision.clarification_prompt:
+                        try:
+                            self.ledger.update_contradiction_metadata(
+                                contradiction_entry.ledger_id,
+                                {"clarification_prompt": disclosure_decision.clarification_prompt}
+                            )
+                        except Exception as e:
+                            logger.debug(f"[DISCLOSURE_POLICY] Could not store clarification prompt: {e}")
                     
                     logger.info(
                         f"[ML_CONTRADICTION] ✓ Detected: {slot} contradiction "
-                        f"({result['category']}, policy={result['policy']})"
+                        f"({result['category']}, policy={suggested_policy_final})"
                     )
                     
                     return True, contradiction_entry
