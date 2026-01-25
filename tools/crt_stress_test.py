@@ -371,14 +371,6 @@ metrics = {
 llm_claim_history: dict[str, list[dict]] = {}
 llm_claims_by_turn: dict[int, list[dict]] = {}
 
-def _normalize_claim_value(value: object) -> str:
-    text = str(value or "").strip().lower()
-    if not text:
-        return ""
-    text = re.sub(r"\s+", " ", text)
-    text = re.sub(r"[^\w\s\-]+", "", text)
-    return text.strip()
-
 
 def _should_print(turn: int) -> bool:
     try:
@@ -472,19 +464,19 @@ def _track_llm_claims(result: dict, *, turn: int) -> dict:
         value = getattr(fact, "value", None)
         if value is None:
             continue
-        normalized = getattr(fact, "normalized", "") or _normalize_claim_value(value)
-        normalized = _normalize_claim_value(normalized)
+        normalized = getattr(fact, "normalized", "") or str(value).strip().lower()
         entry = {
             "slot": slot,
             "value": value,
             "normalized": normalized,
             "turn": turn,
         }
+        tracked.append(entry)
+
         prior = llm_claim_history.get(slot, [])
         if prior:
             last = prior[-1]
-            last_norm = _normalize_claim_value(last.get("normalized"))
-            if last_norm and normalized and last_norm != normalized:
+            if last.get("normalized") != normalized:
                 contradictions.append({
                     "slot": slot,
                     "old_value": last.get("value"),
@@ -492,10 +484,7 @@ def _track_llm_claims(result: dict, *, turn: int) -> dict:
                     "old_turn": last.get("turn"),
                     "turn": turn,
                 })
-            if last_norm == normalized:
-                continue
 
-        tracked.append(entry)
         prior.append(entry)
         llm_claim_history[slot] = prior
 
