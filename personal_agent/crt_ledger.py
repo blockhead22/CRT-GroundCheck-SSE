@@ -969,3 +969,180 @@ class ContradictionLedger:
             resolution_method=row[13] if len(row) > 13 else (row[12] if len(row) > 12 else row[11]),
             merged_memory_id=row[14] if len(row) > 14 else (row[13] if len(row) > 13 else row[12])
         )
+
+    # ========================================================================
+    # Lifecycle State Management (P0 Fix)
+    # ========================================================================
+    
+    def update_lifecycle_state(
+        self,
+        ledger_id: str,
+        new_state: str,
+        confirmation_count: Optional[int] = None,
+        disclosure_count: Optional[int] = None
+    ) -> bool:
+        """
+        Update lifecycle state for a contradiction.
+        
+        Args:
+            ledger_id: Contradiction ID
+            new_state: New lifecycle state ('active', 'settling', 'settled', 'archived')
+            confirmation_count: Optional - update confirmation count
+            disclosure_count: Optional - update disclosure count
+            
+        Returns:
+            True if update succeeded
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Build dynamic update query
+            updates = ["lifecycle_state = ?"]
+            params = [new_state]
+            
+            if confirmation_count is not None:
+                updates.append("confirmation_count = ?")
+                params.append(confirmation_count)
+            
+            if disclosure_count is not None:
+                updates.append("disclosure_count = ?")
+                params.append(disclosure_count)
+            
+            # Set timestamps based on state
+            if new_state == "settled":
+                updates.append("settled_at = ?")
+                params.append(time.time())
+            elif new_state == "archived":
+                updates.append("archived_at = ?")
+                params.append(time.time())
+            
+            params.append(ledger_id)
+            
+            cursor.execute(f"""
+                UPDATE contradictions
+                SET {', '.join(updates)}
+                WHERE ledger_id = ?
+            """, params)
+            
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+    
+    def increment_confirmation(self, ledger_id: str) -> int:
+        """
+        Increment confirmation count for a contradiction.
+        
+        Called when user repeats/confirms the new fact value.
+        
+        Returns:
+            New confirmation count
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                UPDATE contradictions
+                SET confirmation_count = COALESCE(confirmation_count, 0) + 1
+                WHERE ledger_id = ?
+            """, (ledger_id,))
+            conn.commit()
+            
+            cursor.execute(
+                "SELECT confirmation_count FROM contradictions WHERE ledger_id = ?",
+                (ledger_id,)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else 0
+        finally:
+            conn.close()
+    
+    def get_lifecycle_info(self, ledger_id: str) -> Optional[Dict[str, Any]]:
+        """Get lifecycle information for a contradiction."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                SELECT lifecycle_state, confirmation_count, disclosure_count,
+                       settled_at, archived_at, timestamp
+                FROM contradictions
+                WHERE ledger_id = ?
+            """, (ledger_id,))
+            
+            row = cursor.fetchone()
+            if not row:
+                return None
+            
+            return {
+                "lifecycle_state": row[0] or "active",
+                "confirmation_count": row[1] or 0,
+                "disclosure_count": row[2] or 0,
+                "settled_at": row[3],
+                "archived_at": row[4],
+                "detected_at": row[5],
+            }
+        finally:
+            conn.close()
+    
+    def process_lifecycle_transitions(self) -> Dict[str, int]:
+        """
+        Process all open contradictions and update their lifecycle states.
+        
+        Called periodically or on query to move contradictions through:
+        ACTIVE → SETTLING → SETTLED → ARCHIVED
+        
+        Returns:
+            Dict with counts of transitions made
+        """
+        from .contradiction_lifecycle import ContradictionLifecycle, ContradictionLifecycleState, ContradictionLifecycleEntry
+        
+        transitions = {"active_to_settling": 0, "settling_to_settled": 0, "settled_to_archived": 0}
+        lifecycle = ContradictionLifecycle()
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Get all non-archived contradictions
+            cursor.execute("""
+                SELECT ledger_id, lifecycle_state, confirmation_count, timestamp
+                FROM contradictions
+                WHERE lifecycle_state IS NULL 
+                   OR lifecycle_state NOT IN ('archived')
+            """)
+            
+            rows = cursor.fetchall()
+            
+            for row in rows:
+                ledger_id, current_state, confirmation_count, detected_at = row
+                current_state = current_state or "active"
+                
+                # Create lifecycle entry for evaluation
+                entry = ContradictionLifecycleEntry(
+                    ledger_id=ledger_id,
+                    state=ContradictionLifecycleState(current_state),
+                    detected_at=detected_at,
+                    confirmation_count=confirmation_count or 0
+                )
+                
+                # Check for state transition
+                new_state = lifecycle.update_state(entry)
+                
+                if new_state.value != current_state:
+                    # Transition occurred - update database
+                    self.update_lifecycle_state(ledger_id, new_state.value)
+                    
+                    # Track transition type
+                    if current_state == "active" and new_state == ContradictionLifecycleState.SETTLING:
+                        transitions["active_to_settling"] += 1
+                    elif current_state == "settling" and new_state == ContradictionLifecycleState.SETTLED:
+                        transitions["settling_to_settled"] += 1
+                    elif current_state == "settled" and new_state == ContradictionLifecycleState.ARCHIVED:
+                        transitions["settled_to_archived"] += 1
+            
+            return transitions
+        finally:
+            conn.close()

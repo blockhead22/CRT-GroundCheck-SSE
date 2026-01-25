@@ -1457,6 +1457,64 @@ class CRTEnhancedRAG:
         
         return False, None
 
+    def _track_implicit_confirmations(self, user_text: str) -> int:
+        """Track implicit confirmations when user repeats facts from open contradictions.
+        
+        When a user asserts a fact that matches the "new" side of an open contradiction,
+        this is an implicit confirmation. After enough confirmations, the contradiction
+        transitions from ACTIVE → SETTLING → SETTLED automatically.
+        
+        Returns: number of contradictions that received a confirmation increment.
+        """
+        facts = extract_fact_slots(user_text) or {}
+        if not facts:
+            return 0
+        
+        confirmed = 0
+        open_contras = self.ledger.get_open_contradictions(limit=200)
+        
+        for contra in open_contras:
+            # Get lifecycle state (default to 'active')
+            lifecycle_info = self.ledger.get_lifecycle_info(contra.ledger_id)
+            lifecycle_state = lifecycle_info.get("lifecycle_state", "active") if lifecycle_info else "active"
+            
+            # Skip archived contradictions
+            if lifecycle_state == "archived":
+                continue
+            
+            new_mem = self.memory.get_memory_by_id(contra.new_memory_id)
+            if new_mem is None:
+                continue
+            
+            new_facts = extract_fact_slots(new_mem.text) or {}
+            shared_slots = set(new_facts.keys()) & set(facts.keys())
+            
+            if not shared_slots:
+                continue
+            
+            # Check if user's assertion matches the "new" value (confirming the change)
+            for slot in shared_slots:
+                user_fact = facts.get(slot)
+                new_fact = new_facts.get(slot)
+                
+                if user_fact is None or new_fact is None:
+                    continue
+                
+                user_norm = getattr(user_fact, "normalized", str(user_fact).lower())
+                new_norm = getattr(new_fact, "normalized", str(new_fact).lower())
+                
+                if user_norm == new_norm:
+                    # User confirmed the new value - increment counter
+                    new_count = self.ledger.increment_confirmation(contra.ledger_id)
+                    confirmed += 1
+                    logger.info(
+                        f"[LIFECYCLE] Implicit confirmation for {contra.ledger_id}: "
+                        f"slot={slot}, count={new_count}"
+                    )
+                    break  # Only count once per contradiction
+        
+        return confirmed
+
     def _resolve_open_conflicts_from_assertion(self, user_text: str) -> int:
         """Resolve open hard CONFLICT contradictions when the user clarifies.
 
@@ -1926,6 +1984,16 @@ class CRTEnhancedRAG:
             logger.info(f"[PROFILE_DEBUG] Reclassifying assertion → instruction (special query type)")
             user_input_kind = "instruction"
 
+        # P0 FIX: Process contradiction lifecycle transitions on every query
+        # This moves contradictions through ACTIVE → SETTLING → SETTLED → ARCHIVED
+        # based on confirmation counts and time elapsed
+        try:
+            transitions = self.ledger.process_lifecycle_transitions()
+            if any(v > 0 for v in transitions.values()):
+                logger.info(f"[LIFECYCLE] Processed transitions: {transitions}")
+        except Exception as e:
+            logger.warning(f"[LIFECYCLE] Failed to process lifecycle transitions: {e}")
+
         # Deterministic safe path: refuse prompt/system-instruction disclosure.
         # This prevents the model from hallucinating and avoids memory-claim phrasing
         # that can confuse the evaluator.
@@ -1984,6 +2052,13 @@ class CRTEnhancedRAG:
             except Exception:
                 # Resolution is best-effort; never block the main chat loop.
                 pass
+            
+            # P0 FIX: Track implicit confirmations for lifecycle transitions
+            # When user repeats the "new" value from a contradiction, it's an implicit confirmation
+            try:
+                self._track_implicit_confirmations(user_query)
+            except Exception as e:
+                logger.warning(f"[LIFECYCLE] Failed to track implicit confirmations: {e}")
             
             # BUG 1 FIX: Check for contradictions using ML detector (ALL facts, not hardcoded slots)
             contradiction_detected = False
