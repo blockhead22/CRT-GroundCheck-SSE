@@ -440,6 +440,10 @@ class MLContradictionDetector:
         
         Uses simple heuristics but still detects ALL slots (not hardcoded list).
         """
+        # Convert to string to handle int/float values
+        old_value = str(old_value) if not isinstance(old_value, str) else old_value
+        new_value = str(new_value) if not isinstance(new_value, str) else new_value
+        
         # Check for negation patterns
         old_lower = old_value.lower()
         new_lower = new_value.lower()
