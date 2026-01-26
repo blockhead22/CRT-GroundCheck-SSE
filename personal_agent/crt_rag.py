@@ -4913,6 +4913,27 @@ class CRTEnhancedRAG:
         if not user_memories:
             return "I don't have that information in my memory yet."
         
+        # For slot-specific queries (e.g., "what do you remember about my employer?"),
+        # check if retrieved memories actually contain facts about the queried slot.
+        # If not, return "I don't have that information" rather than unrelated facts.
+        from .fact_slots import extract_fact_slots
+        inferred_slots = self._infer_slots_from_query(user_query)
+        if inferred_slots:
+            # Check if any retrieved memory contains facts about the queried slots
+            relevant_memories = []
+            for mem in user_memories:
+                mem_facts = extract_fact_slots(mem.text) or {}
+                # Check if this memory has any facts about the slots we're asking about
+                if any(slot in mem_facts for slot in inferred_slots):
+                    relevant_memories.append(mem)
+            
+            # If we have inferred slots but no relevant memories, return "don't have"
+            if not relevant_memories:
+                return "I don't have that information in my memory yet."
+            
+            # Use only the relevant memories for building the answer
+            user_memories = relevant_memories
+        
         # Build synthesis answer
         facts = [mem.text.strip() for mem in user_memories[:max_facts] if mem.text and mem.text.strip()]
         facts_deduped = list(dict.fromkeys(facts))  # Remove exact duplicates while preserving order
