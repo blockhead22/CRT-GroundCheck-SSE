@@ -1,8 +1,8 @@
-# CRT + GroundCheck + SSE: Honest AI Memory (Prototype)
+# CRT + GroundCheck + SSE: Honest AI Memory
 
 ## What it is
 This repository integrates three systems for transparent AI memory that tracks contradictions:
-- **CRT (Contradiction Retaining Tracker)**: A memory layer that preserves contradictions instead of overwriting them
+- **CRT**: A memory layer that preserves contradictions instead of overwriting them
 - **GroundCheck**: A verification system that makes AI responses disclose conflicts instead of hiding them
 - **SSE (Semantic String Engine)**: Powers fact retrieval and semantic matching
 
