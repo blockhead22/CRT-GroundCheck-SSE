@@ -71,6 +71,45 @@ $sessionSummary = @{
 # Simple pattern detection (can be enhanced with AI analysis)
 $patterns = @()
 
+# CRT-Specific Patterns
+$config = if (Test-Path $ConfigFile) { Get-Content $ConfigFile -Raw | ConvertFrom-Json } else { $null }
+
+# Detect contradiction handling
+if ($transcriptContent -match "(?i)(contradiction|ledger|conflict|resolve|override)") {
+    $patterns += @{
+        type = "crt_contradiction_handling"
+        confidence = "high"
+        context = "Session worked on contradiction detection or resolution"
+    }
+}
+
+# Detect trust score tuning
+if ($transcriptContent -match "(?i)(trust_score|trust_weighted|decay|boost|confidence)") {
+    $patterns += @{
+        type = "trust_score_tuning"
+        confidence = "high"
+        context = "Session adjusted trust scoring mechanisms"
+    }
+}
+
+# Detect grounding/verification work
+if ($transcriptContent -match "(?i)(groundcheck|verification|disclosure|caveat|claim)") {
+    $patterns += @{
+        type = "groundcheck_verification"
+        confidence = "high"
+        context = "Session worked on grounding verification or disclosure"
+    }
+}
+
+# Detect fact extraction patterns
+if ($transcriptContent -match "(?i)(fact_slot|extract_fact|slot_name|slot_value)") {
+    $patterns += @{
+        type = "fact_extraction_patterns"
+        confidence = "medium"
+        context = "Session developed fact extraction logic"
+    }
+}
+
 # Detect error resolutions
 if ($transcriptContent -match "(?i)(error|exception|failed|traceback)") {
     $patterns += @{
@@ -98,11 +137,11 @@ if ($transcriptContent -match "(?i)(workaround|alternative|instead|fix)") {
     }
 }
 
-# Detect project-specific patterns
-if ($transcriptContent -match "(?i)(crt|contradiction|memory|ledger|groundcheck)") {
+# Detect general project-specific patterns
+if ($transcriptContent -match "(?i)(crt|memory|sse|event)") {
     $patterns += @{
         type = "project_specific"
-        confidence = "high"
+        confidence = "medium"
         context = "Session worked on CRT Memory project-specific code"
     }
 }

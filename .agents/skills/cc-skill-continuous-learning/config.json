@@ -8,11 +8,23 @@
     "user_corrections",
     "workarounds",
     "debugging_techniques",
-    "project_specific"
+    "project_specific",
+    "crt_contradiction_handling",
+    "trust_score_tuning",
+    "groundcheck_verification",
+    "fact_extraction_patterns",
+    "disclosure_policy_design"
   ],
   "ignore_patterns": [
     "simple_typos",
     "one_time_fixes",
     "external_api_issues"
-  ]
+  ],
+  "crt_specific_keywords": {
+    "contradiction_handling": ["contradiction", "ledger", "conflict", "resolve", "override"],
+    "trust_management": ["trust_score", "trust_weighted", "decay", "boost", "confidence"],
+    "grounding": ["groundcheck", "verification", "disclosure", "caveat", "claim"],
+    "fact_extraction": ["fact_slots", "extract_fact", "slot_name", "slot_value"],
+    "memory_operations": ["crt_memory", "store_fact", "retrieve", "query", "embedding"]
+  }
 }
