@@ -1639,6 +1639,19 @@ class CRTEnhancedRAG:
                     logger.info(f"[NEGATION_DETECTED] Negation pattern found: {prev_mem.text[:50]} vs {user_query[:50]}")
                     drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
                     
+                    # Phase 1.1: Use CRTMath paraphrase check as final gate
+                    is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
+                        drift=drift,
+                        confidence_new=float(new_memory.confidence),
+                        confidence_prior=float(prev_mem.confidence),
+                        source=new_memory.source,
+                        text_new=user_query,
+                        text_prior=prev_mem.text
+                    )
+                    if not is_real_contradiction:
+                        logger.info(f"[CRT_PARAPHRASE] Skipped negation - {crt_reason}")
+                        continue
+                    
                     # Record as REVISION type, not CONFLICT
                     contradiction_entry = self.ledger.record_contradiction(
                         old_memory_id=prev_mem.memory_id,
@@ -1705,6 +1718,19 @@ class CRTEnhancedRAG:
                 # Record contradiction if detected (yellow or red zone, or ML flagged it)
                 if result["is_contradiction"]:
                     drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+                    
+                    # Phase 1.1: Use CRTMath paraphrase check as final gate
+                    is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
+                        drift=drift,
+                        confidence_new=float(new_memory.confidence),
+                        confidence_prior=float(prev_mem.confidence),
+                        source=new_memory.source,
+                        text_new=user_query,
+                        text_prior=prev_mem.text
+                    )
+                    if not is_real_contradiction:
+                        logger.info(f"[CRT_PARAPHRASE] Skipped ML detection - {crt_reason}")
+                        continue
                     
                     # Add clarification context if in yellow zone
                     suggested_policy_final = result["policy"]
@@ -2441,20 +2467,33 @@ class CRTEnhancedRAG:
                                 user_vector = user_memory.vector
                                 drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
                                 logger.debug("Name contradiction: new='%s' vs old='%s', drift=%.3f", new_name.value, selected_prev.text[:60], drift)
-                                contradiction_entry = self.ledger.record_contradiction(
-                                    old_memory_id=selected_prev.memory_id,
-                                    new_memory_id=user_memory.memory_id,
-                                    drift_mean=drift,
-                                    confidence_delta=float(selected_prev.confidence) - 0.95,
-                                    query=user_query,
-                                    summary=f"User name changed: {selected_prev.text[:50]}... vs {user_query[:50]}...",
-                                    old_text=selected_prev.text,
-                                    new_text=user_query,
-                                    old_vector=selected_prev.vector,
-                                    new_vector=user_vector,
+                                
+                                # Phase 1.1: Use CRTMath paraphrase check as final gate
+                                is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
+                                    drift=drift,
+                                    confidence_new=0.95,
+                                    confidence_prior=float(selected_prev.confidence),
+                                    source=user_memory.source,
+                                    text_new=user_query,
+                                    text_prior=selected_prev.text
                                 )
-                                logger.debug("Ledger recorded contradiction entry: %s", contradiction_entry)
-                                contradiction_detected = True
+                                if not is_real_contradiction:
+                                    logger.info(f"[CRT_PARAPHRASE] Skipped name contradiction - {crt_reason}")
+                                else:
+                                    contradiction_entry = self.ledger.record_contradiction(
+                                        old_memory_id=selected_prev.memory_id,
+                                        new_memory_id=user_memory.memory_id,
+                                        drift_mean=drift,
+                                        confidence_delta=float(selected_prev.confidence) - 0.95,
+                                        query=user_query,
+                                        summary=f"User name changed: {selected_prev.text[:50]}... vs {user_query[:50]}...",
+                                        old_text=selected_prev.text,
+                                        new_text=user_query,
+                                        old_vector=selected_prev.vector,
+                                        new_vector=user_vector,
+                                    )
+                                    logger.debug("Ledger recorded contradiction entry: %s", contradiction_entry)
+                                    contradiction_detected = True
                     except Exception as e:
                             logger.debug("Name contradiction check exception: %s", e)
                             logger.warning(f"[CONTRADICTION_DETECTION] Name contradiction check failed: {e}")
@@ -3704,23 +3743,35 @@ class CRTEnhancedRAG:
                     drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
                     logger.info(f"[CONTRADICTION_DETECTION] Generic fact contradiction detected: query='{user_query[:60]}' vs old='{selected_prev.text[:60]}', drift={drift:.3f}")
 
-                    contradiction_entry = self.ledger.record_contradiction(
-                        old_memory_id=selected_prev.memory_id,
-                        new_memory_id=user_memory.memory_id,
-                        drift_mean=drift,
-                        confidence_delta=selected_prev.confidence - 0.95,
-                        query=user_query,
-                        summary=f"User contradiction: {selected_prev.text[:50]}... vs {user_query[:50]}...",
-                        old_text=selected_prev.text,
-                        new_text=user_query,
-                        old_vector=selected_prev.vector,
-                        new_vector=user_vector
+                    # Phase 1.1: Use CRTMath paraphrase check as final gate
+                    is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
+                        drift=drift,
+                        confidence_new=0.95,
+                        confidence_prior=float(selected_prev.confidence),
+                        source=user_memory.source,
+                        text_new=user_query,
+                        text_prior=selected_prev.text
                     )
+                    if not is_real_contradiction:
+                        logger.info(f"[CRT_PARAPHRASE] Skipped generic fact contradiction - {crt_reason}")
+                    else:
+                        contradiction_entry = self.ledger.record_contradiction(
+                            old_memory_id=selected_prev.memory_id,
+                            new_memory_id=user_memory.memory_id,
+                            drift_mean=drift,
+                            confidence_delta=selected_prev.confidence - 0.95,
+                            query=user_query,
+                            summary=f"User contradiction: {selected_prev.text[:50]}... vs {user_query[:50]}...",
+                            old_text=selected_prev.text,
+                            new_text=user_query,
+                            old_vector=selected_prev.vector,
+                            new_vector=user_vector
+                        )
 
-                    contradiction_detected = True
+                        contradiction_detected = True
 
-                    if contradiction_entry.contradiction_type == ContradictionType.CONFLICT:
-                        self.memory.evolve_trust_for_contradiction(selected_prev, user_vector)
+                        if contradiction_entry.contradiction_type == ContradictionType.CONFLICT:
+                            self.memory.evolve_trust_for_contradiction(selected_prev, user_vector)
 
                     volatility = self.crt_math.compute_volatility(
                         drift=drift,

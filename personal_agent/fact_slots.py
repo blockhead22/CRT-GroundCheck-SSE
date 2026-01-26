@@ -645,12 +645,26 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "My favorite programming language is Rust"
     # - "Python is my favorite language"
     # - "Python is actually my favorite language now"
-    # - "I prefer Python"
+    # - "I prefer Python" (only if Python is a known programming language)
+    #
+    # Known programming languages to avoid false positives like "I prefer working"
+    _KNOWN_PROG_LANGS = {
+        "python", "javascript", "typescript", "java", "rust", "go", "golang",
+        "c", "cpp", "c++", "csharp", "c#", "ruby", "php", "swift", "kotlin",
+        "scala", "haskell", "perl", "r", "matlab", "julia", "elixir", "erlang",
+        "clojure", "lua", "dart", "fortran", "cobol", "assembly", "sql", "bash",
+        "powershell", "groovy", "f#", "ocaml", "lisp", "scheme", "prolog",
+        "objective-c", "objectivec", "zig", "nim", "crystal", "elm"
+    }
+    
     m = re.search(r"\bmy favorite (?:programming )?language is\s+([A-Z][A-Za-z0-9+#]{1,20})\b", text, flags=re.IGNORECASE)
     if not m:
         m = re.search(r"\b([A-Z][A-Za-z0-9+#]{1,20})\s+is (?:actually )?my favorite (?:programming )?language", text, flags=re.IGNORECASE)
     if not m:
+        # "I prefer X" pattern - only match if X is a known programming language
         m = re.search(r"\bi prefer\s+([A-Z][A-Za-z0-9+#]{1,20})\b", text, flags=re.IGNORECASE)
+        if m and m.group(1).lower().strip() not in _KNOWN_PROG_LANGS:
+            m = None  # Not a known programming language, skip
     if m:
         lang = m.group(1).strip()
         facts["programming_language"] = ExtractedFact("programming_language", lang, _norm_text(lang))
