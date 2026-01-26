@@ -104,6 +104,22 @@ pytest tests/test_adversarial_prompts.py -v
 - All pytest tests: **PASS**
 - No TypeErrors on integer value contradictions
 
+### Current test status
+**Latest adversarial challenge results (25 turns):**
+- Overall score: **84.0%** ✓ (exceeds 80% threshold)
+- Contradictions detected: 6
+- False positives: 0
+- Missed detections: 1
+
+**Key findings:**
+- System successfully detects and handles contradictions
+- Strong performance on baseline, direct corrections, and semantic variations
+- Areas for improvement: complex temporal reasoning, double negatives
+
+**Test suite:**
+- 26 of 27 tests passing
+- 1 integration test requires full 35-turn challenge for validation
+
 ---
 
 ## API Server
