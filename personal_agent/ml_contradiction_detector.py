@@ -154,6 +154,16 @@ class MLContradictionDetector:
     def _load_models(self):
         """Load trained XGBoost models."""
         try:
+            # Verify xgboost is available
+            try:
+                import xgboost
+            except ImportError:
+                logger.error(
+                    "⚠ xgboost not installed. Install with: pip install xgboost>=1.7.0\n"
+                    "Falling back to heuristic contradiction detection."
+                )
+                return
+            
             # Load belief category classifier
             belief_path = self.model_dir / "xgboost.pkl"
             if belief_path.exists():
@@ -430,8 +440,8 @@ class MLContradictionDetector:
     
     def _fallback_detection(
         self,
-        old_value: str,
-        new_value: str,
+        old_value: Any,
+        new_value: Any,
         slot: str,
         context: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -440,9 +450,9 @@ class MLContradictionDetector:
         
         Uses simple heuristics but still detects ALL slots (not hardcoded list).
         """
-        # Convert to string to handle int/float values
-        old_value = str(old_value) if not isinstance(old_value, str) else old_value
-        new_value = str(new_value) if not isinstance(new_value, str) else new_value
+        # Convert to string to handle int/float values - MUST happen before .lower()
+        old_value = str(old_value)
+        new_value = str(new_value)
         
         # Check for negation patterns
         old_lower = old_value.lower()
