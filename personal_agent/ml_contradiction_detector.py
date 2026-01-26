@@ -20,6 +20,17 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# RETRACTION PATTERN DETECTION
+# Patterns that indicate a user is retracting a denial (double negative)
+# ============================================================================
+
+RETRACTION_PATTERNS = [
+    "actually no,", "actually no ", "wait no,", "wait no ", 
+    "no wait,", "no wait "
+]
+
+
+# ============================================================================
 # SEMANTIC EQUIVALENCE DATABASE
 # These synonyms/related terms should NOT trigger contradiction
 # ============================================================================
@@ -78,11 +89,18 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
         return True
     
     # One is substring of other (detail enrichment)
-    # But not if they're just sharing common words like "degree"
+    # E.g., "dog" → "rescue dog" is enrichment, not contradiction
     if old_lower in new_lower or new_lower in old_lower:
-        # Make sure it's a real substring, not just sharing words
-        if len(old_lower) > 5 and len(new_lower) > 5:  # Only for meaningful substrings
-            return True
+        # But don't match if they only share common stop words
+        # E.g., "I have a degree" shouldn't match "doctoral degree"
+        if old_lower in new_lower:
+            # old is substring of new - check if it's a meaningful substring
+            if len(old_lower) > 5 or new_lower.startswith(old_lower) or new_lower.endswith(old_lower):
+                return True
+        elif new_lower in old_lower:
+            # new is substring of old - check if it's a meaningful substring
+            if len(new_lower) > 5 or old_lower.startswith(new_lower) or old_lower.endswith(new_lower):
+                return True
     
     # Check synonym database
     old_words = set(old_lower.split())
@@ -239,15 +257,11 @@ class MLContradictionDetector:
         # Extract features (matching Phase 2 format - 18 features)
         features = self._extract_belief_features(old_value, new_value, context)
         
-        # Detect retraction patterns BEFORE ML classification
+        # Detect retraction patterns BEFORE ML classification using the global constant
         # Retraction patterns indicate a user is reversing a denial, which is always a contradiction
         new_lower = str(new_value).lower()
-        retraction_patterns = [
-            "actually no,", "actually no ", "wait no,", "wait no ", 
-            "no wait,", "no wait "
-        ]
         has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
-                            for pattern in retraction_patterns)
+                            for pattern in RETRACTION_PATTERNS)
         
         # If retraction detected and values differ, force CONFLICT category
         if has_retraction and old_value.lower().strip() != new_value.lower().strip():
@@ -374,25 +388,21 @@ class MLContradictionDetector:
         negation_words = ["not", "never", "don't", "doesn't", "didn't", "won't", 
                          "cannot", "no longer", "n't", "can't"]
         
-        # Detect retraction-of-denial patterns: "actually no" / "wait no" before a positive statement
-        # These are double negatives that mean the user is reversing their denial
-        retraction_patterns = [
-            "actually no,", "actually no ", "wait no,", "wait no ", 
-            "no wait,", "no wait ", "no,", "no "
-        ]
+        # Detect retraction-of-denial patterns using the global constant
         has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
-                            for pattern in retraction_patterns)
+                            for pattern in RETRACTION_PATTERNS)
         
         # For retraction patterns, the "no" is part of reversal, not negation
         # So we need to look for negation AFTER the retraction keyword
         if has_retraction:
             # Parse after the retraction keyword to find actual content
-            for pattern in retraction_patterns:
+            remainder = new_lower
+            for pattern in RETRACTION_PATTERNS:
                 if pattern in new_lower:
                     remainder = new_lower.split(pattern, 1)[-1]
-                    # Check for negation in the remainder (actual statement)
-                    negation_in_new = int(any(word in remainder for word in negation_words))
-                    break
+                    # Continue checking all patterns to find the best match
+            # Check for negation in the remainder (actual statement)
+            negation_in_new = int(any(word in remainder for word in negation_words))
         else:
             negation_in_new = int(any(word in new_lower for word in negation_words))
         
@@ -536,21 +546,17 @@ class MLContradictionDetector:
         
         negation_words = ["not", "never", "don't", "no longer"]
         
-        # Detect retraction-of-denial patterns: "actually no" / "wait no" before a positive statement
-        retraction_patterns = [
-            "actually no,", "actually no ", "wait no,", "wait no ", 
-            "no wait,", "no wait ", "no,", "no "
-        ]
+        # Detect retraction-of-denial patterns using the global constant
         has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
-                            for pattern in retraction_patterns)
+                            for pattern in RETRACTION_PATTERNS)
         
         # For retraction patterns, parse after the retraction to find actual negation
         if has_retraction:
             remainder = new_lower
-            for pattern in retraction_patterns:
+            for pattern in RETRACTION_PATTERNS:
                 if pattern in new_lower:
                     remainder = new_lower.split(pattern, 1)[-1]
-                    break
+                    # Continue checking all patterns
             has_negation = any(word in remainder for word in negation_words)
         else:
             has_negation = any(word in new_lower for word in negation_words)
