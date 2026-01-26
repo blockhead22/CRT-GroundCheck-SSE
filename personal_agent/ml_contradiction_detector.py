@@ -32,6 +32,20 @@ RETRACTION_PATTERNS = [
 ]
 
 
+def _has_retraction_pattern(text: str) -> bool:
+    """
+    Check if text contains a retraction pattern.
+    
+    Args:
+        text: The text to check (should be lowercase)
+    
+    Returns:
+        True if text starts with or contains a retraction pattern
+    """
+    return any(text.startswith(pattern) or f" {pattern}" in text 
+               for pattern in RETRACTION_PATTERNS)
+
+
 def _extract_remainder_after_retraction(text: str) -> str:
     """
     Extract the text content after a retraction pattern.
@@ -129,9 +143,11 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
     # One is substring of other (detail enrichment)
     # E.g., "dog" → "rescue dog" is enrichment, not contradiction
     if old_lower in new_lower:
+        # old is substring of new
         if _is_meaningful_substring(old_lower, new_lower):
             return True
     elif new_lower in old_lower:
+        # new is substring of old  
         if _is_meaningful_substring(new_lower, old_lower):
             return True
     
@@ -290,14 +306,10 @@ class MLContradictionDetector:
         # Extract features (matching Phase 2 format - 18 features)
         features = self._extract_belief_features(old_value, new_value, context)
         
-        # Detect retraction patterns BEFORE ML classification using the global constant
+        # Detect retraction patterns BEFORE ML classification
         # Retraction patterns indicate a user is reversing a denial, which is always a contradiction
         new_lower = str(new_value).lower()
-        has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
-                            for pattern in RETRACTION_PATTERNS)
-        
-        # If retraction detected and values differ, force CONFLICT category
-        if has_retraction and old_value.lower().strip() != new_value.lower().strip():
+        if _has_retraction_pattern(new_lower) and old_value.lower().strip() != new_value.lower().strip():
             logger.debug(f"[RETRACTION] Forcing CONFLICT for retraction pattern: '{new_value}'")
             return {
                 "is_contradiction": True,
@@ -421,9 +433,8 @@ class MLContradictionDetector:
         negation_words = ["not", "never", "don't", "doesn't", "didn't", "won't", 
                          "cannot", "no longer", "n't", "can't"]
         
-        # Detect retraction-of-denial patterns using the global constant
-        has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
-                            for pattern in RETRACTION_PATTERNS)
+        # Detect retraction-of-denial patterns using helper function
+        has_retraction = _has_retraction_pattern(new_lower)
         
         # For retraction patterns, the "no" is part of reversal, not negation
         # So we need to look for negation AFTER the retraction keyword
@@ -443,13 +454,14 @@ class MLContradictionDetector:
         temporal_in_old = int(any(word in old_lower for word in temporal_words))
         temporal_in_new = int(any(word in new_lower for word in temporal_words))
         
+        # Correction markers indicate explicit user corrections
+        # Note: Retraction patterns are handled separately and force correction_markers=1
         correction_words = ["actually", "instead", "rather", "changed to", 
-                           "switched to", "i meant", "correction", "wrong", "mistake",
-                           "wait", "no wait"]  # Added retraction markers
-        # Strong correction signal if both retraction pattern AND correction word present
+                           "switched to", "i meant", "correction", "wrong", "mistake", "wait"]
         correction_markers = int(any(word in new_lower for word in correction_words))
+        # Force correction marker for retraction patterns (they always indicate correction)
         if has_retraction:
-            correction_markers = 1  # Force correction marker for retraction patterns
+            correction_markers = 1
         
         # Word counts
         query = context.get("query", new_value)
@@ -575,9 +587,8 @@ class MLContradictionDetector:
         
         negation_words = ["not", "never", "don't", "no longer"]
         
-        # Detect retraction-of-denial patterns using the global constant
-        has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
-                            for pattern in RETRACTION_PATTERNS)
+        # Detect retraction-of-denial patterns using helper function
+        has_retraction = _has_retraction_pattern(new_lower)
         
         # For retraction patterns, parse after the retraction to find actual negation using helper
         if has_retraction:
