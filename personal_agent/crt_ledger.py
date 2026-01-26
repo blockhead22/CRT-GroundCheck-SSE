@@ -535,9 +535,8 @@ class ContradictionLedger:
         ]
         seniority_pairs = [("senior", "principal"), ("junior", "senior"), ("mid", "senior")]
         
-        # Check for temporal markers in both old and new text
-        if any(marker in new_lower for marker in temporal_markers) or \
-           any(marker in old_lower for marker in temporal_markers):
+        # Check for temporal markers in both old and new text (single iteration)
+        if any(marker in new_lower or marker in old_lower for marker in temporal_markers):
             return ContradictionType.TEMPORAL
         
         for lower, higher in seniority_pairs:

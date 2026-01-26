@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
-from .crt_ledger import ContradictionLedger, ContradictionEntry
+from .crt_ledger import ContradictionLedger, ContradictionEntry, ContradictionType
 from .reasoning import ReasoningEngine, ReasoningMode
 from .fact_slots import extract_fact_slots
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
@@ -56,6 +56,7 @@ _UNSTRUCTURED_SLOT_NAME = '_unstructured_'
 
 # Constants for contradiction resolution
 RESOLVED_CONTRADICTION_CONFIDENCE = 0.85  # Confidence level for assertively resolved contradictions
+SSE_CONTRADICTION_RESULT = 'contradiction'  # SSE heuristic contradiction result value
 
 # Constants for value extraction
 _EXTRACTION_STOPWORDS = ["a", "an", "the", "as", "is", "was", "at", "in", "on", "for"]
@@ -1548,7 +1549,7 @@ class CRTEnhancedRAG:
                 
                 # Check for negation-based contradiction (retractions, denials)
                 negation_result = heuristic_contradiction(prev_mem.text, user_query)
-                if negation_result == 'contradiction':
+                if negation_result == SSE_CONTRADICTION_RESULT:
                     # This is likely a retraction or negation - classify as REVISION
                     logger.info(f"[NEGATION_DETECTED] Negation pattern found: {prev_mem.text[:50]} vs {user_query[:50]}")
                     drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
@@ -1565,7 +1566,7 @@ class CRTEnhancedRAG:
                         new_text=user_query,
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
-                        contradiction_type="revision"  # REVISION, not CONFLICT
+                        contradiction_type=ContradictionType.REVISION
                     )
                     return True, contradiction_entry
                 
