@@ -602,6 +602,10 @@ class CRTMemorySystem:
         # Additional validation: new_trust must be a valid float
         try:
             new_trust = float(new_trust)
+            # Check for NaN after conversion
+            if np.isnan(new_trust):
+                logger.error(f"[TRUST] new_trust is NaN for memory {memory_id}. Reason: {reason}. Skipping update.")
+                return
         except (TypeError, ValueError) as e:
             logger.error(f"[TRUST] Invalid new_trust value for memory {memory_id}: {new_trust} ({type(new_trust)}). Error: {e}. Skipping update.")
             return
@@ -690,6 +694,10 @@ class CRTMemorySystem:
         # Additional validation: new_trust must be a valid float
         try:
             new_trust = float(new_trust)
+            # Check for NaN after conversion
+            if np.isnan(new_trust):
+                logger.error(f"[TRUST] new_trust is NaN for memory {memory_id} via _update_memory_trust. Skipping update.")
+                return
         except (TypeError, ValueError) as e:
             logger.error(f"[TRUST] Invalid new_trust value for memory {memory_id}: {new_trust} ({type(new_trust)}). Error: {e}. Skipping update.")
             return

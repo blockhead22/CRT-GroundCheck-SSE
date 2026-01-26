@@ -4916,7 +4916,6 @@ class CRTEnhancedRAG:
         # For slot-specific queries (e.g., "what do you remember about my employer?"),
         # check if retrieved memories actually contain facts about the queried slot.
         # If not, return "I don't have that information" rather than unrelated facts.
-        from .fact_slots import extract_fact_slots
         inferred_slots = self._infer_slots_from_query(user_query)
         if inferred_slots:
             # Check if any retrieved memory contains facts about the queried slots
