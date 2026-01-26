@@ -29,7 +29,7 @@ CRT preserves the history of contradictions. When conflicts exist, the system:
 - **Auditable domains** (health, legal, enterprise knowledge) where transparency matters more than hiding conflicts
 - **Research and evaluation** for contradiction handling and truthful memory behavior
 
-## Why it matters
+## Core benefits
 - **Reduces silent memory overwrites** that lead to confident false answers
 - **Improves transparency** by surfacing conflicts instead of hiding them
 - **Creates auditability** with a ledger of conflicting claims and how they were resolved
@@ -150,20 +150,36 @@ pytest tests/test_adversarial_prompts.py -v
 - No TypeErrors on integer value contradictions
 
 ### Current test status
-**Latest adversarial challenge results (25 turns):**
-- Overall score: **84.0%** ✓ (exceeds 80% threshold)
+**Latest adversarial challenge results:**
+
+| Test | Score | Status |
+|------|-------|--------|
+| 25-turn challenge | **84.0%** | ✓ Passes 80% threshold |
+| 35-turn challenge | **74.3%** | ⚠ Below 80% threshold |
+
+**Phase breakdown (35-turn):**
+- BASELINE: 100% ✓
+- TEMPORAL: 70% ✓
+- SEMANTIC: 80% ✓
+- IDENTITY: 100% ✓
+- NEGATION: 70% ✓
+- DRIFT: 50%
+- STRESS: 50%
+
+**Metrics:**
 - Contradictions detected: 6
 - False positives: 0
-- Missed detections: 1
+- Missed detections: 1 (`retraction_of_denial` pattern)
 
 **Key findings:**
 - System successfully detects and handles contradictions
-- Strong performance on baseline, direct corrections, and semantic variations
-- Areas for improvement: complex temporal reasoning, double negatives
+- Strong performance on baseline, identity, direct corrections, and semantic variations
+- Zero false positives across all test scenarios
+- Areas for improvement: DRIFT/STRESS phase scoring, retraction-of-denial patterns
 
 **Test suite:**
-- 26 of 27 tests passing
-- 1 integration test requires full 35-turn challenge for validation
+- 26 of 27 pytest tests passing
+- Integration test (`test_adversarial_full_challenge_80_percent`) requires ≥80% on 35-turn
 
 ---
 
