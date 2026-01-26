@@ -262,11 +262,6 @@ Not recommended for production use without additional hardening, monitoring, and
 
 ---
 
-## Documentation
-- [QUICKSTART.md](QUICKSTART.md) - Detailed getting started guide
-- [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute
-- [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md) - Current limitations and future work
-- [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) - Full documentation index
 
 ## License
 MIT License - see [LICENSE](LICENSE) for details
