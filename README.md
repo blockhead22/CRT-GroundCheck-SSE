@@ -1,37 +1,37 @@
 # CRT + GroundCheck + SSE: Honest AI Memory (Prototype)
 
 ## What it is
-This repository integrates three systems for transparent, contradiction-aware AI memory:
-- **CRT (Contradiction-Retaining Tracker)**: A memory layer that preserves contradictions instead of overwriting them
-- **GroundCheck**: A verification system that ensures AI responses disclose conflicts rather than hiding them
-- **SSE (Semantic String Engine)**: Powers fact retrieval and semantic matching for the memory layer
+This repository integrates three systems for transparent AI memory that tracks contradictions:
+- **CRT (Contradiction Retaining Tracker)**: A memory layer that preserves contradictions instead of overwriting them
+- **GroundCheck**: A verification system that makes AI responses disclose conflicts instead of hiding them
+- **SSE (Semantic String Engine)**: Powers fact retrieval and semantic matching
 
-Together, they form a **research prototype** for memory governance and output verification in AI assistants.
+This is a **research prototype** for memory governance and output verification in AI assistants.
 
 ## The idea
-People change jobs, move cities, and revise preferences. Most AI memory systems silently overwrite old facts and answer confidently with the latest value—creating the risk of **confident wrong answers** or "gaslighting."
+People change jobs, move cities, and revise preferences. Most AI memory systems silently overwrite old facts and answer confidently with the latest value, which creates **confident wrong answers** or feels like gaslighting.
 
-CRT preserves the history of contradictions and enforces transparency. When conflicts exist, the system:
+CRT preserves the history of contradictions. When conflicts exist, the system:
 1. Discloses the conflict explicitly
 2. Asks for clarification when appropriate
-3. Refuses to assert a single answer when evidence is split
+3. Refuses to give a single answer when evidence is split
 
 ## System architecture (high level)
 1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger
 2. **ML contradiction detection**: Uses XGBoost models to classify belief changes (refinement vs. revision vs. temporal vs. conflict)
-3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts are retained
+3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts stay in memory
 4. **SSE retrieval**: Returns relevant memories using semantic search, including conflicting ones
-5. **GroundCheck verification**: Inspects generated responses to enforce disclosure of contradictions
+5. **GroundCheck verification**: Inspects responses to make sure contradictions are disclosed
 
 ## Intended use
-- **Long-term personal assistants** where user facts change over time
+- **Long term personal assistants** where user facts change over time
 - **Auditable domains** (health, legal, enterprise knowledge) where transparency matters more than hiding conflicts
 - **Research and evaluation** for contradiction handling and truthful memory behavior
 
 ## Why it matters
 - **Reduces silent memory overwrites** that lead to confident false answers
 - **Improves transparency** by surfacing conflicts instead of hiding them
-- **Creates auditability** through a ledger of conflicting claims and their resolution history
+- **Creates auditability** with a ledger of conflicting claims and how they were resolved
 
 ---
 
@@ -151,7 +151,7 @@ python tools/crt_stress_test.py \
 ## Troubleshooting
 
 ### ML dependencies (xgboost)
-The system uses XGBoost models for ML-based contradiction detection. If xgboost is not installed:
+The system uses XGBoost models for ML based contradiction detection. If xgboost is not installed:
 
 **Symptom**: Warnings about "xgboost not installed" or "Falling back to heuristic contradiction detection"
 
@@ -160,7 +160,7 @@ The system uses XGBoost models for ML-based contradiction detection. If xgboost 
 pip install xgboost>=1.7.0
 ```
 
-The system will automatically fall back to heuristic-based detection if xgboost is unavailable, but ML models provide better accuracy (especially for NEGATION and TEMPORAL cases).
+The system will automatically fall back to heuristic based detection if xgboost is unavailable, but ML models provide better accuracy (especially for NEGATION and TEMPORAL cases).
 
 ### Missing groundcheck module
 **Symptom**: `ModuleNotFoundError: No module named 'groundcheck'`
@@ -191,12 +191,12 @@ pip install sentence-transformers
 ## Project status
 **Research prototype.** Designed for transparency and contradiction handling rather than maximum raw grounding accuracy.
 
-This system is best suited for:
-- Researchers exploring contradiction-aware AI memory
+This system works well for:
+- Researchers exploring contradiction aware AI memory
 - Developers building transparent personal assistants
 - Teams needing auditable memory systems
 
-Not recommended for production use without additional hardening, monitoring, and domain-specific tuning.
+Not recommended for production use without additional hardening, monitoring, and domain specific tuning.
 
 ---
 
