@@ -5,31 +5,157 @@ comparing only facts that refer to the same attribute ("slot").
 
 This is intentionally heuristic (no ML) and is tuned to the kinds of personal
 profile facts used in CRT stress tests.
+
+Phase 2.0 Updates:
+- Extended ExtractedFact with temporal_status, period_text, and domains
+- Added temporal pattern extraction for past/active/future status
+- Integrated with domain_detector for domain tagging
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Tuple, List
+
+
+# ============================================================================
+# TEMPORAL STATUS CONSTANTS
+# ============================================================================
+
+class TemporalStatus:
+    """Temporal status constants for facts."""
+    PAST = "past"           # No longer true (e.g., "I used to work at X")
+    ACTIVE = "active"       # Currently true (default)
+    FUTURE = "future"       # Will be true (e.g., "I'm starting at X next month")
+    POTENTIAL = "potential" # Might be true (e.g., "I might take the job")
+
+
+# ============================================================================
+# TEMPORAL PATTERN EXTRACTION
+# ============================================================================
+
+# Patterns that indicate temporal status with their corresponding status
+TEMPORAL_PATTERNS: List[Tuple[re.Pattern, str, Optional[str]]] = [
+    # Past indicators
+    (re.compile(r"(?:i\s+)?(?:used to|formerly|previously)\s+", re.IGNORECASE), TemporalStatus.PAST, None),
+    (re.compile(r"(?:i\s+)?(?:no longer|don't|do not|stopped|quit|left)\s+", re.IGNORECASE), TemporalStatus.PAST, None),
+    (re.compile(r"\b(?:back when|when i was|in the past)\b", re.IGNORECASE), TemporalStatus.PAST, None),
+    (re.compile(r"\bformer\s+", re.IGNORECASE), TemporalStatus.PAST, None),
+    (re.compile(r"\bex-", re.IGNORECASE), TemporalStatus.PAST, None),
+    (re.compile(r"\banymore\b", re.IGNORECASE), TemporalStatus.PAST, None),
+    
+    # Active indicators
+    (re.compile(r"(?:i\s+)?(?:currently|now|presently|still)\s+", re.IGNORECASE), TemporalStatus.ACTIVE, None),
+    (re.compile(r"\b(?:i am|i'm)\s+(?:currently|still)\s+", re.IGNORECASE), TemporalStatus.ACTIVE, None),
+    (re.compile(r"\bthese days\b", re.IGNORECASE), TemporalStatus.ACTIVE, None),
+    
+    # Future indicators
+    (re.compile(r"(?:i\s+)?(?:will|plan to|going to|about to)\s+", re.IGNORECASE), TemporalStatus.FUTURE, None),
+    (re.compile(r"\b(?:starting|beginning|joining)\s+(?:next|soon|in)\s+", re.IGNORECASE), TemporalStatus.FUTURE, None),
+    (re.compile(r"\bnext (?:week|month|year)\b", re.IGNORECASE), TemporalStatus.FUTURE, None),
+    
+    # Potential indicators
+    (re.compile(r"(?:i\s+)?(?:might|may|could|considering)\s+", re.IGNORECASE), TemporalStatus.POTENTIAL, None),
+    (re.compile(r"\bthinking about\b", re.IGNORECASE), TemporalStatus.POTENTIAL, None),
+]
+
+# Period extraction patterns (capture date ranges)
+PERIOD_PATTERNS: List[Tuple[re.Pattern, str]] = [
+    # "from 2020 to 2024" or "from 2020-2024"
+    (re.compile(r"from\s+(\d{4})\s*(?:to|-)\s*(\d{4}|present)", re.IGNORECASE), "period"),
+    # "2020-2024" or "2020 - 2024"
+    (re.compile(r"\b(\d{4})\s*-\s*(\d{4}|present)\b", re.IGNORECASE), "period"),
+    # "since 2020" or "since last year"
+    (re.compile(r"since\s+(\d{4}|\w+\s+(?:year|month))", re.IGNORECASE), "since"),
+    # "until 2024" or "till 2024"
+    (re.compile(r"(?:until|till)\s+(\d{4})", re.IGNORECASE), "until"),
+    # "in 2020"
+    (re.compile(r"\bin\s+(\d{4})\b", re.IGNORECASE), "year"),
+]
+
+
+def extract_temporal_status(text: str) -> Tuple[str, Optional[str]]:
+    """
+    Extract temporal status and period from text.
+    
+    Args:
+        text: The text to analyze
+        
+    Returns:
+        Tuple of (temporal_status, period_text).
+        - temporal_status: "past", "active", "future", or "potential"
+        - period_text: Human-readable period like "2020-2024" or None
+    """
+    if not text:
+        return (TemporalStatus.ACTIVE, None)
+    
+    text_lower = text.lower()
+    detected_status = TemporalStatus.ACTIVE  # Default
+    period_text = None
+    
+    # Check temporal status patterns
+    for pattern, status, _ in TEMPORAL_PATTERNS:
+        if pattern.search(text):
+            detected_status = status
+            break
+    
+    # Check period patterns
+    for pattern, pattern_type in PERIOD_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            if pattern_type == "period":
+                start = match.group(1)
+                end = match.group(2) if match.lastindex >= 2 else "present"
+                period_text = f"{start}-{end}"
+            elif pattern_type == "since":
+                period_text = f"{match.group(1)}-present"
+            elif pattern_type == "until":
+                period_text = f"?-{match.group(1)}"
+            elif pattern_type == "year":
+                period_text = match.group(1)
+            break
+    
+    return (detected_status, period_text)
 
 
 @dataclass(frozen=True)
 class ExtractedFact:
+    """
+    A single extracted fact with temporal and domain metadata.
+    
+    Phase 2.0 Extension: Added temporal_status, period_text, and domains
+    to support context-aware memory and smarter contradiction detection.
+    """
     slot: str
     value: Any
     normalized: str
+    
+    # Phase 2.0: Temporal metadata
+    temporal_status: str = TemporalStatus.ACTIVE  # past | active | future | potential
+    period_text: Optional[str] = None             # Human-readable: "2020-2024"
+    
+    # Phase 2.0: Domain context (tuple for frozen dataclass)
+    domains: Tuple[str, ...] = ()                 # e.g., ("print_shop", "freelance")
+    
+    # Source tracking
+    confidence: float = 0.9
 
 
-def create_simple_fact(value: Any) -> ExtractedFact:
+def create_simple_fact(value: Any, temporal_status: str = TemporalStatus.ACTIVE, 
+                       domains: Tuple[str, ...] = ()) -> ExtractedFact:
     """
     Create a simple ExtractedFact from a value.
     
     Useful for converting LLM-extracted tuples to ExtractedFact format
     for compatibility with existing code.
     
+    Phase 2.0: Now supports temporal_status and domains parameters.
+    
     Args:
         value: The fact value
+        temporal_status: Temporal status (past/active/future/potential)
+        domains: Tuple of domain names for context
         
     Returns:
         ExtractedFact with slot="", value=value, normalized=str(value).lower()
@@ -37,7 +163,49 @@ def create_simple_fact(value: Any) -> ExtractedFact:
     return ExtractedFact(
         slot="",
         value=value,
-        normalized=str(value).lower().strip()
+        normalized=str(value).lower().strip(),
+        temporal_status=temporal_status,
+        domains=domains
+    )
+
+
+def create_contextual_fact(
+    slot: str,
+    value: Any,
+    text: str,
+    confidence: float = 0.9
+) -> ExtractedFact:
+    """
+    Create an ExtractedFact with automatic temporal and domain detection.
+    
+    Phase 2.0: This is the preferred way to create facts as it automatically
+    extracts temporal status and domains from the source text.
+    
+    Args:
+        slot: The fact slot name (e.g., "employer", "name")
+        value: The fact value
+        text: The source text (used for temporal/domain detection)
+        confidence: Confidence score (0-1)
+        
+    Returns:
+        ExtractedFact with temporal_status and domains auto-detected
+    """
+    from .domain_detector import detect_domains
+    
+    # Extract temporal status from text
+    temporal_status, period_text = extract_temporal_status(text)
+    
+    # Detect domains from text
+    domains = tuple(detect_domains(text))
+    
+    return ExtractedFact(
+        slot=slot,
+        value=value,
+        normalized=str(value).lower().strip(),
+        temporal_status=temporal_status,
+        period_text=period_text,
+        domains=domains,
+        confidence=confidence
     )
 
 
@@ -735,3 +903,127 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         facts["book"] = ExtractedFact("book", book, _norm_text(book))
 
     return facts
+
+
+def extract_fact_slots_contextual(text: str) -> Dict[str, ExtractedFact]:
+    """
+    Extract fact slots with Phase 2.0 temporal and domain metadata.
+    
+    This is the enhanced version of extract_fact_slots() that automatically
+    adds temporal status and domain context to each extracted fact.
+    
+    Use this when you need full context-aware facts for:
+    - Contradiction detection (same slot + same domain + same time = conflict)
+    - Multi-value storage (different domains = can coexist)
+    - Temporal reasoning ("I don't work at X anymore" = status: past)
+    
+    Args:
+        text: The text to analyze
+        
+    Returns:
+        Dictionary of slot -> ExtractedFact with temporal/domain metadata
+    """
+    from .domain_detector import detect_domains
+    
+    # First, get basic fact extraction
+    basic_facts = extract_fact_slots(text)
+    
+    if not basic_facts:
+        return basic_facts
+    
+    # Extract global temporal status and domains from source text
+    text_temporal_status, text_period = extract_temporal_status(text)
+    text_domains = tuple(detect_domains(text))
+    
+    # Enhance each fact with temporal/domain metadata
+    enhanced_facts: Dict[str, ExtractedFact] = {}
+    
+    for slot, fact in basic_facts.items():
+        # For employer slot, check for specific temporal indicators
+        slot_temporal_status = text_temporal_status
+        slot_period = text_period
+        
+        # Special handling for employer "LEFT:" prefix
+        if slot == "employer" and str(fact.value).startswith("LEFT:"):
+            slot_temporal_status = TemporalStatus.PAST
+        
+        # Create enhanced fact with metadata
+        enhanced_facts[slot] = ExtractedFact(
+            slot=fact.slot,
+            value=fact.value,
+            normalized=fact.normalized,
+            temporal_status=slot_temporal_status,
+            period_text=slot_period,
+            domains=text_domains,
+            confidence=0.9
+        )
+    
+    return enhanced_facts
+
+
+def is_temporal_update(old_fact: ExtractedFact, new_fact: ExtractedFact) -> bool:
+    """
+    Check if a new fact represents a temporal update (not a contradiction).
+    
+    Examples of temporal updates:
+    - "I work at Google" → "I don't work at Google anymore" (status change)
+    - Same value, new status = temporal update
+    - "used to work at X" + "now work at Y" = both valid (different times)
+    
+    Args:
+        old_fact: The existing fact
+        new_fact: The incoming fact
+        
+    Returns:
+        True if this is a temporal update, False if it might be a contradiction
+    """
+    # Different slots = not related
+    if old_fact.slot != new_fact.slot:
+        return False
+    
+    # Same value, different status = temporal update
+    if old_fact.normalized == new_fact.normalized:
+        if old_fact.temporal_status != new_fact.temporal_status:
+            return True
+    
+    # New fact says old value is now "past" = temporal update
+    if new_fact.temporal_status == TemporalStatus.PAST:
+        # Check if new fact references the old value
+        old_value_lower = str(old_fact.value).lower()
+        new_value_lower = str(new_fact.value).lower()
+        
+        # "LEFT:Google" normalizes to "left google" or similar
+        if old_value_lower in new_value_lower or new_value_lower.replace("left:", "").strip() == old_value_lower:
+            return True
+    
+    # Both are "past" = historical, not current contradiction
+    if old_fact.temporal_status == TemporalStatus.PAST and new_fact.temporal_status == TemporalStatus.PAST:
+        return True
+    
+    return False
+
+
+def domains_overlap(fact1: ExtractedFact, fact2: ExtractedFact) -> bool:
+    """
+    Check if two facts have overlapping domains.
+    
+    Used for contradiction detection: facts in different domains can coexist.
+    e.g., "I'm a programmer" (tech domain) and "I'm a photographer" (creative domain)
+    
+    Args:
+        fact1: First fact
+        fact2: Second fact
+        
+    Returns:
+        True if domains overlap (potential conflict), False if disjoint (can coexist)
+    """
+    domains1 = set(fact1.domains) if fact1.domains else {"general"}
+    domains2 = set(fact2.domains) if fact2.domains else {"general"}
+    
+    # "general" overlaps with everything
+    if domains1 == {"general"} or domains2 == {"general"}:
+        return True
+    
+    # Check for actual overlap
+    return bool(domains1 & domains2)
+

@@ -46,6 +46,11 @@ class MemoryItem:
     - Source (user/system/fallback/etc)
     - SSE mode (L/C/H)
     - Metadata
+    
+    Phase 2.0 Updates:
+    - temporal_status: past/active/future/potential
+    - valid_from/valid_until: Time validity bounds
+    - domain_tags: Context domains (print_shop, programming, etc.)
     """
     memory_id: str
     vector: np.ndarray         # Semantic encoding
@@ -67,6 +72,12 @@ class MemoryItem:
     fact_tuples: Optional[str] = None  # JSON-serialized list of FactTuple objects
     extraction_method: Optional[str] = 'regex'  # 'regex', 'llm', or 'none'
     
+    # Phase 2.0: Temporal and domain context
+    temporal_status: str = "active"             # past | active | future | potential
+    valid_from: Optional[float] = None          # Unix timestamp (None = beginning of time)
+    valid_until: Optional[float] = None         # Unix timestamp (None = ongoing)
+    domain_tags: Optional[List[str]] = None     # e.g., ["print_shop", "freelance"]
+    
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
         return {
@@ -80,7 +91,11 @@ class MemoryItem:
             'sse_mode': self.sse_mode.value,
             'context': self.context,
             'tags': self.tags,
-            'thread_id': self.thread_id
+            'thread_id': self.thread_id,
+            'temporal_status': self.temporal_status,
+            'valid_from': self.valid_from,
+            'valid_until': self.valid_until,
+            'domain_tags': self.domain_tags,
         }
     
     @staticmethod
@@ -97,8 +112,22 @@ class MemoryItem:
             sse_mode=SSEMode(data['sse_mode']),
             context=data.get('context'),
             tags=data.get('tags'),
-            thread_id=data.get('thread_id')
+            thread_id=data.get('thread_id'),
+            temporal_status=data.get('temporal_status', 'active'),
+            valid_from=data.get('valid_from'),
+            valid_until=data.get('valid_until'),
+            domain_tags=data.get('domain_tags'),
         )
+    
+    def get_domains(self) -> List[str]:
+        """Get domain tags, with fallback to 'general'."""
+        if self.domain_tags:
+            return self.domain_tags
+        return ["general"]
+    
+    def is_active(self) -> bool:
+        """Check if this memory is currently active (not past/deprecated)."""
+        return self.temporal_status == "active" and not self.deprecated
 
 
 class CRTMemorySystem:
@@ -272,6 +301,25 @@ class CRTMemorySystem:
             # Add index for performance
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_extraction_method ON memories(extraction_method)")
         
+        # Phase 2.0: Add temporal and domain columns for context-aware memory
+        if "temporal_status" not in columns:
+            logger.info(f"[MIGRATION] Adding temporal_status column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN temporal_status TEXT DEFAULT 'active'")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_temporal_status ON memories(temporal_status)")
+        
+        if "valid_from" not in columns:
+            logger.info(f"[MIGRATION] Adding valid_from column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN valid_from REAL")
+        
+        if "valid_until" not in columns:
+            logger.info(f"[MIGRATION] Adding valid_until column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN valid_until REAL")
+        
+        if "domain_tags" not in columns:
+            logger.info(f"[MIGRATION] Adding domain_tags column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN domain_tags TEXT")  # JSON array
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_domain_tags ON memories(domain_tags)")
+        
         conn.commit()
         conn.close()
     
@@ -349,8 +397,22 @@ class CRTMemorySystem:
         fact_tuples_json = None
         extraction_method = 'none'
         
+        # Phase 2.0: Extract temporal status and domains
+        temporal_status = "active"
+        domain_tags = None
+        
         try:
             from .two_tier_facts import TwoTierFactSystem
+            from .fact_slots import extract_temporal_status, TemporalStatus
+            from .domain_detector import detect_domains
+            
+            # Extract temporal status from text
+            temporal_status, _ = extract_temporal_status(text)
+            
+            # Detect domains from text
+            detected_domains = detect_domains(text)
+            if detected_domains and detected_domains != ["general"]:
+                domain_tags = detected_domains
             
             # Extract facts using two-tier system (local-only, no external API)
             extractor = TwoTierFactSystem(enable_llm=False)
@@ -374,6 +436,7 @@ class CRTMemorySystem:
                 
             logger.debug(f"[TWO_TIER] Extracted facts: method={extraction_method}, "
                         f"hard_facts={len(fact_data.hard_facts)}, open_tuples={len(fact_data.open_tuples)}")
+            logger.debug(f"[PHASE_2.0] Temporal status: {temporal_status}, domains: {domain_tags}")
         except Exception as e:
             logger.warning(f"[TWO_TIER] Failed to extract facts: {e}")
             extraction_method = 'none'
@@ -390,7 +453,9 @@ class CRTMemorySystem:
             sse_mode=sse_mode,
             context=context,
             fact_tuples=fact_tuples_json,
-            extraction_method=extraction_method
+            extraction_method=extraction_method,
+            temporal_status=temporal_status,
+            domain_tags=domain_tags
         )
         
         # Store in database
@@ -399,8 +464,8 @@ class CRTMemorySystem:
         
         cursor.execute("""
             INSERT INTO memories 
-            (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             memory.memory_id,
             json.dumps(vector.tolist()),
@@ -412,7 +477,9 @@ class CRTMemorySystem:
             sse_mode.value,
             json.dumps(context) if context else None,
             fact_tuples_json,
-            extraction_method
+            extraction_method,
+            temporal_status,
+            json.dumps(domain_tags) if domain_tags else None
         ))
         
         conn.commit()
