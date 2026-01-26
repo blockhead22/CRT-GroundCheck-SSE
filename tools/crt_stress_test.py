@@ -435,6 +435,12 @@ def _track_reintroduction_metrics(result: dict, *, turn: int) -> None:
         r"\(changed from",  # "(changed from Microsoft)"
         r"\(most recent",   # "(most recent update)"
         r"\(updated",       # "(updated from...)"
+        
+        # Additional natural disclosure patterns
+        r"\bnow\b.*\b(was|were)\b",  # "now X (was Y)"
+        r"\b(versus|vs|compared to)\b",  # "X versus Y"
+        r"\bno longer\b",  # "no longer Y"
+        r"\bas of\b",  # "as of [date]"
     ]
     
     # Compile regex for performance (cache at module level in production)

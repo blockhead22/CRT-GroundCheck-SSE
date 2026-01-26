@@ -1211,20 +1211,35 @@ class CRTEnhancedRAG:
             return f"(changed from {', '.join(old_values)})"
 
     def _answer_has_caveat(self, answer: str) -> bool:
-        """Check if an answer already includes contradiction caveat language."""
+        """Check if an answer already includes contradiction caveat language.
+        
+        Uses same patterns as stress test to ensure consistency.
+        """
         if not answer:
             return False
+        # Match patterns from crt_stress_test.py for consistency
         caveat_patterns = [
-            r"\bpreviously\b",
-            r"\bearlier\b",
-            r"\bchanged\b",
-            r"\bupdated\b",
-            r"\bmost recent\b",
-            r"\bcontradict",
-            r"\bconflict",
+            # Original exact matches
+            r"\b(most recent|latest|conflicting|though|however|according to)\b",
+            # Update/correction family
+            r"\b(updat(e|ed|ing)|correct(ed|ing|ion)?|clarif(y|ied|ying))\b",
+            # Temporal references
+            r"\b(earlier|previously|before|prior|former)\b",
+            # Acknowledgment/confirmation
+            r"\b(mentioned|noted|stated|said|established)\b",
+            # Change/revision family
+            r"\b(chang(e|ed|ing)|revis(e|ed|ing)|adjust(ed|ing)?|modif(y|ied|ying))\b",
+            # Contradiction signals
+            r"\b(actually|instead|rather|in fact)\b",
+            # Explicit caveat formats
             r"\(changed from",
             r"\(most recent",
             r"\(updated",
+            # Additional natural disclosure patterns
+            r"\bnow\b.*\b(was|were)\b",
+            r"\b(versus|vs|compared to)\b",
+            r"\bno longer\b",
+            r"\bas of\b",
         ]
         return bool(re.search("|".join(caveat_patterns), answer, flags=re.IGNORECASE))
     
