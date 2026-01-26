@@ -1,4 +1,0 @@
-Model,Accuracy,Precision,Recall,F1,REFINEMENT_F1,REVISION_F1,TEMPORAL_F1,CONFLICT_F1
-Logistic Regression,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
-Random Forest,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
-XGBoost,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0
