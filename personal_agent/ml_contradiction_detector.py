@@ -334,8 +334,30 @@ class MLContradictionDetector:
         
         negation_words = ["not", "never", "don't", "doesn't", "didn't", "won't", 
                          "cannot", "no longer", "n't", "can't"]
+        
+        # Detect retraction-of-denial patterns: "actually no" / "wait no" before a positive statement
+        # These are double negatives that mean the user is reversing their denial
+        retraction_patterns = [
+            "actually no,", "actually no ", "wait no,", "wait no ", 
+            "no wait,", "no wait ", "no,", "no "
+        ]
+        has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
+                            for pattern in retraction_patterns)
+        
+        # For retraction patterns, the "no" is part of reversal, not negation
+        # So we need to look for negation AFTER the retraction keyword
+        if has_retraction:
+            # Parse after the retraction keyword to find actual content
+            for pattern in retraction_patterns:
+                if pattern in new_lower:
+                    remainder = new_lower.split(pattern, 1)[-1]
+                    # Check for negation in the remainder (actual statement)
+                    negation_in_new = int(any(word in remainder for word in negation_words))
+                    break
+        else:
+            negation_in_new = int(any(word in new_lower for word in negation_words))
+        
         negation_in_old = int(any(word in old_lower for word in negation_words))
-        negation_in_new = int(any(word in new_lower for word in negation_words))
         negation_delta = negation_in_new - negation_in_old
         
         temporal_words = ["now", "currently", "today", "this week", "recently", 
@@ -344,8 +366,12 @@ class MLContradictionDetector:
         temporal_in_new = int(any(word in new_lower for word in temporal_words))
         
         correction_words = ["actually", "instead", "rather", "changed to", 
-                           "switched to", "i meant", "correction", "wrong", "mistake"]
+                           "switched to", "i meant", "correction", "wrong", "mistake",
+                           "wait", "no wait"]  # Added retraction markers
+        # Strong correction signal if both retraction pattern AND correction word present
         correction_markers = int(any(word in new_lower for word in correction_words))
+        if has_retraction:
+            correction_markers = 1  # Force correction marker for retraction patterns
         
         # Word counts
         query = context.get("query", new_value)
@@ -470,7 +496,25 @@ class MLContradictionDetector:
         new_lower = new_value.lower()
         
         negation_words = ["not", "never", "don't", "no longer"]
-        has_negation = any(word in new_lower for word in negation_words)
+        
+        # Detect retraction-of-denial patterns: "actually no" / "wait no" before a positive statement
+        retraction_patterns = [
+            "actually no,", "actually no ", "wait no,", "wait no ", 
+            "no wait,", "no wait ", "no,", "no "
+        ]
+        has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
+                            for pattern in retraction_patterns)
+        
+        # For retraction patterns, parse after the retraction to find actual negation
+        if has_retraction:
+            remainder = new_lower
+            for pattern in retraction_patterns:
+                if pattern in new_lower:
+                    remainder = new_lower.split(pattern, 1)[-1]
+                    break
+            has_negation = any(word in remainder for word in negation_words)
+        else:
+            has_negation = any(word in new_lower for word in negation_words)
         
         # Check for temporal patterns
         temporal_words = ["now", "currently", "used to", "previously"]
@@ -482,7 +526,9 @@ class MLContradictionDetector:
         values_differ = normalized_old != normalized_new
         
         # Simple contradiction detection
-        is_contradiction = values_differ and (has_negation or len(old_value) > 3)
+        # Retraction patterns should trigger contradiction even without explicit negation in remainder
+        # because they represent a reversal of position
+        is_contradiction = values_differ and (has_negation or has_retraction or len(old_value) > 3)
         
         # Determine category
         if has_temporal:
