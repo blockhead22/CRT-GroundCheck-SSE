@@ -20,6 +20,69 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================================
+# RETRACTION PATTERN DETECTION
+# Patterns that indicate a user is retracting a denial (double negative)
+# Organized in pairs: comma variant, space variant
+# ============================================================================
+
+RETRACTION_PATTERNS = [
+    "actually no,", "actually no ",
+    "wait no,", "wait no ",
+    "no wait,", "no wait "
+]
+
+
+def _has_retraction_pattern(text: str) -> bool:
+    """
+    Check if text contains a retraction pattern.
+    
+    Args:
+        text: The text to check (should be lowercase)
+    
+    Returns:
+        True if text starts with or contains a retraction pattern
+    """
+    return any(text.startswith(pattern) or f" {pattern}" in text 
+               for pattern in RETRACTION_PATTERNS)
+
+
+def _extract_remainder_after_retraction(text: str) -> str:
+    """
+    Extract the text content after a retraction pattern.
+    
+    Args:
+        text: The text to parse (should be lowercase)
+    
+    Returns:
+        The remainder of text after the first matching retraction pattern,
+        or the original text if no pattern matches
+    """
+    for pattern in RETRACTION_PATTERNS:
+        if pattern in text:
+            return text.split(pattern, 1)[-1]
+    return text
+
+
+def _is_meaningful_substring(substring: str, full_text: str) -> bool:
+    """
+    Check if substring match is meaningful (enrichment) vs accidental word sharing.
+    
+    Args:
+        substring: The shorter text
+        full_text: The longer text containing substring
+    
+    Returns:
+        True if this is a meaningful substring match (detail enrichment)
+    """
+    # Long substrings are always meaningful
+    if len(substring) > 5:
+        return True
+    # Short substrings must be at start or end to be meaningful
+    # E.g., "dog" at start of "dog named Max" or "Max the dog" at end
+    return full_text.startswith(substring) or full_text.endswith(substring)
+
+
+# ============================================================================
 # SEMANTIC EQUIVALENCE DATABASE
 # These synonyms/related terms should NOT trigger contradiction
 # ============================================================================
@@ -65,6 +128,10 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
     - "PhD" vs "doctorate" (synonyms)
     - "ML" vs "Machine Learning" (abbreviation)
     - "dog" vs "rescue dog" (enrichment)
+    
+    This should NOT match:
+    - "PhD" vs "Master's" (different degrees)
+    - "Google" vs "Microsoft" (different companies)
     """
     old_lower = str(old_value).lower().strip()
     new_lower = str(new_value).lower().strip()
@@ -74,8 +141,15 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
         return True
     
     # One is substring of other (detail enrichment)
-    if old_lower in new_lower or new_lower in old_lower:
-        return True
+    # E.g., "dog" → "rescue dog" is enrichment, not contradiction
+    if old_lower in new_lower:
+        # old is substring of new
+        if _is_meaningful_substring(old_lower, new_lower):
+            return True
+    elif new_lower in old_lower:
+        # new is substring of old  
+        if _is_meaningful_substring(new_lower, old_lower):
+            return True
     
     # Check synonym database
     old_words = set(old_lower.split())
@@ -83,9 +157,21 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
     
     for key, synonyms in SEMANTIC_EQUIVALENTS.items():
         all_forms = {key} | synonyms
-        old_has = bool(old_words & all_forms) or any(form in old_lower for form in all_forms)
-        new_has = bool(new_words & all_forms) or any(form in new_lower for form in all_forms)
+        # Check both word-level and phrase-level matching
+        # Word-level: check if any word from synonym set is in the text
+        old_has = bool(old_words & all_forms)
+        new_has = bool(new_words & all_forms)
+        # Phrase-level: check if multi-word synonym appears as substring
+        if not (old_has and new_has):
+            for form in all_forms:
+                if ' ' in form:  # Multi-word synonym like "machine learning"
+                    if form in old_lower:
+                        old_has = True
+                    if form in new_lower:
+                        new_has = True
+        
         if old_has and new_has:
+            # Both values contain words/phrases from the same synonym set
             return True
     
     return False
@@ -220,6 +306,18 @@ class MLContradictionDetector:
         # Extract features (matching Phase 2 format - 18 features)
         features = self._extract_belief_features(old_value, new_value, context)
         
+        # Detect retraction patterns BEFORE ML classification
+        # Retraction patterns indicate a user is reversing a denial, which is always a contradiction
+        new_lower = str(new_value).lower()
+        if _has_retraction_pattern(new_lower) and old_value.lower().strip() != new_value.lower().strip():
+            logger.debug(f"[RETRACTION] Forcing CONFLICT for retraction pattern: '{new_value}'")
+            return {
+                "is_contradiction": True,
+                "category": "CONFLICT",
+                "policy": "ASK_USER",
+                "confidence": 0.85
+            }
+        
         # Predict category using trained model
         try:
             category_idx = self.belief_classifier.predict([features])[0]
@@ -334,8 +432,21 @@ class MLContradictionDetector:
         
         negation_words = ["not", "never", "don't", "doesn't", "didn't", "won't", 
                          "cannot", "no longer", "n't", "can't"]
+        
+        # Detect retraction-of-denial patterns using helper function
+        has_retraction = _has_retraction_pattern(new_lower)
+        
+        # For retraction patterns, the "no" is part of reversal, not negation
+        # So we need to look for negation AFTER the retraction keyword
+        if has_retraction:
+            # Parse after the retraction keyword to find actual content using helper
+            remainder = _extract_remainder_after_retraction(new_lower)
+            # Check for negation in the remainder (actual statement)
+            negation_in_new = int(any(word in remainder for word in negation_words))
+        else:
+            negation_in_new = int(any(word in new_lower for word in negation_words))
+        
         negation_in_old = int(any(word in old_lower for word in negation_words))
-        negation_in_new = int(any(word in new_lower for word in negation_words))
         negation_delta = negation_in_new - negation_in_old
         
         temporal_words = ["now", "currently", "today", "this week", "recently", 
@@ -343,9 +454,14 @@ class MLContradictionDetector:
         temporal_in_old = int(any(word in old_lower for word in temporal_words))
         temporal_in_new = int(any(word in new_lower for word in temporal_words))
         
+        # Correction markers indicate explicit user corrections
+        # Note: Retraction patterns are handled separately and force correction_markers=1
         correction_words = ["actually", "instead", "rather", "changed to", 
-                           "switched to", "i meant", "correction", "wrong", "mistake"]
+                           "switched to", "i meant", "correction", "wrong", "mistake", "wait"]
         correction_markers = int(any(word in new_lower for word in correction_words))
+        # Force correction marker for retraction patterns (they always indicate correction)
+        if has_retraction:
+            correction_markers = 1
         
         # Word counts
         query = context.get("query", new_value)
@@ -470,7 +586,16 @@ class MLContradictionDetector:
         new_lower = new_value.lower()
         
         negation_words = ["not", "never", "don't", "no longer"]
-        has_negation = any(word in new_lower for word in negation_words)
+        
+        # Detect retraction-of-denial patterns using helper function
+        has_retraction = _has_retraction_pattern(new_lower)
+        
+        # For retraction patterns, parse after the retraction to find actual negation using helper
+        if has_retraction:
+            remainder = _extract_remainder_after_retraction(new_lower)
+            has_negation = any(word in remainder for word in negation_words)
+        else:
+            has_negation = any(word in new_lower for word in negation_words)
         
         # Check for temporal patterns
         temporal_words = ["now", "currently", "used to", "previously"]
@@ -482,7 +607,9 @@ class MLContradictionDetector:
         values_differ = normalized_old != normalized_new
         
         # Simple contradiction detection
-        is_contradiction = values_differ and (has_negation or len(old_value) > 3)
+        # Retraction patterns should trigger contradiction even without explicit negation in remainder
+        # because they represent a reversal of position
+        is_contradiction = values_differ and (has_negation or has_retraction or len(old_value) > 3)
         
         # Determine category
         if has_temporal:
