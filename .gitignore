@@ -48,6 +48,9 @@ artifacts/stress_test_*.md
 # Cache
 .sse_cache.json
 .sse_multi_cache.json
+
+# Documentation output
+docs/
 *.cache
 
 # Frontend
