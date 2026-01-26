@@ -16,7 +16,7 @@ CRT preserves the history of contradictions. When conflicts exist, the system:
 2. Asks for clarification when appropriate
 3. Refuses to give a single answer when evidence is split
 
-## System architecture (high level)
+## System architecture
 1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger
 2. **ML contradiction detection**: Uses XGBoost models to classify belief changes (refinement vs. revision vs. temporal vs. conflict)
 3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts stay in memory
