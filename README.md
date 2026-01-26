@@ -22,9 +22,10 @@ CRT preserves the history of contradictions. When conflicts exist, the system:
 3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts stay in memory
 4. **SSE retrieval**: Returns relevant memories using semantic search, including conflicting ones
 5. **GroundCheck verification**: Inspects responses to make sure contradictions are disclosed
+6. **React frontend**: Provides an interactive UI with real time contradiction tracking, memory visualization, and educational onboarding
 
 ## Intended use
-- **Long term personal assistants** where user facts change over time
+- **Long running personal assistants** where user facts change over time
 - **Auditable domains** (health, legal, enterprise knowledge) where transparency matters more than hiding conflicts
 - **Research and evaluation** for contradiction handling and truthful memory behavior
 
@@ -32,6 +33,50 @@ CRT preserves the history of contradictions. When conflicts exist, the system:
 - **Reduces silent memory overwrites** that lead to confident false answers
 - **Improves transparency** by surfacing conflicts instead of hiding them
 - **Creates auditability** with a ledger of conflicting claims and how they were resolved
+
+---
+
+## Frontend UI
+
+The repository includes a **production ready React frontend** that demonstrates CRT capabilities through an interactive web interface.
+
+### Features
+- **60 second onboarding tutorial**: Interactive walkthrough showing how contradictions are detected and disclosed
+- **Live contradiction ledger**: Real time panel displaying all detected contradictions with trust scores and audit trail
+- **Memory lane visualization**: Two lane architecture showing stable facts vs. candidate facts
+- **Side by side comparison**: Visual demonstration of regular AI (hides conflicts) vs. CRT (discloses conflicts)
+- **Integration code examples**: Copy and paste ready snippets for Python, JavaScript, and cURL
+- **Example scenarios**: Preloaded demos showing job changes, location moves, and preference updates
+
+### Quick start (Frontend)
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Then open `http://localhost:5173` in your browser.
+
+**Backend requirement**: The frontend connects to the CRT API. Start the backend server first:
+```bash
+# From repository root
+python crt_api.py
+```
+
+The API runs on `http://127.0.0.1:8123` by default.
+
+### Frontend architecture
+- **React 18.3** with TypeScript for type safety
+- **Tailwind CSS** for responsive, utility based styling
+- **Framer Motion** for smooth animations and transitions
+- **Vite** for fast builds and hot module replacement
+
+For detailed frontend documentation, see `frontend/README.md` and `frontend/IMPLEMENTATION_SUMMARY.md`.
 
 ---
 
@@ -72,7 +117,7 @@ print(result["answer"])
 ## Testing
 
 ### Run adversarial challenge (comprehensive stress test)
-Tests contradiction detection across 35 challenging scenarios including negation, temporal confusion, and semantic edge cases.
+Tests contradiction detection across 35 challenging scenarios including negation, temporal confusion, and semantic variations.
 
 ```bash
 # Full 35-turn adversarial challenge
