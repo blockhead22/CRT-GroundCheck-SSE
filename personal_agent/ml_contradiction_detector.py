@@ -310,7 +310,8 @@ class MLContradictionDetector:
         17. trust_score
         18. drift_score
         """
-        # Ensure string conversion for int values (e.g., programming_years)
+        # Unconditional str() conversion to handle int/float values (e.g., programming_years: 10)
+        # This prevents AttributeError when calling .lower() on non-string types
         old_value = str(old_value)
         new_value = str(new_value)
         
@@ -449,8 +450,18 @@ class MLContradictionDetector:
         Fallback detection when ML models unavailable.
         
         Uses simple heuristics but still detects ALL slots (not hardcoded list).
+        
+        Args:
+            old_value: Previous value (can be str, int, float, or any type)
+            new_value: New value (can be str, int, float, or any type)
+            slot: Memory slot name
+            context: Additional context dictionary
+        
+        Returns:
+            dict with is_contradiction, category, policy, confidence
         """
         # Convert to string to handle int/float values - MUST happen before .lower()
+        # Prevents AttributeError: 'int' object has no attribute 'lower'
         old_value = str(old_value)
         new_value = str(new_value)
         
