@@ -90,7 +90,7 @@ class ReasoningEngine:
                 from .ollama_client import get_ollama_client
                 llm_client = get_ollama_client()
             except Exception as e:
-                print(f"⚠️  Could not initialize Ollama: {e}")
+                print(f"[WARNING] Could not initialize Ollama: {e}")
                 llm_client = None
         
         self.llm = llm_client
