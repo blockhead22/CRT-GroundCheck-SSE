@@ -594,6 +594,22 @@ class CRTMemorySystem:
         drift: Optional[float] = None
     ):
         """Update trust score and log the change."""
+        # Validate input: new_trust must not be None
+        if new_trust is None:
+            logger.error(f"[TRUST] Attempted to update trust to None for memory {memory_id}. Reason: {reason}. Skipping update.")
+            return
+        
+        # Additional validation: new_trust must be a valid float
+        try:
+            new_trust = float(new_trust)
+            # Check for NaN after conversion
+            if np.isnan(new_trust):
+                logger.error(f"[TRUST] new_trust is NaN for memory {memory_id}. Reason: {reason}. Skipping update.")
+                return
+        except (TypeError, ValueError) as e:
+            logger.error(f"[TRUST] Invalid new_trust value for memory {memory_id}: {new_trust} ({type(new_trust)}). Error: {e}. Skipping update.")
+            return
+        
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -638,6 +654,12 @@ class CRTMemorySystem:
                 drift
             ))
         
+        # Final validation before UPDATE
+        if actual_new_trust is None or (isinstance(actual_new_trust, float) and np.isnan(actual_new_trust)):
+            logger.error(f"[TRUST] actual_new_trust is None or NaN after processing for memory {memory_id}. Value: {actual_new_trust}. Skipping update.")
+            conn.close()
+            return
+        
         # Update trust
         cursor.execute(
             "UPDATE memories SET trust = ? WHERE memory_id = ?",
@@ -664,6 +686,22 @@ class CRTMemorySystem:
             memory_id: ID of memory to update
             new_trust: New trust value
         """
+        # Validate input: new_trust must not be None
+        if new_trust is None:
+            logger.error(f"[TRUST] Attempted to update trust to None for memory {memory_id} via _update_memory_trust. Skipping update.")
+            return
+        
+        # Additional validation: new_trust must be a valid float
+        try:
+            new_trust = float(new_trust)
+            # Check for NaN after conversion
+            if np.isnan(new_trust):
+                logger.error(f"[TRUST] new_trust is NaN for memory {memory_id} via _update_memory_trust. Skipping update.")
+                return
+        except (TypeError, ValueError) as e:
+            logger.error(f"[TRUST] Invalid new_trust value for memory {memory_id}: {new_trust} ({type(new_trust)}). Error: {e}. Skipping update.")
+            return
+        
         conn = self._get_connection()
         cursor = conn.cursor()
         
@@ -726,6 +764,11 @@ class CRTMemorySystem:
         This is called when gates pass, meaning the retrieved memory
         was useful and led to a coherent response. We reward it.
         """
+        # Defensive check: if memory.trust is None, initialize to default
+        if memory.trust is None:
+            logger.warning(f"[TRUST] Memory {memory.memory_id} has None trust, initializing to 0.5")
+            memory.trust = 0.5
+        
         drift = self.crt_math.drift_meaning(new_output_vector, memory.vector)
         
         # Always evolve trust when this is called (gates already passed)
@@ -748,6 +791,11 @@ class CRTMemorySystem:
         
         Uses: τ_new = clip(τ · (1 - η_neg·D_mean), 0, 1)
         """
+        # Defensive check: if memory.trust is None, initialize to default
+        if memory.trust is None:
+            logger.warning(f"[TRUST] Memory {memory.memory_id} has None trust, initializing to 0.5")
+            memory.trust = 0.5
+        
         drift = self.crt_math.drift_meaning(new_output_vector, memory.vector)
         new_trust = self.crt_math.evolve_trust_contradicted(memory.trust, drift)
         
