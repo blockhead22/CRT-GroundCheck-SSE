@@ -25,6 +25,7 @@ RESOLUTION_PATTERNS = [
     # Job/employer changes
     r'\bswitched\s+(jobs|to|companies)\b',
     r'\bchanged\s+to\b',  # More general: "changed to" anything
+    r'\bchanged\s+\w+\s+to\b',  # "changed X to" (e.g., "changed snack to pretzels")
     r'\bchanged\s+(jobs|companies)\b',  # Specific: "changed jobs"
     r'\bmoved\s+to\b',
     r'\bnow\s+(work|working|at)\b',
