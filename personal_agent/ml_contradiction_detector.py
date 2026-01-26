@@ -154,6 +154,16 @@ class MLContradictionDetector:
     def _load_models(self):
         """Load trained XGBoost models."""
         try:
+            # Verify xgboost is available
+            try:
+                import xgboost
+            except ImportError:
+                logger.error(
+                    "⚠ xgboost not installed. Install with: pip install xgboost>=1.7.0\n"
+                    "Falling back to heuristic contradiction detection."
+                )
+                return
+            
             # Load belief category classifier
             belief_path = self.model_dir / "xgboost.pkl"
             if belief_path.exists():
@@ -300,7 +310,8 @@ class MLContradictionDetector:
         17. trust_score
         18. drift_score
         """
-        # Ensure string conversion for int values (e.g., programming_years)
+        # Unconditional str() conversion to handle int/float values (e.g., programming_years: 10)
+        # This prevents AttributeError when calling .lower() on non-string types
         old_value = str(old_value)
         new_value = str(new_value)
         
@@ -430,8 +441,8 @@ class MLContradictionDetector:
     
     def _fallback_detection(
         self,
-        old_value: str,
-        new_value: str,
+        old_value: Any,
+        new_value: Any,
         slot: str,
         context: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -439,10 +450,20 @@ class MLContradictionDetector:
         Fallback detection when ML models unavailable.
         
         Uses simple heuristics but still detects ALL slots (not hardcoded list).
+        
+        Args:
+            old_value: Previous value (can be str, int, float, or any type)
+            new_value: New value (can be str, int, float, or any type)
+            slot: Memory slot name
+            context: Additional context dictionary
+        
+        Returns:
+            dict with is_contradiction, category, policy, confidence
         """
-        # Convert to string to handle int/float values
-        old_value = str(old_value) if not isinstance(old_value, str) else old_value
-        new_value = str(new_value) if not isinstance(new_value, str) else new_value
+        # Convert to string to handle int/float values - MUST happen before .lower()
+        # Prevents AttributeError: 'int' object has no attribute 'lower'
+        old_value = str(old_value)
+        new_value = str(new_value)
         
         # Check for negation patterns
         old_lower = old_value.lower()
