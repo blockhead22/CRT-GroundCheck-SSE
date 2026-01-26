@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
-from .crt_ledger import ContradictionLedger, ContradictionEntry
+from .crt_ledger import ContradictionLedger, ContradictionEntry, ContradictionType
 from .reasoning import ReasoningEngine, ReasoningMode
 from .fact_slots import extract_fact_slots
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
@@ -47,6 +47,8 @@ from .user_profile import GlobalUserProfile
 from .ml_contradiction_detector import MLContradictionDetector
 from .resolution_patterns import has_resolution_intent, get_matched_patterns
 from .contradiction_trace_logger import get_trace_logger
+from groundcheck.semantic_matcher import SemanticMatcher
+from sse.contradictions import heuristic_contradiction
 
 # Constants for NL resolution
 _NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
@@ -54,6 +56,7 @@ _UNSTRUCTURED_SLOT_NAME = '_unstructured_'
 
 # Constants for contradiction resolution
 RESOLVED_CONTRADICTION_CONFIDENCE = 0.85  # Confidence level for assertively resolved contradictions
+SSE_CONTRADICTION_RESULT = 'contradiction'  # SSE heuristic contradiction result value
 
 # Constants for value extraction
 _EXTRACTION_STOPWORDS = ["a", "an", "the", "as", "is", "was", "at", "in", "on", "for"]
@@ -103,6 +106,14 @@ class CRTEnhancedRAG:
         except Exception as e:
             logger.warning(f"[ML_DETECTOR] Failed to initialize ML detector: {e}")
             self.ml_detector = None
+        
+        # Semantic matcher for paraphrase detection
+        try:
+            self.semantic_matcher = SemanticMatcher(use_embeddings=True, embedding_threshold=0.85)
+            logger.info("[SEMANTIC_MATCHER] Initialized semantic matcher")
+        except Exception as e:
+            logger.warning(f"[SEMANTIC_MATCHER] Failed to initialize: {e}")
+            self.semantic_matcher = None
         
         # Active learning coordinator (graceful degradation if unavailable)
         try:
@@ -221,6 +232,18 @@ class CRTEnhancedRAG:
                 methods_used=["regex_fallback_after_error"]
             )
             return result
+    
+    def _is_semantic_match(self, a: str, b: str, slot: str = "") -> bool:
+        """Check if two values are semantically equivalent (paraphrases)."""
+        if self.semantic_matcher is None:
+            return a.lower().strip() == b.lower().strip()
+        try:
+            is_match, method, _ = self.semantic_matcher.is_match(a, {b}, slot=slot)
+            if is_match:
+                logger.debug(f"[SEMANTIC_MATCH] '{a}' ≈ '{b}' via {method}")
+            return is_match
+        except Exception:
+            return a.lower().strip() == b.lower().strip()
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""
@@ -1518,6 +1541,34 @@ class CRTEnhancedRAG:
                 # Check if values are similar enough to skip (avoid nickname issues)
                 if prev_value_str == new_value_str:
                     continue
+                
+                # Check if values are semantically equivalent (paraphrase, not contradiction)
+                if self._is_semantic_match(str(prev_value), str(new_value), slot):
+                    logger.debug(f"[SEMANTIC_MATCH] Skipping contradiction - semantic match: {prev_value} ≈ {new_value}")
+                    continue
+                
+                # Check for negation-based contradiction (retractions, denials)
+                negation_result = heuristic_contradiction(prev_mem.text, user_query)
+                if negation_result == SSE_CONTRADICTION_RESULT:
+                    # This is likely a retraction or negation - classify as REVISION
+                    logger.info(f"[NEGATION_DETECTED] Negation pattern found: {prev_mem.text[:50]} vs {user_query[:50]}")
+                    drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+                    
+                    # Record as REVISION type, not CONFLICT
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                        query=user_query,
+                        summary=f"{slot}: negation/retraction detected",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=ContradictionType.REVISION
+                    )
+                    return True, contradiction_entry
                 
                 # Use ML detector to check for contradiction
                 context = {

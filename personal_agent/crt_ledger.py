@@ -526,11 +526,17 @@ class ContradictionLedger:
             if any(q in new_lower for q in refinement_qualifiers):
                 return ContradictionType.REFINEMENT
         
-        # Check for temporal progression keywords
-        temporal_keywords = ["now", "currently", "promoted", "became", "upgraded"]
+        # Enhanced temporal detection
+        temporal_markers = [
+            "now", "currently", "recently", "just", "switched", "changed",
+            "moved", "started", "used to", "no longer", "anymore", "these days",
+            "at the moment", "as of", "since then", "after that",
+            "promoted", "became", "upgraded"
+        ]
         seniority_pairs = [("senior", "principal"), ("junior", "senior"), ("mid", "senior")]
         
-        if any(kw in new_lower for kw in temporal_keywords):
+        # Check for temporal markers in both old and new text (single iteration)
+        if any(marker in new_lower or marker in old_lower for marker in temporal_markers):
             return ContradictionType.TEMPORAL
         
         for lower, higher in seniority_pairs:
