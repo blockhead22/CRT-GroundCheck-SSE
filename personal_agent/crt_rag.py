@@ -1646,7 +1646,10 @@ class CRTEnhancedRAG:
                         confidence_prior=float(prev_mem.confidence),
                         source=new_memory.source,
                         text_new=user_query,
-                        text_prior=prev_mem.text
+                        text_prior=prev_mem.text,
+                        slot=slot,
+                        value_new=new_value_str,
+                        value_prior=prev_value_str,
                     )
                     if not is_real_contradiction:
                         logger.info(f"[CRT_PARAPHRASE] Skipped negation - {crt_reason}")
@@ -1726,7 +1729,10 @@ class CRTEnhancedRAG:
                         confidence_prior=float(prev_mem.confidence),
                         source=new_memory.source,
                         text_new=user_query,
-                        text_prior=prev_mem.text
+                        text_prior=prev_mem.text,
+                        slot=slot,
+                        value_new=new_value_str,
+                        value_prior=prev_value_str,
                     )
                     if not is_real_contradiction:
                         logger.info(f"[CRT_PARAPHRASE] Skipped ML detection - {crt_reason}")
@@ -2466,6 +2472,9 @@ class CRTEnhancedRAG:
                                 # Reuse existing embeddings from stored memories; do not invoke the embedder here.
                                 user_vector = user_memory.vector
                                 drift = self.crt_math.drift_meaning(user_vector, selected_prev.vector)
+                                selected_prev_facts = extract_fact_slots(selected_prev.text) or {}
+                                selected_prev_name = selected_prev_facts.get("name")
+                                prev_name_value = getattr(selected_prev_name, "value", None) if selected_prev_name else None
                                 logger.debug("Name contradiction: new='%s' vs old='%s', drift=%.3f", new_name.value, selected_prev.text[:60], drift)
                                 
                                 # Phase 1.1: Use CRTMath paraphrase check as final gate
@@ -2475,7 +2484,10 @@ class CRTEnhancedRAG:
                                     confidence_prior=float(selected_prev.confidence),
                                     source=user_memory.source,
                                     text_new=user_query,
-                                    text_prior=selected_prev.text
+                                    text_prior=selected_prev.text,
+                                    slot="name",
+                                    value_new=str(getattr(new_name, "value", new_name)),
+                                    value_prior=str(prev_name_value) if prev_name_value is not None else None,
                                 )
                                 if not is_real_contradiction:
                                     logger.info(f"[CRT_PARAPHRASE] Skipped name contradiction - {crt_reason}")
@@ -3750,7 +3762,10 @@ class CRTEnhancedRAG:
                         confidence_prior=float(selected_prev.confidence),
                         source=user_memory.source,
                         text_new=user_query,
-                        text_prior=selected_prev.text
+                        text_prior=selected_prev.text,
+                        slot=slot,
+                        value_new=str(getattr(new_fact, "value", getattr(new_fact, "normalized", ""))),
+                        value_prior=str(getattr(latest_fact, "value", getattr(latest_fact, "normalized", ""))),
                     )
                     if not is_real_contradiction:
                         logger.info(f"[CRT_PARAPHRASE] Skipped generic fact contradiction - {crt_reason}")

@@ -21,7 +21,9 @@ from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from difflib import SequenceMatcher
 import math
+import re
 
 
 class SSEMode(Enum):
@@ -52,7 +54,7 @@ class CRTConfig:
     
     # Thresholds
     theta_align: float = 0.15     # Drift threshold for alignment
-    theta_contra: float = 0.42    # Drift threshold for contradiction (tuned from stress test analysis)
+    theta_contra: float = 0.28    # Drift threshold for contradiction (tuned from stress test analysis)
     theta_min: float = 0.30       # Minimum drift for confidence-based contradiction
     theta_drop: float = 0.30      # Confidence drop threshold
     theta_fallback: float = 0.42  # Drift threshold for fallback contradictions
@@ -562,41 +564,56 @@ class CRTMath:
         confidence_prior: float,
         source: MemorySource,
         text_new: str = "",
-        text_prior: str = ""
+        text_prior: str = "",
+        slot: Optional[str] = None,
+        value_new: Optional[str] = None,
+        value_prior: Optional[str] = None,
     ) -> Tuple[bool, str]:
         """
         Detect if contradiction event should be triggered.
-        
+ 
         Now includes paraphrase tolerance to reduce false positives.
-        
+        Additional fast-path checks catch entity swaps and preference inversions.
+ 
         Triggers:
+        0. Entity swap / preference inversion heuristics
         1. Paraphrase check - same meaning despite drift shouldn't flag
         2. D_mean > θ_contra
         3. (Δc > θ_drop AND D_mean > θ_min)
         4. (src == fallback AND D_mean > θ_fallback)
-        
+ 
         Returns (is_contradiction, reason)
         """
         cfg = self.config
-        
-        # Rule 0: Paraphrase tolerance (reduce false positives)
-        if text_new and text_prior and drift > 0.25:
+
+        # Rule 0a: Entity swap detection (same slot, different proper noun values)
+        entity_swap, entity_reason = self._detect_entity_swap(slot, value_new, value_prior, text_new, text_prior)
+        if entity_swap:
+            return True, entity_reason
+
+        # Rule 0b: Preference/boolean inversion detection (prefer X vs prefer Y / hate X)
+        inversion_detected, inversion_reason = self._is_boolean_inversion(text_new, text_prior)
+        if inversion_detected:
+            return True, inversion_reason
+
+        # Rule 0c: Paraphrase tolerance (reduce false positives)
+        if text_new and text_prior and drift > 0.35:
             if self._is_likely_paraphrase(text_new, text_prior, drift):
                 return False, f"Paraphrase detected (drift={drift:.3f}, not contradiction)"
-        
+
         # Rule 1: High drift
         if drift > cfg.theta_contra:
             return True, f"High drift: {drift:.3f} > {cfg.theta_contra}"
-        
+
         # Rule 2: Confidence drop with moderate drift
         delta_c = confidence_prior - confidence_new
         if delta_c > cfg.theta_drop and drift > cfg.theta_min:
             return True, f"Confidence drop: Δc={delta_c:.3f}, drift={drift:.3f}"
-        
+
         # Rule 3: Fallback source with drift
         if source in {MemorySource.FALLBACK, MemorySource.LLM_OUTPUT} and drift > cfg.theta_fallback:
             return True, f"Fallback drift: {drift:.3f} > {cfg.theta_fallback}"
-        
+
         return False, "No contradiction"
     
     def _is_likely_paraphrase(self, text_new: str, text_prior: str, drift: float) -> bool:
@@ -605,13 +622,11 @@ class CRTMath:
         
         Heuristics:
         1. Same key entities/numbers
-        2. Drift is moderate (0.25-0.55 range)
+        2. Drift is moderate (0.35-0.50 range)
         3. High overlap in key elements
         """
-        import re
-        
         # Only check moderate drift range (paraphrases shouldn't have extreme drift)
-        if drift < 0.25 or drift > 0.55:
+        if drift < 0.35 or drift > 0.50:
             return False
         
         def extract_key_elements(text: str) -> set:
@@ -623,6 +638,12 @@ class CRTMath:
         
         keys_new = extract_key_elements(text_new)
         keys_prior = extract_key_elements(text_prior)
+
+        # Explicit numeric mismatch: if both contain numbers and they differ, do not treat as paraphrase
+        nums_new = set(re.findall(r'\d+', text_new))
+        nums_prior = set(re.findall(r'\d+', text_prior))
+        if nums_new and nums_prior and nums_new != nums_prior:
+            return False
         
         # If key elements overlap significantly, likely paraphrase
         if keys_new and keys_prior:
@@ -631,6 +652,121 @@ class CRTMath:
                 return True
         
         return False
+
+    def _detect_entity_swap(
+        self,
+        slot: Optional[str],
+        value_new: Optional[str],
+        value_prior: Optional[str],
+        text_new: str = "",
+        text_prior: str = "",
+    ) -> Tuple[bool, str]:
+        """
+        Detect entity swap: same slot but conflicting proper-noun values.
+        """
+        if not slot or value_new is None or value_prior is None:
+            return False, ""
+
+        candidate_new = str(value_new).strip()
+        candidate_prior = str(value_prior).strip()
+        if not candidate_new or not candidate_prior:
+            return False, ""
+
+        candidate_new_norm = candidate_new.lower()
+        candidate_prior_norm = candidate_prior.lower()
+
+        # If normalized values match, not a swap
+        if candidate_new_norm == candidate_prior_norm:
+            return False, ""
+
+        if not (self._looks_like_entity(candidate_new) and self._looks_like_entity(candidate_prior)):
+            return False, ""
+
+        # Avoid false positives for near-identical strings (e.g., nicknames)
+        similarity = SequenceMatcher(None, candidate_new_norm, candidate_prior_norm).ratio()
+        if similarity > 0.78:
+            return False, ""
+
+        return True, f"Entity swap detected for slot '{slot}': '{candidate_prior}' -> '{candidate_new}'"
+
+    def _looks_like_entity(self, value: str) -> bool:
+        """Heuristic to decide if a value is a named entity (proper noun or acronym)."""
+        if not value:
+            return False
+
+        tokens = re.findall(r"[A-Za-z][\w.&'-]*", value)
+        return any(token[0].isupper() or token.isupper() for token in tokens)
+
+    def _is_boolean_inversion(self, text_new: str, text_prior: str) -> Tuple[bool, str]:
+        """Detect preference/boolean inversions such as prefer X vs prefer Y or like vs dislike X."""
+        if not text_new or not text_prior:
+            return False, ""
+
+        def extract_preferences(text: str) -> List[Tuple[str, str]]:
+            patterns = [
+                (r"\bprefer[s]?\s+(?P<obj>[^.;,!?:\n]+)", "prefer"),
+                (r"\blike[s]?\s+(?P<obj>[^.;,!?:\n]+)", "like"),
+                (r"\blove[s]?\s+(?P<obj>[^.;,!?:\n]+)", "like"),
+                (r"\benjoy[s]?\s+(?P<obj>[^.;,!?:\n]+)", "like"),
+                (r"\bdislike[s]?\s+(?P<obj>[^.;,!?:\n]+)", "dislike"),
+                (r"\bhate[s]?\s+(?P<obj>[^.;,!?:\n]+)", "dislike"),
+                (r"\bavoid[s]?\s+(?P<obj>[^.;,!?:\n]+)", "dislike"),
+            ]
+
+            preferences: List[Tuple[str, str]] = []
+            lowered = text.lower()
+            for pattern, label in patterns:
+                for match in re.finditer(pattern, lowered):
+                    obj = match.group("obj").strip()
+                    # Trim trailing connectors to isolate the preference object
+                    obj = re.split(r"\b(but|however|though|although)\b", obj)[0].strip()
+                    preferences.append((label, obj))
+            return preferences
+
+        def normalize_obj(obj: str) -> str:
+            # Remove punctuation and stopwords to compare preference targets
+            cleaned = re.sub(r"[^a-z0-9 ]+", " ", obj.lower())
+            stopwords = {"a", "an", "the", "to", "in", "of", "on", "for", "with", "at", "my", "your", "our", "their", "his", "her"}
+            return " ".join(word for word in cleaned.split() if word and word not in stopwords)
+
+        def polarity(label: str) -> int:
+            return 1 if label in {"prefer", "like"} else -1
+
+        def objects_match(a: str, b: str) -> bool:
+            if not a or not b:
+                return False
+            if a == b:
+                return True
+            ratio = SequenceMatcher(None, a, b).ratio()
+            return ratio >= 0.75 or a in b or b in a
+
+        prefs_new = extract_preferences(text_new)
+        prefs_prior = extract_preferences(text_prior)
+
+        if not prefs_new or not prefs_prior:
+            return False, ""
+
+        for label_new, obj_new_raw in prefs_new:
+            obj_new = normalize_obj(obj_new_raw)
+            if not obj_new:
+                continue
+            pol_new = polarity(label_new)
+
+            for label_prior, obj_prior_raw in prefs_prior:
+                obj_prior = normalize_obj(obj_prior_raw)
+                if not obj_prior:
+                    continue
+                pol_prior = polarity(label_prior)
+
+                same_target = objects_match(obj_new, obj_prior)
+                if same_target and pol_new != pol_prior:
+                    return True, f"Preference inversion on '{obj_new}'"
+
+                # Prefer X vs prefer Y (both positive but different targets)
+                if pol_new == pol_prior == 1 and not same_target:
+                    return True, "Preference target changed"
+
+        return False, ""
     
     # ========================================================================
     # 7. Reflection Triggers
