@@ -15,7 +15,10 @@ CRT_SCHEMA_FILES = [
 
 @pytest.mark.parametrize("schema_path", CRT_SCHEMA_FILES)
 def test_crt_schema_loads_and_is_valid_draft7(schema_path: str):
-    p = Path(__file__).resolve().parents[1] / schema_path
+    # Try schemas/ subdirectory first, then fall back to repo root
+    p = Path(__file__).resolve().parents[1] / "schemas" / schema_path
+    if not p.exists():
+        p = Path(__file__).resolve().parents[1] / schema_path
     assert p.exists(), f"Missing schema file: {p}"
 
     schema = json.loads(p.read_text(encoding="utf-8"))

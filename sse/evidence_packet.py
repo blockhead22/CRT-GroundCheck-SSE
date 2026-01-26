@@ -317,7 +317,10 @@ class EvidencePacketValidator:
     def _load_schema(cls) -> Dict[str, Any]:
         """Load JSON schema from file."""
         if cls._schema is None:
-            schema_path = Path(__file__).parent.parent / "evidence_packet.v1.schema.json"
+            # Try schemas/ subdirectory first, then fall back to repo root
+            schema_path = Path(__file__).parent.parent / "schemas" / "evidence_packet.v1.schema.json"
+            if not schema_path.exists():
+                schema_path = Path(__file__).parent.parent / "evidence_packet.v1.schema.json"
             with open(schema_path, "r") as f:
                 cls._schema = json.load(f)
         return cls._schema

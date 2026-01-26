@@ -15,7 +15,11 @@ def _repo_root() -> Path:
 
 @lru_cache(maxsize=32)
 def load_schema(schema_filename: str) -> Dict[str, Any]:
-    schema_path = _repo_root() / schema_filename
+    # First try schemas/ subdirectory, then fall back to repo root for backwards compatibility
+    schema_path = _repo_root() / "schemas" / schema_filename
+    if not schema_path.exists() or not schema_path.is_file():
+        # Fallback to repo root
+        schema_path = _repo_root() / schema_filename
     if not schema_path.exists() or not schema_path.is_file():
         raise FileNotFoundError(f"Schema not found: {schema_path}")
     return json.loads(schema_path.read_text(encoding="utf-8"))

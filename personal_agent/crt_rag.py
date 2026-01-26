@@ -3599,7 +3599,8 @@ class CRTEnhancedRAG:
                         ml_result = self.ml_detector.check_contradiction(
                             old_value=str(getattr(latest_fact, "value", latest_norm)),
                             new_value=str(getattr(new_fact, "value", new_norm)),
-                            slot=slot
+                            slot=slot,
+                            context={"query": user_query}  # Pass query for retraction pattern detection
                         )
                         if not ml_result.get("is_contradiction", True):
                             # ML says it's not a contradiction (e.g., semantic equivalence)

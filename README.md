@@ -9,12 +9,13 @@ This repository integrates three systems for transparent AI memory that tracks c
 This is a **research prototype** for memory governance and output verification in AI assistants.
 
 ## The idea
-People change jobs, move cities, and revise preferences. Most AI memory systems silently overwrite old facts and answer confidently with the latest value, which creates **confident wrong answers** or feels like gaslighting.
+Human circumstances and preferences are not static, they evolve over time due to career changes, relocations, and shifting interests. AI systems that remember user information must account for this fluidity. However, most AI memory systems simply overwrite old information with new data, then present the latest value as fact without ever acknowledging that a change occurred. This creates confidently wrong answers or an unsettling experience where the system behaves as though the previous information never existed. Worse, it opens the door for the AI to internalize falsehoods as truth or perpetuate contradictions it never acknowledged, undermining trust and reliability.
 
 CRT preserves the history of contradictions. When conflicts exist, the system:
-1. Discloses the conflict explicitly
-2. Asks for clarification when appropriate
-3. Refuses to give a single answer when evidence is split
+
+Discloses the conflict explicitly
+Asks for clarification when appropriate
+Refuses to give a single answer when evidence is split
 
 ## System architecture
 1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger

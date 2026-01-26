@@ -308,9 +308,16 @@ class MLContradictionDetector:
         
         # Detect retraction patterns BEFORE ML classification
         # Retraction patterns indicate a user is reversing a denial, which is always a contradiction
+        # IMPORTANT: Check the original query text for retraction patterns, not just the extracted slot value
+        # e.g., "Actually no, I do have a PhD" - the retraction is in the query, not the slot value "PhD"
+        query_text = context.get("query", "") or ""
         new_lower = str(new_value).lower()
-        if _has_retraction_pattern(new_lower) and old_value.lower().strip() != new_value.lower().strip():
-            logger.debug(f"[RETRACTION] Forcing CONFLICT for retraction pattern: '{new_value}'")
+        query_lower = query_text.lower()
+        
+        # Check both the extracted value AND the original query for retraction patterns
+        has_retraction = _has_retraction_pattern(new_lower) or _has_retraction_pattern(query_lower)
+        if has_retraction and old_value.lower().strip() != new_value.lower().strip():
+            logger.debug(f"[RETRACTION] Forcing CONFLICT for retraction pattern in query: '{query_text}' or value: '{new_value}'")
             return {
                 "is_contradiction": True,
                 "category": "CONFLICT",
@@ -585,10 +592,15 @@ class MLContradictionDetector:
         old_lower = old_value.lower()
         new_lower = new_value.lower()
         
+        # Also check the original query for retraction patterns (not just extracted slot value)
+        query_text = context.get("query", "") or ""
+        query_lower = query_text.lower()
+        
         negation_words = ["not", "never", "don't", "no longer"]
         
         # Detect retraction-of-denial patterns using helper function
-        has_retraction = _has_retraction_pattern(new_lower)
+        # Check both extracted value AND original query for retraction patterns
+        has_retraction = _has_retraction_pattern(new_lower) or _has_retraction_pattern(query_lower)
         
         # For retraction patterns, parse after the retraction to find actual negation using helper
         if has_retraction:
