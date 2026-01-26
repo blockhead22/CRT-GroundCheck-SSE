@@ -1186,6 +1186,24 @@ class CRTEnhancedRAG:
             return f"(changed from {old_values[0]})"
         else:
             return f"(changed from {', '.join(old_values)})"
+
+    def _answer_has_caveat(self, answer: str) -> bool:
+        """Check if an answer already includes contradiction caveat language."""
+        if not answer:
+            return False
+        caveat_patterns = [
+            r"\bpreviously\b",
+            r"\bearlier\b",
+            r"\bchanged\b",
+            r"\bupdated\b",
+            r"\bmost recent\b",
+            r"\bcontradict",
+            r"\bconflict",
+            r"\(changed from",
+            r"\(most recent",
+            r"\(updated",
+        ]
+        return bool(re.search("|".join(caveat_patterns), answer, flags=re.IGNORECASE))
     
     def _resolve_contradiction_assertively(
         self, 
@@ -1272,7 +1290,8 @@ class CRTEnhancedRAG:
     def _check_contradiction_gates(
         self,
         user_query: str,
-        inferred_slots: List[str]
+        inferred_slots: List[str],
+        user_input_kind: Optional[str] = None,
     ) -> Tuple[bool, Optional[str], List[Dict[str, Any]]]:
         """
         Bug 2 Fix: Check for unresolved contradictions that should block response.
@@ -1283,6 +1302,7 @@ class CRTEnhancedRAG:
         Args:
             user_query: User's query text
             inferred_slots: Slots the query is asking about
+            user_input_kind: High-level classification of the user input
             
         Returns:
             (gates_passed, clarification_message, contradictions_list)
@@ -1353,6 +1373,7 @@ class CRTEnhancedRAG:
         if resolved_memory:
             # Extract the answer value
             answer_value = self._extract_value_from_memory_text(resolved_memory.text)
+            is_question = user_input_kind in ("question", "instruction")
             
             # Build caveat disclosure from blocking_contradictions if we have it
             if blocking_contradictions:
@@ -1365,7 +1386,9 @@ class CRTEnhancedRAG:
                         seen.add(old_val)
                         old_values.append(old_val)
                 
-                if old_values:
+                if is_question:
+                    caveat = "(most recent update)"
+                elif old_values:
                     if len(old_values) == 1:
                         caveat = f"(changed from {old_values[0]})"
                     else:
@@ -1393,7 +1416,10 @@ class CRTEnhancedRAG:
             old_value = self._extract_value_from_memory_text(first_contra.get('old_value', ''))
             
             if new_value:
-                caveat = f"(changed from {old_value})" if old_value else "(most recent update)"
+                is_question = user_input_kind in ("question", "instruction")
+                caveat = "(most recent update)"
+                if not is_question and old_value:
+                    caveat = f"(changed from {old_value})"
                 assertive_answer = f"{new_value} {caveat}"
                 
                 logger.info(f"[GATE_CHECK] ✓ Resolved using blocking_data fallback: {assertive_answer}")
@@ -1421,6 +1447,12 @@ class CRTEnhancedRAG:
     
     def _get_memory_by_id(self, memory_id: str) -> Optional[MemoryItem]:
         """Get a specific memory by ID."""
+        cached = getattr(self.memory, "_memories_cache", None)
+        if isinstance(cached, list) and cached:
+            for mem in cached:
+                if mem.memory_id == memory_id:
+                    return mem
+
         all_memories = self.memory._load_all_memories()
         for mem in all_memories:
             if mem.memory_id == memory_id:
@@ -2360,13 +2392,16 @@ class CRTEnhancedRAG:
         
         # BUG 2 FIX: Check for unresolved contradictions (gate blocking)
         gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
-            user_query, inferred_slots
+            user_query,
+            inferred_slots,
+            user_input_kind=user_input_kind,
         )
         
         # Handle resolved contradictions (gates passed with caveat answer)
         if gates_passed and clarification_message:
             # Contradiction was RESOLVED - return assertive answer with caveat
             logger.info(f"[GATE_RESOLVED] Contradiction resolved with caveat: {clarification_message}")
+            is_question = user_input_kind in ("question", "instruction")
             
             return {
                 'answer': clarification_message,
@@ -2378,7 +2413,7 @@ class CRTEnhancedRAG:
                 'gate_reason': 'contradiction_resolved',
                 'intent_alignment': 0.9,
                 'memory_alignment': 0.9,
-                'contradiction_detected': True,  # Yes, contradiction exists
+                'contradiction_detected': not is_question,  # Only flag contradictions on new assertions
                 'contradiction_resolved': True,  # But we resolved it
                 'unresolved_contradictions_total': 0,  # Zero because we resolved them
                 'unresolved_hard_conflicts': 0,
@@ -2393,6 +2428,7 @@ class CRTEnhancedRAG:
         if not gates_passed and clarification_message:
             # Gate blocked - return clarification request instead of confident answer
             logger.info(f"[GATE_BLOCK] Response blocked due to {len(blocking_contradictions)} contradictions")
+            is_question = user_input_kind in ("question", "instruction")
             
             return {
                 'answer': clarification_message,
@@ -2404,7 +2440,7 @@ class CRTEnhancedRAG:
                 'gate_reason': 'contradiction_blocking',
                 'intent_alignment': 0.5,
                 'memory_alignment': 0.5,
-                'contradiction_detected': True,
+                'contradiction_detected': not is_question,
                 'unresolved_contradictions_total': len(blocking_contradictions),
                 'unresolved_hard_conflicts': len(blocking_contradictions),
                 'retrieved_memories': [],
@@ -3628,6 +3664,10 @@ class CRTEnhancedRAG:
         
         # Count reintroductions for audit trail
         reintroduced_count = sum(1 for m in retrieved_with_flags if m.get('reintroduced_claim'))
+        if reintroduced_count > 0 and not self._answer_has_caveat(final_answer):
+            is_question = user_input_kind in ("question", "instruction")
+            caveat = "(most recent update)" if is_question else "(changed from prior value)"
+            final_answer = f"{final_answer.rstrip()} {caveat}"
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
@@ -5129,7 +5169,3 @@ class CRTEnhancedRAG:
     def get_reflection_queue(self) -> List[Dict]:
         """Get pending reflections."""
         return self.ledger.get_reflection_queue()
-
-
-
-
