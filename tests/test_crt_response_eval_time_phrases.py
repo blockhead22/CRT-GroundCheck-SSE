@@ -1,4 +1,9 @@
 import pytest
+import sys
+from pathlib import Path
+
+# Add tools directory to path for crt_response_eval
+sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
 
 from crt_response_eval import evaluate_turn
 
