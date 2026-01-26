@@ -591,7 +591,12 @@ class CRTMath:
         if entity_swap:
             return True, entity_reason
 
-        # Rule 0b: Preference/boolean inversion detection (prefer X vs prefer Y / hate X)
+        # Rule 0b: Negation contradiction detection ("don't work at X" vs "work at X")
+        negation_detected, negation_reason = self._detect_negation_contradiction(text_new, text_prior)
+        if negation_detected:
+            return True, negation_reason
+
+        # Rule 0c: Preference/boolean inversion detection (prefer X vs prefer Y / hate X)
         inversion_detected, inversion_reason = self._is_boolean_inversion(text_new, text_prior)
         if inversion_detected:
             return True, inversion_reason
@@ -766,6 +771,55 @@ class CRTMath:
                 if pol_new == pol_prior == 1 and not same_target:
                     return True, "Preference target changed"
 
+        return False, ""
+
+    def _detect_negation_contradiction(self, text_new: str, text_prior: str) -> Tuple[bool, str]:
+        """
+        Detect negation-based contradictions.
+        
+        Patterns:
+        - "I don't X" vs "I X"
+        - "I no longer X" vs "I X"
+        - "not X anymore" vs "X"
+        """
+        if not text_new or not text_prior:
+            return False, ""
+        
+        text_new_lower = text_new.lower()
+        text_prior_lower = text_prior.lower()
+        
+        # Negation patterns
+        negation_patterns = [
+            (r"(?:i\s+)?(?:don'?t|do\s+not|no\s+longer|not\s+anymore)\s+(\w+(?:\s+\w+){0,3})", "negated"),
+            (r"(?:i\s+)?(?:stopped|quit|left|no\s+longer)\s+(\w+(?:\s+\w+){0,3})", "ceased"),
+            (r"(?:i'm\s+not|i\s+am\s+not)\s+(\w+(?:\s+\w+){0,3})", "negated_state"),
+        ]
+        
+        # Extract negated actions/states from new text
+        negated_items = []
+        for pattern, neg_type in negation_patterns:
+            for match in re.finditer(pattern, text_new_lower):
+                negated_items.append((match.group(1).strip(), neg_type))
+        
+        if not negated_items:
+            return False, ""
+        
+        # Check if prior text affirms any of the negated items
+        for item, neg_type in negated_items:
+            # Clean item for matching
+            item_words = item.split()[:3]  # First 3 words
+            item_pattern = r'\b' + r'\s+'.join(re.escape(w) for w in item_words) + r'\b'
+            
+            # Check if prior affirms this (without negation)
+            if re.search(item_pattern, text_prior_lower):
+                # Verify prior doesn't also negate it
+                prior_negated = any(
+                    re.search(p[0], text_prior_lower) 
+                    for p in negation_patterns
+                )
+                if not prior_negated:
+                    return True, f"Negation contradiction: '{item}' negated in new, affirmed in prior"
+        
         return False, ""
     
     # ========================================================================
