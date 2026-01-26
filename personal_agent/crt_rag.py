@@ -1210,6 +1210,76 @@ class CRTEnhancedRAG:
         else:
             return f"(changed from {', '.join(old_values)})"
 
+    def _build_mandatory_caveat(
+        self,
+        user_input_kind: str,
+        reintroduced_count: int,
+        relevant_contradictions: Optional[List] = None
+    ) -> str:
+        """
+        Build a specific caveat based on contradiction context.
+        
+        This ensures caveats are informative, not just generic.
+        """
+        is_question = user_input_kind in ("question", "instruction")
+        
+        # For questions, use simpler temporal caveat
+        if is_question:
+            return "(most recent update)"
+        
+        # For assertions, try to be specific about what changed
+        if relevant_contradictions and len(relevant_contradictions) > 0:
+            contra = relevant_contradictions[0]
+            old_val = contra.get('old_value', '')
+            new_val = contra.get('new_value', '')
+            
+            if old_val and new_val:
+                # Truncate for readability
+                old_short = old_val[:30] + '...' if len(old_val) > 30 else old_val
+                new_short = new_val[:30] + '...' if len(new_val) > 30 else new_val
+                return f"(changed from {old_short} to {new_short})"
+        
+        # Fallback: generic but clear
+        if reintroduced_count == 1:
+            return "(note: conflicting information exists)"
+        else:
+            return f"(note: {reintroduced_count} conflicting claims exist)"
+    
+    def _build_mandatory_caveat(
+        self,
+        user_input_kind: str,
+        reintroduced_count: int,
+        relevant_contradictions: Optional[List] = None
+    ) -> str:
+        """
+        Build a specific caveat based on contradiction context.
+        
+        This ensures caveats are informative, not just generic.
+        """
+        is_question = user_input_kind in ("question", "instruction")
+        
+        # For questions, use simpler temporal caveat
+        if is_question:
+            return "(most recent update)"
+        
+        # For assertions, try to be specific about what changed
+        if relevant_contradictions and len(relevant_contradictions) > 0:
+            # Get first contradiction for context
+            contra = relevant_contradictions[0]
+            
+            # Try to extract old/new values from summary or contradiction object
+            old_val = getattr(contra, 'old_text', '')[:30] if hasattr(contra, 'old_text') else ''
+            new_val = getattr(contra, 'new_text', '')[:30] if hasattr(contra, 'new_text') else ''
+            
+            if old_val and new_val:
+                return f"(changed from {old_val}... to {new_val}...)"
+        
+        # Fallback: generic but clear
+        if reintroduced_count == 1:
+            return "(note: conflicting information exists)"
+        else:
+            return f"(note: {reintroduced_count} conflicting claims exist)"
+    
     def _answer_has_caveat(self, answer: str) -> bool:
         """Check if an answer already includes contradiction caveat language.
         
@@ -3729,12 +3799,18 @@ class CRTEnhancedRAG:
              if d.get('memory_id')]
         ) if prompt_docs else []
         
-        # Count reintroductions for audit trail
+        # MANDATORY CAVEAT ENFORCEMENT: Count reintroductions and inject caveat
         reintroduced_count = sum(1 for m in retrieved_with_flags if m.get('reintroduced_claim'))
-        if reintroduced_count > 0 and not self._answer_has_caveat(final_answer):
-            is_question = user_input_kind in ("question", "instruction")
-            caveat = "(most recent update)" if is_question else "(changed from prior value)"
-            final_answer = f"{final_answer.rstrip()} {caveat}"
+        if reintroduced_count > 0:
+            if not self._answer_has_caveat(final_answer):
+                # Build specific caveat based on contradiction details
+                caveat = self._build_mandatory_caveat(
+                    user_input_kind=user_input_kind,
+                    reintroduced_count=reintroduced_count,
+                    relevant_contradictions=relevant_contradictions
+                )
+                final_answer = f"{final_answer.rstrip()} {caveat}"
+                logger.info(f"[CAVEAT_INJECTED] Added mandatory caveat for {reintroduced_count} reintroduced claim(s)")
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(

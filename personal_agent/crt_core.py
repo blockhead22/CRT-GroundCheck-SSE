@@ -560,19 +560,29 @@ class CRTMath:
         drift: float,
         confidence_new: float,
         confidence_prior: float,
-        source: MemorySource
+        source: MemorySource,
+        text_new: str = "",
+        text_prior: str = ""
     ) -> Tuple[bool, str]:
         """
         Detect if contradiction event should be triggered.
         
+        Now includes paraphrase tolerance to reduce false positives.
+        
         Triggers:
-        1. D_mean > θ_contra
-        2. (Δc > θ_drop AND D_mean > θ_min)
-        3. (src == fallback AND D_mean > θ_fallback)
+        1. Paraphrase check - same meaning despite drift shouldn't flag
+        2. D_mean > θ_contra
+        3. (Δc > θ_drop AND D_mean > θ_min)
+        4. (src == fallback AND D_mean > θ_fallback)
         
         Returns (is_contradiction, reason)
         """
         cfg = self.config
+        
+        # Rule 0: Paraphrase tolerance (reduce false positives)
+        if text_new and text_prior and drift > 0.25:
+            if self._is_likely_paraphrase(text_new, text_prior, drift):
+                return False, f"Paraphrase detected (drift={drift:.3f}, not contradiction)"
         
         # Rule 1: High drift
         if drift > cfg.theta_contra:
@@ -588,6 +598,39 @@ class CRTMath:
             return True, f"Fallback drift: {drift:.3f} > {cfg.theta_fallback}"
         
         return False, "No contradiction"
+    
+    def _is_likely_paraphrase(self, text_new: str, text_prior: str, drift: float) -> bool:
+        """
+        Check if two texts are paraphrases despite semantic drift.
+        
+        Heuristics:
+        1. Same key entities/numbers
+        2. Drift is moderate (0.25-0.55 range)
+        3. High overlap in key elements
+        """
+        import re
+        
+        # Only check moderate drift range (paraphrases shouldn't have extreme drift)
+        if drift < 0.25 or drift > 0.55:
+            return False
+        
+        def extract_key_elements(text: str) -> set:
+            """Extract numbers and proper nouns as key elements."""
+            numbers = set(re.findall(r'\d+', text))
+            # Proper nouns (capitalized words not at sentence start)
+            caps = set(re.findall(r'(?<!^)(?<!\. )[A-Z][a-z]+', text))
+            return numbers | caps
+        
+        keys_new = extract_key_elements(text_new)
+        keys_prior = extract_key_elements(text_prior)
+        
+        # If key elements overlap significantly, likely paraphrase
+        if keys_new and keys_prior:
+            overlap = len(keys_new & keys_prior) / max(len(keys_new | keys_prior), 1)
+            if overlap > 0.7:
+                return True
+        
+        return False
     
     # ========================================================================
     # 7. Reflection Triggers
