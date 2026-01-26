@@ -4,7 +4,7 @@
 This repository integrates three systems for transparent, contradiction-aware AI memory:
 - **CRT (Contradiction-Retaining Tracker)**: A memory layer that preserves contradictions instead of overwriting them
 - **GroundCheck**: A verification system that ensures AI responses disclose conflicts rather than hiding them
-- **SSE (Semantic Search Engine)**: Powers fact retrieval and semantic matching for the memory layer
+- **SSE (Semantic String Engine)**: Powers fact retrieval and semantic matching for the memory layer
 
 Together, they form a **research prototype** for memory governance and output verification in AI assistants.
 
