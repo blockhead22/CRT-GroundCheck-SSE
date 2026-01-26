@@ -65,6 +65,10 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
     - "PhD" vs "doctorate" (synonyms)
     - "ML" vs "Machine Learning" (abbreviation)
     - "dog" vs "rescue dog" (enrichment)
+    
+    This should NOT match:
+    - "PhD" vs "Master's" (different degrees)
+    - "Google" vs "Microsoft" (different companies)
     """
     old_lower = str(old_value).lower().strip()
     new_lower = str(new_value).lower().strip()
@@ -74,8 +78,11 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
         return True
     
     # One is substring of other (detail enrichment)
+    # But not if they're just sharing common words like "degree"
     if old_lower in new_lower or new_lower in old_lower:
-        return True
+        # Make sure it's a real substring, not just sharing words
+        if len(old_lower) > 5 and len(new_lower) > 5:  # Only for meaningful substrings
+            return True
     
     # Check synonym database
     old_words = set(old_lower.split())
@@ -83,9 +90,21 @@ def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
     
     for key, synonyms in SEMANTIC_EQUIVALENTS.items():
         all_forms = {key} | synonyms
-        old_has = bool(old_words & all_forms) or any(form in old_lower for form in all_forms)
-        new_has = bool(new_words & all_forms) or any(form in new_lower for form in all_forms)
+        # Check both word-level and phrase-level matching
+        # Word-level: check if any word from synonym set is in the text
+        old_has = bool(old_words & all_forms)
+        new_has = bool(new_words & all_forms)
+        # Phrase-level: check if multi-word synonym appears as substring
+        if not (old_has and new_has):
+            for form in all_forms:
+                if ' ' in form:  # Multi-word synonym like "machine learning"
+                    if form in old_lower:
+                        old_has = True
+                    if form in new_lower:
+                        new_has = True
+        
         if old_has and new_has:
+            # Both values contain words/phrases from the same synonym set
             return True
     
     return False
@@ -219,6 +238,26 @@ class MLContradictionDetector:
         
         # Extract features (matching Phase 2 format - 18 features)
         features = self._extract_belief_features(old_value, new_value, context)
+        
+        # Detect retraction patterns BEFORE ML classification
+        # Retraction patterns indicate a user is reversing a denial, which is always a contradiction
+        new_lower = str(new_value).lower()
+        retraction_patterns = [
+            "actually no,", "actually no ", "wait no,", "wait no ", 
+            "no wait,", "no wait "
+        ]
+        has_retraction = any(new_lower.startswith(pattern) or f" {pattern}" in new_lower 
+                            for pattern in retraction_patterns)
+        
+        # If retraction detected and values differ, force CONFLICT category
+        if has_retraction and old_value.lower().strip() != new_value.lower().strip():
+            logger.debug(f"[RETRACTION] Forcing CONFLICT for retraction pattern: '{new_value}'")
+            return {
+                "is_contradiction": True,
+                "category": "CONFLICT",
+                "policy": "ASK_USER",
+                "confidence": 0.85
+            }
         
         # Predict category using trained model
         try:
