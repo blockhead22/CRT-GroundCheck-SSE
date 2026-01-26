@@ -32,7 +32,7 @@ from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
 from .crt_ledger import ContradictionLedger, ContradictionEntry, ContradictionType
 from .reasoning import ReasoningEngine, ReasoningMode
-from .fact_slots import extract_fact_slots
+from .fact_slots import extract_fact_slots, extract_fact_slots_contextual, TemporalStatus
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
@@ -47,6 +47,7 @@ from .user_profile import GlobalUserProfile
 from .ml_contradiction_detector import MLContradictionDetector
 from .resolution_patterns import has_resolution_intent, get_matched_patterns
 from .contradiction_trace_logger import get_trace_logger
+from .domain_detector import detect_domains, detect_query_domains
 from groundcheck.semantic_matcher import SemanticMatcher
 from sse.contradictions import heuristic_contradiction
 
@@ -275,6 +276,88 @@ class CRTEnhancedRAG:
         return heuristic if heuristic else "factual"
     
     # ========================================================================
+    # Phase 2.0: Query Disambiguation
+    # ========================================================================
+    
+    def disambiguate_query(self, query: str) -> Optional[str]:
+        """
+        Phase 2.0: Check if query needs domain disambiguation.
+        
+        If user query references something that exists in multiple domains
+        (e.g., "What's my most recent order?" when they have both print shop
+        orders and programming freelance orders), return a clarification prompt.
+        
+        Args:
+            query: The user's query
+            
+        Returns:
+            Clarification prompt string if disambiguation needed, None otherwise
+        """
+        # Detect domains from query
+        query_domains = detect_query_domains(query)
+        
+        # If query has clear domain context, no disambiguation needed
+        if query_domains and query_domains != ["general"]:
+            return None
+        
+        # Check for ambiguous terms that might need disambiguation
+        ambiguous_terms = {
+            "order": ["print_shop", "retail", "small_business"],
+            "project": ["programming", "web_dev", "design", "photography"],
+            "job": ["career", "print_shop", "programming"],
+            "work": ["career", "print_shop", "programming", "freelance"],
+            "client": ["small_business", "photography", "web_dev"],
+        }
+        
+        query_lower = query.lower()
+        matched_terms = []
+        potential_domains = set()
+        
+        for term, domains in ambiguous_terms.items():
+            if term in query_lower:
+                matched_terms.append(term)
+                potential_domains.update(domains)
+        
+        if not matched_terms:
+            return None
+        
+        # Check user profile for multiple active contexts in potential domains
+        try:
+            active_employers = self.user_profile.get_all_values("employer", active_only=True)
+            active_contexts = len(active_employers) if active_employers else 0
+        except Exception:
+            active_contexts = 0
+        
+        # If user has multiple active work contexts and query is ambiguous
+        if active_contexts > 1 and ("job" in matched_terms or "work" in matched_terms or "order" in matched_terms):
+            return (
+                "I see you have multiple active work contexts. "
+                f"Are you asking about {', '.join(potential_domains)}? "
+                "Please clarify which context you mean."
+            )
+        
+        return None
+    
+    def _extract_facts_contextual(self, text: str) -> Dict[str, Any]:
+        """
+        Phase 2.0: Extract facts with temporal and domain context.
+        
+        Enhanced version of _extract_facts_cached that includes temporal
+        status and domain metadata for each fact.
+        
+        Args:
+            text: Text to extract facts from
+            
+        Returns:
+            Dictionary of slot -> ExtractedFact with temporal/domain metadata
+        """
+        try:
+            return extract_fact_slots_contextual(text) or {}
+        except Exception as e:
+            logger.warning(f"[CONTEXTUAL_EXTRACT] Failed: {e}, falling back to basic")
+            return extract_fact_slots(text) or {}
+    
+    # ========================================================================
     # Trust-Weighted Retrieval
     # ========================================================================
     
@@ -288,6 +371,8 @@ class CRTEnhancedRAG:
         include_reflection: bool = False,
         exclude_contradiction_sources: bool = True,
         relevant_slots: Optional[Set[str]] = None,
+        relevant_domains: Optional[List[str]] = None,
+        temporal_filter: Optional[str] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using CRT trust-weighted scoring.
@@ -298,8 +383,16 @@ class CRTEnhancedRAG:
         - ρ_i = recency_weight
         - w_i = α·trust + (1-α)·confidence
         
+        Phase 2.0 Updates:
+        - relevant_domains: Boost memories matching these domains
+        - temporal_filter: Filter by temporal status ("active", "past", etc.)
+        
         This is fundamentally different from standard RAG's pure similarity.
         """
+        # Phase 2.0: Detect query domains for boosting
+        if relevant_domains is None:
+            relevant_domains = detect_query_domains(query)
+        
         # Default retrieval is intended to ground answers in auditable sources.
         # Assistant-generated outputs (SYSTEM) and non-durable speech (FALLBACK)
         # tend to create self-retrieval loops and misleading provenance, so they
@@ -350,6 +443,21 @@ class CRTEnhancedRAG:
         for mem, score in retrieved:
             if getattr(mem, "source", None) not in allowed_sources:
                 continue
+            
+            # Phase 2.0: Filter by temporal status if specified
+            if temporal_filter and hasattr(mem, "temporal_status"):
+                if mem.temporal_status != temporal_filter:
+                    continue
+            
+            # Phase 2.0: Boost score for domain-matching memories
+            if relevant_domains and relevant_domains != ["general"]:
+                mem_domains = mem.get_domains() if hasattr(mem, "get_domains") else ["general"]
+                domain_overlap = set(relevant_domains) & set(mem_domains)
+                if domain_overlap and "general" not in domain_overlap:
+                    # Boost by 50% for domain match
+                    score = score * 1.5
+                    logger.debug(f"[DOMAIN_BOOST] Memory '{mem.text[:40]}...' boosted for domains {domain_overlap}")
+            
             try:
                 kind = ((mem.context or {}).get("kind") or "").strip().lower()
             except Exception:
@@ -1589,8 +1697,11 @@ class CRTEnhancedRAG:
             logger.debug("[ML_CONTRADICTION] ML detector not available, skipping")
             return False, None
         
-        # Extract facts from new memory
-        new_facts = extract_fact_slots(user_query) or {}
+        # Phase 2.0: Extract facts with temporal and domain context
+        new_facts = self._extract_facts_contextual(user_query)
+        if not new_facts:
+            # Fallback to basic extraction
+            new_facts = extract_fact_slots(user_query) or {}
         if not new_facts:
             return False, None
         
@@ -1607,13 +1718,28 @@ class CRTEnhancedRAG:
             if not new_value:
                 continue
             
+            # Phase 2.0: Extract temporal and domain context from new fact
+            new_temporal_status = getattr(new_fact, "temporal_status", "active")
+            new_domains = list(getattr(new_fact, "domains", ())) or ["general"]
+            
             # Find previous memories with the same slot
             for prev_mem in previous_user_memories:
-                prev_facts = extract_fact_slots(prev_mem.text) or {}
+                # Phase 2.0: Extract contextual facts from prior memory
+                prev_facts = self._extract_facts_contextual(prev_mem.text) or extract_fact_slots(prev_mem.text) or {}
                 prev_fact = prev_facts.get(slot)
                 
                 if prev_fact is None:
                     continue
+                
+                # Phase 2.0: Extract temporal and domain context from prior fact
+                prev_temporal_status = getattr(prev_fact, "temporal_status", "active")
+                # Get domains from fact or memory
+                if hasattr(prev_fact, "domains") and prev_fact.domains:
+                    prev_domains = list(prev_fact.domains)
+                elif hasattr(prev_mem, "get_domains"):
+                    prev_domains = prev_mem.get_domains()
+                else:
+                    prev_domains = ["general"]
                 
                 prev_value = getattr(prev_fact, "value", str(prev_fact))
                 if not prev_value:
@@ -1627,6 +1753,23 @@ class CRTEnhancedRAG:
                 if prev_value_str == new_value_str:
                     continue
                 
+                # Phase 2.0: Use context-aware contradiction check first
+                drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+                is_contextual_contradiction, ctx_reason = self.crt_math.is_true_contradiction_contextual(
+                    slot=slot,
+                    value_new=new_value_str,
+                    value_prior=prev_value_str,
+                    temporal_status_new=new_temporal_status,
+                    temporal_status_prior=prev_temporal_status,
+                    domains_new=new_domains,
+                    domains_prior=prev_domains,
+                    drift=drift,
+                )
+                
+                if not is_contextual_contradiction:
+                    logger.debug(f"[PHASE_2.0] Skipped contradiction - {ctx_reason}: {slot}={prev_value} vs {new_value}")
+                    continue
+                
                 # Check if values are semantically equivalent (paraphrase, not contradiction)
                 if self._is_semantic_match(str(prev_value), str(new_value), slot):
                     logger.debug(f"[SEMANTIC_MATCH] Skipping contradiction - semantic match: {prev_value} ≈ {new_value}")
@@ -1637,7 +1780,6 @@ class CRTEnhancedRAG:
                 if negation_result == SSE_CONTRADICTION_RESULT:
                     # This is likely a retraction or negation - classify as REVISION
                     logger.info(f"[NEGATION_DETECTED] Negation pattern found: {prev_mem.text[:50]} vs {user_query[:50]}")
-                    drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
                     
                     # Phase 1.1: Use CRTMath paraphrase check as final gate
                     is_real_contradiction, crt_reason = self.crt_math.detect_contradiction(
@@ -3795,7 +3937,7 @@ class CRTEnhancedRAG:
                         is_fallback=False
                     )
 
-                    if self.crt_math.should_reflect(volatility):
+                    if contradiction_entry is not None and self.crt_math.should_reflect(volatility):
                         self.ledger.queue_reflection(
                             ledger_id=contradiction_entry.ledger_id,
                             volatility=volatility,

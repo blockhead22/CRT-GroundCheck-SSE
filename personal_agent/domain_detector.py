@@ -242,8 +242,8 @@ def domains_are_compatible(domains1: List[str], domains2: List[str]) -> bool:
     Check if two domain lists are compatible (can coexist without contradiction).
     
     Two fact sets are compatible if:
-    - They have no overlapping domains, OR
-    - One or both are "general" (unclassified)
+    - They have no specific overlapping domains, OR
+    - One or both are only "general" (unclassified facts don't conflict with specific ones)
     
     Args:
         domains1: First list of domains
@@ -252,12 +252,24 @@ def domains_are_compatible(domains1: List[str], domains2: List[str]) -> bool:
     Returns:
         True if the domains are compatible (can coexist)
     """
-    overlap = get_domain_overlap(domains1, domains2)
+    set1 = set(domains1) if domains1 else {"general"}
+    set2 = set(domains2) if domains2 else {"general"}
     
-    # Empty overlap = compatible (different contexts)
-    if not overlap:
+    # If either is only "general", they're compatible
+    # (unclassified facts don't conflict with anything)
+    if set1 == {"general"} or set2 == {"general"}:
         return True
     
+    # Check for specific overlap (excluding "general")
+    specific1 = set1 - {"general"}
+    specific2 = set2 - {"general"}
+    
+    # Empty specific overlap = compatible (different contexts)
+    if not (specific1 & specific2):
+        return True
+    
+    # Specific overlap = potential conflict
+    return False
     # "general" only = compatible (unclassified facts don't conflict with specific ones)
     if overlap == {"general"}:
         return True

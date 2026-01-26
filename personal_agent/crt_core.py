@@ -823,6 +823,157 @@ class CRTMath:
         return False, ""
     
     # ========================================================================
+    # 6b. Phase 2.0 Context-Aware Contradiction Detection
+    # ========================================================================
+    
+    def is_true_contradiction_contextual(
+        self,
+        slot: Optional[str],
+        value_new: Optional[str],
+        value_prior: Optional[str],
+        temporal_status_new: str = "active",
+        temporal_status_prior: str = "active",
+        domains_new: Optional[list] = None,
+        domains_prior: Optional[list] = None,
+        drift: float = 0.0,
+    ) -> Tuple[bool, str]:
+        """
+        Phase 2.0: Context-aware contradiction detection.
+        
+        This method reduces false positives by considering:
+        1. Temporal status (past/active/future facts don't always conflict)
+        2. Domain context (different domains can have same-slot values)
+        3. Slot matching (different slots are never contradictions)
+        
+        Only flag contradiction if:
+        - Same slot
+        - Overlapping time periods (or both active)
+        - Same or overlapping domains
+        - Mutually exclusive values
+        
+        Args:
+            slot: The fact slot (e.g., "employer", "name")
+            value_new: The new fact value
+            value_prior: The existing fact value
+            temporal_status_new: Temporal status of new fact (past/active/future/potential)
+            temporal_status_prior: Temporal status of prior fact
+            domains_new: Domain context of new fact
+            domains_prior: Domain context of prior fact
+            drift: Semantic drift score between the facts
+            
+        Returns:
+            Tuple of (is_contradiction, reason)
+        """
+        # No slot match = not a contradiction
+        if not slot:
+            return False, "no_slot_no_contradiction"
+        
+        # Handle None values
+        if value_new is None or value_prior is None:
+            return False, "missing_values"
+        
+        # Normalize values
+        value_new_norm = str(value_new).lower().strip()
+        value_prior_norm = str(value_prior).lower().strip()
+        
+        # Same normalized value = not a contradiction (might be status update)
+        if value_new_norm == value_prior_norm:
+            return False, "same_value"
+        
+        # Handle "LEFT:" prefix for employer negations
+        if value_new_norm.startswith("left:"):
+            # User is saying they no longer work somewhere
+            left_value = value_new_norm.replace("left:", "").strip()
+            if left_value == value_prior_norm:
+                # "LEFT:Google" vs "Google" = temporal update, not contradiction
+                return False, "temporal_update_left_employer"
+        
+        # Both are "past" = historical facts, not current contradiction
+        if temporal_status_new == "past" and temporal_status_prior == "past":
+            return False, "both_past_no_conflict"
+        
+        # New fact says something is "past" + prior says "active" = temporal update
+        if temporal_status_new == "past" and temporal_status_prior == "active":
+            return False, "temporal_deprecation"
+        
+        # Check domain overlap
+        domains_new = domains_new or ["general"]
+        domains_prior = domains_prior or ["general"]
+        domains_new_set = set(domains_new)
+        domains_prior_set = set(domains_prior)
+        
+        # "general" overlaps with everything
+        has_general = "general" in domains_new_set or "general" in domains_prior_set
+        has_specific_overlap = bool(domains_new_set & domains_prior_set - {"general"})
+        
+        # No overlap and no general = different contexts, can coexist
+        if not has_general and not has_specific_overlap:
+            return False, "different_domains_coexist"
+        
+        # Both "future" or "potential" = not yet realized, don't conflict
+        if temporal_status_new in ("future", "potential") and temporal_status_prior in ("future", "potential"):
+            return False, "future_plans_no_conflict"
+        
+        # At this point: same slot, overlapping domains, overlapping time
+        # Different values = TRUE CONTRADICTION
+        return True, f"true_contradiction: same slot '{slot}', overlapping context, different values"
+    
+    def classify_fact_change(
+        self,
+        slot: str,
+        value_new: str,
+        value_prior: str,
+        text_new: str = "",
+        text_prior: str = "",
+    ) -> str:
+        """
+        Classify the type of fact change for contradiction ledger.
+        
+        Returns one of:
+        - "refinement": More specific information (Seattle → Bellevue)
+        - "revision": Explicit correction ("actually", "I meant")
+        - "temporal": Time-based progression (Senior → Principal)
+        - "conflict": Mutually exclusive facts (Microsoft vs Amazon)
+        
+        Used by crt_ledger to set contradiction_type field.
+        """
+        text_new_lower = (text_new or "").lower()
+        value_new_lower = str(value_new).lower()
+        value_prior_lower = str(value_prior).lower()
+        
+        # Check for explicit revision markers
+        revision_markers = [
+            "actually", "correction", "i meant", "i mean", "to clarify",
+            "wrong", "mistake", "not", "no longer", "left", "quit"
+        ]
+        if any(marker in text_new_lower for marker in revision_markers):
+            return "revision"
+        
+        # Check for temporal progression markers
+        temporal_markers = [
+            "now", "currently", "recently", "promoted", "moved to",
+            "started", "new", "changed to"
+        ]
+        if any(marker in text_new_lower for marker in temporal_markers):
+            return "temporal"
+        
+        # Check for refinement (new value contains or extends old)
+        if value_prior_lower in value_new_lower:
+            return "refinement"
+        
+        # Check geographic refinement (Seattle → Bellevue, both valid)
+        geographic_refinement_pairs = [
+            ("seattle", "bellevue"), ("new york", "brooklyn"),
+            ("los angeles", "santa monica"), ("san francisco", "oakland"),
+        ]
+        for general, specific in geographic_refinement_pairs:
+            if value_prior_lower == general and specific in value_new_lower:
+                return "refinement"
+        
+        # Default to conflict
+        return "conflict"
+    
+    # ========================================================================
     # 7. Reflection Triggers
     # ========================================================================
     

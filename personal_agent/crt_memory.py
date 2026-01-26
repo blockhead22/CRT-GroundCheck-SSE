@@ -963,6 +963,15 @@ class CRTMemorySystem:
                 memory.fact_tuples = row[13]
             if len(row) > 14:
                 memory.extraction_method = row[14] if row[14] else 'regex'
+            # Add Phase 2.0 temporal/domain fields if they exist
+            if len(row) > 15:
+                memory.temporal_status = row[15] if row[15] else 'active'
+            if len(row) > 16:
+                memory.valid_from = row[16]
+            if len(row) > 17:
+                memory.valid_until = row[17]
+            if len(row) > 18:
+                memory.domain_tags = json.loads(row[18]) if row[18] else None
             
             memories.append(memory)
         
