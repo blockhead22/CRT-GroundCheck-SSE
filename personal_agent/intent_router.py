@@ -81,6 +81,7 @@ class IntentRouter:
             r"^who am i\b",
             r"^do you (?:know|remember) (?:my|what|who)\b",
             r"^tell me (?:about myself|what you know)\b",
+            r"^my .+\?$",  # "my favorite color is?" - question about self
         ],
         
         # Code/programming tasks
@@ -91,11 +92,13 @@ class IntentRouter:
             r"(?:can you|could you|please)\s+(?:write|code|create)\b",
         ],
         
-        # Explanation tasks
+        # Explanation tasks (explicit requests only - NOT simple knowledge questions)
         Intent.TASK_EXPLAIN: [
-            r"^(?:explain|describe|tell me about|what is|what are|what does)\s+(?!my\b)",
-            r"^how does\b",
-            r"^why (?:is|are|does|do)\b",
+            r"^explain\b",
+            r"^describe\b",
+            r"^how does .+ work\b",
+            r"^why (?:is|are|does|do) .+ \w+ \w+",  # Multi-word why questions
+            r"^tell me (?:how|why)\b",
         ],
         
         # Summarization
@@ -111,11 +114,13 @@ class IntentRouter:
         
         # Knowledge queries (general knowledge, not about user)
         Intent.KNOWLEDGE_QUERY: [
-            r"^what (?:is|are|was|were) (?:the|a|an)\b",
+            r"(?:capital|president|population|currency) of\b",  # Factual lookups
+            r"^what (?:is|are|was|were) (?:the|a|an)\b(?!.*\bmy\b)",
             r"^who (?:is|was|are|were)\b",
             r"^when (?:did|was|is|will)\b",
             r"^where (?:is|are|was|were)\b",
             r"^how (?:many|much|old|long|far)\b",
+            r"^which .+ (?:is|are|was)\b",
         ],
         
         # Opinion/philosophy
@@ -124,10 +129,11 @@ class IntentRouter:
             r"(?:should i|would you recommend)",
         ],
         
-        # Greetings
+        # Greetings (short only - don't match "hello what is my name?")
         Intent.CHAT_GREETING: [
-            r"^(?:hi|hello|hey|howdy|greetings|good (?:morning|afternoon|evening)|yo|sup)\b",
-            r"^(?:hi|hello|hey) (?:there|again|!)",
+            r"^(?:hi|hello|hey|howdy|greetings|good (?:morning|afternoon|evening)|yo|sup)[!.,]?$",
+            r"^(?:hi|hello|hey) there[!.,]?$",
+            r"^(?:hi|hello|hey)[!]?$",
         ],
         
         # Farewells
@@ -177,30 +183,44 @@ class IntentRouter:
         text_clean = text.strip()
         text_lower = text_clean.lower()
         
-        # Check each intent's patterns
-        matches = []
-        for intent, patterns in self._compiled.items():
-            for pattern in patterns:
+        # Priority order for checking intents (more specific first)
+        priority_order = [
+            Intent.CHAT_GREETING,
+            Intent.CHAT_FAREWELL, 
+            Intent.META_SYSTEM,
+            Intent.META_MEMORY,
+            Intent.FACT_CORRECTION,
+            Intent.FACT_QUESTION,    # Before FACT_STATEMENT (catches "my X is?")
+            Intent.FACT_STATEMENT,
+            Intent.TASK_CODE,        # Specific task first
+            Intent.TASK_SUMMARIZE,   # Specific task
+            Intent.KNOWLEDGE_QUERY,  # Before TASK_EXPLAIN ("what is the capital" is knowledge)
+            Intent.KNOWLEDGE_OPINION,
+            Intent.TASK_EXPLAIN,     # More general
+            Intent.TASK_GENERAL,     # Most general task
+            Intent.CHAT_EMOTION,
+            Intent.CHAT_SMALLTALK,
+        ]
+        
+        # Check in priority order
+        for intent in priority_order:
+            if intent not in self._compiled:
+                continue
+            for pattern in self._compiled[intent]:
                 if pattern.search(text_lower):
                     # Higher confidence for start-of-string matches
-                    conf = 0.9 if pattern.pattern.startswith('^') else 0.7
-                    matches.append((intent, conf))
-                    break
+                    conf = 0.9 if pattern.pattern.startswith('^') else 0.75
+                    return RoutedIntent(
+                        intent=intent,
+                        confidence=conf,
+                        extracted=self._extract_entities(text_clean, intent),
+                        original=text_clean
+                    )
         
-        if not matches:
-            return RoutedIntent(
-                intent=Intent.UNKNOWN,
-                confidence=0.5,
-                extracted={},
-                original=text_clean
-            )
-        
-        # Return highest confidence match
-        best = max(matches, key=lambda x: x[1])
         return RoutedIntent(
-            intent=best[0],
-            confidence=best[1],
-            extracted=self._extract_entities(text_clean, best[0]),
+            intent=Intent.UNKNOWN,
+            confidence=0.5,
+            extracted={},
             original=text_clean
         )
     
@@ -210,9 +230,15 @@ class IntentRouter:
         
         if intent == Intent.TASK_CODE:
             # Try to extract language
-            lang_match = re.search(r'\b(python|javascript|js|html|css|sql|java|c\+\+|rust|go|ruby)\b', text, re.I)
+            lang_match = re.search(r'\b(python|javascript|js|typescript|ts|html|css|sql|java|c\+\+|rust|go|ruby|php|swift|kotlin)\b', text, re.I)
             if lang_match:
-                extracted['language'] = lang_match.group(1).lower()
+                lang = lang_match.group(1).lower()
+                # Normalize aliases
+                if lang == 'js':
+                    lang = 'javascript'
+                elif lang == 'ts':
+                    lang = 'typescript'
+                extracted['language'] = lang
             
             # Try to extract what to build
             if 'hello world' in text.lower():

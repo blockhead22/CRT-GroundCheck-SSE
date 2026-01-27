@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """
-CRT-GroundCheck-SSE Demo with Structured Fact Store
+CRT-GroundCheck-SSE Demo with Intent Router
 Run: python rag-demo.py
 
 Architecture:
-  User Input → FactStore (extract/store) → Answer from slots OR fallback to CRT
+  User Input → IntentRouter → Handler → Response
+  
+Handlers:
+  - fact_statement/correction → FactStore (store)
+  - fact_question → FactStore (lookup) → CRT fallback
+  - task_* → Templates or LLM
+  - chat_* → Templates or LLM
+  - knowledge_* → LLM or punt
   
 PROD extension points:
-- Add LLM expansion layer between FactStore and response
+- Add LLM expansion layer for all handlers
 - Add GroundCheck validation on LLM responses  
 - Add SSE compression for long-term memory
 """
@@ -19,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent / "groundcheck"))
 
 from personal_agent.fact_store import FactStore
+from personal_agent.intent_router import IntentRouter, Intent, get_template_response
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.crt_core import MemorySource
 
@@ -42,18 +50,35 @@ except ImportError:
     OLLAMA_AVAILABLE = False
 
 
+def llm_generate(prompt: str, system: str = None) -> str:
+    """Generate response using Ollama if available."""
+    if not OLLAMA_AVAILABLE:
+        return None
+    try:
+        messages = []
+        if system:
+            messages.append({'role': 'system', 'content': system})
+        messages.append({'role': 'user', 'content': prompt})
+        
+        response = ollama.chat(model='llama3.2', messages=messages)
+        return response['message']['content']
+    except Exception:
+        return None
+
+
 def main():
     print("=" * 60)
-    print("CRT + FactStore Demo")
+    print("CRT + FactStore + Intent Router Demo")
     print("=" * 60)
     print()
     print("Commands: quit | facts | memory | history <slot> | clear")
-    print(f"Components: FactStore ✅ | CRT ✅ | GroundCheck {'✅' if GROUNDCHECK_AVAILABLE else '❌'} | SSE {'✅' if SSE_AVAILABLE else '❌'}")
+    print(f"LLM: {'✅ Ollama' if OLLAMA_AVAILABLE else '❌ Templates only'}")
     print()
     
-    # Initialize
+    # Initialize systems
     print("🔧 Initializing...")
     fact_store = FactStore(db_path="demo_facts.db")
+    router = IntentRouter()
     crt = CRTEnhancedRAG(memory_db="demo_crt_memory.db", ledger_db="demo_crt_ledger.db")
     print("✅ Ready!\n")
     
@@ -95,64 +120,163 @@ def main():
             print("✅ Cleared!\n")
             continue
         
-        # ========== PROCESS INPUT ==========
+        # ========== ROUTE & HANDLE ==========
         
-        # 1. Extract structured facts
-        result = fact_store.process_input(user_input)
+        # 1. Classify intent
+        routed = router.classify(user_input)
+        intent = routed.intent
         
-        # Show what we extracted/updated
-        if result["extracted"]:
-            for f in result["extracted"]:
-                slot_name = f['slot'].split('.')[-1].replace('_', ' ')
-                print(f"📝 Stored: {slot_name} = {f['value']}")
+        # Debug: show intent (can remove later)
+        print(f"[{intent.value}]")
         
-        if result["contradictions"]:
-            for c in result["contradictions"]:
-                slot_name = c['slot'].split('.')[-1].replace('_', ' ')
-                print(f"⚠️  Updated {slot_name}: '{c['old']}' → '{c['new']}'")
+        # 2. Handle based on intent
+        response = None
         
-        # 2. Detect if question
-        is_question = _is_question(user_input)
-        
-        if is_question:
-            # Try FactStore first
-            answer = fact_store.answer(user_input)
-            if answer:
-                print(f"\n🤖 Assistant: {answer}\n")
-                continue
+        # --- FACT HANDLERS ---
+        if intent in [Intent.FACT_STATEMENT, Intent.FACT_CORRECTION]:
+            result = fact_store.process_input(user_input)
             
-            # Fallback to CRT for complex queries
-            # PROD: Add LLM reasoning here
-            print("(No fact found, checking CRT...)")
-            crt_result = crt.query(user_query=user_input)
-            crt_answer = crt_result.get('answer', '')
-            
-            if crt_answer and not crt_answer.startswith('['):
-                print(f"\n🤖 Assistant: {crt_answer}\n")
-            else:
-                print(f"\n🤖 Assistant: I don't know that yet. Tell me!\n")
-        else:
-            # Statement - acknowledge
-            if result["updated"]:
-                u = result["updated"][0]
-                slot_name = u['slot'].split('.')[-1].replace('_', ' ')
-                print(f"\n🤖 Assistant: Got it! Updated your {slot_name} to {u['to']}.\n")
-            elif result["extracted"]:
+            if result["extracted"]:
                 f = result["extracted"][0]
                 slot_name = f['slot'].split('.')[-1].replace('_', ' ')
-                print(f"\n🤖 Assistant: Nice! I'll remember your {slot_name} is {f['value']}.\n")
+                response = f"Got it! I'll remember your {slot_name} is {f['value']}."
+            elif result["updated"]:
+                u = result["updated"][0]
+                slot_name = u['slot'].split('.')[-1].replace('_', ' ')
+                response = f"Updated! Your {slot_name} is now {u['to']} (was {u['from']})."
             else:
-                # No structured fact extracted - store in CRT as raw memory
-                # PROD: Try LLM extraction here
-                print(f"\n🤖 Assistant: Noted!\n")
+                response = "I heard you, but I couldn't extract a specific fact. Try: 'My name is X' or 'My favorite color is Y'."
+        
+        elif intent == Intent.FACT_QUESTION:
+            answer = fact_store.answer(user_input)
+            if answer:
+                response = answer
+            else:
+                # Fallback to CRT
+                crt_result = crt.query(user_query=user_input)
+                crt_answer = crt_result.get('answer', '')
+                if crt_answer and not crt_answer.startswith('['):
+                    response = crt_answer
+                else:
+                    response = "I don't know that yet. Tell me!"
+        
+        elif intent == Intent.META_MEMORY:
+            facts = fact_store.get_all_facts()
+            if facts:
+                lines = ["Here's what I know about you:"]
+                for slot, f in facts.items():
+                    slot_name = slot.split('.')[-1].replace('_', ' ')
+                    lines.append(f"  • {slot_name}: {f['value']}")
+                response = "\n".join(lines)
+            else:
+                response = "I don't know anything about you yet. Tell me something!"
+        
+        # --- TASK HANDLERS ---
+        elif intent == Intent.TASK_CODE:
+            # Always try LLM first for code tasks
+            if OLLAMA_AVAILABLE:
+                lang = routed.extracted.get('language', 'the requested language')
+                response = llm_generate(
+                    user_input,
+                    system=f"You are a helpful coding assistant. Write clean, commented code in {lang}. Keep responses concise. Output code in markdown code blocks."
+                )
+            else:
+                # Fall back to template
+                response = get_template_response(routed)
+                if not response:
+                    response = "I can write code, but I need Ollama for complex requests. Install with: pip install ollama"
+        
+        elif intent == Intent.TASK_EXPLAIN:
+            if OLLAMA_AVAILABLE:
+                # Get facts for context
+                facts = fact_store.get_all_facts()
+                facts_context = "\n".join([f"- {s}: {f['value']}" for s, f in facts.items()]) if facts else "None"
+                
+                response = llm_generate(
+                    f"User facts:\n{facts_context}\n\nQuestion: {user_input}",
+                    system="You are a helpful assistant. Explain clearly and concisely. If the question is about the user, use the provided facts."
+                )
+            else:
+                response = "I need Ollama to explain things. Install it with: pip install ollama"
+        
+        elif intent == Intent.TASK_SUMMARIZE:
+            response = "TL;DR mode! But I'd need something to summarize. What would you like me to shorten?"
+        
+        elif intent == Intent.TASK_GENERAL:
+            if OLLAMA_AVAILABLE:
+                response = llm_generate(user_input, system="You are a helpful assistant. Be concise and practical.")
+            else:
+                response = "I'd love to help! What specifically do you need? I'm best at remembering facts about you and simple code tasks."
+        
+        # --- KNOWLEDGE HANDLERS ---
+        elif intent in [Intent.KNOWLEDGE_QUERY, Intent.KNOWLEDGE_OPINION]:
+            if OLLAMA_AVAILABLE:
+                response = llm_generate(
+                    user_input,
+                    system="You are a knowledgeable assistant. Answer accurately and concisely. If unsure, say so."
+                )
+            else:
+                response = get_template_response(routed) or "I need Ollama to answer general knowledge questions."
+        
+        # --- CHAT HANDLERS ---
+        elif intent == Intent.CHAT_GREETING:
+            response = get_template_response(routed)
+        
+        elif intent == Intent.CHAT_FAREWELL:
+            response = get_template_response(routed)
+        
+        elif intent == Intent.CHAT_SMALLTALK:
+            if OLLAMA_AVAILABLE:
+                facts = fact_store.get_all_facts()
+                name = facts.get('user.name', {}).get('value', 'friend')
+                response = llm_generate(
+                    user_input,
+                    system=f"You are a friendly assistant chatting with {name}. Keep it brief and warm."
+                )
+            else:
+                response = get_template_response(routed)
+        
+        elif intent == Intent.CHAT_EMOTION:
+            if OLLAMA_AVAILABLE:
+                facts = fact_store.get_all_facts()
+                name = facts.get('user.name', {}).get('value', '')
+                name_part = f" {name}" if name else ""
+                response = llm_generate(
+                    user_input,
+                    system=f"The user{name_part} is sharing their feelings. Be empathetic but brief. Don't say 'I'm here for you' or similar cliches."
+                )
+            else:
+                response = get_template_response(routed)
+        
+        # --- META HANDLERS ---
+        elif intent == Intent.META_SYSTEM:
+            response = """I'm a memory-focused AI with these components:
 
+📋 **FactStore** - Structured facts (name, color, job)
+🧠 **CRT** - Trust-weighted memory for complex info  
+🎯 **IntentRouter** - Routes your input to the right handler
+🔬 **GroundCheck** - Validates responses are factual
 
-def _is_question(text: str) -> bool:
-    t = text.lower().strip()
-    if t.endswith('?'):
-        return True
-    q_words = ['what', 'who', 'where', 'when', 'why', 'how', 'is my', 'do i', 'am i', 'whats', "what's"]
-    return any(t.startswith(w) for w in q_words)
+Try: "My name is X" → "What is my name?" → "facts" """
+        
+        # --- FALLBACK ---
+        elif intent == Intent.UNKNOWN:
+            if OLLAMA_AVAILABLE:
+                # Let LLM try to handle it
+                facts = fact_store.get_all_facts()
+                facts_context = "\n".join([f"- {s}: {f['value']}" for s, f in facts.items()]) if facts else "None"
+                response = llm_generate(
+                    f"User facts:\n{facts_context}\n\nUser: {user_input}",
+                    system="You are a helpful assistant with memory. Use the user facts if relevant. Be concise."
+                )
+            else:
+                response = get_template_response(routed)
+        
+        # Output response
+        if response:
+            print(f"\n🤖 {response}\n")
+        else:
+            print(f"\n🤖 I'm not sure how to respond to that.\n")
 
 
 def show_facts(fact_store):
@@ -185,7 +309,6 @@ def show_memory(crt):
 
 
 def show_history(fact_store, slot):
-    # Auto-prefix if needed
     if not slot.startswith("user."):
         slot = f"user.{slot}"
     
