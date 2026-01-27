@@ -181,7 +181,7 @@ class CRTEnhancedRAG:
             logger.warning(f"[FACT_STORE] Failed to initialize: {e}")
             self.fact_store = None
         
-        # ReAct orchestration tracing (verbose mode for debugging)
+        # Orchestration tracing (verbose mode for debugging)
         self.react_tracing_enabled = False
         self._react_trace: List[Dict[str, Any]] = []
         # ====== END PRODUCTION ADDITIONS ======
@@ -5332,7 +5332,7 @@ class CRTEnhancedRAG:
             return self.fact_store.get_history(slot)
         return []
     
-    # ====== END ReAct Orchestration Methods ======
+    # ====== END Orchestration Methods ======
     
     def _fallback_response(self, query: str) -> Dict:
         """Generate fallback response when no memories exist."""

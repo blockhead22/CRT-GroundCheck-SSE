@@ -2496,7 +2496,7 @@ def create_app() -> FastAPI:
             contradictions_total=len(contradictions),
         )
 
-    # ====== PRODUCTION: FactStore + ReAct API Endpoints ======
+    # ====== PRODUCTION: FactStore + Intent Routing API Endpoints ======
     
     class StructuredFactsResponse(BaseModel):
         thread_id: str
@@ -2508,20 +2508,20 @@ def create_app() -> FastAPI:
         slot: str
         history: List[Dict[str, Any]]
     
-    class ReactQueryRequest(BaseModel):
+    class IntentQueryRequest(BaseModel):
         thread_id: str = Field(default="default")
         message: str = Field(min_length=1)
         user_marked_important: bool = Field(default=False)
         include_trace: bool = Field(default=False)
     
-    class ReactQueryResponse(BaseModel):
+    class IntentQueryResponse(BaseModel):
         answer: str
         intent: str
         confidence: float
         response_type: str
         gates_passed: bool
         gate_reason: Optional[str] = None
-        react_trace: Optional[List[Dict[str, Any]]] = None
+        trace: Optional[List[Dict[str, Any]]] = None
         metadata: Dict[str, Any] = Field(default_factory=dict)
     
     @app.get("/api/facts/structured")
@@ -2562,10 +2562,10 @@ def create_app() -> FastAPI:
             history=history
         )
     
-    @app.post("/api/chat/react", response_model=ReactQueryResponse)
-    def chat_react(req: ReactQueryRequest) -> ReactQueryResponse:
+    @app.post("/api/chat/intent", response_model=IntentQueryResponse)
+    def chat_intent(req: IntentQueryRequest) -> IntentQueryResponse:
         """
-        Query with full ReAct orchestration.
+        Query with IntentRouter + FactStore routing.
         
         Uses IntentRouter + FactStore for smarter routing,
         with optional trace for debugging/transparency.
@@ -2574,12 +2574,12 @@ def create_app() -> FastAPI:
         increment_turn(req.thread_id)
         
         # Enable tracing if requested
-        if hasattr(engine, 'enable_react_tracing'):
-            engine.enable_react_tracing(req.include_trace)
+        if hasattr(engine, 'enable_tracing'):
+            engine.enable_tracing(req.include_trace)
         
-        # Use ReAct query if available
-        if hasattr(engine, 'query_with_react'):
-            result = engine.query_with_react(
+        # Use intent query if available
+        if hasattr(engine, 'query_with_intent'):
+            result = engine.query_with_intent(
                 user_query=req.message,
                 user_marked_important=req.user_marked_important,
             )
@@ -2590,7 +2590,7 @@ def create_app() -> FastAPI:
                 user_marked_important=req.user_marked_important,
             )
             result['intent'] = 'unknown'
-            result['react_trace'] = None
+            result['trace'] = None
         
         # Build metadata
         metadata = {
@@ -2601,33 +2601,33 @@ def create_app() -> FastAPI:
             "fact_store_hit": result.get("fact_store_hit", False),
         }
         
-        return ReactQueryResponse(
+        return IntentQueryResponse(
             answer=result.get("answer", ""),
             intent=result.get("intent", "unknown"),
             confidence=result.get("confidence", 0.0),
             response_type=result.get("response_type", "speech"),
             gates_passed=result.get("gates_passed", False),
             gate_reason=result.get("gate_reason"),
-            react_trace=result.get("react_trace") if req.include_trace else None,
+            trace=result.get("trace") if req.include_trace else None,
             metadata=metadata
         )
     
-    @app.post("/api/react/enable_tracing")
-    def enable_react_tracing(
+    @app.post("/api/tracing/enable")
+    def enable_tracing(
         thread_id: str = Query(default="default"),
         enabled: bool = Query(default=True)
     ) -> dict:
-        """Enable or disable ReAct step tracing for debugging."""
+        """Enable or disable step tracing for debugging."""
         tid = _sanitize_thread_id(thread_id)
         engine = get_engine(tid)
         
-        if hasattr(engine, 'enable_react_tracing'):
-            engine.enable_react_tracing(enabled)
+        if hasattr(engine, 'enable_tracing'):
+            engine.enable_tracing(enabled)
             return {"thread_id": tid, "tracing_enabled": enabled}
         
-        return {"thread_id": tid, "error": "ReAct tracing not available"}
+        return {"thread_id": tid, "error": "Tracing not available"}
     
-    # ====== END FactStore + ReAct Endpoints ======
+    # ====== END FactStore + Intent Routing Endpoints ======
 
     @app.post("/api/thread/reset", response_model=ThreadResetResponse)
     def thread_reset(req: ThreadResetRequest) -> ThreadResetResponse:
