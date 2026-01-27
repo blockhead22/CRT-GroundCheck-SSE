@@ -230,32 +230,30 @@ class LLMClaimExtractor:
             r"([A-Z][a-z]+), (?:you|your)",
         ],
         "user.age": [
-            r"you(?:'re| are) (\d{1,3}) (?:years? old)?",
+            r"you(?:'re| are) (\d{1,3}) (?:years? old)",
             r"your age is (\d{1,3})",
-            r"(\d{1,3}) years? old",
         ],
         "user.favorite_color": [
             r"your (?:fav(?:ou?rite)? )?colou?r is ([a-z]+)",
             r"you (?:like|love|prefer) (?:the colou?r )?([a-z]+)",
         ],
         "user.occupation": [
-            r"you(?:'re| are) (?:a|an) ([a-z][a-z\s]+?)(?:\.|,|!|$| at | who)",
-            r"your (?:job|occupation|role|position) (?:is|as) (?:a |an )?([a-z][a-z\s]+?)(?:\.|,|!|$)",
-            r"you work (?:as|at) (?:a |an )?([a-z][a-z\s]+?)(?:\.|,|!|$)",
+            r"you(?:'re| are) (?:a|an) ((?:software |senior |junior |data |ml |research |web )?(?:engineer|scientist|developer|analyst|manager|designer|architect))",
+            r"your (?:job|role|position) is (?:a |an )?((?:software |senior |junior |data |ml |research |web )?(?:engineer|scientist|developer|analyst|manager|designer|architect))",
         ],
         "user.location": [
             r"you(?:'re| are) (?:in|from|based in|located in|living in) ([A-Z][a-zA-Z\s,]+?)(?:\.|,|!|$)",
             r"your (?:location|city|home) is ([A-Z][a-zA-Z\s,]+?)(?:\.|,|!|$)",
         ],
         "user.employer": [
-            r"you work (?:at|for) ([A-Z][a-zA-Z\s]+?)(?:\.|,|!|$| as)",
-            r"your (?:employer|company) is ([A-Z][a-zA-Z\s]+?)(?:\.|,|!|$)",
-            r"at ([A-Z][a-zA-Z]+)(?:\.|,|!|$| where| and)",
+            r"you work (?:at|for) (Google|Microsoft|Amazon|Apple|Meta|Facebook|Netflix|OpenAI|Anthropic|Tesla|IBM|Oracle|Salesforce|Adobe|Intel|Nvidia|Uber|Lyft|Airbnb|Twitter|LinkedIn|Snap|Pinterest|Spotify|Stripe|Square|Shopify|Zoom|Slack|Dropbox|GitHub|GitLab|Atlassian|VMware|Cisco|Dell|HP|Samsung|Sony|LG|Huawei|Alibaba|Tencent|Baidu|ByteDance|Grab|Sea|GoTo|Tokopedia|Bukalapak|Traveloka|JD\.com|Pinduoduo|Meituan|DiDi|Xiaomi|Oppo|Vivo|Realme|OnePlus|Asus|Acer|Lenovo|Razer|Logitech|Corsair|Cooler Master|NZXT|MSI|Gigabyte|ASRock|EVGA|Zotac|Palit|PNY|Sapphire|XFX|PowerColor|HIS|VisionTek|Club 3D|Matrox|ELSA|Sparkle|Leadtek|Gainward|Inno3D|KFA2|Manli|Colorful|Maxsun|Yeston)",
+            r"your (?:employer|company) is (Google|Microsoft|Amazon|Apple|Meta|Facebook|Netflix|OpenAI|Anthropic|Tesla|IBM|Oracle|Salesforce|Adobe)",
+            r"(?:work|employed) (?:at|for|by) (Google|Microsoft|Amazon|Apple|Meta|Facebook|Netflix|OpenAI|Anthropic|Tesla)",
         ],
         "user.education": [
-            r"you have a ([A-Za-z]+(?:'s)? degree)",
+            r"you have a ((?:PhD|Master's|Bachelor's|doctorate|BS|MS|BA|MA|MBA|MD|JD|LLM)(?: degree)?)",
             r"your (?:degree|education) (?:is|from) ([A-Za-z\s]+?)(?:\.|,|!|$)",
-            r"(?:PhD|Master's|Bachelor's|doctorate) (?:from|in) ([A-Z][a-zA-Z\s]+?)(?:\.|,|!|$)",
+            r"(?:PhD|Master's|Bachelor's|doctorate) (?:from|in) (Stanford|MIT|Harvard|Berkeley|Princeton|Yale|Columbia|Cornell|CMU|CalTech|Georgia Tech|UCLA|USC|NYU|UPenn|Northwestern|Duke|Johns Hopkins|UChicago|Brown|Dartmouth|Rice|Vanderbilt|Notre Dame|UVA|UMich|Wisconsin|UIUC|UT Austin|Penn State|Ohio State|Purdue|UMD|UCSD|UCI|UCD|UCSB|UCSC|UCR|UCM)",
         ],
         "user.partner": [
             r"(?:your partner|you(?:'re| are) married to|your (?:spouse|husband|wife)) (?:is )?([A-Z][a-z]+)",
