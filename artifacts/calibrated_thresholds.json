@@ -1,0 +1,7 @@
+{
+    "green_zone": 0.9,
+    "yellow_zone": 0.65,
+    "red_zone": 0.4,
+    "calibrated_at": "2026-01-27T00:00:00Z",
+    "notes": "Default thresholds for CRT disclosure policy"
+}
