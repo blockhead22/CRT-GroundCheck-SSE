@@ -32,7 +32,14 @@ from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
 from .crt_ledger import ContradictionLedger, ContradictionEntry, ContradictionType
 from .reasoning import ReasoningEngine, ReasoningMode
-from .fact_slots import extract_fact_slots, extract_fact_slots_contextual, TemporalStatus
+from .fact_slots import (
+    extract_fact_slots, 
+    extract_fact_slots_contextual, 
+    TemporalStatus,
+    detect_correction_type,
+    extract_direct_correction,
+    extract_hedged_correction,
+)
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
@@ -245,6 +252,123 @@ class CRTEnhancedRAG:
             return is_match
         except Exception:
             return a.lower().strip() == b.lower().strip()
+    
+    def _detect_denial_in_text(self, text: str, slot: str = "") -> Tuple[bool, Optional[str]]:
+        """
+        Detect if text contains a denial statement for a given slot.
+        
+        Tracks denial facts with denial=True flag to enable retraction_of_denial detection.
+        
+        Examples of denials:
+        - "I don't have a PhD" → (True, "PhD")
+        - "I never said I worked at Google" → (True, "Google")
+        - "No, I'm not a manager" → (True, "manager")
+        
+        Args:
+            text: The text to analyze
+            slot: Optional slot context for more precise detection
+            
+        Returns:
+            Tuple of (is_denial, denied_value)
+        """
+        if not text:
+            return False, None
+        
+        text_lower = text.lower()
+        
+        # Denial patterns with value extraction
+        denial_patterns = [
+            # "I don't have a X" / "I do not have a X"
+            (r"i\s+(?:don't|do not|don't)\s+have\s+(?:a\s+)?(\w+)", "possession"),
+            # "I never said X" / "I never mentioned X"
+            (r"i\s+never\s+(?:said|mentioned|claimed|had)\s+(?:i\s+)?(?:had\s+)?(?:a\s+)?(\w+)", "claim"),
+            # "I'm not a X" / "I am not a X"
+            (r"i(?:'m| am)\s+not\s+(?:a\s+)?(\w+)", "identity"),
+            # "No, I'm not X" / "No I don't X"
+            (r"no[,\s]+i(?:'m| am| don't| do not)\s+(?:not\s+)?(?:a\s+)?(\w+)", "negation"),
+            # "I didn't work at X"
+            (r"i\s+(?:didn't|did not|didn't)\s+work\s+(?:at|for)\s+(\w+)", "employer"),
+            # "I didn't go to X"
+            (r"i\s+(?:didn't|did not|didn't)\s+(?:go to|attend|graduate from)\s+(\w+)", "education"),
+        ]
+        
+        for pattern, denial_type in denial_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                denied_value = match.group(1).strip()
+                logger.debug(f"[DENIAL_DETECT] Found {denial_type} denial: '{denied_value}'")
+                return True, denied_value
+        
+        return False, None
+    
+    def _is_retraction_of_denial(
+        self, 
+        new_text: str, 
+        prior_text: str, 
+        slot: str = ""
+    ) -> Tuple[bool, str]:
+        """
+        Check if new assertion retracts a prior denial.
+        
+        This detects the pattern where user first denies something, then affirms it:
+        - Prior: "I don't have a PhD"
+        - New: "Actually I do have a PhD"
+        
+        Args:
+            new_text: The new assertion text
+            prior_text: The prior statement text
+            slot: The fact slot being compared
+            
+        Returns:
+            Tuple of (is_retraction, reason)
+        """
+        # Check if prior text contains a denial
+        prior_is_denial, prior_denied_value = self._detect_denial_in_text(prior_text, slot)
+        
+        if not prior_is_denial:
+            return False, "prior_not_denial"
+        
+        # Check if new text is an affirmation (not a denial)
+        new_is_denial, _ = self._detect_denial_in_text(new_text, slot)
+        
+        if new_is_denial:
+            return False, "new_also_denial"
+        
+        # Check if new text affirms what was denied
+        affirmation_patterns = [
+            # "Actually I do have X"
+            r"actually\s+i\s+(?:do\s+)?have\s+(?:a\s+)?{value}",
+            # "I actually have a X"
+            r"i\s+actually\s+(?:do\s+)?have\s+(?:a\s+)?{value}",
+            # "I do have a X"
+            r"i\s+do\s+have\s+(?:a\s+)?{value}",
+            # "Yes, I have a X"
+            r"yes[,\s]+i\s+(?:do\s+)?have\s+(?:a\s+)?{value}",
+            # "Actually, I am a X"
+            r"actually[,\s]+i(?:'m|\s+am)\s+(?:a\s+)?{value}",
+            # "I am a X" (simple affirmation)
+            r"i(?:'m|\s+am)\s+(?:a\s+)?{value}",
+        ]
+        
+        new_lower = new_text.lower()
+        denied_lower = prior_denied_value.lower() if prior_denied_value else ""
+        
+        for pattern in affirmation_patterns:
+            # Try with the specific denied value
+            specific_pattern = pattern.format(value=re.escape(denied_lower))
+            if re.search(specific_pattern, new_lower):
+                logger.info(f"[RETRACTION_OF_DENIAL] Detected: prior denied '{prior_denied_value}', now affirming")
+                return True, f"retraction_of_denial: affirmed previously denied '{prior_denied_value}'"
+        
+        # Also check if the denied value appears in the new text as a positive fact
+        if prior_denied_value and prior_denied_value.lower() in new_lower:
+            # Make sure it's not another denial
+            denial_check = f"not.*{re.escape(denied_lower)}|don't.*{re.escape(denied_lower)}|never.*{re.escape(denied_lower)}"
+            if not re.search(denial_check, new_lower):
+                logger.info(f"[RETRACTION_OF_DENIAL] Implicit retraction: prior denied '{prior_denied_value}', now mentioned positively")
+                return True, f"retraction_of_denial: implicit affirmation of '{prior_denied_value}'"
+        
+        return False, "no_retraction"
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""

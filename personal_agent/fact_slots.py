@@ -75,6 +75,48 @@ PERIOD_PATTERNS: List[Tuple[re.Pattern, str]] = [
 ]
 
 
+# ============================================================================
+# DIRECT CORRECTION PATTERNS
+# ============================================================================
+# Patterns that detect explicit corrections like "I'm actually 34, not 32"
+# Returns: (old_value, new_value) where old_value is what's being corrected
+
+DIRECT_CORRECTION_PATTERNS: List[re.Pattern] = [
+    # "I'm actually X, not Y" - extracts (X, Y)
+    re.compile(r"(?:i'm|i am)\s+actually\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    # "Actually it's X, not Y"
+    re.compile(r"actually\s+(?:it's|it is)\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    # "No, I'm X not Y"
+    re.compile(r"no,?\s+(?:i'm|i am)\s+(\w+)\s+not\s+(\w+)", re.IGNORECASE),
+    # "Correction: X not Y"
+    re.compile(r"correction:?\s+(\w+)\s+not\s+(\w+)", re.IGNORECASE),
+    # "Actually X, not Y" (shorter form)
+    re.compile(r"actually\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    # "Wait, it's X, not Y"
+    re.compile(r"wait,?\s+(?:it's|it is)\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+]
+
+
+# ============================================================================
+# HEDGED CORRECTION PATTERNS  
+# ============================================================================
+# Patterns that detect soft corrections like "I said 10 years but it's closer to 12"
+# Returns: (old_value, new_value) where old_value is what was previously said
+
+HEDGED_CORRECTION_PATTERNS: List[re.Pattern] = [
+    # "I think I said X but it's closer to Y"
+    re.compile(r"(?:i think\s+)?i\s+said\s+(\w+)\s+but\s+(?:it's|it is)\s+(?:closer to\s+)?(\w+)", re.IGNORECASE),
+    # "I may have said X, but actually Y"
+    re.compile(r"i\s+(?:may have|might have)\s+said\s+(\w+),?\s+but\s+(?:actually\s+)?(\w+)", re.IGNORECASE),
+    # "Earlier I mentioned X, it's really Y"
+    re.compile(r"earlier\s+i\s+(?:mentioned|said)\s+(\w+),?\s+(?:it's|it is)\s+really\s+(\w+)", re.IGNORECASE),
+    # "I said X but it's more like Y"
+    re.compile(r"i\s+said\s+(\w+)\s+but\s+(?:it's|it is)\s+more\s+like\s+(\w+)", re.IGNORECASE),
+    # "I mentioned X earlier but Y is more accurate"
+    re.compile(r"i\s+(?:mentioned|said)\s+(\w+)\s+(?:earlier\s+)?but\s+(\w+)\s+is\s+(?:more\s+)?accurate", re.IGNORECASE),
+]
+
+
 def extract_temporal_status(text: str) -> Tuple[str, Optional[str]]:
     """
     Extract temporal status and period from text.
@@ -117,6 +159,95 @@ def extract_temporal_status(text: str) -> Tuple[str, Optional[str]]:
             break
     
     return (detected_status, period_text)
+
+
+def extract_direct_correction(text: str) -> Optional[Tuple[str, str]]:
+    """
+    Extract a direct correction pattern from text.
+    
+    Detects patterns like:
+    - "I'm actually 34, not 32" → (corrected_to="34", corrected_from="32")
+    - "Actually it's Google, not Microsoft" → (corrected_to="Google", corrected_from="Microsoft")
+    - "No, I'm Sarah not Susan" → (corrected_to="Sarah", corrected_from="Susan")
+    
+    Args:
+        text: The text to analyze
+        
+    Returns:
+        Tuple of (new_value, old_value) if correction detected, None otherwise.
+        Note: new_value is what's being corrected TO, old_value is what's being corrected FROM.
+    """
+    if not text:
+        return None
+    
+    for pattern in DIRECT_CORRECTION_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            new_value = match.group(1).strip()
+            old_value = match.group(2).strip()
+            return (new_value, old_value)
+    
+    return None
+
+
+def extract_hedged_correction(text: str) -> Optional[Tuple[str, str]]:
+    """
+    Extract a hedged/soft correction pattern from text.
+    
+    Detects patterns like:
+    - "I said 10 years but it's closer to 12" → (old="10", new="12")
+    - "I may have said Microsoft, but actually Google" → (old="Microsoft", new="Google")
+    - "Earlier I mentioned Python, it's really JavaScript" → (old="Python", new="JavaScript")
+    
+    Args:
+        text: The text to analyze
+        
+    Returns:
+        Tuple of (old_value, new_value) if correction detected, None otherwise.
+        Note: Returns (old, new) - what was said vs what is correct.
+    """
+    if not text:
+        return None
+    
+    for pattern in HEDGED_CORRECTION_PATTERNS:
+        match = pattern.search(text)
+        if match:
+            old_value = match.group(1).strip()
+            new_value = match.group(2).strip()
+            return (old_value, new_value)
+    
+    return None
+
+
+def detect_correction_type(text: str) -> Optional[Tuple[str, str, str]]:
+    """
+    Detect any correction pattern (direct or hedged) in text.
+    
+    This is the main entry point for correction detection. It checks both
+    direct corrections ("I'm X, not Y") and hedged corrections ("I said X but Y").
+    
+    Args:
+        text: The text to analyze
+        
+    Returns:
+        Tuple of (correction_type, old_value, new_value) or None
+        - correction_type: "direct_correction" or "hedged_correction"
+        - old_value: The value being corrected FROM
+        - new_value: The value being corrected TO
+    """
+    # Check for direct correction first (more explicit)
+    direct = extract_direct_correction(text)
+    if direct:
+        new_val, old_val = direct  # direct returns (new, old)
+        return ("direct_correction", old_val, new_val)
+    
+    # Check for hedged correction
+    hedged = extract_hedged_correction(text)
+    if hedged:
+        old_val, new_val = hedged  # hedged returns (old, new)
+        return ("hedged_correction", old_val, new_val)
+    
+    return None
 
 
 @dataclass(frozen=True)

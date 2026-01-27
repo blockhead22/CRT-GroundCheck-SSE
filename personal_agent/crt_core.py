@@ -918,6 +918,52 @@ class CRTMath:
         # Different values = TRUE CONTRADICTION
         return True, f"true_contradiction: same slot '{slot}', overlapping context, different values"
     
+    def _is_numeric_contradiction(self, value_new: str, value_prior: str, threshold: float = 0.20) -> Tuple[bool, str]:
+        """
+        Check if two numeric values contradict (>20% difference by default).
+        
+        This method handles numeric drift detection for facts like:
+        - "8 years" vs "12 years" programming experience
+        - "25" vs "34" age
+        - "5 people" vs "10 people" team size
+        
+        Args:
+            value_new: The new fact value (may contain non-numeric text)
+            value_prior: The prior fact value (may contain non-numeric text)
+            threshold: Percentage difference threshold (default 20%)
+            
+        Returns:
+            Tuple of (is_contradiction, reason)
+            - is_contradiction: True if numeric difference exceeds threshold
+            - reason: Description of the comparison result
+        """
+        try:
+            # Extract numeric values from strings
+            match_new = re.search(r'[\d.]+', str(value_new))
+            match_prior = re.search(r'[\d.]+', str(value_prior))
+            
+            if not match_new or not match_prior:
+                return False, "not_numeric"
+            
+            num_new = float(match_new.group())
+            num_prior = float(match_prior.group())
+            
+            # Handle zero case specially
+            if num_prior == 0:
+                is_contra = num_new != 0
+                return is_contra, "numeric_zero_comparison" if is_contra else "both_zero"
+            
+            # Calculate percentage difference
+            diff_pct = abs(num_new - num_prior) / abs(num_prior)
+            
+            if diff_pct > threshold:
+                return True, f"numeric_drift_{diff_pct:.0%}"
+            
+            return False, f"numeric_within_tolerance_{diff_pct:.0%}"
+            
+        except (AttributeError, ValueError, TypeError) as e:
+            return False, f"not_numeric: {e}"
+    
     def classify_fact_change(
         self,
         slot: str,
