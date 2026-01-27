@@ -15,7 +15,7 @@ This is a **research prototype** for memory governance and output verification i
 
 ---
 
-## Interactive Demo
+## Interactive Demo (rag-demo.py)
 
 The fastest way to see the system in action:
 
@@ -28,88 +28,34 @@ source .venv/bin/activate  # Mac/Linux
 python rag-demo.py
 ```
 
-### Demo Architecture
-```
-User Input → IntentRouter → Handler → Response
+### Requirements
+- Python 3.10+
+- Dependencies: `pip install -r requirements.txt`
+- Optional: [Ollama](https://ollama.ai/) with llama3.2 for LLM features
 
-Handlers:
-  • fact_statement/correction → FactStore (store with contradiction detection)
-  • fact_question → FactStore (lookup) → CRT fallback
-  • task_code/explain → LLM (Ollama) or templates
-  • chat_greeting/emotion → Templates or LLM
-  • knowledge_query → LLM
+### Demo Architecture (ReAct Pattern)
+```
+1. THINK   - IntentRouter classifies user intent
+2. ACT     - Call appropriate tool (FactStore, CRT, LLM)
+3. OBSERVE - Get tool result  
+4. THINK   - Validate result, decide if complete
+5. RESPOND - Return final answer to user
+
+Tools:
+  - FactStore: Structured slot-based memory (store/lookup)
+  - CRT: Trust-weighted memory with contradiction tracking
+  - LLM: Generation for code, explanations, chat (requires Ollama)
+  - Templates: Fallback responses when no LLM available
 ```
 
 ### Example Session
 ```
 You: My name is Nick
-[fact_statement]
-🤖 Got it! I'll remember your name is Nick.
-
-You: My favorite color is orange because of my leukemia battle.
-[fact_statement]
-🤖 Got it! I'll remember your favorite color is orange.
-
-You: What is my name?
-[fact_question]
-🤖 Nick
-
-You: why is my favorite color orange?
-[fact_question]
-🤖 Your favorite color is orange because my leukemia battle
-
-You: Actually my name is Sarah
-[fact_correction]
-🤖 Updated! Your name is now Sarah (was Nick).
-
-You: Write me some javascript to reverse a string
-[task_code]
-🤖 ```javascript
-function reverseString(str) {
-  return [...str].reverse().join('');
-}
-```
-
-You: facts
-==================================================
-📋 CURRENT FACTS
-==================================================
-  user.name
-    → Sarah
-    Trust: [██████████] 0.98 | Source: user_corrected
-
-  user.favorite_color
-    → orange
-    Trust: [█████████░] 0.95 | Source: user_stated
-```
-
-### Demo Commands
-| Command | Action |
-|---------|--------|
-| `facts` | Show all stored facts with trust scores |
-| `memory` | Show raw CRT memories |
-| `history <slot>` | Show change history for a slot (e.g., `history name`) |
-| `clear` | Reset all databases |
-| `quit` | Exit |
-
-### Components Used
-- **FactStore** (`personal_agent/fact_store.py`): Slot-based structured memory
-- **IntentRouter** (`personal_agent/intent_router.py`): Pattern-based intent classification
-- **CRT** (`personal_agent/crt_rag.py`): Trust-weighted contradiction-aware memory
-- **Ollama** (optional): LLM for code generation and general queries
-
----
-
-## The idea
-Human circumstances and preferences are not static, they evolve over time due to career changes, relocations, and shifting interests. AI systems that remember user information must account for this fluidity. However, most AI memory systems simply overwrite old information with new data, then present the latest value as fact without ever acknowledging that a change occurred. This creates confidently wrong answers or an unsettling experience where the system behaves as though the previous information never existed. Worse, it opens the door for the AI to internalize falsehoods as truth or perpetuate contradictions it never acknowledged, undermining trust and reliability.
-
-CRT preserves the history of contradictions. When conflicts exist, the system:
-
-Discloses the conflict explicitly
-Asks for clarification when appropriate
-Refuses to give a single answer when evidence is split
-
-## System architecture
+  [THINK] Classifying intent...
+  [THINK] Intent = fact_statement (confidence: 0.90)
+  [ACT] Calling FactStore.process_input()...
+  [OBSERVE] Extracted: 1, Updated: 0
+  [RESPOND] Delivering final answer
 1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger
 2. **ML contradiction detection**: Uses XGBoost models to classify belief changes (refinement vs. revision vs. temporal vs. conflict)
 3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts stay in memory
