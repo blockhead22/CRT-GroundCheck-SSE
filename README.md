@@ -265,12 +265,12 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 1.1** | Wire up CRTMath call sites | ✅ Complete |
 | **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
 | **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | ✅ Complete |
-| **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | 🔨 In Progress |
+| **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | ✅ Complete |
 | **Phase 1.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
 | **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
 | **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
 
-### Phase 2.2 Features (In Progress)
+### Phase 2.2 Features (Completed)
 - **LLM Claim Extraction**: Parse factual claims from LLM responses into slot/value pairs
 - **LLM Fact Storage**: Store LLM claims with `source="llm"` in FactStore
 - **LLM→LLM Contradiction Detection**: Flag when LLM says X then later says Y
