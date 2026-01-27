@@ -289,7 +289,7 @@ pytest tests/test_adversarial_prompts.py -v
 - **Template Fallbacks**: Works without LLM using template responses
 
 ### Phase 2.0 Features
-- **Domain Detection**: Detects domains (career, hobbies, family) to allow multi-role facts
+- **Domain Detection**: Detects domains 
 - **Temporal Status**: Tracks past/active/future status to handle "I used to work at..." patterns
 - **Context-Aware Contradictions**: "I'm a programmer AND a photographer" no longer conflicts
 - **Temporal Updates**: "I don't work at Google anymore" updates status instead of flagging contradiction
