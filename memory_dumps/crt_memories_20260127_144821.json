@@ -1,0 +1,98 @@
+[
+  {
+    "text": "[Quick answer for: What is my name?]",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769543985.119479
+  },
+  {
+    "text": "[Quick answer for: What is my favorite color?]",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769543999.1244018
+  },
+  {
+    "text": "[Quick answer for: sometimes i wonder what is the point?]",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544032.9031756
+  },
+  {
+    "text": "I don't have any information about your views or opinions on the meaning of life within our conversation so far. Can you help me understand your perspective on this topic? I'll do my best to provide a helpful response based on what you share with me.",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544230.9086938
+  },
+  {
+    "text": "Your name is Nick.",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769544239.8969162
+  },
+  {
+    "text": "I'm happy to help you, Nick! According to the information I have about you, your name is Nick, but I don't have any specific information about its meaning or origin. Would you like me to look for more general information about names with a similar sound or spelling? Or would you prefer to share what your name means to you personally?",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769544280.4749053
+  },
+  {
+    "text": "That's an interesting statement! However, since there are no facts provided about the user yet, I don't have any information to draw upon. Could you please share some facts about yourself or your background? That would help me better understand what you mean and provide a more accurate response.",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544298.3647046
+  },
+  {
+    "text": "I don't have any information on what the user thinks about the meaning of life or what their personal beliefs are. Since there are no stored facts about the user yet, I won't be able to provide a response based on those facts.\n\nHowever, I can tell you that the concept of the \"meaning of life\" is a topic that has been explored by philosophers and thinkers throughout history. If you'd like to share your thoughts or beliefs about it, I'd be happy to engage in a conversation with you!",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544315.77501
+  },
+  {
+    "text": "I don't have any information about the user's writing style or preferences since no facts are available in the USER FACTS section yet. I'll wait for more information to provide a helpful response. Would you like to share some details about the type of script you're looking for (e.g., project, tone, length)?",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544343.018991
+  },
+  {
+    "text": "I'd be happy to explain how I work.\n\nMy architecture is based on a Cognitive-Reflective Transformer (CRT) framework. This means I have a Trust-Weighted Memory that stores information about users like you. The trust scores for these memories evolve over time as we interact, helping me to refine my understanding of the user's preferences and facts.\n\nWhen generating responses, I pass information through \"reconstruction gates\" that determine whether an answer becomes a belief (high trust) or is treated as speech (low trust fallback). This helps me to ensure accuracy while also being mindful of potential inconsistencies or contradictions.\n\nIf I encounter conflicting information, my Contradiction Ledger is triggered. Instead of overwriting one fact with another, I track both perspectives and preserve them in the memory. This allows for a more nuanced understanding of the user's thoughts and experiences.\n\nMy Coherence Over Time principle prioritizes consistency across conversations over single-query accuracy. This means that while I strive to provide accurate answers, I also aim to maintain coherence with previous discussions and adapt my responses accordingly.\n\nFinally, my Evidence Packets ensure that my reasoning is grounded in provenance chains linking claims to source memories. This helps me to provide transparent and reliable information about the user's experiences and preferences.\n\nThat's a brief overview of how I work!",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544351.06203
+  },
+  {
+    "text": "I'm here to help and feel a bit tired too. You mentioned being tired today. Can I ask what's making you feel that way?",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544423.0706651
+  },
+  {
+    "text": "I'm happy to help you with your question. However, I don't have any information about what makes you feel tired, as that is not provided in the User Facts section. Could you please tell me more about how you're feeling? I'll do my best to provide a helpful response based on what you share.",
+    "trust": 0.3,
+    "source": "fallback",
+    "timestamp": 1769544435.3827958
+  },
+  {
+    "text": "Your name is Nick.",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769544855.1079872
+  },
+  {
+    "text": "Your name is Nick.",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769545116.6027918
+  },
+  {
+    "text": "Your name is Nick. That's based on the fact I have stored about you in our conversation history.",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769545268.8869865
+  },
+  {
+    "text": "You mentioned earlier that your name is Nick. Is that correct?",
+    "trust": 0.7,
+    "source": "system",
+    "timestamp": 1769546448.2205544
+  }
+]

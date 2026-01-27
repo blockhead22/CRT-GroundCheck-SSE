@@ -108,9 +108,16 @@ class FactExtractor:
         
         for slot, patterns in self.PATTERNS.items():
             for pattern in patterns:
+                # Search in lowercase for pattern matching
                 match = re.search(pattern, text_lower, re.IGNORECASE)
                 if match:
-                    value = match.group(1).strip()
+                    # But extract value from ORIGINAL text to preserve case
+                    # Find the same position in original text
+                    orig_match = re.search(pattern, text_clean, re.IGNORECASE)
+                    if orig_match:
+                        value = orig_match.group(1).strip()
+                    else:
+                        value = match.group(1).strip()
                     
                     # Validate based on slot type
                     if not self._validate_value(slot, value):
@@ -340,3 +347,9 @@ class FactStore:
         """Clear all facts."""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("DELETE FROM facts")
+    
+    def close(self):
+        """Close any open connections. SQLite uses context managers so this is mostly a no-op."""
+        # SQLite connections are opened/closed per operation via context managers
+        # This method exists for compatibility with dump_and_clear_all
+        pass

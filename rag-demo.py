@@ -22,8 +22,11 @@ PROD extension points:
 - Add multi-step reasoning chains
 """
 
+import os
 import sys
+import json
 from pathlib import Path
+from datetime import datetime
 
 sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent / "groundcheck"))
@@ -56,11 +59,120 @@ except ImportError:
 # Verbose mode for showing orchestration steps
 VERBOSE = True
 
+# Default database files
+DB_FILES = {
+    "facts": "demo_facts.db",
+    "crt_memory": "demo_crt_memory.db",
+    "crt_ledger": "demo_crt_ledger.db",
+}
+
 
 def log_step(phase: str, message: str):
     """Log orchestration step if verbose mode is on."""
     if VERBOSE:
         print(f"  [{phase}] {message}")
+
+
+def dump_and_clear_all(fact_store, crt, dump_dir: str = "memory_dumps") -> dict:
+    """
+    Dump all stored memories to JSON files then clear all databases.
+    
+    Returns dict with paths to dump files and counts of items dumped.
+    """
+    # Create dump directory
+    os.makedirs(dump_dir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    result = {
+        "timestamp": timestamp,
+        "dumps": {},
+        "cleared": [],
+    }
+    
+    # Dump FactStore
+    facts = fact_store.get_all_facts()
+    if facts:
+        facts_file = os.path.join(dump_dir, f"facts_{timestamp}.json")
+        # Get full history for each slot
+        full_dump = {}
+        for slot in facts.keys():
+            history = fact_store.get_history(slot)
+            full_dump[slot] = {
+                "current": facts[slot],
+                "history": history,
+            }
+        with open(facts_file, 'w') as f:
+            json.dump(full_dump, f, indent=2, default=str)
+        result["dumps"]["facts"] = {"path": facts_file, "count": len(facts)}
+    
+    # Dump CRT memories
+    try:
+        memories = crt.memory._load_all_memories()
+        if memories:
+            crt_file = os.path.join(dump_dir, f"crt_memories_{timestamp}.json")
+            mem_data = [
+                {
+                    "text": m.text,
+                    "trust": m.trust,
+                    "source": m.source.value if hasattr(m.source, 'value') else str(m.source),
+                    "timestamp": m.timestamp if hasattr(m, 'timestamp') else None,
+                }
+                for m in memories
+            ]
+            with open(crt_file, 'w') as f:
+                json.dump(mem_data, f, indent=2, default=str)
+            result["dumps"]["crt_memories"] = {"path": crt_file, "count": len(memories)}
+    except Exception as e:
+        result["dumps"]["crt_memories"] = {"error": str(e)}
+    
+    # Dump contradiction ledger if accessible
+    try:
+        if hasattr(crt, 'ledger') and crt.ledger:
+            ledger_entries = crt.ledger.get_all() if hasattr(crt.ledger, 'get_all') else []
+            if ledger_entries:
+                ledger_file = os.path.join(dump_dir, f"crt_ledger_{timestamp}.json")
+                with open(ledger_file, 'w') as f:
+                    json.dump(ledger_entries, f, indent=2, default=str)
+                result["dumps"]["crt_ledger"] = {"path": ledger_file, "count": len(ledger_entries)}
+    except Exception as e:
+        result["dumps"]["crt_ledger"] = {"error": str(e)}
+    
+    # Close connections before deleting
+    try:
+        if hasattr(fact_store, 'close'):
+            fact_store.close()
+    except:
+        pass
+    
+    try:
+        if hasattr(crt, 'close'):
+            crt.close()
+        if hasattr(crt, 'memory') and hasattr(crt.memory, 'close'):
+            crt.memory.close()
+    except:
+        pass
+    
+    # Force garbage collection to release any lingering connections
+    import gc
+    gc.collect()
+    
+    # Clear all databases
+    import time
+    for name, db_file in DB_FILES.items():
+        if os.path.exists(db_file):
+            # Retry a few times in case of lock
+            for attempt in range(3):
+                try:
+                    os.remove(db_file)
+                    result["cleared"].append(db_file)
+                    break
+                except PermissionError:
+                    if attempt < 2:
+                        time.sleep(0.1)
+                    else:
+                        result["cleared"].append(f"{db_file} (failed - in use)")
+    
+    return result
 
 
 def llm_generate(prompt: str, system: str = None) -> str:
@@ -88,15 +200,15 @@ def main():
     print("CRT + FactStore + ReAct Orchestration Demo")
     print("=" * 60)
     print()
-    print("Commands: quit | facts | memory | history <slot> | clear | verbose")
+    print("Commands: quit | facts | memory | history <slot> | clear | dump | verbose")
     print(f"LLM: {'Available (Ollama)' if OLLAMA_AVAILABLE else 'Unavailable (templates only)'}")
     print()
     
     # Initialize systems
     print("Initializing...")
-    fact_store = FactStore(db_path="demo_facts.db")
+    fact_store = FactStore(db_path=DB_FILES["facts"])
     router = IntentRouter()
-    crt = CRTEnhancedRAG(memory_db="demo_crt_memory.db", ledger_db="demo_crt_ledger.db")
+    crt = CRTEnhancedRAG(memory_db=DB_FILES["crt_memory"], ledger_db=DB_FILES["crt_ledger"])
     print("Ready.\n")
     
     global VERBOSE
@@ -134,13 +246,29 @@ def main():
             show_history(fact_store, slot)
             continue
         
+        if user_input.lower() == 'dump':
+            # Dump all memories to files then clear
+            print("Dumping all memories...")
+            result = dump_and_clear_all(fact_store, crt)
+            print(f"Timestamp: {result['timestamp']}")
+            for name, info in result["dumps"].items():
+                if "error" in info:
+                    print(f"  {name}: ERROR - {info['error']}")
+                elif "path" in info:
+                    print(f"  {name}: {info['count']} items -> {info['path']}")
+            print(f"Cleared: {', '.join(result['cleared']) or 'none'}")
+            # Reinitialize
+            fact_store = FactStore(db_path=DB_FILES["facts"])
+            crt = CRTEnhancedRAG(memory_db=DB_FILES["crt_memory"], ledger_db=DB_FILES["crt_ledger"])
+            print("Reinitialized.\n")
+            continue
+        
         if user_input.lower() == 'clear':
-            import os
-            for f in ["demo_facts.db", "demo_crt_memory.db", "demo_crt_ledger.db"]:
-                if os.path.exists(f):
-                    os.remove(f)
-            fact_store = FactStore(db_path="demo_facts.db")
-            crt = CRTEnhancedRAG(memory_db="demo_crt_memory.db", ledger_db="demo_crt_ledger.db")
+            for db_file in DB_FILES.values():
+                if os.path.exists(db_file):
+                    os.remove(db_file)
+            fact_store = FactStore(db_path=DB_FILES["facts"])
+            crt = CRTEnhancedRAG(memory_db=DB_FILES["crt_memory"], ledger_db=DB_FILES["crt_ledger"])
             print("Cleared.\n")
             continue
         

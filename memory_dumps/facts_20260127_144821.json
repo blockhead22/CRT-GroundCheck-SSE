@@ -1,0 +1,23 @@
+{
+  "user.favorite_color": {
+    "current": {
+      "id": 1,
+      "slot": "user.favorite_color",
+      "value": "orange",
+      "trust": 0.95,
+      "source": "user_stated",
+      "timestamp": "2026-01-27T14:14:52.283513",
+      "is_current": 1,
+      "superseded_by": null
+    },
+    "history": [
+      {
+        "value": "orange",
+        "trust": 0.95,
+        "source": "user_stated",
+        "timestamp": "2026-01-27T14:14:52.283513",
+        "is_current": 1
+      }
+    ]
+  }
+}
