@@ -82,6 +82,7 @@ class IntentRouter:
             r"^do you (?:know|remember) (?:my|what|who)\b",
             r"^tell me (?:about myself|what you know)\b",
             r"^my .+\?$",  # "my favorite color is?" - question about self
+            r"^why (?:is|was) my\b",  # "why is my favorite color orange?" - about their fact
         ],
         
         # Code/programming tasks

@@ -71,10 +71,14 @@ class FactExtractor:
             r"(?:^|[.!?]\s+)(?:i am|i'm)\s+([A-Z][a-z]+)(?:[.!?]?\s*$)",  # "I'm Nick." at end
         ],
         "user.favorite_color": [
-            r"(?:my )?(?:fav(?:ou?rite)?|preferred)\s+colou?r\s+(?:is\s+)?([a-z]+)",
-            r"(?:fav(?:ou?rite)?|preferred)\s+colou?r\s+(?:is\s+)?([a-z]+)",
-            r"colou?r\s+is\s+([a-z]+)",
-            r"(?:i (?:like|love|prefer))\s+([a-z]+)\s+(?:the\s+)?(?:most|best|colou?r)",
+            # "my favorite color is orange because..." - captures 'orange'
+            r"(?:my )?(?:fav(?:ou?rite)?|preferred)\s+colou?r\s+(?:is\s+)?([a-z]+)(?:\s|\.|,|!|$|\s+because)",
+            r"colou?r\s+is\s+([a-z]+)(?:\s|\.|,|!|$|\s+because)",
+            r"(?:i (?:like|love|prefer))\s+([a-z]+)\\s+(?:the\s+)?(?:most|best|colou?r)",
+        ],
+        "user.favorite_color_reason": [
+            # Extract the reason for favorite color
+            r"(?:fav(?:ou?rite)?|preferred)\s+colou?r.*?because\s+(?:of\s+)?(.+?)(?:\.|!|$)",
         ],
         "user.occupation": [
             # Must have explicit job/work context
@@ -272,6 +276,9 @@ class FactStore:
         """
         q = question.lower()
         
+        # Check if it's a "why" question
+        is_why = q.startswith('why')
+        
         # Map question keywords to slots
         slot_map = {
             "user.name": ["name", "who am i", "who i am", "call me", "called"],
@@ -284,6 +291,14 @@ class FactStore:
             if any(kw in q for kw in keywords):
                 fact = self.get_fact(slot)
                 if fact:
+                    # For "why" questions, also check for reason slot
+                    if is_why:
+                        reason_slot = f"{slot}_reason"
+                        reason_fact = self.get_fact(reason_slot)
+                        if reason_fact:
+                            return f"Your {slot.split('.')[-1].replace('_', ' ')} is {fact['value']} because {reason_fact['value']}"
+                        else:
+                            return f"Your {slot.split('.')[-1].replace('_', ' ')} is {fact['value']}, but I don't know why."
                     return fact["value"]
         
         return None
