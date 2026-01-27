@@ -1810,6 +1810,9 @@ class CRTEnhancedRAG:
         This is the Bug 1 fix: Uses Phase 2/3 ML models to detect contradictions
         across ALL facts, not just hardcoded slots like employer/location.
         
+        Phase 2.5: Added pattern-based detection (direct_correction, hedged_correction,
+        numeric_drift, retraction_of_denial) that runs even without ML detector.
+        
         Args:
             new_memory: Newly stored memory item
             user_query: User's input text
@@ -1817,9 +1820,13 @@ class CRTEnhancedRAG:
         Returns:
             (contradiction_detected, contradiction_entry)
         """
-        if self.ml_detector is None:
-            logger.debug("[ML_CONTRADICTION] ML detector not available, skipping")
-            return False, None
+        # DEBUG: Add print to verify function is called
+        print(f"[DEBUG_ML_CHECK] Called with query: {user_query[:60]}...")
+        
+        # Flag to track if ML detector is available (affects which checks we can run)
+        ml_available = self.ml_detector is not None
+        if not ml_available:
+            logger.debug("[ML_CONTRADICTION] ML detector not available, using pattern-based detection only")
         
         # Phase 2.0: Extract facts with temporal and domain context
         new_facts = self._extract_facts_contextual(user_query)
@@ -1877,8 +1884,78 @@ class CRTEnhancedRAG:
                 if prev_value_str == new_value_str:
                     continue
                 
-                # Phase 2.0: Use context-aware contradiction check first
+                # Calculate drift for all checks
                 drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+                
+                # ==============================================================
+                # Phase 2.5 PRIORITY: Check for explicit corrections FIRST
+                # These should ALWAYS be detected regardless of other checks
+                # ==============================================================
+                correction_result = detect_correction_type(user_query)
+                logger.info(f"[DEBUG_CORR] slot={slot}, prev_value={prev_value_str}, new_value={new_value_str}, correction_result={correction_result}")
+                if correction_result:
+                    correction_type, old_val, new_val = correction_result
+                    logger.info(f"[CORRECTION_DETECTED] {correction_type}: {old_val} → {new_val}")
+                    
+                    # Verify the correction relates to this slot's values
+                    old_val_lower = (old_val or "").lower()
+                    new_val_lower = (new_val or "").lower()
+                    
+                    # If the correction's old value matches prior and new value matches current
+                    # OR if we have a numeric slot and the values match
+                    slot_matches = (
+                        (old_val_lower and (old_val_lower in prev_value_str or prev_value_str in old_val_lower)) or
+                        (new_val_lower and (new_val_lower in new_value_str or new_value_str in new_val_lower)) or
+                        (old_val_lower == prev_value_str) or
+                        (new_val_lower == new_value_str)
+                    )
+                    
+                    if slot_matches:
+                        # This is an explicit correction - record as REVISION
+                        contradiction_entry = self.ledger.record_contradiction(
+                            old_memory_id=prev_mem.memory_id,
+                            new_memory_id=new_memory.memory_id,
+                            drift_mean=drift,
+                            confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                            query=user_query,
+                            summary=f"{slot}: {correction_type} - {old_val} → {new_val}",
+                            old_text=prev_mem.text,
+                            new_text=user_query,
+                            old_vector=prev_mem.vector,
+                            new_vector=new_memory.vector,
+                            contradiction_type=ContradictionType.REVISION,
+                            suggested_policy="accept_new"
+                        )
+                        return True, contradiction_entry
+                
+                # ==============================================================
+                # Phase 2.5: Check for numeric_drift (e.g., 32 vs 34 age)
+                # This should also bypass contextual checks for clear numeric differences
+                # ==============================================================
+                is_numeric_contra, numeric_reason = self.crt_math._is_numeric_contradiction(
+                    new_value_str, prev_value_str
+                )
+                if is_numeric_contra:
+                    logger.info(f"[NUMERIC_DRIFT] {numeric_reason}: {prev_value_str} vs {new_value_str}")
+                    
+                    # Record numeric drift as a CONFLICT (user should clarify)
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                        query=user_query,
+                        summary=f"{slot}: {numeric_reason} ({prev_value_str} vs {new_value_str})",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=ContradictionType.CONFLICT,
+                        suggested_policy="ask_user"
+                    )
+                    return True, contradiction_entry
+                
+                # Phase 2.0: Use context-aware contradiction check
                 is_contextual_contradiction, ctx_reason = self.crt_math.is_true_contradiction_contextual(
                     slot=slot,
                     value_new=new_value_str,
@@ -1898,6 +1975,34 @@ class CRTEnhancedRAG:
                 if self._is_semantic_match(str(prev_value), str(new_value), slot):
                     logger.debug(f"[SEMANTIC_MATCH] Skipping contradiction - semantic match: {prev_value} ≈ {new_value}")
                     continue
+                
+                # ==============================================================
+                # Phase 2.5: Check for retraction_of_denial
+                # ==============================================================
+                is_retraction, retraction_reason = self._is_retraction_of_denial(
+                    new_text=user_query,
+                    prior_text=prev_mem.text,
+                    slot=slot
+                )
+                if is_retraction:
+                    logger.info(f"[RETRACTION_OF_DENIAL] {retraction_reason}")
+                    
+                    # Record as REVISION - user is retracting their prior denial
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                        query=user_query,
+                        summary=f"{slot}: retraction_of_denial - {retraction_reason}",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=ContradictionType.REVISION,
+                        suggested_policy="accept_new"
+                    )
+                    return True, contradiction_entry
                 
                 # Check for negation-based contradiction (retractions, denials)
                 negation_result = heuristic_contradiction(prev_mem.text, user_query)
@@ -1934,6 +2039,31 @@ class CRTEnhancedRAG:
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=ContradictionType.REVISION
+                    )
+                    return True, contradiction_entry
+                
+                # ==============================================================
+                # ML-based contradiction detection (only if ML detector available)
+                # ==============================================================
+                if not ml_available:
+                    # Without ML, fall back to simple value comparison for remaining cases
+                    # If we got here, the values differ and none of our pattern checks matched
+                    # Record as potential CONFLICT for user clarification
+                    logger.info(f"[NO_ML_FALLBACK] Different values detected: {slot}={prev_value_str} vs {new_value_str}")
+                    
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                        query=user_query,
+                        summary=f"{slot}: value_mismatch ({prev_value_str} vs {new_value_str})",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=ContradictionType.CONFLICT,
+                        suggested_policy="ask_user"
                     )
                     return True, contradiction_entry
                 

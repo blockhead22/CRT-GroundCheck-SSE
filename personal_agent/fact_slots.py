@@ -79,21 +79,23 @@ PERIOD_PATTERNS: List[Tuple[re.Pattern, str]] = [
 # DIRECT CORRECTION PATTERNS
 # ============================================================================
 # Patterns that detect explicit corrections like "I'm actually 34, not 32"
-# Returns: (old_value, new_value) where old_value is what's being corrected
+# Returns: (new_value, old_value) where new_value is what's being corrected TO
 
 DIRECT_CORRECTION_PATTERNS: List[re.Pattern] = [
-    # "I'm actually X, not Y" - extracts (X, Y)
-    re.compile(r"(?:i'm|i am)\s+actually\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    # "I'm actually X, not Y" - extracts (X, Y) - handles numbers and words
+    re.compile(r"(?:i'm|i am)\s+actually\s+(\d+|\w+),?\s+not\s+(\d+|\w+)", re.IGNORECASE),
     # "Actually it's X, not Y"
-    re.compile(r"actually\s+(?:it's|it is)\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    re.compile(r"actually\s+(?:it's|it is)\s+(\d+|\w+),?\s+not\s+(\d+|\w+)", re.IGNORECASE),
     # "No, I'm X not Y"
-    re.compile(r"no,?\s+(?:i'm|i am)\s+(\w+)\s+not\s+(\w+)", re.IGNORECASE),
+    re.compile(r"no,?\s+(?:i'm|i am)\s+(\d+|\w+)\s+not\s+(\d+|\w+)", re.IGNORECASE),
     # "Correction: X not Y"
-    re.compile(r"correction:?\s+(\w+)\s+not\s+(\w+)", re.IGNORECASE),
+    re.compile(r"correction:?\s+(\d+|\w+)\s+not\s+(\d+|\w+)", re.IGNORECASE),
     # "Actually X, not Y" (shorter form)
-    re.compile(r"actually\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    re.compile(r"actually\s+(\d+|\w+),?\s+not\s+(\d+|\w+)", re.IGNORECASE),
     # "Wait, it's X, not Y"
-    re.compile(r"wait,?\s+(?:it's|it is)\s+(\w+),?\s+not\s+(\w+)", re.IGNORECASE),
+    re.compile(r"wait,?\s+(?:it's|it is)\s+(\d+|\w+),?\s+not\s+(\d+|\w+)", re.IGNORECASE),
+    # "Wait, I'm actually X" (without explicit "not Y")
+    re.compile(r"wait,?\s+(?:i'm|i am)\s+actually\s+(\d+)", re.IGNORECASE),
 ]
 
 
@@ -104,16 +106,18 @@ DIRECT_CORRECTION_PATTERNS: List[re.Pattern] = [
 # Returns: (old_value, new_value) where old_value is what was previously said
 
 HEDGED_CORRECTION_PATTERNS: List[re.Pattern] = [
-    # "I think I said X but it's closer to Y"
-    re.compile(r"(?:i think\s+)?i\s+said\s+(\w+)\s+but\s+(?:it's|it is)\s+(?:closer to\s+)?(\w+)", re.IGNORECASE),
+    # "I think I said X [years of programming] but it's closer to Y" - handles numbers with multiple words after
+    re.compile(r"(?:i think\s+)?i\s+said\s+(\d+)(?:\s+\w+)*?\s+but\s+(?:it's|it is)\s+(?:closer to\s+)?(\d+)", re.IGNORECASE),
     # "I may have said X, but actually Y"
-    re.compile(r"i\s+(?:may have|might have)\s+said\s+(\w+),?\s+but\s+(?:actually\s+)?(\w+)", re.IGNORECASE),
+    re.compile(r"i\s+(?:may have|might have)\s+said\s+(\d+|\w+),?\s+but\s+(?:actually\s+)?(\d+|\w+)", re.IGNORECASE),
     # "Earlier I mentioned X, it's really Y"
-    re.compile(r"earlier\s+i\s+(?:mentioned|said)\s+(\w+),?\s+(?:it's|it is)\s+really\s+(\w+)", re.IGNORECASE),
+    re.compile(r"earlier\s+i\s+(?:mentioned|said)\s+(\d+|\w+),?\s+(?:it's|it is)\s+really\s+(\d+|\w+)", re.IGNORECASE),
     # "I said X but it's more like Y"
-    re.compile(r"i\s+said\s+(\w+)\s+but\s+(?:it's|it is)\s+more\s+like\s+(\w+)", re.IGNORECASE),
+    re.compile(r"i\s+said\s+(\d+)(?:\s+\w+)*?\s+but\s+(?:it's|it is)\s+more\s+like\s+(\d+)", re.IGNORECASE),
     # "I mentioned X earlier but Y is more accurate"
-    re.compile(r"i\s+(?:mentioned|said)\s+(\w+)\s+(?:earlier\s+)?but\s+(\w+)\s+is\s+(?:more\s+)?accurate", re.IGNORECASE),
+    re.compile(r"i\s+(?:mentioned|said)\s+(\d+|\w+)\s+(?:earlier\s+)?but\s+(\d+|\w+)\s+is\s+(?:more\s+)?accurate", re.IGNORECASE),
+    # "Actually closer to X" (simple hedged with number) - fallback pattern
+    re.compile(r"(?:it's|it is)\s+(?:actually\s+)?(?:closer to|more like)\s+(\d+)", re.IGNORECASE),
 ]
 
 
@@ -184,7 +188,11 @@ def extract_direct_correction(text: str) -> Optional[Tuple[str, str]]:
         match = pattern.search(text)
         if match:
             new_value = match.group(1).strip()
-            old_value = match.group(2).strip()
+            # Some patterns only capture the new value (e.g., "Wait, I'm actually X")
+            if match.lastindex >= 2:
+                old_value = match.group(2).strip()
+            else:
+                old_value = None  # Old value not specified in this pattern
             return (new_value, old_value)
     
     return None
@@ -212,8 +220,15 @@ def extract_hedged_correction(text: str) -> Optional[Tuple[str, str]]:
     for pattern in HEDGED_CORRECTION_PATTERNS:
         match = pattern.search(text)
         if match:
-            old_value = match.group(1).strip()
-            new_value = match.group(2).strip()
+            # Some patterns only capture new value (e.g., "closer to X")
+            if match.lastindex == 1:
+                # Only one group - this is the new value, old value unknown
+                new_value = match.group(1).strip()
+                return (None, new_value)  # Return None for old_value
+            else:
+                old_value = match.group(1).strip()
+                new_value = match.group(2).strip()
+                return (old_value, new_value)
             return (old_value, new_value)
     
     return None
