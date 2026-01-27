@@ -1909,14 +1909,21 @@ class CRTEnhancedRAG:
                     old_val_lower = (old_val or "").lower()
                     new_val_lower = (new_val or "").lower()
                     
-                    # If the correction's old value matches prior and new value matches current
-                    # OR if we have a numeric slot and the values match
-                    slot_matches = (
-                        (old_val_lower and (old_val_lower in prev_value_str or prev_value_str in old_val_lower)) or
-                        (new_val_lower and (new_val_lower in new_value_str or new_value_str in new_val_lower)) or
-                        (old_val_lower == prev_value_str) or
-                        (new_val_lower == new_value_str)
+                    # For corrections like "I'm actually 34, not 32":
+                    # - old_val (32) should match prev_value_str (what was stored before)
+                    # - new_val (34) should match new_value_str (what's in current statement)
+                    # We need BOTH to match for this to be the correct slot
+                    old_matches = (
+                        (old_val_lower and (old_val_lower == prev_value_str or old_val_lower in prev_value_str or prev_value_str in old_val_lower))
                     )
+                    new_matches = (
+                        (new_val_lower and (new_val_lower == new_value_str or new_val_lower in new_value_str or new_value_str in new_val_lower))
+                    )
+                    
+                    # Both values must match for this to be the right slot
+                    slot_matches = old_matches and new_matches
+                    
+                    print(f"[DEBUG_SLOT_MATCH] slot={slot}, old_val={old_val_lower}, prev_value={prev_value_str}, new_val={new_val_lower}, new_value={new_value_str}, old_matches={old_matches}, new_matches={new_matches}, slot_matches={slot_matches}")
                     
                     if slot_matches:
                         # This is an explicit correction - record as REVISION
@@ -1935,6 +1942,11 @@ class CRTEnhancedRAG:
                             suggested_policy="accept_new"
                         )
                         return True, contradiction_entry
+                    else:
+                        # Correction pattern found but doesn't match this slot
+                        # Skip numeric_drift and other checks - we're looking for the right slot
+                        logger.debug(f"[CORRECTION_SKIP] Correction pattern found but slot {slot} doesn't match (old_val={old_val_lower}, prev_value={prev_value_str}), continuing to next slot")
+                        continue
                 
                 # ==============================================================
                 # Phase 2.5: Check for numeric_drift (e.g., 32 vs 34 age)
