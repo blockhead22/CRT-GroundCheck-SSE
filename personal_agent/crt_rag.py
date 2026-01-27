@@ -1854,6 +1854,13 @@ class CRTEnhancedRAG:
             new_temporal_status = getattr(new_fact, "temporal_status", "active")
             new_domains = list(getattr(new_fact, "domains", ())) or ["general"]
             
+            # DEBUG: List all prev memories with this slot
+            for prev_mem in previous_user_memories:
+                prev_facts_temp = self._extract_facts_contextual(prev_mem.text) or extract_fact_slots(prev_mem.text) or {}
+                if slot in prev_facts_temp:
+                    prev_val = getattr(prev_facts_temp[slot], 'value', prev_facts_temp[slot])
+                    print(f"[DEBUG_PREV_MEM] slot={slot}, prev_mem_text={prev_mem.text[:50]}, prev_value={prev_val}")
+            
             # Find previous memories with the same slot
             for prev_mem in previous_user_memories:
                 # Phase 2.0: Extract contextual facts from prior memory
