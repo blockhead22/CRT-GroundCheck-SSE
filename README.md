@@ -188,8 +188,8 @@ pytest tests/test_adversarial_prompts.py -v
 |-------|-------------|--------|
 | **Phase 1** | Self-questioning, caveat injection, feature flags | ✅ Complete |
 | **Phase 1.1** | Wire up CRTMath call sites | ✅ Complete |
-| **Phase 2.0** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
-| **Phase 1.2** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
+| **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
+| **Phase 1.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
 | **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
 | **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
 
@@ -270,7 +270,7 @@ pip install sentence-transformers
 ## Project status
 **Research prototype** - Updated 2026-01-26
 
-**Current Phase:** 1.2 (Advanced Testing Suite)
+**Current Phase:** 1.3 (Advanced Testing Suite)
 
 This system works well for:
 - Researchers exploring contradiction aware AI memory

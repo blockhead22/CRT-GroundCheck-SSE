@@ -1,0 +1,40 @@
+{
+  "artifacts": [],
+  "events": [
+    {
+      "data": null,
+      "level": "info",
+      "message": "job_started",
+      "ts": "2026-01-27T13:03:35.590041+00:00"
+    },
+    {
+      "data": {
+        "result": {
+          "chars": 23,
+          "summary": "Summarize this session."
+        }
+      },
+      "level": "info",
+      "message": "job_succeeded",
+      "ts": "2026-01-27T13:03:35.606709+00:00"
+    }
+  ],
+  "job": {
+    "created_at": "2026-01-27T13:03:35.390124+00:00",
+    "error": null,
+    "finished_at": "2026-01-27T13:03:35.606709+00:00",
+    "id": "job_1769519015_8223e0b6",
+    "payload": {
+      "text": "Summarize this session.",
+      "thread_id": "t_0f752521-be3d-4d8f-bfcd-351043a49c8f"
+    },
+    "priority": 0,
+    "started_at": "2026-01-27T13:03:35.590041+00:00",
+    "status": "succeeded",
+    "type": "summarize_session"
+  },
+  "result": {
+    "chars": 23,
+    "summary": "Summarize this session."
+  }
+}
