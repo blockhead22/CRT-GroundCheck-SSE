@@ -1,5 +1,8 @@
 # CRT + GroundCheck + SSE: Honest AI Memory
 
+> **Quick Status:** See [STATUS.md](STATUS.md) for current metrics and next actions.  
+> **AI Agents:** See [.github/prompts/_project-context.prompt.md](.github/prompts/_project-context.prompt.md) for context.
+
 ## What it is
 This repository integrates three systems for transparent AI memory that tracks contradictions:
 - **CRT**: A memory layer that preserves contradictions instead of overwriting them
@@ -150,37 +153,51 @@ pytest tests/test_adversarial_prompts.py -v
 - All pytest tests: **PASS**
 - No TypeErrors on integer value contradictions
 
-### Current test status
-**Latest adversarial challenge results:**
+### Current test status (2026-01-26)
 
-| Test | Score | Status |
-|------|-------|--------|
-| 25-turn challenge | **84.0%** | ✓ Passes 80% threshold |
-| 35-turn challenge | **74.3%** | ⚠ Below 80% threshold |
+| Test | Score | Target | Status |
+|------|-------|--------|--------|
+| **crt_stress_test.py** | 91.7% eval, 80% detection | 90%+ | ✅ PASSING |
+| **adversarial_crt_challenge.py** | 65.7% (23/35) | 80% | ⚠️ In progress |
+| **False Positives** | 0 | 0 | ✅ PASSING |
+| **Caveat Violations** | 0 | ≤2 | ✅ PASSING |
 
-**Phase breakdown (35-turn):**
-- BASELINE: 100% ✓
-- TEMPORAL: 70% ✓
-- SEMANTIC: 80% ✓
-- IDENTITY: 100% ✓
-- NEGATION: 70% ✓
-- DRIFT: 50%
-- STRESS: 50%
+**Phase breakdown (35-turn adversarial):**
 
-**Metrics:**
-- Contradictions detected: 6
-- False positives: 0
-- Missed detections: 1 (`retraction_of_denial` pattern)
+| Phase | Score | Status |
+|-------|-------|--------|
+| BASELINE | 100% | ✅ Perfect |
+| TEMPORAL | 30-50% | ⚠️ Needs work |
+| SEMANTIC | 80% | ✅ Good |
+| IDENTITY | 100% | ✅ Perfect |
+| NEGATION | 50-70% | ⚠️ Inconsistent |
+| DRIFT | 50% | Manual eval |
+| STRESS | 50% | Manual eval |
 
 **Key findings:**
-- System successfully detects and handles contradictions
-- Strong performance on baseline, identity, direct corrections, and semantic variations
+- System successfully detects and handles most contradictions
+- Strong performance on baseline, identity, and semantic variations
 - Zero false positives across all test scenarios
-- Areas for improvement: DRIFT/STRESS phase scoring, retraction-of-denial patterns
+- Areas for improvement: direct_correction, hedged_correction, retraction_of_denial patterns
 
-**Test suite:**
-- 26 of 27 pytest tests passing
-- Integration test (`test_adversarial_full_challenge_80_percent`) requires ≥80% on 35-turn
+---
+
+## Development Phases
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| **Phase 1** | Self-questioning, caveat injection, feature flags | ✅ Complete |
+| **Phase 1.1** | Wire up CRTMath call sites | ✅ Complete |
+| **Phase 2.0** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
+| **Phase 1.2** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
+| **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
+| **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
+
+### Phase 2.0 Features (Just Completed)
+- **Domain Detection**: Detects domains (career, hobbies, family) to allow multi-role facts
+- **Temporal Status**: Tracks past/active/future status to handle "I used to work at..." patterns
+- **Context-Aware Contradictions**: "I'm a programmer AND a photographer" no longer conflicts
+- **Temporal Updates**: "I don't work at Google anymore" updates status instead of flagging contradiction
 
 ---
 
@@ -251,7 +268,9 @@ pip install sentence-transformers
 ---
 
 ## Project status
-**Research prototype.** Designed for transparency and contradiction handling rather than maximum raw grounding accuracy.
+**Research prototype** - Updated 2026-01-26
+
+**Current Phase:** 1.2 (Advanced Testing Suite)
 
 This system works well for:
 - Researchers exploring contradiction aware AI memory
@@ -259,6 +278,8 @@ This system works well for:
 - Teams needing auditable memory systems
 
 Not recommended for production use without additional hardening, monitoring, and domain specific tuning.
+
+For detailed project status and metrics, see [STATUS.md](STATUS.md).
 
 ---
 
