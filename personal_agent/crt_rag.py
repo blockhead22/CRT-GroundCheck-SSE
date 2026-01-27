@@ -5137,20 +5137,14 @@ class CRTEnhancedRAG:
         # Default: treat as assertion/statement.
         return "assertion"
     
-    # ====== PRODUCTION: ReAct Orchestration Methods ======
+    # ====== PRODUCTION: Orchestration Tracing Methods ======
     
-    def _react_trace_step(self, phase: str, message: str, data: Optional[Dict] = None):
+    def _trace_step(self, phase: str, message: str, data: Optional[Dict] = None):
         """
-        Log a ReAct orchestration step.
-        
-        ReAct Pattern:
-            THINK  - Reasoning about what to do
-            ACT    - Calling a tool/component
-            OBSERVE - Getting results
-            RESPOND - Delivering final answer
+        Log an orchestration step for debugging/transparency.
         
         Args:
-            phase: One of THINK, ACT, OBSERVE, RESPOND
+            phase: Step type (e.g., INTENT, FACTSTORE, CRT, RESPOND)
             message: Human-readable description
             data: Optional structured data for this step
         """
@@ -5163,39 +5157,32 @@ class CRTEnhancedRAG:
         self._react_trace.append(step)
         
         if self.react_tracing_enabled:
-            logger.info(f"[ReAct/{phase}] {message}")
+            logger.info(f"[{phase}] {message}")
     
-    def enable_react_tracing(self, enabled: bool = True):
-        """Enable or disable ReAct step tracing."""
+    def enable_tracing(self, enabled: bool = True):
+        """Enable or disable step tracing."""
         self.react_tracing_enabled = enabled
-        logger.info(f"[ReAct] Tracing {'enabled' if enabled else 'disabled'}")
+        logger.info(f"Tracing {'enabled' if enabled else 'disabled'}")
     
-    def get_react_trace(self) -> List[Dict[str, Any]]:
-        """Get the ReAct trace from the last query."""
+    def get_trace(self) -> List[Dict[str, Any]]:
+        """Get the trace from the last query."""
         return list(self._react_trace)
     
-    def clear_react_trace(self):
-        """Clear the ReAct trace buffer."""
+    def clear_trace(self):
+        """Clear the trace buffer."""
         self._react_trace.clear()
     
-    def query_with_react(
+    def query_with_intent(
         self,
         user_query: str,
         user_marked_important: bool = False,
         mode: Optional[ReasoningMode] = None
     ) -> Dict[str, Any]:
         """
-        Query with full ReAct orchestration.
+        Query with IntentRouter + FactStore routing.
         
         This method uses IntentRouter + FactStore for structured routing,
         while preserving all existing CRT memory/contradiction functionality.
-        
-        Process:
-            1. THINK - Classify intent with IntentRouter
-            2. ACT - Route to appropriate handler (FactStore, CRT, or both)
-            3. OBSERVE - Collect results
-            4. THINK - Validate/combine results
-            5. RESPOND - Format and return
         
         Args:
             user_query: The user's input
@@ -5203,43 +5190,43 @@ class CRTEnhancedRAG:
             mode: Optional reasoning mode override
             
         Returns:
-            Dict with answer, metadata, and react_trace
+            Dict with answer, metadata, and trace
         """
-        self.clear_react_trace()
+        self.clear_trace()
         
-        # STEP 1: THINK - Classify intent
+        # Classify intent
         if self.intent_router:
-            self._react_trace_step("THINK", "Classifying intent with IntentRouter...")
+            self._trace_step("INTENT", "Classifying...")
             routed = self.intent_router.classify(user_query)
             intent = routed.intent
             confidence = routed.confidence
-            self._react_trace_step("THINK", f"Intent = {intent.value} (confidence: {confidence:.2f})", {
+            self._trace_step("INTENT", f"{intent.value} (confidence: {confidence:.2f})", {
                 "intent": intent.value,
                 "confidence": confidence,
                 "extracted": routed.extracted
             })
         else:
             # Fallback to simple classification
-            self._react_trace_step("THINK", "IntentRouter unavailable, using basic classification")
+            self._trace_step("INTENT", "Router unavailable, using basic classification")
             intent = Intent.UNKNOWN
             routed = None
         
-        # STEP 2-4: ACT + OBSERVE based on intent
+        # Route based on intent
         result = None
         fact_result = None
         
         # Handle FACT intents with FactStore
         if intent in [Intent.FACT_STATEMENT, Intent.FACT_CORRECTION] and self.fact_store:
-            self._react_trace_step("ACT", "Processing with FactStore...")
+            self._trace_step("FACTSTORE", "Processing fact...")
             fact_result = self.fact_store.process_input(user_query)
-            self._react_trace_step("OBSERVE", f"Extracted: {len(fact_result.get('extracted', []))}, Updated: {len(fact_result.get('updated', []))}", fact_result)
+            self._trace_step("FACTSTORE", f"Extracted: {len(fact_result.get('extracted', []))}, Updated: {len(fact_result.get('updated', []))}", fact_result)
             
             # Also run through CRT for contradiction detection
-            self._react_trace_step("ACT", "Running through CRT for contradiction tracking...")
+            self._trace_step("CRT", "Checking contradictions...")
             result = self.query(user_query, user_marked_important, mode)
-            self._react_trace_step("OBSERVE", f"CRT contradiction_detected: {result.get('contradiction_detected', False)}")
+            self._trace_step("CRT", f"contradiction_detected: {result.get('contradiction_detected', False)}")
             
-            # THINK: Format response
+            # Format response
             if fact_result.get("extracted"):
                 f = fact_result["extracted"][0]
                 slot_name = f['slot'].split('.')[-1].replace('_', ' ')
@@ -5250,9 +5237,9 @@ class CRTEnhancedRAG:
                 result['answer'] = f"Updated. Your {slot_name} is now {u['to']} (was {u['from']})."
         
         elif intent == Intent.FACT_QUESTION and self.fact_store:
-            self._react_trace_step("ACT", "Querying FactStore...")
+            self._trace_step("FACTSTORE", "Looking up fact...")
             fact_answer = self.fact_store.answer(user_query)
-            self._react_trace_step("OBSERVE", f"FactStore answer: {fact_answer or 'None'}")
+            self._trace_step("FACTSTORE", f"Answer: {fact_answer or 'None'}")
             
             if fact_answer:
                 result = {
@@ -5268,15 +5255,14 @@ class CRTEnhancedRAG:
                 }
             else:
                 # Fallback to CRT
-                self._react_trace_step("THINK", "No FactStore hit, trying CRT...")
-                self._react_trace_step("ACT", "Querying CRT memory...")
+                self._trace_step("CRT", "No FactStore hit, querying CRT...")
                 result = self.query(user_query, user_marked_important, mode)
-                self._react_trace_step("OBSERVE", f"CRT confidence: {result.get('confidence', 0):.2f}")
+                self._trace_step("CRT", f"confidence: {result.get('confidence', 0):.2f}")
         
         elif intent == Intent.META_MEMORY and self.fact_store:
-            self._react_trace_step("ACT", "Gathering all facts from FactStore...")
+            self._trace_step("FACTSTORE", "Gathering all facts...")
             facts = self.fact_store.get_all_facts()
-            self._react_trace_step("OBSERVE", f"Found {len(facts)} structured facts")
+            self._trace_step("FACTSTORE", f"Found {len(facts)} facts")
             
             if facts:
                 lines = ["Here's what I know about you:"]
@@ -5307,15 +5293,15 @@ class CRTEnhancedRAG:
         
         else:
             # All other intents: use standard CRT query
-            self._react_trace_step("ACT", f"Routing to CRT.query() for intent: {intent.value}")
+            self._trace_step("CRT", f"Routing for intent: {intent.value}")
             result = self.query(user_query, user_marked_important, mode)
-            self._react_trace_step("OBSERVE", f"CRT returned with confidence: {result.get('confidence', 0):.2f}")
+            self._trace_step("CRT", f"confidence: {result.get('confidence', 0):.2f}")
         
-        # STEP 5: RESPOND
-        self._react_trace_step("RESPOND", "Delivering final answer")
+        # Done
+        self._trace_step("DONE", "Complete")
         
         # Attach trace to result
-        result['react_trace'] = self.get_react_trace()
+        result['trace'] = self.get_trace()
         result['intent'] = intent.value if hasattr(intent, 'value') else str(intent)
         
         return result

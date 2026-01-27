@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-CRT-GroundCheck-SSE Demo with ReAct Orchestration
+CRT-GroundCheck-SSE Demo
 Run: python rag-demo.py
 
-Architecture (ReAct Pattern):
-  1. THINK   - IntentRouter classifies user intent
-  2. ACT     - Call appropriate tool (FactStore, CRT, LLM)
-  3. OBSERVE - Get tool result
-  4. THINK   - Validate result, decide if complete
-  5. RESPOND - Return final answer to user
+Architecture:
+  - IntentRouter classifies user intent
+  - FactStore handles structured facts (name, color, etc.)
+  - CRT handles trust-weighted memory + contradiction tracking
+  - LLM generates responses for complex queries
   
 Tools:
   - FactStore: Structured slot-based memory (store/lookup)

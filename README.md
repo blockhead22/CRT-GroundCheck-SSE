@@ -33,49 +33,35 @@ python rag-demo.py
 - Dependencies: `pip install -r requirements.txt`
 - Optional: [Ollama](https://ollama.ai/) with llama3.2 for LLM features
 
-### Demo Architecture (ReAct Pattern)
+### Demo Architecture
 ```
-1. THINK   - IntentRouter classifies user intent
-2. ACT     - Call appropriate tool (FactStore, CRT, LLM)
-3. OBSERVE - Get tool result  
-4. THINK   - Validate result, decide if complete
-5. RESPOND - Return final answer to user
-
-Tools:
-  - FactStore: Structured slot-based memory (store/lookup)
-  - CRT: Trust-weighted memory with contradiction tracking
-  - LLM: Generation for code, explanations, chat (requires Ollama)
-  - Templates: Fallback responses when no LLM available
+IntentRouter -> classifies user input (fact, question, task, chat)
+     |
+     v
+FactStore   -> structured facts (user.name, user.favorite_color)
+CRT         -> trust-weighted memory + contradiction tracking
+LLM         -> code generation, explanations (requires Ollama)
+Templates   -> fallback responses when no LLM
 ```
 
 ### Example Session
 ```
 You: My name is Nick
-  [THINK] Classifying intent...
-  [THINK] Intent = fact_statement (confidence: 0.90)
-  [ACT] Calling FactStore.process_input()...
-  [OBSERVE] Extracted: 1, Updated: 0
-  [RESPOND] Delivering final answer
-
-Bot: Got it, Nick!
+Bot: Got it. I'll remember your name is Nick.
 
 You: What is my name?
-  [THINK] Classifying intent...
-  [THINK] Intent = fact_question (confidence: 0.95)
-  [ACT] Calling FactStore.lookup()...
-  [OBSERVE] Found: user.name = Nick
-  [RESPOND] Delivering final answer
-
 Bot: Your name is Nick.
 
-You: Write a function to reverse a string
-  [THINK] Classifying intent...
-  [THINK] Intent = task_code (confidence: 0.85)
-  [ACT] Calling LLM for code generation...
-  [OBSERVE] Got code response
-  [RESPOND] Delivering final answer
+You: My favorite color is blue because it reminds me of the ocean
+Bot: Got it. I'll remember your favorite color is blue.
 
-Bot: [generated code]
+You: facts
+  user.name
+    Value: Nick
+    Trust: [##########] 1.00 | Source: user
+  user.favorite_color
+    Value: blue
+    Trust: [##########] 1.00 | Source: user
 ```
 
 ### Demo Commands
@@ -86,7 +72,7 @@ Bot: [generated code]
 | `history` | Show conversation history                |
 | `clear`   | Clear databases (with confirmation)      |
 | `dump`    | Export facts to JSON, then clear all     |
-| `verbose` | Toggle ReAct step logging                |
+| `verbose` | Toggle verbose step logging              |
 | `quit`    | Exit the demo                            |
 
 ---
