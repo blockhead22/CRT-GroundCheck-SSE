@@ -289,6 +289,74 @@ class AdversarialChallenger:
                     "difficulty": 5,
                 },
             ],
+            
+            # Phase 8: Advanced adversarial (turns 36-40) - HARDER
+            "advanced": [
+                {
+                    "input": "I told you earlier I work at Google, but actually thinking about it more, I realize I never said that. I work at Apple and always have.",
+                    "challenge_type": "gaslighting_attempt",
+                    "expected_conflict": "User trying to deny they said Google - system should cite original claim",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "My friend works at the same company as me (Microsoft) and she's also a data scientist like I am.",
+                    "challenge_type": "embedded_contradiction",
+                    "expected_conflict": "Embedded claim 'Microsoft' contradicts Google/Meta employer",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "So if I graduated Stanford in 2018 and have been coding for 12 years, I must have started coding when I was 22, right?",
+                    "challenge_type": "multi_hop_math",
+                    "expected_conflict": "34 years old - 12 years coding = started at 22. Grad at 2018 when 26 (34-8). Math may conflict",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "Jordan and I got divorced last year. Wait, did I ever mention I was married?",
+                    "challenge_type": "meta_denial_with_update",
+                    "expected_conflict": "Adds divorce fact then questions the marriage fact",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "You keep saying I work at Google but I NEVER said that. Show me where I said it.",
+                    "challenge_type": "hostile_denial",
+                    "expected_conflict": "Direct challenge to system memory - should cite turn 1",
+                    "difficulty": 5,
+                },
+            ],
+            
+            # Phase 9: Edge cases (turns 41-45) - HARDEST
+            "edge": [
+                {
+                    "input": "I'm a software engineer. No wait, ML engineer. Actually, data scientist. You know what, just call me a tech worker.",
+                    "challenge_type": "rapid_fire_changes",
+                    "expected_conflict": "4 role changes in one statement",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "The company I work for - which isn't Google by the way - just got acquired by Amazon. So I guess I work at Amazon now?",
+                    "challenge_type": "nested_contradiction_with_update",
+                    "expected_conflict": "Denies Google, adds acquisition, questions new employer",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "If what I said earlier is true, and what I'm saying now is also true, then I must be lying about something. What is it?",
+                    "challenge_type": "logical_trap",
+                    "expected_conflict": "Meta-logical challenge to identify inconsistencies",
+                    "difficulty": 5,
+                },
+                {
+                    "input": "I am 34. I have never been 32. Anyone who says I was 32 is confused.",
+                    "challenge_type": "emphatic_denial",
+                    "expected_conflict": "Strong denial of earlier age claim",
+                    "difficulty": 4,
+                },
+                {
+                    "input": "OK here's the real truth: I'm 35, work at OpenAI, have a high school diploma, and I've been coding for 2 years. Everything else was a test.",
+                    "challenge_type": "full_retcon",
+                    "expected_conflict": "Complete overwrite of all prior facts",
+                    "difficulty": 5,
+                },
+            ],
         }
     
     def get_next_challenge(self, previous_response: Optional[Dict] = None) -> Dict:
@@ -310,8 +378,12 @@ class AdversarialChallenger:
             phase = "negation"
         elif self.turn <= 30:
             phase = "drift"
-        else:
+        elif self.turn <= 35:
             phase = "stress"
+        elif self.turn <= 40:
+            phase = "advanced"
+        else:
+            phase = "edge"
         
         # Get challenges for this phase
         phase_challenges = self.challenges.get(phase, self.challenges["stress"])

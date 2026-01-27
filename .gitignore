@@ -29,6 +29,7 @@ Thumbs.db
 # Test outputs
 *.log
 *.db-journal
+*.db
 *_test*.db
 *_stress*.db
 *_t_*.db
