@@ -8,8 +8,97 @@ This repository integrates three systems for transparent AI memory that tracks c
 - **CRT**: A memory layer that preserves contradictions instead of overwriting them
 - **GroundCheck**: A verification system that makes AI responses disclose conflicts instead of hiding them
 - **SSE (Semantic String Engine)**: Powers fact retrieval and semantic matching
+- **FactStore**: Structured slot-based memory with real contradiction detection
+- **IntentRouter**: Classifies user intent to route inputs appropriately
 
 This is a **research prototype** for memory governance and output verification in AI assistants.
+
+---
+
+## Interactive Demo
+
+The fastest way to see the system in action:
+
+```bash
+# Activate environment
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Mac/Linux
+
+# Run interactive demo
+python rag-demo.py
+```
+
+### Demo Architecture
+```
+User Input → IntentRouter → Handler → Response
+
+Handlers:
+  • fact_statement/correction → FactStore (store with contradiction detection)
+  • fact_question → FactStore (lookup) → CRT fallback
+  • task_code/explain → LLM (Ollama) or templates
+  • chat_greeting/emotion → Templates or LLM
+  • knowledge_query → LLM
+```
+
+### Example Session
+```
+You: My name is Nick
+[fact_statement]
+🤖 Got it! I'll remember your name is Nick.
+
+You: My favorite color is orange because of my leukemia battle.
+[fact_statement]
+🤖 Got it! I'll remember your favorite color is orange.
+
+You: What is my name?
+[fact_question]
+🤖 Nick
+
+You: why is my favorite color orange?
+[fact_question]
+🤖 Your favorite color is orange because my leukemia battle
+
+You: Actually my name is Sarah
+[fact_correction]
+🤖 Updated! Your name is now Sarah (was Nick).
+
+You: Write me some javascript to reverse a string
+[task_code]
+🤖 ```javascript
+function reverseString(str) {
+  return [...str].reverse().join('');
+}
+```
+
+You: facts
+==================================================
+📋 CURRENT FACTS
+==================================================
+  user.name
+    → Sarah
+    Trust: [██████████] 0.98 | Source: user_corrected
+
+  user.favorite_color
+    → orange
+    Trust: [█████████░] 0.95 | Source: user_stated
+```
+
+### Demo Commands
+| Command | Action |
+|---------|--------|
+| `facts` | Show all stored facts with trust scores |
+| `memory` | Show raw CRT memories |
+| `history <slot>` | Show change history for a slot (e.g., `history name`) |
+| `clear` | Reset all databases |
+| `quit` | Exit |
+
+### Components Used
+- **FactStore** (`personal_agent/fact_store.py`): Slot-based structured memory
+- **IntentRouter** (`personal_agent/intent_router.py`): Pattern-based intent classification
+- **CRT** (`personal_agent/crt_rag.py`): Trust-weighted contradiction-aware memory
+- **Ollama** (optional): LLM for code generation and general queries
+
+---
 
 ## The idea
 Human circumstances and preferences are not static, they evolve over time due to career changes, relocations, and shifting interests. AI systems that remember user information must account for this fluidity. However, most AI memory systems simply overwrite old information with new data, then present the latest value as fact without ever acknowledging that a change occurred. This creates confidently wrong answers or an unsettling experience where the system behaves as though the previous information never existed. Worse, it opens the door for the AI to internalize falsehoods as truth or perpetuate contradictions it never acknowledged, undermining trust and reliability.
@@ -100,20 +189,34 @@ pip install -e .
 pip install -e groundcheck/
 ```
 
-### Basic usage
+### Basic usage (Programmatic)
 ```python
 from personal_agent.crt_rag import CRTEnhancedRAG
+from personal_agent.fact_store import FactStore
 
+# Option 1: FactStore for structured facts
+store = FactStore(db_path="my_facts.db")
+store.process_input("My name is Nick")
+store.process_input("My favorite color is blue")
+print(store.answer("What is my name?"))  # → "Nick"
+
+# Option 2: CRT for complex memory with contradictions
 rag = CRTEnhancedRAG()
-
-# Store user facts (contradictions are preserved)
 rag.query("I work at Microsoft", thread_id="demo")
 rag.query("I work at Amazon", thread_id="demo")
-
-# Query with conflict disclosure
 result = rag.query("Where do I work?", thread_id="demo")
-print(result["answer"])
-# Expected: Discloses both Microsoft and Amazon with conflict notice
+print(result["answer"])  # Discloses both with conflict notice
+```
+
+### Intent Router usage
+```python
+from personal_agent.intent_router import IntentRouter, Intent
+
+router = IntentRouter()
+result = router.classify("Write me some Python code")
+print(result.intent)      # Intent.TASK_CODE
+print(result.extracted)   # {'language': 'python'}
+print(result.confidence)  # 0.9
 ```
 
 ---
@@ -191,9 +294,18 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
 | **Phase 1.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
 | **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
+| **Phase 2.1** | **FactStore + IntentRouter** (structured memory, intent classification) | ✅ Complete |
 | **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
 
-### Phase 2.0 Features (Just Completed)
+### Phase 2.1 Features (Just Completed)
+- **FactStore**: Slot-based structured memory (`user.name`, `user.favorite_color`, etc.)
+- **IntentRouter**: Pattern-based intent classification (15 intent types)
+- **Contradiction Detection**: Real fact-level contradiction handling with trust updates
+- **Reason Extraction**: Stores "because" clauses as separate facts
+- **LLM Integration**: Ollama for code generation and general queries
+- **Template Fallbacks**: Works without LLM using template responses
+
+### Phase 2.0 Features
 - **Domain Detection**: Detects domains (career, hobbies, family) to allow multi-role facts
 - **Temporal Status**: Tracks past/active/future status to handle "I used to work at..." patterns
 - **Context-Aware Contradictions**: "I'm a programmer AND a photographer" no longer conflicts
@@ -268,9 +380,16 @@ pip install sentence-transformers
 ---
 
 ## Project status
-**Research prototype** - Updated 2026-01-26
+**Research prototype** - Updated 2026-01-27
 
-**Current Phase:** 1.3 (Advanced Testing Suite)
+**Current Phase:** 2.1 (FactStore + IntentRouter)
+
+### New Files Added
+| File | Purpose |
+|------|---------|
+| `personal_agent/fact_store.py` | Structured slot-based memory with contradiction detection |
+| `personal_agent/intent_router.py` | Intent classification (15 types) with pattern matching |
+| `rag-demo.py` | Interactive CLI demonstrating all components |
 
 This system works well for:
 - Researchers exploring contradiction aware AI memory
