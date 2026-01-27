@@ -29,6 +29,7 @@ from typing import Dict, List, Any, Optional, Tuple
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from personal_agent.crt_rag import CRTEnhancedRAG
+from personal_agent.crt_ledger import ContradictionLedger
 
 # ============================================================================
 # ADVERSARIAL CHALLENGE GENERATOR
@@ -441,6 +442,14 @@ def run_adversarial_challenge(
         print("[INIT] Thread memories cleared")
     except Exception as e:
         print(f"[INIT] Could not clear thread: {e}")
+    
+    # Clear contradictions ledger for clean state
+    try:
+        ledger = ContradictionLedger()
+        ledger.clear_thread_contradictions(thread_id)
+        print("[INIT] Contradictions ledger cleared")
+    except Exception as e:
+        print(f"[INIT] Could not clear ledger: {e}")
     
     # Initialize challenger
     challenger = AdversarialChallenger()

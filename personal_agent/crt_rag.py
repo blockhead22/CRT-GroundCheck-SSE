@@ -1983,6 +1983,40 @@ class CRTEnhancedRAG:
                     continue
                 
                 # ==============================================================
+                # Phase 2.4: Check for denial (Turn 23)
+                # ==============================================================
+                is_denial, denied_value = self._detect_denial_in_text(user_query, slot)
+                if is_denial and denied_value:
+                    # Search for the denied fact in previous memories
+                    for prev_mem_search in previous_user_memories:
+                        prev_facts = extract_fact_slots(prev_mem_search.text) or {}
+                        prev_fact = prev_facts.get(slot)
+                        
+                        if prev_fact is None:
+                            continue
+                        
+                        # Check if denied value matches previous value
+                        prev_value_str_search = str(prev_fact.value).lower().strip()
+                        if denied_value.lower() in prev_value_str_search:
+                            # Found matching prior statement - this is a denial contradiction
+                            contradiction_entry = self.ledger.record_contradiction(
+                                old_memory_id=prev_mem_search.memory_id,
+                                new_memory_id=new_memory.memory_id,
+                                drift_mean=drift,
+                                confidence_delta=float(prev_mem_search.confidence) - float(new_memory.confidence),
+                                query=user_query,
+                                summary=f"{slot}: denial - User denied '{denied_value}' but prior statement shows '{prev_value_str_search}'",
+                                old_text=prev_mem_search.text,
+                                new_text=user_query,
+                                old_vector=prev_mem_search.vector,
+                                new_vector=new_memory.vector,
+                                contradiction_type=ContradictionType.DENIAL,
+                                suggested_policy="ask_user"
+                            )
+                            logger.info(f"[DENIAL] Turn {new_memory.memory_id}: Denial of '{denied_value}' detected")
+                            return True, contradiction_entry
+                
+                # ==============================================================
                 # Phase 2.5: Check for retraction_of_denial
                 # ==============================================================
                 is_retraction, retraction_reason = self._is_retraction_of_denial(
