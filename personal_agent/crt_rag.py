@@ -4046,6 +4046,27 @@ class CRTEnhancedRAG:
         # UI cleanliness: the assistant should not leak internal scoring/metrics in the user-visible answer.
         # (These are available in metadata panels instead.)
         candidate_output = re.sub(r"\(\s*trust score[^)]*\)", "", candidate_output, flags=re.IGNORECASE).strip()
+        
+        # Phase 2.2: LLM Claim Tracking
+        # Check if LLM response contains claims that contradict:
+        # 1. What the LLM said before (LLM→LLM contradiction)
+        # 2. What the user told us (LLM→USER contradiction)
+        llm_claim_result = None
+        llm_disclosures = []
+        try:
+            if hasattr(self, 'fact_store') and self.fact_store:
+                llm_claim_result = self.fact_store.process_llm_response(candidate_output)
+                if llm_claim_result.get("disclosures"):
+                    llm_disclosures = llm_claim_result["disclosures"]
+                    # Prepend disclosures to the output
+                    disclosure_text = "\n".join(llm_disclosures) + "\n\n"
+                    candidate_output = disclosure_text + candidate_output
+                    logger.info(f"[LLM_CLAIM_TRACKER] Added {len(llm_disclosures)} disclosure(s) to response")
+                if llm_claim_result.get("claims"):
+                    logger.info(f"[LLM_CLAIM_TRACKER] Extracted {len(llm_claim_result['claims'])} claim(s) from LLM response")
+        except Exception as e:
+            logger.warning(f"[LLM_CLAIM_TRACKER] Failed to process LLM claims: {e}")
+        
         candidate_vector = encode_vector(candidate_output)
         
         # 3. Check reconstruction gates
@@ -4391,6 +4412,11 @@ class CRTEnhancedRAG:
             # Contradiction tracking
             'contradiction_detected': contradiction_detected,
             'contradiction_entry': contradiction_entry.to_dict() if contradiction_entry else None,
+            
+            # Phase 2.2: LLM Claim Tracking
+            'llm_claims': llm_claim_result.get('claims', []) if llm_claim_result else [],
+            'llm_contradictions': llm_claim_result.get('contradictions', []) if llm_claim_result else [],
+            'llm_disclosures': llm_disclosures,
             
             # Retrieved context
             'retrieved_memories': [

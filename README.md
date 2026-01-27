@@ -277,6 +277,14 @@ pytest tests/test_adversarial_prompts.py -v
 - **LLM→USER Contradiction Detection**: Flag when LLM claims contradict user-stated facts
 - **Disclosure Injection**: Add "I previously said..." or "You told me X but..." to responses
 
+#### Full Contradiction Matrix (Phase 2.2)
+| Source A | Source B | Detection | Status |
+|----------|----------|-----------|--------|
+| User | User | FactStore + CRT | ✅ Complete |
+| LLM | LLM | LLM Claim Tracker | ✅ Complete |
+| LLM | User | LLM Claim Tracker | ✅ Complete |
+| User | LLM | LLM Claim Tracker | ✅ Complete |
+
 ### Phase 2.1 Features (Completed)
 - **FactStore**: Slot-based structured memory (`user.name`, `user.favorite_color`, etc.)
 - **IntentRouter**: Pattern-based intent classification (15 intent types)
