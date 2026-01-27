@@ -56,6 +56,43 @@ You: My name is Nick
   [ACT] Calling FactStore.process_input()...
   [OBSERVE] Extracted: 1, Updated: 0
   [RESPOND] Delivering final answer
+
+Bot: Got it, Nick!
+
+You: What is my name?
+  [THINK] Classifying intent...
+  [THINK] Intent = fact_question (confidence: 0.95)
+  [ACT] Calling FactStore.lookup()...
+  [OBSERVE] Found: user.name = Nick
+  [RESPOND] Delivering final answer
+
+Bot: Your name is Nick.
+
+You: Write a function to reverse a string
+  [THINK] Classifying intent...
+  [THINK] Intent = task_code (confidence: 0.85)
+  [ACT] Calling LLM for code generation...
+  [OBSERVE] Got code response
+  [RESPOND] Delivering final answer
+
+Bot: [generated code]
+```
+
+### Demo Commands
+| Command   | Description                              |
+|-----------|------------------------------------------|
+| `facts`   | Show all stored facts                    |
+| `memory`  | Show CRT memory entries                  |
+| `history` | Show conversation history                |
+| `clear`   | Clear databases (with confirmation)      |
+| `dump`    | Export facts to JSON, then clear all     |
+| `verbose` | Toggle ReAct step logging                |
+| `quit`    | Exit the demo                            |
+
+---
+
+## System architecture
+
 1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger
 2. **ML contradiction detection**: Uses XGBoost models to classify belief changes (refinement vs. revision vs. temporal vs. conflict)
 3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts stay in memory
