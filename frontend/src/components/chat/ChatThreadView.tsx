@@ -129,12 +129,6 @@ export function ChatThreadView(props: {
             onResearch={props.onResearch}
             researching={props.researching}
           />
-          <div className="mt-3 text-center text-xs text-white/50">
-            Join the CRT community for more insights.{' '}
-            <a className="text-violet-300 hover:underline" href="#">
-              Join Discord
-            </a>
-          </div>
         </div>
       </div>
     </div>
