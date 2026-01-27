@@ -58,6 +58,10 @@ from .domain_detector import detect_domains, detect_query_domains
 from groundcheck.semantic_matcher import SemanticMatcher
 from sse.contradictions import heuristic_contradiction
 
+# Production integrations: IntentRouter + FactStore
+from .intent_router import IntentRouter, Intent, RoutedIntent, get_template_response
+from .fact_store import FactStore, FactExtractor
+
 # Constants for NL resolution
 _NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
 _UNSTRUCTURED_SLOT_NAME = '_unstructured_'
@@ -158,6 +162,29 @@ class CRTEnhancedRAG:
         # Session tracking
         import uuid
         self.session_id = str(uuid.uuid4())[:8]
+        
+        # ====== PRODUCTION: IntentRouter + FactStore Integration ======
+        # Intent classification for smarter routing
+        try:
+            self.intent_router = IntentRouter()
+            logger.info("[INTENT_ROUTER] Intent classification system initialized")
+        except Exception as e:
+            logger.warning(f"[INTENT_ROUTER] Failed to initialize: {e}")
+            self.intent_router = None
+        
+        # Structured fact storage (user.name, user.favorite_color, etc.)
+        try:
+            facts_db_path = str(Path(memory_db).parent / "crt_facts.db")
+            self.fact_store = FactStore(db_path=facts_db_path)
+            logger.info(f"[FACT_STORE] Structured fact store initialized at {facts_db_path}")
+        except Exception as e:
+            logger.warning(f"[FACT_STORE] Failed to initialize: {e}")
+            self.fact_store = None
+        
+        # ReAct orchestration tracing (verbose mode for debugging)
+        self.react_tracing_enabled = False
+        self._react_trace: List[Dict[str, Any]] = []
+        # ====== END PRODUCTION ADDITIONS ======
         
         # Performance: LRU cache for fact extraction to avoid repeated regex parsing
         # Using OrderedDict for efficient LRU eviction (move_to_end + popitem)
@@ -5109,6 +5136,217 @@ class CRTEnhancedRAG:
 
         # Default: treat as assertion/statement.
         return "assertion"
+    
+    # ====== PRODUCTION: ReAct Orchestration Methods ======
+    
+    def _react_trace_step(self, phase: str, message: str, data: Optional[Dict] = None):
+        """
+        Log a ReAct orchestration step.
+        
+        ReAct Pattern:
+            THINK  - Reasoning about what to do
+            ACT    - Calling a tool/component
+            OBSERVE - Getting results
+            RESPOND - Delivering final answer
+        
+        Args:
+            phase: One of THINK, ACT, OBSERVE, RESPOND
+            message: Human-readable description
+            data: Optional structured data for this step
+        """
+        step = {
+            "phase": phase,
+            "message": message,
+            "timestamp": time.time(),
+            "data": data or {}
+        }
+        self._react_trace.append(step)
+        
+        if self.react_tracing_enabled:
+            logger.info(f"[ReAct/{phase}] {message}")
+    
+    def enable_react_tracing(self, enabled: bool = True):
+        """Enable or disable ReAct step tracing."""
+        self.react_tracing_enabled = enabled
+        logger.info(f"[ReAct] Tracing {'enabled' if enabled else 'disabled'}")
+    
+    def get_react_trace(self) -> List[Dict[str, Any]]:
+        """Get the ReAct trace from the last query."""
+        return list(self._react_trace)
+    
+    def clear_react_trace(self):
+        """Clear the ReAct trace buffer."""
+        self._react_trace.clear()
+    
+    def query_with_react(
+        self,
+        user_query: str,
+        user_marked_important: bool = False,
+        mode: Optional[ReasoningMode] = None
+    ) -> Dict[str, Any]:
+        """
+        Query with full ReAct orchestration.
+        
+        This method uses IntentRouter + FactStore for structured routing,
+        while preserving all existing CRT memory/contradiction functionality.
+        
+        Process:
+            1. THINK - Classify intent with IntentRouter
+            2. ACT - Route to appropriate handler (FactStore, CRT, or both)
+            3. OBSERVE - Collect results
+            4. THINK - Validate/combine results
+            5. RESPOND - Format and return
+        
+        Args:
+            user_query: The user's input
+            user_marked_important: Flag for important facts
+            mode: Optional reasoning mode override
+            
+        Returns:
+            Dict with answer, metadata, and react_trace
+        """
+        self.clear_react_trace()
+        
+        # STEP 1: THINK - Classify intent
+        if self.intent_router:
+            self._react_trace_step("THINK", "Classifying intent with IntentRouter...")
+            routed = self.intent_router.classify(user_query)
+            intent = routed.intent
+            confidence = routed.confidence
+            self._react_trace_step("THINK", f"Intent = {intent.value} (confidence: {confidence:.2f})", {
+                "intent": intent.value,
+                "confidence": confidence,
+                "extracted": routed.extracted
+            })
+        else:
+            # Fallback to simple classification
+            self._react_trace_step("THINK", "IntentRouter unavailable, using basic classification")
+            intent = Intent.UNKNOWN
+            routed = None
+        
+        # STEP 2-4: ACT + OBSERVE based on intent
+        result = None
+        fact_result = None
+        
+        # Handle FACT intents with FactStore
+        if intent in [Intent.FACT_STATEMENT, Intent.FACT_CORRECTION] and self.fact_store:
+            self._react_trace_step("ACT", "Processing with FactStore...")
+            fact_result = self.fact_store.process_input(user_query)
+            self._react_trace_step("OBSERVE", f"Extracted: {len(fact_result.get('extracted', []))}, Updated: {len(fact_result.get('updated', []))}", fact_result)
+            
+            # Also run through CRT for contradiction detection
+            self._react_trace_step("ACT", "Running through CRT for contradiction tracking...")
+            result = self.query(user_query, user_marked_important, mode)
+            self._react_trace_step("OBSERVE", f"CRT contradiction_detected: {result.get('contradiction_detected', False)}")
+            
+            # THINK: Format response
+            if fact_result.get("extracted"):
+                f = fact_result["extracted"][0]
+                slot_name = f['slot'].split('.')[-1].replace('_', ' ')
+                result['answer'] = f"Got it. I'll remember your {slot_name} is {f['value']}."
+            elif fact_result.get("updated"):
+                u = fact_result["updated"][0]
+                slot_name = u['slot'].split('.')[-1].replace('_', ' ')
+                result['answer'] = f"Updated. Your {slot_name} is now {u['to']} (was {u['from']})."
+        
+        elif intent == Intent.FACT_QUESTION and self.fact_store:
+            self._react_trace_step("ACT", "Querying FactStore...")
+            fact_answer = self.fact_store.answer(user_query)
+            self._react_trace_step("OBSERVE", f"FactStore answer: {fact_answer or 'None'}")
+            
+            if fact_answer:
+                result = {
+                    'answer': fact_answer,
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.95,
+                    'response_type': 'belief',
+                    'gates_passed': True,
+                    'gate_reason': 'fact_store_hit',
+                    'retrieved_memories': [],
+                    'fact_store_hit': True,
+                }
+            else:
+                # Fallback to CRT
+                self._react_trace_step("THINK", "No FactStore hit, trying CRT...")
+                self._react_trace_step("ACT", "Querying CRT memory...")
+                result = self.query(user_query, user_marked_important, mode)
+                self._react_trace_step("OBSERVE", f"CRT confidence: {result.get('confidence', 0):.2f}")
+        
+        elif intent == Intent.META_MEMORY and self.fact_store:
+            self._react_trace_step("ACT", "Gathering all facts from FactStore...")
+            facts = self.fact_store.get_all_facts()
+            self._react_trace_step("OBSERVE", f"Found {len(facts)} structured facts")
+            
+            if facts:
+                lines = ["Here's what I know about you:"]
+                for slot, f in facts.items():
+                    slot_name = slot.split('.')[-1].replace('_', ' ')
+                    lines.append(f"  - {slot_name}: {f['value']}")
+                result = {
+                    'answer': "\n".join(lines),
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.95,
+                    'response_type': 'belief',
+                    'gates_passed': True,
+                    'gate_reason': 'fact_inventory',
+                    'retrieved_memories': [],
+                    'structured_facts': facts,
+                }
+            else:
+                result = {
+                    'answer': "I don't know anything about you yet. Tell me something!",
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.95,
+                    'response_type': 'speech',
+                    'gates_passed': True,
+                    'gate_reason': 'empty_fact_store',
+                }
+        
+        else:
+            # All other intents: use standard CRT query
+            self._react_trace_step("ACT", f"Routing to CRT.query() for intent: {intent.value}")
+            result = self.query(user_query, user_marked_important, mode)
+            self._react_trace_step("OBSERVE", f"CRT returned with confidence: {result.get('confidence', 0):.2f}")
+        
+        # STEP 5: RESPOND
+        self._react_trace_step("RESPOND", "Delivering final answer")
+        
+        # Attach trace to result
+        result['react_trace'] = self.get_react_trace()
+        result['intent'] = intent.value if hasattr(intent, 'value') else str(intent)
+        
+        return result
+    
+    def get_structured_facts(self) -> Dict[str, Any]:
+        """
+        Get all structured facts from FactStore.
+        
+        Returns dict of slot -> {value, trust, source, ...}
+        """
+        if self.fact_store:
+            return self.fact_store.get_all_facts()
+        return {}
+    
+    def get_fact_history(self, slot: str) -> List[Dict[str, Any]]:
+        """
+        Get history for a specific fact slot.
+        
+        Args:
+            slot: The slot name (e.g., 'user.name' or just 'name')
+            
+        Returns:
+            List of historical values with timestamps
+        """
+        if self.fact_store:
+            if not slot.startswith("user."):
+                slot = f"user.{slot}"
+            return self.fact_store.get_history(slot)
+        return []
+    
+    # ====== END ReAct Orchestration Methods ======
     
     def _fallback_response(self, query: str) -> Dict:
         """Generate fallback response when no memories exist."""

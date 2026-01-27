@@ -2496,6 +2496,139 @@ def create_app() -> FastAPI:
             contradictions_total=len(contradictions),
         )
 
+    # ====== PRODUCTION: FactStore + ReAct API Endpoints ======
+    
+    class StructuredFactsResponse(BaseModel):
+        thread_id: str
+        facts: Dict[str, Any]
+        count: int
+    
+    class FactHistoryResponse(BaseModel):
+        thread_id: str
+        slot: str
+        history: List[Dict[str, Any]]
+    
+    class ReactQueryRequest(BaseModel):
+        thread_id: str = Field(default="default")
+        message: str = Field(min_length=1)
+        user_marked_important: bool = Field(default=False)
+        include_trace: bool = Field(default=False)
+    
+    class ReactQueryResponse(BaseModel):
+        answer: str
+        intent: str
+        confidence: float
+        response_type: str
+        gates_passed: bool
+        gate_reason: Optional[str] = None
+        react_trace: Optional[List[Dict[str, Any]]] = None
+        metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    @app.get("/api/facts/structured")
+    def get_structured_facts(thread_id: str = Query(default="default")) -> StructuredFactsResponse:
+        """Get all structured facts from FactStore."""
+        tid = _sanitize_thread_id(thread_id)
+        engine = get_engine(tid)
+        
+        facts = {}
+        if hasattr(engine, 'fact_store') and engine.fact_store:
+            facts = engine.fact_store.get_all_facts()
+        
+        return StructuredFactsResponse(
+            thread_id=tid,
+            facts=facts,
+            count=len(facts)
+        )
+    
+    @app.get("/api/facts/history/{slot}")
+    def get_fact_history(
+        slot: str,
+        thread_id: str = Query(default="default")
+    ) -> FactHistoryResponse:
+        """Get history for a specific fact slot."""
+        tid = _sanitize_thread_id(thread_id)
+        engine = get_engine(tid)
+        
+        history = []
+        if hasattr(engine, 'fact_store') and engine.fact_store:
+            # Normalize slot name
+            if not slot.startswith("user."):
+                slot = f"user.{slot}"
+            history = engine.fact_store.get_history(slot)
+        
+        return FactHistoryResponse(
+            thread_id=tid,
+            slot=slot,
+            history=history
+        )
+    
+    @app.post("/api/chat/react", response_model=ReactQueryResponse)
+    def chat_react(req: ReactQueryRequest) -> ReactQueryResponse:
+        """
+        Query with full ReAct orchestration.
+        
+        Uses IntentRouter + FactStore for smarter routing,
+        with optional trace for debugging/transparency.
+        """
+        engine = get_engine(req.thread_id)
+        increment_turn(req.thread_id)
+        
+        # Enable tracing if requested
+        if hasattr(engine, 'enable_react_tracing'):
+            engine.enable_react_tracing(req.include_trace)
+        
+        # Use ReAct query if available
+        if hasattr(engine, 'query_with_react'):
+            result = engine.query_with_react(
+                user_query=req.message,
+                user_marked_important=req.user_marked_important,
+            )
+        else:
+            # Fallback to standard query
+            result = engine.query(
+                user_query=req.message,
+                user_marked_important=req.user_marked_important,
+            )
+            result['intent'] = 'unknown'
+            result['react_trace'] = None
+        
+        # Build metadata
+        metadata = {
+            "mode": result.get("mode"),
+            "contradiction_detected": result.get("contradiction_detected"),
+            "retrieved_memories": len(result.get("retrieved_memories") or []),
+            "structured_facts": result.get("structured_facts"),
+            "fact_store_hit": result.get("fact_store_hit", False),
+        }
+        
+        return ReactQueryResponse(
+            answer=result.get("answer", ""),
+            intent=result.get("intent", "unknown"),
+            confidence=result.get("confidence", 0.0),
+            response_type=result.get("response_type", "speech"),
+            gates_passed=result.get("gates_passed", False),
+            gate_reason=result.get("gate_reason"),
+            react_trace=result.get("react_trace") if req.include_trace else None,
+            metadata=metadata
+        )
+    
+    @app.post("/api/react/enable_tracing")
+    def enable_react_tracing(
+        thread_id: str = Query(default="default"),
+        enabled: bool = Query(default=True)
+    ) -> dict:
+        """Enable or disable ReAct step tracing for debugging."""
+        tid = _sanitize_thread_id(thread_id)
+        engine = get_engine(tid)
+        
+        if hasattr(engine, 'enable_react_tracing'):
+            engine.enable_react_tracing(enabled)
+            return {"thread_id": tid, "tracing_enabled": enabled}
+        
+        return {"thread_id": tid, "error": "ReAct tracing not available"}
+    
+    # ====== END FactStore + ReAct Endpoints ======
+
     @app.post("/api/thread/reset", response_model=ThreadResetResponse)
     def thread_reset(req: ThreadResetRequest) -> ThreadResetResponse:
         tid = _sanitize_thread_id(req.thread_id)
