@@ -225,32 +225,35 @@ pytest tests/test_adversarial_prompts.py -v
 - All pytest tests: **PASS**
 - No TypeErrors on integer value contradictions
 
-### Current test status (2026-01-26)
+### Current test status (2026-01-27)
 
 | Test | Score | Target | Status |
 |------|-------|--------|--------|
 | **crt_stress_test.py** | 91.7% eval, 80% detection | 90%+ | ✅ PASSING |
-| **adversarial_crt_challenge.py** | 65.7% (23/35) | 80% | ⚠️ In progress |
-| **False Positives** | 0 | 0 | ✅ PASSING |
+| **adversarial_crt_challenge.py** | 65.6% (29.5/45) | 80% | ⚠️ In progress |
+| **False Positives** | 1 | 0 | ⚠️ Minor regression |
 | **Caveat Violations** | 0 | ≤2 | ✅ PASSING |
 
-**Phase breakdown (35-turn adversarial):**
+**Phase breakdown (45-turn adversarial):**
 
 | Phase | Score | Status |
 |-------|-------|--------|
-| BASELINE | 100% | ✅ Perfect |
-| TEMPORAL | 30-50% | ⚠️ Needs work |
-| SEMANTIC | 80% | ✅ Good |
-| IDENTITY | 100% | ✅ Perfect |
-| NEGATION | 50-70% | ⚠️ Inconsistent |
-| DRIFT | 50% | Manual eval |
-| STRESS | 50% | Manual eval |
+| BASELINE | 100% (5/5) | ✅ Perfect |
+| TEMPORAL | 70% (3.5/5) | ✅ Good |
+| SEMANTIC | 60% (3/5) | ⚠️ 1 false positive |
+| IDENTITY | 100% (5/5) | ✅ Perfect |
+| NEGATION | 90% (4.5/5) | ✅ Strong |
+| DRIFT | 50% (2.5/5) | ⚠️ Needs work |
+| STRESS | 50% (2.5/5) | ⚠️ Needs work |
+| ADVANCED | ~40% | ⚠️ New phase - challenging |
+| EDGE | ~30% | ⚠️ New phase - very hard |
 
 **Key findings:**
-- System successfully detects and handles most contradictions
-- Strong performance on baseline, identity, and semantic variations
-- Zero false positives across all test scenarios
-- Areas for improvement: direct_correction, hedged_correction, retraction_of_denial patterns
+- 8 contradictions correctly detected, 3 missed detections
+- Strong performance on baseline, identity, and negation phases
+- 1 false positive on detail_addition (turn 14 - flagged dog adoption as contradiction)
+- Weaknesses: hostile_denial, emphatic_denial, meta_denial_with_update patterns
+- New ADVANCED/EDGE phases test gaslighting, embedded contradictions, and logical traps
 
 ---
 
