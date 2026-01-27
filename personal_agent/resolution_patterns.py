@@ -18,8 +18,11 @@ RESOLUTION_PATTERNS = [
     # Explicit correctness statements
     r'\b(is|was)\s+(correct|right|accurate)\b',
     
-    # Revision markers
-    r'\bactually\b',
+    # Revision markers - made more specific to avoid matching self-corrections
+    # OLD: r'\bactually\b' - too broad, matched "I'm actually 34, not 32"
+    # NEW: Only match "actually" when followed by confirmation/choice language
+    r'\bactually,?\s*(it\'s|it\s+is|that\'s|that\s+is)\s+\w+\b',  # "actually it's X" or "actually that's X"
+    r'\bactually,?\s+\w+\s+is\s+(correct|right|accurate)\b',  # "actually X is correct"
     r'\bi\s+meant\b',
     
     # Job/employer changes

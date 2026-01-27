@@ -1830,6 +1830,7 @@ class CRTEnhancedRAG:
         
         # Phase 2.0: Extract facts with temporal and domain context
         new_facts = self._extract_facts_contextual(user_query)
+        print(f"[DEBUG_ML_CHECK] new_facts extracted: {[(k, getattr(v, 'value', v)) for k, v in (new_facts or {}).items()]}")
         if not new_facts:
             # Fallback to basic extraction
             new_facts = extract_fact_slots(user_query) or {}
@@ -1892,7 +1893,7 @@ class CRTEnhancedRAG:
                 # These should ALWAYS be detected regardless of other checks
                 # ==============================================================
                 correction_result = detect_correction_type(user_query)
-                logger.info(f"[DEBUG_CORR] slot={slot}, prev_value={prev_value_str}, new_value={new_value_str}, correction_result={correction_result}")
+                print(f"[DEBUG_CORR] slot={slot}, prev_value={prev_value_str}, new_value={new_value_str}, correction_result={correction_result}")
                 if correction_result:
                     correction_type, old_val, new_val = correction_result
                     logger.info(f"[CORRECTION_DETECTED] {correction_type}: {old_val} → {new_val}")
@@ -2636,6 +2637,8 @@ class CRTEnhancedRAG:
             elapsed_time = time.time() - start_time
             total_open_after = len(self.ledger.get_open_contradictions(limit=200))
             
+            print(f"[DEBUG_NL_RESOLVED] resolved_count={resolved_count}, user_text={user_text[:60]}...")
+            
             trace_logger.log_resolution_summary(
                 total_open_before=total_open_before,
                 total_open_after=total_open_after,
@@ -2682,6 +2685,7 @@ class CRTEnhancedRAG:
         is_memory_inventory = self._is_memory_inventory_request(user_query)
 
         user_input_kind = self._classify_user_input(user_query)
+        print(f"[DEBUG_CLASSIFY] kind={user_input_kind}, query={user_query[:60]}...")
         logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind} | Query: {user_query[:100]}")
         
         # Check for natural language contradiction resolution FIRST
@@ -2689,6 +2693,7 @@ class CRTEnhancedRAG:
         nl_resolution_occurred = False
         try:
             nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_query)
+            print(f"[DEBUG_NL] nl_resolution_occurred={nl_resolution_occurred}, query={user_query[:50]}...")
             if nl_resolution_occurred:
                 logger.info(f"[NL_RESOLUTION] Natural language resolution detected and processed")
                 # If we resolved a contradiction, treat this as an instruction/acknowledgment, not an assertion
