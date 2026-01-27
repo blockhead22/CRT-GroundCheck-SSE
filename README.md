@@ -266,7 +266,7 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
 | **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | ✅ Complete |
 | **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | ✅ Complete |
-| **Phase 1.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
+| **Phase 2.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
 | **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
 | **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
 
