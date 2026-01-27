@@ -264,12 +264,20 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 1** | Self-questioning, caveat injection, feature flags | ✅ Complete |
 | **Phase 1.1** | Wire up CRTMath call sites | ✅ Complete |
 | **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
+| **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | ✅ Complete |
+| **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | 🔨 In Progress |
 | **Phase 1.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
 | **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
-| **Phase 2.1** | **FactStore + IntentRouter** (structured memory, intent classification) | ✅ Complete |
 | **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
 
-### Phase 2.1 Features (Just Completed)
+### Phase 2.2 Features (In Progress)
+- **LLM Claim Extraction**: Parse factual claims from LLM responses into slot/value pairs
+- **LLM Fact Storage**: Store LLM claims with `source="llm"` in FactStore
+- **LLM→LLM Contradiction Detection**: Flag when LLM says X then later says Y
+- **LLM→USER Contradiction Detection**: Flag when LLM claims contradict user-stated facts
+- **Disclosure Injection**: Add "I previously said..." or "You told me X but..." to responses
+
+### Phase 2.1 Features (Completed)
 - **FactStore**: Slot-based structured memory (`user.name`, `user.favorite_color`, etc.)
 - **IntentRouter**: Pattern-based intent classification (15 intent types)
 - **Contradiction Detection**: Real fact-level contradiction handling with trust updates
