@@ -443,16 +443,28 @@ def create_app() -> FastAPI:
 
     # Initialize shared LLM client for all threads (lazy initialization)
     _llm_client: Optional[OllamaClient] = None
+    _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
     
     def get_llm_client() -> Optional[OllamaClient]:
-        """Get or create shared LLM client for hybrid extraction."""
+        """Get or create shared LLM client for hybrid extraction.
+        
+        Set CRT_ENABLE_LLM=true environment variable to enable.
+        Requires Ollama to be running with llama3.2:latest model available.
+        """
         nonlocal _llm_client
+        
+        if not _llm_enabled:
+            logger.info("[API] LLM extraction disabled (set CRT_ENABLE_LLM=true to enable)")
+            return None
+            
         if _llm_client is None:
             try:
+                logger.info("[API] Initializing OllamaClient for hybrid LLM extraction...")
                 _llm_client = OllamaClient(model="llama3.2:latest")
-                logger.info("[API] Initialized OllamaClient for hybrid LLM extraction")
+                logger.info("[API] ✓ OllamaClient initialized successfully")
             except Exception as e:
-                logger.warning(f"[API] Failed to initialize OllamaClient: {e}. Falling back to regex-only extraction.")
+                logger.warning(f"[API] ✗ Failed to initialize OllamaClient: {e}")
+                logger.warning("[API] Falling back to regex-only extraction")
                 _llm_client = None
         return _llm_client
     
@@ -500,6 +512,16 @@ def create_app() -> FastAPI:
 
     @app.on_event("startup")
     def _startup() -> None:
+        # Pre-load embedding model to avoid timeout on first request
+        logger.info("[STARTUP] Pre-loading embedding model...")
+        try:
+            from personal_agent.crt_core import encode_vector
+            # Trigger model load with dummy text
+            _ = encode_vector("test")
+            logger.info("[STARTUP] ✓ Embedding model loaded")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Could not pre-load embedding model: {e}")
+        
         # Start the (optional) training loop.
         try:
             training_loop.start()
@@ -2032,52 +2054,54 @@ def create_app() -> FastAPI:
         )
 
         # AGENT INTEGRATION: Check for proactive triggers
+        # Only activate if LLM is enabled
         agent_activated = False
         agent_trace_data = None
         agent_answer = None
         
-        try:
-            from personal_agent.proactive_triggers import ProactiveTriggers
-            from personal_agent.agent_loop import create_agent
-            from pathlib import Path
-            
-            # Analyze response for triggers
-            triggers_engine = ProactiveTriggers(
-                confidence_threshold=0.5,
-                auto_research_threshold=0.4,  # Auto-activate below 0.4 (was 0.3)
-                contradiction_auto_resolve=False,  # Don't auto-resolve contradictions
-            )
-            detected_triggers = triggers_engine.analyze_response(result)
-            
-            # Auto-activate agent if triggers detected
-            if triggers_engine.should_activate_agent(detected_triggers):
-                # Create research engine
-                research_engine = None
-                try:
-                    from personal_agent.research_engine import ResearchEngine
-                    research_engine = ResearchEngine()
-                except Exception:
-                    pass
+        if _llm_enabled:
+            try:
+                from personal_agent.proactive_triggers import ProactiveTriggers
+                from personal_agent.agent_loop import create_agent
+                from pathlib import Path
                 
-                # Create and run agent
-                agent = create_agent(
-                    memory_engine=engine.memory,
-                    research_engine=research_engine,
-                    workspace_root=Path.cwd(),
-                    max_steps=8,
+                # Analyze response for triggers
+                triggers_engine = ProactiveTriggers(
+                    confidence_threshold=0.5,
+                    auto_research_threshold=0.4,  # Auto-activate below 0.4 (was 0.3)
+                    contradiction_auto_resolve=False,  # Don't auto-resolve contradictions
                 )
+                detected_triggers = triggers_engine.analyze_response(result)
                 
-                task = triggers_engine.get_agent_task(detected_triggers, req.message)
-                trace = agent.run(task)
-                
-                agent_activated = True
-                agent_answer = trace.final_answer
-                agent_trace_data = trace.to_dict()
-                
-        except Exception as e:
-            # Agent execution failed - continue without agent
-            print(f"Agent execution error: {e}")
-            pass
+                # Auto-activate agent if triggers detected
+                if triggers_engine.should_activate_agent(detected_triggers):
+                    # Create research engine
+                    research_engine = None
+                    try:
+                        from personal_agent.research_engine import ResearchEngine
+                        research_engine = ResearchEngine()
+                    except Exception:
+                        pass
+                    
+                    # Create and run agent
+                    agent = create_agent(
+                        memory_engine=engine.memory,
+                        research_engine=research_engine,
+                        workspace_root=Path.cwd(),
+                        max_steps=8,
+                    )
+                    
+                    task = triggers_engine.get_agent_task(detected_triggers, req.message)
+                    trace = agent.run(task)
+                    
+                    agent_activated = True
+                    agent_answer = trace.final_answer
+                    agent_trace_data = trace.to_dict()
+                    
+            except Exception as e:
+                # Agent execution failed - continue without agent
+                logger.warning(f"[AGENT] Execution error: {e}")
+                pass
 
         # Keep the payload compact and UI-friendly.
         # Build comprehensive metadata with reintroduction flags

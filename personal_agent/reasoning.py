@@ -83,18 +83,16 @@ class ReasoningEngine:
     """
     
     def __init__(self, llm_client=None):
-        """Initialize reasoning engine."""
-        if llm_client is None:
-            # Default to Ollama
-            try:
-                from .ollama_client import get_ollama_client
-                llm_client = get_ollama_client()
-            except Exception as e:
-                print(f"[WARNING] Could not initialize Ollama: {e}")
-                llm_client = None
+        """Initialize reasoning engine.
         
+        Args:
+            llm_client: Optional LLM client. If None, reasoning will be limited.
+        """
         self.llm = llm_client
         self.reasoning_traces = []  # Internal log
+        
+        if self.llm is None:
+            print("[REASONING] No LLM client provided - using fallback reasoning")
     
     def reason(
         self,
