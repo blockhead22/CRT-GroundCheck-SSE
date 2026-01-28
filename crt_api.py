@@ -39,6 +39,7 @@ from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 from personal_agent.db_utils import get_thread_session_db
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
+from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
 
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
@@ -2298,6 +2299,19 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.debug(f"[SESSION] Error recording query: {e}")
 
+        # ====== Episodic Memory: Process interaction for patterns/preferences ======
+        try:
+            episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+            start_time = time.time()
+            episodic_mgr.process_interaction(
+                thread_id=req.thread_id,
+                query=req.message,
+                response=final_answer,
+                response_time_ms=int((time.time() - start_time) * 1000)
+            )
+        except Exception as e:
+            logger.debug(f"[EPISODIC] Error processing interaction: {e}")
+
         return ChatSendResponse(
             answer=final_answer,
             response_type=str(result.get("response_type") or "speech"),
@@ -2499,6 +2513,17 @@ Be concise but thorough. If you don't have information about something, say so h
                     ],
                 }
                 
+                # Process interaction for episodic memory (patterns, preferences, concepts)
+                try:
+                    episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+                    episodic_mgr.process_interaction(
+                        thread_id=req.thread_id,
+                        query=req.message,
+                        response=clean_response,
+                    )
+                except Exception as e:
+                    logger.debug(f"[EPISODIC] Error in stream: {e}")
+                
                 yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
                 
             except Exception as e:
@@ -2514,6 +2539,191 @@ Be concise but thorough. If you don't have information about something, say so h
                 "X-Accel-Buffering": "no",
             }
         )
+
+    # ========================================================================
+    # Episodic Memory API Endpoints
+    # ========================================================================
+    
+    @app.get("/api/episodic/context")
+    def get_episodic_context(thread_id: str = Query(default="default")):
+        """
+        Get learned user context: preferences, patterns, concepts, recent summaries.
+        
+        Useful for:
+        - Building personalized prompts
+        - Showing user what the system has learned
+        - Debugging preference/pattern detection
+        """
+        try:
+            episodic_mgr = get_episodic_manager()
+            context = episodic_mgr.get_user_context()
+            prompt_context = episodic_mgr.build_context_prompt()
+            
+            return {
+                "preferences": context.get("preferences", {}),
+                "patterns": context.get("patterns", []),
+                "recent_summaries": context.get("recent_summaries", []),
+                "concepts": context.get("concepts", []),
+                "prompt_context": prompt_context,
+            }
+        except Exception as e:
+            logger.error(f"[EPISODIC] Error getting context: {e}")
+            return {"error": str(e)}
+    
+    @app.post("/api/episodic/finalize-session")
+    def finalize_episodic_session(thread_id: str = Query(default="default")):
+        """
+        Finalize current session - create summary and run pattern analysis.
+        
+        Call this when:
+        - User explicitly ends session
+        - Application shutdown
+        - Long inactivity detected
+        """
+        try:
+            engine = get_engine(thread_id)
+            episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+            
+            # Get recent messages from session DB
+            session_db = get_thread_session_db()
+            recent = session_db.get_recent_queries(thread_id, window=50)
+            
+            # Convert to message format
+            messages = []
+            for q in reversed(recent):  # Oldest first
+                messages.append({
+                    "role": "user",
+                    "text": q.get("query_text", ""),
+                    "timestamp": q.get("timestamp", time.time())
+                })
+                if q.get("response_text"):
+                    messages.append({
+                        "role": "assistant", 
+                        "text": q.get("response_text", ""),
+                        "timestamp": q.get("timestamp", time.time())
+                    })
+            
+            if len(messages) < 4:
+                return {"status": "skipped", "reason": "Not enough messages for summary"}
+            
+            # Get LLM client if available
+            llm = get_llm_client()
+            
+            summary = episodic_mgr.finalize_session(thread_id, messages, llm)
+            
+            return {
+                "status": "success",
+                "summary_id": summary.summary_id if summary else None,
+                "summary_text": summary.summary_text if summary else None,
+                "topics": summary.topics if summary else [],
+                "message_count": summary.message_count if summary else 0,
+            }
+        except Exception as e:
+            logger.error(f"[EPISODIC] Error finalizing session: {e}")
+            return {"status": "error", "error": str(e)}
+    
+    @app.get("/api/episodic/preferences")
+    def get_user_preferences(category: Optional[str] = Query(default=None)):
+        """Get learned user preferences, optionally filtered by category."""
+        try:
+            episodic_mgr = get_episodic_manager()
+            prefs = episodic_mgr.db.get_preferences(category)
+            
+            return {
+                "preferences": [
+                    {
+                        "category": p.category,
+                        "key": p.key,
+                        "value": p.value,
+                        "confidence": p.confidence,
+                        "source": p.source,
+                        "evidence": p.evidence,
+                    }
+                    for p in prefs
+                ]
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    @app.get("/api/episodic/patterns")
+    def get_interaction_patterns(min_confidence: float = Query(default=0.3)):
+        """Get detected interaction patterns above confidence threshold."""
+        try:
+            episodic_mgr = get_episodic_manager()
+            patterns = episodic_mgr.db.get_patterns(min_confidence=min_confidence)
+            
+            return {
+                "patterns": [
+                    {
+                        "type": p.pattern_type,
+                        "description": p.description,
+                        "evidence_count": p.evidence_count,
+                        "confidence": p.confidence,
+                        "metadata": p.metadata,
+                    }
+                    for p in patterns
+                ]
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    @app.get("/api/episodic/concepts")
+    def get_concepts(concept_type: Optional[str] = Query(default=None)):
+        """Get linked concepts/entities from the knowledge graph."""
+        try:
+            episodic_mgr = get_episodic_manager()
+            
+            if concept_type:
+                concepts = episodic_mgr.db.get_concepts_by_type(concept_type)
+            else:
+                # Get all types
+                concepts = []
+                for ctype in ['person', 'project', 'organization', 'topic']:
+                    concepts.extend(episodic_mgr.db.get_concepts_by_type(ctype))
+            
+            return {
+                "concepts": [
+                    {
+                        "id": c.concept_id,
+                        "name": c.canonical_name,
+                        "type": c.concept_type,
+                        "aliases": c.aliases,
+                        "attributes": c.attributes,
+                        "mention_count": c.mention_count,
+                    }
+                    for c in concepts
+                ]
+            }
+        except Exception as e:
+            return {"error": str(e)}
+    
+    @app.get("/api/episodic/summaries")
+    def get_session_summaries(
+        thread_id: Optional[str] = Query(default=None),
+        limit: int = Query(default=5)
+    ):
+        """Get recent session summaries."""
+        try:
+            episodic_mgr = get_episodic_manager()
+            summaries = episodic_mgr.db.get_recent_summaries(thread_id, limit)
+            
+            return {
+                "summaries": [
+                    {
+                        "id": s.summary_id,
+                        "thread_id": s.thread_id,
+                        "summary": s.summary_text,
+                        "topics": s.topics,
+                        "entities": s.entities_mentioned,
+                        "facts_learned": s.facts_learned,
+                        "message_count": s.message_count,
+                        "timestamp": s.timestamp,
+                    }
+                    for s in summaries
+                ]
+            }
+        except Exception as e:
+            return {"error": str(e)}
 
     # ========================================================================
     # M3: Research API Endpoints
