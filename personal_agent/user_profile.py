@@ -37,6 +37,28 @@ class UserProfileFact:
     confidence: float = 0.9  # How confident we are
 
 
+# Slots that should only have ONE value at a time (replace on conflict)
+SINGLE_VALUE_SLOTS = {
+    'name',           # User has one name
+    'location',       # User lives in one place at a time
+    'favorite_color', # One favorite color
+    'email',          # One primary email
+    'phone',          # One primary phone
+    'age',            # One age
+    'birthday',       # One birthday
+}
+
+# Slots that can have MULTIPLE values (accumulate, but detect contradictions)
+MULTI_VALUE_SLOTS = {
+    'employer',       # User might have multiple jobs
+    'occupation',     # Multiple roles
+    'title',          # Multiple titles
+    'skill',          # Multiple skills
+    'language',       # Multiple programming languages
+    'school',         # Multiple schools attended
+}
+
+
 class GlobalUserProfile:
     """
     Stores user identity facts globally across all threads.
@@ -127,12 +149,14 @@ class GlobalUserProfile:
         conn.commit()
         conn.close()
     
-    def update_from_text(self, text: str, thread_id: str = "default") -> Dict[str, str]:
+    def update_from_text(self, text: str, thread_id: str = "default") -> Dict[str, Any]:
         """
         Extract facts from user text and update profile.
         
-        Now supports multiple values per slot (e.g., multiple employers).
-        Uses UNIQUE(slot, normalized) to prevent exact duplicates.
+        BEHAVIOR BY SLOT TYPE:
+        - SINGLE_VALUE_SLOTS (name, location): Replace old value, log contradiction
+        - MULTI_VALUE_SLOTS (employer, occupation): Accumulate values
+        - Other slots: Default to single-value behavior
         
         Filters out temporal/temporary statements to avoid storing:
         - "I'm working on homework tonight" (temporary activity)
@@ -143,67 +167,101 @@ class GlobalUserProfile:
         - "I'm a freelance web developer" (occupation)
         
         Returns:
-            Dictionary of slot -> value for facts that were updated/added
+            Dictionary with:
+            - 'updated': {slot: value} for facts that were updated/added
+            - 'replaced': {slot: {'old': old_value, 'new': new_value}} for contradictions
         """
         logger.debug(f"GlobalUserProfile.update_from_text called: text='{text[:50]}'")
         
         # Guard rail: Skip temporal/temporary statements
         if self.is_temporal_statement(text):
             logger.debug(f"Skipping temporal statement: {text[:50]}")
-            return {}
+            return {'updated': {}, 'replaced': {}}
         
         facts = extract_fact_slots(text)
         logger.debug(f"Extracted {len(facts)} facts: {list(facts.keys())}")
         if not facts:
-            return {}
+            return {'updated': {}, 'replaced': {}}
         
         updated = {}
+        replaced = {}
         conn = self._get_connection()
         cursor = conn.cursor()
         
         for slot, fact in facts.items():
             new_norm = fact.normalized if hasattr(fact, 'normalized') else fact.value.lower()
             
+            # Determine if this is a single-value or multi-value slot
+            is_single_value = slot in SINGLE_VALUE_SLOTS or slot not in MULTI_VALUE_SLOTS
+            
             # Check if this exact value already exists (using normalized form)
             cursor.execute("""
                 SELECT id, value FROM user_profile_multi 
                 WHERE slot = ? AND normalized = ? AND active = 1
             """, (slot, new_norm))
-            existing = cursor.fetchone()
+            exact_match = cursor.fetchone()
             
-            if existing:
-                # Update timestamp to show this value was recently mentioned
+            if exact_match:
+                # Exact same value - just update timestamp
                 cursor.execute("""
                     UPDATE user_profile_multi 
                     SET timestamp = ?, source_thread = ?
                     WHERE id = ?
-                """, (time.time(), thread_id, existing[0]))
-                logger.debug(f"Updated existing fact: {slot} = {existing[1]}")
-            else:
-                # Insert new value (allows multiple values per slot)
-                try:
-                    cursor.execute("""
-                        INSERT INTO user_profile_multi 
-                        (slot, value, normalized, timestamp, source_thread, confidence)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (
-                        slot,
-                        fact.value,
-                        new_norm,
-                        time.time(),
-                        thread_id,
-                        0.9
-                    ))
-                    updated[slot] = fact.value
-                    logger.debug(f"Added new fact: {slot} = {fact.value}")
-                except sqlite3.IntegrityError:
-                    # Duplicate entry (shouldn't happen due to check above, but handle gracefully)
-                    logger.debug(f"Duplicate fact skipped: {slot} = {fact.value}")
+                """, (time.time(), thread_id, exact_match[0]))
+                logger.debug(f"Updated existing fact: {slot} = {exact_match[1]}")
+                continue
+            
+            # For single-value slots: Check for existing DIFFERENT value (contradiction)
+            if is_single_value:
+                cursor.execute("""
+                    SELECT id, value, normalized FROM user_profile_multi 
+                    WHERE slot = ? AND active = 1
+                    ORDER BY timestamp DESC
+                """, (slot,))
+                existing_rows = cursor.fetchall()
+                
+                if existing_rows:
+                    # CONTRADICTION: Mark all old values as inactive
+                    old_values = [row[1] for row in existing_rows]
+                    for row in existing_rows:
+                        cursor.execute("""
+                            UPDATE user_profile_multi 
+                            SET active = 0, timestamp = ?
+                            WHERE id = ?
+                        """, (time.time(), row[0]))
+                    
+                    # Log the replacement
+                    replaced[slot] = {
+                        'old': old_values[0],  # Most recent old value
+                        'new': fact.value,
+                        'all_old': old_values  # All old values for debugging
+                    }
+                    logger.info(f"[PROFILE_CONTRADICTION] {slot}: '{old_values[0]}' -> '{fact.value}'")
+            
+            # Insert the new value
+            try:
+                cursor.execute("""
+                    INSERT INTO user_profile_multi 
+                    (slot, value, normalized, timestamp, source_thread, confidence)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (
+                    slot,
+                    fact.value,
+                    new_norm,
+                    time.time(),
+                    thread_id,
+                    0.9
+                ))
+                updated[slot] = fact.value
+                logger.debug(f"Added new fact: {slot} = {fact.value}")
+            except sqlite3.IntegrityError:
+                # Duplicate entry (shouldn't happen due to check above, but handle gracefully)
+                logger.debug(f"Duplicate fact skipped: {slot} = {fact.value}")
         
         conn.commit()
         conn.close()
         
-        return updated
+        return {'updated': updated, 'replaced': replaced}
     
     def is_temporal_statement(self, text: str) -> bool:
         """
