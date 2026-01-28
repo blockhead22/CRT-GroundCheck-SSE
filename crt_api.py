@@ -8,6 +8,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI, HTTPException
 from fastapi import Query
 from fastapi import BackgroundTasks
@@ -18,6 +20,7 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
 from personal_agent.two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from personal_agent.artifact_store import now_iso_utc
+from personal_agent.ollama_client import OllamaClient
 from personal_agent.idle_scheduler import CRTIdleScheduler
 from personal_agent.evidence_packet import Citation, EvidencePacket
 from personal_agent.research_engine import ResearchEngine
@@ -438,6 +441,21 @@ def create_app() -> FastAPI:
         "rag_start_here": {"title": "RAG Start Here", "kind": "reference", "path": root / "RAG_START_HERE.md"},
     }
 
+    # Initialize shared LLM client for all threads (lazy initialization)
+    _llm_client: Optional[OllamaClient] = None
+    
+    def get_llm_client() -> Optional[OllamaClient]:
+        """Get or create shared LLM client for hybrid extraction."""
+        nonlocal _llm_client
+        if _llm_client is None:
+            try:
+                _llm_client = OllamaClient(model="llama3.2:latest")
+                logger.info("[API] Initialized OllamaClient for hybrid LLM extraction")
+            except Exception as e:
+                logger.warning(f"[API] Failed to initialize OllamaClient: {e}. Falling back to regex-only extraction.")
+                _llm_client = None
+        return _llm_client
+    
     def get_engine(thread_id: str) -> CRTEnhancedRAG:
         tid = _sanitize_thread_id(thread_id)
         engine = engines.get(tid)
@@ -446,7 +464,19 @@ def create_app() -> FastAPI:
 
         memory_db = f"personal_agent/crt_memory_{tid}.db"
         ledger_db = f"personal_agent/crt_ledger_{tid}.db"
-        engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db)
+        
+        # Initialize engine and inject LLM client for hybrid extraction
+        llm_client = get_llm_client()
+        engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=llm_client)
+        
+        # Enable LLM extraction in FactStore if client is available
+        if llm_client is not None and hasattr(engine, 'memory') and hasattr(engine.memory, 'set_llm_client'):
+            try:
+                engine.memory.set_llm_client(llm_client)
+                logger.info(f"[API] Enabled hybrid LLM extraction for thread {tid}")
+            except Exception as e:
+                logger.warning(f"[API] Failed to enable LLM extraction for thread {tid}: {e}")
+        
         engines[tid] = engine
         turn_counters[tid] = 0  # Initialize turn counter
         return engine
