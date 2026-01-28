@@ -39,6 +39,60 @@
         "auto_web_research_enabled": { "type": "boolean" }
       }
     },
+    "greeting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "style": { 
+          "type": "string", 
+          "enum": ["time_based", "time_of_day", "simple"],
+          "default": "time_based"
+        },
+        "min_absence_for_greeting": { 
+          "type": "integer", 
+          "minimum": 0,
+          "default": 3600
+        },
+        "templates": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "properties": {
+            "new_user": { "type": "string" },
+            "returning_minutes": { "type": "string" },
+            "returning_hours": { "type": "string" },
+            "returning_days": { "type": "string" },
+            "returning_weeks": { "type": "string" },
+            "morning": { "type": "string" },
+            "afternoon": { "type": "string" },
+            "evening": { "type": "string" },
+            "night": { "type": "string" }
+          }
+        }
+      }
+    },
+    "response_variation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "window_size": { 
+          "type": "integer", 
+          "minimum": 1,
+          "default": 5
+        },
+        "slot_queries_only": { "type": "boolean", "default": true },
+        "slot_templates": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    },
     "learned_suggestions": {
       "type": "object",
       "additionalProperties": false,

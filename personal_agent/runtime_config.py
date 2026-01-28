@@ -26,6 +26,69 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         # Web research can be privacy-surprising; keep off unless explicitly enabled.
         "auto_web_research_enabled": False,
     },
+    
+    # Time-based greeting system: personalized greetings based on time since last interaction.
+    # Generates contextual greetings like "Welcome back! It's been 3 days since we last chatted."
+    "greeting": {
+        "enabled": True,
+        # Greeting style: "time_based" (considers absence duration), "time_of_day", or "simple"
+        "style": "time_based",
+        # Minimum absence (seconds) before showing a "welcome back" greeting
+        # Default: 1 hour (3600 seconds). Set to 0 to always greet.
+        "min_absence_for_greeting": 3600,
+        # Customizable greeting templates. Available variables:
+        # - {name}: User's first name (or "there" if unknown)
+        # - {name_suffix}: ", Name" or "" if unknown (for natural suffixes)
+        # - {time_delta}: Human-readable time since last interaction (e.g., "2 hours", "3 days")
+        "templates": {
+            "new_user": "Hello! I'm your AI assistant. I'm here to help you with questions and tasks.",
+            "returning_minutes": "Welcome back!",
+            "returning_hours": "Welcome back! It's been {time_delta} since we last chatted.",
+            "returning_days": "Hey {name}! It's been {time_delta}. Good to see you again!",
+            "returning_weeks": "It's been a while, {name}! ({time_delta}) Welcome back.",
+            "morning": "Good morning{name_suffix}!",
+            "afternoon": "Good afternoon{name_suffix}!",
+            "evening": "Good evening{name_suffix}!",
+            "night": "Hello{name_suffix}!",
+        },
+    },
+    
+    # Response variation: Prevent repetitive answers to repeated queries.
+    # When user asks the same slot question multiple times, vary the response style.
+    "response_variation": {
+        "enabled": True,
+        # Number of recent messages to check for repetition
+        "window_size": 5,
+        # Only apply to slot-based queries (name, employer, etc.)
+        "slot_queries_only": True,
+        # Alternative response templates per slot
+        "slot_templates": {
+            "name": [
+                "{value}",
+                "Your name is {value}.",
+                "Still {value}!",
+                "You're {value}.",
+                "{value}, as you told me.",
+            ],
+            "employer": [
+                "{value}",
+                "You work at {value}.",
+                "Still {value}!",
+                "{value}, according to what you've told me.",
+            ],
+            "location": [
+                "{value}",
+                "You're in {value}.",
+                "You said {value}.",
+            ],
+            "default": [
+                "{value}",
+                "That would be {value}.",
+                "{value}, as I recall.",
+            ],
+        },
+    },
+    
     "learned_suggestions": {
         "enabled": True,
         "emit_metadata": True,

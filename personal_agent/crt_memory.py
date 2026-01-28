@@ -25,6 +25,7 @@ from datetime import datetime
 from dataclasses import dataclass, asdict
 import time
 
+from .db_utils import retry_on_lock, get_db_connection
 from .crt_core import (
     CRTMath, CRTConfig, SSEMode, MemorySource,
     encode_vector, extract_emotion_intensity, extract_future_relevance
@@ -164,10 +165,10 @@ class CRTMemorySystem:
         - WAL mode for better concurrent access
         - Busy timeout to retry on lock conflicts
         """
-        conn = sqlite3.connect(self.db_path, timeout=timeout)
+        conn = sqlite3.connect(self.db_path, timeout=timeout, check_same_thread=False)
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
-        conn.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+        conn.execute("PRAGMA busy_timeout=10000")  # 10 second busy timeout (reduced from 30)
         return conn
     
     def _init_db(self):
@@ -635,8 +636,8 @@ class CRTMemorySystem:
             return False
         
         try:
-            conn = sqlite3.connect(str(ledger_db), timeout=30.0)
-            conn.execute("PRAGMA busy_timeout=30000")
+            conn = sqlite3.connect(str(ledger_db), timeout=5.0, check_same_thread=False)
+            conn.execute("PRAGMA busy_timeout=5000")
             cursor = conn.cursor()
             
             cursor.execute("""

@@ -20,6 +20,7 @@ import numpy as np
 import re
 import logging
 import sqlite3
+import random
 from typing import List, Dict, Optional, Any, Tuple, Set
 from pathlib import Path
 from collections import OrderedDict
@@ -61,6 +62,13 @@ from sse.contradictions import heuristic_contradiction
 # Production integrations: IntentRouter + FactStore
 from .intent_router import IntentRouter, Intent, RoutedIntent, get_template_response
 from .fact_store import FactStore, FactExtractor
+
+# Import session tracking for response variation
+try:
+    from .db_utils import get_thread_session_db, ThreadSessionDB
+    _SESSION_DB_AVAILABLE = True
+except ImportError:
+    _SESSION_DB_AVAILABLE = False
 
 # Constants for NL resolution
 _NL_RESOLUTION_STOPWORDS = {'i', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'my', 'the', 'a', 'an', 'at', 'in', 'on', 'to'}
@@ -2817,7 +2825,8 @@ class CRTEnhancedRAG:
         self,
         user_query: str,
         user_marked_important: bool = False,
-        mode: Optional[ReasoningMode] = None
+        mode: Optional[ReasoningMode] = None,
+        thread_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Query with CRT principles applied.
@@ -3689,7 +3698,7 @@ class CRTEnhancedRAG:
         # Slot-based fast-path: if the user asks a simple personal-fact question and we have
         # an answer in memory, answer directly from canonical resolved facts.
         if user_input_kind in ("question", "instruction") and inferred_slots:
-            slot_answer = self._answer_from_fact_slots(inferred_slots, user_query=user_query)
+            slot_answer = self._answer_from_fact_slots(inferred_slots, user_query=user_query, thread_id=thread_id)
             if slot_answer is not None:
                     # Ensure we still have retrieval context for metadata/alignment.
                     if not retrieved:
@@ -5062,10 +5071,21 @@ class CRTEnhancedRAG:
         # Prefer injected slot memories at the front so they influence best_prior and prompting.
         return injected + retrieved
 
-    def _answer_from_fact_slots(self, slots: List[str], *, user_query: Optional[str] = None) -> Optional[str]:
+    def _answer_from_fact_slots(
+        self, 
+        slots: List[str], 
+        *, 
+        user_query: Optional[str] = None,
+        thread_id: Optional[str] = None
+    ) -> Optional[str]:
         """Answer simple personal-fact questions directly from USER memories.
 
         Returns an answer string if we can resolve at least one requested slot; otherwise None.
+        
+        Args:
+            slots: List of slot names to look up
+            user_query: Original user query (for context)
+            thread_id: Thread ID for response variation (avoids repetitive answers)
         """
         if not slots:
             return None
@@ -5175,9 +5195,128 @@ class CRTEnhancedRAG:
             if slot == "graduation_year":
                 return f"You graduated in {val_str}."
 
-            return resolved_parts[0].split(": ", 1)[1]
+            # Apply response variation for simple slot queries
+            base_answer = resolved_parts[0].split(": ", 1)[1]
+            if thread_id and slot in ("name", "employer", "location", "title"):
+                return self._generate_varied_slot_answer(
+                    slot=slot,
+                    value=val_str,
+                    thread_id=thread_id,
+                    base_answer=base_answer
+                )
+            return base_answer
 
         return "\n".join(resolved_parts)
+
+    # ========================================================================
+    # Response Variation System
+    # ========================================================================
+    
+    def _get_response_variation_config(self) -> Dict[str, Any]:
+        """Get response variation configuration from runtime config."""
+        cfg = self.runtime_config.get("response_variation") if isinstance(self.runtime_config, dict) else None
+        return cfg if isinstance(cfg, dict) else {}
+    
+    def _is_response_variation_enabled(self) -> bool:
+        """Check if response variation is enabled."""
+        cfg = self._get_response_variation_config()
+        return bool(cfg.get("enabled", True))
+    
+    def _get_recent_slot_queries(
+        self, 
+        thread_id: str, 
+        slot: str, 
+        window: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Get recent queries for a specific slot within message window.
+        
+        Used to detect query repetition and determine if variation is needed.
+        """
+        if not _SESSION_DB_AVAILABLE:
+            return []
+        
+        try:
+            session_db = get_thread_session_db()
+            return session_db.get_recent_slot_queries(thread_id, slot, window)
+        except Exception as e:
+            logger.debug(f"[VARIATION] Error getting recent queries: {e}")
+            return []
+    
+    def _generate_varied_slot_answer(
+        self, 
+        slot: str, 
+        value: str, 
+        thread_id: str = "default",
+        base_answer: Optional[str] = None
+    ) -> str:
+        """
+        Generate a varied response for a slot query to avoid repetition.
+        
+        If user asks "what's my name?" multiple times, vary between:
+        - "Nick" (first time)
+        - "Your name is Nick." (second time)
+        - "Still Nick!" (third time)
+        
+        Args:
+            slot: The slot being queried (e.g., "name", "employer")
+            value: The slot value to include in response
+            thread_id: Thread identifier for query history lookup
+            base_answer: The original answer (used as one variation option)
+        
+        Returns:
+            Varied answer string
+        """
+        if not self._is_response_variation_enabled():
+            return base_answer or value
+        
+        cfg = self._get_response_variation_config()
+        window_size = cfg.get("window_size", 5)
+        
+        # Get recent queries for this slot
+        recent = self._get_recent_slot_queries(thread_id, slot, window_size)
+        repeat_count = len(recent)
+        
+        if repeat_count == 0:
+            # First time asking - return base answer or plain value
+            return base_answer or value
+        
+        # Get templates for this slot
+        slot_templates = cfg.get("slot_templates", {})
+        templates = slot_templates.get(slot) or slot_templates.get("default", ["{value}"])
+        
+        if not templates:
+            return base_answer or value
+        
+        # Avoid using the same response as last time
+        last_response = recent[0].get("response_text", "") if recent else ""
+        
+        # Select a different template based on repeat count
+        # Cycle through templates, avoiding the last used response
+        available_templates = [t for t in templates]
+        
+        # Try to pick a template that generates a different response
+        for _ in range(len(available_templates)):
+            # Use repeat count to cycle through templates
+            template_idx = repeat_count % len(available_templates)
+            template = available_templates[template_idx]
+            
+            try:
+                varied_answer = template.format(value=value)
+            except (KeyError, IndexError):
+                varied_answer = value
+            
+            # If this would be different from last response, use it
+            if varied_answer.strip().lower() != last_response.strip().lower():
+                return varied_answer
+            
+            # Move to next template
+            repeat_count += 1
+        
+        # Fallback: return with "Still" prefix if all else fails
+        if slot == "name":
+            return f"Still {value}!"
+        return f"That's still {value}."
 
     def _one_line_summary_from_facts(self) -> Optional[str]:
         """Build a compact, fact-grounded one-line summary from USER memories."""

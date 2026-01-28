@@ -36,6 +36,8 @@ from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
+from personal_agent.db_utils import get_thread_session_db
+from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
@@ -468,14 +470,23 @@ def create_app() -> FastAPI:
                 _llm_client = None
         return _llm_client
     
+    # Shared memory mode: All threads use same databases (optional)
+    _shared_memory_enabled = os.getenv("CRT_SHARED_MEMORY", "false").lower() == "true"
+    
     def get_engine(thread_id: str) -> CRTEnhancedRAG:
         tid = _sanitize_thread_id(thread_id)
         engine = engines.get(tid)
         if engine is not None:
             return engine
 
-        memory_db = f"personal_agent/crt_memory_{tid}.db"
-        ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+        # Use shared DBs or per-thread isolation
+        if _shared_memory_enabled:
+            memory_db = "personal_agent/crt_memory_shared.db"
+            ledger_db = "personal_agent/crt_ledger_shared.db"
+            logger.info(f"[API] Thread {tid} using shared memory databases")
+        else:
+            memory_db = f"personal_agent/crt_memory_{tid}.db"
+            ledger_db = f"personal_agent/crt_ledger_{tid}.db"
         
         # Initialize engine and inject LLM client for hybrid extraction
         llm_client = get_llm_client()
@@ -1960,6 +1971,26 @@ def create_app() -> FastAPI:
     @app.post("/api/chat/send", response_model=ChatSendResponse)
     def chat_send(req: ChatSendRequest) -> ChatSendResponse:
         engine = get_engine(req.thread_id)
+        runtime_config = get_runtime_config()
+        
+        # Session tracking: update activity and check for greeting
+        session_db = get_thread_session_db()
+        session = session_db.get_or_create_session(req.thread_id)
+        
+        # Generate greeting if applicable (before processing query)
+        greeting_text = None
+        try:
+            greeting_text = get_time_based_greeting(
+                thread_id=req.thread_id,
+                runtime_config=runtime_config,
+                session_db=session_db,
+                user_profile=engine.user_profile
+            )
+        except Exception as e:
+            logger.debug(f"[GREETING] Error generating greeting: {e}")
+        
+        # Update session activity
+        session_db.update_activity(req.thread_id, increment_messages=True)
         
         # Increment turn counter
         increment_turn(req.thread_id)
@@ -2051,6 +2082,7 @@ def create_app() -> FastAPI:
             user_query=req.message,
             user_marked_important=req.user_marked_important,
             mode=mode_arg,
+            thread_id=req.thread_id,
         )
 
         # AGENT INTEGRATION: Check for proactive triggers
@@ -2240,8 +2272,32 @@ def create_app() -> FastAPI:
         if interaction_id:
             metadata["interaction_id"] = interaction_id
 
+        # Prepend greeting to answer if applicable
+        final_answer = str(result.get("answer") or "")
+        if greeting_text:
+            final_answer = f"{greeting_text}\n\n{final_answer}"
+            metadata["greeting_shown"] = True
+        
+        # Record query in session DB for response variation tracking
+        try:
+            # Detect if this was a slot-based query
+            detected_slot = None
+            if result.get("slots_extracted"):
+                slots = result.get("slots_extracted")
+                if isinstance(slots, dict) and slots:
+                    detected_slot = list(slots.keys())[0]
+            
+            session_db.record_query(
+                thread_id=req.thread_id,
+                query_text=req.message,
+                response_text=final_answer,
+                detected_slot=detected_slot
+            )
+        except Exception as e:
+            logger.debug(f"[SESSION] Error recording query: {e}")
+
         return ChatSendResponse(
-            answer=str(result.get("answer") or ""),
+            answer=final_answer,
             response_type=str(result.get("response_type") or "speech"),
             gates_passed=bool(result.get("gates_passed")),
             gate_reason=(result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None),
