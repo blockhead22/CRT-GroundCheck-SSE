@@ -1,0 +1,12 @@
+{
+  "vocab_size": 8000,
+  "max_seq_length": 512,
+  "hidden_dim": 256,
+  "num_layers": 4,
+  "num_heads": 4,
+  "dropout": 0.1,
+  "ff_multiplier": 4,
+  "pad_token_id": 0,
+  "bos_token_id": 1,
+  "eos_token_id": 2
+}
