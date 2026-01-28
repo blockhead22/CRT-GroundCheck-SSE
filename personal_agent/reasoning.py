@@ -370,7 +370,8 @@ class ReasoningEngine:
         if self.llm:
             answer = self._call_llm(prompt, max_tokens=500)
         else:
-            answer = f"[Quick answer for: {query}]"
+            # No LLM - generate contextual fallback response
+            answer = self._generate_fallback_response(query, context)
         
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
         
@@ -401,6 +402,56 @@ class ReasoningEngine:
             'reasoning_trace': trace.to_dict(),
             'confidence': 0.8
         }
+    
+    def _generate_fallback_response(self, query: str, context: Dict) -> str:
+        """Generate a contextual response when no LLM is available."""
+        q = query.strip().lower()
+        
+        # Check for acknowledgments/praise
+        acknowledgment_patterns = [
+            'good job', 'great', 'thanks', 'thank you', 'correct', 'right', 
+            'exactly', 'perfect', 'awesome', 'nice', 'well done', 'yes'
+        ]
+        if any(pat in q for pat in acknowledgment_patterns):
+            return "Thank you! I'm glad I could help. Is there anything else you'd like to know?"
+        
+        # Check for greetings
+        greeting_patterns = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening']
+        if any(pat in q for pat in greeting_patterns):
+            return "Hello! How can I help you today?"
+        
+        # Check for philosophical/general knowledge questions
+        philosophical_patterns = [
+            'meaning of life', 'purpose of life', 'what is life', 'why are we here',
+            'what is love', 'what is happiness', 'what is consciousness'
+        ]
+        if any(pat in q for pat in philosophical_patterns):
+            return "That's a profound question that philosophers have debated for centuries. I don't have a definitive answer, but I'm happy to discuss what I know about you and help with practical questions."
+        
+        # Check for capability questions
+        capability_patterns = ['can you', 'are you able', 'do you know', 'what can you do']
+        if any(pat in q for pat in capability_patterns):
+            return "I'm a personal memory assistant. I can remember facts about you, detect contradictions, and help answer questions based on what you've told me. Try telling me something about yourself!"
+        
+        # Check for "how are you" type questions
+        wellbeing_patterns = ['how are you', 'how do you feel', "how's it going"]
+        if any(pat in q for pat in wellbeing_patterns):
+            return "I'm doing well, thank you for asking! How can I help you today?"
+        
+        # Check if there's memory context we can use
+        retrieved_docs = context.get('retrieved_docs', [])
+        if retrieved_docs:
+            # We have relevant memories - synthesize from them
+            memory_texts = [doc.get('text', '') for doc in retrieved_docs[:3] if doc.get('text')]
+            if memory_texts:
+                return f"Based on what I remember: {memory_texts[0]}"
+        
+        # Generic fallback for questions
+        if '?' in query:
+            return "I don't have enough information to answer that question. Could you tell me more, or ask about something I might know from our conversation?"
+        
+        # Generic fallback for statements
+        return "I understand. Is there anything specific you'd like me to remember or help you with?"
     
     def _thinking_mode(self, query: str, context: Dict) -> Dict:
         """
@@ -451,7 +502,8 @@ class ReasoningEngine:
         if self.llm:
             answer = self._call_llm(prompt, max_tokens=1000)
         else:
-            answer = f"[Thinking mode answer for: {query}]"
+            # Use the same fallback response generator
+            answer = self._generate_fallback_response(query, context)
         
         steps.append(ThinkingStep(
             step_type="answer_generation",
