@@ -95,6 +95,7 @@ export function ChatThreadView(props: {
                   >
                     <MessageBubble
                       msg={m}
+                      threadId={props.thread.id}
                       selected={m.id === selectedMessageId}
                       onOpenSourceInspector={props.onOpenSourceInspector}
                       onOpenAgentPanel={props.onOpenAgentPanel}

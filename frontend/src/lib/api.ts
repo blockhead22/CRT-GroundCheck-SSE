@@ -764,9 +764,16 @@ export async function listReasoningTraces(args: {
 /**
  * Get full reasoning trace content by ID (lazy load).
  * Call this when user wants to view the complete thinking.
+ * @param traceId - The trace ID to fetch
+ * @param threadId - The thread ID (required to find correct database)
  */
-export async function getReasoningTrace(traceId: string): Promise<ReasoningTrace | null> {
-  const result = await fetchJson<ReasoningTrace | { error: string }>(`/api/reasoning/traces/${encodeURIComponent(traceId)}`)
+export async function getReasoningTrace(traceId: string, threadId?: string): Promise<ReasoningTrace | null> {
+  const params = new URLSearchParams()
+  if (threadId) params.set('thread_id', threadId)
+  const queryString = params.toString()
+  const url = `/api/reasoning/traces/${encodeURIComponent(traceId)}${queryString ? '?' + queryString : ''}`
+  
+  const result = await fetchJson<ReasoningTrace | { error: string }>(url)
   if ('error' in result) {
     console.warn(`Failed to get reasoning trace ${traceId}:`, result.error)
     return null
@@ -788,4 +795,57 @@ export async function getRecentReasoning(args: {
   
   const result = await fetchJson<{ traces: ReasoningTrace[] }>(`/api/reasoning/recent?${params.toString()}`)
   return result.traces || []
+}
+// ============================================================================
+// Reflection API
+// ============================================================================
+
+export interface ReflectionTrace {
+  trace_id: string
+  thread_id: string
+  message_id?: string
+  confidence_score: number
+  confidence_label: 'high' | 'medium' | 'low' | 'unknown'
+  reasoning: string
+  suggested_action: 'accept' | 'refine' | 're-query'
+  fact_checks: Array<{
+    claim: string
+    supported: boolean
+    evidence: string
+  }>
+  hallucination_risk: 'low' | 'medium' | 'high' | 'unknown'
+  was_requeried: boolean
+  requery_trace_id?: string
+  created_at: string
+}
+
+/**
+ * Get full reflection trace content by ID (lazy load).
+ * Call this when user wants to view the complete self-assessment.
+ */
+export async function getReflectionTrace(traceId: string, threadId?: string): Promise<ReflectionTrace | null> {
+  const params = new URLSearchParams()
+  if (threadId) params.set('thread_id', threadId)
+  const queryString = params.toString()
+  const url = `/api/reflection/traces/${encodeURIComponent(traceId)}${queryString ? '?' + queryString : ''}`
+  
+  const result = await fetchJson<ReflectionTrace | { error: string }>(url)
+  if ('error' in result) {
+    console.warn(`Failed to get reflection trace ${traceId}:`, result.error)
+    return null
+  }
+  return result
+}
+
+/**
+ * Get training data collection statistics.
+ */
+export async function getTrainingStats(): Promise<{
+  total_reflections: number
+  total_requeries: number
+  total_preferences: number
+  average_confidence: number
+  high_hallucination_risk_count: number
+}> {
+  return fetchJson('/api/training/stats')
 }

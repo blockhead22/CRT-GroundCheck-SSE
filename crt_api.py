@@ -40,6 +40,7 @@ from personal_agent.active_learning import get_active_learning_coordinator, Lear
 from personal_agent.db_utils import get_thread_session_db
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
+from personal_agent.reflection_system import run_reflection_pass, ReflectionDB, ReflectionResult
 
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
@@ -1672,6 +1673,84 @@ def create_app() -> FastAPI:
             logger.error(f"[REASONING] Failed to get recent traces: {e}")
             return {"traces": []}
 
+    # ========================================================================
+    # Reflection API Endpoints
+    # ========================================================================
+    
+    @app.get("/api/reflection/traces/{trace_id}")
+    def get_reflection_trace(
+        trace_id: str,
+        thread_id: str = Query(default="default")
+    ):
+        """
+        Get full reflection trace content by ID.
+        
+        Returns confidence assessment, fact checks, and hallucination risk.
+        """
+        engine = get_engine(thread_id)
+        try:
+            db = ReflectionDB(engine.memory.db_path)
+            trace = db.get_reflection(trace_id)
+            if trace:
+                return trace
+            return {"error": "Reflection trace not found", "trace_id": trace_id}
+        except Exception as e:
+            logger.error(f"[REFLECTION] Failed to get trace {trace_id}: {e}")
+            return {"error": str(e), "trace_id": trace_id}
+    
+    @app.get("/api/reflection/thread/{thread_id}")
+    def get_thread_reflections(
+        thread_id: str,
+        limit: int = Query(default=20, ge=1, le=100)
+    ):
+        """
+        Get all reflection traces for a thread.
+        
+        Useful for showing reflection history and confidence trends.
+        """
+        engine = get_engine(thread_id)
+        try:
+            db = ReflectionDB(engine.memory.db_path)
+            traces = db.get_thread_reflections(thread_id, limit=limit)
+            return {"traces": traces, "count": len(traces)}
+        except Exception as e:
+            logger.error(f"[REFLECTION] Failed to get thread reflections: {e}")
+            return {"traces": [], "count": 0, "error": str(e)}
+    
+    @app.get("/api/training/stats")
+    def get_training_stats():
+        """
+        Get training data collection statistics.
+        
+        Shows how much data has been collected for future model training.
+        """
+        try:
+            from personal_agent.reflection_system import TrainingDataCollector
+            collector = TrainingDataCollector()
+            stats = collector.get_stats()
+            return stats
+        except Exception as e:
+            logger.error(f"[TRAINING] Failed to get stats: {e}")
+            return {"error": str(e)}
+    
+    @app.get("/api/training/export")
+    def export_training_data(format: str = Query(default="jsonl")):
+        """
+        Export collected training data.
+        
+        Formats:
+        - jsonl: One JSON object per line (for fine-tuning)
+        - json: Full JSON object
+        """
+        try:
+            from personal_agent.reflection_system import TrainingDataCollector
+            collector = TrainingDataCollector()
+            data = collector.export_for_training(format=format)
+            return {"format": format, "data": data}
+        except Exception as e:
+            logger.error(f"[TRAINING] Failed to export data: {e}")
+            return {"error": str(e)}
+
     @app.get("/api/ledger/open", response_model=list[ContradictionListItem])
     def ledger_open(thread_id: str = Query(default="default"), limit: int = Query(default=50, ge=1, le=500)) -> list[ContradictionListItem]:
         engine = get_engine(thread_id)
@@ -2521,8 +2600,19 @@ Be concise but thorough. If you don't have information about something, say so h
                 in_think_tags = False  # Track if we're inside <think>...</think> tags
                 
                 for chunk in stream:
+                    # Handle both dict and pydantic object access (ollama returns pydantic ChatResponse)
+                    if hasattr(chunk, 'message'):
+                        # Pydantic object
+                        msg = chunk.message
+                        thinking_part = getattr(msg, 'thinking', '') or ''
+                        token = getattr(msg, 'content', '') or ''
+                    else:
+                        # Dict fallback
+                        msg = chunk.get('message', {})
+                        thinking_part = msg.get('thinking', '') if isinstance(msg, dict) else ''
+                        token = msg.get('content', '') if isinstance(msg, dict) else ''
+                    
                     # Check for thinking content (deepseek-r1 returns it separately)
-                    thinking_part = chunk.get('message', {}).get('thinking', '')
                     if thinking_part:
                         if not sent_thinking_start:
                             yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
@@ -2531,7 +2621,6 @@ Be concise but thorough. If you don't have information about something, say so h
                         yield f"data: {json.dumps({'type': 'thinking_token', 'content': thinking_part})}\n\n"
                         continue
                     
-                    token = chunk.get('message', {}).get('content', '')
                     if not token:
                         continue
                     
@@ -2591,7 +2680,7 @@ Be concise but thorough. If you don't have information about something, say so h
                         trace_id = engine.memory.store_reasoning_trace(
                             query=req.message,
                             thinking_content=thinking_content,
-                            thread_id=thread_id,
+                            thread_id=req.thread_id,
                             response_summary=clean_response[:200] if clean_response else None,
                             model=llm_client.model,
                             metadata={
@@ -2607,6 +2696,38 @@ Be concise but thorough. If you don't have information about something, say so h
                 else:
                     logger.info(f"[STREAM] NOT storing trace - thinking too short or empty")
                 
+                # ========================================
+                # DIRECTED REFLECTION PASS
+                # ========================================
+                reflection_trace_id = None
+                reflection_result = None
+                try:
+                    # Get facts from retrieved memories for grounding
+                    grounding_facts = [
+                        m.get('text', '')[:300] for m in retrieved_mems[:5] 
+                        if isinstance(m, dict) and m.get('text')
+                    ]
+                    
+                    # Run reflection (async would be better, but sync for now)
+                    logger.info(f"[REFLECTION] Running directed reflection pass...")
+                    reflection_result, requery_response, requery_thinking = run_reflection_pass(
+                        question=req.message,
+                        response=clean_response,
+                        thinking=thinking_content,
+                        thread_id=req.thread_id,
+                        db_path=engine.memory.db_path,
+                        facts=grounding_facts,
+                        auto_requery=False,  # Don't auto-requery for now (latency)
+                        collect_training_data=True
+                    )
+                    reflection_trace_id = reflection_result.trace_id
+                    logger.info(f"[REFLECTION] Confidence: {reflection_result.confidence_score:.2f} ({reflection_result.confidence_label})")
+                    logger.info(f"[REFLECTION] Stored trace {reflection_trace_id}")
+                except Exception as e:
+                    logger.warning(f"[REFLECTION] Reflection failed: {e}")
+                    import traceback
+                    logger.debug(traceback.format_exc())
+                
                 # Build metadata including thinking for later display
                 # Pull more values from the engine.query result
                 metadata = {
@@ -2614,6 +2735,9 @@ Be concise but thorough. If you don't have information about something, say so h
                     'model': llm_client.model,
                     'thinking': thinking_content,
                     'thinking_trace_id': trace_id,  # For lazy loading full content
+                    'reflection_trace_id': reflection_trace_id,  # For lazy loading reflection
+                    'reflection_confidence': reflection_result.confidence_score if reflection_result else None,
+                    'reflection_label': reflection_result.confidence_label if reflection_result else None,
                     'response_type': result.get('response_type', 'speech'),
                     'gates_passed': result.get('gates_passed', True),
                     'gate_reason': result.get('gate_reason'),

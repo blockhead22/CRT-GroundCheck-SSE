@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react'
 import type { ChatMessage } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
-import { getReasoningTrace } from '../../lib/api'
+import { getReasoningTrace, getReflectionTrace, type ReflectionTrace } from '../../lib/api'
 
 function pct01(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
@@ -12,7 +12,7 @@ function pct01(v: number | null | undefined): string {
 }
 
 /** Collapsible thinking/reasoning dropdown */
-function ThinkingDropdown({ thinking, traceId }: { thinking?: string | null; traceId?: string | null }) {
+function ThinkingDropdown({ thinking, traceId, threadId }: { thinking?: string | null; traceId?: string | null; threadId?: string | null }) {
   const [isOpen, setIsOpen] = useState(false)
   const [lazyThinking, setLazyThinking] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -30,7 +30,7 @@ function ThinkingDropdown({ thinking, traceId }: { thinking?: string | null; tra
     setIsLoading(true)
     setLoadError(null)
     try {
-      const trace = await getReasoningTrace(traceId)
+      const trace = await getReasoningTrace(traceId, threadId || undefined)
       if (trace?.thinking_content) {
         setLazyThinking(trace.thinking_content)
       } else {
@@ -42,7 +42,7 @@ function ThinkingDropdown({ thinking, traceId }: { thinking?: string | null; tra
     } finally {
       setIsLoading(false)
     }
-  }, [traceId, lazyThinking, thinking])
+  }, [traceId, threadId, lazyThinking, thinking])
   
   // When opening, trigger lazy load if needed
   useEffect(() => {
@@ -106,8 +106,181 @@ function ThinkingDropdown({ thinking, traceId }: { thinking?: string | null; tra
   )
 }
 
+/** Collapsible reflection/self-assessment dropdown */
+function ReflectionDropdown({ 
+  traceId, 
+  threadId,
+  confidence,
+  label 
+}: { 
+  traceId?: string | null
+  threadId?: string | null
+  confidence?: number | null
+  label?: string | null
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [trace, setTrace] = useState<ReflectionTrace | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  
+  if (!traceId) return null
+  
+  // Lazy load reflection content when user opens
+  const loadReflection = useCallback(async () => {
+    if (!traceId || trace) return
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const data = await getReflectionTrace(traceId, threadId || undefined)
+      if (data) {
+        setTrace(data)
+      } else {
+        setLoadError('Reflection not found')
+      }
+    } catch (err) {
+      setLoadError('Failed to load reflection')
+      console.error('Failed to load reflection trace:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [traceId, threadId, trace])
+  
+  // Trigger load on open
+  useEffect(() => {
+    if (isOpen && !trace && !isLoading && !loadError) {
+      loadReflection()
+    }
+  }, [isOpen, trace, isLoading, loadError, loadReflection])
+  
+  // Color coding based on confidence
+  const getConfidenceColor = (score: number | null | undefined) => {
+    if (score === null || score === undefined) return 'text-purple-300'
+    if (score >= 0.7) return 'text-green-400'
+    if (score >= 0.4) return 'text-yellow-400'
+    return 'text-red-400'
+  }
+  
+  const confScore = trace?.confidence_score ?? confidence
+  const confLabel = trace?.confidence_label ?? label ?? 'unknown'
+  const colorClass = getConfidenceColor(confScore)
+  
+  return (
+    <div className="mt-2 rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setIsOpen(!isOpen)
+        }}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-purple-300 hover:bg-purple-500/10 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <span>🔍</span>
+          <span>Self-Assessment</span>
+          {confScore !== null && confScore !== undefined ? (
+            <span className={`${colorClass} font-mono`}>
+              {Math.round(confScore * 100)}% ({confLabel})
+            </span>
+          ) : (
+            <span className="text-purple-300/60">(click to load)</span>
+          )}
+        </span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          ▼
+        </motion.span>
+      </button>
+      {isOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="px-3 pb-3"
+        >
+          {isLoading ? (
+            <div className="text-purple-300/60 animate-pulse text-[11px]">Loading self-assessment...</div>
+          ) : loadError ? (
+            <div className="text-red-400 text-[11px]">{loadError}</div>
+          ) : trace ? (
+            <div className="space-y-3 text-[11px]">
+              {/* Confidence Bar */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/50">Confidence:</span>
+                <div className="flex-1 h-2 bg-black/30 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all ${
+                      trace.confidence_score >= 0.7 ? 'bg-green-500' :
+                      trace.confidence_score >= 0.4 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${trace.confidence_score * 100}%` }}
+                  />
+                </div>
+                <span className={colorClass}>{Math.round(trace.confidence_score * 100)}%</span>
+              </div>
+              
+              {/* Hallucination Risk */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/50">Hallucination Risk:</span>
+                <span className={
+                  trace.hallucination_risk === 'low' ? 'text-green-400' :
+                  trace.hallucination_risk === 'medium' ? 'text-yellow-400' :
+                  trace.hallucination_risk === 'high' ? 'text-red-400' : 'text-white/60'
+                }>
+                  {trace.hallucination_risk.toUpperCase()}
+                </span>
+              </div>
+              
+              {/* Reasoning */}
+              {trace.reasoning && (
+                <div>
+                  <span className="text-white/50">Assessment:</span>
+                  <div className="mt-1 text-white/70 bg-black/20 rounded p-2">
+                    {trace.reasoning}
+                  </div>
+                </div>
+              )}
+              
+              {/* Fact Checks */}
+              {trace.fact_checks && trace.fact_checks.length > 0 && (
+                <div>
+                  <span className="text-white/50">Fact Checks:</span>
+                  <ul className="mt-1 space-y-1">
+                    {trace.fact_checks.map((fc, i) => (
+                      <li key={i} className={`flex items-start gap-2 ${fc.supported ? 'text-green-400/80' : 'text-red-400/80'}`}>
+                        <span>{fc.supported ? '✓' : '✗'}</span>
+                        <span className="text-white/70">{fc.claim}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Suggested Action */}
+              <div className="flex items-center gap-2 pt-1 border-t border-purple-500/20">
+                <span className="text-white/50">Action:</span>
+                <span className={`font-medium ${
+                  trace.suggested_action === 'accept' ? 'text-green-400' :
+                  trace.suggested_action === 'refine' ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {trace.suggested_action.toUpperCase()}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-purple-300/60 text-[11px]">No reflection data available</div>
+          )}
+        </motion.div>
+      )}
+    </div>
+  )
+}
+
 export function MessageBubble(props: {
   msg: ChatMessage
+  threadId?: string
   selected?: boolean
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
@@ -311,7 +484,17 @@ export function MessageBubble(props: {
 
         {/* Collapsible Thinking Section */}
         {(meta?.thinking || meta?.thinking_trace_id) && isAssistant ? (
-          <ThinkingDropdown thinking={meta.thinking} traceId={meta.thinking_trace_id} />
+          <ThinkingDropdown thinking={meta.thinking} traceId={meta.thinking_trace_id} threadId={props.threadId} />
+        ) : null}
+
+        {/* Collapsible Reflection/Self-Assessment Section */}
+        {meta?.reflection_trace_id && isAssistant ? (
+          <ReflectionDropdown 
+            traceId={meta.reflection_trace_id} 
+            threadId={props.threadId}
+            confidence={meta.reflection_confidence}
+            label={meta.reflection_label}
+          />
         ) : null}
 
         {props.xrayMode && meta?.xray && isAssistant ? (

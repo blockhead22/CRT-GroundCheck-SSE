@@ -113,6 +113,10 @@ export type CtrMessageMeta = {
   thinking?: string
   // Lazy-load trace ID for thinking content (persists after refresh)
   thinking_trace_id?: string | null
+  // Reflection trace ID for directed self-assessment
+  reflection_trace_id?: string | null
+  reflection_confidence?: number | null
+  reflection_label?: string | null  // "high" | "medium" | "low"
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {
