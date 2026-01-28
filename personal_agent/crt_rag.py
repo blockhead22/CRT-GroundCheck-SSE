@@ -1500,6 +1500,8 @@ class CRTEnhancedRAG:
         Extract the factual value from a memory text.
         
         Examples:
+            "FACT: name = Nick Block" → "Nick Block"
+            "FACT: employer = Microsoft" → "Microsoft"
             "I work at Microsoft" → "Microsoft"
             "I work at Microsoft as a senior developer" → "Microsoft"
             "I work at Amazon Web Services" → "Amazon Web Services"
@@ -1512,12 +1514,31 @@ class CRTEnhancedRAG:
         Returns:
             Extracted value or None
         """
-        # Common patterns - made more precise to extract just the key value
+        # PRIORITY 1: Handle structured FACT/PREF format
+        # Pattern: "FACT: slot = value" or "PREF: slot = value"
+        fact_match = re.search(r"(?:FACT|PREF):\s*\w+\s*=\s*(.+)", text, re.IGNORECASE)
+        if fact_match:
+            return fact_match.group(1).strip()
+        
+        # PRIORITY 2: Use fact_slots extraction for structured data
+        try:
+            facts = extract_fact_slots(text)
+            if facts:
+                # Return the first extracted value
+                for slot, fact in facts.items():
+                    if hasattr(fact, 'value') and fact.value:
+                        return fact.value
+        except Exception:
+            pass
+        
+        # PRIORITY 3: Common natural language patterns
         patterns = [
             # Employer - match company name (1-3 words), stop at role indicators
             r"(?:work|working) (?:at|for) ((?:\w+(?:\s+\w+){0,2}))(?:\s+(?:as|in|on|for|with|doing)|[,.]|$)",
-            # Name - match full name (1-2 words)
-            r"(?:my )?name is ((?:\w+(?:\s+\w+)?))(?:[,.]|$)",
+            # Name - match full name (1-3 words)
+            r"(?:my )?name is ((?:\w+(?:\s+\w+){0,2}))(?:[,.]|$)",
+            # "I am <name>" pattern
+            r"(?:I am|I'm)\s+((?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}))(?:[,.]|$)",
             # Experience - match the duration
             r"(?:programming|coding) for (\d+\s+\w+)",  # e.g., "8 years"
             # Location - match city/place (1-3 words) using character class for case flexibility
