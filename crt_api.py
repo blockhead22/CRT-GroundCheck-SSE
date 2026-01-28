@@ -2485,13 +2485,12 @@ Be concise but thorough. If you don't have information about something, say so h
                 # Store thinking trace as a belief for research/self-reflection purposes
                 if thinking_content and len(thinking_content.strip()) > 50:
                     try:
+                        from personal_agent.crt_memory import MemorySource
                         thinking_summary = thinking_content[:500] + ('...' if len(thinking_content) > 500 else '')
-                        engine.memory.add(
+                        engine.memory.store_memory(
                             text=f"[REASONING TRACE] Query: {req.message[:100]}... | Thinking: {thinking_summary}",
-                            source="agent_reasoning",
-                            sse_mode="B",  # Belief - internal reasoning
+                            source=MemorySource.REFLECTION,
                             confidence=0.6,
-                            trust=0.5,
                         )
                         logger.debug(f"[STREAM] Stored reasoning trace ({len(thinking_content)} chars)")
                     except Exception as e:

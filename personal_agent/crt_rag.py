@@ -3033,18 +3033,13 @@ class CRTEnhancedRAG:
                             # Record in the contradiction ledger for transparency
                             self.ledger.record_contradiction(
                                 old_memory_id=f"profile_{slot}_old",
-                                new_memory_id=f"profile_{slot}_new", 
+                                new_memory_id=f"profile_{slot}_new",
+                                drift_mean=0.8,  # High drift for profile changes
+                                confidence_delta=0.0,  # User assertions, equally confident
                                 old_text=f"FACT: {slot} = {replacement['old']}",
                                 new_text=f"FACT: {slot} = {replacement['new']}",
                                 contradiction_type="profile_update",
-                                confidence=0.95,
-                                metadata={
-                                    "source": "user_profile",
-                                    "slot": slot,
-                                    "old_value": replacement['old'],
-                                    "new_value": replacement['new'],
-                                    "all_old_values": replacement.get('all_old', [])
-                                }
+                                summary=f"Profile update: {slot} changed from '{replacement['old']}' to '{replacement['new']}'"
                             )
                         except Exception as ledger_err:
                             logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
