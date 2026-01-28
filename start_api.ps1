@@ -3,7 +3,8 @@
 
 $env:PORT = "8123"
 $env:CRT_SHARED_MEMORY = "true"
-$env:CRT_ENABLE_LLM = "false"
+$env:CRT_ENABLE_LLM = "true"
+$env:CRT_OLLAMA_MODEL = "deepseek-r1:latest"
 
 Write-Host "Starting CRT API Server..."
 Write-Host "- Port: $env:PORT"

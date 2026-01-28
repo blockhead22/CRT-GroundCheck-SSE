@@ -461,8 +461,9 @@ def create_app() -> FastAPI:
             
         if _llm_client is None:
             try:
-                logger.info("[API] Initializing OllamaClient for hybrid LLM extraction...")
-                _llm_client = OllamaClient(model="llama3.2:latest")
+                model = os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest")
+                logger.info(f"[API] Initializing OllamaClient with model: {model}...")
+                _llm_client = OllamaClient(model=model)
                 logger.info("[API] ✓ OllamaClient initialized successfully")
             except Exception as e:
                 logger.warning(f"[API] ✗ Failed to initialize OllamaClient: {e}")
