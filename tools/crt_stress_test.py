@@ -1276,6 +1276,36 @@ _res = query_and_track(
 if _res is not None:
     metrics['contradictions_introduced'].append("Turn 28: Remote vs office preference")
 
+# Edge case: Conjunction in correction statements
+# This tests that "My name is Nick but you said Sarah" extracts "Nick", not "Nick but you"
+query_and_track(
+    "My name is Nick but you said Sarah earlier.",
+    "EDGE CASE: Name with conjunction - should extract 'Nick' not 'Nick but you'",
+    "Name Extraction Edge Case",
+    expectations={
+        # The answer should still acknowledge the name
+        'must_contain_any': ['nick', 'Nick'],
+    },
+)
+
+query_and_track(
+    "What is my name?",
+    "Verifying clean name extraction after conjunction edge case",
+    "Name After Conjunction Test",
+    expectations={
+        # Should return just "Nick" or "Sarah" depending on contradiction handling
+        # Critically, should NOT contain "but you"
+        'must_not_contain_any': ['but you', 'nick but'],
+    },
+)
+
+# Edge case: Name correction with "and" conjunction
+query_and_track(
+    "I am Alex and I want to clarify my background.",
+    "EDGE CASE: Name with 'and' - should extract 'Alex' not 'Alex and'",
+    "Name With And Conjunction",
+)
+
 print("\nPHASE 8: COMPREHENSIVE RECALL")
 print("-" * 80)
 

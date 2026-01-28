@@ -539,8 +539,28 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Allow multi-token names (e.g., "Nick Block"), but keep it conservative.
     # For "I'm ..." specifically, require a name-like token to avoid false positives
     # like "I'm glad you asked".
+    # CRITICAL: Name patterns should NOT greedily consume conjunctions + pronouns.
+    # "My name is nick but you said sarah" should extract "nick", not "nick but you".
     name_pat = r"([A-Za-z][A-Za-z'-]{1,40}(?:\s+[A-Za-z][A-Za-z'-]{1,40}){0,2})"
     name_pat_title = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
+    
+    # Conjunctions/words that should NOT be part of a name when followed by pronouns/verbs
+    _NAME_BOUNDARY_WORDS = {"but", "and", "or", "so", "yet", "for", "nor", "said", "says", "told"}
+    
+    def _clean_name_value(raw_name: str) -> str:
+        """Remove trailing conjunctions and pronouns from name matches."""
+        tokens = raw_name.split()
+        # Walk backwards and remove boundary words
+        while len(tokens) > 1 and tokens[-1].lower() in _NAME_BOUNDARY_WORDS:
+            tokens.pop()
+        # Also check for "X but Y" or "X and Y" patterns in the middle
+        cleaned = []
+        for i, tok in enumerate(tokens):
+            if tok.lower() in _NAME_BOUNDARY_WORDS and i > 0:
+                # Stop here - everything before is the name
+                break
+            cleaned.append(tok)
+        return " ".join(cleaned) if cleaned else raw_name
 
     # Very explicit "call me" pattern.
     m = re.search(r"\bcall me\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
@@ -575,7 +595,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             # name declaration (no extra trailing content).
             m = re.search(r"^\s*i\s*['']?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
     if m:
-        name = m.group(1).strip()
+        name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
         token_lowers = [t.lower() for t in tokens]
 
