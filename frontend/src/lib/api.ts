@@ -709,3 +709,83 @@ export async function getLearningStats(): Promise<LearningStats> {
   return fetchJson<LearningStats>('/api/learning/stats')
 }
 
+// ============================================================================
+// Reasoning Traces - Lazy Loading
+// ============================================================================
+
+export type ReasoningTraceListItem = {
+  trace_id: string
+  thread_id: string | null
+  query: string
+  response_summary: string | null
+  model: string | null
+  timestamp: number
+  char_count: number
+  thinking_preview?: string | null
+}
+
+export type ReasoningTrace = {
+  trace_id: string
+  thread_id: string | null
+  query: string
+  thinking_content: string
+  response_summary: string | null
+  model: string | null
+  timestamp: number
+  char_count: number
+  metadata?: Record<string, unknown> | null
+}
+
+export type ReasoningTracesListResponse = {
+  traces: ReasoningTraceListItem[]
+  total: number
+  limit: number
+  offset: number
+  has_more: boolean
+}
+
+/**
+ * List reasoning traces with pagination (metadata only, no full content).
+ * Use getReasoningTrace() to fetch full thinking content when needed.
+ */
+export async function listReasoningTraces(args: {
+  threadId?: string
+  limit?: number
+  offset?: number
+}): Promise<ReasoningTracesListResponse> {
+  const params = new URLSearchParams()
+  if (args.threadId) params.set('thread_id', args.threadId)
+  if (args.limit) params.set('limit', String(args.limit))
+  if (args.offset) params.set('offset', String(args.offset))
+  
+  return fetchJson<ReasoningTracesListResponse>(`/api/reasoning/traces?${params.toString()}`)
+}
+
+/**
+ * Get full reasoning trace content by ID (lazy load).
+ * Call this when user wants to view the complete thinking.
+ */
+export async function getReasoningTrace(traceId: string): Promise<ReasoningTrace | null> {
+  const result = await fetchJson<ReasoningTrace | { error: string }>(`/api/reasoning/traces/${encodeURIComponent(traceId)}`)
+  if ('error' in result) {
+    console.warn(`Failed to get reasoning trace ${traceId}:`, result.error)
+    return null
+  }
+  return result
+}
+
+/**
+ * Get recent reasoning traces with full content.
+ * Useful for showing recent thinking without pagination.
+ */
+export async function getRecentReasoning(args: {
+  threadId: string
+  limit?: number
+}): Promise<ReasoningTrace[]> {
+  const params = new URLSearchParams()
+  params.set('thread_id', args.threadId)
+  if (args.limit) params.set('limit', String(args.limit))
+  
+  const result = await fetchJson<{ traces: ReasoningTrace[] }>(`/api/reasoning/recent?${params.toString()}`)
+  return result.traces || []
+}

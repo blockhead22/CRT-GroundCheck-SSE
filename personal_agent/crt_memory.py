@@ -223,6 +223,31 @@ class CRTMemorySystem:
             )
         """)
         
+        # Reasoning traces - full thinking content for lazy loading
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reasoning_traces (
+                trace_id TEXT PRIMARY KEY,
+                thread_id TEXT,
+                query TEXT NOT NULL,
+                thinking_content TEXT NOT NULL,
+                response_summary TEXT,
+                model TEXT,
+                timestamp REAL NOT NULL,
+                char_count INTEGER,
+                metadata_json TEXT
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reasoning_traces_thread
+            ON reasoning_traces(thread_id, timestamp DESC)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reasoning_traces_timestamp
+            ON reasoning_traces(timestamp DESC)
+        """)
+        
         # Performance indexes - avoid full table scans
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_memories_source 
@@ -924,6 +949,163 @@ class CRTMemorySystem:
         
         conn.commit()
         conn.close()
+    
+    # ========================================================================
+    # Reasoning Trace Storage (Lazy Loading)
+    # ========================================================================
+    
+    def store_reasoning_trace(
+        self,
+        query: str,
+        thinking_content: str,
+        thread_id: Optional[str] = None,
+        response_summary: Optional[str] = None,
+        model: Optional[str] = None,
+        metadata: Optional[Dict] = None
+    ) -> str:
+        """
+        Store full reasoning trace for lazy loading.
+        
+        Returns trace_id for later retrieval.
+        """
+        trace_id = f"trace_{int(time.time() * 1000)}_{hash(query) % 10000}"
+        
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO reasoning_traces 
+            (trace_id, thread_id, query, thinking_content, response_summary, model, timestamp, char_count, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            trace_id,
+            thread_id,
+            query[:500],  # Truncate query for storage
+            thinking_content,  # Full thinking content
+            response_summary[:500] if response_summary else None,
+            model,
+            time.time(),
+            len(thinking_content),
+            json.dumps(metadata) if metadata else None
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        logger.debug(f"[REASONING] Stored trace {trace_id} ({len(thinking_content)} chars)")
+        return trace_id
+    
+    def get_reasoning_trace(self, trace_id: str) -> Optional[Dict]:
+        """
+        Retrieve full reasoning trace by ID.
+        
+        For lazy loading - only fetch full content when needed.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT trace_id, thread_id, query, thinking_content, response_summary, 
+                   model, timestamp, char_count, metadata_json
+            FROM reasoning_traces
+            WHERE trace_id = ?
+        """, (trace_id,))
+        
+        row = cursor.fetchone()
+        conn.close()
+        
+        if not row:
+            return None
+        
+        return {
+            'trace_id': row[0],
+            'thread_id': row[1],
+            'query': row[2],
+            'thinking_content': row[3],
+            'response_summary': row[4],
+            'model': row[5],
+            'timestamp': row[6],
+            'char_count': row[7],
+            'metadata': json.loads(row[8]) if row[8] else None
+        }
+    
+    def list_reasoning_traces(
+        self,
+        thread_id: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+        include_content: bool = False
+    ) -> List[Dict]:
+        """
+        List reasoning traces with pagination.
+        
+        By default excludes full thinking_content for performance.
+        Set include_content=True for full content (lazy load on demand).
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        if include_content:
+            select_cols = "trace_id, thread_id, query, thinking_content, response_summary, model, timestamp, char_count"
+        else:
+            # Exclude thinking_content for fast listing
+            select_cols = "trace_id, thread_id, query, response_summary, model, timestamp, char_count"
+        
+        query = f"SELECT {select_cols} FROM reasoning_traces"
+        params = []
+        
+        if thread_id:
+            query += " WHERE thread_id = ?"
+            params.append(thread_id)
+        
+        query += " ORDER BY timestamp DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        traces = []
+        for row in rows:
+            if include_content:
+                traces.append({
+                    'trace_id': row[0],
+                    'thread_id': row[1],
+                    'query': row[2],
+                    'thinking_content': row[3],
+                    'response_summary': row[4],
+                    'model': row[5],
+                    'timestamp': row[6],
+                    'char_count': row[7]
+                })
+            else:
+                traces.append({
+                    'trace_id': row[0],
+                    'thread_id': row[1],
+                    'query': row[2],
+                    'response_summary': row[3],
+                    'model': row[4],
+                    'timestamp': row[5],
+                    'char_count': row[6],
+                    # Preview only
+                    'thinking_preview': None  # Client must fetch full content separately
+                })
+        
+        return traces
+    
+    def get_reasoning_trace_count(self, thread_id: Optional[str] = None) -> int:
+        """Get total count of reasoning traces for pagination."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        if thread_id:
+            cursor.execute("SELECT COUNT(*) FROM reasoning_traces WHERE thread_id = ?", (thread_id,))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM reasoning_traces")
+        
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
     
     # ========================================================================
     # Helpers

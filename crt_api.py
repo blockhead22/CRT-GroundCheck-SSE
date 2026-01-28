@@ -1593,6 +1593,85 @@ def create_app() -> FastAPI:
         except Exception:
             return []
 
+    # ========================================================================
+    # Reasoning Traces - Lazy Loading Endpoints
+    # ========================================================================
+    
+    @app.get("/api/reasoning/traces")
+    def list_reasoning_traces(
+        thread_id: Optional[str] = Query(default=None),
+        limit: int = Query(default=50, ge=1, le=200),
+        offset: int = Query(default=0, ge=0)
+    ):
+        """
+        List reasoning traces with pagination.
+        
+        Returns metadata only (no full thinking content).
+        Use /api/reasoning/traces/{trace_id} to fetch full content.
+        """
+        engine = get_engine(thread_id or "default")
+        try:
+            traces = engine.memory.list_reasoning_traces(
+                thread_id=thread_id,
+                limit=limit,
+                offset=offset,
+                include_content=False
+            )
+            total = engine.memory.get_reasoning_trace_count(thread_id)
+            return {
+                "traces": traces,
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "has_more": offset + len(traces) < total
+            }
+        except Exception as e:
+            logger.error(f"[REASONING] Failed to list traces: {e}")
+            return {"traces": [], "total": 0, "limit": limit, "offset": offset, "has_more": False}
+    
+    @app.get("/api/reasoning/traces/{trace_id}")
+    def get_reasoning_trace(
+        trace_id: str,
+        thread_id: str = Query(default="default")
+    ):
+        """
+        Get full reasoning trace content by ID.
+        
+        This is the lazy-load endpoint - call this when user wants to see full thinking.
+        """
+        engine = get_engine(thread_id)
+        try:
+            trace = engine.memory.get_reasoning_trace(trace_id)
+            if trace:
+                return trace
+            return {"error": "Trace not found", "trace_id": trace_id}
+        except Exception as e:
+            logger.error(f"[REASONING] Failed to get trace {trace_id}: {e}")
+            return {"error": str(e), "trace_id": trace_id}
+    
+    @app.get("/api/reasoning/recent")
+    def get_recent_reasoning(
+        thread_id: str = Query(default="default"),
+        limit: int = Query(default=5, ge=1, le=20)
+    ):
+        """
+        Get most recent reasoning traces for a thread (with full content).
+        
+        Useful for showing recent thinking in UI without pagination.
+        """
+        engine = get_engine(thread_id)
+        try:
+            traces = engine.memory.list_reasoning_traces(
+                thread_id=thread_id,
+                limit=limit,
+                offset=0,
+                include_content=True
+            )
+            return {"traces": traces}
+        except Exception as e:
+            logger.error(f"[REASONING] Failed to get recent traces: {e}")
+            return {"traces": []}
+
     @app.get("/api/ledger/open", response_model=list[ContradictionListItem])
     def ledger_open(thread_id: str = Query(default="default"), limit: int = Query(default=50, ge=1, le=500)) -> list[ContradictionListItem]:
         engine = get_engine(thread_id)
@@ -2482,17 +2561,22 @@ Be concise but thorough. If you don't have information about something, say so h
                 import re as regex
                 clean_response = regex.sub(r'<think>.*?</think>', '', full_response, flags=regex.DOTALL).strip()
                 
-                # Store thinking trace as a belief for research/self-reflection purposes
+                # Store full thinking trace for lazy loading
+                trace_id = None
                 if thinking_content and len(thinking_content.strip()) > 50:
                     try:
-                        from personal_agent.crt_memory import MemorySource
-                        thinking_summary = thinking_content[:500] + ('...' if len(thinking_content) > 500 else '')
-                        engine.memory.store_memory(
-                            text=f"[REASONING TRACE] Query: {req.message[:100]}... | Thinking: {thinking_summary}",
-                            source=MemorySource.REFLECTION,
-                            confidence=0.6,
+                        trace_id = engine.memory.store_reasoning_trace(
+                            query=req.message,
+                            thinking_content=thinking_content,
+                            thread_id=thread_id,
+                            response_summary=clean_response[:200] if clean_response else None,
+                            model=llm_client.model,
+                            metadata={
+                                'gates_passed': result.get('gates_passed', True),
+                                'confidence': result.get('confidence', 0.7),
+                            }
                         )
-                        logger.debug(f"[STREAM] Stored reasoning trace ({len(thinking_content)} chars)")
+                        logger.debug(f"[STREAM] Stored reasoning trace {trace_id} ({len(thinking_content)} chars)")
                     except Exception as e:
                         logger.warning(f"[STREAM] Failed to store reasoning trace: {e}")
                 
@@ -2502,6 +2586,7 @@ Be concise but thorough. If you don't have information about something, say so h
                     'mode': 'llm',
                     'model': llm_client.model,
                     'thinking': thinking_content,
+                    'thinking_trace_id': trace_id,  # For lazy loading full content
                     'response_type': result.get('response_type', 'speech'),
                     'gates_passed': result.get('gates_passed', True),
                     'gate_reason': result.get('gate_reason'),
