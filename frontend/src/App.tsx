@@ -274,32 +274,34 @@ export default function App() {
             },
             onDone: (content, metadata) => {
               const at = Date.now()
+              // Prefer thinking from metadata (server-side) if available, fallback to streamed content
+              const finalThinking = (metadata?.thinking as string) || thinkingContent || undefined
               const asstMsg = {
                 id: newId('m'),
                 role: 'assistant' as const,
                 text: content,
                 createdAt: at,
                 crt: {
-                  response_type: 'speech',
-                  gates_passed: true,
-                  gate_reason: null,
-                  session_id: null,
-                  confidence: null,
-                  intent_alignment: null,
-                  memory_alignment: null,
-                  contradiction_detected: null,
-                  unresolved_contradictions_total: null,
-                  unresolved_hard_conflicts: null,
-                  retrieved_memories: [],
-                  prompt_memories: [],
+                  response_type: (metadata?.response_type as string) || 'speech',
+                  gates_passed: (metadata?.gates_passed as boolean) ?? true,
+                  gate_reason: (metadata?.gate_reason as string) || null,
+                  session_id: (metadata?.session_id as string) || null,
+                  confidence: (metadata?.confidence as number) ?? null,
+                  intent_alignment: (metadata?.intent_alignment as number) ?? null,
+                  memory_alignment: (metadata?.memory_alignment as number) ?? null,
+                  contradiction_detected: (metadata?.contradiction_detected as boolean) ?? null,
+                  unresolved_contradictions_total: (metadata?.unresolved_contradictions_total as number) ?? null,
+                  unresolved_hard_conflicts: (metadata?.unresolved_hard_conflicts as number) ?? null,
+                  retrieved_memories: (metadata?.retrieved_memories as any[]) || [],
+                  prompt_memories: (metadata?.prompt_memories as any[]) || [],
                   learned_suggestions: [],
                   heuristic_suggestions: [],
                   agent_activated: null,
                   agent_answer: null,
                   agent_trace: null,
                   xray: null,
-                  // Add thinking content to metadata
-                  thinking: thinkingContent || undefined,
+                  // Add thinking content from metadata or streamed content
+                  thinking: finalThinking,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

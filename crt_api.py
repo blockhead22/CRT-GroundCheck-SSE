@@ -2331,48 +2331,52 @@ def create_app() -> FastAPI:
                 engine = get_engine(req.thread_id)
                 llm_client = get_llm_client()
                 
-                # First, yield any context/memory retrieval info
-                yield f"data: {json.dumps({'type': 'status', 'content': 'Retrieving memories...'})}\n\n"
+                # IMPORTANT: First run through the normal query pipeline to:
+                # 1. Extract and store facts from user message
+                # 2. Update memory system
+                # 3. Detect contradictions
+                # This ensures memories are stored even when using streaming
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Processing message...'})}\n\n"
                 
-                # Get context for reasoning
-                retrieved_docs = []
-                try:
-                    retrieved_docs = engine.memory.search(req.message, top_k=5)
-                    if retrieved_docs:
-                        yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_docs)} relevant memories'})}\n\n"
-                except Exception as e:
-                    logger.warning(f"[STREAM] Memory retrieval error: {e}")
+                result = engine.query(
+                    user_query=req.message,
+                    user_marked_important=req.user_marked_important,
+                    thread_id=req.thread_id,
+                )
                 
-                # If no LLM, use fallback
+                # Get retrieved memories from the result for context
+                retrieved_mems = result.get("retrieved_memories", []) or []
+                prompt_mems = result.get("prompt_memories", []) or []
+                
+                if retrieved_mems:
+                    yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_mems)} relevant memories'})}\n\n"
+                
+                # If no LLM, return the engine's response directly
                 if llm_client is None:
-                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using pattern-based response...'})}\n\n"
-                    
-                    # Use the regular query path for fallback
-                    result = engine.query(
-                        user_query=req.message,
-                        thread_id=req.thread_id,
-                    )
-                    
-                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback'}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using memory-based response...'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': ''}})}\n\n"
                     return
                 
                 # Stream from LLM with thinking visible
                 yield f"data: {json.dumps({'type': 'status', 'content': 'Thinking...'})}\n\n"
                 
-                # Build prompt with context
+                # Build context from memories - include more detail for better recall
                 memories_text = ""
-                if retrieved_docs:
+                if retrieved_mems or prompt_mems:
                     memory_lines = []
-                    for doc in retrieved_docs[:3]:
-                        if isinstance(doc, dict):
-                            text = doc.get('text', '')[:200]
-                            memory_lines.append(f"- {text}")
+                    all_mems = retrieved_mems + prompt_mems
+                    for mem in all_mems[:5]:
+                        if isinstance(mem, dict):
+                            text = mem.get('text', '')[:300]
+                            source = mem.get('source', 'unknown')
+                            trust = mem.get('trust', 0.5)
+                            memory_lines.append(f"- [{source}, trust={trust:.2f}] {text}")
                     if memory_lines:
-                        memories_text = "\n\nRelevant memories:\n" + "\n".join(memory_lines)
+                        memories_text = "\n\nKnown facts about this user:\n" + "\n".join(memory_lines)
                 
                 system_prompt = f"""You are a helpful AI assistant with memory capabilities.
-You remember facts the user has told you and can detect contradictions.
-Be concise but thorough. If you're uncertain, say so.{memories_text}"""
+You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
+Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}"""
                 
                 # Stream the response
                 messages = [
@@ -2396,7 +2400,7 @@ Be concise but thorough. If you're uncertain, say so.{memories_text}"""
                 
                 full_response = ""
                 thinking_content = ""
-                in_thinking = False
+                response_started = False
                 sent_thinking_start = False
                 
                 for chunk in stream:
@@ -2415,8 +2419,8 @@ Be concise but thorough. If you're uncertain, say so.{memories_text}"""
                         continue
                     
                     # If we were receiving thinking and now got content, end thinking
-                    if sent_thinking_start and not in_thinking:
-                        in_thinking = True  # Mark that we've transitioned
+                    if sent_thinking_start and not response_started:
+                        response_started = True
                         yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
                     
                     full_response += token
@@ -2442,17 +2446,60 @@ Be concise but thorough. If you're uncertain, say so.{memories_text}"""
                 import re as regex
                 clean_response = regex.sub(r'<think>.*?</think>', '', full_response, flags=regex.DOTALL).strip()
                 
-                # Store the interaction
-                try:
-                    engine.memory.add(
-                        text=req.message,
-                        source="user",
-                        sse_mode="C",
-                    )
-                except Exception:
-                    pass
+                # Store thinking trace as a belief for research/self-reflection purposes
+                if thinking_content and len(thinking_content.strip()) > 50:
+                    try:
+                        thinking_summary = thinking_content[:500] + ('...' if len(thinking_content) > 500 else '')
+                        engine.memory.add(
+                            text=f"[REASONING TRACE] Query: {req.message[:100]}... | Thinking: {thinking_summary}",
+                            source="agent_reasoning",
+                            sse_mode="B",  # Belief - internal reasoning
+                            confidence=0.6,
+                            trust=0.5,
+                        )
+                        logger.debug(f"[STREAM] Stored reasoning trace ({len(thinking_content)} chars)")
+                    except Exception as e:
+                        logger.warning(f"[STREAM] Failed to store reasoning trace: {e}")
                 
-                yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': {'mode': 'llm', 'model': llm_client.model}})}\n\n"
+                # Build metadata including thinking for later display
+                # Pull more values from the engine.query result
+                metadata = {
+                    'mode': 'llm',
+                    'model': llm_client.model,
+                    'thinking': thinking_content,
+                    'response_type': result.get('response_type', 'speech'),
+                    'gates_passed': result.get('gates_passed', True),
+                    'gate_reason': result.get('gate_reason'),
+                    'confidence': result.get('confidence', 0.7),
+                    'intent_alignment': result.get('intent_alignment'),
+                    'memory_alignment': result.get('memory_alignment'),
+                    'contradiction_detected': result.get('contradiction_detected', False),
+                    'unresolved_contradictions_total': result.get('unresolved_contradictions_total', 0),
+                    'unresolved_hard_conflicts': result.get('unresolved_hard_conflicts', 0),
+                    'session_id': result.get('session_id'),
+                    'retrieved_memories': [
+                        {
+                            'memory_id': m.get('memory_id'),
+                            'text': m.get('text', '')[:200],
+                            'trust': m.get('trust', 0.5),
+                            'confidence': m.get('confidence', 0.5),
+                            'source': m.get('source'),
+                            'sse_mode': m.get('sse_mode'),
+                        }
+                        for m in retrieved_mems[:5] if isinstance(m, dict)
+                    ],
+                    'prompt_memories': [
+                        {
+                            'memory_id': m.get('memory_id'),
+                            'text': m.get('text', '')[:200],
+                            'trust': m.get('trust', 0.5),
+                            'source': m.get('source'),
+                        }
+                        for m in prompt_mems[:5] if isinstance(m, dict)
+                    ],
+                }
+                
+                yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
                 
             except Exception as e:
                 logger.error(f"[STREAM] Stream error: {e}")

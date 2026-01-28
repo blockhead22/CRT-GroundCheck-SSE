@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 import type { ChatMessage } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
@@ -7,6 +8,51 @@ function pct01(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
   const clamped = Math.max(0, Math.min(1, v))
   return `${Math.round(clamped * 100)}%`
+}
+
+/** Collapsible thinking/reasoning dropdown */
+function ThinkingDropdown({ thinking }: { thinking: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+  
+  if (!thinking || thinking.trim().length === 0) return null
+  
+  return (
+    <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setIsOpen(!isOpen)
+        }}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-amber-300 hover:bg-amber-500/10 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <span>🧠</span>
+          <span>Agent Thinking</span>
+          <span className="text-amber-300/60">({thinking.length} chars)</span>
+        </span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          ▼
+        </motion.span>
+      </button>
+      {isOpen && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="px-3 pb-3"
+        >
+          <div className="max-h-64 overflow-y-auto rounded-lg bg-black/30 p-3 text-[11px] text-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
+            {thinking}
+          </div>
+        </motion.div>
+      )}
+    </div>
+  )
 }
 
 export function MessageBubble(props: {
@@ -210,6 +256,11 @@ export function MessageBubble(props: {
               {prov.text || '—'}
             </div>
           </div>
+        ) : null}
+
+        {/* Collapsible Thinking Section */}
+        {meta?.thinking && isAssistant ? (
+          <ThinkingDropdown thinking={meta.thinking} />
         ) : null}
 
         {props.xrayMode && meta?.xray && isAssistant ? (
