@@ -295,9 +295,17 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
 | **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | ✅ Complete |
 | **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | ✅ Complete |
-| **Phase 2.3** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
+| **Phase 2.3** | **Episodic Memory** (session summaries, preferences, patterns, concept linking) | ✅ Complete |
+| **Phase 2.4** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
 | **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
 | **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
+
+### Phase 2.3 Features (Completed)
+- **Session Summaries**: Narrative summaries of conversations with topics, entities, facts learned
+- **Preference Learning**: Extracts explicit preferences and infers from interaction patterns
+- **Pattern Detection**: Identifies recurring topics, communication styles, behavioral patterns
+- **Concept Linking**: Connects entities (people, projects, orgs) across sessions with alias resolution
+- **Consumer-grade optimization**: SQLite WAL mode, fast regex, incremental updates, auto-cleanup
 
 ### Phase 2.2 Features (Completed)
 - **LLM Claim Extraction**: Parse factual claims from LLM responses into slot/value pairs
@@ -327,6 +335,126 @@ pytest tests/test_adversarial_prompts.py -v
 - **Temporal Status**: Tracks past/active/future status to handle "I used to work at..." patterns
 - **Context-Aware Contradictions**: "I'm a programmer AND a photographer" no longer conflicts
 - **Temporal Updates**: "I don't work at Google anymore" updates status instead of flagging contradiction
+
+---
+
+## Episodic Memory System
+
+The repository includes an **Episodic Memory System** for higher-order learning about user preferences, interaction patterns, and connected concepts. This goes beyond basic fact storage to build a personalized understanding of the user over time.
+
+### Key Capabilities
+
+| Feature | Description | Performance |
+|---------|-------------|-------------|
+| **Session Summaries** | Narrative summaries of conversation sessions with topics, entities, and learned facts | Lightweight heuristic or LLM-powered |
+| **Preference Learning** | Extracts explicit preferences ("I prefer short answers") and infers from patterns | Fast regex + frequency analysis |
+| **Pattern Detection** | Identifies recurring topics, communication styles, and behavioral patterns | Incremental updates only |
+| **Concept Linking** | Connects related entities across sessions (people, projects, organizations) | Alias-based resolution |
+
+### Design Philosophy: Consumer Hardware First
+- **SQLite with WAL mode**: Fast concurrent access, no server dependencies
+- **Lightweight pattern matching**: Regex-based, no heavy NLP/ML
+- **Incremental updates**: No full re-indexing on each interaction
+- **Auto-cleanup triggers**: Limits data growth (~1000 interactions retained)
+- **Lazy processing**: Store everything immediately, analyze later
+
+### Architecture
+
+```
+User Message → CRT Memory (facts) → Response
+                    ↓
+            Episodic Memory Manager
+                    ↓
+    ┌───────────────┼───────────────┐
+    ↓               ↓               ↓
+Preference      Pattern         Concept
+Extractor       Detector        Linker
+    ↓               ↓               ↓
+┌───────────────────────────────────────┐
+│           SQLite Database             │
+│  (summaries, preferences, patterns,   │
+│   concepts, interaction_log)          │
+└───────────────────────────────────────┘
+```
+
+### Usage Examples
+
+#### Automatic Learning (via Chat Endpoints)
+The system automatically processes each interaction through `/api/chat/send` or `/api/chat/stream`:
+- Extracts explicit preferences ("I like concise answers")
+- Infers style from response patterns
+- Links mentioned entities to knowledge graph
+- Logs interaction for pattern analysis
+
+#### API Endpoints
+
+```bash
+# Get full user context (preferences, patterns, summaries, concepts)
+curl http://127.0.0.1:8123/api/episodic/context
+
+# Get learned preferences
+curl "http://127.0.0.1:8123/api/episodic/preferences?category=style"
+
+# Get detected patterns
+curl "http://127.0.0.1:8123/api/episodic/patterns?min_confidence=0.5"
+
+# Get linked concepts/entities
+curl "http://127.0.0.1:8123/api/episodic/concepts?concept_type=person"
+
+# Get session summaries
+curl "http://127.0.0.1:8123/api/episodic/summaries?limit=5"
+
+# Finalize session (creates summary + runs analysis)
+curl -X POST http://127.0.0.1:8123/api/episodic/finalize-session
+```
+
+#### Programmatic Access
+
+```python
+from personal_agent.episodic_memory import get_episodic_manager
+
+# Get the singleton manager
+mgr = get_episodic_manager()
+
+# Get user context for prompt building
+context = mgr.get_user_context()
+print(context["preferences"])  # {'style': {'verbosity': 'concise', 'emoji': True}}
+print(context["patterns"])     # [{'type': 'topic_frequency', 'description': '...'}]
+
+# Build context for LLM prompt
+prompt_context = mgr.build_context_prompt()
+# → "User Preferences: Prefers concise responses. Uses emoji..."
+```
+
+### What Gets Stored
+
+**Preferences** (explicit and inferred):
+- Communication style: verbosity, formality, detail level
+- Response format: emoji usage, code style, technical depth
+- Domain preferences: favorite languages, tools, topics
+
+**Patterns** (detected from behavior):
+- Topic frequency: What subjects the user asks about most
+- Time patterns: When they're most active
+- Style evolution: How preferences change over time
+
+**Concepts** (knowledge graph):
+- People mentioned: colleagues, family, friends
+- Projects discussed: work projects, side projects
+- Organizations: employers, schools, communities
+- Topics: recurring interests and domains
+
+**Session Summaries**:
+- Narrative overview of conversation
+- Key topics and entities mentioned
+- Facts learned during session
+- Unresolved questions for follow-up
+
+### Storage Location
+By default, episodic data is stored in:
+```
+personal_agent/data/episodic_memory.db
+```
 
 ---
 
@@ -406,6 +534,7 @@ pip install sentence-transformers
 |------|---------|
 | `personal_agent/fact_store.py` | Structured slot-based memory with contradiction detection |
 | `personal_agent/intent_router.py` | Intent classification (15 types) with pattern matching |
+| `personal_agent/episodic_memory.py` | Higher-order memory: preferences, patterns, concept linking |
 | `rag-demo.py` | Interactive CLI demonstrating all components |
 
 This system works well for:
