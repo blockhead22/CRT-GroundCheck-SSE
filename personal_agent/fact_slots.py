@@ -545,7 +545,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     name_pat_title = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
     
     # Conjunctions/words that should NOT be part of a name when followed by pronouns/verbs
-    _NAME_BOUNDARY_WORDS = {"but", "and", "or", "so", "yet", "for", "nor", "said", "says", "told"}
+    _NAME_BOUNDARY_WORDS = {"but", "and", "or", "so", "yet", "for", "nor", "said", "says", "told", "you", "i", "he", "she", "they", "we", "it"}
     
     def _clean_name_value(raw_name: str) -> str:
         """Remove trailing conjunctions and pronouns from name matches."""
@@ -565,7 +565,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Very explicit "call me" pattern.
     m = re.search(r"\bcall me\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if m:
-        name = m.group(1).strip()
+        name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
         token_lowers = [t.lower() for t in tokens]
         if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers):
@@ -582,18 +582,26 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             if cand and cand.lower() not in _NAME_STOPWORDS:
                 facts["name"] = ExtractedFact("name", cand, _norm_text(cand))
 
+    # "my name is X" pattern - apply _clean_name_value to handle "my name is nick but you..."
     m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
-    if not m:
+    if m:
+        name = _clean_name_value(m.group(1).strip())
+        tokens = [t for t in re.split(r"\s+", name) if t]
+        token_lowers = [t.lower() for t in tokens]
+        if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers):
+            facts["name"] = ExtractedFact("name", name, _norm_text(name))
+    
+    if "name" not in facts:
         # Prefer TitleCase names for the generic "I'm X" pattern.
-        # Match various apostrophe types (', ', ') and handle "I am" as well
-        m = re.search(r"\bi\s*['']?m\s+" + name_pat_title, text)
+        # Match various apostrophe types: ' (straight), ' (curly open), ' (curly close), ʼ (modifier letter)
+        m = re.search(r"\bi\s*['''ʼ]?m\s+" + name_pat_title, text)
         if not m:
             # Also try "I am" pattern
             m = re.search(r"\bi\s+am\s+" + name_pat_title, text, flags=re.IGNORECASE)
         if not m:
             # Allow a single-token lowercase name, but only when it appears as a direct
             # name declaration (no extra trailing content).
-            m = re.search(r"^\s*i\s*['']?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
+            m = re.search(r"^\s*i\s*['''ʼ]?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
     if m:
         name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
