@@ -14,6 +14,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi import Query
 from fastapi import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from personal_agent.crt_rag import CRTEnhancedRAG
@@ -2305,6 +2306,166 @@ def create_app() -> FastAPI:
             session_id=(result.get("session_id") if isinstance(result.get("session_id"), str) else None),
             metadata=metadata,
             xray=xray_data,
+        )
+
+    # ========================================================================
+    # Streaming Chat Endpoint - Real-time thinking/reasoning display
+    # ========================================================================
+    
+    @app.post("/api/chat/stream")
+    def chat_stream(req: ChatSendRequest):
+        """
+        Stream chat response with real-time thinking/reasoning.
+        
+        Yields Server-Sent Events (SSE) with the following event types:
+        - thinking: Agent's reasoning process (for deepseek-r1 style models)
+        - token: Individual response tokens
+        - done: Final response with metadata
+        - error: Error message
+        
+        Format: data: {"type": "...", "content": "..."}
+        """
+        
+        def generate_stream():
+            try:
+                engine = get_engine(req.thread_id)
+                llm_client = get_llm_client()
+                
+                # First, yield any context/memory retrieval info
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Retrieving memories...'})}\n\n"
+                
+                # Get context for reasoning
+                retrieved_docs = []
+                try:
+                    retrieved_docs = engine.memory.search(req.message, top_k=5)
+                    if retrieved_docs:
+                        yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_docs)} relevant memories'})}\n\n"
+                except Exception as e:
+                    logger.warning(f"[STREAM] Memory retrieval error: {e}")
+                
+                # If no LLM, use fallback
+                if llm_client is None:
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using pattern-based response...'})}\n\n"
+                    
+                    # Use the regular query path for fallback
+                    result = engine.query(
+                        user_query=req.message,
+                        thread_id=req.thread_id,
+                    )
+                    
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback'}})}\n\n"
+                    return
+                
+                # Stream from LLM with thinking visible
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Thinking...'})}\n\n"
+                
+                # Build prompt with context
+                memories_text = ""
+                if retrieved_docs:
+                    memory_lines = []
+                    for doc in retrieved_docs[:3]:
+                        if isinstance(doc, dict):
+                            text = doc.get('text', '')[:200]
+                            memory_lines.append(f"- {text}")
+                    if memory_lines:
+                        memories_text = "\n\nRelevant memories:\n" + "\n".join(memory_lines)
+                
+                system_prompt = f"""You are a helpful AI assistant with memory capabilities.
+You remember facts the user has told you and can detect contradictions.
+Be concise but thorough. If you're uncertain, say so.{memories_text}"""
+                
+                # Stream the response
+                messages = [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': req.message}
+                ]
+                
+                # Use streaming chat via ollama client with thinking enabled
+                try:
+                    import ollama as ollama_lib
+                    stream = ollama_lib.chat(
+                        model=llm_client.model,
+                        messages=messages,
+                        stream=True,
+                        options={'num_predict': 1000, 'temperature': 0.6},
+                        think=True  # Enable extended thinking for deepseek-r1
+                    )
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'content': f'Failed to start stream: {e}'})}\n\n"
+                    return
+                
+                full_response = ""
+                thinking_content = ""
+                in_thinking = False
+                sent_thinking_start = False
+                
+                for chunk in stream:
+                    # Check for thinking content (deepseek-r1 returns it separately)
+                    thinking_part = chunk.get('message', {}).get('thinking', '')
+                    if thinking_part:
+                        if not sent_thinking_start:
+                            yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
+                            sent_thinking_start = True
+                        thinking_content += thinking_part
+                        yield f"data: {json.dumps({'type': 'thinking_token', 'content': thinking_part})}\n\n"
+                        continue
+                    
+                    token = chunk.get('message', {}).get('content', '')
+                    if not token:
+                        continue
+                    
+                    # If we were receiving thinking and now got content, end thinking
+                    if sent_thinking_start and not in_thinking:
+                        in_thinking = True  # Mark that we've transitioned
+                        yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
+                    
+                    full_response += token
+                    
+                    # Also detect <think> tags in content for backwards compatibility
+                    if '<think>' in full_response and not sent_thinking_start:
+                        sent_thinking_start = True
+                        yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
+                    
+                    if '</think>' in token:
+                        yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
+                        continue
+                    
+                    if '<think>' in token:
+                        continue  # Skip the tag itself
+                    
+                    # Stream response tokens
+                    clean_token = token.replace('<think>', '').replace('</think>', '')
+                    if clean_token:
+                        yield f"data: {json.dumps({'type': 'token', 'content': clean_token})}\n\n"
+                
+                # Clean final response (remove thinking tags)
+                import re as regex
+                clean_response = regex.sub(r'<think>.*?</think>', '', full_response, flags=regex.DOTALL).strip()
+                
+                # Store the interaction
+                try:
+                    engine.memory.add(
+                        text=req.message,
+                        source="user",
+                        sse_mode="C",
+                    )
+                except Exception:
+                    pass
+                
+                yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': {'mode': 'llm', 'model': llm_client.model}})}\n\n"
+                
+            except Exception as e:
+                logger.error(f"[STREAM] Stream error: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+        
+        return StreamingResponse(
+            generate_stream(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            }
         )
 
     # ========================================================================

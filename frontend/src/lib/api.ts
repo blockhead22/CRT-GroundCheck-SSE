@@ -141,6 +141,132 @@ export async function sendToCrtApi(args: {
   return (await res.json()) as ChatSendResponse
 }
 
+// Streaming event types from /api/chat/stream
+export type StreamEventType = 'status' | 'thinking_start' | 'thinking_token' | 'thinking' | 'thinking_end' | 'token' | 'done' | 'error'
+
+export type StreamEvent = {
+  type: StreamEventType
+  content: string
+  metadata?: Record<string, unknown>
+}
+
+export type StreamCallbacks = {
+  onStatus?: (content: string) => void
+  onThinkingStart?: () => void
+  onThinkingToken?: (token: string) => void
+  onThinking?: (fullThinking: string) => void
+  onThinkingEnd?: () => void
+  onToken?: (token: string) => void
+  onDone?: (content: string, metadata?: Record<string, unknown>) => void
+  onError?: (error: string) => void
+}
+
+/**
+ * Stream chat response with real-time thinking/reasoning display.
+ * 
+ * Example usage:
+ * ```ts
+ * await streamFromCrtApi({
+ *   threadId: 'demo',
+ *   message: 'What is the meaning of life?',
+ *   onThinkingToken: (token) => setThinking(prev => prev + token),
+ *   onToken: (token) => setResponse(prev => prev + token),
+ *   onDone: (content) => setFinalResponse(content),
+ * })
+ * ```
+ */
+export async function streamFromCrtApi(args: {
+  threadId: string
+  message: string
+  callbacks: StreamCallbacks
+}): Promise<void> {
+  const base = getApiBaseUrlInternal()
+  const payload: ChatSendRequest = {
+    thread_id: args.threadId,
+    message: args.message,
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`${base}/api/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (_e) {
+    const at = base ? base : '(same origin)'
+    args.callbacks.onError?.(`CRT API unreachable at ${at}. Is the backend running?`)
+    return
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    args.callbacks.onError?.(`CRT API error ${res.status}: ${text || res.statusText}`)
+    return
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) {
+    args.callbacks.onError?.('No response body')
+    return
+  }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      
+      // Process complete SSE events
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || '' // Keep incomplete line in buffer
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const event: StreamEvent = JSON.parse(line.slice(6))
+            
+            switch (event.type) {
+              case 'status':
+                args.callbacks.onStatus?.(event.content)
+                break
+              case 'thinking_start':
+                args.callbacks.onThinkingStart?.()
+                break
+              case 'thinking_token':
+                args.callbacks.onThinkingToken?.(event.content)
+                break
+              case 'thinking':
+                args.callbacks.onThinking?.(event.content)
+                break
+              case 'thinking_end':
+                args.callbacks.onThinkingEnd?.()
+                break
+              case 'token':
+                args.callbacks.onToken?.(event.content)
+                break
+              case 'done':
+                args.callbacks.onDone?.(event.content, event.metadata)
+                break
+              case 'error':
+                args.callbacks.onError?.(event.content)
+                break
+            }
+          } catch (e) {
+            console.warn('Failed to parse SSE event:', line, e)
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
 function getBase(): string {
   return getApiBaseUrlInternal()
 }
