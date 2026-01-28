@@ -593,15 +593,21 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     
     if "name" not in facts:
         # Prefer TitleCase names for the generic "I'm X" pattern.
-        # Match various apostrophe types: ' (straight), ' (curly open), ' (curly close), ʼ (modifier letter)
-        m = re.search(r"\bi\s*['''ʼ]?m\s+" + name_pat_title, text)
+        # Match various apostrophe types: ' (straight), curly quotes (U+2018, U+2019)
+        # Pattern: i + optional-whitespace + apostrophe + m + whitespace + Name
+        # OR: i + apostrophe + m (no space between i and apostrophe) 
+        apostrophe_pat = r"[\u0027\u2018\u2019]"  # straight, left curly, right curly
+        m = re.search(r"\bi" + apostrophe_pat + r"m\s+" + name_pat_title, text, flags=re.IGNORECASE)
+        if not m:
+            # Also try with whitespace before apostrophe: "I 'm"
+            m = re.search(r"\bi\s+" + apostrophe_pat + r"m\s+" + name_pat_title, text, flags=re.IGNORECASE)
         if not m:
             # Also try "I am" pattern
             m = re.search(r"\bi\s+am\s+" + name_pat_title, text, flags=re.IGNORECASE)
         if not m:
             # Allow a single-token lowercase name, but only when it appears as a direct
             # name declaration (no extra trailing content).
-            m = re.search(r"^\s*i\s*['''ʼ]?m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
+            m = re.search(r"^\s*i" + apostrophe_pat + r"m\s+([a-z][a-z'-]{1,40})\s*[\.!?]?\s*$", text, flags=re.IGNORECASE)
     if m:
         name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
