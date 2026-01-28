@@ -304,6 +304,10 @@ export default function App() {
                   thinking: finalThinking,
                   // Store trace_id for lazy-loading after refresh
                   thinking_trace_id: (metadata?.thinking_trace_id as string) || null,
+                  // Store reflection trace for self-assessment dropdown
+                  reflection_trace_id: (metadata?.reflection_trace_id as string) || null,
+                  reflection_confidence: (metadata?.reflection_confidence as number) ?? null,
+                  reflection_label: (metadata?.reflection_label as string) || null,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
