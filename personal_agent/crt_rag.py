@@ -97,6 +97,9 @@ class CRTEnhancedRAG:
         self.config = config or CRTConfig()
         self.crt_math = CRTMath(self.config)
         
+        # Store LLM client for passing to subsystems
+        self._llm_client = llm_client
+        
         # CRT components
         self.memory = CRTMemorySystem(memory_db, self.config)
         self.ledger = ContradictionLedger(ledger_db, self.config)
@@ -173,9 +176,10 @@ class CRTEnhancedRAG:
             self.intent_router = None
         
         # Structured fact storage (user.name, user.favorite_color, etc.)
+        # Uses hybrid extraction: fast regex + LLM-based semantic extraction
         try:
             facts_db_path = str(Path(memory_db).parent / "crt_facts.db")
-            self.fact_store = FactStore(db_path=facts_db_path)
+            self.fact_store = FactStore(db_path=facts_db_path, llm_client=self._llm_client)
             logger.info(f"[FACT_STORE] Structured fact store initialized at {facts_db_path}")
         except Exception as e:
             logger.warning(f"[FACT_STORE] Failed to initialize: {e}")
@@ -396,6 +400,99 @@ class CRTEnhancedRAG:
                 return True, f"retraction_of_denial: implicit affirmation of '{prior_denied_value}'"
         
         return False, "no_retraction"
+    
+    def _build_gaslighting_citation(
+        self,
+        denial_text: str,
+        denied_value: str,
+        original_memory: 'MemoryItem',
+        slot: str = ""
+    ) -> str:
+        """
+        Build a citation when user denies saying something they actually said.
+        
+        This prevents gaslighting attempts by citing the original claim.
+        
+        Args:
+            denial_text: The user's denial statement
+            denied_value: The value being denied
+            original_memory: The original memory containing the claim
+            slot: The fact slot (e.g., "employer", "name")
+            
+        Returns:
+            A polite but firm citation text
+        """
+        slot_name = slot.replace("user.", "").replace("_", " ") if slot else "this"
+        
+        # Extract timestamp for citation
+        original_timestamp = getattr(original_memory, 'timestamp', None)
+        time_ref = ""
+        if original_timestamp:
+            try:
+                from datetime import datetime
+                ts = datetime.fromisoformat(str(original_timestamp).replace('Z', '+00:00'))
+                time_ref = f" (at {ts.strftime('%H:%M')})"
+            except:
+                pass
+        
+        # Extract the original text snippet (truncated)
+        original_text = getattr(original_memory, 'text', '')
+        text_snippet = original_text[:100] + "..." if len(original_text) > 100 else original_text
+        
+        # Build citation based on denial type
+        citation = (
+            f"⚠️ I have a record of you saying: \"{text_snippet}\"{time_ref}\n"
+            f"This indicates {slot_name} was '{denied_value}'. "
+            f"Would you like to correct this information?"
+        )
+        
+        return citation
+    
+    def _detect_gaslighting_attempt(
+        self,
+        user_query: str,
+        previous_memories: List['MemoryItem']
+    ) -> Tuple[bool, Optional[str], Optional['MemoryItem'], Optional[str]]:
+        """
+        Detect if user is trying to deny something they previously said.
+        
+        Returns:
+            (is_gaslighting, denied_value, original_memory, slot)
+        """
+        # Patterns for "I never said X" / "I didn't say X"
+        denial_patterns = [
+            (r"i\s+never\s+(?:said|mentioned|claimed|told you)\s+(?:i\s+)?(?:was\s+)?(?:a\s+)?(\w+(?:\s+\w+)?)", "claim_denial"),
+            (r"i\s+(?:didn't|did not|didn't)\s+(?:say|tell you|mention)\s+(?:i\s+)?(?:was\s+)?(?:a\s+)?(\w+(?:\s+\w+)?)", "claim_denial"),
+            (r"i\s+(?:don't|do not)\s+work\s+(?:at|for)\s+(\w+)", "employer_denial"),
+            (r"(?:that's|that is)\s+(?:not true|wrong|incorrect).*?(?:about\s+)?(\w+)", "fact_denial"),
+            (r"you(?:'re| are)\s+(?:wrong|confused|mistaken).*?(?:about\s+)?(\w+)", "accusation_denial"),
+        ]
+        
+        query_lower = user_query.lower()
+        
+        for pattern, denial_type in denial_patterns:
+            match = re.search(pattern, query_lower)
+            if match:
+                denied_value = match.group(1).strip()
+                
+                # Search for the denied value in previous memories
+                for mem in previous_memories:
+                    mem_text_lower = mem.text.lower()
+                    
+                    # Check if this memory contains the denied value
+                    if denied_value.lower() in mem_text_lower:
+                        # Determine the slot
+                        facts = extract_fact_slots(mem.text) or {}
+                        slot = ""
+                        for s, fact in facts.items():
+                            if hasattr(fact, 'value') and denied_value.lower() in str(fact.value).lower():
+                                slot = s
+                                break
+                        
+                        logger.info(f"[GASLIGHTING_DETECT] Potential gaslighting: denied '{denied_value}', found in memory: {mem.text[:50]}")
+                        return True, denied_value, mem, slot
+        
+        return False, None, None, None
     
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""
@@ -2769,6 +2866,77 @@ class CRTEnhancedRAG:
         if user_input_kind == "assertion" and (is_memory_citation or is_contradiction_status or is_memory_inventory):
             logger.info(f"[PROFILE_DEBUG] Reclassifying assertion → instruction (special query type)")
             user_input_kind = "instruction"
+
+        # ==================================================================
+        # GASLIGHTING DETECTION: Check if user is denying something they said
+        # ==================================================================
+        # This runs BEFORE normal processing to catch denial attempts early
+        # NOTE: Import at block level to avoid scope issues with later local imports
+        from .crt_ledger import ContradictionType as GaslightingContradictionType
+        try:
+            previous_user_memories = [
+                m for m in self.memory._load_all_memories()
+                if m.source == MemorySource.USER
+            ]
+            is_gaslighting, denied_value, original_memory, slot = self._detect_gaslighting_attempt(
+                user_query, previous_user_memories
+            )
+            if is_gaslighting and original_memory:
+                logger.info(f"[GASLIGHTING] Detected denial of '{denied_value}' - citing original")
+                citation = self._build_gaslighting_citation(
+                    denial_text=user_query,
+                    denied_value=denied_value,
+                    original_memory=original_memory,
+                    slot=slot
+                )
+                # Record this as a DENIAL contradiction
+                try:
+                    new_memory = self.memory.store_memory(
+                        text=user_query,
+                        confidence=0.5,  # Lower confidence for denial attempts
+                        source=MemorySource.USER,
+                        context={"type": "user_input", "kind": "denial"}
+                    )
+                    self.ledger.record_contradiction(
+                        old_memory_id=original_memory.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=0.9,  # High drift for gaslighting
+                        confidence_delta=0.45,
+                        query=user_query,
+                        summary=f"GASLIGHTING: User denied saying '{denied_value}' but we have record",
+                        old_text=original_memory.text,
+                        new_text=user_query,
+                        old_vector=original_memory.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=GaslightingContradictionType.DENIAL,
+                        suggested_policy="cite_original"
+                    )
+                except Exception as e:
+                    logger.warning(f"[GASLIGHTING] Failed to record contradiction: {e}")
+                
+                return {
+                    'answer': citation,
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.99,  # High confidence in our memory
+                    'response_type': 'belief',
+                    'gates_passed': True,
+                    'gate_reason': 'gaslighting_detected',
+                    'intent_alignment': 0.99,
+                    'memory_alignment': 1.0,
+                    'contradiction_detected': True,
+                    'contradiction_entry': None,
+                    'retrieved_memories': [],
+                    'prompt_memories': [],
+                    'unresolved_contradictions_total': 1,
+                    'unresolved_hard_conflicts': 1,
+                    'learned_suggestions': [],
+                    'heuristic_suggestions': [],
+                    'best_prior_trust': None,
+                    'session_id': self.session_id,
+                }
+        except Exception as e:
+            logger.warning(f"[GASLIGHTING] Detection failed: {e}")
 
         # P0 FIX: Process contradiction lifecycle transitions on every query
         # This moves contradictions through ACTIVE → SETTLING → SETTLED → ARCHIVED

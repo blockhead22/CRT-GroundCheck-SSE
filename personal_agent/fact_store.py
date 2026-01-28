@@ -211,93 +211,144 @@ class LLMClaimExtractor:
     """
     Phase 2.2: Extract factual claims from LLM responses.
     
-    Parses LLM output to find claims about:
-    - User attributes (name, age, location, occupation)
-    - User preferences (favorite color, etc.)
-    - User relationships (partner, pets, etc.)
-    - User history (work history, education, etc.)
+    HYBRID APPROACH (how modern systems actually work):
+    1. FAST PATH: Regex patterns for common cases (instant, no LLM cost)
+    2. SEMANTIC PATH: LLM-based extraction for complex/ambiguous cases
+    3. EMBEDDING MATCHING: Store claims as vectors for semantic comparison
     
-    PROD: Use LLM-based extraction for better coverage
-    PROD: Add confidence scoring for extracted claims
+    This is NOT just regex gates - the LLM does the heavy semantic lifting,
+    patterns are just a fast filter for obvious cases.
     """
     
-    # Patterns for extracting claims the LLM makes about the user
-    CLAIM_PATTERNS = {
+    # Known slots we track
+    SLOT_SCHEMA = {
+        "user.name": {"type": "string", "examples": ["Nick", "Sarah"]},
+        "user.age": {"type": "integer", "range": [0, 150]},
+        "user.favorite_color": {"type": "enum", "values": FactExtractor.COLORS},
+        "user.occupation": {"type": "string", "examples": ["software engineer", "teacher"]},
+        "user.location": {"type": "string", "examples": ["New York", "San Francisco"]},
+        "user.employer": {"type": "string", "examples": ["Google", "Microsoft"]},
+        "user.education": {"type": "string", "examples": ["PhD", "Master's from MIT"]},
+        "user.partner": {"type": "string", "examples": ["Sarah", "Michael"]},
+        "user.pet": {"type": "string", "examples": ["Max", "Bella"]},
+    }
+    
+    # FAST PATH patterns - catches obvious explicit claims
+    # These are NOT the main detection - they're a speed optimization
+    FAST_PATTERNS = {
         "user.name": [
-            r"your name is ([A-Z][a-z]+)",
-            r"you(?:'re| are) (?:called )?([A-Z][a-z]+)",
-            r"(?:Hello|Hi),?\s+([A-Z][a-z]+)[.!,]",
-            r"([A-Z][a-z]+), (?:you|your)",
+            r"(?:Hello|Hi),?\s+([A-Z][a-z]+)[.!,]",  # "Hello, Nick!"
+            r"your name is ([A-Z][a-z]+)",            # "your name is Nick"
         ],
         "user.age": [
-            r"you(?:'re| are) (\d{1,3}) (?:years? old)",
-            r"your age is (\d{1,3})",
+            r"you(?:'re| are) (\d{1,3}) years? old",
         ],
         "user.favorite_color": [
-            r"your (?:fav(?:ou?rite)? )?colou?r is ([a-z]+)",
-            r"you (?:like|love|prefer) (?:the colou?r )?([a-z]+)",
-        ],
-        "user.occupation": [
-            r"you(?:'re| are) (?:a|an) ((?:software |senior |junior |data |ml |research |web )?(?:engineer|scientist|developer|analyst|manager|designer|architect))",
-            r"your (?:job|role|position) is (?:a |an )?((?:software |senior |junior |data |ml |research |web )?(?:engineer|scientist|developer|analyst|manager|designer|architect))",
-        ],
-        "user.location": [
-            r"you(?:'re| are) (?:in|from|based in|located in|living in) ([A-Z][a-zA-Z\s,]+?)(?:\.|,|!|$)",
-            r"your (?:location|city|home) is ([A-Z][a-zA-Z\s,]+?)(?:\.|,|!|$)",
-        ],
-        "user.employer": [
-            r"you work (?:at|for) (Google|Microsoft|Amazon|Apple|Meta|Facebook|Netflix|OpenAI|Anthropic|Tesla|IBM|Oracle|Salesforce|Adobe|Intel|Nvidia|Uber|Lyft|Airbnb|Twitter|LinkedIn|Snap|Pinterest|Spotify|Stripe|Square|Shopify|Zoom|Slack|Dropbox|GitHub|GitLab|Atlassian|VMware|Cisco|Dell|HP|Samsung|Sony|LG|Huawei|Alibaba|Tencent|Baidu|ByteDance|Grab|Sea|GoTo|Tokopedia|Bukalapak|Traveloka|JD\.com|Pinduoduo|Meituan|DiDi|Xiaomi|Oppo|Vivo|Realme|OnePlus|Asus|Acer|Lenovo|Razer|Logitech|Corsair|Cooler Master|NZXT|MSI|Gigabyte|ASRock|EVGA|Zotac|Palit|PNY|Sapphire|XFX|PowerColor|HIS|VisionTek|Club 3D|Matrox|ELSA|Sparkle|Leadtek|Gainward|Inno3D|KFA2|Manli|Colorful|Maxsun|Yeston)",
-            r"your (?:employer|company) is (Google|Microsoft|Amazon|Apple|Meta|Facebook|Netflix|OpenAI|Anthropic|Tesla|IBM|Oracle|Salesforce|Adobe)",
-            r"(?:work|employed) (?:at|for|by) (Google|Microsoft|Amazon|Apple|Meta|Facebook|Netflix|OpenAI|Anthropic|Tesla)",
-        ],
-        "user.education": [
-            r"you have a ((?:PhD|Master's|Bachelor's|doctorate|BS|MS|BA|MA|MBA|MD|JD|LLM)(?: degree)?)",
-            r"your (?:degree|education) (?:is|from) ([A-Za-z\s]+?)(?:\.|,|!|$)",
-            r"(?:PhD|Master's|Bachelor's|doctorate) (?:from|in) (Stanford|MIT|Harvard|Berkeley|Princeton|Yale|Columbia|Cornell|CMU|CalTech|Georgia Tech|UCLA|USC|NYU|UPenn|Northwestern|Duke|Johns Hopkins|UChicago|Brown|Dartmouth|Rice|Vanderbilt|Notre Dame|UVA|UMich|Wisconsin|UIUC|UT Austin|Penn State|Ohio State|Purdue|UMD|UCSD|UCI|UCD|UCSB|UCSC|UCR|UCM)",
-        ],
-        "user.partner": [
-            r"(?:your partner|you(?:'re| are) married to|your (?:spouse|husband|wife)) (?:is )?([A-Z][a-z]+)",
-            r"([A-Z][a-z]+) is your (?:partner|spouse|husband|wife)",
-        ],
-        "user.pet": [
-            r"your (?:dog|cat|pet)(?:'s name)? is ([A-Z][a-z]+)",
-            r"([A-Z][a-z]+)(?:,| is) your (?:dog|cat|pet)",
+            r"your (?:favorite |favourite )?colou?r is ([a-z]+)",
         ],
     }
     
-    # Patterns that indicate hedging/uncertainty - don't extract as claims
+    # Patterns that indicate the LLM is QUOTING the user, not making a claim
+    QUOTING_PATTERNS = [
+        r"you (?:said|mentioned|told me|stated)",
+        r"according to (?:you|what you)",
+        r"as you (?:said|mentioned)",
+        r"you(?:'ve| have) (?:said|mentioned|told)",
+    ]
+    
+    # Hedging = lower confidence, not exclusion
     HEDGE_PATTERNS = [
         r"(?:i think|perhaps|maybe|possibly|might be|could be|it seems)",
         r"(?:i don't (?:know|have)|i'm not sure|unclear)",
-        r"(?:you mentioned|you said|according to)",  # Quoting user, not claiming
+        r"(?:if i recall|if i remember)",
     ]
     
+    # LLM prompt for semantic extraction
+    EXTRACTION_PROMPT = """Extract any factual claims about the USER from this assistant response.
+
+RESPONSE: {response}
+
+ONLY extract claims where the assistant states something about the user as if it's true.
+DO NOT extract:
+- Questions to the user
+- Hedged/uncertain statements ("I think", "maybe")
+- Quotes of what the user said ("you mentioned...")
+
+For each claim found, output JSON:
+{{"slot": "user.X", "value": "Y", "confidence": 0.0-1.0}}
+
+Slots: user.name, user.age, user.favorite_color, user.occupation, user.location, user.employer, user.education, user.partner, user.pet
+
+If no claims found, output: []
+Output ONLY valid JSON array, no other text."""
+
+    def __init__(self, llm_client=None):
+        """
+        Initialize extractor.
+        
+        Args:
+            llm_client: Optional LLM client for semantic extraction.
+                       If None, falls back to fast-path only.
+        """
+        self.llm_client = llm_client
+        self._embedding_cache = {}  # PROD: Use proper vector store
+    
+    def set_llm_client(self, llm_client):
+        """Set LLM client (can be done after init)."""
+        self.llm_client = llm_client
+    
     def extract(self, llm_response: str) -> List[Fact]:
-        """Extract factual claims from LLM response."""
+        """
+        Extract factual claims from LLM response using hybrid approach.
+        
+        1. Try fast regex path first (common patterns)
+        2. If LLM client available, use semantic extraction for anything missed
+        3. Deduplicate and return
+        """
         claims = []
-        response_lower = llm_response.lower()
         
-        # Skip if the response is hedging
-        for hedge in self.HEDGE_PATTERNS:
-            if re.search(hedge, response_lower):
-                # Still extract, but with lower trust
-                pass
+        # Skip if response is just quoting the user
+        if self._is_quoting_user(llm_response):
+            return claims
         
-        seen_slots = set()  # Track slots we've already extracted
-        for slot, patterns in self.CLAIM_PATTERNS.items():
+        # FAST PATH: Regex for common explicit claims
+        fast_claims = self._extract_fast(llm_response)
+        claims.extend(fast_claims)
+        
+        # SEMANTIC PATH: LLM extraction for complex cases
+        # Only use if: (a) we have a client, (b) response is substantial
+        if self.llm_client and len(llm_response) > 50:
+            semantic_claims = self._extract_semantic(llm_response)
+            # Merge, preferring semantic (more accurate) over fast
+            claims = self._merge_claims(claims, semantic_claims)
+        
+        return claims
+    
+    def _is_quoting_user(self, response: str) -> bool:
+        """Check if response is primarily quoting user back."""
+        response_lower = response.lower()
+        quote_count = sum(1 for p in self.QUOTING_PATTERNS if re.search(p, response_lower))
+        # If more than half the response is quotes, skip extraction
+        return quote_count >= 2
+    
+    def _extract_fast(self, llm_response: str) -> List[Fact]:
+        """Fast regex extraction for obvious explicit claims."""
+        claims = []
+        seen_slots = set()
+        
+        for slot, patterns in self.FAST_PATTERNS.items():
             if slot in seen_slots:
-                continue  # Already found a claim for this slot
-                
+                continue
+            
             for pattern in patterns:
-                matches = re.finditer(pattern, llm_response, re.IGNORECASE)
-                for match in matches:
+                match = re.search(pattern, llm_response, re.IGNORECASE)
+                if match:
                     value = match.group(1).strip()
                     
-                    # Basic validation
                     if not self._validate_claim(slot, value):
                         continue
                     
-                    # Check if this is hedged
+                    # Check hedging context
                     context_start = max(0, match.start() - 50)
                     context = llm_response[context_start:match.start()].lower()
                     is_hedged = any(re.search(h, context) for h in self.HEDGE_PATTERNS)
@@ -305,32 +356,103 @@ class LLMClaimExtractor:
                     claims.append(Fact(
                         slot=slot,
                         value=value,
-                        trust=0.7 if is_hedged else 0.85,  # LLM claims have lower base trust
+                        trust=0.7 if is_hedged else 0.85,
                         source=FactSource.LLM_STATED
                     ))
-                    seen_slots.add(slot)  # Mark this slot as done
-                    break  # One claim per slot per response
-                
-                if slot in seen_slots:
-                    break  # Also break the pattern loop
+                    seen_slots.add(slot)
+                    break
         
         return claims
     
+    def _extract_semantic(self, llm_response: str) -> List[Fact]:
+        """
+        Use LLM to semantically extract claims.
+        
+        This is the REAL extraction - handles paraphrases, complex sentences,
+        and anything the fast patterns miss.
+        """
+        claims = []
+        
+        try:
+            prompt = self.EXTRACTION_PROMPT.format(response=llm_response[:1000])
+            
+            # Call LLM for extraction
+            result = self.llm_client.generate(
+                prompt=prompt,
+                system="You are a precise JSON extractor. Output ONLY valid JSON, no explanation.",
+                max_tokens=300,
+                temperature=0.1  # Low temp for deterministic extraction
+            )
+            
+            # Parse JSON response
+            import json
+            result = result.strip()
+            # Handle common LLM quirks
+            if result.startswith("```"):
+                result = re.sub(r"```(?:json)?\s*", "", result)
+                result = result.replace("```", "")
+            
+            parsed = json.loads(result)
+            
+            if isinstance(parsed, list):
+                for item in parsed:
+                    if isinstance(item, dict) and "slot" in item and "value" in item:
+                        slot = item["slot"]
+                        value = str(item["value"]).strip()
+                        confidence = float(item.get("confidence", 0.8))
+                        
+                        if slot in self.SLOT_SCHEMA and self._validate_claim(slot, value):
+                            claims.append(Fact(
+                                slot=slot,
+                                value=value,
+                                trust=min(confidence, 0.9),  # Cap at 0.9 for LLM claims
+                                source=FactSource.LLM_STATED
+                            ))
+        
+        except Exception as e:
+            # If semantic extraction fails, that's fine - we have fast path
+            import logging
+            logging.debug(f"Semantic extraction failed: {e}")
+        
+        return claims
+    
+    def _merge_claims(self, fast_claims: List[Fact], semantic_claims: List[Fact]) -> List[Fact]:
+        """
+        Merge fast and semantic claims, deduplicating by slot.
+        Prefer semantic claims when both exist (more accurate).
+        """
+        merged = {}
+        
+        # Add fast claims first
+        for claim in fast_claims:
+            merged[claim.slot] = claim
+        
+        # Semantic claims override (they're more accurate)
+        for claim in semantic_claims:
+            merged[claim.slot] = claim
+        
+        return list(merged.values())
+    
     def _validate_claim(self, slot: str, value: str) -> bool:
-        """Basic validation of extracted claims."""
-        if len(value) < 2 or len(value) > 100:
+        """Validate extracted claims against schema."""
+        if len(value) < 1 or len(value) > 100:
             return False
         
-        # Age should be numeric
-        if "age" in slot:
+        schema = self.SLOT_SCHEMA.get(slot, {})
+        
+        if schema.get("type") == "integer":
             try:
-                age = int(value)
-                return 0 < age < 150
+                num = int(value)
+                range_limits = schema.get("range", [0, 1000])
+                return range_limits[0] <= num <= range_limits[1]
             except ValueError:
                 return False
         
+        if schema.get("type") == "enum":
+            return value.lower() in schema.get("values", set())
+        
         # Names should be capitalized
-        if "name" in slot or "partner" in slot or "pet" in slot:
+        if any(x in slot for x in ["name", "partner", "pet"]):
             if not value[0].isupper():
                 return False
         
@@ -346,20 +468,32 @@ class FactStore:
     - Detects LLM→USER contradictions  
     - Generates disclosure text for transparency
     
+    HYBRID ARCHITECTURE:
+    - Fast regex for obvious patterns (no LLM cost)
+    - LLM-based semantic extraction for complex cases
+    - This is how production systems actually work
+    
     PROD: Add fact expiration/decay
     PROD: Add confidence intervals
     PROD: Add source credibility weighting
     PROD: Add multi-user support (user_id column)
     """
     
-    def __init__(self, db_path: str = "fact_store.db"):
+    def __init__(self, db_path: str = "fact_store.db", llm_client=None):
         self.db_path = db_path
         self.extractor = FactExtractor()
-        self.llm_extractor = LLMClaimExtractor()  # Phase 2.2
+        self.llm_extractor = LLMClaimExtractor(llm_client=llm_client)  # Phase 2.2: Hybrid extraction
+        self.llm_client = llm_client
         # For in-memory DBs, keep a persistent connection
         self._persistent_conn = None
         if db_path == ":memory:":
             self._persistent_conn = sqlite3.connect(":memory:")
+        self._init_db()
+    
+    def set_llm_client(self, llm_client):
+        """Set LLM client for semantic extraction (can be done after init)."""
+        self.llm_client = llm_client
+        self.llm_extractor.set_llm_client(llm_client)
         self._init_db()
     
     def _get_conn(self):

@@ -48,6 +48,7 @@ class ContradictionType:
     REVISION = "revision"      # Explicit correction ("actually", "I meant", "not X")
     TEMPORAL = "temporal"      # Time-based progression (Senior → Principal)
     CONFLICT = "conflict"      # Mutually exclusive facts (Microsoft vs Amazon)
+    DENIAL = "denial"          # User denies a previously stated fact (gaslighting detection)
 
 
 @dataclass
