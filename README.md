@@ -81,12 +81,6 @@ You: facts
 
 ### How Modern LLMs vs CRT Handle Contradiction
 
-**Pure LLMs (GPT-4, Claude, etc.):**
-- Use attention mechanisms for implicit context tracking
-- No persistent memory beyond context window
-- Can be gaslit - no way to cite "you said X earlier"
-- No contradiction detection - just predicts next token
-
 **CRT Hybrid Architecture:**
 1. **Fast path (regex)** - Instant extraction of obvious patterns (no LLM cost)
 2. **Semantic path (LLM)** - Uses the LLM itself to extract complex claims
