@@ -21,12 +21,16 @@ export function ChatThreadView(props: {
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
   xrayMode?: boolean
+  // Streaming props
+  streamingThinking?: string
+  streamingResponse?: string
+  isThinking?: boolean
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [props.thread.messages.length, props.typing])
+  }, [props.thread.messages.length, props.typing, props.streamingThinking, props.streamingResponse])
 
   const empty = props.thread.messages.length === 0
 
@@ -100,7 +104,43 @@ export function ChatThreadView(props: {
                 ))}
               </AnimatePresence>
 
-              {props.typing ? (
+              {/* Streaming thinking display */}
+              {props.isThinking && props.streamingThinking ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm shadow-card">
+                    <div className="mb-2 flex items-center gap-2 text-amber-400">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
+                      <span className="font-medium">Thinking...</span>
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto whitespace-pre-wrap text-white/70">
+                      {props.streamingThinking}
+                    </div>
+                  </div>
+                </motion.div>
+              ) : null}
+
+              {/* Streaming response display */}
+              {props.streamingResponse && !props.isThinking ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90 shadow-card">
+                    <div className="whitespace-pre-wrap">{props.streamingResponse}</div>
+                    <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-violet-500" />
+                  </div>
+                </motion.div>
+              ) : null}
+
+              {/* Simple typing indicator (when not streaming) */}
+              {props.typing && !props.streamingThinking && !props.streamingResponse ? (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}

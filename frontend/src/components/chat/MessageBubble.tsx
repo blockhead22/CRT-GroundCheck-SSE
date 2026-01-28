@@ -150,12 +150,12 @@ export function MessageBubble(props: {
               </span>
             ) : null}
 
-            {meta?.reintroduced_claims_count > 0 ? (
+            {(meta?.reintroduced_claims_count ?? 0) > 0 ? (
               <span
                 className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
-                title={`This answer uses ${meta.reintroduced_claims_count} contradicted ${meta.reintroduced_claims_count === 1 ? 'memory' : 'memories'}`}
+                title={`This answer uses ${meta!.reintroduced_claims_count} contradicted ${meta!.reintroduced_claims_count === 1 ? 'memory' : 'memories'}`}
               >
-                ⚠️ CONTRADICTED CLAIMS ({meta.reintroduced_claims_count})
+                ⚠️ CONTRADICTED CLAIMS ({meta!.reintroduced_claims_count})
               </span>
             ) : null}
 

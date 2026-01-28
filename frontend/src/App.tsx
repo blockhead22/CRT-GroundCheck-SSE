@@ -16,7 +16,7 @@ import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
 import { ShowcasePage } from './pages/ShowcasePage'
 import { newId } from './lib/id'
-import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -49,6 +49,12 @@ export default function App() {
   const [xrayMode, setXrayMode] = useState(false)
   const [demoModeOpen, setDemoModeOpen] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  
+  // Streaming state
+  const [streamingThinking, setStreamingThinking] = useState<string>('')
+  const [streamingResponse, setStreamingResponse] = useState<string>('')
+  const [isThinking, setIsThinking] = useState(false)
+  const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -232,37 +238,128 @@ export default function App() {
 
     upsertThread(withUser)
     setTyping(true)
+    
+    // Reset streaming state
+    setStreamingThinking('')
+    setStreamingResponse('')
+    setIsThinking(false)
 
     try {
-      const res = await sendToCrtApi({ threadId: withUser.id, message: outgoingText, history: withUser.messages })
-      const at = Date.now()
-      const asstMsg = {
-        id: newId('m'),
-        role: 'assistant' as const,
-        text: res.answer,
-        createdAt: at,
-        crt: {
-          response_type: res.response_type,
-          gates_passed: res.gates_passed,
-          gate_reason: res.gate_reason ?? null,
-          session_id: res.session_id ?? null,
-          confidence: res.metadata?.confidence ?? null,
-          intent_alignment: res.metadata?.intent_alignment ?? null,
-          memory_alignment: res.metadata?.memory_alignment ?? null,
-          contradiction_detected: res.metadata?.contradiction_detected ?? null,
-          unresolved_contradictions_total: res.metadata?.unresolved_contradictions_total ?? null,
-          unresolved_hard_conflicts: res.metadata?.unresolved_hard_conflicts ?? null,
-          retrieved_memories: res.metadata?.retrieved_memories ?? [],
-          prompt_memories: res.metadata?.prompt_memories ?? [],
-          learned_suggestions: res.metadata?.learned_suggestions ?? [],
-          heuristic_suggestions: res.metadata?.heuristic_suggestions ?? [],
-          agent_activated: res.metadata?.agent_activated ?? null,
-          agent_answer: res.metadata?.agent_answer ?? null,
-          agent_trace: res.metadata?.agent_trace ?? null,
-          xray: res.metadata?.xray ?? null,
-        },
+      if (useStreaming) {
+        // Use streaming API
+        let finalContent = ''
+        let thinkingContent = ''
+        
+        await streamFromCrtApi({
+          threadId: withUser.id,
+          message: outgoingText,
+          callbacks: {
+            onStatus: (status) => {
+              // Could show status in UI if desired
+              console.log('[Stream Status]', status)
+            },
+            onThinkingStart: () => {
+              setIsThinking(true)
+            },
+            onThinkingToken: (token) => {
+              thinkingContent += token
+              setStreamingThinking(thinkingContent)
+            },
+            onThinkingEnd: () => {
+              setIsThinking(false)
+            },
+            onToken: (token) => {
+              finalContent += token
+              setStreamingResponse(finalContent)
+            },
+            onDone: (content, metadata) => {
+              const at = Date.now()
+              const asstMsg = {
+                id: newId('m'),
+                role: 'assistant' as const,
+                text: content,
+                createdAt: at,
+                crt: {
+                  response_type: 'speech',
+                  gates_passed: true,
+                  gate_reason: null,
+                  session_id: null,
+                  confidence: null,
+                  intent_alignment: null,
+                  memory_alignment: null,
+                  contradiction_detected: null,
+                  unresolved_contradictions_total: null,
+                  unresolved_hard_conflicts: null,
+                  retrieved_memories: [],
+                  prompt_memories: [],
+                  learned_suggestions: [],
+                  heuristic_suggestions: [],
+                  agent_activated: null,
+                  agent_answer: null,
+                  agent_trace: null,
+                  xray: null,
+                  // Add thinking content to metadata
+                  thinking: thinkingContent || undefined,
+                },
+              }
+              upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+              // Clear streaming state
+              setStreamingThinking('')
+              setStreamingResponse('')
+              setIsThinking(false)
+            },
+            onError: (error) => {
+              const at = Date.now()
+              const asstMsg = {
+                id: newId('m'),
+                role: 'assistant' as const,
+                text: `Stream error: ${error}`,
+                createdAt: at,
+                crt: {
+                  response_type: 'speech',
+                  gates_passed: false,
+                  gate_reason: 'stream_error',
+                },
+              }
+              upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+              setStreamingThinking('')
+              setStreamingResponse('')
+              setIsThinking(false)
+            },
+          },
+        })
+      } else {
+        // Use non-streaming API (original behavior)
+        const res = await sendToCrtApi({ threadId: withUser.id, message: outgoingText, history: withUser.messages })
+        const at = Date.now()
+        const asstMsg = {
+          id: newId('m'),
+          role: 'assistant' as const,
+          text: res.answer,
+          createdAt: at,
+          crt: {
+            response_type: res.response_type,
+            gates_passed: res.gates_passed,
+            gate_reason: res.gate_reason ?? null,
+            session_id: res.session_id ?? null,
+            confidence: res.metadata?.confidence ?? null,
+            intent_alignment: res.metadata?.intent_alignment ?? null,
+            memory_alignment: res.metadata?.memory_alignment ?? null,
+            contradiction_detected: res.metadata?.contradiction_detected ?? null,
+            unresolved_contradictions_total: res.metadata?.unresolved_contradictions_total ?? null,
+            unresolved_hard_conflicts: res.metadata?.unresolved_hard_conflicts ?? null,
+            retrieved_memories: res.metadata?.retrieved_memories ?? [],
+            prompt_memories: res.metadata?.prompt_memories ?? [],
+            learned_suggestions: res.metadata?.learned_suggestions ?? [],
+            heuristic_suggestions: res.metadata?.heuristic_suggestions ?? [],
+            agent_activated: res.metadata?.agent_activated ?? null,
+            agent_answer: res.metadata?.agent_answer ?? null,
+            agent_trace: res.metadata?.agent_trace ?? null,
+            xray: res.metadata?.xray ?? null,
+          },
+        }
+        upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
       }
-      upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
     } catch (e) {
       const at = Date.now()
       const errText = e instanceof Error ? e.message : String(e)
@@ -394,6 +491,8 @@ export default function App() {
               xrayMode={xrayMode}
               onToggleXray={() => setXrayMode((v) => !v)}
               onOpenDemoMode={() => setDemoModeOpen(true)}
+              streamingMode={useStreaming}
+              onToggleStreaming={() => setUseStreaming((v) => !v)}
             />
 
             <div className="relative min-h-0 flex-1">
@@ -416,6 +515,9 @@ export default function App() {
                       onOpenSourceInspector={setSourceInspectorMemoryId}
                       onOpenAgentPanel={setAgentPanelMessageId}
                       xrayMode={xrayMode}
+                      streamingThinking={streamingThinking}
+                      streamingResponse={streamingResponse}
+                      isThinking={isThinking}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

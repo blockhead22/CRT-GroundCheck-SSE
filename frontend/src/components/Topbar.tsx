@@ -11,6 +11,8 @@ export function Topbar(props: {
   xrayMode?: boolean
   onToggleXray?: () => void
   onOpenDemoMode?: () => void
+  streamingMode?: boolean
+  onToggleStreaming?: () => void
 }) {
   const initial = (props.userName?.trim()?.[0] || 'U').toUpperCase()
   const statusColor =
@@ -73,6 +75,20 @@ export function Topbar(props: {
             title="Demo Mode: Quick 5-turn contradiction demonstration"
           >
             🎬 Demo
+          </button>
+        ) : null}
+        {props.onToggleStreaming ? (
+          <button
+            onClick={props.onToggleStreaming}
+            className={
+              'rounded-xl border px-3 py-2 text-sm transition-colors ' +
+              (props.streamingMode
+                ? 'border-amber-500/50 bg-amber-500/20 text-amber-200 hover:bg-amber-500/30'
+                : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10')
+            }
+            title="Toggle streaming mode (show AI thinking in real-time)"
+          >
+            {props.streamingMode ? '⚡ Stream ON' : '⚡ Stream'}
           </button>
         ) : null}
         {props.onToggleXray ? (

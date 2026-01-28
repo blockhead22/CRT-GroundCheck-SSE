@@ -109,12 +109,17 @@ export type CtrMessageMeta = {
   // Gaslighting detection
   gaslighting_detected?: boolean
   gaslighting_citation?: string
+  // Streaming thinking content
+  thinking?: string
+  // Reintroduced claims tracking
+  reintroduced_claims_count?: number
   xray?: {
     memories_used?: Array<{
       text: string
       trust: number
       confidence: number
       timestamp?: number | null
+      reintroduced_claim?: boolean
     }>
     conflicts_detected?: Array<{
       old: string
