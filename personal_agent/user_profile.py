@@ -498,6 +498,52 @@ class GlobalUserProfile:
         conn.commit()
         conn.close()
     
+    def consolidate_single_value_slots(self) -> Dict[str, Dict]:
+        """
+        Fix existing data: For single-value slots with multiple values,
+        keep only the most recent one and mark others as inactive.
+        
+        Returns:
+            Dictionary of {slot: {'kept': value, 'deactivated': [values]}} for slots that were consolidated
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        consolidated = {}
+        
+        for slot in SINGLE_VALUE_SLOTS:
+            # Get all active values for this slot
+            cursor.execute("""
+                SELECT id, value FROM user_profile_multi 
+                WHERE slot = ? AND active = 1
+                ORDER BY timestamp DESC
+            """, (slot,))
+            rows = cursor.fetchall()
+            
+            if len(rows) > 1:
+                # Keep the most recent, deactivate the rest
+                kept_id, kept_value = rows[0]
+                deactivated_values = []
+                
+                for row_id, value in rows[1:]:
+                    cursor.execute("""
+                        UPDATE user_profile_multi 
+                        SET active = 0
+                        WHERE id = ?
+                    """, (row_id,))
+                    deactivated_values.append(value)
+                
+                consolidated[slot] = {
+                    'kept': kept_value,
+                    'deactivated': deactivated_values
+                }
+                logger.info(f"[PROFILE_CONSOLIDATE] {slot}: kept '{kept_value}', deactivated {deactivated_values}")
+        
+        conn.commit()
+        conn.close()
+        
+        return consolidated
+    
     def to_memory_texts(self) -> List[str]:
         """
         Convert profile facts to memory-like text format.

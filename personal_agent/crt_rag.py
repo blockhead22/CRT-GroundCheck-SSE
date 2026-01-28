@@ -3023,7 +3023,32 @@ class CRTEnhancedRAG:
             # This enables cross-thread memory (e.g., name persists across chats)
             try:
                 logger.info(f"[PROFILE_DEBUG] Calling user_profile.update_from_text with: {user_query[:100]}")
-                self.user_profile.update_from_text(user_query, thread_id="current")
+                profile_result = self.user_profile.update_from_text(user_query, thread_id="current")
+                
+                # Log any profile fact contradictions to the ledger
+                if profile_result and profile_result.get('replaced'):
+                    for slot, replacement in profile_result['replaced'].items():
+                        logger.info(f"[PROFILE_CONTRADICTION] {slot}: '{replacement['old']}' -> '{replacement['new']}'")
+                        try:
+                            # Record in the contradiction ledger for transparency
+                            self.ledger.record_contradiction(
+                                old_memory_id=f"profile_{slot}_old",
+                                new_memory_id=f"profile_{slot}_new", 
+                                old_text=f"FACT: {slot} = {replacement['old']}",
+                                new_text=f"FACT: {slot} = {replacement['new']}",
+                                contradiction_type="profile_update",
+                                confidence=0.95,
+                                metadata={
+                                    "source": "user_profile",
+                                    "slot": slot,
+                                    "old_value": replacement['old'],
+                                    "new_value": replacement['new'],
+                                    "all_old_values": replacement.get('all_old', [])
+                                }
+                            )
+                        except Exception as ledger_err:
+                            logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
+                
                 logger.info(f"[PROFILE_DEBUG] ✅ Profile update completed successfully")
             except Exception as e:
                 logger.error(f"[PROFILE_DEBUG] ❌ Failed to update user profile: {e}", exc_info=True)

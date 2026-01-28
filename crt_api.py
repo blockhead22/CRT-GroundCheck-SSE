@@ -1398,6 +1398,28 @@ def create_app() -> FastAPI:
         name = slots.get("name")
         return ProfileResponse(thread_id=tid, name=name, slots=slots)
 
+    @app.post("/api/profile/consolidate")
+    def consolidate_profile():
+        """
+        Fix single-value slots that have multiple values.
+        
+        For slots like 'name' that should only have one value,
+        this keeps the most recent and deactivates older values.
+        
+        Use this to clean up after the multi-value bug is fixed.
+        """
+        engine = get_engine("default")
+        try:
+            result = engine.user_profile.consolidate_single_value_slots()
+            return {
+                "status": "success",
+                "consolidated": result,
+                "message": f"Consolidated {len(result)} slots"
+            }
+        except Exception as e:
+            logger.error(f"[PROFILE] Failed to consolidate: {e}")
+            return {"status": "error", "error": str(e)}
+
     @app.post("/api/profile/set_name")
     async def set_profile_name(req: ChatSendRequest) -> ChatSendResponse:
         """Set profile name by sending a FACT message through CRT."""
