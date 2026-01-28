@@ -2440,6 +2440,7 @@ def create_app() -> FastAPI:
         
         Format: data: {"type": "...", "content": "..."}
         """
+        logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
         
         def generate_stream():
             try:
@@ -2552,7 +2553,7 @@ Be concise but thorough. If you don't have information about something, say so h
                         # Extract thinking content from tags (accumulate for storage)
                         # Remove the tags themselves but keep the content
                         clean_thinking = token.replace('<think>', '').replace('</think>', '')
-                        if clean_thinking and '</think>' not in token:
+                        if clean_thinking:
                             thinking_content += clean_thinking
                             yield f"data: {json.dumps({'type': 'thinking_token', 'content': clean_thinking})}\n\n"
                     
@@ -2580,11 +2581,12 @@ Be concise but thorough. If you don't have information about something, say so h
                         thinking_content = think_match.group(1).strip()
                         logger.debug(f"[STREAM] Extracted {len(thinking_content)} chars from <think> tags")
                 
-                logger.debug(f"[STREAM] Thinking content length: {len(thinking_content)} chars")
+                logger.info(f"[STREAM] Thinking content length: {len(thinking_content)} chars")
                 
                 # Store full thinking trace for lazy loading
                 trace_id = None
                 if thinking_content and len(thinking_content.strip()) > 50:
+                    logger.info(f"[STREAM] Attempting to store reasoning trace...")
                     try:
                         trace_id = engine.memory.store_reasoning_trace(
                             query=req.message,
@@ -2597,9 +2599,13 @@ Be concise but thorough. If you don't have information about something, say so h
                                 'confidence': result.get('confidence', 0.7),
                             }
                         )
-                        logger.debug(f"[STREAM] Stored reasoning trace {trace_id} ({len(thinking_content)} chars)")
+                        logger.info(f"[STREAM] Stored reasoning trace {trace_id} ({len(thinking_content)} chars)")
                     except Exception as e:
                         logger.warning(f"[STREAM] Failed to store reasoning trace: {e}")
+                        import traceback
+                        logger.warning(traceback.format_exc())
+                else:
+                    logger.info(f"[STREAM] NOT storing trace - thinking too short or empty")
                 
                 # Build metadata including thinking for later display
                 # Pull more values from the engine.query result
