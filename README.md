@@ -171,6 +171,59 @@ pip install -e .
 pip install -e groundcheck/
 ```
 
+## How to Run the Backend (API Server)
+
+Start the backend API server (FastAPI):
+```bash
+# From repository root
+uvicorn crt_api:app --host 0.0.0.0 --port 8123 --reload
+```
+Or, for production:
+```bash
+python crt_api.py
+```
+The API runs on `http://127.0.0.1:8123` by default.
+
+If you want LLM features, make sure [Ollama](https://ollama.ai/) is installed and running:
+```bash
+ollama serve
+# (Optional) ollama pull llama3.2
+```
+
+---
+
+## How to Start the Frontend
+
+The frontend is a React app in the `frontend/` directory.
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Then open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## How to Run the Stress Tests
+
+### Adversarial Challenge (no Ollama required)
+```bash
+python tools/adversarial_crt_challenge.py --turns 35
+```
+
+### CRT Stress Test (requires Ollama running)
+```bash
+ollama serve
+python tools/crt_stress_test.py --turns 30 --print-every 5
+```
+
+### Run all tests (pytest)
+```bash
+pytest
+```
+
+---
 ### Basic usage (Programmatic)
 ```python
 from personal_agent.crt_rag import CRTEnhancedRAG
