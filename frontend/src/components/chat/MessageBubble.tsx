@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { ChatMessage } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
+import { getReasoningTrace } from '../../lib/api'
 
 function pct01(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
@@ -11,10 +12,48 @@ function pct01(v: number | null | undefined): string {
 }
 
 /** Collapsible thinking/reasoning dropdown */
-function ThinkingDropdown({ thinking }: { thinking: string }) {
+function ThinkingDropdown({ thinking, traceId }: { thinking?: string | null; traceId?: string | null }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [lazyThinking, setLazyThinking] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
   
-  if (!thinking || thinking.trim().length === 0) return null
+  // The actual content to display
+  const displayContent = thinking || lazyThinking
+  
+  // Can show dropdown if we have content OR a trace_id to lazy load from
+  const canShow = !!(displayContent?.trim() || traceId)
+  
+  // Lazy load thinking content when user opens and we only have trace_id
+  const loadThinking = useCallback(async () => {
+    if (!traceId || lazyThinking || thinking) return
+    setIsLoading(true)
+    setLoadError(null)
+    try {
+      const trace = await getReasoningTrace(traceId)
+      if (trace?.thinking_content) {
+        setLazyThinking(trace.thinking_content)
+      } else {
+        setLoadError('Thinking content not found')
+      }
+    } catch (err) {
+      setLoadError('Failed to load thinking')
+      console.error('Failed to load thinking trace:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [traceId, lazyThinking, thinking])
+  
+  // When opening, trigger lazy load if needed
+  useEffect(() => {
+    if (isOpen && !displayContent && traceId && !isLoading && !loadError) {
+      loadThinking()
+    }
+  }, [isOpen, displayContent, traceId, isLoading, loadError, loadThinking])
+  
+  if (!canShow) return null
+  
+  const charCount = displayContent?.length || 0
   
   return (
     <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -29,7 +68,11 @@ function ThinkingDropdown({ thinking }: { thinking: string }) {
         <span className="flex items-center gap-2">
           <span>🧠</span>
           <span>Agent Thinking</span>
-          <span className="text-amber-300/60">({thinking.length} chars)</span>
+          {charCount > 0 ? (
+            <span className="text-amber-300/60">({charCount} chars)</span>
+          ) : traceId ? (
+            <span className="text-amber-300/60">(click to load)</span>
+          ) : null}
         </span>
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
@@ -47,7 +90,15 @@ function ThinkingDropdown({ thinking }: { thinking: string }) {
           className="px-3 pb-3"
         >
           <div className="max-h-64 overflow-y-auto rounded-lg bg-black/30 p-3 text-[11px] text-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
-            {thinking}
+            {isLoading ? (
+              <span className="text-amber-300/60 animate-pulse">Loading thinking content...</span>
+            ) : loadError ? (
+              <span className="text-red-400">{loadError}</span>
+            ) : displayContent ? (
+              displayContent
+            ) : (
+              <span className="text-amber-300/60">No thinking content available</span>
+            )}
           </div>
         </motion.div>
       )}
@@ -259,8 +310,8 @@ export function MessageBubble(props: {
         ) : null}
 
         {/* Collapsible Thinking Section */}
-        {meta?.thinking && isAssistant ? (
-          <ThinkingDropdown thinking={meta.thinking} />
+        {(meta?.thinking || meta?.thinking_trace_id) && isAssistant ? (
+          <ThinkingDropdown thinking={meta.thinking} traceId={meta.thinking_trace_id} />
         ) : null}
 
         {props.xrayMode && meta?.xray && isAssistant ? (

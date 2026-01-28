@@ -302,6 +302,8 @@ export default function App() {
                   xray: null,
                   // Add thinking content from metadata or streamed content
                   thinking: finalThinking,
+                  // Store trace_id for lazy-loading after refresh
+                  thinking_trace_id: (metadata?.thinking_trace_id as string) || null,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

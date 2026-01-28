@@ -2517,6 +2517,7 @@ Be concise but thorough. If you don't have information about something, say so h
                 thinking_content = ""
                 response_started = False
                 sent_thinking_start = False
+                in_think_tags = False  # Track if we're inside <think>...</think> tags
                 
                 for chunk in stream:
                     # Check for thinking content (deepseek-r1 returns it separately)
@@ -2534,25 +2535,36 @@ Be concise but thorough. If you don't have information about something, say so h
                         continue
                     
                     # If we were receiving thinking and now got content, end thinking
-                    if sent_thinking_start and not response_started:
+                    if sent_thinking_start and not response_started and not in_think_tags:
                         response_started = True
                         yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
                     
                     full_response += token
                     
-                    # Also detect <think> tags in content for backwards compatibility
-                    if '<think>' in full_response and not sent_thinking_start:
-                        sent_thinking_start = True
-                        yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
+                    # Handle <think> tags in content (backwards compatibility)
+                    if '<think>' in token:
+                        in_think_tags = True
+                        if not sent_thinking_start:
+                            sent_thinking_start = True
+                            yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
+                    
+                    if in_think_tags:
+                        # Extract thinking content from tags (accumulate for storage)
+                        # Remove the tags themselves but keep the content
+                        clean_thinking = token.replace('<think>', '').replace('</think>', '')
+                        if clean_thinking and '</think>' not in token:
+                            thinking_content += clean_thinking
+                            yield f"data: {json.dumps({'type': 'thinking_token', 'content': clean_thinking})}\n\n"
                     
                     if '</think>' in token:
+                        in_think_tags = False
                         yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
                         continue
                     
-                    if '<think>' in token:
-                        continue  # Skip the tag itself
+                    if in_think_tags:
+                        continue  # Don't stream thinking as response tokens
                     
-                    # Stream response tokens
+                    # Stream response tokens (outside of think tags)
                     clean_token = token.replace('<think>', '').replace('</think>', '')
                     if clean_token:
                         yield f"data: {json.dumps({'type': 'token', 'content': clean_token})}\n\n"
@@ -2560,6 +2572,15 @@ Be concise but thorough. If you don't have information about something, say so h
                 # Clean final response (remove thinking tags)
                 import re as regex
                 clean_response = regex.sub(r'<think>.*?</think>', '', full_response, flags=regex.DOTALL).strip()
+                
+                # Also extract thinking from tags if we didn't get it from native thinking
+                if not thinking_content and '<think>' in full_response:
+                    think_match = regex.search(r'<think>(.*?)</think>', full_response, flags=regex.DOTALL)
+                    if think_match:
+                        thinking_content = think_match.group(1).strip()
+                        logger.debug(f"[STREAM] Extracted {len(thinking_content)} chars from <think> tags")
+                
+                logger.debug(f"[STREAM] Thinking content length: {len(thinking_content)} chars")
                 
                 # Store full thinking trace for lazy loading
                 trace_id = None

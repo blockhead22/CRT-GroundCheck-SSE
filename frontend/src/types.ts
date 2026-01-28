@@ -111,6 +111,8 @@ export type CtrMessageMeta = {
   gaslighting_citation?: string
   // Streaming thinking content
   thinking?: string
+  // Lazy-load trace ID for thinking content (persists after refresh)
+  thinking_trace_id?: string | null
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {
