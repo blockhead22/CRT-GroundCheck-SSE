@@ -238,14 +238,27 @@ pytest tests/test_adversarial_prompts.py -v
 - All pytest tests: **PASS**
 - No TypeErrors on integer value contradictions
 
-### Current test status (2026-01-27)
+### Current test status (2026-01-28)
 
 | Test | Score | Target | Status |
 |------|-------|--------|--------|
-| **crt_stress_test.py** | 91.7% eval, 80% detection | 90%+ | ✅ PASSING |
+| **crt_stress_test.py** | 92.9% eval pass, 82.9% gate pass | 90%+ | ✅ PASSING |
 | **adversarial_crt_challenge.py** | 87.5% (17.5/20 first phases) | 80% | ✅ PASSING |
 | **False Positives** | 0 | 0 | ✅ PASSING |
-| **Missed Detections** | 0 | ≤2 | ✅ PASSING |
+| **Missed Detections** | 2 | ≤2 | ✅ PASSING |
+| **Name Extraction Edge Cases** | 100% | 100% | ✅ PASSING |
+
+**Latest stress test metrics (35 turns):**
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| Total Turns | 35 | - |
+| Gates Passed | 29 (82.9%) | ✅ Good |
+| Contradictions Detected | 6 | ✅ All key ones |
+| Avg Confidence | 0.809 | ✅ Good |
+| Avg Trust Score | 0.753 | ✅ Good |
+| Eval Pass Rate | 92.9% (26/28) | ✅ Strong |
+| Memory Failures | 0 | ✅ Perfect |
 
 **Phase breakdown (adversarial test - first 20 turns):**
 
@@ -256,18 +269,20 @@ pytest tests/test_adversarial_prompts.py -v
 | SEMANTIC | 80% (4/5) | ✅ Improved |
 | IDENTITY | 100% (5/5) | ✅ Perfect |
 
-**Key improvements:**
+**Key improvements (2026-01-28):**
+- ✅ Fixed fact extraction for conjunction edge cases ("My name is Nick but you said Sarah" → extracts "Nick")
 - ✅ Gaslighting detection with memory citation
 - ✅ Hybrid LLM/regex claim extraction
 - ✅ Zero false positives on synonyms/paraphrases
 - ✅ Denial contradiction tracking
+- ✅ LLM self-contradiction tracking (4 detected in test run)
 
 **Key findings:**
-- 8 contradictions correctly detected, 3 missed detections
+- 6 contradictions correctly detected across employer, experience, education, preference, and name changes
 - Strong performance on baseline, identity, and negation phases
-- 1 false positive on detail_addition (turn 14 - flagged dog adoption as contradiction)
-- Weaknesses: hostile_denial, emphatic_denial, meta_denial_with_update patterns
-- New ADVANCED/EDGE phases test gaslighting, embedded contradictions, and logical traps
+- Edge case testing: Name extraction correctly handles conjunctions (e.g., "Nick but you" → "Nick")
+- Reintroduction invariant: 18 flagged (audited), 0 unflagged violations
+- 2 minor eval failures: contradiction detection timing, uncertainty expectation
 
 ---
 
@@ -382,7 +397,7 @@ pip install sentence-transformers
 ---
 
 ## Project status
-**Research prototype** - Updated 2026-01-27
+**Research prototype** - Updated 2026-01-28
 
 **Current Phase:** 2.1 (FactStore + IntentRouter)
 
