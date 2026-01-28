@@ -106,6 +106,43 @@ export function CrtInspector(props: { message: ChatMessage | null; onClear: () =
           ) : null}
         </div>
       </div>
+
+      {(meta as any)?.gaslighting_detected && (meta as any)?.gaslighting_citation ? (
+        <div className="mt-4">
+          <div className="text-xs font-semibold tracking-wide text-orange-400">⚠️ Gaslighting Detection</div>
+          <div className="mt-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2">
+            <div className="whitespace-pre-wrap text-xs text-orange-200">{(meta as any).gaslighting_citation}</div>
+          </div>
+        </div>
+      ) : null}
+
+      {(meta as any)?.llm_claims && (meta as any).llm_claims.length > 0 ? (
+        <div className="mt-4">
+          <div className="text-xs font-semibold tracking-wide text-cyan-400">📝 LLM Claims Extracted</div>
+          <div className="mt-2 space-y-2">
+            {(meta as any).llm_claims.map((claim: any, idx: number) => (
+              <div key={idx} className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2">
+                <div className="text-[11px] font-medium text-cyan-200">{claim.slot}</div>
+                <div className="mt-1 text-xs text-white/90">Value: {claim.value}</div>
+                <div className="mt-1 text-[11px] text-white/60">Trust: {claim.trust.toFixed(2)} | Source: {claim.source}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {(meta as any)?.llm_disclosures && (meta as any).llm_disclosures.length > 0 ? (
+        <div className="mt-4">
+          <div className="text-xs font-semibold tracking-wide text-amber-400">⚠️ LLM Contradictions</div>
+          <div className="mt-2 space-y-2">
+            {(meta as any).llm_disclosures.map((disclosure: string, idx: number) => (
+              <div key={idx} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                <div className="whitespace-pre-wrap text-xs text-amber-200">{disclosure}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

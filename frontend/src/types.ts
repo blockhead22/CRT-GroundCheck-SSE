@@ -91,6 +91,24 @@ export type CtrMessageMeta = {
   agent_activated?: boolean | null
   agent_answer?: string | null
   agent_trace?: AgentTrace | null
+  // Phase 2.2: LLM Claim Tracking
+  llm_claims?: Array<{
+    slot: string
+    value: string
+    trust: number
+    source: string
+  }>
+  llm_contradictions?: Array<{
+    type: string
+    slot: string
+    old_value: string
+    new_value: string
+    disclosure: string
+  }>
+  llm_disclosures?: string[]
+  // Gaslighting detection
+  gaslighting_detected?: boolean
+  gaslighting_citation?: string
   xray?: {
     memories_used?: Array<{
       text: string

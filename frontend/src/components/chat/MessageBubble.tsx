@@ -132,6 +132,24 @@ export function MessageBubble(props: {
               </span>
             ) : null}
 
+            {(meta as any)?.gaslighting_detected ? (
+              <span
+                className="inline-flex items-center rounded-full bg-orange-500/15 px-2 py-0.5 text-[11px] font-medium text-orange-200"
+                title="Gaslighting attempt detected - citing original claim"
+              >
+                ⚠️ GASLIGHTING
+              </span>
+            ) : null}
+
+            {(meta as any)?.llm_disclosures && (meta as any).llm_disclosures.length > 0 ? (
+              <span
+                className="inline-flex items-center rounded-full bg-cyan-500/15 px-2 py-0.5 text-[11px] font-medium text-cyan-200"
+                title="LLM made claims that contradict user facts or previous LLM claims"
+              >
+                📝 LLM CONFLICT ({(meta as any).llm_disclosures.length})
+              </span>
+            ) : null}
+
             {meta?.reintroduced_claims_count > 0 ? (
               <span
                 className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-200"
