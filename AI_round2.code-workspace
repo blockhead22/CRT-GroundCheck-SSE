@@ -2,12 +2,6 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "C:/aiproject/CRT"
-		},
-		{
-			"path": "../lumi_ai/lumi_ai"
 		}
 	],
 	"settings": {
