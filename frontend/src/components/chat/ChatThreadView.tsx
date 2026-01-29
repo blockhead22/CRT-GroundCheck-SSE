@@ -4,7 +4,14 @@ import type { ChatThread, QuickAction } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { Composer } from './Composer'
 import { QuickCards } from '../QuickCards'
-import { listOpenContradictions, type ContradictionListItem } from '../../lib/api'
+import {
+  getContradictionNext,
+  listOpenContradictions,
+  markContradictionAsked,
+  respondToContradiction,
+  type ContradictionListItem,
+  type ContradictionNextResponse,
+} from '../../lib/api'
 
 export function ChatThreadView(props: {
   thread: ChatThread
@@ -38,6 +45,10 @@ export function ChatThreadView(props: {
   const [contradictions, setContradictions] = useState<ContradictionListItem[]>([])
   const [contradictionsLoading, setContradictionsLoading] = useState(false)
   const [contradictionsError, setContradictionsError] = useState<string | null>(null)
+  const [nextContra, setNextContra] = useState<ContradictionNextResponse | null>(null)
+  const [contraAnswer, setContraAnswer] = useState('')
+  const [contraBusy, setContraBusy] = useState(false)
+  const [contraError, setContraError] = useState<string | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
@@ -49,6 +60,10 @@ export function ChatThreadView(props: {
     setContradictions([])
     setContradictionsLoading(false)
     setContradictionsError(null)
+    setNextContra(null)
+    setContraAnswer('')
+    setContraBusy(false)
+    setContraError(null)
   }, [props.thread.id])
 
   const assistantSnapshot = useMemo(() => {
@@ -90,6 +105,7 @@ export function ChatThreadView(props: {
     let mounted = true
     setContradictionsLoading(true)
     setContradictionsError(null)
+    setContraError(null)
     listOpenContradictions(props.thread.id, 200)
       .then((items) => {
         if (!mounted) return
@@ -103,10 +119,23 @@ export function ChatThreadView(props: {
         if (!mounted) return
         setContradictionsLoading(false)
       })
+    getContradictionNext(props.thread.id)
+      .then((nxt) => {
+        if (!mounted) return
+        setNextContra(nxt)
+      })
+      .catch((err) => {
+        if (!mounted) return
+        setContraError(err instanceof Error ? err.message : String(err))
+      })
     return () => {
       mounted = false
     }
   }, [trayOpen, props.thread.id, lastAssistant?.id])
+
+  useEffect(() => {
+    setContraAnswer('')
+  }, [nextContra?.item?.ledger_id])
 
   const empty = props.thread.messages.length === 0
   const queuedCount = queuedContradiction
@@ -116,6 +145,110 @@ export function ChatThreadView(props: {
         ? contradictions.length
         : 1)
     : 0
+  const nextDetail = useMemo(() => {
+    if (!nextContra?.item) return null
+    return contradictions.find((c) => c.ledger_id === nextContra.item.ledger_id) ?? null
+  }, [nextContra?.item?.ledger_id, contradictions])
+
+  const suggestedOption = useMemo(() => {
+    if (!nextDetail) return null
+    const slot = (nextDetail.slot || '').trim()
+    const oldValue = (nextDetail.old_value || '').trim()
+    const newValue = (nextDetail.new_value || '').trim()
+    if (!slot || (!oldValue && !newValue)) return null
+
+    const threshold = 0.25
+    const delta = typeof nextDetail.confidence_delta === 'number' ? nextDetail.confidence_delta : null
+    const oldTrust = typeof nextDetail.old_trust === 'number' ? nextDetail.old_trust : null
+    const newTrust = typeof nextDetail.new_trust === 'number' ? nextDetail.new_trust : null
+
+    let pick: 'old' | 'new' | null = null
+    if (delta !== null) {
+      if (delta >= threshold) pick = 'old'
+      if (delta <= -threshold) pick = 'new'
+    } else if (oldTrust !== null && newTrust !== null) {
+      if (oldTrust - newTrust >= threshold) pick = 'old'
+      if (newTrust - oldTrust >= threshold) pick = 'new'
+    }
+
+    if (!pick) return null
+    const value = pick === 'old' ? oldValue : newValue
+    if (!value) return null
+    return {
+      label: pick === 'old' ? 'Prefer old value' : 'Prefer new value',
+      value: `${slot} = ${value}`,
+    }
+  }, [nextDetail])
+
+  function safeCopy(text: string) {
+    try {
+      void navigator.clipboard.writeText(text)
+    } catch {
+      // ignore
+    }
+  }
+
+  async function refreshContradictions() {
+    setContradictionsLoading(true)
+    setContradictionsError(null)
+    try {
+      const items = await listOpenContradictions(props.thread.id, 200)
+      setContradictions(items)
+    } catch (err) {
+      setContradictionsError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setContradictionsLoading(false)
+    }
+  }
+
+  async function refreshNextContra() {
+    setContraError(null)
+    try {
+      const nxt = await getContradictionNext(props.thread.id)
+      setNextContra(nxt)
+    } catch (err) {
+      setContraError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function doMarkAsked() {
+    const item = nextContra?.item
+    if (!item) return
+    setContraBusy(true)
+    setContraError(null)
+    try {
+      await markContradictionAsked({ threadId: props.thread.id, ledgerId: item.ledger_id })
+      await refreshNextContra()
+    } catch (err) {
+      setContraError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setContraBusy(false)
+    }
+  }
+
+  async function doRespond(resolve: boolean) {
+    const item = nextContra?.item
+    if (!item) return
+    setContraBusy(true)
+    setContraError(null)
+    try {
+      const res = await respondToContradiction({
+        threadId: props.thread.id,
+        ledgerId: item.ledger_id,
+        answer: contraAnswer,
+        resolve,
+        resolutionMethod: 'user_clarified',
+        newStatus: resolve ? 'resolved' : 'open',
+      })
+      setContraAnswer('')
+      setNextContra(res.next)
+      void refreshContradictions()
+    } catch (err) {
+      setContraError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setContraBusy(false)
+    }
+  }
 
   const hint = useMemo(() => {
     if (!empty) return null
@@ -281,44 +414,171 @@ export function ChatThreadView(props: {
                       transition={{ duration: 0.2 }}
                       className="mb-2 overflow-hidden"
                     >
-                      <div className="max-h-[320px] overflow-y-auto rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white/70 shadow-card">
-                        {contradictionsLoading ? (
-                          <div className="text-white/60">Loading contradictions...</div>
-                        ) : contradictionsError ? (
-                          <div className="text-rose-300">Failed to load contradictions: {contradictionsError}</div>
-                        ) : contradictions.length === 0 ? (
-                          <div className="text-white/60">No open contradictions.</div>
-                        ) : (
-                          <div className="space-y-2">
-                            {contradictions.map((c) => {
-                              const title = (c.slot || c.contradiction_type || 'Contradiction').toUpperCase()
-                              const summary = c.summary || c.query || ''
-                              const oldValue = (c.old_value || c.old_memory_id || 'N/A').trim()
-                              const newValue = (c.new_value || c.new_memory_id || 'N/A').trim()
-                              return (
-                                <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                      <div className="max-h-[440px] overflow-y-auto rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white/70 shadow-card">
+                        <div className="space-y-3">
+                          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs font-semibold text-white/70">Contradiction workflow</div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  void refreshNextContra()
+                                  void refreshContradictions()
+                                }}
+                                className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
+                              >
+                                Refresh
+                              </button>
+                            </div>
+
+                            {contraError ? (
+                              <div className="mt-2 text-[11px] text-rose-300">Failed to load work item: {contraError}</div>
+                            ) : null}
+
+                            {!nextContra?.has_item || !nextContra?.item ? (
+                              <div className="mt-2 text-[11px] text-white/60">
+                                No open contradiction work item found for this thread.
+                              </div>
+                            ) : (
+                              <div className="mt-2 space-y-3">
+                                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
                                   <div className="flex items-start justify-between gap-3">
-                                    <div className="text-xs font-semibold text-rose-100">{title}</div>
-                                    <div className="text-[10px] text-white/40">{(c.status || 'pending').toUpperCase()}</div>
+                                    <div>
+                                      <div className="text-xs font-semibold text-rose-100">{nextContra.item.contradiction_type}</div>
+                                      <div className="mt-0.5 text-[10px] text-white/40">{nextContra.item.ledger_id}</div>
+                                    </div>
+                                    <div className="text-[10px] text-white/50">
+                                      drift {nextContra.item.drift_mean.toFixed(2)} / asks {nextContra.item.ask_count}
+                                    </div>
                                   </div>
-                                  {summary ? (
-                                    <div className="mt-1 line-clamp-2 text-[11px] text-white/70">{summary}</div>
+                                  {nextContra.item.summary ? (
+                                    <div className="mt-2 text-[11px] text-white/70">{nextContra.item.summary}</div>
                                   ) : null}
-                                  <div className="mt-2 grid gap-1 text-[11px] text-white/60">
-                                    <div className="flex gap-2">
-                                      <span className="text-white/40">Old:</span>
-                                      <span className="line-clamp-2">{oldValue}</span>
-                                    </div>
-                                    <div className="flex gap-2">
-                                      <span className="text-white/40">New:</span>
-                                      <span className="line-clamp-2">{newValue}</span>
-                                    </div>
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    {nextContra.item.next_action ? (
+                                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                                        Suggested: {nextContra.item.next_action.replace(/_/g, ' ')}
+                                      </span>
+                                    ) : null}
+                                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/60">
+                                      Status: {nextContra.item.status || 'open'}
+                                    </span>
                                   </div>
                                 </div>
-                              )
-                            })}
+
+                                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="text-[11px] font-semibold text-white/60">Suggested question</div>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => safeCopy(nextContra.item.suggested_question)}
+                                        className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
+                                      >
+                                        Copy
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={contraBusy}
+                                        onClick={() => void doMarkAsked()}
+                                        className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10 disabled:opacity-50"
+                                      >
+                                        Mark asked
+                                      </button>
+                                    </div>
+                                  </div>
+                                  <pre className="mt-2 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-2 text-[11px] text-white/80">
+                                    {nextContra.item.suggested_question}
+                                  </pre>
+                                </div>
+
+                                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                  <div className="text-[11px] font-semibold text-white/60">User clarification</div>
+                                  <textarea
+                                    value={contraAnswer}
+                                    onChange={(e) => setContraAnswer(e.target.value)}
+                                    placeholder="Example: Employer = Amazon"
+                                    className="mt-2 h-24 w-full resize-none rounded-lg border border-white/10 bg-black/30 p-2 text-[11px] text-white outline-none placeholder:text-white/30 focus:border-violet-500/40"
+                                  />
+                                  {suggestedOption ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setContraAnswer(suggestedOption.value)}
+                                      className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/20"
+                                      title={suggestedOption.value}
+                                    >
+                                      Suggested: {suggestedOption.label}
+                                    </button>
+                                  ) : null}
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={contraBusy || !contraAnswer.trim()}
+                                      onClick={() => void doRespond(true)}
+                                      className="rounded-full bg-violet-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                                    >
+                                      Record answer + resolve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={contraBusy || !contraAnswer.trim()}
+                                      onClick={() => void doRespond(false)}
+                                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] text-white/70 hover:bg-white/10 disabled:opacity-50"
+                                    >
+                                      Record answer only
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
+
+                          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="text-xs font-semibold text-white/70">Open contradictions</div>
+                              <div className="text-[10px] text-white/40">{contradictions.length} total</div>
+                            </div>
+                            <div className="mt-2">
+                              {contradictionsLoading ? (
+                                <div className="text-white/60">Loading contradictions...</div>
+                              ) : contradictionsError ? (
+                                <div className="text-rose-300">Failed to load contradictions: {contradictionsError}</div>
+                              ) : contradictions.length === 0 ? (
+                                <div className="text-white/60">No open contradictions.</div>
+                              ) : (
+                                <div className="space-y-2">
+                                  {contradictions.map((c) => {
+                                    const title = (c.slot || c.contradiction_type || 'Contradiction').toUpperCase()
+                                    const summary = c.summary || c.query || ''
+                                    const oldValue = (c.old_value || c.old_memory_id || 'N/A').trim()
+                                    const newValue = (c.new_value || c.new_memory_id || 'N/A').trim()
+                                    return (
+                                      <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="text-xs font-semibold text-rose-100">{title}</div>
+                                          <div className="text-[10px] text-white/40">{(c.status || 'pending').toUpperCase()}</div>
+                                        </div>
+                                        {summary ? (
+                                          <div className="mt-1 line-clamp-2 text-[11px] text-white/70">{summary}</div>
+                                        ) : null}
+                                        <div className="mt-2 grid gap-1 text-[11px] text-white/60">
+                                          <div className="flex gap-2">
+                                            <span className="text-white/40">Old:</span>
+                                            <span className="line-clamp-2">{oldValue}</span>
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <span className="text-white/40">New:</span>
+                                            <span className="line-clamp-2">{newValue}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   ) : null}
@@ -336,7 +596,7 @@ export function ChatThreadView(props: {
                     <span className="font-semibold">Contradiction queued</span>
                   </div>
                   <div className="flex items-center gap-2 text-rose-200/60">
-                    <span className="text-[11px]">{trayOpen ? 'Hide list' : 'View list'}</span>
+                    <span className="text-[11px]">{trayOpen ? 'Hide workflow' : 'View workflow'}</span>
                     <span className="text-[11px]">{trayOpen ? '^' : 'v'}</span>
                   </div>
                 </button>
