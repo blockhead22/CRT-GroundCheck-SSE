@@ -3000,7 +3000,7 @@ def create_app() -> FastAPI:
                 # DIRECTED REFLECTION PASS
                 # ========================================
                 if phase_enabled:
-                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'self_assess', 'content': 'Reviewing response'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'self-assess', 'content': 'Reviewing response'})}\n\n"
                 reflection_trace_id = None
                 reflection_result = None
                 try:
@@ -3062,7 +3062,7 @@ def create_app() -> FastAPI:
                         expansion_reason = None
 
                 if phase_enabled:
-                    yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'self_assess', 'content': ''})}\n\n"
+                    yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'self-assess', 'content': ''})}\n\n"
                 
                 # Build metadata including thinking for later display
                 # Pull more values from the engine.query result
