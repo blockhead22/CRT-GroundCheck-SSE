@@ -2553,13 +2553,13 @@ def create_app() -> FastAPI:
         logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
         
         def generate_stream():
-              try:
-                  engine = get_engine(req.thread_id)
-                  llm_client = get_llm_client()
-                  session_db = get_thread_session_db()
-                  session_db.get_or_create_session(req.thread_id)
-                  session_db.update_activity(req.thread_id, increment_messages=True)
-                
+            try:
+                engine = get_engine(req.thread_id)
+                llm_client = get_llm_client()
+                session_db = get_thread_session_db()
+                session_db.get_or_create_session(req.thread_id)
+                session_db.update_activity(req.thread_id, increment_messages=True)
+
                 # IMPORTANT: First run through the normal query pipeline to:
                 # 1. Extract and store facts from user message
                 # 2. Update memory system
@@ -2581,23 +2581,23 @@ def create_app() -> FastAPI:
                     yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_mems)} relevant memories'})}\n\n"
                 
                 # If no LLM, return the engine's response directly
-                  if llm_client is None:
-                      yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using memory-based response...'})}\n\n"
-                      try:
-                          detected_slot = None
-                          slots = result.get("slots_extracted")
-                          if isinstance(slots, dict) and slots:
-                              detected_slot = list(slots.keys())[0]
-                          session_db.record_query(
-                              thread_id=req.thread_id,
-                              query_text=req.message,
-                              response_text=str(result.get("answer") or ""),
-                              detected_slot=detected_slot,
-                          )
-                      except Exception as e:
-                          logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
-                      yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': ''}})}\n\n"
-                      return
+                if llm_client is None:
+                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using memory-based response...'})}\n\n"
+                    try:
+                        detected_slot = None
+                        slots = result.get("slots_extracted")
+                        if isinstance(slots, dict) and slots:
+                            detected_slot = list(slots.keys())[0]
+                        session_db.record_query(
+                            thread_id=req.thread_id,
+                            query_text=req.message,
+                            response_text=str(result.get("answer") or ""),
+                            detected_slot=detected_slot,
+                        )
+                    except Exception as e:
+                        logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': ''}})}\n\n"
+                    return
                 
                 # Stream from LLM with thinking visible
                 yield f"data: {json.dumps({'type': 'status', 'content': 'Thinking...'})}\n\n"
@@ -2615,30 +2615,30 @@ def create_app() -> FastAPI:
                             memory_lines.append(f"- [{source}, trust={trust:.2f}] {text}")
                     if memory_lines:
                         memories_text = "\n\nKnown facts about this user:\n" + "\n".join(memory_lines)
-                
-                  system_prompt = f"""You are a helpful AI assistant with memory capabilities.
+
+                system_prompt = f"""You are a helpful AI assistant with memory capabilities.
   You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
   Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}"""
-                  
-                  # Stream the response - include recent conversation history for continuity
-                  history_messages = []
-                  try:
-                      recent = session_db.get_recent_queries(req.thread_id, window=6)
-                      for item in reversed(recent):
-                          q = (item or {}).get("query_text")
-                          r = (item or {}).get("response_text")
-                          if q:
-                              history_messages.append({"role": "user", "content": q})
-                          if r:
-                              history_messages.append({"role": "assistant", "content": r})
-                  except Exception as e:
-                      logger.debug(f"[STREAM] Failed to load recent history: {e}")
-                  
-                  messages = [
-                      {"role": "system", "content": system_prompt},
-                      *history_messages,
-                      {"role": "user", "content": req.message},
-                  ]
+
+                # Stream the response - include recent conversation history for continuity
+                history_messages = []
+                try:
+                    recent = session_db.get_recent_queries(req.thread_id, window=6)
+                    for item in reversed(recent):
+                        q = (item or {}).get("query_text")
+                        r = (item or {}).get("response_text")
+                        if q:
+                            history_messages.append({"role": "user", "content": q})
+                        if r:
+                            history_messages.append({"role": "assistant", "content": r})
+                except Exception as e:
+                    logger.debug(f"[STREAM] Failed to load recent history: {e}")
+
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    *history_messages,
+                    {"role": "user", "content": req.message},
+                ]
                 
                 # Use streaming chat via ollama client with thinking enabled
                 try:
@@ -2791,11 +2791,11 @@ def create_app() -> FastAPI:
                 
                 # Build metadata including thinking for later display
                 # Pull more values from the engine.query result
-                  metadata = {
-                      'mode': 'llm',
-                      'model': llm_client.model,
-                      'thinking': thinking_content,
-                      'thinking_trace_id': trace_id,  # For lazy loading full content
+                metadata = {
+                    'mode': 'llm',
+                    'model': llm_client.model,
+                    'thinking': thinking_content,
+                    'thinking_trace_id': trace_id,  # For lazy loading full content
                     'reflection_trace_id': reflection_trace_id,  # For lazy loading reflection
                     'reflection_confidence': reflection_result.confidence_score if reflection_result else None,
                     'reflection_label': reflection_result.confidence_label if reflection_result else None,
@@ -2828,35 +2828,35 @@ def create_app() -> FastAPI:
                             'source': m.get('source'),
                         }
                         for m in prompt_mems[:5] if isinstance(m, dict)
-                      ],
-                  }
-                  
-                  # Record query in session DB for response variation tracking
-                  try:
-                      detected_slot = None
-                      slots = result.get("slots_extracted")
-                      if isinstance(slots, dict) and slots:
-                          detected_slot = list(slots.keys())[0]
-                      session_db.record_query(
-                          thread_id=req.thread_id,
-                          query_text=req.message,
-                          response_text=clean_response,
-                          detected_slot=detected_slot,
-                      )
-                  except Exception as e:
-                      logger.debug(f"[SESSION] Error recording query (stream): {e}")
+                    ],
+                }
 
-                  # Process interaction for episodic memory (patterns, preferences, concepts)
-                  try:
-                      episodic_mgr = get_episodic_manager(memory_system=engine.memory)
-                      episodic_mgr.process_interaction(
+                # Record query in session DB for response variation tracking
+                try:
+                    detected_slot = None
+                    slots = result.get("slots_extracted")
+                    if isinstance(slots, dict) and slots:
+                        detected_slot = list(slots.keys())[0]
+                    session_db.record_query(
+                        thread_id=req.thread_id,
+                        query_text=req.message,
+                        response_text=clean_response,
+                        detected_slot=detected_slot,
+                    )
+                except Exception as e:
+                    logger.debug(f"[SESSION] Error recording query (stream): {e}")
+
+                # Process interaction for episodic memory (patterns, preferences, concepts)
+                try:
+                    episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+                    episodic_mgr.process_interaction(
                         thread_id=req.thread_id,
                         query=req.message,
                         response=clean_response,
                     )
                 except Exception as e:
                     logger.debug(f"[EPISODIC] Error in stream: {e}")
-                
+
                 yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
                 
             except Exception as e:
