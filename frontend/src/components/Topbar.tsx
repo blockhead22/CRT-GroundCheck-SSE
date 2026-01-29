@@ -13,6 +13,10 @@ export function Topbar(props: {
   onOpenDemoMode?: () => void
   streamingMode?: boolean
   onToggleStreaming?: () => void
+  phaseMode?: boolean
+  onTogglePhaseMode?: () => void
+  pauseAfterPlan?: boolean
+  onTogglePauseAfterPlan?: () => void
 }) {
   const initial = (props.userName?.trim()?.[0] || 'U').toUpperCase()
   const statusColor =
@@ -89,6 +93,34 @@ export function Topbar(props: {
             title="Toggle streaming mode (show AI thinking in real-time)"
           >
             {props.streamingMode ? '⚡ Stream ON' : '⚡ Stream'}
+          </button>
+        ) : null}
+        {props.onTogglePhaseMode ? (
+          <button
+            onClick={props.onTogglePhaseMode}
+            className={
+              'rounded-xl border px-3 py-2 text-sm transition-colors ' +
+              (props.phaseMode
+                ? 'border-sky-500/50 bg-sky-500/20 text-sky-200 hover:bg-sky-500/30'
+                : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10')
+            }
+            title="Toggle phase stream (analyze → plan → answer)"
+          >
+            {props.phaseMode ? '🧠 Phases ON' : '🧠 Phases'}
+          </button>
+        ) : null}
+        {props.onTogglePauseAfterPlan ? (
+          <button
+            onClick={props.onTogglePauseAfterPlan}
+            className={
+              'rounded-xl border px-3 py-2 text-sm transition-colors ' +
+              (props.pauseAfterPlan
+                ? 'border-fuchsia-500/50 bg-fuchsia-500/20 text-fuchsia-200 hover:bg-fuchsia-500/30'
+                : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10')
+            }
+            title="Pause after plan phase (hold answer until you continue)"
+          >
+            {props.pauseAfterPlan ? '⏸ Plan Pause' : '⏸ Pause Plan'}
           </button>
         ) : null}
         {props.onToggleXray ? (

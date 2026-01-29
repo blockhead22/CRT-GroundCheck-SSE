@@ -93,6 +93,8 @@ class ChatSendRequest(BaseModel):
     message: str = Field(min_length=1, description="User message")
     user_marked_important: bool = Field(default=False)
     mode: Optional[str] = Field(default=None, description="Optional reasoning mode")
+    phase_mode: bool = Field(default=False, description="Emit phase events (analyze/plan/answer) in stream")
+    pause_after_phase: Optional[str] = Field(default=None, description="Client-side pause hint (e.g., 'plan')")
 
 
 class ChatSendResponse(BaseModel):
@@ -2609,12 +2611,23 @@ def create_app() -> FastAPI:
                     thread_id=req.thread_id,
                 )
                 
+                phase_enabled = bool(req.phase_mode)
+                pause_after = (req.pause_after_phase or "").strip().lower()
+                
                 # Get retrieved memories from the result for context
                 retrieved_mems = result.get("retrieved_memories", []) or []
                 prompt_mems = result.get("prompt_memories", []) or []
                 
                 if retrieved_mems:
                     yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_mems)} relevant memories'})}\n\n"
+
+                if phase_enabled:
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'analyze', 'content': 'Analyzing request'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'analyze', 'content': ''})}\n\n"
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'plan', 'content': 'Planning response'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'plan', 'content': ''})}\n\n"
+                    if pause_after == "plan":
+                        yield f"data: {json.dumps({'type': 'phase_pause', 'phase': 'plan', 'content': 'Paused after plan'})}\n\n"
                 
                 # If no LLM, return the engine's response directly
                 if llm_client is None:
@@ -2697,6 +2710,7 @@ def create_app() -> FastAPI:
                 response_started = False
                 sent_thinking_start = False
                 in_think_tags = False  # Track if we're inside <think>...</think> tags
+                answer_phase_started = False
                 
                 for chunk in stream:
                     # Handle both dict and pydantic object access (ollama returns pydantic ChatResponse)
@@ -2754,6 +2768,9 @@ def create_app() -> FastAPI:
                         continue  # Don't stream thinking as response tokens
                     
                     # Stream response tokens (outside of think tags)
+                    if phase_enabled and not answer_phase_started:
+                        answer_phase_started = True
+                        yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'answer', 'content': 'Drafting response'})}\n\n"
                     clean_token = token.replace('<think>', '').replace('</think>', '')
                     if clean_token:
                         yield f"data: {json.dumps({'type': 'token', 'content': clean_token})}\n\n"
@@ -2896,6 +2913,8 @@ def create_app() -> FastAPI:
                 except Exception as e:
                     logger.debug(f"[EPISODIC] Error in stream: {e}")
 
+                if phase_enabled and answer_phase_started:
+                    yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'answer', 'content': ''})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
                 
             except Exception as e:

@@ -25,6 +25,27 @@ from difflib import SequenceMatcher
 import math
 import re
 
+# Transient state cues (mood/energy/temporary condition).
+_TRANSIENT_STATE_WORDS = {
+    "tired", "exhausted", "fatigued", "sleepy", "burned out",
+    "sad", "down", "depressed", "depression", "anxious", "anxiety",
+    "stressed", "overwhelmed", "okay", "ok", "fine", "good", "bad",
+    "sick", "ill", "hurt", "hurting", "in pain", "recovering",
+    "lonely", "upset", "angry", "frustrated", "confused",
+}
+
+_MOOD_SLOTS = {
+    "mood", "feeling", "emotion", "emotions", "status",
+    "user.mood", "user.feeling", "user.emotion",
+}
+
+
+def _is_transient_state_value(value: Optional[str]) -> bool:
+    if value is None:
+        return False
+    low = str(value).lower()
+    return any(word in low for word in _TRANSIENT_STATE_WORDS)
+
 
 class SSEMode(Enum):
     """SSE compression modes based on significance."""
@@ -875,6 +896,14 @@ class CRTMath:
         # Normalize values
         value_new_norm = str(value_new).lower().strip()
         value_prior_norm = str(value_prior).lower().strip()
+
+        slot_lower = str(slot).lower()
+
+        # Transient state updates are not contradictions (identity vs transient state).
+        if slot_lower in _MOOD_SLOTS:
+            return False, "transient_state_slot_update"
+        if _is_transient_state_value(value_new_norm) or _is_transient_state_value(value_prior_norm):
+            return False, "transient_state_update"
         
         # Same normalized value = not a contradiction (might be status update)
         if value_new_norm == value_prior_norm:

@@ -80,6 +80,8 @@ SSE_CONTRADICTION_RESULT = 'contradiction'  # SSE heuristic contradiction result
 
 # Constants for value extraction
 _EXTRACTION_STOPWORDS = ["a", "an", "the", "as", "is", "was", "at", "in", "on", "for"]
+LONGFORM_SUMMARY_MIN_CHARS = 420
+LONGFORM_SUMMARY_MAX_CHARS = 1800
 
 
 class CRTEnhancedRAG:
@@ -3048,6 +3050,16 @@ class CRTEnhancedRAG:
             except Exception as e:
                 logger.error(f"[PROFILE_DEBUG] ❌ Failed to update user profile: {e}", exc_info=True)
 
+            # Long-form narrative summary capture (best-effort, low-trust)
+            try:
+                self._maybe_store_longform_summary(
+                    text=user_query,
+                    thread_id=thread_id,
+                    user_marked_important=user_marked_important,
+                )
+            except Exception:
+                pass
+
             # If the user is clarifying a previously-detected hard conflict, mark it resolved.
             # This is intentionally conservative: only hard CONFLICT types, and only when
             # the asserted value matches one side of the conflict.
@@ -4696,6 +4708,88 @@ class CRTEnhancedRAG:
             'session_id': self.session_id
         })
 
+    # ====================================================================
+    # Long-form narrative memory capture
+    # ====================================================================
+
+    def _summarize_longform_text(self, text: str) -> Optional[str]:
+        """Summarize long-form user text into durable facts (1–2 sentences)."""
+        raw = (text or "").strip()
+        if not raw:
+            return None
+
+        snippet = raw[:LONGFORM_SUMMARY_MAX_CHARS]
+        llm = self._llm_client
+        if llm is not None:
+            prompt = (
+                "Summarize the user's message into 1–2 sentences of durable personal facts. "
+                "Exclude transient moods unless central to their life story. "
+                "Do not speculate, diagnose, or add new information. "
+                "Return plain text only.\n\n"
+                f"Message:\n{snippet}\n"
+            )
+            try:
+                summary = llm.generate(prompt, max_tokens=220, temperature=0.2)
+                summary = (summary or "").strip()
+                return summary[:400] if summary else None
+            except Exception:
+                pass
+
+        # Heuristic fallback (no LLM)
+        try:
+            import re
+            sentences = re.split(r"(?<=[.!?])\s+", snippet)
+            picks: List[str] = []
+            keywords = (
+                "i am", "i'm", "my name", "i work", "i live", "i was diagnosed",
+                "i have", "i created", "i built", "i prefer", "i like", "i love"
+            )
+            for s in sentences:
+                sl = s.lower()
+                if any(k in sl for k in keywords):
+                    picks.append(s.strip())
+                if len(picks) >= 2:
+                    break
+            if not picks and sentences:
+                picks = [sentences[0].strip()]
+            summary = " ".join(picks).strip()
+            return summary[:400] if summary else None
+        except Exception:
+            return None
+
+    def _maybe_store_longform_summary(
+        self,
+        *,
+        text: str,
+        thread_id: Optional[str],
+        user_marked_important: bool
+    ) -> None:
+        """Store a low-trust narrative summary for long-form inputs."""
+        if not text or len(text) < LONGFORM_SUMMARY_MIN_CHARS:
+            return
+        if text.strip().lower().startswith("[narrative summary]"):
+            return
+
+        summary = self._summarize_longform_text(text)
+        if not summary:
+            return
+
+        summary_text = f"[NARRATIVE SUMMARY] {summary}"
+        try:
+            self.memory.store_memory(
+                text=summary_text,
+                confidence=0.6,
+                source=MemorySource.USER,
+                context={
+                    "type": "user_input",
+                    "kind": "narrative_summary",
+                    "source_text_len": len(text),
+                },
+                user_marked_important=user_marked_important,
+            )
+        except Exception:
+            pass
+
     def _get_learned_suggestions_for_slots(self, slots: List[str]) -> List[Dict[str, Any]]:
         ls_cfg = (self.runtime_config or {}).get("learned_suggestions", {})
         if not ls_cfg.get("enabled", True):
@@ -6157,6 +6251,10 @@ class CRTEnhancedRAG:
         # Plural "contradictions" + interrogative keywords
         # Note: Use "contradictions" (plural) to avoid matching "contradiction detection", "contradiction tracking", etc.
         if "contradictions" in t and any(k in t for k in ("list", "show", "any", "open", "unresolved", "do you have", "are there")):
+            return True
+
+        # User phrasing about self
+        if "contradictions" in t and any(k in t for k in ("about me", "about myself", "about my", "about my self")):
             return True
 
         # CLI-style short commands (exact match only)

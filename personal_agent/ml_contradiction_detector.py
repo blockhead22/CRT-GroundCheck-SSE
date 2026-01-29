@@ -119,6 +119,20 @@ DETAIL_ENRICHMENT_WORDS = {
     "downtown", "metro", "greater",  # Location refinements
 }
 
+# Transient state cues (mood/energy/temporary condition).
+TRANSIENT_STATE_WORDS = {
+    "tired", "exhausted", "fatigued", "sleepy", "burned out",
+    "sad", "down", "depressed", "depression", "anxious", "anxiety",
+    "stressed", "overwhelmed", "okay", "ok", "fine", "good", "bad",
+    "sick", "ill", "hurt", "hurting", "in pain", "recovering",
+    "lonely", "upset", "angry", "frustrated", "confused",
+}
+
+
+def _is_transient_state_value(value: str) -> bool:
+    low = str(value).lower()
+    return any(word in low for word in TRANSIENT_STATE_WORDS)
+
 
 def _is_semantic_equivalent(old_value: str, new_value: str) -> bool:
     """
@@ -297,7 +311,18 @@ class MLContradictionDetector:
         """
         if context is None:
             context = {}
-        
+
+        # Transient states (mood/energy) should not be treated as contradictions.
+        # Example: "creative thinker" vs "feeling tired" is not a contradiction.
+        if _is_transient_state_value(old_value) or _is_transient_state_value(new_value):
+            return {
+                "is_contradiction": False,
+                "category": "TEMPORAL",
+                "policy": "NONE",
+                "confidence": 0.65,
+                "reason": "transient_state_update",
+            }
+
         # If models not loaded, fall back to conservative detection
         if self.belief_classifier is None:
             logger.warning("Belief classifier not available, using fallback detection")
@@ -587,6 +612,16 @@ class MLContradictionDetector:
         # Prevents AttributeError: 'int' object has no attribute 'lower'
         old_value = str(old_value)
         new_value = str(new_value)
+
+        # Transient state updates are not contradictions.
+        if _is_transient_state_value(old_value) or _is_transient_state_value(new_value):
+            return {
+                "is_contradiction": False,
+                "category": "TEMPORAL",
+                "policy": "NONE",
+                "confidence": 0.6,
+                "reason": "transient_state_update",
+            }
         
         # Check for negation patterns
         old_lower = old_value.lower()

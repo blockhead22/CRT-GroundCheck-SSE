@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import type { ChatThread, NavId, QuickAction } from './types'
 import { Sidebar } from './components/Sidebar'
@@ -55,6 +55,13 @@ export default function App() {
   const [streamingResponse, setStreamingResponse] = useState<string>('')
   const [isThinking, setIsThinking] = useState(false)
   const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
+  const [phaseMode, setPhaseMode] = useState(true)
+  const [pauseAfterPlan, setPauseAfterPlan] = useState(false)
+  const [streamPhase, setStreamPhase] = useState<string | null>(null)
+  const [phaseHold, setPhaseHold] = useState(false)
+  const phaseHoldRef = useRef(false)
+  const heldBufferRef = useRef('')
+  const finalBufferRef = useRef('')
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -243,16 +250,22 @@ export default function App() {
     setStreamingThinking('')
     setStreamingResponse('')
     setIsThinking(false)
+    setStreamPhase(null)
+    setPhaseHold(false)
+    phaseHoldRef.current = false
+    heldBufferRef.current = ''
+    finalBufferRef.current = ''
 
     try {
       if (useStreaming) {
         // Use streaming API
-        let finalContent = ''
         let thinkingContent = ''
         
         await streamFromCrtApi({
           threadId: withUser.id,
           message: outgoingText,
+          phaseMode,
+          pauseAfterPhase: pauseAfterPlan ? 'plan' : null,
           callbacks: {
             onStatus: (status) => {
               // Could show status in UI if desired
@@ -268,9 +281,26 @@ export default function App() {
             onThinkingEnd: () => {
               setIsThinking(false)
             },
+            onPhaseStart: (phase) => {
+              setStreamPhase(phase)
+            },
+            onPhaseEnd: (phase) => {
+              if (phase === 'plan') {
+                // keep phase visible until answer starts
+                setStreamPhase(phase)
+              }
+            },
+            onPhasePause: () => {
+              phaseHoldRef.current = true
+              setPhaseHold(true)
+            },
             onToken: (token) => {
-              finalContent += token
-              setStreamingResponse(finalContent)
+              if (phaseHoldRef.current) {
+                heldBufferRef.current += token
+                return
+              }
+              finalBufferRef.current += token
+              setStreamingResponse(finalBufferRef.current)
             },
             onDone: (content, metadata) => {
               const at = Date.now()
@@ -315,6 +345,11 @@ export default function App() {
               setStreamingThinking('')
               setStreamingResponse('')
               setIsThinking(false)
+              setStreamPhase(null)
+              setPhaseHold(false)
+              phaseHoldRef.current = false
+              heldBufferRef.current = ''
+              finalBufferRef.current = ''
             },
             onError: (error) => {
               const at = Date.now()
@@ -333,6 +368,11 @@ export default function App() {
               setStreamingThinking('')
               setStreamingResponse('')
               setIsThinking(false)
+              setStreamPhase(null)
+              setPhaseHold(false)
+              phaseHoldRef.current = false
+              heldBufferRef.current = ''
+              finalBufferRef.current = ''
             },
           },
         })
@@ -390,6 +430,17 @@ export default function App() {
 
   function pickQuickAction(a: QuickAction) {
     void handleSend(a.seedPrompt)
+  }
+
+  function resumePhaseHold() {
+    if (!phaseHoldRef.current) return
+    phaseHoldRef.current = false
+    setPhaseHold(false)
+    if (heldBufferRef.current) {
+      finalBufferRef.current += heldBufferRef.current
+      heldBufferRef.current = ''
+      setStreamingResponse(finalBufferRef.current)
+    }
   }
 
   async function handleResearch(query: string) {
@@ -501,6 +552,10 @@ export default function App() {
               onOpenDemoMode={() => setDemoModeOpen(true)}
               streamingMode={useStreaming}
               onToggleStreaming={() => setUseStreaming((v) => !v)}
+              phaseMode={phaseMode}
+              onTogglePhaseMode={() => setPhaseMode((v) => !v)}
+              pauseAfterPlan={pauseAfterPlan}
+              onTogglePauseAfterPlan={() => setPauseAfterPlan((v) => !v)}
             />
 
             <div className="relative min-h-0 flex-1">
@@ -526,6 +581,9 @@ export default function App() {
                       streamingThinking={streamingThinking}
                       streamingResponse={streamingResponse}
                       isThinking={isThinking}
+                      streamPhase={streamPhase}
+                      phaseHold={phaseHold}
+                      onResumePhase={resumePhaseHold}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
