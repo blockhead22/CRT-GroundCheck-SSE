@@ -6,7 +6,6 @@ export type ChatSendRequest = {
   user_marked_important?: boolean
   mode?: string | null
   phase_mode?: boolean
-  pause_after_phase?: string | null
 }
 
 export type RetrievedMemory = {
@@ -152,7 +151,6 @@ export type StreamEventType =
   | 'thinking_end'
   | 'phase_start'
   | 'phase_end'
-  | 'phase_pause'
   | 'token'
   | 'done'
   | 'error'
@@ -172,7 +170,6 @@ export type StreamCallbacks = {
   onThinkingEnd?: () => void
   onPhaseStart?: (phase: string, content?: string) => void
   onPhaseEnd?: (phase: string) => void
-  onPhasePause?: (phase: string) => void
   onToken?: (token: string) => void
   onDone?: (content: string, metadata?: Record<string, unknown>) => void
   onError?: (error: string) => void
@@ -196,7 +193,6 @@ export async function streamFromCrtApi(args: {
   threadId: string
   message: string
   phaseMode?: boolean
-  pauseAfterPhase?: string | null
   callbacks: StreamCallbacks
 }): Promise<void> {
   const base = getApiBaseUrlInternal()
@@ -204,7 +200,6 @@ export async function streamFromCrtApi(args: {
     thread_id: args.threadId,
     message: args.message,
     phase_mode: args.phaseMode,
-    pause_after_phase: args.pauseAfterPhase ?? null,
   }
 
   let res: Response
@@ -272,9 +267,6 @@ export async function streamFromCrtApi(args: {
                 break
               case 'phase_end':
                 args.callbacks.onPhaseEnd?.(event.phase || '')
-                break
-              case 'phase_pause':
-                args.callbacks.onPhasePause?.(event.phase || '')
                 break
               case 'token':
                 args.callbacks.onToken?.(event.content)

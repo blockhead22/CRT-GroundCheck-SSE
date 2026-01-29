@@ -26,8 +26,6 @@ export function ChatThreadView(props: {
   streamingResponse?: string
   isThinking?: boolean
   streamPhase?: string | null
-  phaseHold?: boolean
-  onResumePhase?: () => void
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
 
@@ -122,28 +120,6 @@ export function ChatThreadView(props: {
                 </motion.div>
               ) : null}
 
-              {props.phaseHold && props.onResumePhase && !props.streamingResponse ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex justify-start"
-                >
-                  <div className="rounded-2xl border border-fuchsia-500/30 bg-fuchsia-500/10 px-4 py-3 text-xs text-fuchsia-100 shadow-card">
-                    Paused after plan.
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        props.onResumePhase?.()
-                      }}
-                      className="ml-3 rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/20 px-2 py-1 text-xs text-fuchsia-100 hover:bg-fuchsia-500/30"
-                    >
-                      Continue
-                    </button>
-                  </div>
-                </motion.div>
-              ) : null}
-
               {props.isThinking && props.streamingThinking ? (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
@@ -174,19 +150,6 @@ export function ChatThreadView(props: {
                   <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90 shadow-card">
                     <div className="whitespace-pre-wrap">{props.streamingResponse}</div>
                     <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-violet-500" />
-                    {props.phaseHold && props.onResumePhase ? (
-                      <div className="mt-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            props.onResumePhase?.()
-                          }}
-                          className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/20 px-3 py-1 text-xs text-fuchsia-100 hover:bg-fuchsia-500/30"
-                        >
-                          Continue
-                        </button>
-                      </div>
-                    ) : null}
                   </div>
                 </motion.div>
               ) : null}

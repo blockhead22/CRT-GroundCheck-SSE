@@ -6,7 +6,7 @@ import uuid
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -88,13 +88,133 @@ def _format_style_instruction(style_profile: Optional[Dict[str, Any]]) -> str:
     )
 
 
+_EXPAND_TRIGGERS = (
+    "expand",
+    "expand more",
+    "explain more",
+    "tell me more",
+    "go deeper",
+    "more detail",
+    "more details",
+    "elaborate",
+    "continue",
+)
+
+
+def _user_requested_expansion(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    return any(t == trigger or t.startswith(trigger + " ") for trigger in _EXPAND_TRIGGERS)
+
+
+def _get_verbosity_preference(thread_id: str, memory_system) -> Optional[str]:
+    try:
+        episodic_mgr = get_episodic_manager(memory_system=memory_system)
+        ctx = episodic_mgr.get_user_context()
+        prefs = ctx.get("preferences", {}) if isinstance(ctx, dict) else {}
+        response_style = prefs.get("response_style", {}) if isinstance(prefs, dict) else {}
+        verbosity = response_style.get("verbosity", {}) if isinstance(response_style, dict) else {}
+        value = verbosity.get("value")
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+    except Exception as e:
+        logger.debug(f"[PREF] Failed to read verbosity preference for {thread_id}: {e}")
+    return None
+
+
+def _should_expand_response(
+    question: str,
+    response: str,
+    reflection_result: Optional[ReflectionResult],
+    verbosity_pref: Optional[str],
+) -> Tuple[bool, Optional[str]]:
+    if not response:
+        return False, None
+    if verbosity_pref == "concise":
+        return False, None
+    if _user_requested_expansion(question):
+        return True, "user_requested"
+    if reflection_result and reflection_result.suggested_action in ("refine", "re-query"):
+        return True, f"reflection_{reflection_result.suggested_action}"
+    if verbosity_pref == "verbose" and len(response) < 1400:
+        return True, "preference_verbose"
+    if len(response) < 360 and len(question or "") > 80:
+        return True, "short_answer"
+    return False, None
+
+
+def _build_expansion_prompt(
+    question: str,
+    response: str,
+    known_facts: str,
+    reflection_result: Optional[ReflectionResult],
+) -> str:
+    parts = [
+        "You are expanding a draft answer after a self-check.",
+        "Rules:",
+        "- Do not repeat the original answer verbatim.",
+        "- Add missing details, examples, or concrete steps when useful.",
+        "- If you are unsure, say what is uncertain instead of guessing.",
+        "",
+        f"Question:\n{question}",
+        "",
+        f"Draft answer:\n{response}",
+    ]
+    if known_facts:
+        parts.append("")
+        parts.append(f"Known facts:\n{known_facts}")
+    if reflection_result:
+        parts.append("")
+        parts.append(
+            f"Self-assessment: confidence={reflection_result.confidence_label}, "
+            f"suggested_action={reflection_result.suggested_action}"
+        )
+    parts.append("")
+    parts.append("Provide an expanded answer:")
+    return "\n".join(parts)
+
+
+def _generate_expansion(
+    llm_client: OllamaClient,
+    question: str,
+    response: str,
+    known_facts: str,
+    style_profile: Optional[Dict[str, Any]],
+    reflection_result: Optional[ReflectionResult],
+) -> Optional[str]:
+    if not llm_client:
+        return None
+    style_instruction = _format_style_instruction(style_profile)
+    system_lines = [
+        "You are a careful assistant expanding a response after a self-check.",
+        "Keep additions grounded in known facts. Avoid speculation.",
+    ]
+    if style_instruction:
+        system_lines.append(style_instruction)
+    system_prompt = " ".join(system_lines)
+    prompt = _build_expansion_prompt(question, response, known_facts, reflection_result)
+    expansion = llm_client.generate(prompt, system=system_prompt, max_tokens=420, temperature=0.4)
+    if not isinstance(expansion, str):
+        return None
+    expansion = _strip_thinking_tags(expansion).strip()
+    if not expansion or expansion.startswith("[Ollama error") or expansion.startswith("[Ollama connection error"):
+        return None
+    return expansion
+
+
+def _chunk_text(text: str, chunk_size: int = 320) -> List[str]:
+    if not text:
+        return []
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
 class ChatSendRequest(BaseModel):
     thread_id: str = Field(default="default", description="Client thread identifier")
     message: str = Field(min_length=1, description="User message")
     user_marked_important: bool = Field(default=False)
     mode: Optional[str] = Field(default=None, description="Optional reasoning mode")
     phase_mode: bool = Field(default=False, description="Emit phase events (analyze/plan/answer) in stream")
-    pause_after_phase: Optional[str] = Field(default=None, description="Client-side pause hint (e.g., 'plan')")
 
 
 class ChatSendResponse(BaseModel):
@@ -2310,11 +2430,11 @@ def create_app() -> FastAPI:
         )
 
         # Capture thinking trace (if available) for non-stream responses.
+        llm_client = get_llm_client()
         thinking_content = _strip_thinking_tags(str(result.get("thinking") or ""))
         thinking_trace_id = None
         if thinking_content and len(thinking_content) > 50:
             try:
-                llm_client = get_llm_client()
                 thinking_trace_id = engine.memory.store_reasoning_trace(
                     query=req.message,
                     thinking_content=thinking_content,
@@ -2422,7 +2542,72 @@ def create_app() -> FastAPI:
         
         # Calculate reintroduction count from processed list
         reintro_count = sum(1 for m in retrieved_mems if m.get("reintroduced_claim") is True)
-        
+
+        base_answer = str(result.get("answer") or "")
+
+        # ========================================
+        # DIRECTED REFLECTION PASS (non-stream)
+        # ========================================
+        reflection_trace_id = None
+        reflection_result = None
+        if llm_client is not None:
+            try:
+                grounding_facts = [
+                    m.get("text", "")[:300]
+                    for m in (result.get("retrieved_memories") or [])
+                    if isinstance(m, dict) and m.get("text")
+                ][:5]
+                reflection_result, _requery_response, _requery_thinking = run_reflection_pass(
+                    question=req.message,
+                    response=base_answer,
+                    thinking=thinking_content,
+                    thread_id=req.thread_id,
+                    db_path=engine.memory.db_path,
+                    facts=grounding_facts,
+                    auto_requery=False,
+                    collect_training_data=True,
+                )
+                reflection_trace_id = reflection_result.trace_id
+            except Exception as e:
+                logger.debug(f"[REFLECTION] Reflection failed (non-stream): {e}")
+
+        verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
+        known_fact_lines = []
+        for mem in (retrieved_mems + prompt_mems)[:6]:
+            if isinstance(mem, dict):
+                text = (mem.get("text") or "").strip()
+                if text:
+                    known_fact_lines.append(f"- {text[:280]}")
+        known_facts_text = "\n".join(known_fact_lines)
+
+        expanded = False
+        expansion_reason = None
+        should_expand, expansion_reason = _should_expand_response(
+            req.message,
+            base_answer,
+            reflection_result,
+            verbosity_pref,
+        )
+        if should_expand:
+            expansion_text = _generate_expansion(
+                llm_client,
+                req.message,
+                base_answer,
+                known_facts_text,
+                style_profile,
+                reflection_result,
+            )
+            if expansion_text:
+                expanded = True
+                base_answer = base_answer.rstrip()
+                base_answer = f"{base_answer}\n\nMore detail:\n{expansion_text}"
+            else:
+                expansion_reason = None
+
+        final_answer = base_answer
+        if greeting_text:
+            final_answer = f"{greeting_text}\n\n{final_answer}"
+
         metadata: Dict[str, Any] = {
             "mode": result.get("mode"),
             "confidence": result.get("confidence"),
@@ -2430,6 +2615,9 @@ def create_app() -> FastAPI:
             "memory_alignment": result.get("memory_alignment"),
             "thinking": thinking_content or None,
             "thinking_trace_id": thinking_trace_id,
+            "reflection_trace_id": reflection_trace_id,
+            "reflection_confidence": reflection_result.confidence_score if reflection_result else None,
+            "reflection_label": reflection_result.confidence_label if reflection_result else None,
             "style_profile": style_profile,
             "contradiction_detected": result.get("contradiction_detected"),
             "contradiction_resolved": result.get("contradiction_resolved"),  # NEW: Track if contradiction was resolved
@@ -2443,6 +2631,8 @@ def create_app() -> FastAPI:
             "retrieved_memories": retrieved_mems,
             "prompt_memories": prompt_mems,
             "reintroduced_claims_count": reintro_count,  # AUDIT METRIC
+            "expanded": expanded,
+            "expansion_reason": expansion_reason,
         }
 
         # Build X-Ray data (memory transparency mode)
@@ -2502,7 +2692,7 @@ def create_app() -> FastAPI:
             interaction_id = coordinator.record_interaction(
                 thread_id=req.thread_id,
                 query=req.message,
-                response=str(result.get("answer") or ""),
+                response=final_answer,
                 response_type=str(result.get("response_type") or "speech"),
                 confidence=float(result.get("confidence") or 0.0),
                 gates_passed=bool(result.get("gates_passed")),
@@ -2519,10 +2709,7 @@ def create_app() -> FastAPI:
         if interaction_id:
             metadata["interaction_id"] = interaction_id
 
-        # Prepend greeting to answer if applicable
-        final_answer = str(result.get("answer") or "")
         if greeting_text:
-            final_answer = f"{greeting_text}\n\n{final_answer}"
             metadata["greeting_shown"] = True
         
         # Record query in session DB for response variation tracking
@@ -2612,7 +2799,6 @@ def create_app() -> FastAPI:
                 )
                 
                 phase_enabled = bool(req.phase_mode)
-                pause_after = (req.pause_after_phase or "").strip().lower()
                 
                 # Get retrieved memories from the result for context
                 retrieved_mems = result.get("retrieved_memories", []) or []
@@ -2626,8 +2812,6 @@ def create_app() -> FastAPI:
                     yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'analyze', 'content': ''})}\n\n"
                     yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'plan', 'content': 'Planning response'})}\n\n"
                     yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'plan', 'content': ''})}\n\n"
-                    if pause_after == "plan":
-                        yield f"data: {json.dumps({'type': 'phase_pause', 'phase': 'plan', 'content': 'Paused after plan'})}\n\n"
                 
                 # If no LLM, return the engine's response directly
                 if llm_client is None:
@@ -2653,8 +2837,8 @@ def create_app() -> FastAPI:
                 
                 # Build context from memories - include more detail for better recall
                 memories_text = ""
+                memory_lines: List[str] = []
                 if retrieved_mems or prompt_mems:
-                    memory_lines = []
                     all_mems = retrieved_mems + prompt_mems
                     for mem in all_mems[:5]:
                         if isinstance(mem, dict):
@@ -2815,6 +2999,8 @@ def create_app() -> FastAPI:
                 # ========================================
                 # DIRECTED REFLECTION PASS
                 # ========================================
+                if phase_enabled:
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'self_assess', 'content': 'Reviewing response'})}\n\n"
                 reflection_trace_id = None
                 reflection_result = None
                 try:
@@ -2843,6 +3029,40 @@ def create_app() -> FastAPI:
                     logger.warning(f"[REFLECTION] Reflection failed: {e}")
                     import traceback
                     logger.debug(traceback.format_exc())
+
+                verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
+                known_facts_text = "\n".join(memory_lines)
+                expanded = False
+                expansion_reason = None
+                should_expand, expansion_reason = _should_expand_response(
+                    req.message,
+                    clean_response,
+                    reflection_result,
+                    verbosity_pref,
+                )
+                if should_expand:
+                    expansion_text = _generate_expansion(
+                        llm_client,
+                        req.message,
+                        clean_response,
+                        known_facts_text,
+                        style_profile,
+                        reflection_result,
+                    )
+                    if expansion_text:
+                        expanded = True
+                        extra_block = f"\n\nMore detail:\n{expansion_text}"
+                        clean_response = f"{clean_response.rstrip()}{extra_block}"
+                        if phase_enabled and not answer_phase_started:
+                            answer_phase_started = True
+                            yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'answer', 'content': 'Drafting response'})}\n\n"
+                        for chunk in _chunk_text(extra_block):
+                            yield f"data: {json.dumps({'type': 'token', 'content': chunk})}\n\n"
+                    else:
+                        expansion_reason = None
+
+                if phase_enabled:
+                    yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'self_assess', 'content': ''})}\n\n"
                 
                 # Build metadata including thinking for later display
                 # Pull more values from the engine.query result
@@ -2855,6 +3075,8 @@ def create_app() -> FastAPI:
                     'reflection_confidence': reflection_result.confidence_score if reflection_result else None,
                     'reflection_label': reflection_result.confidence_label if reflection_result else None,
                     'style_profile': style_profile,
+                    'expanded': expanded,
+                    'expansion_reason': expansion_reason,
                     'response_type': result.get('response_type', 'speech'),
                     'gates_passed': result.get('gates_passed', True),
                     'gate_reason': result.get('gate_reason'),
