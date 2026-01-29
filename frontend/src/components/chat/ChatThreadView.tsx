@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChatThread, QuickAction } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { Composer } from './Composer'
@@ -28,10 +28,53 @@ export function ChatThreadView(props: {
   streamPhase?: string | null
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const [queuedContradiction, setQueuedContradiction] = useState<{
+    messageId: string
+    total: number | null
+    createdAt: number
+  } | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [props.thread.messages.length, props.typing, props.streamingThinking, props.streamingResponse])
+
+  useEffect(() => {
+    setQueuedContradiction(null)
+  }, [props.thread.id])
+
+  const assistantSnapshot = useMemo(() => {
+    let last: (typeof props.thread.messages)[number] | null = null
+    let prev: (typeof props.thread.messages)[number] | null = null
+    for (let i = props.thread.messages.length - 1; i >= 0; i -= 1) {
+      const m = props.thread.messages[i]
+      if (m.role !== 'assistant') continue
+      if (!last) {
+        last = m
+      } else {
+        prev = m
+        break
+      }
+    }
+    return { last, prev }
+  }, [props.thread.messages])
+
+  const lastAssistant = assistantSnapshot.last
+  const prevAssistant = assistantSnapshot.prev
+  const lastTotal = lastAssistant?.crt?.unresolved_contradictions_total ?? null
+  const prevTotal = prevAssistant?.crt?.unresolved_contradictions_total ?? null
+  const hasNewQueue =
+    Boolean(lastAssistant?.crt?.contradiction_detected) ||
+    (typeof lastTotal === 'number' && (typeof prevTotal === 'number' ? lastTotal > prevTotal : lastTotal > 0))
+
+  useEffect(() => {
+    if (!lastAssistant || !hasNewQueue) return
+    if (queuedContradiction?.messageId === lastAssistant.id) return
+    setQueuedContradiction({
+      messageId: lastAssistant.id,
+      total: typeof lastTotal === 'number' ? lastTotal : null,
+      createdAt: lastAssistant.createdAt,
+    })
+  }, [lastAssistant, lastTotal, hasNewQueue, queuedContradiction?.messageId])
 
   const empty = props.thread.messages.length === 0
 
@@ -179,6 +222,27 @@ export function ChatThreadView(props: {
 
       <div className="border-t border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto w-full max-w-[1180px]">
+          <AnimatePresence initial={false}>
+            {queuedContradiction ? (
+              <motion.div
+                key="contradiction-queued"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.2 }}
+                className="mb-3 flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100 shadow-card"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
+                  <span className="inline-flex min-w-[20px] items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/20 px-1.5 text-[11px] font-semibold text-rose-100">
+                    {queuedContradiction.total ?? 1}
+                  </span>
+                  <span className="font-semibold">Contradiction queued</span>
+                </div>
+                <span className="text-rose-200/60">Awaiting review</span>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
           <Composer
             onSend={props.onSend}
             onResearch={props.onResearch}
