@@ -350,8 +350,8 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | ✅ Complete |
 | **Phase 2.3** | **Episodic Memory** (session summaries, preferences, patterns, concept linking) | ✅ Complete |
 | **Phase 2.4** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
-| **Phase 2** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
-| **Phase 3** | Vector-store-per-fact (experimental) | 📋 Planned |
+| **Phase 3** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
+| **Phase 4** | Vector-store-per-fact (experimental) | 📋 Planned |
 
 ### Phase 2.3 Features (Completed)
 - **Session Summaries**: Narrative summaries of conversations with topics, entities, facts learned
