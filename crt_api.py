@@ -54,6 +54,15 @@ def _sanitize_thread_id(value: str) -> str:
     return value[:64] or "default"
 
 
+def _strip_thinking_tags(text: str) -> str:
+    """Remove <think>/<thinking> wrappers from stored thinking content."""
+    if not text:
+        return ""
+    cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
+
+
 class ChatSendRequest(BaseModel):
     thread_id: str = Field(default="default", description="Client thread identifier")
     message: str = Field(min_length=1, description="User message")
@@ -2268,6 +2277,26 @@ def create_app() -> FastAPI:
             thread_id=req.thread_id,
         )
 
+        # Capture thinking trace (if available) for non-stream responses.
+        thinking_content = _strip_thinking_tags(str(result.get("thinking") or ""))
+        thinking_trace_id = None
+        if thinking_content and len(thinking_content) > 50:
+            try:
+                llm_client = get_llm_client()
+                thinking_trace_id = engine.memory.store_reasoning_trace(
+                    query=req.message,
+                    thinking_content=thinking_content,
+                    thread_id=req.thread_id,
+                    response_summary=str(result.get("answer") or "")[:200] if result.get("answer") else None,
+                    model=(llm_client.model if llm_client else None),
+                    metadata={
+                        "gates_passed": result.get("gates_passed", True),
+                        "confidence": result.get("confidence", 0.7),
+                    },
+                )
+            except Exception as e:
+                logger.debug(f"[TRACE] Failed to store thinking trace: {e}")
+
         # AGENT INTEGRATION: Check for proactive triggers
         # Only activate if LLM is enabled
         agent_activated = False
@@ -2367,6 +2396,8 @@ def create_app() -> FastAPI:
             "confidence": result.get("confidence"),
             "intent_alignment": result.get("intent_alignment"),
             "memory_alignment": result.get("memory_alignment"),
+            "thinking": thinking_content or None,
+            "thinking_trace_id": thinking_trace_id,
             "contradiction_detected": result.get("contradiction_detected"),
             "contradiction_resolved": result.get("contradiction_resolved"),  # NEW: Track if contradiction was resolved
             "unresolved_contradictions_total": result.get("unresolved_contradictions_total"),
@@ -2522,9 +2553,12 @@ def create_app() -> FastAPI:
         logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
         
         def generate_stream():
-            try:
-                engine = get_engine(req.thread_id)
-                llm_client = get_llm_client()
+              try:
+                  engine = get_engine(req.thread_id)
+                  llm_client = get_llm_client()
+                  session_db = get_thread_session_db()
+                  session_db.get_or_create_session(req.thread_id)
+                  session_db.update_activity(req.thread_id, increment_messages=True)
                 
                 # IMPORTANT: First run through the normal query pipeline to:
                 # 1. Extract and store facts from user message
@@ -2547,10 +2581,23 @@ def create_app() -> FastAPI:
                     yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_mems)} relevant memories'})}\n\n"
                 
                 # If no LLM, return the engine's response directly
-                if llm_client is None:
-                    yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using memory-based response...'})}\n\n"
-                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': ''}})}\n\n"
-                    return
+                  if llm_client is None:
+                      yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using memory-based response...'})}\n\n"
+                      try:
+                          detected_slot = None
+                          slots = result.get("slots_extracted")
+                          if isinstance(slots, dict) and slots:
+                              detected_slot = list(slots.keys())[0]
+                          session_db.record_query(
+                              thread_id=req.thread_id,
+                              query_text=req.message,
+                              response_text=str(result.get("answer") or ""),
+                              detected_slot=detected_slot,
+                          )
+                      except Exception as e:
+                          logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
+                      yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': ''}})}\n\n"
+                      return
                 
                 # Stream from LLM with thinking visible
                 yield f"data: {json.dumps({'type': 'status', 'content': 'Thinking...'})}\n\n"
@@ -2569,15 +2616,29 @@ def create_app() -> FastAPI:
                     if memory_lines:
                         memories_text = "\n\nKnown facts about this user:\n" + "\n".join(memory_lines)
                 
-                system_prompt = f"""You are a helpful AI assistant with memory capabilities.
-You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
-Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}"""
-                
-                # Stream the response
-                messages = [
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': req.message}
-                ]
+                  system_prompt = f"""You are a helpful AI assistant with memory capabilities.
+  You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
+  Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}"""
+                  
+                  # Stream the response - include recent conversation history for continuity
+                  history_messages = []
+                  try:
+                      recent = session_db.get_recent_queries(req.thread_id, window=6)
+                      for item in reversed(recent):
+                          q = (item or {}).get("query_text")
+                          r = (item or {}).get("response_text")
+                          if q:
+                              history_messages.append({"role": "user", "content": q})
+                          if r:
+                              history_messages.append({"role": "assistant", "content": r})
+                  except Exception as e:
+                      logger.debug(f"[STREAM] Failed to load recent history: {e}")
+                  
+                  messages = [
+                      {"role": "system", "content": system_prompt},
+                      *history_messages,
+                      {"role": "user", "content": req.message},
+                  ]
                 
                 # Use streaming chat via ollama client with thinking enabled
                 try:
@@ -2730,11 +2791,11 @@ Be concise but thorough. If you don't have information about something, say so h
                 
                 # Build metadata including thinking for later display
                 # Pull more values from the engine.query result
-                metadata = {
-                    'mode': 'llm',
-                    'model': llm_client.model,
-                    'thinking': thinking_content,
-                    'thinking_trace_id': trace_id,  # For lazy loading full content
+                  metadata = {
+                      'mode': 'llm',
+                      'model': llm_client.model,
+                      'thinking': thinking_content,
+                      'thinking_trace_id': trace_id,  # For lazy loading full content
                     'reflection_trace_id': reflection_trace_id,  # For lazy loading reflection
                     'reflection_confidence': reflection_result.confidence_score if reflection_result else None,
                     'reflection_label': reflection_result.confidence_label if reflection_result else None,
@@ -2767,13 +2828,28 @@ Be concise but thorough. If you don't have information about something, say so h
                             'source': m.get('source'),
                         }
                         for m in prompt_mems[:5] if isinstance(m, dict)
-                    ],
-                }
-                
-                # Process interaction for episodic memory (patterns, preferences, concepts)
-                try:
-                    episodic_mgr = get_episodic_manager(memory_system=engine.memory)
-                    episodic_mgr.process_interaction(
+                      ],
+                  }
+                  
+                  # Record query in session DB for response variation tracking
+                  try:
+                      detected_slot = None
+                      slots = result.get("slots_extracted")
+                      if isinstance(slots, dict) and slots:
+                          detected_slot = list(slots.keys())[0]
+                      session_db.record_query(
+                          thread_id=req.thread_id,
+                          query_text=req.message,
+                          response_text=clean_response,
+                          detected_slot=detected_slot,
+                      )
+                  except Exception as e:
+                      logger.debug(f"[SESSION] Error recording query (stream): {e}")
+
+                  # Process interaction for episodic memory (patterns, preferences, concepts)
+                  try:
+                      episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+                      episodic_mgr.process_interaction(
                         thread_id=req.thread_id,
                         query=req.message,
                         response=clean_response,

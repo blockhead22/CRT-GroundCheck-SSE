@@ -16,7 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover
 class OllamaClient:
     """Client for Ollama local LLM."""
     
-    def __init__(self, model: str = "llama3.2:latest"):
+    def __init__(self, model: Optional[str] = None):
         """
         Initialize Ollama client.
         
@@ -26,7 +26,8 @@ class OllamaClient:
         - deepseek-r1:8b: Reasoning-focused
         - codellama: Good for code
         """
-        self.model = model
+        # Prefer explicit model, then CRT_OLLAMA_MODEL, else fallback.
+        self.model = model or os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest"
 
         if ollama is None:
             raise ModuleNotFoundError(
