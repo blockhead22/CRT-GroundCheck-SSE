@@ -1022,6 +1022,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "I have a golden retriever named Murphy"
     # - "My dog is a labrador"
     # - "Murphy is a labrador, not a golden retriever"
+    _PET_NAME_STOPWORDS = {"my", "job", "role", "work", "name", "pet", "title", "career"}
     m = re.search(r"\bi have a\s+([a-z]+(?:\s+[a-z]+)?)\s+named\s+([A-Z][a-z]+)", text, flags=re.IGNORECASE)
     if m:
         pet_type = m.group(1).strip()
@@ -1033,12 +1034,16 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         m = re.search(r"\bmy (?:dog|cat|pet) is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
         if not m:
             # Try "[name] is a [breed]" pattern
-            m = re.search(r"\b([A-Z][a-z]+)\s+is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
+            # Use case-sensitive match to avoid "my job is a ..." false positives.
+            m = re.search(r"\b([A-Z][a-z]+)\s+is a\s+([a-z]+(?:\s+[a-z]+)?)", text)
             if m:
                 pet_name = m.group(1).strip()
-                pet_type = m.group(2).strip()
-                facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
-                facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
+                if pet_name.lower() in _PET_NAME_STOPWORDS:
+                    m = None
+                else:
+                    pet_type = m.group(2).strip()
+                    facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+                    facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
         if m and not facts.get("pet"):
             pet_type = m.group(1).strip()
             facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
