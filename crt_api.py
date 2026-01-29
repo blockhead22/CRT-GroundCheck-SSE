@@ -63,6 +63,31 @@ def _strip_thinking_tags(text: str) -> str:
     return cleaned.strip()
 
 
+def _format_style_instruction(style_profile: Optional[Dict[str, Any]]) -> str:
+    if not style_profile:
+        return ""
+    label = str(style_profile.get("tone_label") or "balanced").lower()
+    if label == "playful":
+        return (
+            "Tone: playful and witty when appropriate; mirror the user's humor. "
+            "Shift to serious and grounded when the topic is serious. Keep language natural and not overly formal."
+        )
+    if label == "serious":
+        return (
+            "Tone: calm, direct, and empathetic. Avoid jokes unless the user cues humor. "
+            "Keep language natural and not overly formal."
+        )
+    if label == "adaptive":
+        return (
+            "Tone: adaptive—light when the user is playful, grounded when the user is serious. "
+            "Keep a warm, consistent voice. Keep language natural and not overly formal."
+        )
+    return (
+        "Tone: friendly and flexible; lightly playful when the user is playful, "
+        "and serious when they are serious. Keep language natural and not overly formal."
+    )
+
+
 class ChatSendRequest(BaseModel):
     thread_id: str = Field(default="default", description="Client thread identifier")
     message: str = Field(min_length=1, description="User message")
@@ -2183,6 +2208,11 @@ def create_app() -> FastAPI:
         
         # Update session activity
         session_db.update_activity(req.thread_id, increment_messages=True)
+        style_profile = None
+        try:
+            style_profile = session_db.update_style_profile(req.thread_id, req.message)
+        except Exception as e:
+            logger.debug(f"[STYLE] Failed to update style profile: {e}")
         
         # Increment turn counter
         increment_turn(req.thread_id)
@@ -2398,6 +2428,7 @@ def create_app() -> FastAPI:
             "memory_alignment": result.get("memory_alignment"),
             "thinking": thinking_content or None,
             "thinking_trace_id": thinking_trace_id,
+            "style_profile": style_profile,
             "contradiction_detected": result.get("contradiction_detected"),
             "contradiction_resolved": result.get("contradiction_resolved"),  # NEW: Track if contradiction was resolved
             "unresolved_contradictions_total": result.get("unresolved_contradictions_total"),
@@ -2559,6 +2590,11 @@ def create_app() -> FastAPI:
                 session_db = get_thread_session_db()
                 session_db.get_or_create_session(req.thread_id)
                 session_db.update_activity(req.thread_id, increment_messages=True)
+                style_profile = None
+                try:
+                    style_profile = session_db.update_style_profile(req.thread_id, req.message)
+                except Exception as e:
+                    logger.debug(f"[STYLE] Failed to update style profile (stream): {e}")
 
                 # IMPORTANT: First run through the normal query pipeline to:
                 # 1. Extract and store facts from user message
@@ -2596,7 +2632,7 @@ def create_app() -> FastAPI:
                         )
                     except Exception as e:
                         logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
-                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': ''}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': '', 'style_profile': style_profile}})}\n\n"
                     return
                 
                 # Stream from LLM with thinking visible
@@ -2616,9 +2652,11 @@ def create_app() -> FastAPI:
                     if memory_lines:
                         memories_text = "\n\nKnown facts about this user:\n" + "\n".join(memory_lines)
 
+                style_instruction = _format_style_instruction(style_profile)
+                style_block = f"\n\nTONE & STYLE:\n{style_instruction}" if style_instruction else ""
                 system_prompt = f"""You are a helpful AI assistant with memory capabilities.
   You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
-  Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}"""
+  Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}{style_block}"""
 
                 # Stream the response - include recent conversation history for continuity
                 history_messages = []
@@ -2799,6 +2837,7 @@ def create_app() -> FastAPI:
                     'reflection_trace_id': reflection_trace_id,  # For lazy loading reflection
                     'reflection_confidence': reflection_result.confidence_score if reflection_result else None,
                     'reflection_label': reflection_result.confidence_label if reflection_result else None,
+                    'style_profile': style_profile,
                     'response_type': result.get('response_type', 'speech'),
                     'gates_passed': result.get('gates_passed', True),
                     'gate_reason': result.get('gate_reason'),

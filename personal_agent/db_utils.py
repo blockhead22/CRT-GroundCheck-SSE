@@ -154,6 +154,16 @@ class ThreadSessionDB:
     """
     
     DEFAULT_PATH = "personal_agent/crt_thread_sessions.db"
+
+    HUMOR_CUES = (
+        "lmao", "lol", "haha", "hehe", "rofl", "jk", "kidding",
+        "😂", "🤣", "😅", "😆", "🙃", "goofy", "silly", "bro", "dude"
+    )
+    SERIOUS_CUES = (
+        "depressed", "depression", "suicide", "self-harm", "self harm",
+        "cancer", "leukemia", "health battle", "diagnosed", "hospital",
+        "grief", "trauma", "ptsd", "anxiety", "panic"
+    )
     
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or self.DEFAULT_PATH
@@ -183,9 +193,19 @@ class ThreadSessionDB:
                 greeting_shown INTEGER DEFAULT 0,
                 onboarding_completed INTEGER DEFAULT 0,
                 onboarding_step INTEGER DEFAULT 0,
-                user_name TEXT
+                user_name TEXT,
+                style_profile_json TEXT
             )
         """)
+
+        # Ensure new columns exist for older DBs
+        self._ensure_columns(
+            cursor,
+            "thread_sessions",
+            {
+                "style_profile_json": "TEXT",
+            },
+        )
         
         # Recent queries table: for response variation detection
         cursor.execute("""
@@ -214,6 +234,14 @@ class ThreadSessionDB:
         
         conn.commit()
         conn.close()
+
+    def _ensure_columns(self, cursor: sqlite3.Cursor, table: str, columns: dict) -> None:
+        """Add missing columns to an existing table (safe migration)."""
+        cursor.execute(f"PRAGMA table_info({table})")
+        existing = {row[1] for row in cursor.fetchall()}
+        for col, col_type in columns.items():
+            if col not in existing:
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
     
     def get_or_create_session(self, thread_id: str) -> dict:
         """
@@ -240,12 +268,18 @@ class ThreadSessionDB:
         
         # Create new session
         now = time.time()
+        try:
+            import json
+            style_json = json.dumps(self._default_style_profile())
+        except Exception:
+            style_json = None
+
         cursor.execute("""
             INSERT INTO thread_sessions 
             (thread_id, first_created, last_active, message_count, greeting_shown, 
-             onboarding_completed, onboarding_step, user_name)
-            VALUES (?, ?, ?, 0, 0, 0, 0, NULL)
-        """, (thread_id, now, now))
+             onboarding_completed, onboarding_step, user_name, style_profile_json)
+            VALUES (?, ?, ?, 0, 0, 0, 0, NULL, ?)
+        """, (thread_id, now, now, style_json))
         
         conn.commit()
         conn.close()
@@ -259,6 +293,7 @@ class ThreadSessionDB:
             'onboarding_completed': False,
             'onboarding_step': 0,
             'user_name': None,
+            'style_profile': self._default_style_profile(),
         }
     
     def update_activity(self, thread_id: str, increment_messages: bool = True) -> dict:
@@ -334,6 +369,85 @@ class ThreadSessionDB:
         
         conn.commit()
         conn.close()
+
+    def _default_style_profile(self) -> dict:
+        """Default adaptive style profile."""
+        return {
+            "humor": 0.4,
+            "seriousness": 0.4,
+            "formality": 0.3,
+            "tone_label": "balanced",
+            "last_updated": time.time(),
+        }
+
+    def get_style_profile(self, thread_id: str) -> dict:
+        """Get stored style profile (or default if missing)."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT style_profile_json
+            FROM thread_sessions
+            WHERE thread_id = ?
+        """, (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row["style_profile_json"]:
+            try:
+                import json
+                return json.loads(row["style_profile_json"])
+            except Exception:
+                return self._default_style_profile()
+        return self._default_style_profile()
+
+    def update_style_profile(self, thread_id: str, user_message: str) -> dict:
+        """Update tone profile based on user message cues."""
+        profile = self.get_style_profile(thread_id)
+        text = (user_message or "")
+        lower = text.lower()
+
+        humor_hits = sum(1 for cue in self.HUMOR_CUES if cue in lower)
+        serious_hits = sum(1 for cue in self.SERIOUS_CUES if cue in lower)
+
+        humor_delta = min(0.3, humor_hits * 0.1)
+        serious_delta = min(0.4, serious_hits * 0.12)
+
+        humor = max(0.0, min(1.0, (profile.get("humor", 0.4) * 0.85) + humor_delta - (serious_delta * 0.2)))
+        serious = max(0.0, min(1.0, (profile.get("seriousness", 0.4) * 0.85) + serious_delta - (humor_delta * 0.1)))
+        formality = max(0.0, min(1.0, profile.get("formality", 0.3)))
+
+        if humor > 0.55 and serious > 0.55:
+            tone_label = "adaptive"
+        elif humor - serious >= 0.15:
+            tone_label = "playful"
+        elif serious - humor >= 0.15:
+            tone_label = "serious"
+        else:
+            tone_label = "balanced"
+
+        profile = {
+            "humor": round(humor, 3),
+            "seriousness": round(serious, 3),
+            "formality": round(formality, 3),
+            "tone_label": tone_label,
+            "last_updated": time.time(),
+        }
+
+        try:
+            import json
+            conn = self._get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE thread_sessions
+                SET style_profile_json = ?
+                WHERE thread_id = ?
+            """, (json.dumps(profile), thread_id))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.debug(f"[STYLE] Failed to update style profile: {e}")
+
+        return profile
     
     # ====== Recent Query Tracking for Response Variation ======
     

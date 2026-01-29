@@ -698,10 +698,37 @@ class ReasoningEngine:
             output += f"(Duration: {step.duration_ms:.0f}ms)\n"
         output += "\n</deep_reasoning>"
         return output
+
+    def _format_style_hint(self, style_profile: Optional[Dict[str, Any]]) -> str:
+        """Create a short style instruction from a profile."""
+        if not style_profile:
+            return ""
+        label = str(style_profile.get("tone_label") or "balanced").lower()
+
+        if label == "playful":
+            return (
+                "Tone: playful and witty when appropriate; mirror the user's humor. "
+                "Shift to serious and grounded when the topic is serious. Keep language natural and not overly formal."
+            )
+        if label == "serious":
+            return (
+                "Tone: calm, direct, and empathetic. Avoid jokes unless the user explicitly cues humor. "
+                "Keep language natural and not overly formal."
+            )
+        if label == "adaptive":
+            return (
+                "Tone: adaptive—light when the user is playful, grounded when the user is serious. "
+                "Keep a warm, consistent voice. Keep language natural and not overly formal."
+            )
+        return (
+            "Tone: friendly and flexible; lightly playful when the user is playful, "
+            "and serious when they are serious. Keep language natural and not overly formal."
+        )
     
     def _build_quick_prompt(self, query: str, context: Dict) -> str:
         """Build prompt for quick mode."""
         docs = context.get('retrieved_docs', [])
+        style_hint = self._format_style_hint(context.get("style_profile"))
         
         prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
 
@@ -733,6 +760,9 @@ Your core principles:
 - If asked about YOUR identity: you are CRT, an AI assistant - you do NOT have a human name, job, or location
 
 """
+
+        if style_hint:
+            prompt += f"TONE & STYLE:\n{style_hint}\n\n"
         
         # Add memory context if available
         if docs:
@@ -755,6 +785,7 @@ Your core principles:
         """Build prompt for thinking mode."""
         docs = context.get('retrieved_docs', [])
         contradictions = context.get('contradictions', [])
+        style_hint = self._format_style_hint(context.get("style_profile"))
         
         prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
 
@@ -769,6 +800,9 @@ CRITICAL: Facts in memory are ABOUT THE USER (their name, job, location, etc.), 
 You do NOT have a human name, occupation, or personal attributes - you are an AI system.
 
 """
+        if style_hint:
+            prompt += f"TONE & STYLE:\n{style_hint}\n\n"
+
         prompt += f"Question: {query}\n\n"
         prompt += f"Analysis: {analysis}\n"
         prompt += f"Plan: {plan}\n\n"
@@ -785,8 +819,11 @@ You do NOT have a human name, occupation, or personal attributes - you are an AI
     
     def _build_deep_prompt(self, query: str, context: Dict, plan: str, execution: str) -> str:
         """Build prompt for deep mode."""
+        style_hint = self._format_style_hint(context.get("style_profile"))
         prompt = """You are CRT, an AI assistant. Facts in memory are ABOUT THE USER, not about you.
 Do NOT claim user's personal attributes (name, job, location) as your own.\n\n"""
+        if style_hint:
+            prompt += f"TONE & STYLE:\n{style_hint}\n\n"
         prompt += f"Complex Question: {query}\n\n"
         prompt += f"Reasoning Plan: {plan}\n"
         prompt += f"Execution: {execution}\n\n"

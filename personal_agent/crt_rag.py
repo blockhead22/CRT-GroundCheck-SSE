@@ -4239,12 +4239,21 @@ class CRTEnhancedRAG:
         heuristic = self._get_heuristic_suggestions_for_slots(self._infer_slots_from_query(user_query))
         
         # 2. Generate candidate output using reasoning
+        style_profile = None
+        try:
+            if thread_id:
+                session_db = get_thread_session_db()
+                style_profile = session_db.get_style_profile(thread_id)
+        except Exception:
+            style_profile = None
+
         reasoning_context = {
             'retrieved_docs': [
                 doc for doc in prompt_docs
             ],
             'contradictions': [],  # Will detect after generation
-            'memory_context': []
+            'memory_context': [],
+            'style_profile': style_profile,
         }
         
         reasoning_result = self.reasoning.reason(
