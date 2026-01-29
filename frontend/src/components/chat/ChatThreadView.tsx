@@ -134,6 +134,24 @@ export function ChatThreadView(props: {
   }, [trayOpen, props.thread.id, lastAssistant?.id])
 
   useEffect(() => {
+    if (trayOpen) return
+    if (typeof lastTotal === 'number') return
+    let mounted = true
+    listOpenContradictions(props.thread.id, 200)
+      .then((items) => {
+        if (!mounted) return
+        setContradictions(items)
+      })
+      .catch((err) => {
+        if (!mounted) return
+        setContradictionsError(err instanceof Error ? err.message : String(err))
+      })
+    return () => {
+      mounted = false
+    }
+  }, [trayOpen, props.thread.id, lastAssistant?.id, lastTotal])
+
+  useEffect(() => {
     setContraAnswer('')
   }, [nextContra?.item?.ledger_id])
 
@@ -191,8 +209,8 @@ export function ChatThreadView(props: {
     }
   }
 
-  async function refreshContradictions() {
-    setContradictionsLoading(true)
+  async function refreshContradictions(silent = false) {
+    if (!silent) setContradictionsLoading(true)
     setContradictionsError(null)
     try {
       const items = await listOpenContradictions(props.thread.id, 200)
@@ -200,7 +218,7 @@ export function ChatThreadView(props: {
     } catch (err) {
       setContradictionsError(err instanceof Error ? err.message : String(err))
     } finally {
-      setContradictionsLoading(false)
+      if (!silent) setContradictionsLoading(false)
     }
   }
 
