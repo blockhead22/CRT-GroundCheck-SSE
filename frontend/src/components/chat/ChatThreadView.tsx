@@ -138,13 +138,16 @@ export function ChatThreadView(props: {
   }, [nextContra?.item?.ledger_id])
 
   const empty = props.thread.messages.length === 0
+  const openCount =
+    typeof lastTotal === 'number'
+      ? lastTotal
+      : contradictions.length
   const queuedCount = queuedContradiction
-    ? (typeof queuedContradiction.total === 'number'
-      ? queuedContradiction.total
-      : contradictions.length > 0
-        ? contradictions.length
-        : 1)
-    : 0
+    ? (typeof queuedContradiction.total === 'number' ? queuedContradiction.total : openCount || 1)
+    : openCount
+  const hasOpenContradictions = queuedCount > 0
+  const bannerTitle = queuedContradiction ? 'Contradiction queued' : 'Contradictions'
+  const bannerAccentClass = hasOpenContradictions ? 'text-rose-200/60' : 'text-white/40'
   const nextDetail = useMemo(() => {
     if (!nextContra?.item) return null
     return contradictions.find((c) => c.ledger_id === nextContra.item.ledger_id) ?? null
@@ -395,213 +398,228 @@ export function ChatThreadView(props: {
       <div className="border-t border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
         <div className="mx-auto w-full max-w-[1180px]">
           <AnimatePresence initial={false}>
-            {queuedContradiction ? (
-              <motion.div
-                key="contradiction-queued"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.2 }}
-                className="mb-3"
-              >
-                <AnimatePresence initial={false}>
-                  {trayOpen ? (
-                    <motion.div
-                      key="contradiction-tray"
-                      initial={{ opacity: 0, height: 0, y: 6 }}
-                      animate={{ opacity: 1, height: 'auto', y: 0 }}
-                      exit={{ opacity: 0, height: 0, y: 6 }}
-                      transition={{ duration: 0.2 }}
-                      className="mb-2 overflow-hidden"
-                    >
-                      <div className="max-h-[440px] overflow-y-auto rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white/70 shadow-card">
-                        <div className="space-y-3">
-                          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="text-xs font-semibold text-white/70">Contradiction workflow</div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  void refreshNextContra()
-                                  void refreshContradictions()
-                                }}
-                                className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
-                              >
-                                Refresh
-                              </button>
+            <motion.div
+              key="contradiction-queued"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="mb-3"
+            >
+              <AnimatePresence initial={false}>
+                {trayOpen ? (
+                  <motion.div
+                    key="contradiction-tray"
+                    initial={{ opacity: 0, height: 0, y: 6 }}
+                    animate={{ opacity: 1, height: 'auto', y: 0 }}
+                    exit={{ opacity: 0, height: 0, y: 6 }}
+                    transition={{ duration: 0.2 }}
+                    className="mb-2 overflow-hidden"
+                  >
+                    <div className="max-h-[440px] overflow-y-auto rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white/70 shadow-card">
+                      <div className="space-y-3">
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-semibold text-white/70">Contradiction workflow</div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void refreshNextContra()
+                                void refreshContradictions()
+                              }}
+                              className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
+                            >
+                              Refresh
+                            </button>
+                          </div>
+
+                          {contraError ? (
+                            <div className="mt-2 text-[11px] text-rose-300">Failed to load work item: {contraError}</div>
+                          ) : null}
+
+                          {!nextContra?.has_item || !nextContra?.item ? (
+                            <div className="mt-2 text-[11px] text-white/60">
+                              No open contradiction work item found for this thread.
                             </div>
-
-                            {contraError ? (
-                              <div className="mt-2 text-[11px] text-rose-300">Failed to load work item: {contraError}</div>
-                            ) : null}
-
-                            {!nextContra?.has_item || !nextContra?.item ? (
-                              <div className="mt-2 text-[11px] text-white/60">
-                                No open contradiction work item found for this thread.
-                              </div>
-                            ) : (
-                              <div className="mt-2 space-y-3">
-                                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                      <div className="text-xs font-semibold text-rose-100">{nextContra.item.contradiction_type}</div>
-                                      <div className="mt-0.5 text-[10px] text-white/40">{nextContra.item.ledger_id}</div>
-                                    </div>
-                                    <div className="text-[10px] text-white/50">
-                                      drift {nextContra.item.drift_mean.toFixed(2)} / asks {nextContra.item.ask_count}
-                                    </div>
+                          ) : (
+                            <div className="mt-2 space-y-3">
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="text-xs font-semibold text-rose-100">{nextContra.item.contradiction_type}</div>
+                                    <div className="mt-0.5 text-[10px] text-white/40">{nextContra.item.ledger_id}</div>
                                   </div>
-                                  {nextContra.item.summary ? (
-                                    <div className="mt-2 text-[11px] text-white/70">{nextContra.item.summary}</div>
-                                  ) : null}
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    {nextContra.item.next_action ? (
-                                      <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
-                                        Suggested: {nextContra.item.next_action.replace(/_/g, ' ')}
-                                      </span>
-                                    ) : null}
-                                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/60">
-                                      Status: {nextContra.item.status || 'open'}
+                                  <div className="text-[10px] text-white/50">
+                                    drift {nextContra.item.drift_mean.toFixed(2)} / asks {nextContra.item.ask_count}
+                                  </div>
+                                </div>
+                                {nextContra.item.summary ? (
+                                  <div className="mt-2 text-[11px] text-white/70">{nextContra.item.summary}</div>
+                                ) : null}
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {nextContra.item.next_action ? (
+                                    <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-200">
+                                      Suggested: {nextContra.item.next_action.replace(/_/g, ' ')}
                                     </span>
-                                  </div>
-                                </div>
-
-                                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                                  <div className="flex items-center justify-between">
-                                    <div className="text-[11px] font-semibold text-white/60">Suggested question</div>
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => safeCopy(nextContra.item.suggested_question)}
-                                        className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
-                                      >
-                                        Copy
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={contraBusy}
-                                        onClick={() => void doMarkAsked()}
-                                        className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10 disabled:opacity-50"
-                                      >
-                                        Mark asked
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <pre className="mt-2 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-2 text-[11px] text-white/80">
-                                    {nextContra.item.suggested_question}
-                                  </pre>
-                                </div>
-
-                                <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                                  <div className="text-[11px] font-semibold text-white/60">User clarification</div>
-                                  <textarea
-                                    value={contraAnswer}
-                                    onChange={(e) => setContraAnswer(e.target.value)}
-                                    placeholder="Example: Employer = Amazon"
-                                    className="mt-2 h-24 w-full resize-none rounded-lg border border-white/10 bg-black/30 p-2 text-[11px] text-white outline-none placeholder:text-white/30 focus:border-violet-500/40"
-                                  />
-                                  {suggestedOption ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => setContraAnswer(suggestedOption.value)}
-                                      className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/20"
-                                      title={suggestedOption.value}
-                                    >
-                                      Suggested: {suggestedOption.label}
-                                    </button>
                                   ) : null}
-                                  <div className="mt-2 flex flex-wrap gap-2">
+                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/60">
+                                    Status: {nextContra.item.status || 'open'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-[11px] font-semibold text-white/60">Suggested question</div>
+                                  <div className="flex items-center gap-2">
                                     <button
                                       type="button"
-                                      disabled={contraBusy || !contraAnswer.trim()}
-                                      onClick={() => void doRespond(true)}
-                                      className="rounded-full bg-violet-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                                      onClick={() => safeCopy(nextContra.item.suggested_question)}
+                                      className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
                                     >
-                                      Record answer + resolve
+                                      Copy
                                     </button>
                                     <button
                                       type="button"
-                                      disabled={contraBusy || !contraAnswer.trim()}
-                                      onClick={() => void doRespond(false)}
-                                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] text-white/70 hover:bg-white/10 disabled:opacity-50"
+                                      disabled={contraBusy}
+                                      onClick={() => void doMarkAsked()}
+                                      className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10 disabled:opacity-50"
                                     >
-                                      Record answer only
+                                      Mark asked
                                     </button>
                                   </div>
                                 </div>
+                                <pre className="mt-2 whitespace-pre-wrap rounded-lg border border-white/10 bg-black/30 p-2 text-[11px] text-white/80">
+                                  {nextContra.item.suggested_question}
+                                </pre>
+                              </div>
+
+                              <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                <div className="text-[11px] font-semibold text-white/60">User clarification</div>
+                                <textarea
+                                  value={contraAnswer}
+                                  onChange={(e) => setContraAnswer(e.target.value)}
+                                  placeholder="Example: Employer = Amazon"
+                                  className="mt-2 h-24 w-full resize-none rounded-lg border border-white/10 bg-black/30 p-2 text-[11px] text-white outline-none placeholder:text-white/30 focus:border-violet-500/40"
+                                />
+                                {suggestedOption ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setContraAnswer(suggestedOption.value)}
+                                    className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/20"
+                                    title={suggestedOption.value}
+                                  >
+                                    Suggested: {suggestedOption.label}
+                                  </button>
+                                ) : null}
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={contraBusy || !contraAnswer.trim()}
+                                    onClick={() => void doRespond(true)}
+                                    className="rounded-full bg-violet-600 px-3 py-1.5 text-[10px] font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                                  >
+                                    Record answer + resolve
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={contraBusy || !contraAnswer.trim()}
+                                    onClick={() => void doRespond(false)}
+                                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] text-white/70 hover:bg-white/10 disabled:opacity-50"
+                                  >
+                                    Record answer only
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-semibold text-white/70">Open contradictions</div>
+                            <div className="text-[10px] text-white/40">{contradictions.length} total</div>
+                          </div>
+                          <div className="mt-2">
+                            {contradictionsLoading ? (
+                              <div className="text-white/60">Loading contradictions...</div>
+                            ) : contradictionsError ? (
+                              <div className="text-rose-300">Failed to load contradictions: {contradictionsError}</div>
+                            ) : contradictions.length === 0 ? (
+                              <div className="text-white/60">No open contradictions.</div>
+                            ) : (
+                              <div className="space-y-2">
+                                {contradictions.map((c) => {
+                                  const title = (c.slot || c.contradiction_type || 'Contradiction').toUpperCase()
+                                  const summary = c.summary || c.query || ''
+                                  const oldValue = (c.old_value || c.old_memory_id || 'N/A').trim()
+                                  const newValue = (c.new_value || c.new_memory_id || 'N/A').trim()
+                                  return (
+                                    <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="text-xs font-semibold text-rose-100">{title}</div>
+                                        <div className="text-[10px] text-white/40">{(c.status || 'pending').toUpperCase()}</div>
+                                      </div>
+                                      {summary ? (
+                                        <div className="mt-1 line-clamp-2 text-[11px] text-white/70">{summary}</div>
+                                      ) : null}
+                                      <div className="mt-2 grid gap-1 text-[11px] text-white/60">
+                                        <div className="flex gap-2">
+                                          <span className="text-white/40">Old:</span>
+                                          <span className="line-clamp-2">{oldValue}</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <span className="text-white/40">New:</span>
+                                          <span className="line-clamp-2">{newValue}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )
+                                })}
                               </div>
                             )}
                           </div>
-
-                          <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                            <div className="flex items-center justify-between">
-                              <div className="text-xs font-semibold text-white/70">Open contradictions</div>
-                              <div className="text-[10px] text-white/40">{contradictions.length} total</div>
-                            </div>
-                            <div className="mt-2">
-                              {contradictionsLoading ? (
-                                <div className="text-white/60">Loading contradictions...</div>
-                              ) : contradictionsError ? (
-                                <div className="text-rose-300">Failed to load contradictions: {contradictionsError}</div>
-                              ) : contradictions.length === 0 ? (
-                                <div className="text-white/60">No open contradictions.</div>
-                              ) : (
-                                <div className="space-y-2">
-                                  {contradictions.map((c) => {
-                                    const title = (c.slot || c.contradiction_type || 'Contradiction').toUpperCase()
-                                    const summary = c.summary || c.query || ''
-                                    const oldValue = (c.old_value || c.old_memory_id || 'N/A').trim()
-                                    const newValue = (c.new_value || c.new_memory_id || 'N/A').trim()
-                                    return (
-                                      <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div className="text-xs font-semibold text-rose-100">{title}</div>
-                                          <div className="text-[10px] text-white/40">{(c.status || 'pending').toUpperCase()}</div>
-                                        </div>
-                                        {summary ? (
-                                          <div className="mt-1 line-clamp-2 text-[11px] text-white/70">{summary}</div>
-                                        ) : null}
-                                        <div className="mt-2 grid gap-1 text-[11px] text-white/60">
-                                          <div className="flex gap-2">
-                                            <span className="text-white/40">Old:</span>
-                                            <span className="line-clamp-2">{oldValue}</span>
-                                          </div>
-                                          <div className="flex gap-2">
-                                            <span className="text-white/40">New:</span>
-                                            <span className="line-clamp-2">{newValue}</span>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
                         </div>
                       </div>
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-                <button
-                  type="button"
-                  onClick={() => setTrayOpen((v) => !v)}
-                  className="flex w-full items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-100 shadow-card transition hover:bg-rose-500/15"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-rose-400" />
-                    <span className="inline-flex min-w-[20px] items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/20 px-1.5 text-[11px] font-semibold text-rose-100">
-                      {queuedCount}
-                    </span>
-                    <span className="font-semibold">Contradiction queued</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-rose-200/60">
-                    <span className="text-[11px]">{trayOpen ? 'Hide workflow' : 'View workflow'}</span>
-                    <span className="text-[11px]">{trayOpen ? '^' : 'v'}</span>
-                  </div>
-                </button>
-              </motion.div>
-            ) : null}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+              <button
+                type="button"
+                onClick={() => setTrayOpen((v) => !v)}
+                className={
+                  'flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs shadow-card transition ' +
+                  (hasOpenContradictions
+                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15'
+                    : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10')
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      'h-2 w-2 rounded-full ' +
+                      (hasOpenContradictions ? 'animate-pulse bg-rose-400' : 'bg-white/30')
+                    }
+                  />
+                  <span
+                    className={
+                      'inline-flex min-w-[20px] items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold ' +
+                      (hasOpenContradictions
+                        ? 'border-rose-400/40 bg-rose-500/20 text-rose-100'
+                        : 'border-white/10 bg-white/5 text-white/60')
+                    }
+                  >
+                    {queuedCount}
+                  </span>
+                  <span className="font-semibold">{bannerTitle}</span>
+                </div>
+                <div className={`flex items-center gap-2 ${bannerAccentClass}`}>
+                  <span className="text-[11px]">{trayOpen ? 'Hide workflow' : 'View workflow'}</span>
+                  <span className="text-[11px]">{trayOpen ? '^' : 'v'}</span>
+                </div>
+              </button>
+            </motion.div>
           </AnimatePresence>
           <Composer
             onSend={props.onSend}
