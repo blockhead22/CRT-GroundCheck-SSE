@@ -55,7 +55,7 @@ export default function App() {
   const [streamingResponse, setStreamingResponse] = useState<string>('')
   const [isThinking, setIsThinking] = useState(false)
   const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
-  const [phaseMode, setPhaseMode] = useState(true)
+  const phaseMode = true
   const [streamPhase, setStreamPhase] = useState<string | null>(null)
   const finalBufferRef = useRef('')
 
@@ -519,8 +519,6 @@ export default function App() {
               onOpenDemoMode={() => setDemoModeOpen(true)}
               streamingMode={useStreaming}
               onToggleStreaming={() => setUseStreaming((v) => !v)}
-              phaseMode={phaseMode}
-              onTogglePhaseMode={() => setPhaseMode((v) => !v)}
             />
 
             <div className="relative min-h-0 flex-1">
