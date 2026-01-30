@@ -292,7 +292,12 @@ export function ChatThreadView(props: {
                   className="flex justify-start"
                 >
                   <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90 shadow-card">
-                    <div className="whitespace-pre-wrap">{props.streamingResponse}</div>
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                      Draft
+                    </div>
+                    <div className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80">
+                      {props.streamingResponse}
+                    </div>
                     <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-violet-500" />
                   </div>
                 </motion.div>
