@@ -341,6 +341,10 @@ pytest tests/test_adversarial_prompts.py -v
 
 ## Development Phases
 
+- **Phase 2.4: Advanced Testing Suite** â€” adversarial agent + paragraph tests (next concrete milestone)
+- **Phase 3: UX Enhancements** â€” emotion signals, humble wrapper (after tests)
+- **Phase 4: Vector-store-per-fact** â€” experimental retrieval model (later)
+
 | Phase | Description | Status |
 |-------|-------------|--------|
 | **Phase 1** | Self-questioning, caveat injection, feature flags | ✅ Complete |
