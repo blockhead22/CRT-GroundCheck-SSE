@@ -516,7 +516,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-full overflow-hidden">
+    <div className="aetheris-dark h-screen w-full overflow-hidden">
       <div className="mx-auto h-full max-w-[1480px] px-4 py-6">
         <div className="flex h-full min-h-0 gap-5">
           <Sidebar
@@ -555,7 +555,7 @@ export default function App() {
             />
 
             <div className="relative min-h-0 flex-1">
-              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
+              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] glass-panel">
                 {navActive === 'chat' ? (
                   selectedThread ? (
                     <ChatThreadView

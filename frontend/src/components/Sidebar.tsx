@@ -35,14 +35,14 @@ export function Sidebar(props: {
           transition={{ duration: 0.18 }}
           className="hidden h-full w-[290px] flex-none lg:flex"
         >
-          <div className="flex h-full w-full flex-col rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
+          <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
             <div className="flex items-center justify-between px-4 py-4">
               <div className="flex items-center gap-2">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-violet-600 text-white shadow">
+                <div className="grid h-9 w-9 place-items-center rounded-xl accent-button text-white">
                   <span className="text-sm font-semibold">Q</span>
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-white">CRT</div>
+                  <div className="text-sm font-semibold text-white font-display">CRT</div>
                   <div className="text-xs text-white/60">AI Chat Helper</div>
                 </div>
               </div>
@@ -57,7 +57,7 @@ export function Sidebar(props: {
             </div>
 
             <div className="px-4">
-              <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <div className="flex items-center gap-2 rounded-xl glass-field px-3 py-2">
                 <span className="text-white/50">⌕</span>
                 <input
                   value={props.search}

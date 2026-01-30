@@ -589,9 +589,9 @@ export function MessageBubble(props: {
         className={
           'max-w-[80%] rounded-2xl px-4 py-3 text-sm shadow-card md:max-w-[70%] ' +
           (isUser
-            ? 'bg-violet-600 text-white'
+            ? 'accent-bubble text-white'
             : 'bg-white/5 text-white border border-white/10') +
-          (props.selected ? ' ring-2 ring-violet-500/60' : '')
+          (props.selected ? ' ring-2 ring-cyan-400/60' : '')
         }
       >
         {showMeta ? (

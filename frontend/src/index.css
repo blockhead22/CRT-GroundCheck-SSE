@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,11 +18,95 @@ html, body {
 
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: "Manrope", "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #e6eefc;
   background:
-    radial-gradient(900px 520px at 30% -10%, rgba(124, 58, 237, 0.22), transparent 55%),
-    radial-gradient(900px 520px at 90% 10%, rgba(99, 107, 47, 0.18), transparent 55%),
-    linear-gradient(180deg, #0B0D12 0%, #0B0D12 100%);
+    radial-gradient(900px 520px at 15% -10%, rgba(64, 200, 255, 0.18), transparent 55%),
+    radial-gradient(880px 520px at 85% 0%, rgba(88, 132, 255, 0.16), transparent 55%),
+    radial-gradient(700px 480px at 60% 115%, rgba(92, 255, 210, 0.12), transparent 55%),
+    linear-gradient(180deg, #0b0f1a 0%, #0a0f17 100%);
 }
 
 * { box-sizing: border-box; }
+
+.aetheris-dark {
+  --panel: rgba(16, 22, 34, 0.78);
+  --panel-strong: rgba(20, 26, 40, 0.86);
+  --panel-border: rgba(255, 255, 255, 0.08);
+  --panel-highlight: rgba(255, 255, 255, 0.16);
+  --text-primary: #e6eefc;
+  --text-muted: rgba(190, 205, 228, 0.7);
+  --accent-rgb: 78 202 255;
+  --accent-strong-rgb: 74 148 255;
+  --accent-soft-rgb: 132 214 255;
+}
+
+.aetheris-dark .font-display {
+  font-family: "Space Grotesk", "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+.aetheris-dark .glass-panel {
+  background: linear-gradient(145deg, rgba(26, 34, 52, 0.86), rgba(9, 12, 20, 0.94));
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 20px 45px rgba(4, 8, 18, 0.55);
+  backdrop-filter: blur(26px);
+}
+
+.aetheris-dark .glass-card {
+  background: rgba(18, 24, 38, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 14px 35px rgba(5, 9, 20, 0.4);
+  backdrop-filter: blur(18px);
+}
+
+.aetheris-dark .glass-field {
+  background: rgba(9, 13, 22, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.aetheris-dark .accent-button {
+  background: linear-gradient(130deg, rgba(var(--accent-rgb), 0.95), rgba(var(--accent-strong-rgb), 0.95));
+  box-shadow: 0 12px 25px rgba(50, 160, 255, 0.35);
+}
+
+.aetheris-dark .accent-bubble {
+  background: linear-gradient(135deg, rgba(47, 153, 236, 0.95), rgba(64, 208, 255, 0.92));
+  box-shadow: 0 14px 30px rgba(36, 140, 220, 0.35);
+}
+
+.aetheris-dark [class*="bg-violet-"],
+.aetheris-dark [class*="bg-purple-"] {
+  background-color: rgb(var(--accent-strong-rgb) / var(--tw-bg-opacity, 1));
+}
+
+.aetheris-dark [class*="text-violet-"],
+.aetheris-dark [class*="text-purple-"] {
+  color: rgb(var(--accent-soft-rgb) / var(--tw-text-opacity, 1));
+}
+
+.aetheris-dark [class*="border-violet-"],
+.aetheris-dark [class*="border-purple-"] {
+  border-color: rgb(var(--accent-soft-rgb) / var(--tw-border-opacity, 1));
+}
+
+.aetheris-dark [class*="ring-violet-"],
+.aetheris-dark [class*="ring-purple-"] {
+  --tw-ring-color: rgb(var(--accent-soft-rgb) / var(--tw-ring-opacity, 1));
+}
+
+.aetheris-dark [class*="from-violet-"],
+.aetheris-dark [class*="from-purple-"] {
+  --tw-gradient-from: rgb(var(--accent-strong-rgb) / var(--tw-gradient-from-opacity, 1)) !important;
+}
+
+.aetheris-dark [class*="via-violet-"],
+.aetheris-dark [class*="via-purple-"] {
+  --tw-gradient-via: rgb(var(--accent-rgb) / var(--tw-gradient-via-opacity, 1)) !important;
+}
+
+.aetheris-dark [class*="to-violet-"],
+.aetheris-dark [class*="to-purple-"] {
+  --tw-gradient-to: rgb(var(--accent-soft-rgb) / var(--tw-gradient-to-opacity, 1)) !important;
+}

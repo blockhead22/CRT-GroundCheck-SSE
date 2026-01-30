@@ -30,7 +30,7 @@ export function Composer(props: {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-card backdrop-blur-xl">
+    <div className="flex items-center gap-3 rounded-2xl glass-card px-4 py-3">
       <input
         value={text}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setText(e.target.value)}
@@ -47,7 +47,7 @@ export function Composer(props: {
           whileTap={canSend && !props.researching ? { scale: 0.98 } : undefined}
           onClick={research}
           disabled={props.disabled || !canSend || props.researching}
-          className="grid h-10 w-10 place-items-center rounded-xl bg-blue-600 text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="grid h-10 w-10 place-items-center rounded-xl bg-sky-500 text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Research"
           title="Research this topic"
         >
@@ -63,7 +63,7 @@ export function Composer(props: {
         whileTap={canSend && !props.researching ? { scale: 0.98 } : undefined}
         onClick={send}
         disabled={props.disabled || !canSend || props.researching}
-        className="grid h-10 w-10 place-items-center rounded-xl bg-violet-600 text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+        className="grid h-10 w-10 place-items-center rounded-xl accent-button text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Send"
         title="Send"
       >

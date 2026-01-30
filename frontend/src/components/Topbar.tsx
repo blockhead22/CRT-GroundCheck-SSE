@@ -25,7 +25,7 @@ export function Topbar(props: {
     props.apiStatus === 'connected' ? 'API: Online' : props.apiStatus === 'disconnected' ? 'API: Offline' : 'API: Checking'
 
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 shadow-soft backdrop-blur-xl">
+    <div className="flex items-center justify-between rounded-[28px] glass-panel px-4 py-3">
       <div className="flex items-center gap-3">
         <button
           onClick={props.onToggleSidebarMobile}
@@ -36,7 +36,7 @@ export function Topbar(props: {
           ☰
         </button>
         <div className="flex items-center gap-2">
-          <div className="text-sm font-semibold text-white">{props.title}</div>
+          <div className="text-sm font-semibold text-white font-display">{props.title}</div>
           <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/60">v1.2</span>
           <span
             title={props.apiBaseUrl ? `Base: ${props.apiBaseUrl}` : 'Base: (same origin / dev proxy)'}
@@ -49,7 +49,7 @@ export function Topbar(props: {
       </div>
 
       <div className="flex min-w-0 flex-1 justify-center px-3">
-        <div className="flex w-full max-w-[520px] items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
+        <div className="flex w-full max-w-[520px] items-center gap-2 rounded-2xl glass-field px-3 py-2">
           <span className="text-white/50">⌕</span>
           <input
             placeholder="Search"
@@ -65,7 +65,7 @@ export function Topbar(props: {
             value={props.apiBaseUrl}
             onChange={(e) => props.onChangeApiBaseUrl(e.target.value)}
             placeholder="(same origin)"
-            className="w-[220px] rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
+            className="w-[220px] rounded-xl glass-field px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
           />
         </div>
         {props.onOpenDemoMode ? (
@@ -118,7 +118,7 @@ export function Topbar(props: {
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.2 }}
-          className="grid h-9 w-9 place-items-center rounded-full bg-violet-600 text-sm font-semibold text-white"
+          className="grid h-9 w-9 place-items-center rounded-full accent-button text-sm font-semibold text-white"
         >
           {initial}
         </motion.div>

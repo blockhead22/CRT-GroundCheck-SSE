@@ -187,7 +187,7 @@ export function ChatThreadView(props: {
         className="w-full max-w-[760px]"
       >
         <div className="text-center">
-          <div className="bg-gradient-to-r from-violet-300 via-violet-200 to-white bg-clip-text text-4xl font-semibold text-transparent md:text-5xl">
+          <div className="bg-gradient-to-r from-cyan-200 via-sky-200 to-white bg-clip-text text-4xl font-semibold text-transparent md:text-5xl">
             Hello {displayName}
           </div>
           <div className="mt-2 text-xl font-medium text-white/60 md:text-2xl">How can I help you today?</div>
@@ -315,7 +315,7 @@ export function ChatThreadView(props: {
                     >
                       {props.streamingResponse}
                     </div>
-                    <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-violet-500" />
+                    <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-cyan-400" />
                   </div>
                 </motion.div>
               ) : null}
@@ -330,7 +330,7 @@ export function ChatThreadView(props: {
                 >
                   <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 shadow-card">
                     <span className="inline-flex items-center gap-2">
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-violet-500" />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
                       CRT is thinking…
                     </span>
                   </div>
