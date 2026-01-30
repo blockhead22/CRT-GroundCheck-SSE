@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+import random
 import re
 import threading
 import time
@@ -64,6 +65,175 @@ def _trend_topics(messages: List[str]) -> dict:
     rising.sort(key=lambda x: x["delta"], reverse=True)
     fading.sort(key=lambda x: x["delta"])
     return {"rising": rising[:5], "fading": fading[:5]}
+
+
+def _format_topic_list(items: List[dict], key: str = "topic") -> str:
+    topics = [str(item.get(key)) for item in items if isinstance(item, dict) and item.get(key)]
+    return ", ".join(topics[:4]) if topics else "--"
+
+
+def _summarize_scorecard(scorecard: dict) -> tuple[str, str]:
+    """Build a compact journal entry from a reflection scorecard."""
+    top_topics = _format_topic_list(scorecard.get("top_topics") or [])
+    rising = _format_topic_list((scorecard.get("topic_trends") or {}).get("rising") or [])
+    fading = _format_topic_list((scorecard.get("topic_trends") or {}).get("fading") or [])
+    pref_conf = scorecard.get("preference_confidence")
+    window = scorecard.get("message_window")
+    manual_prompt = str(scorecard.get("manual_prompt") or "").strip()
+
+    title = "Reflection update"
+    lines = [
+        f"Window: {window or '--'} msgs",
+        f"Preference confidence: {pref_conf:.2f}" if isinstance(pref_conf, (int, float)) else "Preference confidence: --",
+        f"Top topics: {top_topics}",
+        f"Rising: {rising}",
+        f"Fading: {fading}",
+    ]
+    if manual_prompt:
+        lines.append(f"Manual prompt: {manual_prompt[:120]}")
+    body = " | ".join(lines)
+    return title, body
+
+
+def _summarize_personality(profile: dict) -> tuple[str, str]:
+    """Build a compact journal entry from a personality profile."""
+    verbosity = profile.get("verbosity") or "--"
+    emoji_pref = profile.get("emoji") or "--"
+    fmt = profile.get("format") or "--"
+    window = profile.get("message_window")
+    manual_prompt = str(profile.get("manual_prompt") or "").strip()
+
+    title = "Personality update"
+    lines = [
+        f"Window: {window or '--'} msgs",
+        f"Verbosity: {verbosity}",
+        f"Emoji: {emoji_pref}",
+        f"Format: {fmt}",
+    ]
+    if manual_prompt:
+        lines.append(f"Manual prompt: {manual_prompt[:120]}")
+    body = " | ".join(lines)
+    return title, body
+
+
+def _env_bool(name: str, default: bool = True) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except Exception:
+        return default
+
+
+def _compose_self_reply_text(
+    source_type: str,
+    scorecard: dict | None = None,
+    profile: dict | None = None,
+) -> tuple[str, str]:
+    profile = profile or {}
+    verbosity = str(profile.get("verbosity") or "balanced").lower()
+    emoji_pref = str(profile.get("emoji") or "off").lower()
+    fmt = str(profile.get("format") or "freeform").lower()
+
+    topics = "--"
+    rising = "--"
+    fading = "--"
+    if scorecard:
+        topics = _format_topic_list(scorecard.get("top_topics") or [])
+        trends = scorecard.get("topic_trends") or {}
+        rising = _format_topic_list(trends.get("rising") or [])
+        fading = _format_topic_list(trends.get("fading") or [])
+
+    lines: List[str] = []
+    if source_type == "reflection":
+        lines.append(f"Focus: {topics}")
+        lines.append(f"Rising: {rising}")
+        lines.append(f"Fading: {fading}")
+        if profile:
+            lines.append(f"Style: {verbosity}/{fmt}, emoji {emoji_pref}")
+    else:
+        lines.append(f"Style: {verbosity}/{fmt}, emoji {emoji_pref}")
+        if topics != "--":
+            lines.append(f"Top topics: {topics}")
+
+    if not lines:
+        lines = ["Noted. Will keep observing."]
+
+    if verbosity == "concise":
+        lines = lines[:2]
+    elif verbosity == "balanced":
+        lines = lines[:3]
+    else:
+        lines = lines[:4] + ["Next: keep observing and adjust gently as needed."]
+
+    if fmt == "structured":
+        body = "\n".join(f"- {line}" for line in lines)
+    else:
+        body = " | ".join(lines)
+
+    if emoji_pref == "on":
+        body = f"{body} :)"
+
+    title = "Journal reply" if source_type == "reflection" else "Personality note"
+    return title, body
+
+
+def _maybe_append_self_reply(
+    session_db: ThreadSessionDB,
+    thread_id: str,
+    source_entry_id: int,
+    source_type: str,
+    scorecard: dict | None = None,
+    profile: dict | None = None,
+) -> None:
+    if source_entry_id <= 0:
+        return
+    if not _env_bool("CRT_JOURNAL_SELF_REPLY_ENABLED", True):
+        return
+
+    chance = max(0.0, min(1.0, _env_float("CRT_JOURNAL_SELF_REPLY_CHANCE", 0.25)))
+    if chance <= 0.0:
+        return
+
+    min_seconds = int(max(0, _env_float("CRT_JOURNAL_SELF_REPLY_MIN_SECONDS", 1800)))
+    now = time.time()
+
+    try:
+        recent = session_db.get_reflection_journal_entries(thread_id, limit=25)
+    except Exception:
+        recent = []
+
+    for entry in recent:
+        if entry.get("entry_type") == "self_reply":
+            created_at = float(entry.get("created_at") or 0)
+            if created_at and (now - created_at) < min_seconds:
+                return
+            break
+
+    if random.random() > chance:
+        return
+
+    title, body = _compose_self_reply_text(source_type, scorecard=scorecard, profile=profile)
+    meta = {
+        "reply_to": source_entry_id,
+        "source_entry_type": source_type,
+        "auto": True,
+    }
+    session_db.add_reflection_journal_entry(
+        thread_id=thread_id,
+        entry_type="self_reply",
+        title=title,
+        body=body,
+        meta=meta,
+    )
 
 
 def _emoji_present(text: str) -> bool:
@@ -181,6 +351,26 @@ class ReflectionLoop:
         messages = _recent_messages(self.session_db, thread_id, self.window)
         scorecard = build_reflection_scorecard(thread_id, messages, prompt=prompt)
         self.session_db.store_reflection_scorecard(thread_id, scorecard)
+        try:
+            title, body = _summarize_scorecard(scorecard)
+            entry_id = self.session_db.add_reflection_journal_entry(
+                thread_id=thread_id,
+                entry_type="reflection",
+                title=title,
+                body=body,
+                meta=scorecard,
+            )
+            profile = self.session_db.get_personality_profile(thread_id)
+            _maybe_append_self_reply(
+                session_db=self.session_db,
+                thread_id=thread_id,
+                source_entry_id=entry_id,
+                source_type="reflection",
+                scorecard=scorecard,
+                profile=profile,
+            )
+        except Exception as e:
+            logger.debug(f"[REFLECTION_LOOP] Failed to append journal entry: {e}")
         return scorecard
 
 
@@ -229,6 +419,26 @@ class PersonalityLoop:
         messages = _recent_messages(self.session_db, thread_id, self.window)
         profile = build_personality_profile(thread_id, messages, prompt=prompt)
         self.session_db.store_personality_profile(thread_id, profile)
+        try:
+            title, body = _summarize_personality(profile)
+            entry_id = self.session_db.add_reflection_journal_entry(
+                thread_id=thread_id,
+                entry_type="personality",
+                title=title,
+                body=body,
+                meta=profile,
+            )
+            scorecard = self.session_db.get_reflection_scorecard(thread_id)
+            _maybe_append_self_reply(
+                session_db=self.session_db,
+                thread_id=thread_id,
+                source_entry_id=entry_id,
+                source_type="personality",
+                scorecard=scorecard,
+                profile=profile,
+            )
+        except Exception as e:
+            logger.debug(f"[PERSONALITY_LOOP] Failed to append journal entry: {e}")
         return profile
 
 

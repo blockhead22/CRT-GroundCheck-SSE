@@ -249,6 +249,24 @@ class ThreadSessionDB:
                 profile_json TEXT NOT NULL
             )
         """)
+
+        # Reflection journal entries (append-only log)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reflection_journal_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                thread_id TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                entry_type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                body TEXT NOT NULL,
+                meta_json TEXT
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reflection_journal_thread_ts
+            ON reflection_journal_entries(thread_id, created_at DESC)
+        """)
         
         conn.commit()
         conn.close()
@@ -646,6 +664,64 @@ class ThreadSessionDB:
             return json.loads(row["profile_json"])
         except Exception:
             return None
+
+    def add_reflection_journal_entry(
+        self,
+        thread_id: str,
+        entry_type: str,
+        title: str,
+        body: str,
+        meta: Optional[dict] = None,
+    ) -> int:
+        """Append a reflection journal entry for a thread."""
+        import json
+        created_at = time.time()
+        meta_json = json.dumps(meta) if meta else None
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO reflection_journal_entries
+            (thread_id, created_at, entry_type, title, body, meta_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (thread_id, created_at, entry_type, title, body, meta_json))
+        entry_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return int(entry_id) if entry_id is not None else -1
+
+    def get_reflection_journal_entries(self, thread_id: str, limit: int = 50) -> list[dict]:
+        """Fetch reflection journal entries for a thread (most recent first)."""
+        import json
+        limit = max(1, min(int(limit or 50), 200))
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, thread_id, created_at, entry_type, title, body, meta_json
+            FROM reflection_journal_entries
+            WHERE thread_id = ?
+            ORDER BY created_at DESC
+            LIMIT ?
+        """, (thread_id, limit))
+        rows = cursor.fetchall()
+        conn.close()
+        out = []
+        for row in rows:
+            meta = None
+            if row["meta_json"]:
+                try:
+                    meta = json.loads(row["meta_json"])
+                except Exception:
+                    meta = None
+            out.append({
+                "id": row["id"],
+                "thread_id": row["thread_id"],
+                "created_at": row["created_at"],
+                "entry_type": row["entry_type"],
+                "title": row["title"],
+                "body": row["body"],
+                "meta": meta,
+            })
+        return out
     
     def _normalize_query(self, query: str) -> str:
         """Normalize query for comparison (lowercase, strip punctuation)."""

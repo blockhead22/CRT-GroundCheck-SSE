@@ -4258,12 +4258,18 @@ class CRTEnhancedRAG:
         
         # 2. Generate candidate output using reasoning
         style_profile = None
+        personality_profile = None
+        reflection_scorecard = None
         try:
             if thread_id:
                 session_db = get_thread_session_db()
                 style_profile = session_db.get_style_profile(thread_id)
+                personality_profile = session_db.get_personality_profile(thread_id)
+                reflection_scorecard = session_db.get_reflection_scorecard(thread_id)
         except Exception:
             style_profile = None
+            personality_profile = None
+            reflection_scorecard = None
 
         reasoning_context = {
             'retrieved_docs': [
@@ -4272,6 +4278,8 @@ class CRTEnhancedRAG:
             'contradictions': [],  # Will detect after generation
             'memory_context': [],
             'style_profile': style_profile,
+            'personality_profile': personality_profile,
+            'reflection_scorecard': reflection_scorecard,
         }
         
         reasoning_result = self.reasoning.reason(

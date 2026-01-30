@@ -724,11 +724,64 @@ class ReasoningEngine:
             "Tone: friendly and flexible; lightly playful when the user is playful, "
             "and serious when they are serious. Keep language natural and not overly formal."
         )
+
+    def _format_adaptive_hint(
+        self,
+        personality_profile: Optional[Dict[str, Any]],
+        reflection_scorecard: Optional[Dict[str, Any]],
+    ) -> str:
+        """Create a low-priority, short nudge from personality/reflection loops."""
+        hints: List[str] = []
+
+        if personality_profile:
+            window = int(personality_profile.get("message_window") or 0)
+            if window >= 12:
+                verbosity = str(personality_profile.get("verbosity") or "").lower()
+                if verbosity == "concise":
+                    hints.append("Prefer concise answers unless the user asks for depth.")
+                elif verbosity == "verbose":
+                    hints.append("Allow more detail when it helps clarity.")
+
+                fmt = str(personality_profile.get("format") or "").lower()
+                if fmt == "structured":
+                    hints.append("Use bullets for steps or lists when helpful.")
+
+                emoji_pref = str(personality_profile.get("emoji") or "").lower()
+                if emoji_pref == "on":
+                    hints.append("Use at most one emoji occasionally.")
+
+        if reflection_scorecard:
+            try:
+                confidence = float(reflection_scorecard.get("preference_confidence") or 0.0)
+            except Exception:
+                confidence = 0.0
+            if confidence >= 0.7:
+                topics_raw = reflection_scorecard.get("top_topics") or []
+                topics = [
+                    t.get("topic")
+                    for t in topics_raw
+                    if isinstance(t, dict) and t.get("topic")
+                ]
+                topics = [t for t in topics if isinstance(t, str)]
+                if topics:
+                    top = ", ".join(topics[:2])
+                    hints.append(f"When relevant, tie examples to: {top}.")
+
+        if not hints:
+            return ""
+
+        # Keep impact small: cap to two short hints.
+        hints = hints[:2]
+        return " ".join(hints)
     
     def _build_quick_prompt(self, query: str, context: Dict) -> str:
         """Build prompt for quick mode."""
         docs = context.get('retrieved_docs', [])
         style_hint = self._format_style_hint(context.get("style_profile"))
+        adaptive_hint = self._format_adaptive_hint(
+            context.get("personality_profile"),
+            context.get("reflection_scorecard"),
+        )
         
         prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
 
@@ -763,6 +816,8 @@ Your core principles:
 
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
+        if adaptive_hint:
+            prompt += f"ADAPTIVE NUDGE (low priority): {adaptive_hint}\n\n"
         
         # Add memory context if available
         if docs:
@@ -786,6 +841,10 @@ Your core principles:
         docs = context.get('retrieved_docs', [])
         contradictions = context.get('contradictions', [])
         style_hint = self._format_style_hint(context.get("style_profile"))
+        adaptive_hint = self._format_adaptive_hint(
+            context.get("personality_profile"),
+            context.get("reflection_scorecard"),
+        )
         
         prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
 
@@ -802,6 +861,8 @@ You do NOT have a human name, occupation, or personal attributes - you are an AI
 """
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
+        if adaptive_hint:
+            prompt += f"ADAPTIVE NUDGE (low priority): {adaptive_hint}\n\n"
 
         prompt += f"Question: {query}\n\n"
         prompt += f"Analysis: {analysis}\n"
@@ -820,10 +881,16 @@ You do NOT have a human name, occupation, or personal attributes - you are an AI
     def _build_deep_prompt(self, query: str, context: Dict, plan: str, execution: str) -> str:
         """Build prompt for deep mode."""
         style_hint = self._format_style_hint(context.get("style_profile"))
+        adaptive_hint = self._format_adaptive_hint(
+            context.get("personality_profile"),
+            context.get("reflection_scorecard"),
+        )
         prompt = """You are CRT, an AI assistant. Facts in memory are ABOUT THE USER, not about you.
 Do NOT claim user's personal attributes (name, job, location) as your own.\n\n"""
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
+        if adaptive_hint:
+            prompt += f"ADAPTIVE NUDGE (low priority): {adaptive_hint}\n\n"
         prompt += f"Complex Question: {query}\n\n"
         prompt += f"Reasoning Plan: {plan}\n"
         prompt += f"Execution: {execution}\n\n"

@@ -1953,6 +1953,24 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"[REFLECTION] Failed to get thread reflections: {e}")
             return {"traces": [], "count": 0, "error": str(e)}
+
+    @app.get("/api/reflection/journal/{thread_id}")
+    def get_reflection_journal(
+        thread_id: str,
+        limit: int = Query(default=50, ge=1, le=200)
+    ):
+        """
+        Get reflection loop journal entries for a thread.
+        
+        These are lightweight, append-only summaries from the background reflection loop.
+        """
+        try:
+            session_db = get_thread_session_db()
+            entries = session_db.get_reflection_journal_entries(thread_id, limit=limit)
+            return {"entries": entries, "count": len(entries)}
+        except Exception as e:
+            logger.error(f"[REFLECTION] Failed to get reflection journal: {e}")
+            return {"entries": [], "count": 0, "error": str(e)}
     
     @app.get("/api/training/stats")
     def get_training_stats():

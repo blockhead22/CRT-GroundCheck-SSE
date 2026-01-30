@@ -129,6 +129,16 @@ export type LoopRunResponse = {
   open_contradictions?: number | null
 }
 
+export type ReflectionJournalEntry = {
+  id: number
+  thread_id: string
+  created_at: number
+  entry_type: string
+  title: string
+  body: string
+  meta?: Record<string, unknown> | null
+}
+
 function getApiBaseUrlInternal(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL
   const fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
@@ -211,6 +221,28 @@ export async function runLoops(args: LoopRunRequest): Promise<LoopRunResponse> {
   }
 
   return (await res.json()) as LoopRunResponse
+}
+
+export async function getReflectionJournal(args: {
+  threadId: string
+  limit?: number
+}): Promise<{ entries: ReflectionJournalEntry[]; count: number }> {
+  const base = getApiBaseUrlInternal()
+  const limit = typeof args.limit === 'number' ? args.limit : 50
+  let res: Response
+  try {
+    res = await fetch(`${base}/api/reflection/journal/${encodeURIComponent(args.threadId)}?limit=${limit}`)
+  } catch (_e) {
+    const at = base ? base : '(same origin)'
+    throw new Error(`CRT API unreachable at ${at}. Is the backend running?`)
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+
+  return (await res.json()) as { entries: ReflectionJournalEntry[]; count: number }
 }
 
 // Streaming event types from /api/chat/stream
