@@ -39,6 +39,7 @@ from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 from personal_agent.db_utils import get_thread_session_db
+from personal_agent.continuous_loops import build_loops
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
 from personal_agent.reflection_system import run_reflection_pass, ReflectionDB, ReflectionResult
@@ -72,29 +73,51 @@ def _strip_thinking_tags(text: str) -> str:
     return cleaned.strip()
 
 
-def _format_style_instruction(style_profile: Optional[Dict[str, Any]]) -> str:
+def _format_style_instruction(
+    style_profile: Optional[Dict[str, Any]],
+    personality_profile: Optional[Dict[str, Any]] = None,
+) -> str:
     if not style_profile:
         return ""
     label = str(style_profile.get("tone_label") or "balanced").lower()
+    personality_profile = personality_profile or {}
+    verbosity_pref = str(personality_profile.get("verbosity") or "").lower()
+    emoji_pref = str(personality_profile.get("emoji") or "").lower()
     if label == "playful":
-        return (
+        base = (
             "Tone: playful and witty when appropriate; mirror the user's humor. "
             "Shift to serious and grounded when the topic is serious. Keep language natural and not overly formal."
         )
-    if label == "serious":
-        return (
+    elif label == "serious":
+        base = (
             "Tone: calm, direct, and empathetic. Avoid jokes unless the user cues humor. "
             "Keep language natural and not overly formal."
         )
-    if label == "adaptive":
-        return (
-            "Tone: adaptive—light when the user is playful, grounded when the user is serious. "
+    elif label == "adaptive":
+        base = (
+            "Tone: adaptive?light when the user is playful, grounded when the user is serious. "
             "Keep a warm, consistent voice. Keep language natural and not overly formal."
         )
-    return (
-        "Tone: friendly and flexible; lightly playful when the user is playful, "
-        "and serious when they are serious. Keep language natural and not overly formal."
-    )
+    else:
+        base = (
+            "Tone: friendly and flexible; lightly playful when the user is playful, "
+            "and serious when they are serious. Keep language natural and not overly formal."
+        )
+
+    verbosity_line = ""
+    if verbosity_pref == "concise":
+        verbosity_line = "Prefer concise responses unless detail is explicitly requested."
+    elif verbosity_pref == "verbose":
+        verbosity_line = "Prefer detailed responses with concrete steps and examples."
+
+    emoji_line = ""
+    if emoji_pref == "off":
+        emoji_line = "Avoid emojis unless the user uses them first."
+    elif emoji_pref == "on":
+        emoji_line = "Emojis are welcome if they match the tone."
+
+    extras = " ".join([s for s in [verbosity_line, emoji_line] if s])
+    return f"{base} {extras}".strip()
 
 
 _EXPAND_TRIGGERS = (
@@ -579,6 +602,12 @@ def create_app() -> FastAPI:
     )
     app.state.idle_scheduler = idle_scheduler
 
+    # Continuous reflection + personality loops (24/7, limited scope)
+    session_db = get_thread_session_db()
+    reflection_loop, personality_loop = build_loops(session_db)
+    app.state.reflection_loop = reflection_loop
+    app.state.personality_loop = personality_loop
+
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
     origins = [o.strip() for o in cors_env.split(",") if o.strip()]
@@ -718,6 +747,16 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
+        try:
+            app.state.reflection_loop.start()
+        except Exception:
+            pass
+
+        try:
+            app.state.personality_loop.start()
+        except Exception:
+            pass
+
     @app.on_event("shutdown")
     def _shutdown() -> None:
         try:
@@ -732,6 +771,16 @@ def create_app() -> FastAPI:
 
         try:
             jobs_worker.stop()
+        except Exception:
+            pass
+
+        try:
+            app.state.reflection_loop.stop()
+        except Exception:
+            pass
+
+        try:
+            app.state.personality_loop.stop()
         except Exception:
             pass
 

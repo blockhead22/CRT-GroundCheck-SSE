@@ -231,6 +231,24 @@ class ThreadSessionDB:
             CREATE INDEX IF NOT EXISTS idx_recent_queries_slot 
             ON recent_queries(thread_id, detected_slot, timestamp DESC)
         """)
+
+        # Reflection scorecards (single latest per thread)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reflection_scorecards (
+                thread_id TEXT PRIMARY KEY,
+                updated_at REAL NOT NULL,
+                scorecard_json TEXT NOT NULL
+            )
+        """)
+
+        # Personality profiles (single latest per thread)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS personality_profiles (
+                thread_id TEXT PRIMARY KEY,
+                updated_at REAL NOT NULL,
+                profile_json TEXT NOT NULL
+            )
+        """)
         
         conn.commit()
         conn.close()
@@ -546,6 +564,88 @@ class ThreadSessionDB:
         conn.close()
         
         return results
+
+    def list_threads(self, limit: int = 200) -> list[str]:
+        """List active thread IDs by most recent activity."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT thread_id
+            FROM thread_sessions
+            ORDER BY last_active DESC
+            LIMIT ?
+        """, (limit,))
+        results = [row["thread_id"] for row in cursor.fetchall()]
+        conn.close()
+        return results
+
+    def store_reflection_scorecard(self, thread_id: str, scorecard: dict) -> None:
+        """Upsert the latest reflection scorecard for a thread."""
+        import json
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO reflection_scorecards (thread_id, updated_at, scorecard_json)
+            VALUES (?, ?, ?)
+            ON CONFLICT(thread_id) DO UPDATE SET
+                updated_at = excluded.updated_at,
+                scorecard_json = excluded.scorecard_json
+        """, (thread_id, time.time(), json.dumps(scorecard)))
+        conn.commit()
+        conn.close()
+
+    def get_reflection_scorecard(self, thread_id: str) -> dict | None:
+        """Fetch latest reflection scorecard, if available."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT scorecard_json
+            FROM reflection_scorecards
+            WHERE thread_id = ?
+        """, (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        try:
+            import json
+            return json.loads(row["scorecard_json"])
+        except Exception:
+            return None
+
+    def store_personality_profile(self, thread_id: str, profile: dict) -> None:
+        """Upsert the latest personality profile for a thread."""
+        import json
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO personality_profiles (thread_id, updated_at, profile_json)
+            VALUES (?, ?, ?)
+            ON CONFLICT(thread_id) DO UPDATE SET
+                updated_at = excluded.updated_at,
+                profile_json = excluded.profile_json
+        """, (thread_id, time.time(), json.dumps(profile)))
+        conn.commit()
+        conn.close()
+
+    def get_personality_profile(self, thread_id: str) -> dict | None:
+        """Fetch latest personality profile, if available."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT profile_json
+            FROM personality_profiles
+            WHERE thread_id = ?
+        """, (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        try:
+            import json
+            return json.loads(row["profile_json"])
+        except Exception:
+            return None
     
     def _normalize_query(self, query: str) -> str:
         """Normalize query for comparison (lowercase, strip punctuation)."""
