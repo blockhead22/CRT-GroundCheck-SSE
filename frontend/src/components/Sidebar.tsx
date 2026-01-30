@@ -4,6 +4,7 @@ import type { ChatThread, NavId } from '../types'
 const nav: Array<{ id: NavId; label: string; icon: string }> = [
   { id: 'chat', label: 'Chat', icon: '✦' },
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
+  { id: 'loops', label: 'Loops', icon: 'L' },
   { id: 'showcase', label: 'Showcase', icon: '✨' },
   { id: 'jobs', label: 'Jobs', icon: '☷' },
   { id: 'docs', label: 'Docs', icon: '≣' },

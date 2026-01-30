@@ -114,6 +114,21 @@ export type ChatSendResponse = {
   }
 }
 
+export type LoopRunRequest = {
+  thread_id: string
+  mode?: 'reflection' | 'personality' | 'both'
+  prompt?: string | null
+}
+
+export type LoopRunResponse = {
+  ok: boolean
+  thread_id: string
+  ran: string[]
+  reflection_scorecard?: Record<string, unknown> | null
+  personality_profile?: Record<string, unknown> | null
+  open_contradictions?: number | null
+}
+
 function getApiBaseUrlInternal(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL
   const fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
@@ -168,6 +183,34 @@ export async function sendToCrtApi(args: {
   }
 
   return (await res.json()) as ChatSendResponse
+}
+
+export async function runLoops(args: LoopRunRequest): Promise<LoopRunResponse> {
+  const base = getApiBaseUrlInternal()
+  const payload: LoopRunRequest = {
+    thread_id: args.thread_id,
+    mode: args.mode ?? 'both',
+    prompt: args.prompt ?? null,
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`${base}/api/loops/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (_e) {
+    const at = base ? base : '(same origin)'
+    throw new Error(`CRT API unreachable at ${at}. Is the backend running?`)
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+
+  return (await res.json()) as LoopRunResponse
 }
 
 // Streaming event types from /api/chat/stream

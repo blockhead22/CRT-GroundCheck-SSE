@@ -374,6 +374,21 @@ class ContradictionRespondResponse(BaseModel):
     recorded: bool = True
 
 
+class LoopRunRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    mode: Optional[str] = Field(default="both", description="reflection | personality | both")
+    prompt: Optional[str] = Field(default=None, description="Optional manual prompt for the loop run")
+
+
+class LoopRunResponse(BaseModel):
+    ok: bool = True
+    thread_id: str
+    ran: List[str] = Field(default_factory=list)
+    reflection_scorecard: Optional[Dict[str, Any]] = None
+    personality_profile: Optional[Dict[str, Any]] = None
+    open_contradictions: Optional[int] = None
+
+
 class FactExtractionRequest(BaseModel):
     text: str = Field(min_length=1, description="Text to extract facts from")
     skip_llm: bool = Field(default=False, description="If true, only extract hard slots (faster)")
@@ -3338,7 +3353,7 @@ def create_app() -> FastAPI:
                             }
                             yield f"data: {json.dumps(payload)}\n\n"
 
-                    if now - last_heartbeat >= 25:
+                    if now - last_heartbeat >= interval_seconds:
                         last_heartbeat = now
                         yield f"data: {json.dumps({'type': 'heartbeat', 'thread_id': thread_id, 'ts': now})}\n\n"
 
@@ -3357,6 +3372,52 @@ def create_app() -> FastAPI:
                 "Connection": "keep-alive",
                 "X-Accel-Buffering": "no",
             },
+        )
+
+    @app.post("/api/loops/run", response_model=LoopRunResponse)
+    def loops_run(req: LoopRunRequest) -> LoopRunResponse:
+        thread_id = req.thread_id or "default"
+        mode = (req.mode or "both").strip().lower()
+        prompt = (req.prompt or "").strip() or None
+
+        run_reflection = mode in ("reflection", "reflect", "both", "")
+        run_personality = mode in ("personality", "person", "both", "")
+        if not run_reflection and not run_personality:
+            run_reflection = True
+            run_personality = True
+
+        reflection_scorecard = None
+        personality_profile = None
+        ran: List[str] = []
+
+        try:
+            if run_reflection and hasattr(app.state, "reflection_loop"):
+                reflection_scorecard = app.state.reflection_loop.run_for_thread(thread_id, prompt=prompt)
+                ran.append("reflection")
+        except Exception as e:
+            logger.warning(f"[LOOPS] Reflection run failed: {e}")
+
+        try:
+            if run_personality and hasattr(app.state, "personality_loop"):
+                personality_profile = app.state.personality_loop.run_for_thread(thread_id, prompt=prompt)
+                ran.append("personality")
+        except Exception as e:
+            logger.warning(f"[LOOPS] Personality run failed: {e}")
+
+        open_contradictions = None
+        try:
+            engine = get_engine(thread_id)
+            open_contradictions = len(engine.ledger.get_open_contradictions(limit=200))
+        except Exception:
+            pass
+
+        return LoopRunResponse(
+            ok=True,
+            thread_id=thread_id,
+            ran=ran,
+            reflection_scorecard=reflection_scorecard,
+            personality_profile=personality_profile,
+            open_contradictions=open_contradictions,
         )
 
     # ========================================================================

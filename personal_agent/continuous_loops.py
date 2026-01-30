@@ -75,6 +75,67 @@ def _emoji_present(text: str) -> bool:
         return False
 
 
+def _recent_messages(session_db: ThreadSessionDB, thread_id: str, window: int) -> List[str]:
+    recent = session_db.get_recent_queries(thread_id, window=window)
+    return [r.get("query_text", "") for r in reversed(recent)]
+
+
+def build_reflection_scorecard(
+    thread_id: str,
+    messages: List[str],
+    prompt: str | None = None,
+) -> dict:
+    counts = _topic_counts(messages)
+    scorecard = {
+        "thread_id": thread_id,
+        "updated_at": time.time(),
+        "message_window": len(messages),
+        "preference_confidence": min(1.0, len(messages) / 20.0),
+        "top_topics": _top_topics(counts, k=5),
+        "topic_trends": _trend_topics(messages),
+    }
+    if prompt:
+        scorecard["manual_prompt"] = prompt
+        scorecard["manual_triggered_at"] = time.time()
+    return scorecard
+
+
+def build_personality_profile(
+    thread_id: str,
+    messages: List[str],
+    prompt: str | None = None,
+) -> dict:
+    lengths = [len(m) for m in messages if m]
+    avg_len = sum(lengths) / len(lengths) if lengths else 0
+    if avg_len <= 60:
+        verbosity = "concise"
+    elif avg_len >= 180:
+        verbosity = "verbose"
+    else:
+        verbosity = "balanced"
+
+    emoji_hits = sum(1 for m in messages if _emoji_present(m))
+    emoji_preference = "on" if emoji_hits >= max(1, len(messages) // 4) else "off"
+
+    structured = any(
+        line.strip().startswith(("-", "*", "1.", "2.")) for m in messages for line in m.splitlines()
+    )
+    format_pref = "structured" if structured else "freeform"
+
+    profile = {
+        "thread_id": thread_id,
+        "updated_at": time.time(),
+        "message_window": len(messages),
+        "verbosity": verbosity,
+        "emoji": emoji_preference,
+        "format": format_pref,
+    }
+    if prompt:
+        profile["manual_prompt"] = prompt
+        profile["manual_triggered_at"] = time.time()
+    return profile
+
+
 class ReflectionLoop:
     """Periodic reflection scorecard writer (limited scope)."""
 
@@ -114,18 +175,13 @@ class ReflectionLoop:
     def run_once(self) -> None:
         thread_ids = self.session_db.list_threads(limit=200)
         for tid in thread_ids:
-            recent = self.session_db.get_recent_queries(tid, window=self.window)
-            messages = [r.get("query_text", "") for r in reversed(recent)]
-            counts = _topic_counts(messages)
-            scorecard = {
-                "thread_id": tid,
-                "updated_at": time.time(),
-                "message_window": len(messages),
-                "preference_confidence": min(1.0, len(messages) / 20.0),
-                "top_topics": _top_topics(counts, k=5),
-                "topic_trends": _trend_topics(messages),
-            }
-            self.session_db.store_reflection_scorecard(tid, scorecard)
+            self.run_for_thread(tid)
+
+    def run_for_thread(self, thread_id: str, prompt: str | None = None) -> dict:
+        messages = _recent_messages(self.session_db, thread_id, self.window)
+        scorecard = build_reflection_scorecard(thread_id, messages, prompt=prompt)
+        self.session_db.store_reflection_scorecard(thread_id, scorecard)
+        return scorecard
 
 
 class PersonalityLoop:
@@ -167,37 +223,13 @@ class PersonalityLoop:
     def run_once(self) -> None:
         thread_ids = self.session_db.list_threads(limit=200)
         for tid in thread_ids:
-            recent = self.session_db.get_recent_queries(tid, window=self.window)
-            messages = [r.get("query_text", "") for r in reversed(recent)]
-            if not messages:
-                continue
+            self.run_for_thread(tid)
 
-            lengths = [len(m) for m in messages if m]
-            avg_len = sum(lengths) / len(lengths) if lengths else 0
-            if avg_len <= 60:
-                verbosity = "concise"
-            elif avg_len >= 180:
-                verbosity = "verbose"
-            else:
-                verbosity = "balanced"
-
-            emoji_hits = sum(1 for m in messages if _emoji_present(m))
-            emoji_preference = "on" if emoji_hits >= max(1, len(messages) // 4) else "off"
-
-            structured = any(
-                line.strip().startswith(("-", "*", "1.", "2.")) for m in messages for line in m.splitlines()
-            )
-            format_pref = "structured" if structured else "freeform"
-
-            profile = {
-                "thread_id": tid,
-                "updated_at": time.time(),
-                "message_window": len(messages),
-                "verbosity": verbosity,
-                "emoji": emoji_preference,
-                "format": format_pref,
-            }
-            self.session_db.store_personality_profile(tid, profile)
+    def run_for_thread(self, thread_id: str, prompt: str | None = None) -> dict | None:
+        messages = _recent_messages(self.session_db, thread_id, self.window)
+        profile = build_personality_profile(thread_id, messages, prompt=prompt)
+        self.session_db.store_personality_profile(thread_id, profile)
+        return profile
 
 
 def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, PersonalityLoop]:

@@ -14,6 +14,7 @@ import { WelcomeTutorial } from './components/onboarding/WelcomeTutorial'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
+import { LoopsPage } from './pages/LoopsPage'
 import { ShowcasePage } from './pages/ShowcasePage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
@@ -586,6 +587,8 @@ export default function App() {
                   <DashboardPage threadId={selectedThread?.id ?? 'default'} onOpenJobs={() => setNavActive('jobs')} />
                 ) : navActive === 'jobs' ? (
                   <JobsPage threadId={selectedThread?.id ?? 'default'} />
+                ) : navActive === 'loops' ? (
+                  <LoopsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'showcase' ? (
                   <ShowcasePage />
                 ) : (
