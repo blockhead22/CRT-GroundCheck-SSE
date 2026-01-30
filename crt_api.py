@@ -3299,6 +3299,66 @@ def create_app() -> FastAPI:
             }
         )
 
+    @app.get("/api/loops/stream")
+    def loops_stream(
+        thread_id: str = Query("default"),
+        interval_seconds: float = Query(2.5, ge=0.5, le=60.0),
+    ):
+        """Stream background loop updates (reflection scorecards + personality profiles)."""
+        def generate():
+            session_db = get_thread_session_db()
+            last_reflection_ts = 0.0
+            last_personality_ts = 0.0
+            last_heartbeat = 0.0
+
+            while True:
+                try:
+                    now = time.time()
+                    scorecard = session_db.get_reflection_scorecard(thread_id)
+                    if isinstance(scorecard, dict):
+                        updated_at = float(scorecard.get("updated_at") or 0)
+                        if updated_at > last_reflection_ts:
+                            last_reflection_ts = updated_at
+                            payload = {
+                                "type": "reflection_scorecard",
+                                "thread_id": thread_id,
+                                "scorecard": scorecard,
+                            }
+                            yield f"data: {json.dumps(payload)}\n\n"
+
+                    profile = session_db.get_personality_profile(thread_id)
+                    if isinstance(profile, dict):
+                        updated_at = float(profile.get("updated_at") or 0)
+                        if updated_at > last_personality_ts:
+                            last_personality_ts = updated_at
+                            payload = {
+                                "type": "personality_profile",
+                                "thread_id": thread_id,
+                                "profile": profile,
+                            }
+                            yield f"data: {json.dumps(payload)}\n\n"
+
+                    if now - last_heartbeat >= 25:
+                        last_heartbeat = now
+                        yield f"data: {json.dumps({'type': 'heartbeat', 'thread_id': thread_id, 'ts': now})}\n\n"
+
+                    time.sleep(interval_seconds)
+                except GeneratorExit:
+                    break
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'thread_id': thread_id, 'error': str(e)})}\n\n"
+                    time.sleep(interval_seconds)
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
     # ========================================================================
     # Episodic Memory API Endpoints
     # ========================================================================

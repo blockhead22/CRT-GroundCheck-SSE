@@ -2,10 +2,12 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect } from 'react'
 import type { ChatMessage } from '../types'
 import { CrtInspector } from './chat/CrtInspector'
+import { BackgroundLoopInspector } from './chat/BackgroundLoopInspector'
 
 export function InspectorLightbox(props: {
   open: boolean
   message: ChatMessage | null
+  threadId: string | null
   onClose: () => void
 }) {
   useEffect(() => {
@@ -65,6 +67,7 @@ export function InspectorLightbox(props: {
 
             <div className="max-h-[78vh] overflow-auto p-5">
               <CrtInspector message={props.message} onClear={props.onClose} />
+              <BackgroundLoopInspector threadId={props.threadId} />
             </div>
           </motion.div>
         </motion.div>

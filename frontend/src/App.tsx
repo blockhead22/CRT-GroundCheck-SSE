@@ -597,7 +597,12 @@ export default function App() {
         </div>
       </div>
 
-      <InspectorLightbox open={navActive === 'chat' && Boolean(selectedMessageId)} message={selectedMessage} onClose={() => setSelectedMessageId(null)} />
+      <InspectorLightbox
+        open={navActive === 'chat' && Boolean(selectedMessageId)}
+        message={selectedMessage}
+        threadId={selectedThread?.id ?? null}
+        onClose={() => setSelectedMessageId(null)}
+      />
 
       <ProfileNameLightbox
         open={navActive === 'chat' && setNameOpen}
