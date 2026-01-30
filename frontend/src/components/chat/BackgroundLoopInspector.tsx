@@ -180,7 +180,7 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
         <div className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">Stream</div>
         <div
           ref={scrollRef}
-          className="mt-2 max-h-[1400px] overflow-y-auto px-3 pb-3 text-[11px] text-white/70"
+          className="mt-2 h-[33vh] overflow-y-auto px-3 pb-3 text-[11px] text-white/70"
         >
           {events.length === 0 ? (
             <div className="text-white/40">No background loop events yet.</div>
