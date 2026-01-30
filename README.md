@@ -170,6 +170,7 @@ The API runs on `http://127.0.0.1:8123` by default.
 - **Tailwind CSS** for responsive, utility based styling
 - **Framer Motion** for smooth animations and transitions
 - **Vite** for fast builds and hot module replacement
+- **Monaco: @monaco-editor/react (VS Code editor in React). (npm.io)**
 
 For detailed frontend documentation, see `frontend/README.md` and `frontend/IMPLEMENTATION_SUMMARY.md`.
 

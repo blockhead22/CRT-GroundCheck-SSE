@@ -1,5 +1,8 @@
 import { motion } from 'framer-motion'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import Editor from '@monaco-editor/react'
 import type { ChatMessage } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
@@ -9,6 +12,37 @@ function pct01(v: number | null | undefined): string {
   if (v === null || v === undefined || Number.isNaN(v)) return '—'
   const clamped = Math.max(0, Math.min(1, v))
   return `${Math.round(clamped * 100)}%`
+}
+
+
+function MonacoBlock({ code, language }: { code: string; language?: string }) {
+  const height = useMemo(() => {
+    const lines = code.split('\n').length
+    const base = Math.max(120, Math.min(320, lines * 18 + 32))
+    return `${base}px`
+  }, [code])
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+      <Editor
+        height={height}
+        defaultLanguage={language || 'plaintext'}
+        value={code}
+        theme="vs-dark"
+        options={{
+          readOnly: true,
+          minimap: { enabled: false },
+          fontSize: 12,
+          lineNumbers: 'on',
+          wordWrap: 'on',
+          scrollBeyondLastLine: false,
+          renderLineHighlight: 'none',
+          contextmenu: false,
+          scrollbar: { vertical: 'auto', horizontal: 'auto' },
+        }}
+      />
+    </div>
+  )
 }
 
 type TaskingMeta = {
@@ -475,6 +509,7 @@ export function MessageBubble(props: {
   msg: ChatMessage
   threadId?: string
   selected?: boolean
+  onInspect?: (messageId: string) => void
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
   xrayMode?: boolean
@@ -684,7 +719,49 @@ export function MessageBubble(props: {
           <TaskingDropdown tasking={meta.tasking as TaskingMeta} />
         ) : null}
 
-        <div className="whitespace-pre-wrap leading-6">{props.msg.text}</div>
+        <div className="text-white/90 leading-6">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p({ children }) {
+                return <p className="mb-2 last:mb-0">{children}</p>
+              },
+              ul({ children }) {
+                return <ul className="mb-2 list-disc space-y-1 pl-5">{children}</ul>
+              },
+              ol({ children }) {
+                return <ol className="mb-2 list-decimal space-y-1 pl-5">{children}</ol>
+              },
+              li({ children }) {
+                return <li className="text-white/80">{children}</li>
+              },
+              code(props) {
+                const { children, className, inline } = props
+                const codeText = String(children ?? '').replace(/\n$/, '')
+                const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '')
+                const language = match ? match[1] : undefined
+                const isBlock = Boolean(language) || codeText.includes('\n')
+                if (inline || !isBlock) {
+                  return (
+                    <code className="rounded bg-white/10 px-1 py-0.5 text-[0.9em] text-white/90">
+                      {children}
+                    </code>
+                  )
+                }
+                return <MonacoBlock code={codeText} language={language} />
+              },
+              blockquote({ children }) {
+                return (
+                  <blockquote className="border-l-2 border-white/20 pl-3 text-white/70">
+                    {children}
+                  </blockquote>
+                )
+              },
+            }}
+          >
+            {props.msg.text}
+          </ReactMarkdown>
+        </div>
 
         {meta?.research_packet ? (
           <CitationViewer
@@ -762,8 +839,25 @@ export function MessageBubble(props: {
           </div>
         ) : null}
 
-        <div className={isUser ? 'mt-2 text-right text-[11px] text-white/80' : 'mt-2 text-right text-[11px] text-white/40'}>
-          {formatTime(props.msg.createdAt)}
+        <div
+          className={
+            isUser
+              ? 'mt-2 flex items-center justify-end gap-2 text-[11px] text-white/80'
+              : 'mt-2 flex items-center justify-end gap-2 text-[11px] text-white/40'
+          }
+        >
+          {!isUser ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                props.onInspect?.(props.msg.id)
+              }}
+              className="text-white/70 underline decoration-white/30 underline-offset-2 hover:text-white"
+            >
+              Inspector
+            </button>
+          ) : null}
+          <span>{formatTime(props.msg.createdAt)}</span>
         </div>
       </div>
     </motion.div>

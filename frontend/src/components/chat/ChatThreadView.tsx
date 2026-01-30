@@ -214,22 +214,12 @@ export function ChatThreadView(props: {
 
               <AnimatePresence initial={false}>
                 {props.thread.messages.map((m) => (
-                  <div
-                    key={m.id}
-                    onClick={() => {
-                      if (m.role === 'assistant') props.onSelectAssistantMessage(m.id)
-                    }}
-                    className={
-                      m.role === 'assistant'
-                        ? 'cursor-pointer rounded-2xl ring-1 ring-transparent hover:ring-white/10'
-                        : undefined
-                    }
-                    title={m.role === 'assistant' ? 'Click to inspect CRT details' : undefined}
-                  >
+                  <div key={m.id}>
                     <MessageBubble
                       msg={m}
                       threadId={props.thread.id}
                       selected={m.id === selectedMessageId}
+                      onInspect={(messageId) => props.onSelectAssistantMessage(messageId)}
                       onOpenSourceInspector={props.onOpenSourceInspector}
                       onOpenAgentPanel={props.onOpenAgentPanel}
                       xrayMode={props.xrayMode}
