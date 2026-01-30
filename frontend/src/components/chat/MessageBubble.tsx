@@ -42,6 +42,20 @@ function TaskingDropdown({ tasking }: { tasking?: TaskingMeta }) {
   const score = tasking.coverage?.score
   const passes = tasking.passes
   const skipped = tasking.skipped
+  const tasksCount = tasks.length
+  const missingCount = missing.length
+
+  const status = (() => {
+    if (skipped) {
+      return { label: 'SKIPPED', className: 'border-slate-500/40 bg-slate-500/15 text-slate-200' }
+    }
+    if (typeof score === 'number') {
+      if (score >= 0.9) return { label: 'OK', className: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-200' }
+      if (score >= 0.6) return { label: 'PARTIAL', className: 'border-amber-500/40 bg-amber-500/15 text-amber-200' }
+      return { label: 'LOW', className: 'border-rose-500/40 bg-rose-500/15 text-rose-200' }
+    }
+    return { label: 'UNKNOWN', className: 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200' }
+  })()
 
   return (
     <div className="mt-2 rounded-xl border border-cyan-500/30 bg-cyan-500/5 overflow-hidden" onClick={(e) => e.stopPropagation()}>
@@ -55,21 +69,19 @@ function TaskingDropdown({ tasking }: { tasking?: TaskingMeta }) {
       >
         <span className="flex items-center gap-2">
           <span>Tasking Loop</span>
+          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${status.className}`}>
+            {status.label}
+          </span>
           {typeof score === 'number' ? (
             <span className="text-cyan-200/70">Coverage {pct01(score)}</span>
           ) : null}
-          {typeof passes === 'number' ? (
-            <span className="text-cyan-200/70">Passes {passes}</span>
-          ) : null}
-          {skipped ? (
-            <span className="text-cyan-200/70">Skipped</span>
-          ) : null}
+          <span className="text-cyan-200/70">Tasks {tasksCount}</span>
         </span>
         <motion.span
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          ???
+          v
         </motion.span>
       </button>
       {isOpen ? (
@@ -80,6 +92,16 @@ function TaskingDropdown({ tasking }: { tasking?: TaskingMeta }) {
             </div>
           ) : null}
 
+          <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-white/70">
+            {typeof passes === 'number' ? (
+              <span className="rounded bg-black/20 px-2 py-0.5">Passes {passes}</span>
+            ) : null}
+            <span className="rounded bg-black/20 px-2 py-0.5">Missing {missingCount}</span>
+            {typeof tasking.interval_seconds === 'number' && tasking.interval_seconds > 0 ? (
+              <span className="rounded bg-black/20 px-2 py-0.5">Interval {tasking.interval_seconds}s</span>
+            ) : null}
+          </div>
+
           {tasking.plan?.notes ? (
             <div className="mt-2 text-cyan-200/70">Plan notes: {tasking.plan.notes}</div>
           ) : null}
@@ -89,8 +111,13 @@ function TaskingDropdown({ tasking }: { tasking?: TaskingMeta }) {
               <div className="font-semibold text-cyan-200">Plan</div>
               <ul className="mt-1 space-y-1">
                 {tasks.map((t) => (
-                  <li key={t.task_id} className="rounded-md bg-black/20 px-2 py-1">
-                    <div className="font-mono text-cyan-200">{t.task_id}</div>
+                  <li key={t.task_id} className="rounded-md bg-black/20 px-2 py-1 border border-white/5">
+                    <div className="flex items-center gap-2">
+                      <div className="font-mono text-cyan-200">{t.task_id}</div>
+                      {t.status ? (
+                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-white/60">{t.status}</span>
+                      ) : null}
+                    </div>
                     <div className="text-white/80">{t.goal}</div>
                     <div className="text-white/50">Accept: {t.acceptance_criteria}</div>
                   </li>
