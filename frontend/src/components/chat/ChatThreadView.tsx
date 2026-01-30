@@ -305,7 +305,7 @@ export function ChatThreadView(props: {
                     </div>
                     <div
                       ref={draftScrollRef}
-                      className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80"
+                      className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                       style={{
                         WebkitMaskImage:
                           'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
