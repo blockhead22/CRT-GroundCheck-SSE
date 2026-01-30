@@ -2870,6 +2870,7 @@ class CRTEnhancedRAG:
         # 0. Store user input as USER memory ONLY when it's an assertion.
         # Questions and control instructions should not be treated as durable factual claims.
         user_memory: Optional[MemoryItem] = None
+        profile_updates: List[Dict[str, str]] = []
 
         # High-risk prompt types should be treated as instructions even if they do not
         # look like questions (multi-paragraph prompt injection often starts as declarative).
@@ -3031,6 +3032,11 @@ class CRTEnhancedRAG:
                 if profile_result and profile_result.get('replaced'):
                     for slot, replacement in profile_result['replaced'].items():
                         logger.info(f"[PROFILE_CONTRADICTION] {slot}: '{replacement['old']}' -> '{replacement['new']}'")
+                        profile_updates.append({
+                            "slot": str(slot),
+                            "old": str(replacement.get("old") or ""),
+                            "new": str(replacement.get("new") or ""),
+                        })
                         try:
                             # Record in the contradiction ledger for transparency
                             self.ledger.record_contradiction(
@@ -4700,6 +4706,9 @@ class CRTEnhancedRAG:
             # Learned suggestions (metadata-only; never authoritative)
             'learned_suggestions': learned,
             'heuristic_suggestions': heuristic,
+
+            # Profile updates (auto-overwrite transparency)
+            'profile_updates': profile_updates,
             
             # Trust evolution
             'best_prior_trust': best_prior.trust if best_prior else None,

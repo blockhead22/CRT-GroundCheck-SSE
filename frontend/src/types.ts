@@ -87,6 +87,11 @@ export type CtrMessageMeta = {
   prompt_memories?: PromptMemory[]
   learned_suggestions?: unknown[]
   heuristic_suggestions?: unknown[]
+  profile_updates?: Array<{
+    slot: string
+    old: string
+    new: string
+  }>
   research_packet?: EvidencePacket | null
   agent_activated?: boolean | null
   agent_answer?: string | null

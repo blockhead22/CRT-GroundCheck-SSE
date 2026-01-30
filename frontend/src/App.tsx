@@ -290,6 +290,9 @@ export default function App() {
               const at = Date.now()
               // Prefer thinking from metadata (server-side) if available, fallback to streamed content
               const finalThinking = (metadata?.thinking as string) || thinkingContent || undefined
+              const profileUpdates = Array.isArray((metadata as any)?.profile_updates)
+                ? ((metadata as any).profile_updates as any[])
+                : []
               const asstMsg = {
                 id: newId('m'),
                 role: 'assistant' as const,
@@ -310,6 +313,7 @@ export default function App() {
                   prompt_memories: (metadata?.prompt_memories as any[]) || [],
                   learned_suggestions: [],
                   heuristic_suggestions: [],
+                  profile_updates: profileUpdates,
                   agent_activated: null,
                   agent_answer: null,
                   agent_trace: null,
@@ -378,6 +382,7 @@ export default function App() {
             prompt_memories: res.metadata?.prompt_memories ?? [],
             learned_suggestions: res.metadata?.learned_suggestions ?? [],
             heuristic_suggestions: res.metadata?.heuristic_suggestions ?? [],
+            profile_updates: Array.isArray(res.metadata?.profile_updates) ? res.metadata?.profile_updates ?? [] : [],
             agent_activated: res.metadata?.agent_activated ?? null,
             agent_answer: res.metadata?.agent_answer ?? null,
             agent_trace: res.metadata?.agent_trace ?? null,

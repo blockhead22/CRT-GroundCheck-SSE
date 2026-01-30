@@ -42,6 +42,11 @@ export type ChatSendResponse = {
     unresolved_hard_conflicts?: number | null
     learned_suggestions?: unknown[]
     heuristic_suggestions?: unknown[]
+    profile_updates?: Array<{
+      slot: string
+      old: string
+      new: string
+    }>
     retrieved_memories?: RetrievedMemory[]
     prompt_memories?: PromptMemory[]
     agent_activated?: boolean | null

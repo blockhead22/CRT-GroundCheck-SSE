@@ -295,6 +295,8 @@ export function MessageBubble(props: {
   const isExplanation = responseType === 'explanation'
   const gatesPassed = meta?.gates_passed
   const showMeta = isAssistant && Boolean(meta)
+  const profileUpdates = meta?.profile_updates ?? []
+  const showProfileUpdates = isAssistant && profileUpdates.length > 0
 
   const grounding = (() => {
     if (!isAssistant || !meta) return null
@@ -457,6 +459,24 @@ export function MessageBubble(props: {
                 🤖 AGENT TRACE
               </button>
             ) : null}
+          </div>
+        ) : null}
+
+        {showProfileUpdates ? (
+          <div className="mb-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-[11px] text-indigo-100">
+            <div className="font-semibold tracking-wide text-indigo-200">PROFILE UPDATE</div>
+            <div className="mt-1 space-y-1">
+              {profileUpdates.map((update, index) => {
+                const oldValue = (update.old || '').trim() || '(empty)'
+                const newValue = (update.new || '').trim() || '(empty)'
+                return (
+                  <div key={`${update.slot}-${index}`} className="flex flex-col gap-0.5">
+                    <div className="font-mono text-indigo-200">{update.slot}</div>
+                    <div className="text-white/70">{oldValue} -&gt; {newValue}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         ) : null}
 

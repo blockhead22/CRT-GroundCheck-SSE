@@ -2625,6 +2625,7 @@ def create_app() -> FastAPI:
             "unresolved_hard_conflicts": result.get("unresolved_hard_conflicts"),
             "learned_suggestions": result.get("learned_suggestions") or [],
             "heuristic_suggestions": result.get("heuristic_suggestions") or [],
+            "profile_updates": result.get("profile_updates") or [],
             "agent_activated": agent_activated,
             "agent_answer": agent_answer,
             "agent_trace": agent_trace_data,
@@ -2829,7 +2830,7 @@ def create_app() -> FastAPI:
                         )
                     except Exception as e:
                         logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
-                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': '', 'style_profile': style_profile}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': '', 'style_profile': style_profile, 'profile_updates': result.get('profile_updates') or []}})}\n\n"
                     return
                 
                 # Stream from LLM with thinking visible
@@ -3086,6 +3087,7 @@ def create_app() -> FastAPI:
                     'contradiction_detected': result.get('contradiction_detected', False),
                     'unresolved_contradictions_total': result.get('unresolved_contradictions_total', 0),
                     'unresolved_hard_conflicts': result.get('unresolved_hard_conflicts', 0),
+                    'profile_updates': result.get('profile_updates') or [],
                     'session_id': result.get('session_id'),
                     'retrieved_memories': [
                         {

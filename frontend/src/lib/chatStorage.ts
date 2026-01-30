@@ -44,6 +44,7 @@ function compactMessage(m: ChatMessage): ChatMessage {
     unresolved_hard_conflicts: m.crt.unresolved_hard_conflicts ?? null,
     retrieved_memories: (m.crt.retrieved_memories ?? []).slice(0, 12),
     prompt_memories: (m.crt.prompt_memories ?? []).slice(0, 12),
+    profile_updates: (m.crt.profile_updates ?? []).slice(0, 12),
     // Persist trace_id for lazy-loading thinking after refresh (drop full content to save space)
     thinking_trace_id: m.crt.thinking_trace_id ?? null,
     // Persist reflection trace ID and confidence for lazy-loading
