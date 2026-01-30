@@ -258,6 +258,73 @@ class ActiveLearningCoordinator:
         """)
         
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_resolution_timestamp ON conflict_resolutions(timestamp)")
+
+        # AUDIT: Request-level metrics (minimal schema, JSON for flexibility)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS request_audit (
+                request_id TEXT PRIMARY KEY,
+                timestamp REAL NOT NULL,
+                thread_id TEXT,
+                session_id TEXT,
+                model_used TEXT,
+                intent TEXT,
+                intent_confidence REAL,
+                gates_passed INTEGER,
+                gate_reason TEXT,
+                contradiction_detected INTEGER,
+                contradiction_count INTEGER,
+                response_type TEXT,
+                latency_ms REAL,
+                tokens_in INTEGER,
+                tokens_out INTEGER,
+                cost_estimate REAL,
+                metadata_json TEXT
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_request_audit_timestamp ON request_audit(timestamp)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_request_audit_thread ON request_audit(thread_id)")
+
+        # AUDIT: Task-level metrics (tasking loop)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS task_audit (
+                task_id TEXT PRIMARY KEY,
+                request_id TEXT,
+                timestamp REAL NOT NULL,
+                task_type TEXT,
+                status TEXT,
+                model_used TEXT,
+                latency_ms REAL,
+                inputs_hash TEXT,
+                outputs_hash TEXT,
+                acceptance_passed INTEGER,
+                acceptance_reason TEXT,
+                retries INTEGER,
+                summary TEXT,
+                metadata_json TEXT,
+                FOREIGN KEY (request_id) REFERENCES request_audit(request_id)
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_audit_request ON task_audit(request_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_task_audit_timestamp ON task_audit(timestamp)")
+
+        # AUDIT: Retrieval/rerank metrics (compact, JSON fields)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS retrieval_audit (
+                retrieval_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                request_id TEXT,
+                timestamp REAL NOT NULL,
+                retrieval_query TEXT,
+                retrieved_ids_json TEXT,
+                retrieved_scores_json TEXT,
+                rerank_scores_json TEXT,
+                final_context_ids_json TEXT,
+                missed_recall REAL,
+                notes TEXT,
+                FOREIGN KEY (request_id) REFERENCES request_audit(request_id)
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_retrieval_audit_request ON retrieval_audit(request_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_retrieval_audit_timestamp ON retrieval_audit(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_resolution_action ON conflict_resolutions(user_action)")
         
         conn.commit()

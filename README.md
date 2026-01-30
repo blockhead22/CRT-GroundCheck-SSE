@@ -367,6 +367,59 @@ pytest tests/test_adversarial_prompts.py -v
 | **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM<->User contradiction detection) | Complete |
 | **Phase 2.3** | **Episodic Memory** (session summaries, preferences, patterns, concept linking) | Complete |
 
+### Tasking Loop Plan (Phase 2.4 blueprint)
+Goal: let the system decompose requests into tasks, execute them with the right model, and verify coverage.
+
+1) Task schema (system-level)
+   - id, type (plan/execute/verify/expand), goal, inputs, acceptance_criteria, status
+2) Planner
+   - Convert request into an ordered, atomic task list
+3) Executor
+   - Run one task at a time with minimal context
+   - Store output + short summary + artifacts touched
+4) Coverage checker
+   - Compare completed tasks to original request
+   - Spawn missing tasks as needed
+5) Context compression
+   - Rolling task summary to keep small models effective
+6) Optional expansion pass
+   - Big model only, bounded "add value" pass after completion
+7) Failure handling
+   - Retry or re-plan on failed tasks
+8) Logging
+   - Per-task duration, model used, failures, acceptance result
+
+### Audit Metrics (DB + Dashboard)
+Request-level:
+- request_id, thread_id, timestamp, model_used, intent + confidence
+- gates_passed, gate_reason, contradiction_detected + count
+- response_type, latency_total_ms, tokens_in/out, cost_estimate
+
+Task-level (tasking loop):
+- task_id, parent_request_id, task_type, status
+- model_used, latency_ms, inputs_hash, outputs_hash
+- acceptance_passed + reason, retries + failure_reason
+
+Memory / ledger:
+- memory_id, slot, value, source, trust, confidence, created_at, updated_at
+- contradiction_id, status, resolution_method, drift_score, delta_confidence
+- reintroduced_claims_count
+
+Retrieval / ranking:
+- retrieval_query, retrieved_ids + scores
+- rerank_scores, final_context_ids, missed_recall (if evals exist)
+
+Policy / overrides:
+- auto_overwrite, clarification_requested, user_override_applied
+
+Feedback / outcomes:
+- user_feedback, user_correction, final_resolution
+
+### Near-term implementation order
+1) Code: tasking loop (planner -> executor -> coverage checker)
+2) DB: store task + audit metrics
+3) Tests: harness + regressions
+
 
 ### Phase 2.3 Features (Completed)
 - **Session Summaries**: Narrative summaries of conversations with topics, entities, facts learned

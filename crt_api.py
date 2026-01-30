@@ -2412,8 +2412,9 @@ def create_app() -> FastAPI:
                 },
             )
 
+        tasking_enabled = bool(req.mode and str(req.mode).lower() == "tasking")
         mode_arg = None
-        if req.mode:
+        if req.mode and not tasking_enabled:
             # Accept string modes, but keep this permissive: unknown values fall back to None.
             try:
                 from personal_agent.reasoning import ReasoningMode
@@ -2608,6 +2609,18 @@ def create_app() -> FastAPI:
         if greeting_text:
             final_answer = f"{greeting_text}\n\n{final_answer}"
 
+        tasking_meta = None
+        if tasking_enabled:
+            try:
+                from personal_agent.tasking_loop import TaskingLoop
+
+                tasking_loop = TaskingLoop(llm_client=llm_client)
+                tasking_result = tasking_loop.run(req.message, final_answer, allow_expansion=True)
+                final_answer = tasking_result.final_answer
+                tasking_meta = tasking_result.to_dict()
+            except Exception as e:
+                logger.debug(f"[TASKING] Tasking loop failed: {e}")
+
         metadata: Dict[str, Any] = {
             "mode": result.get("mode"),
             "confidence": result.get("confidence"),
@@ -2634,6 +2647,7 @@ def create_app() -> FastAPI:
             "reintroduced_claims_count": reintro_count,  # AUDIT METRIC
             "expanded": expanded,
             "expansion_reason": expansion_reason,
+            "tasking": tasking_meta,
         }
 
         # Build X-Ray data (memory transparency mode)
@@ -2785,6 +2799,11 @@ def create_app() -> FastAPI:
                     style_profile = session_db.update_style_profile(req.thread_id, req.message)
                 except Exception as e:
                     logger.debug(f"[STYLE] Failed to update style profile (stream): {e}")
+
+                if req.mode and str(req.mode).lower() == "tasking":
+                    result = chat_send(req)
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.answer, 'metadata': result.metadata})}\n\n"
+                    return
 
                 # IMPORTANT: First run through the normal query pipeline to:
                 # 1. Extract and store facts from user message
