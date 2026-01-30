@@ -90,6 +90,26 @@ You: facts
 
 This is NOT rigid regex gates - the LLM does the heavy semantic lifting. Patterns are just a speed optimization for common cases.
 
+### Pipeline (with Web Search placeholder)
+```
+User request
+   ↓
+IntentRouter / Fact extraction
+   ↓
+Memory retrieval (CRT + FactStore + SSE)
+   ↓
+Web search (optional placeholder)
+   - if enabled: query → citations → evidence packet
+   - if disabled: skip
+   ↓
+Reasoning + response draft
+   ↓
+Gates + GroundCheck (if wired)
+   ↓
+Final response + audit logging
+```
+Note: the web search block is a placeholder for SearXNG integration; it will sit between retrieval and reasoning.
+
 ### Architecture Diagram
 
 1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger

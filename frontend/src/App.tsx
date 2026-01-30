@@ -57,6 +57,8 @@ export default function App() {
   const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
   const phaseMode = true
   const [streamPhase, setStreamPhase] = useState<string | null>(null)
+  const [streamStatusLog, setStreamStatusLog] = useState<string[]>([])
+  const streamStatusRef = useRef<string[]>([])
   const finalBufferRef = useRef('')
 
   const selectedThread = useMemo(
@@ -247,6 +249,8 @@ export default function App() {
     setStreamingResponse('')
     setIsThinking(false)
     setStreamPhase(null)
+    setStreamStatusLog([])
+    streamStatusRef.current = []
     finalBufferRef.current = ''
 
     try {
@@ -260,8 +264,14 @@ export default function App() {
           phaseMode,
           callbacks: {
             onStatus: (status) => {
-              // Could show status in UI if desired
-              console.log('[Stream Status]', status)
+              if (!status) return
+              setStreamStatusLog((prev) => {
+                if (prev.length && prev[prev.length - 1] === status) return prev
+                const next = [...prev, status]
+                const trimmed = next.slice(-8)
+                streamStatusRef.current = trimmed
+                return trimmed
+              })
             },
             onThinkingStart: () => {
               setIsThinking(true)
@@ -290,9 +300,12 @@ export default function App() {
               const at = Date.now()
               // Prefer thinking from metadata (server-side) if available, fallback to streamed content
               const finalThinking = (metadata?.thinking as string) || thinkingContent || undefined
+              const draft = (finalBufferRef.current || '').trim()
+              const draftResponse = draft && draft !== content ? draft : null
               const profileUpdates = Array.isArray((metadata as any)?.profile_updates)
                 ? ((metadata as any).profile_updates as any[])
                 : []
+              const pipelineStatuses = streamStatusRef.current
               const asstMsg = {
                 id: newId('m'),
                 role: 'assistant' as const,
@@ -314,6 +327,8 @@ export default function App() {
                   learned_suggestions: [],
                   heuristic_suggestions: [],
                   profile_updates: profileUpdates,
+                  pipeline_statuses: pipelineStatuses,
+                  draft_response: draftResponse,
                   tasking: (metadata as any)?.tasking ?? null,
                   agent_activated: null,
                   agent_answer: null,
@@ -335,6 +350,8 @@ export default function App() {
               setStreamingResponse('')
               setIsThinking(false)
               setStreamPhase(null)
+              setStreamStatusLog([])
+              streamStatusRef.current = []
               finalBufferRef.current = ''
             },
             onError: (error) => {
@@ -355,6 +372,8 @@ export default function App() {
               setStreamingResponse('')
               setIsThinking(false)
               setStreamPhase(null)
+              setStreamStatusLog([])
+              streamStatusRef.current = []
               finalBufferRef.current = ''
             },
           },
@@ -384,6 +403,8 @@ export default function App() {
             learned_suggestions: res.metadata?.learned_suggestions ?? [],
             heuristic_suggestions: res.metadata?.heuristic_suggestions ?? [],
             profile_updates: Array.isArray(res.metadata?.profile_updates) ? res.metadata?.profile_updates ?? [] : [],
+            pipeline_statuses: [],
+            draft_response: null,
             tasking: res.metadata?.tasking ?? null,
             agent_activated: res.metadata?.agent_activated ?? null,
             agent_answer: res.metadata?.agent_answer ?? null,
@@ -552,6 +573,7 @@ export default function App() {
                       streamingResponse={streamingResponse}
                       isThinking={isThinking}
                       streamPhase={streamPhase}
+                      streamStatusLog={streamStatusLog}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

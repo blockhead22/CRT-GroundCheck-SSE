@@ -45,6 +45,8 @@ function compactMessage(m: ChatMessage): ChatMessage {
     retrieved_memories: (m.crt.retrieved_memories ?? []).slice(0, 12),
     prompt_memories: (m.crt.prompt_memories ?? []).slice(0, 12),
     profile_updates: (m.crt.profile_updates ?? []).slice(0, 12),
+    pipeline_statuses: (m.crt.pipeline_statuses ?? []).slice(0, 12),
+    draft_response: m.crt.draft_response ? m.crt.draft_response.slice(0, 2000) : null,
     tasking: m.crt.tasking
       ? {
           mode: m.crt.tasking.mode,

@@ -151,6 +151,59 @@ function TaskingDropdown({ tasking }: { tasking?: TaskingMeta }) {
 }
 
 
+function PipelineDropdown({ statuses, draft }: { statuses: string[]; draft?: string | null }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const hasDraft = Boolean(draft && draft.trim())
+  if (!statuses.length && !hasDraft) return null
+
+  return (
+    <div className="mt-2 rounded-xl border border-sky-500/30 bg-sky-500/10 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setIsOpen(!isOpen)
+        }}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-sky-200 hover:bg-sky-500/10 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <span>CRT Pipeline</span>
+          {statuses.length > 0 ? (
+            <span className="text-sky-200/70">Steps {statuses.length}</span>
+          ) : null}
+          {hasDraft ? (
+            <span className="text-sky-200/70">Draft saved</span>
+          ) : null}
+        </span>
+        <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          v
+        </motion.span>
+      </button>
+      {isOpen ? (
+        <div className="px-3 pb-3 text-[11px] text-sky-100">
+          {statuses.length > 0 ? (
+            <div className="mt-2">
+              <div className="font-semibold text-sky-200">Steps</div>
+              <ul className="mt-1 space-y-1">
+                {statuses.map((s, i) => (
+                  <li key={`${s}-${i}`} className="rounded-md bg-black/20 px-2 py-1">{s}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {hasDraft ? (
+            <div className="mt-3">
+              <div className="font-semibold text-sky-200">Draft (live stream)</div>
+              <div className="mt-1 rounded-md bg-black/20 px-2 py-2 text-white/70 whitespace-pre-wrap">{draft}</div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+
 /** Collapsible thinking/reasoning dropdown */
 function ThinkingDropdown({ thinking, traceId, threadId }: { thinking?: string | null; traceId?: string | null; threadId?: string | null }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -437,6 +490,9 @@ export function MessageBubble(props: {
   const showMeta = isAssistant && Boolean(meta)
   const profileUpdates = meta?.profile_updates ?? []
   const showProfileUpdates = isAssistant && profileUpdates.length > 0
+  const pipelineStatuses = meta?.pipeline_statuses ?? []
+  const draftResponse = meta?.draft_response ?? null
+  const showPipeline = isAssistant && (pipelineStatuses.length > 0 || Boolean(draftResponse))
 
   const grounding = (() => {
     if (!isAssistant || !meta) return null
@@ -618,6 +674,10 @@ export function MessageBubble(props: {
               })}
             </div>
           </div>
+        ) : null}
+
+        {showPipeline ? (
+          <PipelineDropdown statuses={pipelineStatuses} draft={draftResponse} />
         ) : null}
 
         {meta?.tasking && isAssistant ? (

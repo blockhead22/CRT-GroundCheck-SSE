@@ -47,6 +47,8 @@ export type ChatSendResponse = {
       old: string
       new: string
     }>
+    pipeline_statuses?: string[]
+    draft_response?: string | null
     tasking?: {
       mode?: string
       passes?: number

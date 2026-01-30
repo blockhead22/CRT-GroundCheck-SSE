@@ -30,6 +30,7 @@ export function ChatThreadView(props: {
   streamingResponse?: string
   isThinking?: boolean
   streamPhase?: string | null
+  streamStatusLog?: string[]
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const [queuedContradiction, setQueuedContradiction] = useState<{
@@ -236,6 +237,28 @@ export function ChatThreadView(props: {
                   </div>
                 ))}
               </AnimatePresence>
+
+              {/* Streaming CRT pipeline status */}
+              {props.streamStatusLog && props.streamStatusLog.length > 0 ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex justify-start"
+                >
+                  <div className="max-w-[85%] rounded-2xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-3 text-xs text-cyan-100 shadow-card">
+                    <div className="mb-2 font-semibold text-cyan-200">CRT Pipeline</div>
+                    <ul className="space-y-1">
+                      {props.streamStatusLog.map((status, idx) => (
+                        <li key={`${status}-${idx}`} className="flex items-start gap-2 text-white/70">
+                          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-cyan-400" />
+                          <span>{status}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </motion.div>
+              ) : null}
 
               {/* Streaming thinking display */}
               {props.streamPhase ? (
