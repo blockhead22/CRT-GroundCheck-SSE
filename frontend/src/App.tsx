@@ -577,8 +577,6 @@ export default function App() {
                       streamingThinking={streamingThinking}
                       streamingResponse={streamingResponse}
                       isThinking={isThinking}
-                      streamPhase={streamPhase}
-                      streamStatusLog={streamStatusLog}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
@@ -604,6 +602,8 @@ export default function App() {
         open={navActive === 'chat' && Boolean(selectedMessageId)}
         message={selectedMessage}
         threadId={selectedThread?.id ?? null}
+        streamStatusLog={streamStatusLog}
+        streamPhase={streamPhase}
         onClose={() => setSelectedMessageId(null)}
       />
 

@@ -8,6 +8,8 @@ export function InspectorLightbox(props: {
   open: boolean
   message: ChatMessage | null
   threadId: string | null
+  streamStatusLog?: string[]
+  streamPhase?: string | null
   onClose: () => void
 }) {
   useEffect(() => {
@@ -47,7 +49,7 @@ export function InspectorLightbox(props: {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.99 }}
             transition={{ duration: 0.18 }}
-            className="relative w-full max-w-[820px] overflow-hidden rounded-3xl border border-white/10 bg-[#0b0f16]/80 shadow-[0_20px_70px_rgba(0,0,0,0.65)]"
+            className="relative w-full max-w-[820px] overflow-hidden rounded-3xl shadow-[0_20px_70px_rgba(0,0,0,0.65)]"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
@@ -66,7 +68,13 @@ export function InspectorLightbox(props: {
             </div>
 
             <div className="max-h-[78vh] overflow-auto p-5">
-              <CrtInspector message={props.message} onClear={props.onClose} />
+              <CrtInspector
+                message={props.message}
+                onClear={props.onClose}
+                threadId={props.threadId}
+                streamStatusLog={props.streamStatusLog}
+                streamPhase={props.streamPhase}
+              />
               <BackgroundLoopInspector threadId={props.threadId} />
             </div>
           </motion.div>

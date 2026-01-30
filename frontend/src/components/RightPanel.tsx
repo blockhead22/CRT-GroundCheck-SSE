@@ -103,7 +103,11 @@ export function RightPanel(props: {
               exit={{ opacity: 0, y: 6 }}
               transition={{ duration: 0.16 }}
             >
-              <CrtInspector message={props.selectedMessage} onClear={props.onClearSelection} />
+              <CrtInspector
+                message={props.selectedMessage}
+                onClear={props.onClearSelection}
+                threadId={props.selectedThreadId ?? null}
+              />
             </motion.div>
           )}
         </AnimatePresence>
