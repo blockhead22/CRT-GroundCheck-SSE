@@ -187,7 +187,7 @@ export function ChatThreadView(props: {
         className="w-full max-w-[760px]"
       >
         <div className="text-center">
-          <div className="bg-gradient-to-r from-cyan-200 via-sky-200 to-white bg-clip-text text-4xl font-semibold text-transparent md:text-5xl">
+          <div className="font-display bg-gradient-to-r from-cyan-200 via-sky-200 to-white bg-clip-text text-4xl font-semibold text-transparent md:text-5xl">
             Hello {displayName}
           </div>
           <div className="mt-2 text-xl font-medium text-white/60 md:text-2xl">How can I help you today?</div>
