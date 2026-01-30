@@ -145,6 +145,8 @@ export type CtrMessageMeta = {
   reflection_trace_id?: string | null
   reflection_confidence?: number | null
   reflection_label?: string | null  // "high" | "medium" | "low"
+  personality_profile?: Record<string, unknown> | null
+  reflection_scorecard?: Record<string, unknown> | null
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {

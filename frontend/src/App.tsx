@@ -342,6 +342,8 @@ export default function App() {
                   reflection_trace_id: (metadata?.reflection_trace_id as string) || null,
                   reflection_confidence: (metadata?.reflection_confidence as number) ?? null,
                   reflection_label: (metadata?.reflection_label as string) || null,
+                  personality_profile: (metadata as any)?.personality_profile ?? null,
+                  reflection_scorecard: (metadata as any)?.reflection_scorecard ?? null,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
@@ -410,6 +412,8 @@ export default function App() {
             agent_answer: res.metadata?.agent_answer ?? null,
             agent_trace: res.metadata?.agent_trace ?? null,
             xray: res.metadata?.xray ?? null,
+            personality_profile: (res.metadata as any)?.personality_profile ?? null,
+            reflection_scorecard: (res.metadata as any)?.reflection_scorecard ?? null,
           },
         }
         upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

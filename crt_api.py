@@ -83,6 +83,7 @@ def _format_style_instruction(
     personality_profile = personality_profile or {}
     verbosity_pref = str(personality_profile.get("verbosity") or "").lower()
     emoji_pref = str(personality_profile.get("emoji") or "").lower()
+    format_pref = str(personality_profile.get("format") or "").lower()
     if label == "playful":
         base = (
             "Tone: playful and witty when appropriate; mirror the user's humor. "
@@ -95,7 +96,7 @@ def _format_style_instruction(
         )
     elif label == "adaptive":
         base = (
-            "Tone: adaptive?light when the user is playful, grounded when the user is serious. "
+            "Tone: adaptive; light when the user is playful, grounded when the user is serious. "
             "Keep a warm, consistent voice. Keep language natural and not overly formal."
         )
     else:
@@ -116,7 +117,13 @@ def _format_style_instruction(
     elif emoji_pref == "on":
         emoji_line = "Emojis are welcome if they match the tone."
 
-    extras = " ".join([s for s in [verbosity_line, emoji_line] if s])
+    format_line = ""
+    if format_pref == "structured":
+        format_line = "Prefer structured formatting (short sections or bullets) when it helps clarity."
+    elif format_pref == "freeform":
+        format_line = "Prefer natural paragraphs over heavy bulleting unless requested."
+
+    extras = " ".join([s for s in [verbosity_line, emoji_line, format_line] if s])
     return f"{base} {extras}".strip()
 
 
@@ -214,10 +221,11 @@ def _generate_expansion(
     known_facts: str,
     style_profile: Optional[Dict[str, Any]],
     reflection_result: Optional[ReflectionResult],
+    personality_profile: Optional[Dict[str, Any]] = None,
 ) -> Optional[str]:
     if not llm_client:
         return None
-    style_instruction = _format_style_instruction(style_profile)
+    style_instruction = _format_style_instruction(style_profile, personality_profile)
     system_lines = [
         "You are a careful assistant expanding a response after a self-check.",
         "Keep additions grounded in known facts. Avoid speculation.",
@@ -2393,6 +2401,16 @@ def create_app() -> FastAPI:
             style_profile = session_db.update_style_profile(req.thread_id, req.message)
         except Exception as e:
             logger.debug(f"[STYLE] Failed to update style profile: {e}")
+        personality_profile = None
+        reflection_scorecard = None
+        try:
+            personality_profile = session_db.get_personality_profile(req.thread_id)
+        except Exception as e:
+            logger.debug(f"[PERSONALITY] Failed to read personality profile: {e}")
+        try:
+            reflection_scorecard = session_db.get_reflection_scorecard(req.thread_id)
+        except Exception as e:
+            logger.debug(f"[REFLECTION_LOOP] Failed to read reflection scorecard: {e}")
         
         # Increment turn counter
         increment_turn(req.thread_id)
@@ -2631,6 +2649,13 @@ def create_app() -> FastAPI:
                 logger.debug(f"[REFLECTION] Reflection failed (non-stream): {e}")
 
         verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
+        if not verbosity_pref and personality_profile:
+            try:
+                personality_verbosity = str(personality_profile.get("verbosity") or "").lower()
+                if personality_verbosity:
+                    verbosity_pref = personality_verbosity
+            except Exception:
+                pass
         known_fact_lines = []
         for mem in (retrieved_mems + prompt_mems)[:6]:
             if isinstance(mem, dict):
@@ -2655,6 +2680,7 @@ def create_app() -> FastAPI:
                 known_facts_text,
                 style_profile,
                 reflection_result,
+                personality_profile,
             )
             if expansion_text:
                 expanded = True
@@ -2709,6 +2735,8 @@ def create_app() -> FastAPI:
             "reflection_confidence": reflection_result.confidence_score if reflection_result else None,
             "reflection_label": reflection_result.confidence_label if reflection_result else None,
             "style_profile": style_profile,
+            "personality_profile": personality_profile,
+            "reflection_scorecard": reflection_scorecard,
             "contradiction_detected": result.get("contradiction_detected"),
             "contradiction_resolved": result.get("contradiction_resolved"),  # NEW: Track if contradiction was resolved
             "unresolved_contradictions_total": result.get("unresolved_contradictions_total"),
@@ -2876,6 +2904,16 @@ def create_app() -> FastAPI:
                     style_profile = session_db.update_style_profile(req.thread_id, req.message)
                 except Exception as e:
                     logger.debug(f"[STYLE] Failed to update style profile (stream): {e}")
+                personality_profile = None
+                reflection_scorecard = None
+                try:
+                    personality_profile = session_db.get_personality_profile(req.thread_id)
+                except Exception as e:
+                    logger.debug(f"[PERSONALITY] Failed to read personality profile (stream): {e}")
+                try:
+                    reflection_scorecard = session_db.get_reflection_scorecard(req.thread_id)
+                except Exception as e:
+                    logger.debug(f"[REFLECTION_LOOP] Failed to read reflection scorecard (stream): {e}")
 
                 if req.mode and str(req.mode).lower() == "tasking":
                     result = chat_send(req)
@@ -2926,7 +2964,7 @@ def create_app() -> FastAPI:
                         )
                     except Exception as e:
                         logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
-                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': '', 'style_profile': style_profile, 'profile_updates': result.get('profile_updates') or []}})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': '', 'style_profile': style_profile, 'personality_profile': personality_profile, 'reflection_scorecard': reflection_scorecard, 'profile_updates': result.get('profile_updates') or []}})}\n\n"
                     return
                 
                 # Stream from LLM with thinking visible
@@ -2946,7 +2984,7 @@ def create_app() -> FastAPI:
                     if memory_lines:
                         memories_text = "\n\nKnown facts about this user:\n" + "\n".join(memory_lines)
 
-                style_instruction = _format_style_instruction(style_profile)
+                style_instruction = _format_style_instruction(style_profile, personality_profile)
                 style_block = f"\n\nTONE & STYLE:\n{style_instruction}" if style_instruction else ""
                 system_prompt = f"""You are a helpful AI assistant with memory capabilities.
   You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
@@ -3128,6 +3166,13 @@ def create_app() -> FastAPI:
                     logger.debug(traceback.format_exc())
 
                 verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
+                if not verbosity_pref and personality_profile:
+                    try:
+                        personality_verbosity = str(personality_profile.get("verbosity") or "").lower()
+                        if personality_verbosity:
+                            verbosity_pref = personality_verbosity
+                    except Exception:
+                        pass
                 known_facts_text = "\n".join(memory_lines)
                 expanded = False
                 expansion_reason = None
@@ -3145,6 +3190,7 @@ def create_app() -> FastAPI:
                         known_facts_text,
                         style_profile,
                         reflection_result,
+                        personality_profile,
                     )
                     if expansion_text:
                         expanded = True
@@ -3172,6 +3218,8 @@ def create_app() -> FastAPI:
                     'reflection_confidence': reflection_result.confidence_score if reflection_result else None,
                     'reflection_label': reflection_result.confidence_label if reflection_result else None,
                     'style_profile': style_profile,
+                    'personality_profile': personality_profile,
+                    'reflection_scorecard': reflection_scorecard,
                     'expanded': expanded,
                     'expansion_reason': expansion_reason,
                     'response_type': result.get('response_type', 'speech'),
