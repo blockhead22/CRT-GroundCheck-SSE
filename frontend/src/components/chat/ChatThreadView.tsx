@@ -33,6 +33,7 @@ export function ChatThreadView(props: {
   streamStatusLog?: string[]
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
+  const draftScrollRef = useRef<HTMLDivElement | null>(null)
   const [queuedContradiction, setQueuedContradiction] = useState<{
     messageId: string
     total: number | null
@@ -47,6 +48,13 @@ export function ChatThreadView(props: {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [props.thread.messages.length, props.typing, props.streamingThinking, props.streamingResponse])
+
+  useEffect(() => {
+    if (!props.streamingResponse) return
+    const el = draftScrollRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [props.streamingResponse])
 
   useEffect(() => {
     setQueuedContradiction(null)
@@ -296,6 +304,7 @@ export function ChatThreadView(props: {
                       Draft
                     </div>
                     <div
+                      ref={draftScrollRef}
                       className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80"
                       style={{
                         WebkitMaskImage:
