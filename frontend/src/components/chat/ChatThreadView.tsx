@@ -295,7 +295,15 @@ export function ChatThreadView(props: {
                     <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
                       Draft
                     </div>
-                    <div className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80">
+                    <div
+                      className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80"
+                      style={{
+                        WebkitMaskImage:
+                          'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
+                        maskImage:
+                          'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
+                      }}
+                    >
                       {props.streamingResponse}
                     </div>
                     <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-violet-500" />
