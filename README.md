@@ -339,23 +339,34 @@ pytest tests/test_adversarial_prompts.py -v
 
 ---
 
-## Development Phases
+## Roadmap (updated 2026-01-30)
 
-- **Phase 2.4: Advanced Testing Suite** â€” adversarial agent + paragraph tests (next concrete milestone)
-- **Phase 3: UX Enhancements** â€” emotion signals, humble wrapper (after tests)
-- **Phase 4: Vector-store-per-fact** â€” experimental retrieval model (later)
+### Next (committed)
+1) **Phase 2.4 - Test Harness (required)**
+   - Adversarial agent + paragraph tests
+   - Gold labels for contradiction types
+   - Regression dashboard + drift tracking
+2) **Phase 2.5 - Model-based Contradiction Detection**
+   - Classifier drop-in vs heuristic baseline
+   - Feature flag + A/B comparison
+3) **Phase 2.6 - Neural Retrieval + Reranking**
+   - Embedding retrieval + reranker
+   - Recall/precision evaluation vs baseline
 
+### Later
+4) **Phase 3 - UX Enhancements**
+5) **Phase 4 - Vector-store-per-fact (experimental)**
+
+### Completed Phases
 | Phase | Description | Status |
 |-------|-------------|--------|
-| **Phase 1** | Self-questioning, caveat injection, feature flags | ✅ Complete |
-| **Phase 1.1** | Wire up CRTMath call sites | ✅ Complete |
-| **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | ✅ Complete |
-| **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | ✅ Complete |
-| **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM↔User contradiction detection) | ✅ Complete |
-| **Phase 2.3** | **Episodic Memory** (session summaries, preferences, patterns, concept linking) | ✅ Complete |
-| **Phase 2.4** | Advanced Testing Suite (adversarial agent, paragraph tests) | 📋 Next |
-| **Phase 3** | UX Enhancements (emotion signals, humble wrapper) | 📋 Planned |
-| **Phase 4** | Vector-store-per-fact (experimental) | 📋 Planned |
+| **Phase 1** | Self-questioning, caveat injection, feature flags | Complete |
+| **Phase 1.1** | Wire up CRTMath call sites | Complete |
+| **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | Complete |
+| **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | Complete |
+| **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM<->User contradiction detection) | Complete |
+| **Phase 2.3** | **Episodic Memory** (session summaries, preferences, patterns, concept linking) | Complete |
+
 
 ### Phase 2.3 Features (Completed)
 - **Session Summaries**: Narrative summaries of conversations with topics, entities, facts learned
@@ -582,9 +593,9 @@ pip install sentence-transformers
 ---
 
 ## Project status
-**Research prototype** - Updated 2026-01-28
+**Research prototype** - Updated 2026-01-30
 
-**Current Phase:** 2.1 (FactStore + IntentRouter)
+**Current Phase:** 2.4 (Test Harness)
 
 ### New Files Added
 | File | Purpose |
