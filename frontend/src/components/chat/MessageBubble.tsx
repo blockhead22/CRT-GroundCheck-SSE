@@ -11,6 +11,119 @@ function pct01(v: number | null | undefined): string {
   return `${Math.round(clamped * 100)}%`
 }
 
+type TaskingMeta = {
+  mode?: string
+  passes?: number
+  skipped?: string
+  interval_seconds?: number
+  plan?: {
+    notes?: string | null
+    tasks?: Array<{
+      task_id: string
+      goal: string
+      acceptance_criteria: string
+      status?: string
+      summary?: string | null
+    }>
+  } | null
+  coverage?: {
+    score?: number
+    missing_items?: string[]
+    notes?: string | null
+  } | null
+} | null
+
+function TaskingDropdown({ tasking }: { tasking?: TaskingMeta }) {
+  const [isOpen, setIsOpen] = useState(false)
+  if (!tasking) return null
+
+  const tasks = tasking.plan?.tasks ?? []
+  const missing = tasking.coverage?.missing_items ?? []
+  const score = tasking.coverage?.score
+  const passes = tasking.passes
+  const skipped = tasking.skipped
+
+  return (
+    <div className="mt-2 rounded-xl border border-cyan-500/30 bg-cyan-500/5 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setIsOpen(!isOpen)
+        }}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-cyan-200 hover:bg-cyan-500/10 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <span>Tasking Loop</span>
+          {typeof score === 'number' ? (
+            <span className="text-cyan-200/70">Coverage {pct01(score)}</span>
+          ) : null}
+          {typeof passes === 'number' ? (
+            <span className="text-cyan-200/70">Passes {passes}</span>
+          ) : null}
+          {skipped ? (
+            <span className="text-cyan-200/70">Skipped</span>
+          ) : null}
+        </span>
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          ???
+        </motion.span>
+      </button>
+      {isOpen ? (
+        <div className="px-3 pb-3 text-[11px] text-cyan-100">
+          {skipped ? (
+            <div className="rounded-lg bg-black/20 p-2 text-cyan-200/70">
+              Tasking loop skipped ({skipped}).
+            </div>
+          ) : null}
+
+          {tasking.plan?.notes ? (
+            <div className="mt-2 text-cyan-200/70">Plan notes: {tasking.plan.notes}</div>
+          ) : null}
+
+          {tasks.length > 0 ? (
+            <div className="mt-2">
+              <div className="font-semibold text-cyan-200">Plan</div>
+              <ul className="mt-1 space-y-1">
+                {tasks.map((t) => (
+                  <li key={t.task_id} className="rounded-md bg-black/20 px-2 py-1">
+                    <div className="font-mono text-cyan-200">{t.task_id}</div>
+                    <div className="text-white/80">{t.goal}</div>
+                    <div className="text-white/50">Accept: {t.acceptance_criteria}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="mt-2">
+            <div className="font-semibold text-cyan-200">Coverage</div>
+            <div className="text-white/70">
+              Score: {typeof score === 'number' ? pct01(score) : 'n/a'}
+            </div>
+            {missing.length > 0 ? (
+              <ul className="mt-1 space-y-1 text-amber-200">
+                {missing.map((m, i) => (
+                  <li key={`${m}-${i}`}>Missing: {m}</li>
+                ))}
+              </ul>
+            ) : (
+              <div className="text-white/50">Missing: none</div>
+            )}
+            {tasking.coverage?.notes ? (
+              <div className="mt-1 text-white/50">Notes: {tasking.coverage.notes}</div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+
 /** Collapsible thinking/reasoning dropdown */
 function ThinkingDropdown({ thinking, traceId, threadId }: { thinking?: string | null; traceId?: string | null; threadId?: string | null }) {
   const [isOpen, setIsOpen] = useState(false)
@@ -478,6 +591,10 @@ export function MessageBubble(props: {
               })}
             </div>
           </div>
+        ) : null}
+
+        {meta?.tasking && isAssistant ? (
+          <TaskingDropdown tasking={meta.tasking as TaskingMeta} />
         ) : null}
 
         <div className="whitespace-pre-wrap leading-6">{props.msg.text}</div>

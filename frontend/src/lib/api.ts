@@ -47,6 +47,27 @@ export type ChatSendResponse = {
       old: string
       new: string
     }>
+    tasking?: {
+      mode?: string
+      passes?: number
+      skipped?: string
+      interval_seconds?: number
+      plan?: {
+        notes?: string | null
+        tasks?: Array<{
+          task_id: string
+          goal: string
+          acceptance_criteria: string
+          status?: string
+          summary?: string | null
+        }>
+      }
+      coverage?: {
+        score?: number
+        missing_items?: string[]
+        notes?: string | null
+      }
+    }
     retrieved_memories?: RetrievedMemory[]
     prompt_memories?: PromptMemory[]
     agent_activated?: boolean | null

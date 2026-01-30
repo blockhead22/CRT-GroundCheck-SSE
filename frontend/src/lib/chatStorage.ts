@@ -45,6 +45,33 @@ function compactMessage(m: ChatMessage): ChatMessage {
     retrieved_memories: (m.crt.retrieved_memories ?? []).slice(0, 12),
     prompt_memories: (m.crt.prompt_memories ?? []).slice(0, 12),
     profile_updates: (m.crt.profile_updates ?? []).slice(0, 12),
+    tasking: m.crt.tasking
+      ? {
+          mode: m.crt.tasking.mode,
+          passes: m.crt.tasking.passes,
+          skipped: m.crt.tasking.skipped,
+          interval_seconds: m.crt.tasking.interval_seconds,
+          plan: m.crt.tasking.plan
+            ? {
+                notes: m.crt.tasking.plan.notes ?? null,
+                tasks: (m.crt.tasking.plan.tasks ?? []).slice(0, 8).map((t) => ({
+                  task_id: t.task_id,
+                  goal: t.goal,
+                  acceptance_criteria: t.acceptance_criteria,
+                  status: t.status,
+                  summary: t.summary ?? null,
+                })),
+              }
+            : null,
+          coverage: m.crt.tasking.coverage
+            ? {
+                score: m.crt.tasking.coverage.score,
+                missing_items: (m.crt.tasking.coverage.missing_items ?? []).slice(0, 8),
+                notes: m.crt.tasking.coverage.notes ?? null,
+              }
+            : null,
+        }
+      : null,
     // Persist trace_id for lazy-loading thinking after refresh (drop full content to save space)
     thinking_trace_id: m.crt.thinking_trace_id ?? null,
     // Persist reflection trace ID and confidence for lazy-loading

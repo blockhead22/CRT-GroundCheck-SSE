@@ -92,6 +92,27 @@ export type CtrMessageMeta = {
     old: string
     new: string
   }>
+  tasking?: {
+    mode?: string
+    passes?: number
+    skipped?: string
+    interval_seconds?: number
+    plan?: {
+      notes?: string | null
+      tasks?: Array<{
+        task_id: string
+        goal: string
+        acceptance_criteria: string
+        status?: string
+        summary?: string | null
+      }>
+    }
+    coverage?: {
+      score?: number
+      missing_items?: string[]
+      notes?: string | null
+    }
+  }
   research_packet?: EvidencePacket | null
   agent_activated?: boolean | null
   agent_answer?: string | null

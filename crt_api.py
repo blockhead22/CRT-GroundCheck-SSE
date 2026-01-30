@@ -5,6 +5,7 @@ import time
 import uuid
 import json
 import logging
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -44,6 +45,14 @@ from personal_agent.reflection_system import run_reflection_pass, ReflectionDB, 
 
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
+
+# Tasking loop throttling (optional)
+try:
+    _TASKING_INTERVAL_SECONDS = float(os.getenv("CRT_TASKING_INTERVAL_SECONDS", "0") or 0)
+except Exception:
+    _TASKING_INTERVAL_SECONDS = 0.0
+_TASKING_LAST_RUN: Dict[str, float] = {}
+_TASKING_LOCK = threading.Lock()
 
 
 def _sanitize_thread_id(value: str) -> str:
@@ -2611,15 +2620,34 @@ def create_app() -> FastAPI:
 
         tasking_meta = None
         if tasking_enabled:
-            try:
-                from personal_agent.tasking_loop import TaskingLoop
+            allow_tasking = True
+            if _TASKING_INTERVAL_SECONDS > 0:
+                now_ts = time.time()
+                tid = _sanitize_thread_id(req.thread_id)
+                with _TASKING_LOCK:
+                    last_ts = _TASKING_LAST_RUN.get(tid, 0.0)
+                    if now_ts - last_ts < _TASKING_INTERVAL_SECONDS:
+                        allow_tasking = False
+                    else:
+                        _TASKING_LAST_RUN[tid] = now_ts
 
-                tasking_loop = TaskingLoop(llm_client=llm_client)
-                tasking_result = tasking_loop.run(req.message, final_answer, allow_expansion=True)
-                final_answer = tasking_result.final_answer
-                tasking_meta = tasking_result.to_dict()
-            except Exception as e:
-                logger.debug(f"[TASKING] Tasking loop failed: {e}")
+            if not allow_tasking:
+                tasking_meta = {
+                    "mode": "plan+coverage",
+                    "skipped": "interval",
+                    "interval_seconds": _TASKING_INTERVAL_SECONDS,
+                }
+            else:
+                try:
+                    from personal_agent.tasking_loop import TaskingLoop
+
+                    tasking_loop = TaskingLoop(llm_client=llm_client)
+                    tasking_result = tasking_loop.run(req.message, final_answer, allow_expansion=True)
+                    final_answer = tasking_result.final_answer
+                    tasking_meta = tasking_result.to_dict()
+                    tasking_meta["interval_seconds"] = _TASKING_INTERVAL_SECONDS
+                except Exception as e:
+                    logger.debug(f"[TASKING] Tasking loop failed: {e}")
 
         metadata: Dict[str, Any] = {
             "mode": result.get("mode"),
