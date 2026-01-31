@@ -154,6 +154,42 @@ export type JournalReplyResponse = {
   auto_reply_created: boolean
 }
 
+export type MoltSubmolt = {
+  id?: number
+  name: string
+  description?: string | null
+  created_at?: number | null
+  created_by?: string | null
+}
+
+export type MoltPost = {
+  id?: number
+  submolt: string
+  title: string
+  content: string
+  author: string
+  created_at?: number | null
+  updated_at?: number | null
+  score?: number | null
+  source_type?: string | null
+  source_entry_id?: number | null
+}
+
+export type MoltComment = {
+  id?: number
+  post_id: number
+  parent_comment_id?: number | null
+  content: string
+  author: string
+  created_at?: number | null
+  score?: number | null
+}
+
+export type MoltThread = {
+  post: MoltPost
+  comments: MoltComment[]
+}
+
 function getApiBaseUrlInternal(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL
   const fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
@@ -342,6 +378,145 @@ export async function postJournalReply(args: {
   }
 
   return (await res.json()) as JournalReplyResponse
+}
+
+export async function listMoltSubmolts(args?: { limit?: number }): Promise<MoltSubmolt[]> {
+  const base = getApiBaseUrlInternal()
+  const limit = typeof args?.limit === 'number' ? args?.limit : 50
+  const res = await fetch(`${base}/api/moltbook/submolts?limit=${limit}`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as MoltSubmolt[]
+}
+
+export async function createMoltSubmolt(args: {
+  name: string
+  description?: string
+  createdBy?: string
+}): Promise<MoltSubmolt> {
+  const base = getApiBaseUrlInternal()
+  const payload = {
+    name: args.name,
+    description: args.description,
+    created_by: args.createdBy,
+  }
+  const res = await fetch(`${base}/api/moltbook/submolts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as MoltSubmolt
+}
+
+export async function listMoltPosts(args: {
+  submolt?: string
+  sort?: 'new' | 'top' | 'hot'
+  limit?: number
+  offset?: number
+}): Promise<MoltPost[]> {
+  const base = getApiBaseUrlInternal()
+  const params = new URLSearchParams()
+  if (args.submolt) params.set('submolt', args.submolt)
+  if (args.sort) params.set('sort', args.sort)
+  if (typeof args.limit === 'number') params.set('limit', String(args.limit))
+  if (typeof args.offset === 'number') params.set('offset', String(args.offset))
+  const res = await fetch(`${base}/api/moltbook/posts?${params.toString()}`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as MoltPost[]
+}
+
+export async function createMoltPost(args: {
+  submolt: string
+  title: string
+  content: string
+  author?: string
+}): Promise<MoltPost> {
+  const base = getApiBaseUrlInternal()
+  const payload = {
+    submolt: args.submolt,
+    title: args.title,
+    content: args.content,
+    author: args.author ?? 'user',
+  }
+  const res = await fetch(`${base}/api/moltbook/posts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as MoltPost
+}
+
+export async function getMoltThread(args: { postId: number }): Promise<MoltThread> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/moltbook/thread/${args.postId}`)
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as MoltThread
+}
+
+export async function createMoltComment(args: {
+  postId: number
+  content: string
+  author?: string
+  parentCommentId?: number | null
+}): Promise<MoltComment> {
+  const base = getApiBaseUrlInternal()
+  const payload = {
+    post_id: args.postId,
+    content: args.content,
+    author: args.author ?? 'user',
+    parent_comment_id: args.parentCommentId ?? null,
+  }
+  const res = await fetch(`${base}/api/moltbook/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as MoltComment
+}
+
+export async function castMoltVote(args: {
+  targetType: 'post' | 'comment'
+  targetId: number
+  voter?: string
+  value: 1 | -1
+}): Promise<{ ok: boolean; vote: Record<string, unknown> }> {
+  const base = getApiBaseUrlInternal()
+  const payload = {
+    target_type: args.targetType,
+    target_id: args.targetId,
+    voter: args.voter ?? 'user',
+    value: args.value,
+  }
+  const res = await fetch(`${base}/api/moltbook/votes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+  return (await res.json()) as { ok: boolean; vote: Record<string, unknown> }
 }
 
 // Streaming event types from /api/chat/stream

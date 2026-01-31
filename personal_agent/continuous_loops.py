@@ -609,6 +609,19 @@ class ReflectionLoop:
                 body=body,
                 meta=meta,
             )
+            try:
+                self.session_db.ensure_default_submolts()
+                post = self.session_db.create_post(
+                    submolt="reflections",
+                    title=title,
+                    content=body,
+                    author="system",
+                    source_type="reflection_journal",
+                    source_entry_id=entry_id,
+                )
+                meta["molt_post_id"] = post.get("id")
+            except Exception as e:
+                logger.debug(f"[REFLECTION_LOOP] Failed to create Moltbook post: {e}")
             _maybe_append_self_reply(
                 session_db=self.session_db,
                 thread_id=thread_id,

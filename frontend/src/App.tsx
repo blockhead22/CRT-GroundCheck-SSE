@@ -16,6 +16,7 @@ import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
 import { LoopsPage } from './pages/LoopsPage'
 import { JournalPage } from './pages/JournalPage'
+import { MoltbookPage } from './pages/MoltbookPage'
 import { ShowcasePage } from './pages/ShowcasePage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
@@ -592,6 +593,8 @@ export default function App() {
                   <LoopsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'journal' ? (
                   <JournalPage threadId={selectedThread?.id ?? 'default'} />
+                ) : navActive === 'moltbook' ? (
+                  <MoltbookPage />
                 ) : navActive === 'showcase' ? (
                   <ShowcasePage />
                 ) : (

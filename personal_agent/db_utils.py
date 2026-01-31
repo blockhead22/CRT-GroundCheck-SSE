@@ -206,6 +206,10 @@ class ThreadSessionDB:
                 "style_profile_json": "TEXT",
                 "journal_auto_reply_enabled": "INTEGER",
                 "journal_auto_reply_updated_at": "REAL",
+                "heartbeat_config_json": "TEXT",
+                "heartbeat_last_run": "REAL",
+                "heartbeat_last_summary": "TEXT",
+                "heartbeat_last_actions_json": "TEXT",
             },
         )
         
@@ -268,6 +272,70 @@ class ThreadSessionDB:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_reflection_journal_thread_ts
             ON reflection_journal_entries(thread_id, created_at DESC)
+        """)
+
+        # Moltbook-style local forum (posts, comments, votes, submolts)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS molt_submolts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                created_at REAL NOT NULL,
+                created_by TEXT
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS molt_posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                submolt TEXT NOT NULL,
+                title TEXT NOT NULL,
+                content TEXT NOT NULL,
+                author TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                source_type TEXT,
+                source_entry_id INTEGER
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS molt_comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                post_id INTEGER NOT NULL,
+                parent_comment_id INTEGER,
+                content TEXT NOT NULL,
+                author TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                FOREIGN KEY (post_id) REFERENCES molt_posts(id)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS molt_votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                target_type TEXT NOT NULL,
+                target_id INTEGER NOT NULL,
+                voter TEXT NOT NULL,
+                value INTEGER NOT NULL,
+                created_at REAL NOT NULL,
+                UNIQUE(target_type, target_id, voter)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_molt_posts_submolt_ts
+            ON molt_posts(submolt, created_at DESC)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_molt_comments_post_ts
+            ON molt_comments(post_id, created_at ASC)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_molt_votes_target
+            ON molt_votes(target_type, target_id)
         """)
         
         conn.commit()
@@ -519,6 +587,93 @@ class ThreadSessionDB:
             SET journal_auto_reply_enabled = ?, journal_auto_reply_updated_at = ?
             WHERE thread_id = ?
         """, (1 if enabled else 0, time.time(), thread_id))
+        conn.commit()
+        conn.close()
+
+    def get_heartbeat_config(self, thread_id: str) -> Optional[dict]:
+        """Get per-thread heartbeat config override (None if unset)."""
+        import json
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT heartbeat_config_json
+            FROM thread_sessions
+            WHERE thread_id = ?
+        """, (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        raw = row["heartbeat_config_json"]
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except Exception:
+            return None
+
+    def set_heartbeat_config(self, thread_id: str, config: dict) -> None:
+        """Set per-thread heartbeat config override."""
+        import json
+        self.get_or_create_session(thread_id)
+        payload = json.dumps(config or {})
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE thread_sessions
+            SET heartbeat_config_json = ?
+            WHERE thread_id = ?
+        """, (payload, thread_id))
+        conn.commit()
+        conn.close()
+
+    def get_heartbeat_state(self, thread_id: str) -> dict:
+        """Get last heartbeat run metadata for a thread."""
+        import json
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT heartbeat_last_run, heartbeat_last_summary, heartbeat_last_actions_json
+            FROM thread_sessions
+            WHERE thread_id = ?
+        """, (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return {"last_run": None, "last_summary": None, "last_actions": []}
+        actions = []
+        if row["heartbeat_last_actions_json"]:
+            try:
+                actions = json.loads(row["heartbeat_last_actions_json"])
+            except Exception:
+                actions = []
+        return {
+            "last_run": row["heartbeat_last_run"],
+            "last_summary": row["heartbeat_last_summary"],
+            "last_actions": actions,
+        }
+
+    def update_heartbeat_state(
+        self,
+        thread_id: str,
+        *,
+        last_run: float,
+        summary: Optional[str],
+        actions: Optional[list[dict]] = None,
+    ) -> None:
+        """Store last heartbeat run metadata."""
+        import json
+        self.get_or_create_session(thread_id)
+        payload = json.dumps(actions or [])
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE thread_sessions
+            SET heartbeat_last_run = ?, heartbeat_last_summary = ?, heartbeat_last_actions_json = ?
+            WHERE thread_id = ?
+        """, (last_run, summary, payload, thread_id))
         conn.commit()
         conn.close()
     
@@ -790,6 +945,246 @@ class ThreadSessionDB:
             "title": row["title"],
             "body": row["body"],
             "meta": meta,
+        }
+
+    # ====== Moltbook-style local forum ======
+
+    def list_submolts(self, limit: int = 50) -> list[dict]:
+        """List available submolts."""
+        limit = max(1, min(int(limit or 50), 200))
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, name, description, created_at, created_by
+            FROM molt_submolts
+            ORDER BY name ASC
+            LIMIT ?
+        """, (limit,))
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return rows
+
+    def create_submolt(self, name: str, description: str = "", created_by: Optional[str] = None) -> dict:
+        """Create a submolt (if it doesn't exist)."""
+        clean_name = (name or "").strip().lower().replace(" ", "_")
+        if not clean_name:
+            raise ValueError("Submolt name required")
+        desc = (description or "").strip() or None
+        created_at = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR IGNORE INTO molt_submolts (name, description, created_at, created_by)
+            VALUES (?, ?, ?, ?)
+        """, (clean_name, desc, created_at, created_by))
+        conn.commit()
+        cursor.execute("""
+            SELECT id, name, description, created_at, created_by
+            FROM molt_submolts
+            WHERE name = ?
+        """, (clean_name,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else {
+            "id": None,
+            "name": clean_name,
+            "description": desc,
+            "created_at": created_at,
+            "created_by": created_by,
+        }
+
+    def ensure_default_submolts(self) -> None:
+        """Ensure baseline submolts exist."""
+        defaults = [
+            ("reflections", "Agent self-reflections and internal notes."),
+            ("debugging", "Bug hunts, fixes, and debugging notes."),
+            ("agent-ops", "Operational tips for running agents."),
+        ]
+        for name, desc in defaults:
+            try:
+                self.create_submolt(name=name, description=desc, created_by="system")
+            except Exception:
+                continue
+
+    def create_post(
+        self,
+        submolt: str,
+        title: str,
+        content: str,
+        author: str,
+        source_type: Optional[str] = None,
+        source_entry_id: Optional[int] = None,
+    ) -> dict:
+        """Create a Moltbook post."""
+        if not submolt:
+            raise ValueError("submolt required")
+        if not title or not content:
+            raise ValueError("title and content required")
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO molt_posts
+            (submolt, title, content, author, created_at, updated_at, source_type, source_entry_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (submolt, title, content, author, now, now, source_type, source_entry_id))
+        post_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return {
+            "id": int(post_id) if post_id is not None else None,
+            "submolt": submolt,
+            "title": title,
+            "content": content,
+            "author": author,
+            "created_at": now,
+            "updated_at": now,
+            "source_type": source_type,
+            "source_entry_id": source_entry_id,
+        }
+
+    def list_posts(self, submolt: Optional[str] = None, sort: str = "new", limit: int = 50, offset: int = 0) -> list[dict]:
+        """List posts, optionally filtered by submolt."""
+        limit = max(1, min(int(limit or 50), 200))
+        offset = max(0, int(offset or 0))
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if submolt:
+            cursor.execute("""
+                SELECT p.id, p.submolt, p.title, p.content, p.author, p.created_at, p.updated_at,
+                       p.source_type, p.source_entry_id,
+                       COALESCE(SUM(v.value), 0) AS score
+                FROM molt_posts p
+                LEFT JOIN molt_votes v
+                  ON v.target_type = 'post' AND v.target_id = p.id
+                WHERE p.submolt = ?
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
+                LIMIT ? OFFSET ?
+            """, (submolt, limit, offset))
+        else:
+            cursor.execute("""
+                SELECT p.id, p.submolt, p.title, p.content, p.author, p.created_at, p.updated_at,
+                       p.source_type, p.source_entry_id,
+                       COALESCE(SUM(v.value), 0) AS score
+                FROM molt_posts p
+                LEFT JOIN molt_votes v
+                  ON v.target_type = 'post' AND v.target_id = p.id
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
+                LIMIT ? OFFSET ?
+            """, (limit, offset))
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        if sort and sort != "new":
+            now = time.time()
+            if sort == "top":
+                rows.sort(key=lambda r: (r.get("score", 0), r.get("created_at", 0)), reverse=True)
+            elif sort == "hot":
+                def _hot_score(row):
+                    age_hours = max(0.1, (now - float(row.get("created_at") or now)) / 3600.0)
+                    score = float(row.get("score") or 0)
+                    return score / ((age_hours + 2.0) ** 1.3)
+                rows.sort(key=_hot_score, reverse=True)
+        return rows
+
+    def get_post(self, post_id: int) -> Optional[dict]:
+        """Fetch a single post with score."""
+        if not post_id:
+            return None
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT p.id, p.submolt, p.title, p.content, p.author, p.created_at, p.updated_at,
+                   p.source_type, p.source_entry_id,
+                   COALESCE(SUM(v.value), 0) AS score
+            FROM molt_posts p
+            LEFT JOIN molt_votes v
+              ON v.target_type = 'post' AND v.target_id = p.id
+            WHERE p.id = ?
+            GROUP BY p.id
+        """, (post_id,))
+        row = cursor.fetchone()
+        conn.close()
+        return dict(row) if row else None
+
+    def create_comment(
+        self,
+        post_id: int,
+        content: str,
+        author: str,
+        parent_comment_id: Optional[int] = None,
+    ) -> dict:
+        """Create a comment."""
+        if not post_id:
+            raise ValueError("post_id required")
+        if not content:
+            raise ValueError("content required")
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO molt_comments
+            (post_id, parent_comment_id, content, author, created_at)
+            VALUES (?, ?, ?, ?, ?)
+        """, (post_id, parent_comment_id, content, author, now))
+        comment_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return {
+            "id": int(comment_id) if comment_id is not None else None,
+            "post_id": post_id,
+            "parent_comment_id": parent_comment_id,
+            "content": content,
+            "author": author,
+            "created_at": now,
+        }
+
+    def list_comments(self, post_id: int) -> list[dict]:
+        """List comments for a post (chronological)."""
+        if not post_id:
+            return []
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT c.id, c.post_id, c.parent_comment_id, c.content, c.author, c.created_at,
+                   COALESCE(SUM(v.value), 0) AS score
+            FROM molt_comments c
+            LEFT JOIN molt_votes v
+              ON v.target_type = 'comment' AND v.target_id = c.id
+            WHERE c.post_id = ?
+            GROUP BY c.id
+            ORDER BY c.created_at ASC
+        """, (post_id,))
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return rows
+
+    def cast_vote(self, target_type: str, target_id: int, voter: str, value: int) -> dict:
+        """Upsert a vote (+1 / -1)."""
+        if target_type not in ("post", "comment"):
+            raise ValueError("invalid target_type")
+        if not target_id:
+            raise ValueError("target_id required")
+        val = 1 if value > 0 else -1
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO molt_votes (target_type, target_id, voter, value, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(target_type, target_id, voter)
+            DO UPDATE SET value = excluded.value, created_at = excluded.created_at
+        """, (target_type, target_id, voter, val, now))
+        conn.commit()
+        conn.close()
+        return {
+            "target_type": target_type,
+            "target_id": target_id,
+            "voter": voter,
+            "value": val,
+            "created_at": now,
         }
     
     def _normalize_query(self, query: str) -> str:

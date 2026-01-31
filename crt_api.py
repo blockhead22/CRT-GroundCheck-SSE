@@ -43,6 +43,16 @@ from personal_agent.continuous_loops import build_loops, maybe_reply_to_journal_
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
 from personal_agent.reflection_system import run_reflection_pass, ReflectionDB, ReflectionResult
+from personal_agent.heartbeat_system import get_heartbeat_scheduler, HeartbeatConfig
+from personal_agent.heartbeat_api import (
+    HeartbeatConfigRequest,
+    HeartbeatConfigResponse,
+    HeartbeatRunResponse,
+    HeartbeatHistoryResponse,
+    HeartbeatHistoryItem,
+    HeartbeatMDRequest,
+    HeartbeatMDResponse,
+)
 
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
@@ -447,6 +457,69 @@ class JournalReplyResponse(BaseModel):
     auto_reply_created: bool = False
 
 
+class MoltSubmolt(BaseModel):
+    id: Optional[int] = None
+    name: str
+    description: Optional[str] = None
+    created_at: Optional[float] = None
+    created_by: Optional[str] = None
+
+
+class MoltPost(BaseModel):
+    id: Optional[int] = None
+    submolt: str
+    title: str
+    content: str
+    author: str
+    created_at: Optional[float] = None
+    updated_at: Optional[float] = None
+    score: Optional[int] = None
+    source_type: Optional[str] = None
+    source_entry_id: Optional[int] = None
+
+
+class MoltComment(BaseModel):
+    id: Optional[int] = None
+    post_id: int
+    parent_comment_id: Optional[int] = None
+    content: str
+    author: str
+    created_at: Optional[float] = None
+    score: Optional[int] = None
+
+
+class MoltVoteRequest(BaseModel):
+    target_type: str = Field(description="post | comment")
+    target_id: int
+    voter: str = Field(default="user")
+    value: int = Field(default=1, description="+1 or -1")
+
+
+class MoltPostCreateRequest(BaseModel):
+    submolt: str
+    title: str
+    content: str
+    author: str = Field(default="user")
+
+
+class MoltCommentCreateRequest(BaseModel):
+    post_id: int
+    content: str
+    author: str = Field(default="user")
+    parent_comment_id: Optional[int] = None
+
+
+class MoltSubmoltCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    created_by: Optional[str] = None
+
+
+class MoltThreadResponse(BaseModel):
+    post: MoltPost
+    comments: List[MoltComment]
+
+
 class FactExtractionRequest(BaseModel):
     text: str = Field(min_length=1, description="Text to extract facts from")
     skip_llm: bool = Field(default=False, description="If true, only extract hard slots (faster)")
@@ -683,8 +756,21 @@ def create_app() -> FastAPI:
     )
     app.state.idle_scheduler = idle_scheduler
 
+    # Heartbeat scheduler (OpenClaw-style 24/7 proactive engagement)
+    heartbeat_enabled = bool(os.getenv("CRT_HEARTBEAT_ENABLED", "false").lower() in {"1", "true", "yes"})
+    heartbeat_scheduler = get_heartbeat_scheduler(
+        workspace_path=root,
+        thread_session_db_path=str(session_db.db_path),
+        enabled=heartbeat_enabled,
+    )
+    app.state.heartbeat_scheduler = heartbeat_scheduler
+
     # Continuous reflection + personality loops (24/7, limited scope)
     session_db = get_thread_session_db()
+    try:
+        session_db.ensure_default_submolts()
+    except Exception:
+        pass
     reflection_loop, personality_loop, journal_self_reply_loop = build_loops(session_db)
     app.state.reflection_loop = reflection_loop
     app.state.personality_loop = personality_loop
@@ -844,6 +930,11 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
+        try:
+            app.state.heartbeat_scheduler.start()
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start heartbeat scheduler: {e}")
+
     @app.on_event("shutdown")
     def _shutdown() -> None:
         try:
@@ -875,6 +966,11 @@ def create_app() -> FastAPI:
             app.state.journal_self_reply_loop.stop()
         except Exception:
             pass
+
+        try:
+            app.state.heartbeat_scheduler.stop()
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping heartbeat scheduler: {e}")
 
     class JobListItem(BaseModel):
         id: str
@@ -2163,6 +2259,96 @@ def create_app() -> FastAPI:
             logger.debug(f"[JOURNAL] Auto-reply failed: {e}")
 
         return JournalReplyResponse(ok=True, entry=entry, auto_reply_created=auto_reply_created)
+
+    # ========================================================================
+    # Moltbook (local) API Endpoints
+    # ========================================================================
+
+    @app.get("/api/moltbook/submolts", response_model=list[MoltSubmolt])
+    def list_molt_submolts(limit: int = Query(default=50, ge=1, le=200)):
+        session_db = get_thread_session_db()
+        try:
+            session_db.ensure_default_submolts()
+        except Exception:
+            pass
+        return [MoltSubmolt(**row) for row in session_db.list_submolts(limit=limit)]
+
+    @app.post("/api/moltbook/submolts", response_model=MoltSubmolt)
+    def create_molt_submolt(req: MoltSubmoltCreateRequest):
+        session_db = get_thread_session_db()
+        row = session_db.create_submolt(name=req.name, description=req.description or "", created_by=req.created_by)
+        return MoltSubmolt(**row)
+
+    @app.get("/api/moltbook/posts", response_model=list[MoltPost])
+    def list_molt_posts(
+        submolt: Optional[str] = Query(default=None),
+        sort: str = Query(default="new"),
+        limit: int = Query(default=50, ge=1, le=200),
+        offset: int = Query(default=0, ge=0),
+    ):
+        session_db = get_thread_session_db()
+        rows = session_db.list_posts(submolt=submolt, sort=sort, limit=limit, offset=offset)
+        return [MoltPost(**row) for row in rows]
+
+    @app.post("/api/moltbook/posts", response_model=MoltPost)
+    def create_molt_post(req: MoltPostCreateRequest):
+        session_db = get_thread_session_db()
+        row = session_db.create_post(
+            submolt=req.submolt,
+            title=req.title,
+            content=req.content,
+            author=req.author or "user",
+            source_type="manual",
+        )
+        return MoltPost(**row)
+
+    @app.get("/api/moltbook/posts/{post_id}", response_model=MoltPost)
+    def get_molt_post(post_id: int):
+        session_db = get_thread_session_db()
+        row = session_db.get_post(post_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Post not found")
+        return MoltPost(**row)
+
+    @app.get("/api/moltbook/thread/{post_id}", response_model=MoltThreadResponse)
+    def get_molt_thread(post_id: int):
+        session_db = get_thread_session_db()
+        post = session_db.get_post(post_id)
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+        comments = session_db.list_comments(post_id)
+        return MoltThreadResponse(
+            post=MoltPost(**post),
+            comments=[MoltComment(**c) for c in comments],
+        )
+
+    @app.get("/api/moltbook/comments", response_model=list[MoltComment])
+    def list_molt_comments(post_id: int = Query(..., ge=1)):
+        session_db = get_thread_session_db()
+        rows = session_db.list_comments(post_id)
+        return [MoltComment(**row) for row in rows]
+
+    @app.post("/api/moltbook/comments", response_model=MoltComment)
+    def create_molt_comment(req: MoltCommentCreateRequest):
+        session_db = get_thread_session_db()
+        row = session_db.create_comment(
+            post_id=req.post_id,
+            content=req.content,
+            author=req.author or "user",
+            parent_comment_id=req.parent_comment_id,
+        )
+        return MoltComment(**row)
+
+    @app.post("/api/moltbook/votes")
+    def cast_molt_vote(req: MoltVoteRequest):
+        session_db = get_thread_session_db()
+        row = session_db.cast_vote(
+            target_type=req.target_type,
+            target_id=req.target_id,
+            voter=req.voter or "user",
+            value=req.value,
+        )
+        return {"ok": True, "vote": row}
     
     @app.get("/api/training/stats")
     def get_training_stats():
@@ -4395,6 +4581,172 @@ def create_app() -> FastAPI:
             pass
         
         return {"ok": True, "thread_id": tid, "deleted": True}
+
+    # ========================================================================
+    # HEARTBEAT SYSTEM API (OpenClaw-style 24/7 proactive engagement)
+    # ========================================================================
+
+    @app.get("/api/heartbeat/status")
+    def get_heartbeat_status() -> dict:
+        """Get heartbeat scheduler status."""
+        scheduler = app.state.heartbeat_scheduler
+        return {
+            "enabled": scheduler.enabled,
+            "running": scheduler._running,
+            "check_interval_seconds": scheduler.check_interval,
+        }
+
+    @app.post("/api/heartbeat/start")
+    def start_heartbeat_scheduler() -> dict:
+        """Start the heartbeat scheduler."""
+        scheduler = app.state.heartbeat_scheduler
+        scheduler.start()
+        return {"ok": True, "message": "Heartbeat scheduler started"}
+
+    @app.post("/api/heartbeat/stop")
+    def stop_heartbeat_scheduler() -> dict:
+        """Stop the heartbeat scheduler."""
+        scheduler = app.state.heartbeat_scheduler
+        scheduler.stop()
+        return {"ok": True, "message": "Heartbeat scheduler stopped"}
+
+    @app.get("/api/threads/{thread_id}/heartbeat/config", response_model=HeartbeatConfigResponse)
+    def get_heartbeat_config(thread_id: str) -> HeartbeatConfigResponse:
+        """Get heartbeat config for a thread."""
+        tid = _sanitize_thread_id(thread_id)
+        scheduler = app.state.heartbeat_scheduler
+        
+        config = scheduler._get_heartbeat_config(tid)
+        last_run = scheduler._get_last_heartbeat_run(tid)
+        
+        # Get last summary from DB
+        last_summary = ""
+        try:
+            session_db = get_thread_session_db()
+            row = session_db.query("SELECT heartbeat_last_summary FROM thread_sessions WHERE thread_id = ?", (tid,))
+            if row:
+                last_summary = row[0][1] or ""
+        except Exception:
+            pass
+        
+        return HeartbeatConfigResponse(
+            thread_id=tid,
+            config=config.to_dict(),
+            last_run=last_run if last_run > 0 else None,
+            last_summary=last_summary or None,
+        )
+
+    @app.post("/api/threads/{thread_id}/heartbeat/config")
+    def set_heartbeat_config(thread_id: str, req: HeartbeatConfigRequest) -> HeartbeatConfigResponse:
+        """Update heartbeat config for a thread."""
+        tid = _sanitize_thread_id(thread_id)
+        scheduler = app.state.heartbeat_scheduler
+        
+        # Create config from request
+        config = HeartbeatConfig(
+            enabled=req.enabled,
+            every_seconds=req.every,
+            target=req.target,
+            active_hours_start=req.active_hours_start,
+            active_hours_end=req.active_hours_end,
+            timezone=req.timezone,
+            model=req.model,
+            max_tokens=req.max_tokens,
+            temperature=req.temperature,
+            dry_run=req.dry_run,
+        )
+        
+        # Store in DB
+        try:
+            session_db = get_thread_session_db()
+            session_db.set_heartbeat_config(tid, config.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to set heartbeat config: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        
+        return HeartbeatConfigResponse(
+            thread_id=tid,
+            config=config.to_dict(),
+        )
+
+    @app.post("/api/threads/{thread_id}/heartbeat/run-now")
+    def run_heartbeat_now(thread_id: str) -> HeartbeatRunResponse:
+        """Manually trigger a heartbeat for a thread."""
+        tid = _sanitize_thread_id(thread_id)
+        scheduler = app.state.heartbeat_scheduler
+        
+        try:
+            result = scheduler.run_heartbeat_now(tid)
+            return HeartbeatRunResponse(
+                thread_id=result.thread_id,
+                ran_successfully=result.ran_successfully,
+                timestamp=result.timestamp,
+                decision_summary=result.decision_summary,
+                actions=[],
+                execution_time_seconds=result.execution_time_seconds,
+                error=result.error,
+            )
+        except Exception as e:
+            logger.error(f"Failed to run heartbeat: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/threads/{thread_id}/heartbeat/history", response_model=HeartbeatHistoryResponse)
+    def get_heartbeat_history(thread_id: str, limit: int = 10) -> HeartbeatHistoryResponse:
+        """Get heartbeat run history for a thread."""
+        tid = _sanitize_thread_id(thread_id)
+        
+        history: List[HeartbeatHistoryItem] = []
+        try:
+            session_db = get_thread_session_db()
+            # This would need a history table implementation
+            # For now, return empty history
+            pass
+        except Exception as e:
+            logger.debug(f"Error getting heartbeat history: {e}")
+        
+        return HeartbeatHistoryResponse(
+            thread_id=tid,
+            history=history,
+            total_runs=len(history),
+        )
+
+    @app.get("/api/heartbeat/heartbeat.md", response_model=HeartbeatMDResponse)
+    def get_heartbeat_md() -> HeartbeatMDResponse:
+        """Get current HEARTBEAT.md content."""
+        from personal_agent.heartbeat_system import HeartbeatMDParser
+        workspace = Path(__file__).resolve().parent
+        
+        content = HeartbeatMDParser.read_heartbeat_md(workspace)
+        
+        hb_path = workspace / "HEARTBEAT.md"
+        last_modified = None
+        if hb_path.exists():
+            last_modified = hb_path.stat().st_mtime
+        
+        return HeartbeatMDResponse(
+            content=content,
+            last_modified=last_modified,
+            path="HEARTBEAT.md",
+        )
+
+    @app.post("/api/heartbeat/heartbeat.md")
+    def set_heartbeat_md(req: HeartbeatMDRequest) -> HeartbeatMDResponse:
+        """Update HEARTBEAT.md."""
+        workspace = Path(__file__).resolve().parent
+        hb_path = workspace / "HEARTBEAT.md"
+        
+        try:
+            hb_path.write_text(req.content, encoding="utf-8")
+            last_modified = hb_path.stat().st_mtime
+            
+            return HeartbeatMDResponse(
+                content=req.content,
+                last_modified=last_modified,
+                path="HEARTBEAT.md",
+            )
+        except Exception as e:
+            logger.error(f"Failed to write HEARTBEAT.md: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
 
     return app
 
