@@ -637,6 +637,44 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         if loc and len(loc) > 2:
             facts["location"] = ExtractedFact("location", loc, loc.lower())
 
+    # Assistant Name
+    # Examples:
+    # - "Let's call you Aether"
+    # - "I'll call you Claude"
+    # - "Your name is GPT"
+    # - "Call yourself Aria"
+    # - "You should be called Nova"
+    # Match name pattern with title case (1-3 tokens)
+    asst_name_pat = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
+    
+    # Pattern 1: "call you X" or "I'll call you X"
+    m = re.search(r"\b(?:I'll|I will|let's|lets)\s+call you\s+" + asst_name_pat, text, flags=re.IGNORECASE)
+    if m:
+        asst_name = m.group(1).strip()
+        if asst_name and asst_name.lower() not in _NAME_STOPWORDS:
+            facts["assistant_name"] = ExtractedFact("assistant_name", asst_name, _norm_text(asst_name))
+    
+    # Pattern 2: "your name is X" or "you're X" or "you are X"
+    if "assistant_name" not in facts:
+        m = re.search(r"\byour name is\s+" + asst_name_pat, text, flags=re.IGNORECASE)
+        if not m:
+            m = re.search(r"\byou(?:'re| are)\s+" + asst_name_pat + r"(?:\s|[,\.!?]|$)", text, flags=re.IGNORECASE)
+        if m:
+            asst_name = m.group(1).strip()
+            # Exclude common verbs/adjectives: "you're working", "you're awesome"
+            if asst_name and asst_name.lower() not in _NAME_STOPWORDS and asst_name.lower() not in {"working", "great", "awesome", "helpful", "right", "correct", "wrong"}:
+                facts["assistant_name"] = ExtractedFact("assistant_name", asst_name, _norm_text(asst_name))
+    
+    # Pattern 3: "call yourself X" or "you should be called X"
+    if "assistant_name" not in facts:
+        m = re.search(r"\bcall yourself\s+" + asst_name_pat, text, flags=re.IGNORECASE)
+        if not m:
+            m = re.search(r"\byou should be called\s+" + asst_name_pat, text, flags=re.IGNORECASE)
+        if m:
+            asst_name = m.group(1).strip()
+            if asst_name and asst_name.lower() not in _NAME_STOPWORDS:
+                facts["assistant_name"] = ExtractedFact("assistant_name", asst_name, _norm_text(asst_name))
+
     # Employer
     # Examples:
     # - "I work at Microsoft as a senior developer."

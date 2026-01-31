@@ -26,26 +26,38 @@ from .fact_tuples import FactTuple, FactTupleSet, FactAction
 logger = logging.getLogger(__name__)
 
 # Default extraction prompt template
-DEFAULT_EXTRACTION_PROMPT = """Extract facts from this text as JSON tuples.
+DEFAULT_EXTRACTION_PROMPT = """Extract PERMANENT IDENTITY FACTS from this text as JSON tuples.
 
 Text: "{text}"
 
+🎯 ONLY extract facts that are:
+✅ PERMANENT aspects of the user's identity (name, employer, location, hobbies, pets)
+✅ Durable relationships or possessions (family, pets, belongings)
+✅ Long-term preferences or characteristics (favorite color, dietary restrictions)
+
+❌ DO NOT extract:
+❌ Temporary activities ("working on a project tonight", "debugging code")
+❌ Technical discussions (code snippets, function names, variable values)
+❌ Current tasks or to-do items ("need to fix the API", "planning to refactor")
+❌ Questions or requests ("can you help me with X?")
+❌ Opinions about technical topics unless expressing a strong personal preference
+
 Return a JSON object with a "facts" array. Each fact should have:
 - entity: who/what the fact is about (use "User" for first-person statements)
-- attribute: what property (use snake_case, e.g., "employment_status", "favorite_color")
+- attribute: what property (use snake_case, e.g., "employer", "favorite_color", "pet")
 - value: the value
 - action: "add" (new fact), "update" (changing fact), "deprecate" (no longer true), or "deny" (explicitly false)
 - confidence: 0.0-1.0 (how certain is this fact based on the text)
 - evidence_span: exact quote from text supporting this fact
 
 Examples:
+
 "I'm effectively resigning from Google to join a startup in Seattle."
 {{
   "facts": [
-    {{"entity": "User", "attribute": "employment_status", "value": "resigning", "action": "update", "confidence": 0.78, "evidence_span": "I'm effectively resigning"}},
-    {{"entity": "User", "attribute": "employer", "value": "Google", "action": "deprecate", "confidence": 0.71, "evidence_span": "resigning from Google"}},
-    {{"entity": "User", "attribute": "next_employer_type", "value": "startup", "action": "add", "confidence": 0.66, "evidence_span": "join a startup"}},
-    {{"entity": "User", "attribute": "location", "value": "Seattle", "action": "update", "confidence": 0.73, "evidence_span": "in Seattle"}}
+    {{"entity": "User", "attribute": "employer", "value": "Google", "action": "deprecate", "confidence": 0.85, "evidence_span": "resigning from Google"}},
+    {{"entity": "User", "attribute": "next_employer_type", "value": "startup", "action": "add", "confidence": 0.75, "evidence_span": "join a startup"}},
+    {{"entity": "User", "attribute": "location", "value": "Seattle", "action": "update", "confidence": 0.80, "evidence_span": "in Seattle"}}
   ]
 }}
 
@@ -53,11 +65,25 @@ Examples:
 {{
   "facts": [
     {{"entity": "User", "attribute": "hobby", "value": "pottery", "action": "add", "confidence": 0.85, "evidence_span": "favorite hobby is pottery"}},
-    {{"entity": "User", "attribute": "former_hobby", "value": "woodworking", "action": "add", "confidence": 0.72, "evidence_span": "used to do woodworking"}}
+    {{"entity": "User", "attribute": "former_hobby", "value": "woodworking", "action": "add", "confidence": 0.75, "evidence_span": "used to do woodworking"}}
   ]
 }}
 
-Now extract facts from the input text. Return ONLY valid JSON with a "facts" array."""
+"I'm debugging a React component and refactoring the API layer."
+{{
+  "facts": []
+}}
+(Reason: Temporary technical work, not a permanent identity fact)
+
+"I work full-time as a React developer and prefer TypeScript over JavaScript."
+{{
+  "facts": [
+    {{"entity": "User", "attribute": "occupation", "value": "React developer", "action": "add", "confidence": 0.90, "evidence_span": "work full-time as a React developer"}},
+    {{"entity": "User", "attribute": "programming_language_preference", "value": "TypeScript over JavaScript", "action": "add", "confidence": 0.85, "evidence_span": "prefer TypeScript over JavaScript"}}
+  ]
+}}
+
+Now extract ONLY PERMANENT IDENTITY FACTS from the input text. Return ONLY valid JSON with a "facts" array."""
 
 
 @dataclass

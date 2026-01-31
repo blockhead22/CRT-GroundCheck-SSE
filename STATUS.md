@@ -1,7 +1,7 @@
 # Project Status
 
 **Last Updated:** 2026-01-27  
-**Current Phase:** Pattern Fixes (Path to 80%)
+**Current Phase:** OpenClaw Local Features - Full Implementation
 
 ---
 
@@ -13,6 +13,25 @@
 | ✅ Phase 1.1 | Wired CRTMath call sites, fixed paraphrase detection | 2026-01-26 |
 | ✅ Phase 2.0 | Context-Aware Memory (domain/temporal detection) | 2026-01-26 |
 | ✅ Phase 2.4 | Denial detection (Turn 23 working) | 2026-01-27 |
+| ✅ **OpenClaw Local** | **Heartbeat history, feed UI, mention detection** | **2026-01-27** |
+
+---
+
+## OpenClaw Features Status
+
+| Feature | Status | Implementation |
+|---------|--------|----------------|
+| Heartbeat Loop | ✅ Complete | Unified with reflection system |
+| Moltbook Integration | ✅ Complete | Posts, comments, votes |
+| Activity History | ✅ Complete | Database + API endpoint |
+| HeartbeatFeed UI | ✅ Complete | React component with auto-refresh |
+| Mention Detection | ✅ Complete | `@agent` detection in posts |
+| Feed Prioritization | ✅ Complete | Mentions prioritized |
+| Standardized Responses | 🔄 In Progress | OpenClaw-style formats |
+| Human Notifications | 🔄 In Progress | Needs input flags |
+| History Page | 📋 Planned | Timeline visualization |
+
+See `OPENCLAW_LOCAL_FEATURES.md` and `IMPLEMENTATION_SUMMARY.md` for details.
 
 ---
 
@@ -46,6 +65,7 @@
 | Start | 65.7% (23/35) | — | Baseline |
 | 2026-01-26 | 71.4% (25/35) | +5.7% | Direct/hedged corrections, numeric drift |
 | **2026-01-27** | **77.1% (27/35)** | **+5.7%** | **Denial detection, retraction logic** |
+| **2026-01-27** | **OpenClaw Local** | **Full features** | **Heartbeat UI, mentions, history** |
 
 ---
 

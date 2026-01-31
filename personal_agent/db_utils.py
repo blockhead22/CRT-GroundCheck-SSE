@@ -1253,6 +1253,70 @@ class ThreadSessionDB:
         rows = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return rows
+    
+    def has_similar_recent_post(self, submolt: str, title: str, hours_back: int = 24) -> bool:
+        """Check if a similar post exists in the last N hours to avoid duplicates."""
+        import time
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        cutoff = time.time() - (hours_back * 3600)
+        
+        # Normalize title for comparison (lowercase, remove special chars)
+        import re
+        normalized_title = re.sub(r'[^a-z0-9\s]', '', title.lower())
+        
+        cursor.execute("""
+            SELECT title FROM molt_posts
+            WHERE submolt = ? AND created_at > ?
+            ORDER BY created_at DESC
+            LIMIT 20
+        """, (submolt, cutoff))
+        
+        for row in cursor.fetchall():
+            existing_title = re.sub(r'[^a-z0-9\s]', '', row[0].lower())
+            # Check for high similarity (>70% match)
+            if self._similarity_ratio(normalized_title, existing_title) > 0.7:
+                conn.close()
+                return True
+        
+        conn.close()
+        return False
+    
+    def _similarity_ratio(self, s1: str, s2: str) -> float:
+        """Simple word-based similarity ratio."""
+        words1 = set(s1.split())
+        words2 = set(s2.split())
+        if not words1 or not words2:
+            return 0.0
+        intersection = len(words1 & words2)
+        union = len(words1 | words2)
+        return intersection / union if union > 0 else 0.0
+    
+    def clear_moltbook_entries(self, submolt: Optional[str] = None) -> dict:
+        """Clear all Moltbook entries (or specific submolt)."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        if submolt:
+            # Clear specific submolt
+            cursor.execute("DELETE FROM molt_votes WHERE target_type = 'post' AND target_id IN (SELECT id FROM molt_posts WHERE submolt = ?)", (submolt,))
+            cursor.execute("DELETE FROM molt_comments WHERE post_id IN (SELECT id FROM molt_posts WHERE submolt = ?)", (submolt,))
+            cursor.execute("DELETE FROM molt_posts WHERE submolt = ?", (submolt,))
+        else:
+            # Clear everything
+            cursor.execute("DELETE FROM molt_votes")
+            cursor.execute("DELETE FROM molt_comments")
+            cursor.execute("DELETE FROM molt_posts")
+        
+        conn.commit()
+        deleted_posts = cursor.rowcount
+        conn.close()
+        
+        return {
+            "deleted_posts": deleted_posts,
+            "submolt": submolt or "all"
+        }
 
     def cast_vote(self, target_type: str, target_id: int, voter: str, value: int) -> dict:
         """Upsert a vote (+1 / -1)."""

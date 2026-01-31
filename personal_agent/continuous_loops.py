@@ -84,17 +84,41 @@ def _summarize_scorecard(scorecard: dict) -> tuple[str, str]:
     window = scorecard.get("message_window")
     manual_prompt = str(scorecard.get("manual_prompt") or "").strip()
 
-    title = "Reflection update"
-    lines = [
-        f"Window: {window or '--'} msgs",
-        f"Preference confidence: {pref_conf:.2f}" if isinstance(pref_conf, (int, float)) else "Preference confidence: --",
-        f"Top topics: {top_topics}",
-        f"Rising: {rising}",
-        f"Fading: {fading}",
-    ]
+    # Create human-readable title
+    if top_topics and top_topics != "--":
+        title = f"Reflecting on: {top_topics.split(', ')[0]}"
+    else:
+        title = "Reflection check-in"
+    
+    # Build narrative body
+    lines = []
+    
+    # Confidence level as narrative
+    if isinstance(pref_conf, (int, float)):
+        if pref_conf >= 0.7:
+            lines.append(f"Feeling confident about user preferences (confidence: {pref_conf:.0%}).")
+        elif pref_conf >= 0.4:
+            lines.append(f"Getting a sense of user preferences (confidence: {pref_conf:.0%}).")
+        else:
+            lines.append(f"Still learning user preferences (confidence: {pref_conf:.0%}).")
+    
+    # Topics in natural language
+    if top_topics and top_topics != "--":
+        lines.append(f"Main topics: {top_topics}.")
+    
+    # Trends as observations
+    if rising and rising != "--":
+        lines.append(f"Noticing more discussion about: {rising}.")
+    if fading and fading != "--":
+        lines.append(f"Less focus on: {fading}.")
+    
+    # Context note
+    lines.append(f"(Based on last {window or 'N/A'} messages)")
+    
     if manual_prompt:
-        lines.append(f"Manual prompt: {manual_prompt[:120]}")
-    body = " | ".join(lines)
+        lines.append(f"\n\nManual prompt: {manual_prompt[:120]}")
+    
+    body = " ".join(lines) if lines else "Reflection pass completed."
     return title, body
 
 
@@ -106,16 +130,46 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
     window = profile.get("message_window")
     manual_prompt = str(profile.get("manual_prompt") or "").strip()
 
-    title = "Personality update"
-    lines = [
-        f"Window: {window or '--'} msgs",
-        f"Verbosity: {verbosity}",
-        f"Emoji: {emoji_pref}",
-        f"Format: {fmt}",
-    ]
+    # Create descriptive title
+    title = f"Adapting to {verbosity} style" if verbosity and verbosity != "--" else "Personality adjustment"
+    
+    # Build narrative description
+    lines = []
+    
+    # Describe verbosity preference
+    if verbosity and verbosity != "--":
+        verb_desc = {
+            "concise": "User prefers brief, to-the-point responses.",
+            "balanced": "User likes a balanced level of detail.",
+            "detailed": "User appreciates thorough, detailed explanations."
+        }.get(verbosity, f"Adapting to {verbosity} communication style.")
+        lines.append(verb_desc)
+    
+    # Emoji preference
+    if emoji_pref and emoji_pref != "--":
+        emoji_desc = {
+            "minimal": "Using emojis sparingly.",
+            "moderate": "Adding some emojis for clarity.",
+            "expressive": "Embracing expressive emoji use! 🎉"
+        }.get(emoji_pref, f"Emoji preference: {emoji_pref}.")
+        lines.append(emoji_desc)
+    
+    # Format preference
+    if fmt and fmt != "--":
+        fmt_desc = {
+            "plain": "Keeping responses in plain text format.",
+            "markdown": "Using markdown for better formatting.",
+            "structured": "Organizing responses with clear structure."
+        }.get(fmt, f"Format style: {fmt}.")
+        lines.append(fmt_desc)
+    
+    # Context note
+    lines.append(f"(Observed over {window or 'N/A'} messages)")
+    
     if manual_prompt:
-        lines.append(f"Manual prompt: {manual_prompt[:120]}")
-    body = " | ".join(lines)
+        lines.append(f"\n\nManual prompt: {manual_prompt[:120]}")
+    
+    body = " ".join(lines) if lines else "Personality profile updated."
     return title, body
 
 
@@ -611,15 +665,37 @@ class ReflectionLoop:
             )
             try:
                 self.session_db.ensure_default_submolts()
-                post = self.session_db.create_post(
-                    submolt="reflections",
-                    title=title,
-                    content=body,
-                    author="system",
-                    source_type="reflection_journal",
-                    source_entry_id=entry_id,
-                )
-                meta["molt_post_id"] = post.get("id")
+                
+                # Check if we should post (avoid duplicates and unnecessary posts)
+                should_post = True
+                try:
+                    # Skip if similar post exists in last 24 hours
+                    if self.session_db.has_similar_recent_post("reflections", title, hours_back=24):
+                        logger.debug(f"[REFLECTION_LOOP] Skipping Moltbook post - similar content exists")
+                        should_post = False
+                    
+                    # Skip if low confidence and no interesting trends
+                    pref_conf = scorecard.get("preference_confidence", 0)
+                    has_trends = bool((scorecard.get("topic_trends") or {}).get("rising") or (scorecard.get("topic_trends") or {}).get("fading"))
+                    if pref_conf < 0.2 and not has_trends:
+                        logger.debug(f"[REFLECTION_LOOP] Skipping Moltbook post - low confidence, no trends")
+                        should_post = False
+                except Exception as check_error:
+                    logger.debug(f"[REFLECTION_LOOP] Error checking post necessity: {check_error}")
+                
+                if should_post:
+                    post = self.session_db.create_post(
+                        submolt="reflections",
+                        title=title,
+                        content=body,
+                        author="system",
+                        source_type="reflection_journal",
+                        source_entry_id=entry_id,
+                    )
+                    meta["molt_post_id"] = post.get("id")
+                    logger.info(f"[REFLECTION_LOOP] Posted to Moltbook: {title}")
+                else:
+                    logger.debug(f"[REFLECTION_LOOP] Skipped Moltbook post (journal entry still saved)")
             except Exception as e:
                 logger.debug(f"[REFLECTION_LOOP] Failed to create Moltbook post: {e}")
             _maybe_append_self_reply(
@@ -689,6 +765,43 @@ class PersonalityLoop:
                 body=body,
                 meta=profile,
             )
+            
+            # Post to Moltbook (with similarity check)
+            try:
+                self.session_db.ensure_default_submolts()
+                
+                # Check if we should post (avoid duplicates and unnecessary posts)
+                should_post = True
+                try:
+                    # Skip if similar post exists in last 24 hours
+                    if self.session_db.has_similar_recent_post("reflections", title, hours_back=24):
+                        logger.debug(f"[PERSONALITY_LOOP] Skipping Moltbook post - similar content exists")
+                        should_post = False
+                    
+                    # Skip if profile is just defaults
+                    verbosity = profile.get("verbosity")
+                    emoji_pref = profile.get("emoji")
+                    if verbosity in [None, "--", "balanced"] and emoji_pref in [None, "--", "moderate"]:
+                        logger.debug(f"[PERSONALITY_LOOP] Skipping Moltbook post - default/unchanged profile")
+                        should_post = False
+                except Exception as check_error:
+                    logger.debug(f"[PERSONALITY_LOOP] Error checking post necessity: {check_error}")
+                
+                if should_post:
+                    post = self.session_db.create_post(
+                        submolt="reflections",
+                        title=title,
+                        content=body,
+                        author="system",
+                        source_type="personality_journal",
+                        source_entry_id=entry_id,
+                    )
+                    logger.info(f"[PERSONALITY_LOOP] Posted to Moltbook: {title}")
+                else:
+                    logger.debug(f"[PERSONALITY_LOOP] Skipped Moltbook post (journal entry still saved)")
+            except Exception as e:
+                logger.debug(f"[PERSONALITY_LOOP] Failed to create Moltbook post: {e}")
+            
             scorecard = self.session_db.get_reflection_scorecard(thread_id)
             _maybe_append_self_reply(
                 session_db=self.session_db,
