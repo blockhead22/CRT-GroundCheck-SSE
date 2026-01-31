@@ -39,7 +39,7 @@ from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 from personal_agent.db_utils import get_thread_session_db
-from personal_agent.continuous_loops import build_loops
+from personal_agent.continuous_loops import build_loops, maybe_reply_to_journal_entry
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
 from personal_agent.reflection_system import run_reflection_pass, ReflectionDB, ReflectionResult
@@ -71,6 +71,36 @@ def _strip_thinking_tags(text: str) -> str:
     cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
     cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
     return cleaned.strip()
+
+
+def _env_bool(name: str, default: bool = True) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except Exception:
+        return default
+
+
+def _journal_defaults() -> Dict[str, Any]:
+    chance = max(0.0, min(1.0, _env_float("CRT_JOURNAL_SELF_REPLY_CHANCE", 0.25)))
+    min_seconds = int(max(0, _env_float("CRT_JOURNAL_SELF_REPLY_MIN_SECONDS", 1800)))
+    interval_seconds = int(max(60, _env_float("CRT_JOURNAL_SELF_REPLY_LOOP_SECONDS", 1800)))
+    enabled = _env_bool("CRT_JOURNAL_SELF_REPLY_ENABLED", True)
+    return {
+        "auto_reply_enabled": enabled,
+        "auto_reply_chance": chance,
+        "auto_reply_min_seconds": min_seconds,
+        "auto_reply_interval_seconds": interval_seconds,
+    }
 
 
 def _format_style_instruction(
@@ -389,6 +419,34 @@ class LoopRunResponse(BaseModel):
     open_contradictions: Optional[int] = None
 
 
+class JournalSettingsRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    auto_reply_enabled: bool = Field(default=True)
+
+
+class JournalSettingsResponse(BaseModel):
+    thread_id: str
+    auto_reply_enabled: bool
+    auto_reply_enabled_override: Optional[bool] = None
+    auto_reply_chance: float
+    auto_reply_min_seconds: int
+    auto_reply_interval_seconds: int
+
+
+class JournalReplyRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    reply_to: int = Field(ge=1)
+    body: str = Field(min_length=1, max_length=4000)
+    author: Optional[str] = None
+    title: Optional[str] = None
+
+
+class JournalReplyResponse(BaseModel):
+    ok: bool = True
+    entry: Dict[str, Any]
+    auto_reply_created: bool = False
+
+
 class FactExtractionRequest(BaseModel):
     text: str = Field(min_length=1, description="Text to extract facts from")
     skip_llm: bool = Field(default=False, description="If true, only extract hard slots (faster)")
@@ -627,9 +685,10 @@ def create_app() -> FastAPI:
 
     # Continuous reflection + personality loops (24/7, limited scope)
     session_db = get_thread_session_db()
-    reflection_loop, personality_loop = build_loops(session_db)
+    reflection_loop, personality_loop, journal_self_reply_loop = build_loops(session_db)
     app.state.reflection_loop = reflection_loop
     app.state.personality_loop = personality_loop
+    app.state.journal_self_reply_loop = journal_self_reply_loop
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -780,6 +839,11 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
+        try:
+            app.state.journal_self_reply_loop.start()
+        except Exception:
+            pass
+
     @app.on_event("shutdown")
     def _shutdown() -> None:
         try:
@@ -804,6 +868,11 @@ def create_app() -> FastAPI:
 
         try:
             app.state.personality_loop.stop()
+        except Exception:
+            pass
+
+        try:
+            app.state.journal_self_reply_loop.stop()
         except Exception:
             pass
 
@@ -1971,6 +2040,129 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.error(f"[REFLECTION] Failed to get reflection journal: {e}")
             return {"entries": [], "count": 0, "error": str(e)}
+
+    @app.get("/api/journal/settings", response_model=JournalSettingsResponse)
+    def get_journal_settings(thread_id: str = Query(default="default")) -> JournalSettingsResponse:
+        tid = _sanitize_thread_id(thread_id)
+        defaults = _journal_defaults()
+        try:
+            session_db = get_thread_session_db()
+            override = session_db.get_journal_auto_reply_enabled(tid)
+            enabled = override if override is not None else defaults["auto_reply_enabled"]
+            return JournalSettingsResponse(
+                thread_id=tid,
+                auto_reply_enabled=bool(enabled),
+                auto_reply_enabled_override=override,
+                auto_reply_chance=defaults["auto_reply_chance"],
+                auto_reply_min_seconds=defaults["auto_reply_min_seconds"],
+                auto_reply_interval_seconds=defaults["auto_reply_interval_seconds"],
+            )
+        except Exception as e:
+            logger.error(f"[JOURNAL] Failed to get settings: {e}")
+            return JournalSettingsResponse(
+                thread_id=tid,
+                auto_reply_enabled=bool(defaults["auto_reply_enabled"]),
+                auto_reply_enabled_override=None,
+                auto_reply_chance=defaults["auto_reply_chance"],
+                auto_reply_min_seconds=defaults["auto_reply_min_seconds"],
+                auto_reply_interval_seconds=defaults["auto_reply_interval_seconds"],
+            )
+
+    @app.post("/api/journal/settings", response_model=JournalSettingsResponse)
+    def set_journal_settings(req: JournalSettingsRequest) -> JournalSettingsResponse:
+        tid = _sanitize_thread_id(req.thread_id or "default")
+        defaults = _journal_defaults()
+        try:
+            session_db = get_thread_session_db()
+            session_db.set_journal_auto_reply_enabled(tid, bool(req.auto_reply_enabled))
+            override = session_db.get_journal_auto_reply_enabled(tid)
+            enabled = override if override is not None else defaults["auto_reply_enabled"]
+            return JournalSettingsResponse(
+                thread_id=tid,
+                auto_reply_enabled=bool(enabled),
+                auto_reply_enabled_override=override,
+                auto_reply_chance=defaults["auto_reply_chance"],
+                auto_reply_min_seconds=defaults["auto_reply_min_seconds"],
+                auto_reply_interval_seconds=defaults["auto_reply_interval_seconds"],
+            )
+        except Exception as e:
+            logger.error(f"[JOURNAL] Failed to set settings: {e}")
+            return JournalSettingsResponse(
+                thread_id=tid,
+                auto_reply_enabled=bool(defaults["auto_reply_enabled"]),
+                auto_reply_enabled_override=None,
+                auto_reply_chance=defaults["auto_reply_chance"],
+                auto_reply_min_seconds=defaults["auto_reply_min_seconds"],
+                auto_reply_interval_seconds=defaults["auto_reply_interval_seconds"],
+            )
+
+    @app.post("/api/reflection/journal/reply", response_model=JournalReplyResponse)
+    def create_reflection_journal_reply(req: JournalReplyRequest) -> JournalReplyResponse:
+        tid = _sanitize_thread_id(req.thread_id or "default")
+        session_db = get_thread_session_db()
+        parent = session_db.get_reflection_journal_entry(tid, req.reply_to)
+        if not parent:
+            raise HTTPException(status_code=404, detail="Journal entry not found")
+
+        root_id = req.reply_to
+        cursor_id = req.reply_to
+        for _ in range(6):
+            entry = session_db.get_reflection_journal_entry(tid, cursor_id)
+            if not entry:
+                break
+            meta = entry.get("meta") or {}
+            reply_to = meta.get("reply_to") if isinstance(meta, dict) else None
+            if not reply_to:
+                root_id = cursor_id
+                break
+            try:
+                cursor_id = int(reply_to)
+            except Exception:
+                break
+
+        author = (req.author or "user").strip() or "user"
+        title = (req.title or "Comment").strip() or "Comment"
+        body = (req.body or "").strip()
+        if not body:
+            raise HTTPException(status_code=400, detail="Empty comment")
+
+        meta = {
+            "reply_to": req.reply_to,
+            "root_id": root_id,
+            "author": author,
+            "source_entry_type": parent.get("entry_type"),
+        }
+        entry_id = session_db.add_reflection_journal_entry(
+            thread_id=tid,
+            entry_type="comment",
+            title=title,
+            body=body,
+            meta=meta,
+        )
+        entry = session_db.get_reflection_journal_entry(tid, entry_id) or {
+            "id": entry_id,
+            "thread_id": tid,
+            "created_at": time.time(),
+            "entry_type": "comment",
+            "title": title,
+            "body": body,
+            "meta": meta,
+        }
+        auto_reply_created = False
+        try:
+            auto_reply_created = bool(
+                maybe_reply_to_journal_entry(
+                    session_db=session_db,
+                    thread_id=tid,
+                    source_entry_id=entry_id,
+                    source_type="comment",
+                    source_body=body,
+                )
+            )
+        except Exception as e:
+            logger.debug(f"[JOURNAL] Auto-reply failed: {e}")
+
+        return JournalReplyResponse(ok=True, entry=entry, auto_reply_created=auto_reply_created)
     
     @app.get("/api/training/stats")
     def get_training_stats():

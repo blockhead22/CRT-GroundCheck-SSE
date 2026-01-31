@@ -578,6 +578,8 @@ export default function App() {
                       streamingThinking={streamingThinking}
                       streamingResponse={streamingResponse}
                       isThinking={isThinking}
+                      streamStatusLog={streamStatusLog}
+                      streamPhase={streamPhase}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

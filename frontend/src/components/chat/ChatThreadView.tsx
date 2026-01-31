@@ -29,6 +29,8 @@ export function ChatThreadView(props: {
   streamingThinking?: string
   streamingResponse?: string
   isThinking?: boolean
+  streamStatusLog?: string[]
+  streamPhase?: string | null
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const draftScrollRef = useRef<HTMLDivElement | null>(null)
@@ -209,6 +211,13 @@ export function ChatThreadView(props: {
   }, [empty, props.onPickQuickAction, props.quickActions, props.userName])
 
   const selectedMessageId = props.selectedMessageId
+  const liveStatuses = props.streamStatusLog ?? []
+  const showLoopLive = Boolean(
+    props.isThinking ||
+      props.streamingResponse ||
+      liveStatuses.length > 0 ||
+      props.streamPhase
+  )
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -234,21 +243,45 @@ export function ChatThreadView(props: {
                 ))}
               </AnimatePresence>
 
-              {props.isThinking && props.streamingThinking ? (
+              {showLoopLive ? (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.18 }}
                   className="flex justify-start"
                 >
-                  <div className="max-w-[85%] rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm shadow-card">
-                    <div className="mb-2 flex items-center gap-2 text-amber-400">
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-                      <span className="font-medium">Thinking...</span>
+                  <div className="max-w-[85%] rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm shadow-card">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-sky-200">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" />
+                        <span className="font-medium">CRT Loop Live</span>
+                      </div>
+                      {props.streamPhase ? (
+                        <div className="text-[11px] text-sky-200/70">
+                          Phase: {props.streamPhase}
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="max-h-[200px] overflow-y-auto whitespace-pre-wrap text-white/70">
-                      {props.streamingThinking}
+                    {liveStatuses.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {liveStatuses.map((status, idx) => (
+                          <span
+                            key={`${status}-${idx}`}
+                            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70"
+                          >
+                            {status}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="mt-2 text-[11px] text-white/60">
+                      {props.isThinking ? 'Thinking...' : 'Drafting response...'}
                     </div>
+                    {props.streamingThinking ? (
+                      <div className="mt-2 max-h-[180px] overflow-y-auto whitespace-pre-wrap text-white/70">
+                        {props.streamingThinking}
+                      </div>
+                    ) : null}
                   </div>
                 </motion.div>
               ) : null}

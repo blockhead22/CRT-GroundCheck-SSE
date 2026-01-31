@@ -204,6 +204,8 @@ class ThreadSessionDB:
             "thread_sessions",
             {
                 "style_profile_json": "TEXT",
+                "journal_auto_reply_enabled": "INTEGER",
+                "journal_auto_reply_updated_at": "REAL",
             },
         )
         
@@ -484,6 +486,41 @@ class ThreadSessionDB:
             logger.debug(f"[STYLE] Failed to update style profile: {e}")
 
         return profile
+
+    def get_journal_auto_reply_enabled(self, thread_id: str) -> Optional[bool]:
+        """Get per-thread override for journal auto replies (None if unset)."""
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT journal_auto_reply_enabled
+            FROM thread_sessions
+            WHERE thread_id = ?
+        """, (thread_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        value = row["journal_auto_reply_enabled"]
+        if value is None:
+            return None
+        try:
+            return bool(int(value))
+        except Exception:
+            return None
+
+    def set_journal_auto_reply_enabled(self, thread_id: str, enabled: bool) -> None:
+        """Set per-thread override for journal auto replies."""
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE thread_sessions
+            SET journal_auto_reply_enabled = ?, journal_auto_reply_updated_at = ?
+            WHERE thread_id = ?
+        """, (1 if enabled else 0, time.time(), thread_id))
+        conn.commit()
+        conn.close()
     
     # ====== Recent Query Tracking for Response Variation ======
     
@@ -722,6 +759,38 @@ class ThreadSessionDB:
                 "meta": meta,
             })
         return out
+
+    def get_reflection_journal_entry(self, thread_id: str, entry_id: int) -> Optional[dict]:
+        """Fetch a single reflection journal entry by id."""
+        import json
+        if not entry_id:
+            return None
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, thread_id, created_at, entry_type, title, body, meta_json
+            FROM reflection_journal_entries
+            WHERE thread_id = ? AND id = ?
+        """, (thread_id, entry_id))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        meta = None
+        if row["meta_json"]:
+            try:
+                meta = json.loads(row["meta_json"])
+            except Exception:
+                meta = None
+        return {
+            "id": row["id"],
+            "thread_id": row["thread_id"],
+            "created_at": row["created_at"],
+            "entry_type": row["entry_type"],
+            "title": row["title"],
+            "body": row["body"],
+            "meta": meta,
+        }
     
     def _normalize_query(self, query: str) -> str:
         """Normalize query for comparison (lowercase, strip punctuation)."""

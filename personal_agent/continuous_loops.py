@@ -8,11 +8,14 @@ import random
 import re
 import threading
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 from .db_utils import ThreadSessionDB
 
 logger = logging.getLogger(__name__)
+
+_JOURNAL_LLM_CLIENT: Optional[object] = None
+_JOURNAL_LLM_CLIENT_READY = False
 
 
 _STOPWORDS = {
@@ -133,10 +136,143 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _strip_thinking_tags(text: str) -> str:
+    if not text:
+        return ""
+    cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
+
+
+def _get_journal_llm_client() -> Optional[object]:
+    global _JOURNAL_LLM_CLIENT, _JOURNAL_LLM_CLIENT_READY
+    if _JOURNAL_LLM_CLIENT_READY:
+        return _JOURNAL_LLM_CLIENT
+    _JOURNAL_LLM_CLIENT_READY = True
+
+    if not _env_bool("CRT_JOURNAL_LLM_REFLECTION_ENABLED", True):
+        return None
+    if not _env_bool("CRT_ENABLE_LLM", False):
+        return None
+
+    try:
+        from .ollama_client import OllamaClient
+        model = os.getenv("CRT_JOURNAL_LLM_REFLECTION_MODEL") or os.getenv("CRT_OLLAMA_MODEL") or "deepseek-r1:latest"
+        _JOURNAL_LLM_CLIENT = OllamaClient(model=model)
+        logger.info(f"[JOURNAL] LLM reflection enabled with model: {model}")
+    except Exception as e:
+        logger.warning(f"[JOURNAL] Failed to init LLM client: {e}")
+        _JOURNAL_LLM_CLIENT = None
+    return _JOURNAL_LLM_CLIENT
+
+
+def _parse_title_body(text: str) -> Tuple[Optional[str], Optional[str]]:
+    if not text:
+        return None, None
+    cleaned = text.strip()
+    # Try JSON payload first.
+    try:
+        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+        if match:
+            import json
+            data = json.loads(match.group(0))
+            title = str(data.get("title") or "").strip()
+            body = str(data.get("body") or "").strip()
+            if title and body:
+                return title, body
+    except Exception:
+        pass
+
+    title = None
+    body = None
+    lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
+    for line in lines:
+        if line.lower().startswith("title:"):
+            title = line.split(":", 1)[1].strip()
+        elif line.lower().startswith("body:"):
+            body = line.split(":", 1)[1].strip()
+    if not body and lines:
+        if len(lines) >= 2:
+            title = title or lines[0]
+            body = "\n".join(lines[1:]).strip()
+        else:
+            body = lines[0]
+    if not title and body:
+        # Use a short fallback title from the first sentence.
+        first_sentence = re.split(r"[.!?]", body, maxsplit=1)[0].strip()
+        title = first_sentence[:80] if first_sentence else "Reflection"
+    return title, body
+
+
+def _build_llm_reflection_post(
+    messages: List[str],
+    scorecard: dict,
+    profile: Optional[dict] = None,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    client = _get_journal_llm_client()
+    if client is None:
+        return None, None, None
+    profile = profile or {}
+    verbosity = str(profile.get("verbosity") or "balanced").lower()
+
+    top_topics = _format_topic_list(scorecard.get("top_topics") or [])
+    rising = _format_topic_list((scorecard.get("topic_trends") or {}).get("rising") or [])
+    fading = _format_topic_list((scorecard.get("topic_trends") or {}).get("fading") or [])
+    window = scorecard.get("message_window") or len(messages)
+
+    trimmed = [m.strip() for m in messages if m.strip()]
+    snippet_lines = []
+    for msg in trimmed[-8:]:
+        snippet_lines.append(f"- {msg[:200]}")
+    snippets = "\n".join(snippet_lines)
+
+    system_prompt = (
+        "You are writing a short internal reflection post. Style: casual, first-person, reddit-like. "
+        "Be honest, grounded, and concise. Do not mention system prompts or hidden policies. "
+        "Do not fabricate details. Output JSON with keys: title, body."
+    )
+
+    length_hint = "4-6 sentences" if verbosity == "verbose" else "2-4 sentences"
+    user_prompt = (
+        "Write a reflection post based on the recent chat. "
+        f"Length: {length_hint}. "
+        "Include a concrete observation, one open question, and a small next step. "
+        "Use the context below.\n\n"
+        f"Window: {window} messages\n"
+        f"Top topics: {top_topics}\n"
+        f"Rising: {rising}\n"
+        f"Fading: {fading}\n\n"
+        "Recent messages (user side):\n"
+        f"{snippets}\n"
+    )
+
+    max_tokens = int(max(120, _env_float("CRT_JOURNAL_LLM_REFLECTION_MAX_TOKENS", 220)))
+    temperature = float(max(0.1, min(0.9, _env_float("CRT_JOURNAL_LLM_REFLECTION_TEMPERATURE", 0.6))))
+
+    try:
+        raw = client.generate(user_prompt, system=system_prompt, max_tokens=max_tokens, temperature=temperature)
+    except Exception as e:
+        logger.warning(f"[JOURNAL] LLM reflection failed: {e}")
+        return None, None, None
+
+    if not isinstance(raw, str):
+        return None, None, None
+    raw = _strip_thinking_tags(raw).strip()
+    if not raw or raw.startswith("[Ollama error") or raw.startswith("[Ollama connection error"):
+        return None, None, None
+
+    title, body = _parse_title_body(raw)
+    if not title or not body:
+        return None, None, None
+    model = getattr(client, "model", None)
+    return title, body, str(model) if model else None
+
+
 def _compose_self_reply_text(
     source_type: str,
     scorecard: dict | None = None,
     profile: dict | None = None,
+    source_body: str | None = None,
 ) -> tuple[str, str]:
     profile = profile or {}
     verbosity = str(profile.get("verbosity") or "balanced").lower()
@@ -159,6 +295,19 @@ def _compose_self_reply_text(
         lines.append(f"Fading: {fading}")
         if profile:
             lines.append(f"Style: {verbosity}/{fmt}, emoji {emoji_pref}")
+    elif source_type in {"comment", "user_reply", "user_comment"}:
+        summary = ""
+        if source_body:
+            cleaned = " ".join(str(source_body).strip().split())
+            if cleaned:
+                summary = cleaned[:120]
+        if summary:
+            lines.append(f"Noted: {summary}")
+        else:
+            lines.append("Noted your comment.")
+        lines.append(f"Style: {verbosity}/{fmt}, emoji {emoji_pref}")
+        if topics != "--":
+            lines.append(f"Topic context: {topics}")
     else:
         lines.append(f"Style: {verbosity}/{fmt}, emoji {emoji_pref}")
         if topics != "--":
@@ -183,7 +332,33 @@ def _compose_self_reply_text(
         body = f"{body} :)"
 
     title = "Journal reply" if source_type == "reflection" else "Personality note"
+    if source_type in {"comment", "user_reply", "user_comment"}:
+        title = "Reply to comment"
     return title, body
+
+
+def _resolve_root_entry_id(
+    session_db: ThreadSessionDB,
+    thread_id: str,
+    entry_id: int,
+    max_hops: int = 6,
+) -> int:
+    current_id = entry_id
+    hops = 0
+    while current_id and hops < max_hops:
+        entry = session_db.get_reflection_journal_entry(thread_id, current_id)
+        if not entry:
+            break
+        meta = entry.get("meta") or {}
+        reply_to = meta.get("reply_to") if isinstance(meta, dict) else None
+        if not reply_to:
+            return current_id
+        try:
+            current_id = int(reply_to)
+        except Exception:
+            break
+        hops += 1
+    return entry_id
 
 
 def _maybe_append_self_reply(
@@ -193,15 +368,22 @@ def _maybe_append_self_reply(
     source_type: str,
     scorecard: dict | None = None,
     profile: dict | None = None,
-) -> None:
+    source_body: str | None = None,
+) -> bool:
     if source_entry_id <= 0:
-        return
-    if not _env_bool("CRT_JOURNAL_SELF_REPLY_ENABLED", True):
-        return
+        return False
+    try:
+        override = session_db.get_journal_auto_reply_enabled(thread_id)
+    except Exception:
+        override = None
+    if override is False:
+        return False
+    if override is None and not _env_bool("CRT_JOURNAL_SELF_REPLY_ENABLED", True):
+        return False
 
     chance = max(0.0, min(1.0, _env_float("CRT_JOURNAL_SELF_REPLY_CHANCE", 0.25)))
     if chance <= 0.0:
-        return
+        return False
 
     min_seconds = int(max(0, _env_float("CRT_JOURNAL_SELF_REPLY_MIN_SECONDS", 1800)))
     now = time.time()
@@ -211,21 +393,36 @@ def _maybe_append_self_reply(
     except Exception:
         recent = []
 
+    last_self_reply_at = None
     for entry in recent:
-        if entry.get("entry_type") == "self_reply":
-            created_at = float(entry.get("created_at") or 0)
-            if created_at and (now - created_at) < min_seconds:
-                return
-            break
+        if entry.get("entry_type") != "self_reply":
+            continue
+        meta = entry.get("meta") or {}
+        reply_to = meta.get("reply_to") if isinstance(meta, dict) else None
+        if reply_to == source_entry_id:
+            return False
+        if last_self_reply_at is None:
+            last_self_reply_at = float(entry.get("created_at") or 0)
+
+    if last_self_reply_at and (now - last_self_reply_at) < min_seconds:
+        return False
 
     if random.random() > chance:
-        return
+        return False
 
-    title, body = _compose_self_reply_text(source_type, scorecard=scorecard, profile=profile)
+    title, body = _compose_self_reply_text(
+        source_type,
+        scorecard=scorecard,
+        profile=profile,
+        source_body=source_body,
+    )
+    root_id = _resolve_root_entry_id(session_db, thread_id, source_entry_id)
     meta = {
         "reply_to": source_entry_id,
         "source_entry_type": source_type,
         "auto": True,
+        "root_id": root_id,
+        "author": "system",
     }
     session_db.add_reflection_journal_entry(
         thread_id=thread_id,
@@ -233,6 +430,28 @@ def _maybe_append_self_reply(
         title=title,
         body=body,
         meta=meta,
+    )
+    return True
+
+
+def maybe_reply_to_journal_entry(
+    session_db: ThreadSessionDB,
+    thread_id: str,
+    source_entry_id: int,
+    source_type: str,
+    source_body: str | None = None,
+) -> bool:
+    """Public helper to trigger a possible auto-reply to a journal entry."""
+    profile = session_db.get_personality_profile(thread_id)
+    scorecard = session_db.get_reflection_scorecard(thread_id)
+    return _maybe_append_self_reply(
+        session_db=session_db,
+        thread_id=thread_id,
+        source_entry_id=source_entry_id,
+        source_type=source_type,
+        scorecard=scorecard,
+        profile=profile,
+        source_body=source_body,
     )
 
 
@@ -352,15 +571,24 @@ class ReflectionLoop:
         scorecard = build_reflection_scorecard(thread_id, messages, prompt=prompt)
         self.session_db.store_reflection_scorecard(thread_id, scorecard)
         try:
-            title, body = _summarize_scorecard(scorecard)
+            profile = self.session_db.get_personality_profile(thread_id)
+            title, body, model = _build_llm_reflection_post(messages, scorecard, profile=profile)
+            meta = dict(scorecard)
+            if title and body:
+                meta["post_mode"] = "llm"
+                if model:
+                    meta["post_model"] = model
+            else:
+                title, body = _summarize_scorecard(scorecard)
+                meta["post_mode"] = "heuristic"
+
             entry_id = self.session_db.add_reflection_journal_entry(
                 thread_id=thread_id,
                 entry_type="reflection",
                 title=title,
                 body=body,
-                meta=scorecard,
+                meta=meta,
             )
-            profile = self.session_db.get_personality_profile(thread_id)
             _maybe_append_self_reply(
                 session_db=self.session_db,
                 thread_id=thread_id,
@@ -442,14 +670,88 @@ class PersonalityLoop:
         return profile
 
 
-def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, PersonalityLoop]:
+class SelfReplyLoop:
+    """Periodic journal self-replies (separate cadence)."""
+
+    def __init__(
+        self,
+        session_db: ThreadSessionDB,
+        interval_seconds: int = 1800,
+        enabled: bool = True,
+    ) -> None:
+        self.session_db = session_db
+        self.interval_seconds = max(120, interval_seconds)
+        self.enabled = enabled
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if not self.enabled or self._thread is not None:
+            return
+        self._thread = threading.Thread(target=self._run_forever, name="journal-self-reply-loop", daemon=True)
+        self._thread.start()
+        logger.info("[JOURNAL_SELF_REPLY_LOOP] Started")
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        logger.info("[JOURNAL_SELF_REPLY_LOOP] Stop requested")
+
+    def _run_forever(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self.run_once()
+            except Exception as e:
+                logger.warning(f"[JOURNAL_SELF_REPLY_LOOP] Error: {e}")
+            self._stop_event.wait(self.interval_seconds)
+
+    def run_once(self) -> None:
+        thread_ids = self.session_db.list_threads(limit=200)
+        for tid in thread_ids:
+            self.run_for_thread(tid)
+
+    def run_for_thread(self, thread_id: str) -> dict | None:
+        try:
+            entries = self.session_db.get_reflection_journal_entries(thread_id, limit=30)
+        except Exception:
+            entries = []
+        target = next(
+            (e for e in entries if str(e.get("entry_type") or "").lower() in {"reflection", "personality"}),
+            None,
+        )
+        if not target:
+            return None
+        try:
+            source_entry_id = int(target.get("id") or 0)
+        except Exception:
+            source_entry_id = 0
+        source_type = str(target.get("entry_type") or "").lower()
+        if source_entry_id <= 0 or source_type not in {"reflection", "personality"}:
+            return None
+
+        scorecard = self.session_db.get_reflection_scorecard(thread_id)
+        profile = self.session_db.get_personality_profile(thread_id)
+        _maybe_append_self_reply(
+            session_db=self.session_db,
+            thread_id=thread_id,
+            source_entry_id=source_entry_id,
+            source_type=source_type,
+            scorecard=scorecard,
+            profile=profile,
+        )
+        return {"source_entry_id": source_entry_id, "source_type": source_type}
+
+
+def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, PersonalityLoop, SelfReplyLoop]:
     enabled_reflection = os.getenv("CRT_REFLECTION_LOOP_ENABLED", "true").lower() == "true"
     enabled_personality = os.getenv("CRT_PERSONALITY_LOOP_ENABLED", "true").lower() == "true"
+    enabled_self_reply = os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_ENABLED", "true").lower() == "true"
     reflection_interval = int(os.getenv("CRT_REFLECTION_LOOP_SECONDS", "900") or 900)
     personality_interval = int(os.getenv("CRT_PERSONALITY_LOOP_SECONDS", "1200") or 1200)
+    self_reply_interval = int(os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_SECONDS", "1800") or 1800)
     window = int(os.getenv("CRT_LOOP_WINDOW", "20") or 20)
 
     return (
         ReflectionLoop(session_db=session_db, interval_seconds=reflection_interval, window=window, enabled=enabled_reflection),
         PersonalityLoop(session_db=session_db, interval_seconds=personality_interval, window=window, enabled=enabled_personality),
+        SelfReplyLoop(session_db=session_db, interval_seconds=self_reply_interval, enabled=enabled_self_reply),
     )

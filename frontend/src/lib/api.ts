@@ -139,6 +139,21 @@ export type ReflectionJournalEntry = {
   meta?: Record<string, unknown> | null
 }
 
+export type JournalSettings = {
+  thread_id: string
+  auto_reply_enabled: boolean
+  auto_reply_enabled_override?: boolean | null
+  auto_reply_chance: number
+  auto_reply_min_seconds: number
+  auto_reply_interval_seconds: number
+}
+
+export type JournalReplyResponse = {
+  ok: boolean
+  entry: ReflectionJournalEntry
+  auto_reply_created: boolean
+}
+
 function getApiBaseUrlInternal(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL
   const fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
@@ -243,6 +258,90 @@ export async function getReflectionJournal(args: {
   }
 
   return (await res.json()) as { entries: ReflectionJournalEntry[]; count: number }
+}
+
+export async function getJournalSettings(args: { threadId: string }): Promise<JournalSettings> {
+  const base = getApiBaseUrlInternal()
+  let res: Response
+  try {
+    res = await fetch(`${base}/api/journal/settings?thread_id=${encodeURIComponent(args.threadId)}`)
+  } catch (_e) {
+    const at = base ? base : '(same origin)'
+    throw new Error(`CRT API unreachable at ${at}. Is the backend running?`)
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+
+  return (await res.json()) as JournalSettings
+}
+
+export async function setJournalSettings(args: {
+  threadId: string
+  autoReplyEnabled: boolean
+}): Promise<JournalSettings> {
+  const base = getApiBaseUrlInternal()
+  const payload = {
+    thread_id: args.threadId,
+    auto_reply_enabled: args.autoReplyEnabled,
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`${base}/api/journal/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (_e) {
+    const at = base ? base : '(same origin)'
+    throw new Error(`CRT API unreachable at ${at}. Is the backend running?`)
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+
+  return (await res.json()) as JournalSettings
+}
+
+export async function postJournalReply(args: {
+  threadId: string
+  replyTo: number
+  body: string
+  title?: string
+  author?: string
+}): Promise<JournalReplyResponse> {
+  const base = getApiBaseUrlInternal()
+  const payload = {
+    thread_id: args.threadId,
+    reply_to: args.replyTo,
+    body: args.body,
+    title: args.title,
+    author: args.author,
+  }
+
+  let res: Response
+  try {
+    res = await fetch(`${base}/api/reflection/journal/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (_e) {
+    const at = base ? base : '(same origin)'
+    throw new Error(`CRT API unreachable at ${at}. Is the backend running?`)
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(`CRT API error ${res.status}: ${text || res.statusText}`)
+  }
+
+  return (await res.json()) as JournalReplyResponse
 }
 
 // Streaming event types from /api/chat/stream
