@@ -774,17 +774,116 @@ class SelfReplyLoop:
         return {"source_entry_id": source_entry_id, "source_type": source_type}
 
 
-def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, PersonalityLoop, SelfReplyLoop]:
+class HeartbeatLoop:
+    """Periodic heartbeat for proactive Ledger engagement (OpenClaw-style)."""
+
+    def __init__(
+        self,
+        session_db: ThreadSessionDB,
+        interval_seconds: int = 1800,  # 30 minutes default
+        enabled: bool = True,
+    ) -> None:
+        self.session_db = session_db
+        self.interval_seconds = max(60, interval_seconds)
+        self.enabled = enabled
+        self._stop_event = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._last_heartbeat_by_thread: Dict[str, float] = {}
+        
+        # Lazy import to avoid circular dependency
+        self._executor = None
+
+    def _get_executor(self):
+        """Lazy-load executor to avoid circular imports."""
+        if self._executor is None:
+            try:
+                from .heartbeat_executor import HeartbeatLLMExecutor
+                self._executor = HeartbeatLLMExecutor(session_db=self.session_db)
+            except Exception as e:
+                logger.error(f"[HEARTBEAT_LOOP] Failed to initialize executor: {e}")
+                return None
+        return self._executor
+
+    def start(self) -> None:
+        if not self.enabled or self._thread is not None:
+            return
+        self._thread = threading.Thread(target=self._run_forever, name="heartbeat-loop", daemon=True)
+        self._thread.start()
+        logger.info("[HEARTBEAT_LOOP] Started")
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        logger.info("[HEARTBEAT_LOOP] Stop requested")
+
+    def _run_forever(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self.run_once()
+            except Exception as e:
+                logger.warning(f"[HEARTBEAT_LOOP] Error: {e}")
+            self._stop_event.wait(self.interval_seconds)
+
+    def run_once(self) -> None:
+        thread_ids = self.session_db.list_threads(limit=200)
+        for tid in thread_ids:
+            self.run_for_thread(tid)
+
+    def run_for_thread(self, thread_id: str) -> dict | None:
+        """Run heartbeat for a single thread."""
+        try:
+            # Get heartbeat config (or use defaults)
+            hb_config = self.session_db.get_heartbeat_config(thread_id)
+            enabled = hb_config.get("enabled", True) if hb_config else True
+            every_seconds = int((hb_config or {}).get("every_seconds", 1800))
+            
+            if not enabled or every_seconds <= 0:
+                return None
+            
+            # Check if heartbeat is due for this thread
+            last_run = self._last_heartbeat_by_thread.get(thread_id, 0.0)
+            if last_run == 0:
+                try:
+                    state = self.session_db.get_heartbeat_state(thread_id)
+                    last_run = float(state.get("last_run", 0.0))
+                except Exception:
+                    last_run = 0.0
+                self._last_heartbeat_by_thread[thread_id] = last_run
+            
+            now = time.time()
+            if now - last_run < every_seconds:
+                return None  # Not due yet
+            
+            # Run heartbeat
+            executor = self._get_executor()
+            if not executor:
+                logger.warning(f"[HEARTBEAT_LOOP] Executor not available for {thread_id}")
+                return None
+            
+            result = executor.run_heartbeat_for_thread(thread_id, hb_config)
+            
+            # Update last run time
+            self._last_heartbeat_by_thread[thread_id] = now
+            
+            return result
+        except Exception as e:
+            logger.error(f"[HEARTBEAT_LOOP] Failed to run heartbeat for {thread_id}: {e}")
+            return None
+
+
+def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, PersonalityLoop, SelfReplyLoop, HeartbeatLoop]:
     enabled_reflection = os.getenv("CRT_REFLECTION_LOOP_ENABLED", "true").lower() == "true"
     enabled_personality = os.getenv("CRT_PERSONALITY_LOOP_ENABLED", "true").lower() == "true"
     enabled_self_reply = os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_ENABLED", "true").lower() == "true"
+    enabled_heartbeat = os.getenv("CRT_HEARTBEAT_LOOP_ENABLED", "false").lower() == "true"
     reflection_interval = int(os.getenv("CRT_REFLECTION_LOOP_SECONDS", "900") or 900)
     personality_interval = int(os.getenv("CRT_PERSONALITY_LOOP_SECONDS", "1200") or 1200)
     self_reply_interval = int(os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_SECONDS", "1800") or 1800)
+    heartbeat_interval = int(os.getenv("CRT_HEARTBEAT_LOOP_SECONDS", "1800") or 1800)
     window = int(os.getenv("CRT_LOOP_WINDOW", "20") or 20)
 
     return (
         ReflectionLoop(session_db=session_db, interval_seconds=reflection_interval, window=window, enabled=enabled_reflection),
         PersonalityLoop(session_db=session_db, interval_seconds=personality_interval, window=window, enabled=enabled_personality),
         SelfReplyLoop(session_db=session_db, interval_seconds=self_reply_interval, enabled=enabled_self_reply),
+        HeartbeatLoop(session_db=session_db, interval_seconds=heartbeat_interval, enabled=enabled_heartbeat),
     )

@@ -51,14 +51,13 @@ class HeartbeatHistoryItem(BaseModel):
     """One entry in heartbeat run history."""
     timestamp: float
     summary: str
+    actions: List[Dict[str, Any]] = Field(default_factory=list)  # Full actions for frontend
     success: bool
-    action_count: int
 
 
 class HeartbeatHistoryResponse(BaseModel):
     """Response with heartbeat history for a thread."""
-    thread_id: str
-    history: List[HeartbeatHistoryItem]
+    activities: List[HeartbeatHistoryItem]  # Match frontend expectation
     total_runs: int
 
 

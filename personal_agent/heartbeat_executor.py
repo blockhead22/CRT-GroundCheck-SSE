@@ -50,11 +50,13 @@ class HeartbeatLLMExecutor:
     
     def __init__(
         self,
-        thread_session_db_path: str,
+        session_db=None,  # ThreadSessionDB instance
+        thread_session_db_path: Optional[str] = None,
         ledger_db_path: Optional[str] = None,
         memory_db_path: Optional[str] = None,
     ):
-        self.thread_session_db_path = str(thread_session_db_path)
+        self.session_db = session_db
+        self.thread_session_db_path = str(thread_session_db_path) if thread_session_db_path else None
         self.ledger_db_path = ledger_db_path
         self.memory_db_path = memory_db_path
     
@@ -65,6 +67,21 @@ class HeartbeatLLMExecutor:
         user_profile = self._get_user_profile(thread_id)
         ledger_feed = self._get_ledger_feed()
         memory_snapshot = self._get_memory_snapshot(thread_id)
+        
+        # Check for mentions in Moltbook
+        mentions = []
+        if self.session_db:
+            try:
+                # Check posts from the last heartbeat run
+                mentions = self.session_db.get_posts_mentioning(agent_name="agent", limit=5)
+            except Exception as e:
+                logger.debug(f"[HEARTBEAT] Error checking mentions: {e}")
+        
+        # Add mentions to context (could extend ThreadContext or add to ledger_feed)
+        if mentions:
+            logger.info(f"[HEARTBEAT] Found {len(mentions)} mentions in Moltbook")
+            # Prepend mentions to feed so they're prioritized
+            ledger_feed = mentions + ledger_feed
         
         return ThreadContext(
             thread_id=thread_id,
@@ -345,9 +362,10 @@ Reason carefully. If unsure, reply with action=none.
         thread_id: str,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        """Create a new Ledger post."""
+        """Create a new Moltbook post (heartbeat submolt)."""
         title = action_data.get("title", "").strip()
         content = action_data.get("content", "").strip()
+        submolt = action_data.get("submolt", "heartbeat").strip()  # Default to 'heartbeat' submolt
         
         if not title or not content:
             return {"success": False, "error": "Post requires title and content"}
@@ -362,15 +380,43 @@ Reason carefully. If unsure, reply with action=none.
                 "content": content[:100],
             }
         
-        # TODO: Implement actual post creation to Ledger DB
-        # For now, stub it
-        logger.info(f"[HEARTBEAT] Creating post: {title}")
-        return {
-            "success": True,
-            "action": "post",
-            "post_id": f"post_{int(time.time())}",
-            "title": title,
-        }
+        # Create post in Moltbook
+        if not self.session_db:
+            logger.error("[HEARTBEAT] No session_db available for post creation")
+            return {"success": False, "error": "No session_db available"}
+        
+        try:
+            self.session_db.ensure_default_submolts()
+            # Ensure heartbeat submolt exists
+            try:
+                self.session_db.create_submolt(
+                    name="heartbeat",
+                    description="Proactive agent observations and updates",
+                    created_by="system"
+                )
+            except Exception:
+                pass  # Already exists
+            
+            post = self.session_db.create_post(
+                submolt=submolt,
+                title=title,
+                content=content,
+                author="heartbeat-system",
+                source_type="heartbeat",
+                source_entry_id=None,
+            )
+            
+            logger.info(f"[HEARTBEAT] Created post #{post.get('id')}: {title}")
+            return {
+                "success": True,
+                "action": "post",
+                "post_id": post.get("id"),
+                "title": title,
+                "submolt": submolt,
+            }
+        except Exception as e:
+            logger.error(f"[HEARTBEAT] Failed to create post: {e}")
+            return {"success": False, "error": f"Failed to create post: {str(e)}"}
     
     def _execute_comment(
         self,
@@ -378,7 +424,7 @@ Reason carefully. If unsure, reply with action=none.
         thread_id: str,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        """Create a comment on a Ledger post."""
+        """Create a comment on a Moltbook post."""
         post_id = action_data.get("post_id", "").strip()
         content = action_data.get("content", "").strip()
         
@@ -386,7 +432,7 @@ Reason carefully. If unsure, reply with action=none.
             return {"success": False, "error": "Comment requires post_id and content"}
         
         if dry_run:
-            logger.info(f"[HEARTBEAT] DRY RUN: Would comment on {post_id}")
+            logger.info(f"[HEARTBEAT] DRY RUN: Would comment on post #{post_id}")
             return {
                 "success": True,
                 "action": "comment",
@@ -395,14 +441,28 @@ Reason carefully. If unsure, reply with action=none.
                 "content": content[:100],
             }
         
-        # TODO: Implement actual comment creation
-        logger.info(f"[HEARTBEAT] Creating comment on {post_id}")
-        return {
-            "success": True,
-            "action": "comment",
-            "comment_id": f"cmt_{int(time.time())}",
-            "post_id": post_id,
-        }
+        # Create comment in Moltbook
+        if not self.session_db:
+            logger.error("[HEARTBEAT] No session_db available for comment creation")
+            return {"success": False, "error": "No session_db available"}
+        
+        try:
+            comment = self.session_db.create_comment(
+                post_id=int(post_id),
+                content=content,
+                author="heartbeat-system",
+            )
+            
+            logger.info(f"[HEARTBEAT] Created comment #{comment.get('id')} on post #{post_id}")
+            return {
+                "success": True,
+                "action": "comment",
+                "comment_id": comment.get("id"),
+                "post_id": post_id,
+            }
+        except Exception as e:
+            logger.error(f"[HEARTBEAT] Failed to create comment: {e}")
+            return {"success": False, "error": f"Failed to create comment: {str(e)}"}
     
     def _execute_vote(
         self,
@@ -410,7 +470,7 @@ Reason carefully. If unsure, reply with action=none.
         thread_id: str,
         dry_run: bool = False,
     ) -> Dict[str, Any]:
-        """Vote on a Ledger post."""
+        """Vote on a Moltbook post."""
         post_id = action_data.get("post_id", "").strip()
         direction = action_data.get("vote_direction", "").lower()
         
@@ -418,7 +478,7 @@ Reason carefully. If unsure, reply with action=none.
             return {"success": False, "error": "Vote requires post_id and direction (up/down)"}
         
         if dry_run:
-            logger.info(f"[HEARTBEAT] DRY RUN: Would vote {direction} on {post_id}")
+            logger.info(f"[HEARTBEAT] DRY RUN: Would vote {direction} on post #{post_id}")
             return {
                 "success": True,
                 "action": "vote",
@@ -427,15 +487,29 @@ Reason carefully. If unsure, reply with action=none.
                 "direction": direction,
             }
         
-        # TODO: Implement actual vote
-        logger.info(f"[HEARTBEAT] Voting {direction} on {post_id}")
-        return {
-            "success": True,
-            "action": "vote",
-            "vote_id": f"vote_{int(time.time())}",
-            "post_id": post_id,
-            "direction": direction,
-        }
+        # Vote on Moltbook post
+        if not self.session_db:
+            logger.error("[HEARTBEAT] No session_db available for voting")
+            return {"success": False, "error": "No session_db available"}
+        
+        try:
+            vote = self.session_db.vote_post(
+                post_id=int(post_id),
+                direction=direction,
+                author="heartbeat-system",
+            )
+            
+            logger.info(f"[HEARTBEAT] Voted {direction} on post #{post_id}")
+            return {
+                "success": True,
+                "action": "vote",
+                "vote_id": vote.get("id") if vote else None,
+                "post_id": post_id,
+                "direction": direction,
+            }
+        except Exception as e:
+            logger.error(f"[HEARTBEAT] Failed to vote: {e}")
+            return {"success": False, "error": f"Failed to vote: {str(e)}"}
     
     def validate_action(self, action_data: Dict[str, Any]) -> Tuple[bool, Optional[str]]:
         """

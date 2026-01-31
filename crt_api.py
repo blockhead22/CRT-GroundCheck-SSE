@@ -43,7 +43,7 @@ from personal_agent.continuous_loops import build_loops, maybe_reply_to_journal_
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
 from personal_agent.reflection_system import run_reflection_pass, ReflectionDB, ReflectionResult
-from personal_agent.heartbeat_system import get_heartbeat_scheduler, HeartbeatConfig
+from personal_agent.heartbeat_system import HeartbeatConfig
 from personal_agent.heartbeat_api import (
     HeartbeatConfigRequest,
     HeartbeatConfigResponse,
@@ -757,24 +757,17 @@ def create_app() -> FastAPI:
     app.state.idle_scheduler = idle_scheduler
 
     # Heartbeat scheduler (OpenClaw-style 24/7 proactive engagement)
-    heartbeat_enabled = bool(os.getenv("CRT_HEARTBEAT_ENABLED", "false").lower() in {"1", "true", "yes"})
-    heartbeat_scheduler = get_heartbeat_scheduler(
-        workspace_path=root,
-        thread_session_db_path=str(session_db.db_path),
-        enabled=heartbeat_enabled,
-    )
-    app.state.heartbeat_scheduler = heartbeat_scheduler
-
-    # Continuous reflection + personality loops (24/7, limited scope)
+    # Continuous reflection + personality + heartbeat loops (24/7, limited scope)
     session_db = get_thread_session_db()
     try:
         session_db.ensure_default_submolts()
     except Exception:
         pass
-    reflection_loop, personality_loop, journal_self_reply_loop = build_loops(session_db)
+    reflection_loop, personality_loop, journal_self_reply_loop, heartbeat_loop = build_loops(session_db)
     app.state.reflection_loop = reflection_loop
     app.state.personality_loop = personality_loop
     app.state.journal_self_reply_loop = journal_self_reply_loop
+    app.state.heartbeat_loop = heartbeat_loop
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -931,9 +924,9 @@ def create_app() -> FastAPI:
             pass
 
         try:
-            app.state.heartbeat_scheduler.start()
+            app.state.heartbeat_loop.start()
         except Exception as e:
-            logger.warning(f"[STARTUP] Failed to start heartbeat scheduler: {e}")
+            logger.warning(f"[STARTUP] Failed to start heartbeat loop: {e}")
 
     @app.on_event("shutdown")
     def _shutdown() -> None:
@@ -968,9 +961,9 @@ def create_app() -> FastAPI:
             pass
 
         try:
-            app.state.heartbeat_scheduler.stop()
+            app.state.heartbeat_loop.stop()
         except Exception as e:
-            logger.warning(f"[SHUTDOWN] Error stopping heartbeat scheduler: {e}")
+            logger.warning(f"[SHUTDOWN] Error stopping heartbeat loop: {e}")
 
     class JobListItem(BaseModel):
         id: str
@@ -4588,59 +4581,53 @@ def create_app() -> FastAPI:
 
     @app.get("/api/heartbeat/status")
     def get_heartbeat_status() -> dict:
-        """Get heartbeat scheduler status."""
-        scheduler = app.state.heartbeat_scheduler
+        """Get heartbeat loop status."""
+        loop = app.state.heartbeat_loop
         return {
-            "enabled": scheduler.enabled,
-            "running": scheduler._running,
-            "check_interval_seconds": scheduler.check_interval,
+            "enabled": loop.enabled,
+            "running": loop._thread is not None and loop._thread.is_alive(),
+            "interval_seconds": loop.interval_seconds,
         }
 
     @app.post("/api/heartbeat/start")
-    def start_heartbeat_scheduler() -> dict:
-        """Start the heartbeat scheduler."""
-        scheduler = app.state.heartbeat_scheduler
-        scheduler.start()
-        return {"ok": True, "message": "Heartbeat scheduler started"}
+    def start_heartbeat_loop() -> dict:
+        """Start the heartbeat loop."""
+        loop = app.state.heartbeat_loop
+        loop.start()
+        return {"ok": True, "message": "Heartbeat loop started"}
 
     @app.post("/api/heartbeat/stop")
-    def stop_heartbeat_scheduler() -> dict:
-        """Stop the heartbeat scheduler."""
-        scheduler = app.state.heartbeat_scheduler
-        scheduler.stop()
-        return {"ok": True, "message": "Heartbeat scheduler stopped"}
+    def stop_heartbeat_loop() -> dict:
+        """Stop the heartbeat loop."""
+        loop = app.state.heartbeat_loop
+        loop.stop()
+        return {"ok": True, "message": "Heartbeat loop stopped"}
 
     @app.get("/api/threads/{thread_id}/heartbeat/config", response_model=HeartbeatConfigResponse)
     def get_heartbeat_config(thread_id: str) -> HeartbeatConfigResponse:
         """Get heartbeat config for a thread."""
         tid = _sanitize_thread_id(thread_id)
-        scheduler = app.state.heartbeat_scheduler
+        session_db = get_thread_session_db()
         
-        config = scheduler._get_heartbeat_config(tid)
-        last_run = scheduler._get_last_heartbeat_run(tid)
+        # Get config from DB
+        config_dict = session_db.get_heartbeat_config(tid)
+        config = HeartbeatConfig.from_dict(config_dict) if config_dict else HeartbeatConfig()
         
-        # Get last summary from DB
-        last_summary = ""
-        try:
-            session_db = get_thread_session_db()
-            row = session_db.query("SELECT heartbeat_last_summary FROM thread_sessions WHERE thread_id = ?", (tid,))
-            if row:
-                last_summary = row[0][1] or ""
-        except Exception:
-            pass
+        # Get last run info
+        state = session_db.get_heartbeat_state(tid)
         
         return HeartbeatConfigResponse(
             thread_id=tid,
             config=config.to_dict(),
-            last_run=last_run if last_run > 0 else None,
-            last_summary=last_summary or None,
+            last_run=state.get("last_run") if state else None,
+            last_summary=state.get("last_summary") if state else None,
         )
 
     @app.post("/api/threads/{thread_id}/heartbeat/config")
     def set_heartbeat_config(thread_id: str, req: HeartbeatConfigRequest) -> HeartbeatConfigResponse:
         """Update heartbeat config for a thread."""
         tid = _sanitize_thread_id(thread_id)
-        scheduler = app.state.heartbeat_scheduler
+        session_db = get_thread_session_db()
         
         # Create config from request
         config = HeartbeatConfig(
@@ -4658,7 +4645,6 @@ def create_app() -> FastAPI:
         
         # Store in DB
         try:
-            session_db = get_thread_session_db()
             session_db.set_heartbeat_config(tid, config.to_dict())
         except Exception as e:
             logger.error(f"Failed to set heartbeat config: {e}")
@@ -4673,18 +4659,21 @@ def create_app() -> FastAPI:
     def run_heartbeat_now(thread_id: str) -> HeartbeatRunResponse:
         """Manually trigger a heartbeat for a thread."""
         tid = _sanitize_thread_id(thread_id)
-        scheduler = app.state.heartbeat_scheduler
+        loop = app.state.heartbeat_loop
         
         try:
-            result = scheduler.run_heartbeat_now(tid)
+            result = loop.run_for_thread(tid)
+            session_db = get_thread_session_db()
+            state = session_db.get_heartbeat_state(tid)
+            
             return HeartbeatRunResponse(
-                thread_id=result.thread_id,
-                ran_successfully=result.ran_successfully,
-                timestamp=result.timestamp,
-                decision_summary=result.decision_summary,
+                thread_id=tid,
+                ran_successfully=bool(result),
+                timestamp=state.get("last_run") if state else time.time(),
+                decision_summary=state.get("last_summary", "") if state else "",
                 actions=[],
-                execution_time_seconds=result.execution_time_seconds,
-                error=result.error,
+                execution_time_seconds=0.0,
+                error=None if result else "Failed to run heartbeat",
             )
         except Exception as e:
             logger.error(f"Failed to run heartbeat: {e}")
@@ -4695,19 +4684,24 @@ def create_app() -> FastAPI:
         """Get heartbeat run history for a thread."""
         tid = _sanitize_thread_id(thread_id)
         
-        history: List[HeartbeatHistoryItem] = []
+        activities: List[HeartbeatHistoryItem] = []
         try:
             session_db = get_thread_session_db()
-            # This would need a history table implementation
-            # For now, return empty history
-            pass
+            history_data = session_db.get_heartbeat_history(tid, limit=limit)
+            
+            for item in history_data:
+                activities.append(HeartbeatHistoryItem(
+                    timestamp=item["timestamp"],
+                    summary=item["summary"],
+                    actions=item.get("actions", []),
+                    success=item["success"],
+                ))
         except Exception as e:
             logger.debug(f"Error getting heartbeat history: {e}")
         
         return HeartbeatHistoryResponse(
-            thread_id=tid,
-            history=history,
-            total_runs=len(history),
+            activities=activities,
+            total_runs=len(activities),
         )
 
     @app.get("/api/heartbeat/heartbeat.md", response_model=HeartbeatMDResponse)

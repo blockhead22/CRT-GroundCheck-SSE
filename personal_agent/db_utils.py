@@ -274,6 +274,24 @@ class ThreadSessionDB:
             ON reflection_journal_entries(thread_id, created_at DESC)
         """)
 
+        # Heartbeat history (append-only log of heartbeat runs)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS heartbeat_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                thread_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                summary TEXT,
+                actions_json TEXT,
+                success INTEGER DEFAULT 1,
+                FOREIGN KEY (thread_id) REFERENCES thread_sessions(thread_id)
+            )
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_heartbeat_history_thread_ts
+            ON heartbeat_history(thread_id, timestamp DESC)
+        """)
+
         # Moltbook-style local forum (posts, comments, votes, submolts)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS molt_submolts (
@@ -663,19 +681,60 @@ class ThreadSessionDB:
         summary: Optional[str],
         actions: Optional[list[dict]] = None,
     ) -> None:
-        """Store last heartbeat run metadata."""
+        """Store last heartbeat run metadata and add to history."""
         import json
         self.get_or_create_session(thread_id)
         payload = json.dumps(actions or [])
         conn = self._get_connection()
         cursor = conn.cursor()
+        
+        # Update latest state
         cursor.execute("""
             UPDATE thread_sessions
             SET heartbeat_last_run = ?, heartbeat_last_summary = ?, heartbeat_last_actions_json = ?
             WHERE thread_id = ?
         """, (last_run, summary, payload, thread_id))
+        
+        # Add to history
+        success = 1 if actions and any(a.get("success") for a in actions) else 1
+        cursor.execute("""
+            INSERT INTO heartbeat_history (thread_id, timestamp, summary, actions_json, success)
+            VALUES (?, ?, ?, ?, ?)
+        """, (thread_id, last_run, summary, payload, success))
+        
         conn.commit()
         conn.close()
+    
+    def get_heartbeat_history(self, thread_id: str, limit: int = 10) -> list[dict]:
+        """Get recent heartbeat history for a thread."""
+        import json
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT timestamp, summary, actions_json, success
+            FROM heartbeat_history
+            WHERE thread_id = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (thread_id, limit))
+        rows = cursor.fetchall()
+        conn.close()
+        
+        history = []
+        for row in rows:
+            actions = []
+            if row["actions_json"]:
+                try:
+                    actions = json.loads(row["actions_json"])
+                except Exception:
+                    pass
+            history.append({
+                "timestamp": row["timestamp"],
+                "summary": row["summary"] or "",
+                "actions": actions,
+                "success": bool(row["success"]),
+            })
+        return history
     
     # ====== Recent Query Tracking for Response Variation ======
     
@@ -1157,6 +1216,40 @@ class ThreadSessionDB:
             GROUP BY c.id
             ORDER BY c.created_at ASC
         """, (post_id,))
+        rows = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return rows
+
+    def get_posts_mentioning(self, agent_name: str = "agent", since_timestamp: Optional[float] = None, limit: int = 10) -> list[dict]:
+        """Find posts that mention the agent by name."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        # Search for mentions like @agent or just "agent" in content
+        patterns = [f"@{agent_name}", agent_name.lower(), f" {agent_name} ", f"@{agent_name.lower()}"]
+        
+        query = """
+            SELECT p.id, p.submolt, p.title, p.content, p.author, p.created_at,
+                   COALESCE(SUM(v.value), 0) AS score
+            FROM molt_posts p
+            LEFT JOIN molt_votes v
+              ON v.target_type = 'post' AND v.target_id = p.id
+            WHERE (LOWER(p.content) LIKE ? OR LOWER(p.title) LIKE ?)
+        """
+        params = [f"%{agent_name.lower()}%", f"%{agent_name.lower()}%"]
+        
+        if since_timestamp:
+            query += " AND p.created_at > ?"
+            params.append(since_timestamp)
+        
+        query += """
+            GROUP BY p.id
+            ORDER BY p.created_at DESC
+            LIMIT ?
+        """
+        params.append(limit)
+        
+        cursor.execute(query, params)
         rows = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return rows
