@@ -205,7 +205,7 @@ def _parse_title_body(text: str) -> Tuple[Optional[str], Optional[str]]:
 
 
 def _build_llm_reflection_post(
-    messages: List[str],
+    interactions: List[dict],
     scorecard: dict,
     profile: Optional[dict] = None,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
@@ -218,31 +218,38 @@ def _build_llm_reflection_post(
     top_topics = _format_topic_list(scorecard.get("top_topics") or [])
     rising = _format_topic_list((scorecard.get("topic_trends") or {}).get("rising") or [])
     fading = _format_topic_list((scorecard.get("topic_trends") or {}).get("fading") or [])
-    window = scorecard.get("message_window") or len(messages)
+    window = scorecard.get("message_window") or len(interactions)
 
-    trimmed = [m.strip() for m in messages if m.strip()]
+    trimmed = [i for i in interactions if (i.get("user") or i.get("assistant"))]
     snippet_lines = []
-    for msg in trimmed[-8:]:
-        snippet_lines.append(f"- {msg[:200]}")
+    for item in trimmed[-6:]:
+        user_text = str(item.get("user") or "").strip()
+        assistant_text = str(item.get("assistant") or "").strip()
+        if user_text:
+            snippet_lines.append(f"User: {user_text[:220]}")
+        if assistant_text:
+            snippet_lines.append(f"Assistant: {assistant_text[:240]}")
     snippets = "\n".join(snippet_lines)
 
     system_prompt = (
-        "You are writing a short internal reflection post. Style: casual, first-person, reddit-like. "
-        "Be honest, grounded, and concise. Do not mention system prompts or hidden policies. "
-        "Do not fabricate details. Output JSON with keys: title, body."
+        "You are CRT writing a short internal reflection post about your own behavior and the user's recent interactions. "
+        "Style: casual, first-person, reddit-like. Be honest, grounded, and concise. "
+        "Do not mention system prompts or hidden policies. Do not fabricate details. "
+        "Output JSON with keys: title, body."
     )
 
     length_hint = "4-6 sentences" if verbosity == "verbose" else "2-4 sentences"
     user_prompt = (
-        "Write a reflection post based on the recent chat. "
+        "Write a reflection post based on the recent chat and your own responses. "
         f"Length: {length_hint}. "
-        "Include a concrete observation, one open question, and a small next step. "
-        "Use the context below.\n\n"
+        "Include: (1) one thing you did well, (2) one thing to improve, "
+        "(3) one open question to yourself, and (4) a small next step. "
+        "Use first-person voice. Use the context below.\n\n"
         f"Window: {window} messages\n"
         f"Top topics: {top_topics}\n"
         f"Rising: {rising}\n"
         f"Fading: {fading}\n\n"
-        "Recent messages (user side):\n"
+        "Recent turns (user + assistant):\n"
         f"{snippets}\n"
     )
 
@@ -469,6 +476,18 @@ def _recent_messages(session_db: ThreadSessionDB, thread_id: str, window: int) -
     return [r.get("query_text", "") for r in reversed(recent)]
 
 
+def _recent_interactions(session_db: ThreadSessionDB, thread_id: str, window: int) -> List[dict]:
+    recent = session_db.get_recent_queries(thread_id, window=window)
+    interactions = []
+    for row in reversed(recent):
+        interactions.append({
+            "user": row.get("query_text", ""),
+            "assistant": row.get("response_text", ""),
+            "timestamp": row.get("timestamp"),
+        })
+    return interactions
+
+
 def build_reflection_scorecard(
     thread_id: str,
     messages: List[str],
@@ -568,11 +587,12 @@ class ReflectionLoop:
 
     def run_for_thread(self, thread_id: str, prompt: str | None = None) -> dict:
         messages = _recent_messages(self.session_db, thread_id, self.window)
+        interactions = _recent_interactions(self.session_db, thread_id, self.window)
         scorecard = build_reflection_scorecard(thread_id, messages, prompt=prompt)
         self.session_db.store_reflection_scorecard(thread_id, scorecard)
         try:
             profile = self.session_db.get_personality_profile(thread_id)
-            title, body, model = _build_llm_reflection_post(messages, scorecard, profile=profile)
+            title, body, model = _build_llm_reflection_post(interactions, scorecard, profile=profile)
             meta = dict(scorecard)
             if title and body:
                 meta["post_mode"] = "llm"
