@@ -247,12 +247,21 @@ class HeartbeatLLMExecutor:
         Create the LLM prompt for heartbeat decision-making.
         
         The prompt includes:
+        - Current time and date
         - Recent message context
         - HEARTBEAT.md instructions
         - Ledger feed
         - User profile
         - Decision framework
         """
+        from datetime import datetime
+        
+        # Get current time info
+        now = datetime.now()
+        time_text = f"""Current time: {now.strftime('%A, %B %d, %Y at %I:%M %p')}
+Day of week: {now.strftime('%A')}
+Hour: {now.hour} (24h format)
+"""
         
         # Format recent messages
         msg_text = ""
@@ -282,6 +291,9 @@ class HeartbeatLLMExecutor:
             profile_text = f"User: {user}\n"
         
         prompt = f"""You are an AI agent managing a personal Ledger (a local discussion/note system).
+
+## Current Time:
+{time_text}
 
 {profile_text}
 

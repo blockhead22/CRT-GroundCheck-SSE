@@ -26,6 +26,22 @@ from personal_agent.ollama_client import OllamaClient
 from personal_agent.idle_scheduler import CRTIdleScheduler
 from personal_agent.evidence_packet import Citation, EvidencePacket
 from personal_agent.research_engine import ResearchEngine
+from personal_agent.scheduled_tasks import (
+    ScheduledTasksLoop,
+    ScheduledTask,
+    TaskType,
+    create_scheduled_task,
+    get_pending_scheduled_tasks,
+    get_due_tasks,
+    cancel_scheduled_task,
+    get_task_by_id,
+    schedule_reminder,
+    schedule_thought,
+    parse_natural_time,
+    extract_reminder_from_message,
+    format_upcoming_tasks,
+    init_scheduled_tasks_db,
+)
 from personal_agent.jobs_db import (
     enqueue_job,
     get_job,
@@ -168,6 +184,116 @@ def _format_style_instruction(
 
     extras = " ".join([s for s in [verbosity_line, emoji_line, format_line] if s])
     return f"{base} {extras}".strip()
+
+
+def _detect_response_mood(
+    response: str,
+    thinking: str = "",
+    confidence: float = 0.7,
+    contradiction_detected: bool = False,
+) -> Dict[str, Any]:
+    """
+    Detect the mood/tone of a response for UI visualization.
+    
+    Returns:
+        {
+            "mood": "warm" | "intense" | "playful" | "curious" | "calm" | "uncertain",
+            "intensity": 0.0-1.0,
+            "thinking_depth": 0.0-1.0,
+            "triggers": ["list", "of", "detected", "triggers"]
+        }
+    """
+    response_lower = response.lower()
+    thinking_lower = thinking.lower() if thinking else ""
+    
+    triggers = []
+    mood = "calm"
+    intensity = 0.3
+    thinking_depth = min(1.0, len(thinking) / 2000) if thinking else 0.0
+    
+    # Warm/friendly indicators
+    warm_words = ["happy", "glad", "great", "wonderful", "love", "enjoy", "excited", 
+                  "welcome", "pleasure", "delighted", "awesome", "fantastic", "😊", "🎉"]
+    warm_count = sum(1 for w in warm_words if w in response_lower)
+    
+    # Playful/humor indicators
+    playful_words = ["haha", "lol", "funny", "joke", "silly", "😄", "😂", "🤣", 
+                     "quirky", "whimsical", "amusing", "teasing"]
+    playful_count = sum(1 for w in playful_words if w in response_lower)
+    
+    # Intense/challenging indicators
+    intense_words = ["important", "critical", "crucial", "significant", "challenge",
+                     "complex", "difficult", "serious", "careful", "warning", "consider",
+                     "however", "but", "actually", "contradiction", "conflict"]
+    intense_count = sum(1 for w in intense_words if w in response_lower or w in thinking_lower)
+    
+    # Curious/questioning indicators
+    curious_words = ["interesting", "wonder", "curious", "fascinating", "intriguing",
+                     "hmm", "perhaps", "maybe", "what if", "🤔"]
+    curious_count = sum(1 for w in curious_words if w in response_lower or w in thinking_lower)
+    
+    # Uncertain indicators
+    uncertain_words = ["unsure", "uncertain", "don't know", "not sure", "might be",
+                       "possibly", "i think", "seems like", "could be"]
+    uncertain_count = sum(1 for w in uncertain_words if w in response_lower)
+    
+    # Deep thinking indicators in thinking content
+    deep_thinking_words = ["analyzing", "considering", "evaluating", "weighing",
+                           "multiple", "factors", "implications", "reasoning",
+                           "therefore", "because", "evidence", "conclusion"]
+    deep_count = sum(1 for w in deep_thinking_words if w in thinking_lower)
+    
+    # Determine primary mood
+    counts = {
+        "warm": warm_count,
+        "playful": playful_count,
+        "intense": intense_count + (2 if contradiction_detected else 0),
+        "curious": curious_count,
+        "uncertain": uncertain_count,
+    }
+    
+    max_mood = max(counts, key=counts.get)
+    max_count = counts[max_mood]
+    
+    if max_count >= 2:
+        mood = max_mood
+        triggers.append(f"{mood}_keywords")
+    
+    # Adjust intensity based on various factors
+    if contradiction_detected:
+        intensity = max(intensity, 0.7)
+        triggers.append("contradiction")
+    
+    if thinking_depth > 0.5:
+        intensity = max(intensity, 0.5 + thinking_depth * 0.3)
+        triggers.append("deep_thinking")
+    
+    if deep_count >= 3:
+        intensity = max(intensity, 0.6)
+        mood = "intense"
+        triggers.append("complex_reasoning")
+    
+    if confidence < 0.5:
+        mood = "uncertain"
+        intensity = 0.4
+        triggers.append("low_confidence")
+    
+    # Playful overrides if strong signal
+    if playful_count >= 2:
+        mood = "playful"
+        intensity = min(0.6, intensity)
+        
+    # Warm overrides for very positive responses
+    if warm_count >= 3:
+        mood = "warm"
+        intensity = max(0.4, min(0.7, intensity))
+    
+    return {
+        "mood": mood,
+        "intensity": round(min(1.0, intensity), 2),
+        "thinking_depth": round(thinking_depth, 2),
+        "triggers": triggers,
+    }
 
 
 _EXPAND_TRIGGERS = (
@@ -3604,8 +3730,63 @@ def create_app() -> FastAPI:
                 style_instruction = _format_style_instruction(style_profile, personality_profile)
                 style_block = f"\n\nTONE & STYLE:\n{style_instruction}" if style_instruction else ""
                 
+                # 3. Load background loop state (what I'm "thinking about" in background)
+                background_thought_text = ""
+                try:
+                    reflection_scorecard = session_db.get_reflection_scorecard(req.thread_id)
+                    if reflection_scorecard and isinstance(reflection_scorecard, dict):
+                        thought_parts = []
+                        
+                        # Top topics I'm tracking
+                        top_topics = reflection_scorecard.get("top_topics", [])
+                        if top_topics and isinstance(top_topics, list):
+                            topic_names = [t.get("topic") if isinstance(t, dict) else str(t) for t in top_topics[:5]]
+                            topic_names = [t for t in topic_names if t]
+                            if topic_names:
+                                thought_parts.append(f"Topics on my mind: {', '.join(topic_names)}")
+                        
+                        # Rising/fading interests
+                        trends = reflection_scorecard.get("topic_trends", {})
+                        if trends:
+                            rising = trends.get("rising", [])
+                            fading = trends.get("fading", [])
+                            if rising and isinstance(rising, list):
+                                rising_names = [t.get("topic") if isinstance(t, dict) else str(t) for t in rising[:3]]
+                                rising_names = [t for t in rising_names if t]
+                                if rising_names:
+                                    thought_parts.append(f"Growing interest in: {', '.join(rising_names)}")
+                            if fading and isinstance(fading, list):
+                                fading_names = [t.get("topic") if isinstance(t, dict) else str(t) for t in fading[:3]]
+                                fading_names = [t for t in fading_names if t]
+                                if fading_names:
+                                    thought_parts.append(f"Less focus on: {', '.join(fading_names)}")
+                        
+                        # Any manual note/prompt from reflection
+                        manual = reflection_scorecard.get("manual_prompt", "")
+                        if manual and isinstance(manual, str) and manual.strip():
+                            thought_parts.append(f"Note to self: {manual.strip()[:200]}")
+                        
+                        # Unresolved questions or open loops
+                        open_questions = reflection_scorecard.get("open_questions", [])
+                        if open_questions and isinstance(open_questions, list):
+                            q_texts = [q.get("question") if isinstance(q, dict) else str(q) for q in open_questions[:3]]
+                            q_texts = [q for q in q_texts if q]
+                            if q_texts:
+                                thought_parts.append(f"Questions I'm pondering: {'; '.join(q_texts)}")
+                        
+                        if thought_parts:
+                            background_thought_text = "\n\nWHAT I'M CURRENTLY THINKING ABOUT (background reflection):\n" + "\n- ".join([""] + thought_parts)
+                except Exception as e:
+                    logger.debug(f"[STREAM] Failed to load reflection scorecard: {e}")
+                
                 # Build CRT identity system prompt
+                from datetime import datetime
+                current_time = datetime.now()
+                time_context = f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p')}"
+                
                 system_prompt = f"""You are CRT (Conversational Reasoning Terminal), a thoughtful AI assistant with persistent memory.
+
+{time_context}
 
 WHO YOU ARE:
 - You have genuine curiosity and form your own perspectives over time
@@ -3619,7 +3800,13 @@ YOUR MEMORY CAPABILITIES:
 - When the user shares personal information (name, job, pets, preferences), you remember it
 - You can recall this information naturally in conversation without prompting
 - If asked about something you should remember, check your known facts below
-- Be proactive in using what you know - don't wait to be asked{user_profile_text}{memories_text}{style_block}
+- Be proactive in using what you know - don't wait to be asked{user_profile_text}{memories_text}{background_thought_text}{style_block}
+
+YOUR INNER THOUGHTS:
+- You have a background reflection loop that continuously thinks about conversations
+- When asked "what are you thinking about?", report your ACTUAL current thoughts from the background reflection above
+- Don't give generic answers about wanting to help - share your real ruminations
+- If no background thoughts are available, be honest that you haven't been reflecting yet
 
 INTERACTION GUIDELINES:
 - Reference your memories naturally when relevant (e.g., "Since you work at [company], you might find...")
@@ -3893,6 +4080,15 @@ INTERACTION GUIDELINES:
                         for m in prompt_mems[:5] if isinstance(m, dict)
                     ],
                 }
+                
+                # Detect response mood for UI visualization
+                mood_data = _detect_response_mood(
+                    response=clean_response,
+                    thinking=thinking_content,
+                    confidence=result.get('confidence', 0.7),
+                    contradiction_detected=result.get('contradiction_detected', False),
+                )
+                metadata['mood'] = mood_data
 
                 # Record query in session DB for response variation tracking
                 try:
@@ -3939,6 +4135,91 @@ INTERACTION GUIDELINES:
                 "X-Accel-Buffering": "no",
             }
         )
+
+    @app.get("/api/introspection")
+    def get_introspection(thread_id: str = Query("default")):
+        """Get CRT's current inner state - what it's thinking about, tracking topics, etc.
+        
+        This endpoint returns what CRT would report if asked "What are you thinking about?"
+        """
+        session_db = get_thread_session_db()
+        result = {
+            "thread_id": thread_id,
+            "current_thoughts": [],
+            "topics_on_mind": [],
+            "rising_interests": [],
+            "fading_interests": [],
+            "open_questions": [],
+            "notes_to_self": None,
+            "personality_mode": None,
+            "last_reflection_at": None,
+        }
+        
+        try:
+            # Get reflection scorecard
+            reflection = session_db.get_reflection_scorecard(thread_id)
+            if reflection and isinstance(reflection, dict):
+                result["last_reflection_at"] = reflection.get("updated_at")
+                
+                # Topics on mind
+                top_topics = reflection.get("top_topics", [])
+                if top_topics:
+                    result["topics_on_mind"] = [
+                        {"topic": t.get("topic") if isinstance(t, dict) else str(t), 
+                         "weight": t.get("weight", 0) if isinstance(t, dict) else 0}
+                        for t in top_topics[:10]
+                    ]
+                
+                # Trends
+                trends = reflection.get("topic_trends", {})
+                if trends:
+                    rising = trends.get("rising", [])
+                    fading = trends.get("fading", [])
+                    result["rising_interests"] = [
+                        t.get("topic") if isinstance(t, dict) else str(t) for t in (rising or [])[:5]
+                    ]
+                    result["fading_interests"] = [
+                        t.get("topic") if isinstance(t, dict) else str(t) for t in (fading or [])[:5]
+                    ]
+                
+                # Open questions
+                open_q = reflection.get("open_questions", [])
+                if open_q:
+                    result["open_questions"] = [
+                        q.get("question") if isinstance(q, dict) else str(q) for q in open_q[:5]
+                    ]
+                
+                # Manual notes
+                manual = reflection.get("manual_prompt", "")
+                if manual and isinstance(manual, str) and manual.strip():
+                    result["notes_to_self"] = manual.strip()
+                
+                # Build human-readable thought summary
+                thoughts = []
+                if result["topics_on_mind"]:
+                    topic_names = [t["topic"] for t in result["topics_on_mind"][:5] if t.get("topic")]
+                    if topic_names:
+                        thoughts.append(f"I've been thinking about: {', '.join(topic_names)}")
+                if result["rising_interests"]:
+                    thoughts.append(f"My interest in {', '.join(result['rising_interests'][:3])} is growing")
+                if result["open_questions"]:
+                    thoughts.append(f"I'm pondering: {result['open_questions'][0]}")
+                if result["notes_to_self"]:
+                    thoughts.append(f"Note to self: {result['notes_to_self'][:100]}")
+                result["current_thoughts"] = thoughts
+            
+            # Get personality profile
+            personality = session_db.get_personality_profile(thread_id)
+            if personality and isinstance(personality, dict):
+                result["personality_mode"] = {
+                    "verbosity": personality.get("verbosity", "balanced"),
+                    "emoji": personality.get("emoji", "moderate"),
+                    "format": personality.get("format", "mixed"),
+                }
+        except Exception as e:
+            logger.debug(f"[INTROSPECTION] Error: {e}")
+        
+        return result
 
     @app.get("/api/loops/stream")
     def loops_stream(

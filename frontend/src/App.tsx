@@ -12,6 +12,7 @@ import { AgentPanel } from './components/AgentPanel'
 import { DemoModeLightbox } from './components/DemoModeLightbox'
 import { WelcomeTutorial } from './components/onboarding/WelcomeTutorial'
 import { LoginScreen } from './components/LoginScreen'
+import { MoodBackground, MoodIndicator, type MoodData } from './components/MoodBackground'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
@@ -69,6 +70,9 @@ export default function App() {
   const [streamStatusLog, setStreamStatusLog] = useState<string[]>([])
   const streamStatusRef = useRef<string[]>([])
   const finalBufferRef = useRef('')
+  
+  // Mood background state
+  const [currentMood, setCurrentMood] = useState<MoodData | null>(null)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -255,6 +259,18 @@ export default function App() {
     setEffectiveApiBaseUrl(apiBaseUrl)
   }, [apiBaseUrl])
 
+  // Set mood to "curious" while AI is thinking
+  useEffect(() => {
+    if (isThinking) {
+      setCurrentMood({
+        mood: 'curious',
+        intensity: 0.7,
+        thinking_depth: 0.8,
+        triggers: ['processing', 'thinking']
+      })
+    }
+  }, [isThinking])
+
   async function handleSend(text: string) {
     if (!selectedThread) return
 
@@ -373,6 +389,12 @@ export default function App() {
                 ? ((metadata as any).profile_updates as any[])
                 : []
               const pipelineStatuses = streamStatusRef.current
+              
+              // Extract mood data for dynamic background
+              if (metadata?.mood) {
+                setCurrentMood(metadata.mood as MoodData)
+              }
+              
               const asstMsg = {
                 id: newId('m'),
                 role: 'assistant' as const,
@@ -635,8 +657,14 @@ export default function App() {
   }
 
   return (
-    <div className="aetheris-dark h-screen w-full overflow-hidden">
-      <div className="mx-auto h-full max-w-[1480px] px-2 py-2 sm:px-4 sm:py-4 lg:py-6">
+    <div className="aetheris-dark h-screen w-full overflow-hidden relative">
+      {/* Dynamic mood-reactive background */}
+      <MoodBackground mood={currentMood} isThinking={isThinking} />
+      
+      {/* Mood indicator badge (for debugging - shows current mood) */}
+      {currentMood && <MoodIndicator mood={currentMood} />}
+      
+      <div className="mx-auto h-full max-w-[1480px] px-2 py-2 sm:px-4 sm:py-4 lg:py-6 relative z-10">
         <div className="flex h-full min-h-0 gap-2 sm:gap-3 lg:gap-5">
           <Sidebar
             open={sidebarOpen}
