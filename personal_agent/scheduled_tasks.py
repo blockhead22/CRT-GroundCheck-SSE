@@ -218,56 +218,68 @@ def extract_reminder_from_message(message: str) -> Optional[Tuple[str, datetime]
     """
     message_lower = message.lower()
     
-    # Check if it's a reminder request
-    reminder_patterns = [
-        r"remind\s+me\s+(?:to\s+)?(.+?)(?:\s+(?:at|in|on|tomorrow|tonight|next|this))",
-        r"remind\s+me\s+(?:at|in|on|tomorrow|tonight|next|this)\s+.+?\s+(?:to\s+)?(.+)",
-        r"set\s+(?:a\s+)?reminder\s+(?:for\s+)?(.+?)(?:\s+(?:at|in|on|tomorrow))",
-        r"reminder[:\s]+(.+)",
-    ]
-    
-    reminder_text = None
-    
-    # Try to extract what to remind about
-    for pattern in reminder_patterns:
-        match = re.search(pattern, message_lower)
-        if match:
-            reminder_text = match.group(1).strip()
-            # Clean up common words
-            reminder_text = re.sub(r"^(to|that|about)\s+", "", reminder_text)
-            break
-    
-    if not reminder_text:
-        # Fallback: everything after "remind me"
-        match = re.search(r"remind\s+me\s+(.+)", message_lower)
-        if match:
-            full_text = match.group(1)
-            # Try to separate time from content
-            time_keywords = ["at ", "in ", "tomorrow", "tonight", "next ", "this "]
-            for kw in time_keywords:
-                if kw in full_text:
-                    parts = full_text.split(kw, 1)
-                    if len(parts) == 2:
-                        # Check which part is more likely the reminder content
-                        before, after = parts
-                        if before.strip().startswith("to "):
-                            reminder_text = before.strip()[3:]  # Remove "to "
-                        elif after.strip() and not any(c.isdigit() for c in after[:3]):
-                            reminder_text = after.strip()
-                        else:
-                            reminder_text = before.strip() if before.strip() else after.strip()
-                        break
-    
-    if not reminder_text:
+    # First check if this looks like a reminder request
+    if not any(kw in message_lower for kw in ["remind", "reminder", "alert me", "notify me"]):
         return None
     
-    # Parse the time
+    # Parse the time first
     scheduled_time = parse_natural_time(message)
     if not scheduled_time:
         return None
     
-    # Clean up reminder text
+    reminder_text = None
+    
+    # Pattern 1: "remind me to X at/in/on TIME" -> extract X
+    match = re.search(r"remind\s+me\s+to\s+(.+?)\s+(?:at|in|on|tomorrow|tonight|next\s+\w+|this\s+\w+)", message_lower)
+    if match:
+        reminder_text = match.group(1).strip()
+    
+    # Pattern 2: "remind me at/in TIME to X" -> extract X
+    if not reminder_text:
+        # Find "to" after time expressions
+        time_patterns = [
+            r"(?:at\s+)?[\d:]+\s*(?:am|pm)?\s+to\s+(.+)",
+            r"in\s+\d+\s+(?:hour|minute|min|hr|day|week)s?\s+to\s+(.+)",
+            r"tomorrow\s+(?:at\s+)?(?:[\d:]+\s*(?:am|pm)?)?\s*to\s+(.+)",
+            r"tonight\s+(?:at\s+)?(?:[\d:]+\s*(?:am|pm)?)?\s*to\s+(.+)",
+            r"next\s+\w+\s+(?:at\s+)?(?:[\d:]+\s*(?:am|pm)?)?\s*to\s+(.+)",
+        ]
+        for pattern in time_patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                reminder_text = match.group(1).strip()
+                break
+    
+    # Pattern 3: "set a reminder for TIME: X" -> extract X
+    if not reminder_text:
+        match = re.search(r"reminder\s+(?:for\s+)?[\d:]+\s*(?:am|pm)?[:\s]+(.+)", message_lower)
+        if match:
+            reminder_text = match.group(1).strip()
+    
+    # Pattern 4: "remind me about X" + time detected elsewhere
+    if not reminder_text:
+        match = re.search(r"remind\s+me\s+(?:about|that)\s+(.+)", message_lower)
+        if match:
+            # Remove time expressions from the end
+            text = match.group(1).strip()
+            text = re.sub(r"\s+(?:at|in|on|tomorrow|tonight|next|this)\s+.*$", "", text)
+            if text:
+                reminder_text = text
+    
+    # Fallback: take everything after "to" in a remind sentence
+    if not reminder_text:
+        match = re.search(r"remind\s+me\s+.+?\s+to\s+(.+?)(?:\s*$|\s+at\s|\s+in\s|\s+on\s)", message_lower)
+        if match:
+            reminder_text = match.group(1).strip()
+    
+    if not reminder_text:
+        return None
+    
+    # Clean up reminder text - remove trailing time expressions
+    reminder_text = re.sub(r"\s+at\s+\d.*$", "", reminder_text, flags=re.IGNORECASE)
+    reminder_text = re.sub(r"\s+in\s+\d.*$", "", reminder_text, flags=re.IGNORECASE)
     reminder_text = reminder_text.strip(" .,!?")
+    
     if len(reminder_text) < 2:
         return None
     

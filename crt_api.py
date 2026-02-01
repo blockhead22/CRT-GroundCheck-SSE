@@ -6,6 +6,8 @@ import uuid
 import json
 import logging
 import threading
+import numpy as np
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -934,6 +936,70 @@ def create_app() -> FastAPI:
     )
     app.state.idle_scheduler = idle_scheduler
 
+    # Scheduled Tasks Loop (reminders, timed jobs, thoughts)
+    scheduled_tasks_db_path = str(root / "data" / "scheduled_tasks.db")
+    init_scheduled_tasks_db(scheduled_tasks_db_path)
+    
+    # Get session DB for posting to Ledger
+    _tasks_session_db = get_thread_session_db()
+    
+    # Callback for when a reminder is due
+    def on_reminder_due(task: ScheduledTask):
+        """Handle a due reminder by posting to the thoughts ledger."""
+        try:
+            reminder_text = task.payload.get("reminder_text", "Reminder")
+            thread_id = task.thread_id
+            original_time = task.payload.get("original_time_str", "")
+            logger.info(f"[REMINDER] ⏰ Due reminder for thread {thread_id}: {reminder_text}")
+            
+            # Post to Ledger as a reminder notification
+            try:
+                _tasks_session_db.ensure_default_submolts()
+                _tasks_session_db.create_post(
+                    submolt="thoughts",
+                    title="⏰ Reminder",
+                    content=f"**Scheduled reminder:**\n\n{reminder_text}\n\n*Originally scheduled for: {original_time}*",
+                    author="CRT",
+                )
+                logger.info(f"[REMINDER] Posted reminder to Ledger 'thoughts' submolt")
+            except Exception as e:
+                logger.error(f"[REMINDER] Failed to post to Ledger: {e}")
+        except Exception as e:
+            logger.error(f"[REMINDER] Error handling reminder: {e}")
+    
+    # Callback for when a thought is due to be posted
+    def on_thought_due(task: ScheduledTask):
+        """Handle a due thought by posting to the Ledger."""
+        try:
+            thought_content = task.payload.get("thought_content", "")
+            thought_type = task.payload.get("thought_type", "scheduled")
+            thread_id = task.thread_id
+            logger.info(f"[THOUGHT] 💭 Posting thought for thread {thread_id}")
+            
+            try:
+                _tasks_session_db.ensure_default_submolts()
+                _tasks_session_db.create_post(
+                    submolt="thoughts",
+                    title="💭 Reflection",
+                    content=f"{thought_content}\n\n*Type: {thought_type}*",
+                    author="CRT",
+                )
+                logger.info(f"[THOUGHT] Posted thought to Ledger 'thoughts' submolt")
+            except Exception as e:
+                logger.error(f"[THOUGHT] Failed to post to Ledger: {e}")
+        except Exception as e:
+            logger.error(f"[THOUGHT] Error handling thought: {e}")
+    
+    scheduled_tasks_loop = ScheduledTasksLoop(
+        db_path=scheduled_tasks_db_path,
+        check_interval=30.0,  # Check every 30 seconds
+        enabled=True,
+        on_reminder=on_reminder_due,
+        on_thought=on_thought_due,
+    )
+    app.state.scheduled_tasks_loop = scheduled_tasks_loop
+    app.state.scheduled_tasks_db_path = scheduled_tasks_db_path
+
     # Heartbeat scheduler (OpenClaw-style 24/7 proactive engagement)
     # Continuous reflection + personality + heartbeat loops (24/7, limited scope)
     session_db = get_thread_session_db()
@@ -1090,6 +1156,12 @@ def create_app() -> FastAPI:
             pass
 
         try:
+            app.state.scheduled_tasks_loop.start()
+            logger.info("[STARTUP] Scheduled tasks loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start scheduled tasks loop: {e}")
+
+        try:
             app.state.reflection_loop.start()
         except Exception:
             pass
@@ -1118,6 +1190,11 @@ def create_app() -> FastAPI:
 
         try:
             idle_scheduler.stop()
+        except Exception:
+            pass
+
+        try:
+            app.state.scheduled_tasks_loop.stop()
         except Exception:
             pass
 
@@ -4116,6 +4193,34 @@ INTERACTION GUIDELINES:
                 except Exception as e:
                     logger.debug(f"[EPISODIC] Error in stream: {e}")
 
+                # ========================================
+                # REMINDER DETECTION - Check if user asked to be reminded
+                # ========================================
+                reminder_created = None
+                try:
+                    reminder_info = extract_reminder_from_message(req.message)
+                    if reminder_info:
+                        reminder_text, scheduled_time = reminder_info
+                        # scheduled_time is already a datetime from extract_reminder_from_message
+                        # Create the scheduled reminder
+                        task = schedule_reminder(
+                            db_path=app.state.scheduled_tasks_db_path,
+                            reminder_text=reminder_text,
+                            scheduled_at=scheduled_time,
+                            thread_id=req.thread_id,
+                        )
+                        reminder_created = {
+                            "task_id": task.task_id,
+                            "reminder_text": reminder_text,
+                            "scheduled_for": scheduled_time.strftime("%I:%M %p on %A, %B %d"),
+                        }
+                        logger.info(f"[REMINDER] Created reminder: {reminder_text} for {scheduled_time}")
+                except Exception as e:
+                    logger.debug(f"[REMINDER] Error detecting/creating reminder: {e}")
+                
+                if reminder_created:
+                    metadata['reminder_created'] = reminder_created
+
                 if phase_enabled and answer_phase_started:
                     yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'answer', 'content': ''})}\n\n"
                 yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
@@ -4220,6 +4325,635 @@ INTERACTION GUIDELINES:
             logger.debug(f"[INTROSPECTION] Error: {e}")
         
         return result
+
+    # =========================================================================
+    # Scheduled Tasks API
+    # =========================================================================
+
+    class CreateScheduledTaskRequest(BaseModel):
+        task_type: str = "reminder"  # reminder, thought, scheduled_job
+        scheduled_at: Optional[float] = None  # Unix timestamp
+        scheduled_time_text: Optional[str] = None  # Natural language: "tomorrow at 5pm"
+        thread_id: str = "default"
+        reminder_text: Optional[str] = None  # For reminders
+        thought_content: Optional[str] = None  # For thoughts
+        job_type: Optional[str] = None  # For scheduled jobs
+        job_payload: Optional[Dict[str, Any]] = None
+        recurrence: Optional[str] = None  # daily, weekly, hourly
+
+    class ScheduledTaskResponse(BaseModel):
+        task_id: str
+        task_type: str
+        scheduled_at: float
+        scheduled_time_formatted: str
+        thread_id: str
+        status: str
+        payload: Dict[str, Any]
+        recurrence: Optional[str] = None
+
+    @app.post("/api/scheduled-tasks", response_model=ScheduledTaskResponse)
+    def create_scheduled_task_endpoint(req: CreateScheduledTaskRequest):
+        """Create a new scheduled task (reminder, thought, or job)."""
+        db_path = app.state.scheduled_tasks_db_path
+        
+        # Determine scheduled time
+        if req.scheduled_at:
+            scheduled_time = datetime.fromtimestamp(req.scheduled_at)
+        elif req.scheduled_time_text:
+            scheduled_time = parse_natural_time(req.scheduled_time_text)
+            if not scheduled_time:
+                raise HTTPException(400, f"Could not parse time: {req.scheduled_time_text}")
+        else:
+            raise HTTPException(400, "Must provide scheduled_at or scheduled_time_text")
+        
+        # Create task based on type
+        task_id = f"{req.task_type}_{req.thread_id}_{int(time.time() * 1000)}"
+        
+        if req.task_type == "reminder":
+            if not req.reminder_text:
+                raise HTTPException(400, "reminder_text required for reminder tasks")
+            payload = {
+                "reminder_text": req.reminder_text,
+                "original_time_str": scheduled_time.strftime("%I:%M %p on %A, %B %d"),
+            }
+        elif req.task_type == "thought":
+            if not req.thought_content:
+                raise HTTPException(400, "thought_content required for thought tasks")
+            payload = {
+                "thought_content": req.thought_content,
+                "thought_type": "scheduled",
+            }
+        elif req.task_type == "scheduled_job":
+            payload = {
+                "job_type": req.job_type or "custom",
+                "job_payload": req.job_payload or {},
+            }
+        else:
+            payload = {}
+        
+        task = create_scheduled_task(
+            db_path=db_path,
+            task_id=task_id,
+            task_type=req.task_type,
+            scheduled_at=scheduled_time.timestamp(),
+            thread_id=req.thread_id,
+            payload=payload,
+            recurrence=req.recurrence,
+        )
+        
+        return ScheduledTaskResponse(
+            task_id=task.task_id,
+            task_type=task.task_type,
+            scheduled_at=task.scheduled_at,
+            scheduled_time_formatted=task.formatted_time(),
+            thread_id=task.thread_id,
+            status=task.status,
+            payload=task.payload,
+            recurrence=task.recurrence,
+        )
+
+    @app.get("/api/scheduled-tasks")
+    def list_scheduled_tasks(thread_id: Optional[str] = None, include_completed: bool = False):
+        """List scheduled tasks, optionally filtered by thread."""
+        db_path = app.state.scheduled_tasks_db_path
+        
+        if include_completed:
+            # Get all tasks
+            from personal_agent.scheduled_tasks import init_scheduled_tasks_db
+            init_scheduled_tasks_db(db_path)
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+            cur = conn.cursor()
+            if thread_id:
+                cur.execute("SELECT * FROM scheduled_tasks WHERE thread_id = ? ORDER BY scheduled_at DESC", (thread_id,))
+            else:
+                cur.execute("SELECT * FROM scheduled_tasks ORDER BY scheduled_at DESC")
+            rows = cur.fetchall()
+            conn.close()
+            
+            tasks = []
+            for row in rows:
+                tasks.append({
+                    "task_id": row["task_id"],
+                    "task_type": row["task_type"],
+                    "scheduled_at": row["scheduled_at"],
+                    "scheduled_time_formatted": datetime.fromtimestamp(row["scheduled_at"]).strftime("%I:%M %p on %A, %B %d"),
+                    "thread_id": row["thread_id"],
+                    "status": row["status"],
+                    "payload": json.loads(row["payload_json"]),
+                    "recurrence": row["recurrence"],
+                    "completed_at": row["completed_at"],
+                    "error": row["error"],
+                })
+        else:
+            tasks_list = get_pending_scheduled_tasks(db_path, thread_id)
+            tasks = [{
+                "task_id": t.task_id,
+                "task_type": t.task_type,
+                "scheduled_at": t.scheduled_at,
+                "scheduled_time_formatted": t.formatted_time(),
+                "thread_id": t.thread_id,
+                "status": t.status,
+                "payload": t.payload,
+                "recurrence": t.recurrence,
+                "time_until_seconds": t.time_until(),
+            } for t in tasks_list]
+        
+        return {"tasks": tasks, "count": len(tasks)}
+
+    @app.get("/api/scheduled-tasks/{task_id}")
+    def get_scheduled_task(task_id: str):
+        """Get a specific scheduled task by ID."""
+        db_path = app.state.scheduled_tasks_db_path
+        task = get_task_by_id(db_path, task_id)
+        
+        if not task:
+            raise HTTPException(404, f"Task not found: {task_id}")
+        
+        return {
+            "task_id": task.task_id,
+            "task_type": task.task_type,
+            "scheduled_at": task.scheduled_at,
+            "scheduled_time_formatted": task.formatted_time(),
+            "thread_id": task.thread_id,
+            "status": task.status,
+            "payload": task.payload,
+            "recurrence": task.recurrence,
+            "created_at": task.created_at,
+            "completed_at": task.completed_at,
+            "error": task.error,
+        }
+
+    @app.delete("/api/scheduled-tasks/{task_id}")
+    def delete_scheduled_task(task_id: str):
+        """Cancel a pending scheduled task."""
+        db_path = app.state.scheduled_tasks_db_path
+        success = cancel_scheduled_task(db_path, task_id)
+        
+        if not success:
+            raise HTTPException(404, f"Task not found or already completed: {task_id}")
+        
+        return {"status": "cancelled", "task_id": task_id}
+
+    @app.post("/api/scheduled-tasks/parse-time")
+    def parse_time_endpoint(text: str = Query(..., description="Natural language time expression")):
+        """Parse a natural language time expression (for testing/preview)."""
+        result = parse_natural_time(text)
+        
+        if not result:
+            return {"success": False, "error": f"Could not parse: {text}"}
+        
+        return {
+            "success": True,
+            "parsed_time": result.isoformat(),
+            "timestamp": result.timestamp(),
+            "formatted": result.strftime("%I:%M %p on %A, %B %d, %Y"),
+        }
+
+    class QuickReminderRequest(BaseModel):
+        text: str = Field(..., description="Message like 'remind me in 2 hours to call mom'")
+        thread_id: str = "default"
+
+    @app.post("/api/quick-reminder")
+    def quick_reminder_endpoint(req: QuickReminderRequest):
+        """
+        Parse a natural language reminder request and schedule it.
+        
+        Examples:
+        - "remind me in 2 hours to call mom"
+        - "remind me tomorrow at 5pm to check the oven"
+        - "remind me next monday to submit the report"
+        """
+        db_path = app.state.scheduled_tasks_db_path
+        
+        # Extract reminder info from text
+        reminder_info = extract_reminder_from_message(req.text)
+        
+        if not reminder_info:
+            return {
+                "success": False, 
+                "error": "Could not parse reminder from message. Try: 'remind me in X to Y' or 'remind me at X to Y'"
+            }
+        
+        reminder_text, time_expression = reminder_info
+        scheduled_time = parse_natural_time(time_expression)
+        
+        if not scheduled_time:
+            return {
+                "success": False,
+                "error": f"Could not parse time expression: {time_expression}"
+            }
+        
+        # Create the scheduled task
+        task = schedule_reminder(
+            db_path=db_path,
+            reminder_text=reminder_text,
+            scheduled_at=scheduled_time,
+            thread_id=req.thread_id,
+        )
+        
+        return {
+            "success": True,
+            "task_id": task.task_id,
+            "reminder_text": reminder_text,
+            "scheduled_for": scheduled_time.strftime("%I:%M %p on %A, %B %d, %Y"),
+            "time_until_seconds": task.time_until(),
+            "message": f"✅ I'll remind you to '{reminder_text}' at {scheduled_time.strftime('%I:%M %p on %A, %B %d')}"
+        }
+
+    class ScheduleThoughtRequest(BaseModel):
+        thought_content: str = Field(..., description="The thought or topic to ponder")
+        scheduled_time_text: str = Field(..., description="When to post the thought, e.g. 'in 1 hour'")
+        thread_id: str = "default"
+
+    @app.post("/api/schedule-thought")
+    def schedule_thought_endpoint(req: ScheduleThoughtRequest):
+        """
+        Schedule a thought to be posted to the Ledger later.
+        
+        This allows CRT to "ponder" - scheduling reflections to be posted at a later time.
+        """
+        db_path = app.state.scheduled_tasks_db_path
+        
+        scheduled_time = parse_natural_time(req.scheduled_time_text)
+        if not scheduled_time:
+            return {"success": False, "error": f"Could not parse time: {req.scheduled_time_text}"}
+        
+        task = schedule_thought(
+            db_path=db_path,
+            thought_content=req.thought_content,
+            scheduled_at=scheduled_time,
+            thread_id=req.thread_id,
+        )
+        
+        return {
+            "success": True,
+            "task_id": task.task_id,
+            "thought_preview": req.thought_content[:100] + "..." if len(req.thought_content) > 100 else req.thought_content,
+            "scheduled_for": scheduled_time.strftime("%I:%M %p on %A, %B %d, %Y"),
+            "message": f"💭 Thought scheduled for {scheduled_time.strftime('%I:%M %p on %A, %B %d')}"
+        }
+
+    # =========================================================================
+    # Webcam API
+    # =========================================================================
+    
+    from personal_agent.webcam import (
+        get_webcam,
+        close_webcam,
+        list_available_cameras,
+        WebcamCapture,
+    )
+    
+    @app.get("/api/webcam/status")
+    def webcam_status():
+        """Get webcam status and available cameras."""
+        try:
+            cameras = list_available_cameras(max_index=5)
+            webcam = get_webcam()
+            
+            return {
+                "available_cameras": [
+                    {
+                        "index": c.index,
+                        "name": c.name,
+                        "width": c.width,
+                        "height": c.height,
+                        "fps": c.fps,
+                    }
+                    for c in cameras
+                ],
+                "current_camera": webcam.get_info() if webcam else None,
+            }
+        except Exception as e:
+            logger.error(f"[WEBCAM] Status error: {e}")
+            return {"error": str(e), "available_cameras": []}
+    
+    @app.get("/api/webcam/snapshot")
+    def webcam_snapshot(camera_index: int = Query(0, ge=0, le=10)):
+        """Capture a single frame from the webcam."""
+        from fastapi.responses import Response
+        
+        try:
+            webcam = get_webcam(camera_index=camera_index)
+            if not webcam.open():
+                raise HTTPException(503, "Failed to open webcam")
+            
+            frame = webcam.capture_frame()
+            if frame is None:
+                raise HTTPException(503, "Failed to capture frame")
+            
+            return Response(
+                content=frame,
+                media_type="image/jpeg",
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[WEBCAM] Snapshot error: {e}")
+            raise HTTPException(500, f"Webcam error: {str(e)}")
+    
+    @app.get("/api/webcam/snapshot/base64")
+    def webcam_snapshot_base64(camera_index: int = Query(0, ge=0, le=10)):
+        """Capture a single frame as base64 JSON."""
+        try:
+            webcam = get_webcam(camera_index=camera_index)
+            if not webcam.open():
+                raise HTTPException(503, "Failed to open webcam")
+            
+            frame_b64 = webcam.capture_frame_base64()
+            if frame_b64 is None:
+                raise HTTPException(503, "Failed to capture frame")
+            
+            return {
+                "success": True,
+                "image": frame_b64,
+                "content_type": "image/jpeg",
+                "timestamp": time.time(),
+                "camera_info": webcam.get_info(),
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[WEBCAM] Snapshot base64 error: {e}")
+            return {"success": False, "error": str(e)}
+    
+    @app.get("/api/webcam/stream")
+    def webcam_stream(
+        camera_index: int = Query(0, ge=0, le=10),
+        fps: int = Query(15, ge=1, le=30),
+    ):
+        """
+        Stream MJPEG video from the webcam.
+        
+        Use this URL directly in an <img> tag:
+        <img src="/api/webcam/stream" />
+        """
+        try:
+            webcam = get_webcam(camera_index=camera_index)
+            if not webcam.open():
+                raise HTTPException(503, "Failed to open webcam")
+            
+            return StreamingResponse(
+                webcam.generate_mjpeg_stream(max_fps=fps),
+                media_type="multipart/x-mixed-replace; boundary=frame",
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                    "Connection": "keep-alive",
+                },
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[WEBCAM] Stream error: {e}")
+            raise HTTPException(500, f"Webcam error: {str(e)}")
+    
+    @app.post("/api/webcam/close")
+    def webcam_close_endpoint():
+        """Close the webcam to release resources."""
+        try:
+            close_webcam()
+            return {"success": True, "message": "Webcam closed"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # =========================================================================
+    # Vision AI API
+    # =========================================================================
+    
+    from personal_agent.vision import get_vision_ai, VisionAI, FACE_RECOGNITION_AVAILABLE
+    
+    @app.get("/api/vision/status")
+    def vision_status():
+        """Get vision AI capabilities and status."""
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        
+        return {
+            "face_recognition_available": FACE_RECOGNITION_AVAILABLE,
+            "known_faces": vision.face_db.list_known_faces(),
+            "dnn_detector_available": vision._dnn_net is not None,
+            "vision_model": vision.vision_model,
+            "ollama_host": vision.ollama_host,
+        }
+    
+    class DescribeRequest(BaseModel):
+        prompt: str = "Describe what you see in this image."
+        camera_index: int = 0
+        max_tokens: int = 500
+    
+    @app.post("/api/vision/describe")
+    def vision_describe(req: DescribeRequest):
+        """Capture a frame and describe it using vision LLM."""
+        import cv2
+        
+        webcam = get_webcam(camera_index=req.camera_index)
+        if not webcam.open():
+            raise HTTPException(503, "Failed to open webcam")
+        
+        frame_bytes = webcam.capture_frame()
+        if not frame_bytes:
+            raise HTTPException(503, "Failed to capture frame")
+        
+        # Decode frame
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        description = vision.describe_image(image, req.prompt, req.max_tokens)
+        
+        return {
+            "success": True,
+            "description": description,
+            "timestamp": time.time(),
+        }
+    
+    @app.get("/api/vision/detect-faces")
+    def vision_detect_faces(
+        camera_index: int = Query(0),
+        recognize: bool = Query(True),
+        draw_boxes: bool = Query(False),
+    ):
+        """Detect (and optionally recognize) faces in current frame."""
+        import cv2
+        from fastapi.responses import Response
+        
+        webcam = get_webcam(camera_index=camera_index)
+        if not webcam.open():
+            raise HTTPException(503, "Failed to open webcam")
+        
+        frame_bytes = webcam.capture_frame()
+        if not frame_bytes:
+            raise HTTPException(503, "Failed to capture frame")
+        
+        # Decode
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        faces = vision.detect_and_recognize_faces(image, use_recognition=recognize)
+        
+        if draw_boxes:
+            # Return image with boxes drawn
+            annotated = vision.draw_detections(image, faces)
+            _, jpeg = cv2.imencode('.jpg', annotated)
+            return Response(
+                content=jpeg.tobytes(),
+                media_type="image/jpeg",
+            )
+        
+        return {
+            "success": True,
+            "face_count": len(faces),
+            "faces": [
+                {
+                    "x": f.x, "y": f.y,
+                    "width": f.width, "height": f.height,
+                    "confidence": f.confidence,
+                    "name": f.name,
+                }
+                for f in faces
+            ],
+            "timestamp": time.time(),
+        }
+    
+    @app.get("/api/vision/analyze")
+    def vision_analyze(
+        camera_index: int = Query(0),
+        describe: bool = Query(True),
+        detect_faces: bool = Query(True),
+        recognize: bool = Query(True),
+        prompt: str = Query("Describe what you see briefly."),
+    ):
+        """Full vision analysis of current frame."""
+        import cv2
+        
+        webcam = get_webcam(camera_index=camera_index)
+        if not webcam.open():
+            raise HTTPException(503, "Failed to open webcam")
+        
+        frame_bytes = webcam.capture_frame()
+        if not frame_bytes:
+            raise HTTPException(503, "Failed to capture frame")
+        
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        result = vision.analyze_frame(
+            image,
+            describe=describe,
+            detect_faces=detect_faces,
+            recognize_faces=recognize,
+            description_prompt=prompt,
+        )
+        
+        return {
+            "success": True,
+            "description": result.description,
+            "face_count": result.face_count,
+            "has_person": result.has_person,
+            "faces": [
+                {
+                    "x": f.x, "y": f.y,
+                    "width": f.width, "height": f.height,
+                    "confidence": f.confidence,
+                    "name": f.name,
+                }
+                for f in result.faces
+            ],
+            "processing_time_ms": result.processing_time_ms,
+            "timestamp": result.timestamp,
+            "error": result.error,
+        }
+    
+    class LearnFaceRequest(BaseModel):
+        name: str
+        camera_index: int = 0
+    
+    @app.post("/api/vision/learn-face")
+    def vision_learn_face(req: LearnFaceRequest):
+        """Learn a new face from current webcam frame."""
+        import cv2
+        
+        if not FACE_RECOGNITION_AVAILABLE:
+            raise HTTPException(501, "Face recognition not available. Install: pip install face_recognition")
+        
+        webcam = get_webcam(camera_index=req.camera_index)
+        if not webcam.open():
+            raise HTTPException(503, "Failed to open webcam")
+        
+        frame_bytes = webcam.capture_frame()
+        if not frame_bytes:
+            raise HTTPException(503, "Failed to capture frame")
+        
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        success = vision.face_db.add_face(req.name, image)
+        
+        if success:
+            return {
+                "success": True,
+                "message": f"Learned face for '{req.name}'",
+                "known_faces": vision.face_db.list_known_faces(),
+            }
+        else:
+            raise HTTPException(400, "No face detected in frame. Make sure face is visible and try again.")
+    
+    @app.delete("/api/vision/forget-face/{name}")
+    def vision_forget_face(name: str):
+        """Remove a learned face."""
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        success = vision.face_db.remove_face(name)
+        
+        if success:
+            return {"success": True, "message": f"Forgot '{name}'"}
+        else:
+            raise HTTPException(404, f"No face found with name '{name}'")
+    
+    @app.get("/api/vision/known-faces")
+    def vision_known_faces():
+        """List all known faces."""
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        return {
+            "faces": vision.face_db.list_known_faces(),
+            "face_recognition_available": FACE_RECOGNITION_AVAILABLE,
+        }
+    
+    @app.get("/api/vision/snapshot-analyzed")
+    def vision_snapshot_analyzed(
+        camera_index: int = Query(0),
+        recognize: bool = Query(True),
+    ):
+        """Get annotated snapshot with face boxes drawn."""
+        import cv2
+        from fastapi.responses import Response
+        
+        webcam = get_webcam(camera_index=camera_index)
+        if not webcam.open():
+            raise HTTPException(503, "Failed to open webcam")
+        
+        frame_bytes = webcam.capture_frame()
+        if not frame_bytes:
+            raise HTTPException(503, "Failed to capture frame")
+        
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        vision = get_vision_ai(face_db_path=str(root / "data" / "faces"))
+        faces = vision.detect_and_recognize_faces(image, use_recognition=recognize)
+        annotated = vision.draw_detections(image, faces)
+        
+        _, jpeg = cv2.imencode('.jpg', annotated)
+        return Response(
+            content=jpeg.tobytes(),
+            media_type="image/jpeg",
+            headers={"X-Face-Count": str(len(faces))},
+        )
 
     @app.get("/api/loops/stream")
     def loops_stream(

@@ -1058,6 +1058,7 @@ class ThreadSessionDB:
             ("reflections", "Agent self-reflections and internal notes."),
             ("debugging", "Bug hunts, fixes, and debugging notes."),
             ("agent-ops", "Operational tips for running agents."),
+            ("thoughts", "CRT's autonomous musings, ponderings, and scheduled reminders."),
         ]
         for name, desc in defaults:
             try:
