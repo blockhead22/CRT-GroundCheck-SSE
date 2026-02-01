@@ -37,11 +37,13 @@ AVAILABLE TOOLS:
 - store_memory: Store new information in memory
 - check_contradiction: Check if statement contradicts beliefs
 - calculate: Evaluate math expressions
+- execute_code: Run Python code and get results (for complex computations, API calls, file operations)
 
 IMPORTANT DECISION:
 - If the question is about PERSONAL info (user's facts, preferences) → search_memory
 - If the question is about CRT SYSTEM (how CRT works) → search_research  
 - If the question is GENERAL KNOWLEDGE (history, science, etc.) → finish immediately with your knowledge
+- If you need to COMPUTE, TRANSFORM DATA, or call APIS → execute_code
 - Only search local files if the query is specifically about CRT or the user's personal data
 
 CURRENT SITUATION:
@@ -51,6 +53,7 @@ What should you do next? Think step-by-step:
 1. Is this a personal/CRT question or general knowledge?
 2. If general knowledge, I should FINISH now with my built-in knowledge
 3. If personal/CRT, which tool helps me find that specific information?
+4. If it needs computation or transformation, use execute_code
 
 THOUGHT:"""
 

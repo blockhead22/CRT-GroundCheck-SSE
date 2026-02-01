@@ -730,32 +730,68 @@ class ReasoningEngine:
         personality_profile: Optional[Dict[str, Any]],
         reflection_scorecard: Optional[Dict[str, Any]],
     ) -> str:
-        """Create a low-priority, short nudge from personality/reflection loops."""
+        """Create personality-driven instructions from personality/reflection loops.
+        
+        This is now more influential on the chat behavior based on learned patterns.
+        """
         hints: List[str] = []
+        personality_section = []
+        reflection_section = []
 
         if personality_profile:
             window = int(personality_profile.get("message_window") or 0)
-            if window >= 12:
+            
+            # Lower threshold for personality influence (was 12, now 5)
+            if window >= 5:
                 verbosity = str(personality_profile.get("verbosity") or "").lower()
                 if verbosity == "concise":
-                    hints.append("Prefer concise answers unless the user asks for depth.")
+                    personality_section.append("User prefers SHORT, DIRECT answers. Keep responses brief and to-the-point.")
                 elif verbosity == "verbose":
-                    hints.append("Allow more detail when it helps clarity.")
+                    personality_section.append("User appreciates DETAILED explanations. Provide thorough answers with context.")
+                else:  # balanced
+                    personality_section.append("User prefers balanced responses - not too brief, not too lengthy.")
 
                 fmt = str(personality_profile.get("format") or "").lower()
                 if fmt == "structured":
-                    hints.append("Use bullets for steps or lists when helpful.")
+                    personality_section.append("User likes STRUCTURED formatting - use bullets, numbered lists, and clear sections.")
+                else:
+                    personality_section.append("User prefers natural flowing prose over heavy formatting.")
 
                 emoji_pref = str(personality_profile.get("emoji") or "").lower()
                 if emoji_pref == "on":
-                    hints.append("Use at most one emoji occasionally.")
+                    personality_section.append("User responds well to occasional emoji use 🦞")
+                else:
+                    personality_section.append("Avoid emoji in responses.")
+                
+                # New profile fields
+                interaction_style = str(personality_profile.get("interaction_style") or "").lower()
+                if interaction_style == "inquisitive":
+                    personality_section.append("User tends to ask questions - be ready with clear, direct answers.")
+                elif interaction_style == "declarative":
+                    personality_section.append("User makes statements - acknowledge their points and build on them.")
+                
+                tone_pref = str(personality_profile.get("tone_preference") or "").lower()
+                if tone_pref == "technical":
+                    personality_section.append("User prefers TECHNICAL language. Don't oversimplify - use precise terminology.")
+                elif tone_pref == "casual":
+                    personality_section.append("User prefers CASUAL conversation. Keep it approachable and friendly.")
+                
+                urgency = str(personality_profile.get("urgency") or "").lower()
+                if urgency == "high":
+                    personality_section.append("User often wants quick answers. Prioritize actionable responses over explanations.")
+            
+            # Include message window context
+            if window > 0:
+                personality_section.append(f"(Based on {window} analyzed messages)")
 
         if reflection_scorecard:
             try:
                 confidence = float(reflection_scorecard.get("preference_confidence") or 0.0)
             except Exception:
                 confidence = 0.0
-            if confidence >= 0.7:
+            
+            # Lower threshold for reflection influence (was 0.7, now 0.3)
+            if confidence >= 0.3:
                 topics_raw = reflection_scorecard.get("top_topics") or []
                 topics = [
                     t.get("topic")
@@ -764,15 +800,38 @@ class ReasoningEngine:
                 ]
                 topics = [t for t in topics if isinstance(t, str)]
                 if topics:
-                    top = ", ".join(topics[:2])
-                    hints.append(f"When relevant, tie examples to: {top}.")
+                    top = ", ".join(topics[:3])
+                    reflection_section.append(f"User's main interests: {top}")
+                    reflection_section.append(f"Reference these topics in examples when naturally relevant.")
+                
+                # Include trend information
+                trends = reflection_scorecard.get("topic_trends") or {}
+                rising = trends.get("rising") or []
+                fading = trends.get("fading") or []
+                
+                if rising:
+                    rising_topics = ", ".join(rising[:2])
+                    reflection_section.append(f"Recently increasing focus on: {rising_topics}")
+                
+                if fading:
+                    fading_topics = ", ".join(fading[:2])
+                    reflection_section.append(f"Decreased interest in: {fading_topics}")
+                
+                reflection_section.append(f"(Preference confidence: {confidence:.0%})")
 
-        if not hints:
+        # Build final output
+        output_parts = []
+        
+        if personality_section:
+            output_parts.append("LEARNED PERSONALITY PREFERENCES:\n" + "\n".join(f"• {s}" for s in personality_section))
+        
+        if reflection_section:
+            output_parts.append("REFLECTION INSIGHTS:\n" + "\n".join(f"• {s}" for s in reflection_section))
+        
+        if not output_parts:
             return ""
-
-        # Keep impact small: cap to two short hints.
-        hints = hints[:2]
-        return " ".join(hints)
+        
+        return "\n\n".join(output_parts)
     
     def _build_quick_prompt(self, query: str, context: Dict) -> str:
         """Build prompt for quick mode."""
@@ -817,7 +876,7 @@ Your core principles:
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
         if adaptive_hint:
-            prompt += f"ADAPTIVE NUDGE (low priority): {adaptive_hint}\n\n"
+            prompt += f"{adaptive_hint}\n\n"
         
         # Add memory context if available
         if docs:

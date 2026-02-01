@@ -583,6 +583,22 @@ def build_personality_profile(
         line.strip().startswith(("-", "*", "1.", "2.")) for m in messages for line in m.splitlines()
     )
     format_pref = "structured" if structured else "freeform"
+    
+    # Detect question vs statement style
+    question_count = sum(1 for m in messages if m.strip().endswith("?"))
+    question_ratio = question_count / len(messages) if messages else 0
+    interaction_style = "inquisitive" if question_ratio > 0.5 else "declarative"
+    
+    # Detect technical vs casual tone
+    tech_terms = ["code", "function", "api", "debug", "system", "memory", "database", "error", "config"]
+    tech_hits = sum(1 for m in messages if any(term in m.lower() for term in tech_terms))
+    tech_ratio = tech_hits / len(messages) if messages else 0
+    tone_preference = "technical" if tech_ratio > 0.3 else "casual"
+    
+    # Detect urgency patterns
+    urgent_markers = ["asap", "urgent", "quickly", "now", "immediately", "fast"]
+    urgent_hits = sum(1 for m in messages if any(marker in m.lower() for marker in urgent_markers))
+    urgency = "high" if urgent_hits > 2 else "normal"
 
     profile = {
         "thread_id": thread_id,
@@ -591,6 +607,12 @@ def build_personality_profile(
         "verbosity": verbosity,
         "emoji": emoji_preference,
         "format": format_pref,
+        "interaction_style": interaction_style,
+        "tone_preference": tone_preference,
+        "urgency": urgency,
+        "avg_message_length": avg_len,
+        "question_ratio": question_ratio,
+        "tech_ratio": tech_ratio,
     }
     if prompt:
         profile["manual_prompt"] = prompt

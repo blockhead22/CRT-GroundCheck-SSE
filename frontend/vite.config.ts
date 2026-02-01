@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false,
+    host: '0.0.0.0',  // Listen on all interfaces for external access
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8123',

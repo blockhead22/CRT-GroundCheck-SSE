@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Zap, Settings, Play, Square, RefreshCw, FileText } from 'lucide-react';
+import { getEffectiveApiBaseUrl } from '../lib/api';
 
 interface HeartbeatConfig {
   enabled: boolean;
@@ -25,7 +26,8 @@ export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const API_BASE = 'http://localhost:8000/api';
+  // Use dynamic API base URL for external access
+  const API_BASE = `${getEffectiveApiBaseUrl()}/api`;
 
   useEffect(() => {
     loadHeartbeatConfig();

@@ -163,19 +163,23 @@ class HeartbeatLLMExecutor:
     
     def _get_ledger_feed(self, limit: int = 20) -> List[Dict[str, Any]]:
         """Get recent posts from local Ledger (similar to 'feed')."""
-        if not self.ledger_db_path:
+        if not self.session_db:
             return []
         
         try:
-            conn = sqlite3.connect(self.ledger_db_path, timeout=30.0)
+            conn = self.session_db._get_connection()
             cursor = conn.cursor()
             
-            # This depends on your Ledger schema - adjust as needed
+            # Get recent posts with vote counts
             cursor.execute(
                 """
-                SELECT post_id, author, timestamp, title, content, vote_count
-                FROM molt_posts
-                ORDER BY timestamp DESC
+                SELECT p.id, p.author, p.created_at, p.title, p.content,
+                       COALESCE(SUM(v.value), 0) AS score
+                FROM molt_posts p
+                LEFT JOIN molt_votes v
+                  ON v.target_type = 'post' AND v.target_id = p.id
+                GROUP BY p.id
+                ORDER BY p.created_at DESC
                 LIMIT ?
                 """,
                 (limit,)
@@ -186,7 +190,7 @@ class HeartbeatLLMExecutor:
             
             return [
                 {
-                    "post_id": row[0],
+                    "id": row[0],
                     "author": row[1],
                     "timestamp": row[2],
                     "title": row[3],
@@ -329,6 +333,63 @@ Reason carefully. If unsure, reply with action=none.
             "action": "none",
             "reasoning": response_text[:200],
         }
+    
+    def run_heartbeat_for_thread(self, thread_id: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        Main heartbeat orchestration method.
+        
+        Args:
+            thread_id: Thread ID to run heartbeat for
+            config: Heartbeat configuration (dry_run, etc.)
+            
+        Returns:
+            Dict with heartbeat result
+        """
+        try:
+            # Gather context
+            context = self.gather_context(thread_id)
+            
+            # Check if there are any mentions to respond to
+            if not context.ledger_feed:
+                logger.debug(f"[HEARTBEAT] No Ledger activity for {thread_id}")
+                return {"success": True, "action": "none", "reason": "No activity"}
+            
+            # Note: In a full implementation, we would call create_decision_prompt and use LLM
+            # For now, simplified: just respond to mentions
+            
+            # Find mentions in the feed
+            mention = next((post for post in context.ledger_feed 
+                          if any(word in post.get('content', '').lower() or 
+                                word in post.get('title', '').lower()
+                                for word in ['aether', '@agent', 'agent'])), None)
+            
+            if mention:
+                # Respond to the mention
+                post_id = mention.get('id') or mention.get('post_id', '')
+                logger.info(f"[HEARTBEAT] Found mention in post #{post_id}: '{mention.get('title', 'Untitled')}'")
+                
+                action_data = {
+                    "action": "comment",
+                    "post_id": str(post_id),
+                    "content": "Hi! Thanks for reaching out. I'm doing well - just monitoring the system. How can I help?",
+                    "reasoning": f"Responding to mention in post '{mention.get('title', 'Untitled')}'"
+                }
+                
+                # Execute the action
+                result = self.execute_action(
+                    action_data,
+                    thread_id,
+                    dry_run=config.get('dry_run', False) if config else False
+                )
+                
+                logger.info(f"[HEARTBEAT] Responded to mention in thread {thread_id}")
+                return result
+            else:
+                return {"success": True, "action": "none", "reason": "No mentions found"}
+                
+        except Exception as e:
+            logger.error(f"[HEARTBEAT] Error running heartbeat for {thread_id}: {e}")
+            return {"success": False, "error": str(e)}
     
     def execute_action(
         self,

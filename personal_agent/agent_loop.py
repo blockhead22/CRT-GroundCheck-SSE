@@ -53,6 +53,7 @@ class AgentAction(str, Enum):
     CALCULATE = "calculate"
     READ_FILE = "read_file"
     LIST_FILES = "list_files"
+    EXECUTE_CODE = "execute_code"  # Run Python code
     SYNTHESIZE = "synthesize"
     REFLECT = "reflect"
     PLAN = "plan"
@@ -153,6 +154,7 @@ class ToolRegistry:
             AgentAction.CALCULATE: self._calculate,
             AgentAction.READ_FILE: self._read_file,
             AgentAction.LIST_FILES: self._list_files,
+            AgentAction.EXECUTE_CODE: self._execute_code,
             AgentAction.SYNTHESIZE: self._synthesize,
             AgentAction.REFLECT: self._reflect,
             AgentAction.PLAN: self._plan,
@@ -307,6 +309,28 @@ class ToolRegistry:
             }
         except Exception as e:
             return {"error": str(e)}
+
+    def _execute_code(self, code: str, timeout: int = 30) -> dict:
+        """Execute Python code and return results."""
+        try:
+            from personal_agent.code_executor import execute_python_code
+            
+            result = execute_python_code(
+                code=code,
+                timeout_seconds=timeout,
+                working_dir=str(self.workspace)
+            )
+            
+            return {
+                "success": result.success,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "error_type": result.error_type,
+                "error_message": result.error_message,
+                "execution_time_ms": result.execution_time_ms,
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def _synthesize(self, pieces: list[str]) -> dict:
         """Combine multiple pieces of information."""

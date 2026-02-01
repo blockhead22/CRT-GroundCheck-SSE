@@ -115,7 +115,22 @@ class OllamaClient:
                 # Return generator for streaming
                 return response
             else:
-                return response['message']['content']
+                # Handle both dict-style and pydantic responses
+                # Also handle deepseek-r1's "thinking" field - it puts reasoning there
+                # and may leave content empty or minimal
+                if hasattr(response, 'message'):
+                    # Pydantic model (newer ollama)
+                    msg = response.message
+                    content = msg.content if msg.content else ""
+                    thinking = getattr(msg, 'thinking', None) or ""
+                    
+                    # If content is very short but thinking has substance, use thinking
+                    if len(content.strip()) < 20 and len(thinking.strip()) > 50:
+                        return thinking
+                    return content
+                else:
+                    # Dict-style response (older ollama)
+                    return response['message']['content']
         
         except Exception as e:
             error_msg = str(e)
@@ -154,7 +169,19 @@ class OllamaClient:
                     'temperature': temperature
                 }
             )
-            return response['message']['content']
+            
+            # Handle both dict-style and pydantic responses
+            # Also handle deepseek-r1's "thinking" field
+            if hasattr(response, 'message'):
+                msg = response.message
+                content = msg.content if msg.content else ""
+                thinking = getattr(msg, 'thinking', None) or ""
+                
+                if len(content.strip()) < 20 and len(thinking.strip()) > 50:
+                    return thinking
+                return content
+            else:
+                return response['message']['content']
         except Exception as e:
             return f"[Ollama error: {e}]"
     

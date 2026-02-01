@@ -30,7 +30,7 @@ export function Composer(props: {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-2xl glass-card px-4 py-3">
+    <div className="flex items-center gap-2 sm:gap-3 rounded-2xl glass-card px-3 py-2 sm:px-4 sm:py-3">
       <input
         value={text}
         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setText(e.target.value)}
@@ -39,15 +39,18 @@ export function Composer(props: {
         }}
         disabled={props.disabled || props.researching}
         placeholder={props.placeholder ?? 'Ask something…'}
-        className="w-full bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none disabled:opacity-60"
+        className="w-full min-w-0 bg-transparent text-sm sm:text-base text-white placeholder:text-white/40 focus:outline-none disabled:opacity-60"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck="false"
       />
       {props.onResearch ? (
         <motion.button
           whileHover={canSend && !props.researching ? { scale: 1.03 } : undefined}
-          whileTap={canSend && !props.researching ? { scale: 0.98 } : undefined}
+          whileTap={canSend && !props.researching ? { scale: 0.95 } : undefined}
           onClick={research}
           disabled={props.disabled || !canSend || props.researching}
-          className="grid h-10 w-10 place-items-center rounded-xl bg-sky-500 text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
+          className="grid h-11 w-11 sm:h-10 sm:w-10 flex-none place-items-center rounded-xl bg-sky-500 text-white hover:bg-sky-400 active:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-50"
           aria-label="Research"
           title="Research this topic"
         >
@@ -60,10 +63,10 @@ export function Composer(props: {
       ) : null}
       <motion.button
         whileHover={canSend && !props.researching ? { scale: 1.03 } : undefined}
-        whileTap={canSend && !props.researching ? { scale: 0.98 } : undefined}
+        whileTap={canSend && !props.researching ? { scale: 0.95 } : undefined}
         onClick={send}
         disabled={props.disabled || !canSend || props.researching}
-        className="grid h-10 w-10 place-items-center rounded-xl accent-button text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+        className="grid h-11 w-11 sm:h-10 sm:w-10 flex-none place-items-center rounded-xl accent-button text-white hover:brightness-110 active:brightness-90 disabled:cursor-not-allowed disabled:opacity-50"
         aria-label="Send"
         title="Send"
       >

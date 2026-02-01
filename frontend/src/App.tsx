@@ -519,8 +519,8 @@ export default function App() {
 
   return (
     <div className="aetheris-dark h-screen w-full overflow-hidden">
-      <div className="mx-auto h-full max-w-[1480px] px-4 py-6">
-        <div className="flex h-full min-h-0 gap-5">
+      <div className="mx-auto h-full max-w-[1480px] px-2 py-2 sm:px-4 sm:py-4 lg:py-6">
+        <div className="flex h-full min-h-0 gap-2 sm:gap-3 lg:gap-5">
           <Sidebar
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
@@ -540,7 +540,7 @@ export default function App() {
             onRequestRenameThread={openRename}
           />
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 sm:gap-3 lg:gap-4">
             <Topbar
               onToggleSidebarMobile={() => setSidebarOpen((v) => !v)}
               title="CRT"
@@ -557,7 +557,7 @@ export default function App() {
             />
 
             <div className="relative min-h-0 flex-1">
-              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] glass-panel">
+              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[20px] sm:rounded-[24px] lg:rounded-[28px] glass-panel">
                 {navActive === 'chat' ? (
                   selectedThread ? (
                     <ChatThreadView

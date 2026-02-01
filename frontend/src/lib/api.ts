@@ -196,7 +196,12 @@ function getApiBaseUrlInternal(): string {
   // Default behavior:
   // - Dev: same-origin (works with Vite proxy for /api and /health)
   // - Prod: explicit loopback (for the common “API on :8123” setup)
-  const fallback = import.meta.env.DEV ? '' : 'http://127.0.0.1:8123'
+  let fallback = ''
+  if (!import.meta.env.DEV && typeof window !== 'undefined') {
+    // In production, default to same host as frontend but on API port
+    fallback = `http://${window.location.hostname}:8123`
+  }
+  // Original line replaced for external access
   const base = (fromStorage && fromStorage.trim()) || (fromEnv && String(fromEnv).trim()) || fallback
   return base.replace(/\/$/, '')
 }

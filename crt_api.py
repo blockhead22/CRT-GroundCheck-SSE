@@ -769,13 +769,16 @@ def create_app() -> FastAPI:
     app.state.journal_self_reply_loop = journal_self_reply_loop
     app.state.heartbeat_loop = heartbeat_loop
 
-    # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list.
+    # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list or "*" for all.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-    origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+    if cors_env.strip() == "*":
+        origins = ["*"]
+    else:
+        origins = [o.strip() for o in cors_env.split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins if origins else ["*"],
-        allow_credentials=True,
+        allow_credentials=True if origins != ["*"] else False,  # credentials not allowed with wildcard
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -4742,6 +4745,249 @@ def create_app() -> FastAPI:
             logger.error(f"Failed to write HEARTBEAT.md: {e}")
             raise HTTPException(status_code=500, detail=str(e))
 
+    # ==================== CODE EXECUTOR ENDPOINTS ====================
+    # Let the LLM write and execute Python code with retry loops
+    
+    from personal_agent.code_executor import (
+        execute_python_code,
+        run_code_with_retry,
+        get_execution_history,
+        clear_execution_history,
+        CodeWorkLoop,
+    )
+    
+    class CodeExecuteRequest(BaseModel):
+        code: str = Field(..., description="Python code to execute")
+        timeout_seconds: int = Field(30, description="Execution timeout")
+        task_id: Optional[str] = Field(None, description="Optional task ID")
+    
+    class CodeExecuteResponse(BaseModel):
+        success: bool
+        stdout: str
+        stderr: str
+        error_type: Optional[str] = None
+        error_message: Optional[str] = None
+        execution_time_ms: int
+        task_id: str
+    
+    class CodeRetryRequest(BaseModel):
+        code: str = Field(..., description="Python code to execute")
+        max_retries: int = Field(3, description="Number of retry attempts")
+        timeout_seconds: int = Field(30, description="Per-attempt timeout")
+    
+    class CodeRetryResponse(BaseModel):
+        success: bool
+        attempts: List[Dict[str, Any]]
+        final_output: Optional[str] = None
+        final_error: Optional[str] = None
+    
+    class CodeTaskRequest(BaseModel):
+        task_description: str = Field(..., description="What the LLM should accomplish")
+        context: Optional[str] = Field(None, description="Additional context")
+        thread_id: Optional[str] = Field(None, description="Thread for memory context")
+        max_retries: int = Field(3, description="Max retry attempts")
+        timeout_seconds: int = Field(30, description="Per-attempt timeout")
+    
+    class CodeTaskResponse(BaseModel):
+        task_id: str
+        status: str
+        description: str
+        attempts: List[Dict[str, Any]]
+        started_at: str
+        completed_at: Optional[str] = None
+    
+    @app.post("/api/code/execute", response_model=CodeExecuteResponse)
+    def api_execute_code(req: CodeExecuteRequest):
+        """Execute Python code directly."""
+        result = execute_python_code(
+            code=req.code,
+            timeout_seconds=req.timeout_seconds,
+            task_id=req.task_id
+        )
+        
+        return CodeExecuteResponse(
+            success=result.success,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            error_type=result.error_type,
+            error_message=result.error_message,
+            execution_time_ms=result.execution_time_ms,
+            task_id=result.task_id
+        )
+    
+    @app.post("/api/code/execute-retry", response_model=CodeRetryResponse)
+    def api_execute_with_retry(req: CodeRetryRequest):
+        """Execute code with automatic retry on failure."""
+        result = run_code_with_retry(
+            code_or_task=req.code,
+            is_task=False,
+            max_retries=req.max_retries,
+            timeout=req.timeout_seconds
+        )
+        
+        return CodeRetryResponse(
+            success=result.get("success", False),
+            attempts=result.get("attempts", []),
+            final_output=result.get("final_output"),
+            final_error=result.get("final_error")
+        )
+    
+    # Simple LLM wrapper for code generation
+    class CodeLLMExecutor:
+        """Wrapper to use Ollama for code generation."""
+        async def generate(self, prompt: str, thread_id: str = None, system_prompt: str = None):
+            client = OllamaClient()
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+            
+            response = client.chat(messages=messages)
+            return response.get("message", {}).get("content", "")
+    
+    _code_llm_executor = CodeLLMExecutor()
+    
+    @app.post("/api/code/task", response_model=CodeTaskResponse)
+    async def api_code_task(req: CodeTaskRequest):
+        """
+        Run an autonomous code task - LLM writes code, executes, retries on failure.
+        
+        This is the full work loop: describe what you want, LLM writes code,
+        runs it, and if it fails, analyzes errors and tries again.
+        """
+        # Create work loop with our LLM executor
+        work_loop = CodeWorkLoop(
+            llm_executor=_code_llm_executor,
+            max_retries=req.max_retries,
+            timeout_seconds=req.timeout_seconds
+        )
+        
+        result = await work_loop.run_task(
+            task_description=req.task_description,
+            context=req.context,
+            thread_id=req.thread_id
+        )
+        
+        return CodeTaskResponse(
+            task_id=result["task_id"],
+            status=result["status"],
+            description=req.task_description,
+            attempts=result["attempts"],
+            started_at=result["started_at"],
+            completed_at=result.get("completed_at")
+        )
+    
+    @app.get("/api/code/history")
+    def api_code_history(limit: int = Query(20, description="Max results")):
+        """Get recent code execution history."""
+        return {
+            "history": get_execution_history(limit),
+            "total": len(get_execution_history(100))
+        }
+    
+    @app.delete("/api/code/history")
+    def api_clear_code_history():
+        """Clear code execution history."""
+        clear_execution_history()
+        return {"success": True, "message": "History cleared"}
+    
+    # ==================== BACKGROUND CODE WORKER ====================
+    
+    from personal_agent.code_worker import (
+        get_code_worker,
+        submit_code_task,
+        get_task_result,
+        get_pending_tasks,
+        get_worker_status,
+    )
+    
+    class BackgroundTaskRequest(BaseModel):
+        code: Optional[str] = Field(None, description="Direct Python code to execute")
+        task_description: Optional[str] = Field(None, description="Task for LLM to write code for")
+        context: Optional[str] = Field(None, description="Additional context")
+        max_retries: int = Field(3, description="Max retry attempts")
+        timeout_seconds: int = Field(30, description="Execution timeout")
+        priority: int = Field(0, description="Task priority (higher = sooner)")
+        thread_id: Optional[str] = Field(None, description="Thread ID for context")
+    
+    @app.on_event("startup")
+    def start_code_worker():
+        """Start the background code worker on app startup."""
+        try:
+            # Start without LLM initially - it can be added later
+            worker = get_code_worker()
+            worker.start()
+            logger.info("Background code worker started")
+        except Exception as e:
+            logger.warning(f"Failed to start code worker: {e}")
+    
+    @app.on_event("shutdown") 
+    def stop_code_worker():
+        """Stop the background code worker on shutdown."""
+        try:
+            worker = get_code_worker()
+            worker.stop()
+        except Exception as e:
+            logger.warning(f"Failed to stop code worker: {e}")
+    
+    @app.post("/api/code/background/submit")
+    def api_submit_background_task(req: BackgroundTaskRequest):
+        """
+        Submit a task for background execution.
+        
+        The task runs asynchronously. Use /api/code/background/result/{task_id}
+        to check the result.
+        """
+        if not req.code and not req.task_description:
+            raise HTTPException(400, "Must provide either code or task_description")
+        
+        task_id = submit_code_task(
+            code=req.code,
+            task_description=req.task_description,
+            context=req.context,
+            max_retries=req.max_retries,
+            timeout=req.timeout_seconds,
+            priority=req.priority,
+            thread_id=req.thread_id
+        )
+        
+        return {
+            "task_id": task_id,
+            "status": "submitted",
+            "message": "Task submitted for background execution"
+        }
+    
+    @app.get("/api/code/background/result/{task_id}")
+    def api_get_background_result(task_id: str):
+        """Get the result of a background task."""
+        result = get_task_result(task_id)
+        
+        if result is None:
+            # Check if still pending
+            pending = get_pending_tasks()
+            for task in pending:
+                if task["task_id"] == task_id:
+                    return {"task_id": task_id, "status": "pending"}
+            
+            # Check if running
+            worker = get_code_worker()
+            if task_id in worker._active_tasks:
+                return {"task_id": task_id, "status": "running"}
+            
+            raise HTTPException(404, f"Task not found: {task_id}")
+        
+        return result
+    
+    @app.get("/api/code/background/status")
+    def api_background_worker_status():
+        """Get background worker status."""
+        return get_worker_status()
+    
+    @app.get("/api/code/background/pending")
+    def api_pending_tasks():
+        """Get list of pending tasks."""
+        return {"pending": get_pending_tasks()}
+
     return app
 
 
@@ -4750,6 +4996,9 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=int(os.getenv("PORT", "8000")))
+    
+    # Use 0.0.0.0 to listen on all interfaces for external access
+    host = os.getenv("CRT_HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(app, host=host, port=port)
 
