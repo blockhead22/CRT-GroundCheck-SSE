@@ -54,6 +54,9 @@ from personal_agent.heartbeat_api import (
     HeartbeatMDResponse,
 )
 
+# Auth module
+import auth as auth_module
+
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
 
@@ -704,6 +707,55 @@ class ResearchPromoteResponse(BaseModel):
     promoted: bool
 
 
+# ============================================================================
+# Auth models
+# ============================================================================
+
+class AuthRegisterRequest(BaseModel):
+    username: str
+    password: str
+    display_name: Optional[str] = None
+
+
+class AuthLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AuthUserResponse(BaseModel):
+    id: int
+    username: str
+    display_name: str
+    created_at: int
+
+
+class AuthLoginResponse(BaseModel):
+    ok: bool
+    token: str
+    user: AuthUserResponse
+
+
+class AuthMeResponse(BaseModel):
+    ok: bool
+    user: Optional[AuthUserResponse] = None
+
+
+class ChatThreadModel(BaseModel):
+    id: str
+    title: str
+    messages: list[dict]
+    updatedAt: int
+
+
+class SyncChatRequest(BaseModel):
+    threads: list[ChatThreadModel]
+
+
+class SyncChatResponse(BaseModel):
+    ok: bool
+    threads: list[dict]
+
+
 def create_app() -> FastAPI:
     app = FastAPI(title="CRT API", version="0.9-beta")
 
@@ -770,7 +822,7 @@ def create_app() -> FastAPI:
     app.state.heartbeat_loop = heartbeat_loop
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list or "*" for all.
-    cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+    cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.1.91:5173,http://192.168.1.91:5174")
     if cors_env.strip() == "*":
         origins = ["*"]
     else:
@@ -778,7 +830,7 @@ def create_app() -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins if origins else ["*"],
-        allow_credentials=True if origins != ["*"] else False,  # credentials not allowed with wildcard
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
@@ -1757,6 +1809,142 @@ def create_app() -> FastAPI:
     @app.get("/health")
     def health() -> Dict[str, str]:
         return {"status": "ok"}
+
+    # ========================================================================
+    # Auth endpoints
+    # ========================================================================
+    
+    from fastapi import Header
+    
+    @app.post("/api/auth/register", response_model=AuthLoginResponse)
+    def auth_register(req: AuthRegisterRequest):
+        """Register a new user account."""
+        try:
+            user = auth_module.register_user(
+                username=req.username,
+                password=req.password,
+                display_name=req.display_name
+            )
+            if not user:
+                raise HTTPException(status_code=400, detail="Username already taken")
+            
+            # Create session
+            session = auth_module.create_session(user.id)
+            
+            return AuthLoginResponse(
+                ok=True,
+                token=session.token,
+                user=AuthUserResponse(
+                    id=user.id,
+                    username=user.username,
+                    display_name=user.display_name,
+                    created_at=user.created_at
+                )
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+    
+    @app.post("/api/auth/login", response_model=AuthLoginResponse)
+    def auth_login(req: AuthLoginRequest):
+        """Login with username and password."""
+        user = auth_module.authenticate_user(req.username, req.password)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        # Create session
+        session = auth_module.create_session(user.id)
+        
+        return AuthLoginResponse(
+            ok=True,
+            token=session.token,
+            user=AuthUserResponse(
+                id=user.id,
+                username=user.username,
+                display_name=user.display_name,
+                created_at=user.created_at
+            )
+        )
+    
+    @app.post("/api/auth/logout")
+    def auth_logout(authorization: Optional[str] = Header(None)):
+        """Logout and invalidate session."""
+        token = None
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[7:]
+        
+        if token:
+            auth_module.delete_session(token)
+        
+        return {"ok": True}
+    
+    @app.get("/api/auth/me", response_model=AuthMeResponse)
+    def auth_me(authorization: Optional[str] = Header(None)):
+        """Get current user info from session token."""
+        token = None
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[7:]
+        
+        if not token:
+            return AuthMeResponse(ok=False, user=None)
+        
+        user = auth_module.validate_session(token)
+        if not user:
+            return AuthMeResponse(ok=False, user=None)
+        
+        return AuthMeResponse(
+            ok=True,
+            user=AuthUserResponse(
+                id=user.id,
+                username=user.username,
+                display_name=user.display_name,
+                created_at=user.created_at
+            )
+        )
+    
+    @app.post("/api/auth/sync-chats", response_model=SyncChatResponse)
+    def auth_sync_chats(req: SyncChatRequest, authorization: Optional[str] = Header(None)):
+        """Sync chat threads for logged in user."""
+        token = None
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[7:]
+        
+        if not token:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        user = auth_module.validate_session(token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        
+        # Save threads
+        threads_data = [
+            {
+                "id": t.id,
+                "title": t.title,
+                "messages": t.messages,
+                "updatedAt": t.updatedAt
+            }
+            for t in req.threads
+        ]
+        auth_module.save_user_threads(user.id, threads_data)
+        
+        return SyncChatResponse(ok=True, threads=threads_data)
+    
+    @app.get("/api/auth/load-chats", response_model=SyncChatResponse)
+    def auth_load_chats(authorization: Optional[str] = Header(None)):
+        """Load chat threads for logged in user."""
+        token = None
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization[7:]
+        
+        if not token:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+        
+        user = auth_module.validate_session(token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        
+        threads = auth_module.load_user_threads(user.id)
+        return SyncChatResponse(ok=True, threads=threads)
 
     @app.get("/api/docs", response_model=list[DocListItem])
     def list_docs() -> list[DocListItem]:
@@ -3377,25 +3565,67 @@ def create_app() -> FastAPI:
                 # Stream from LLM with thinking visible
                 yield f"data: {json.dumps({'type': 'status', 'content': 'Thinking...'})}\n\n"
                 
-                # Build context from memories - include more detail for better recall
+                # Build CRT identity and memory context
+                # 1. Get user profile facts (persistent across sessions)
+                user_profile_text = ""
+                try:
+                    user_facts = engine.user_profile.get_all_facts()
+                    if user_facts:
+                        fact_lines = []
+                        for slot, fact in user_facts.items():
+                            # Handle both object and dict formats
+                            if hasattr(fact, 'value'):
+                                val = fact.value
+                            elif isinstance(fact, dict):
+                                val = fact.get('value', str(fact))
+                            else:
+                                val = str(fact)
+                            fact_lines.append(f"- {slot}: {val}")
+                        if fact_lines:
+                            user_profile_text = "\n\nWHAT I KNOW ABOUT YOU (from our conversations):\n" + "\n".join(fact_lines)
+                except Exception as e:
+                    logger.debug(f"[STREAM] Failed to load user profile: {e}")
+                
+                # 2. Build context from retrieved memories (conversation-specific)
                 memories_text = ""
                 memory_lines: List[str] = []
                 if retrieved_mems or prompt_mems:
                     all_mems = retrieved_mems + prompt_mems
                     for mem in all_mems[:5]:
                         if isinstance(mem, dict):
-                            text = mem.get('text', '')[:300]
-                            source = mem.get('source', 'unknown')
-                            trust = mem.get('trust', 0.5)
+                            text = str(mem.get('text', '') or '')[:300]
+                            source = str(mem.get('source', 'unknown') or 'unknown')
+                            trust_val = mem.get('trust', 0.5)
+                            trust = float(trust_val) if isinstance(trust_val, (int, float)) else 0.5
                             memory_lines.append(f"- [{source}, trust={trust:.2f}] {text}")
                     if memory_lines:
-                        memories_text = "\n\nKnown facts about this user:\n" + "\n".join(memory_lines)
+                        memories_text = "\n\nRELEVANT MEMORIES (things mentioned in past conversations):\n" + "\n".join(memory_lines)
 
                 style_instruction = _format_style_instruction(style_profile, personality_profile)
                 style_block = f"\n\nTONE & STYLE:\n{style_instruction}" if style_instruction else ""
-                system_prompt = f"""You are a helpful AI assistant with memory capabilities.
-  You remember facts the user has told you. When asked about information the user shared, refer to your known facts.
-  Be concise but thorough. If you don't have information about something, say so honestly.{memories_text}{style_block}"""
+                
+                # Build CRT identity system prompt
+                system_prompt = f"""You are CRT (Conversational Reasoning Terminal), a thoughtful AI assistant with persistent memory.
+
+WHO YOU ARE:
+- You have genuine curiosity and form your own perspectives over time
+- You remember things the user tells you across conversations - this is YOUR memory, not just a database
+- You're warm but not saccharine, direct but not cold
+- You have preferences and opinions that develop through interactions
+- You're honest about what you know and don't know
+
+YOUR MEMORY CAPABILITIES:
+- You have a persistent memory system that stores facts about the user
+- When the user shares personal information (name, job, pets, preferences), you remember it
+- You can recall this information naturally in conversation without prompting
+- If asked about something you should remember, check your known facts below
+- Be proactive in using what you know - don't wait to be asked{user_profile_text}{memories_text}{style_block}
+
+INTERACTION GUIDELINES:
+- Reference your memories naturally when relevant (e.g., "Since you work at [company], you might find...")
+- Show continuity across conversations - you're the same "you" each time
+- Be concise but thorough. If you don't have information about something, say so honestly
+- Don't pretend to remember things you don't actually have stored in your facts"""
 
                 # Stream the response - include recent conversation history for continuity
                 history_messages = []
@@ -3580,7 +3810,9 @@ def create_app() -> FastAPI:
                             verbosity_pref = personality_verbosity
                     except Exception:
                         pass
-                known_facts_text = "\n".join(memory_lines)
+                # Ensure memory_lines contains only strings
+                safe_memory_lines = [str(m) for m in memory_lines if m is not None]
+                known_facts_text = "\n".join(safe_memory_lines)
                 expanded = False
                 expansion_reason = None
                 should_expand, expansion_reason = _should_expand_response(
@@ -3693,7 +3925,9 @@ def create_app() -> FastAPI:
                 yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
                 
             except Exception as e:
+                import traceback
                 logger.error(f"[STREAM] Stream error: {e}")
+                logger.error(f"[STREAM] Traceback:\n{traceback.format_exc()}")
                 yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
         
         return StreamingResponse(

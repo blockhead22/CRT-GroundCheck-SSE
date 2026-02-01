@@ -192,16 +192,28 @@ export type MoltThread = {
 
 function getApiBaseUrlInternal(): string {
   const fromEnv = import.meta.env.VITE_API_BASE_URL
-  const fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
-  // Default behavior:
-  // - Dev: same-origin (works with Vite proxy for /api and /health)
-  // - Prod: explicit loopback (for the common “API on :8123” setup)
+  let fromStorage = typeof window !== 'undefined' ? window.localStorage.getItem('crt_api_base_url') : null
+  
+  // Calculate what the fallback should be based on current hostname
   let fallback = ''
-  if (!import.meta.env.DEV && typeof window !== 'undefined') {
-    // In production, default to same host as frontend but on API port
-    fallback = `http://${window.location.hostname}:8123`
+  if (typeof window !== 'undefined') {
+    // Always use port 8123 for the API
+    const hostname = window.location.hostname
+    fallback = `http://${hostname}:8123`
   }
-  // Original line replaced for external access
+  
+  // Clear stale localStorage values that don't match current host context
+  if (fromStorage && typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    const isExternalAccess = hostname !== 'localhost' && hostname !== '127.0.0.1'
+    const storageIsLoopback = fromStorage.includes('127.0.0.1') || fromStorage.includes('localhost')
+    if (isExternalAccess && storageIsLoopback) {
+      // Clear stale loopback URL when accessing externally
+      window.localStorage.removeItem('crt_api_base_url')
+      fromStorage = null
+    }
+  }
+  
   const base = (fromStorage && fromStorage.trim()) || (fromEnv && String(fromEnv).trim()) || fallback
   return base.replace(/\/$/, '')
 }
@@ -1252,4 +1264,154 @@ export async function getTrainingStats(): Promise<{
   high_hallucination_risk_count: number
 }> {
   return fetchJson('/api/training/stats')
+}
+
+// =============================================================================
+// Auth API
+// =============================================================================
+
+export type AuthUser = {
+  id: number
+  username: string
+  display_name: string
+  created_at: number
+}
+
+export type AuthLoginResponse = {
+  ok: boolean
+  token: string
+  user: AuthUser
+}
+
+export type AuthMeResponse = {
+  ok: boolean
+  user: AuthUser | null
+}
+
+const AUTH_TOKEN_KEY = 'crt_auth_token'
+
+export function getAuthToken(): string | null {
+  return typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_TOKEN_KEY) : null
+}
+
+export function setAuthToken(token: string | null): void {
+  if (typeof window === 'undefined') return
+  if (token) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token)
+  } else {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY)
+  }
+}
+
+export async function authRegister(username: string, password: string, displayName?: string): Promise<AuthLoginResponse> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, display_name: displayName }),
+  })
+  
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail || `Registration failed: ${res.statusText}`)
+  }
+  
+  const data = await res.json() as AuthLoginResponse
+  if (data.ok && data.token) {
+    setAuthToken(data.token)
+  }
+  return data
+}
+
+export async function authLogin(username: string, password: string): Promise<AuthLoginResponse> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  })
+  
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.detail || `Login failed: ${res.statusText}`)
+  }
+  
+  const data = await res.json() as AuthLoginResponse
+  if (data.ok && data.token) {
+    setAuthToken(data.token)
+  }
+  return data
+}
+
+export async function authLogout(): Promise<void> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  
+  try {
+    await fetch(`${base}/api/auth/logout`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    })
+  } finally {
+    setAuthToken(null)
+  }
+}
+
+export async function authGetMe(): Promise<AuthMeResponse> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  
+  if (!token) {
+    return { ok: false, user: null }
+  }
+  
+  try {
+    const res = await fetch(`${base}/api/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    
+    if (!res.ok) {
+      return { ok: false, user: null }
+    }
+    
+    return await res.json() as AuthMeResponse
+  } catch {
+    return { ok: false, user: null }
+  }
+}
+
+export async function authSyncChats(threads: Array<{ id: string; title: string; messages: unknown[]; updatedAt: number }>): Promise<void> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  
+  if (!token) return
+  
+  await fetch(`${base}/api/auth/sync-chats`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ threads }),
+  })
+}
+
+export async function authLoadChats(): Promise<Array<{ id: string; title: string; messages: unknown[]; updatedAt: number }>> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  
+  if (!token) return []
+  
+  try {
+    const res = await fetch(`${base}/api/auth/load-chats`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    
+    if (!res.ok) return []
+    
+    const data = await res.json()
+    return data.threads || []
+  } catch {
+    return []
+  }
 }

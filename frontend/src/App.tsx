@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import type { ChatThread, NavId, QuickAction } from './types'
 import { Sidebar } from './components/Sidebar'
@@ -11,6 +11,7 @@ import { SourceInspector } from './components/SourceInspector'
 import { AgentPanel } from './components/AgentPanel'
 import { DemoModeLightbox } from './components/DemoModeLightbox'
 import { WelcomeTutorial } from './components/onboarding/WelcomeTutorial'
+import { LoginScreen } from './components/LoginScreen'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
@@ -19,11 +20,16 @@ import { JournalPage } from './pages/JournalPage'
 import { MoltbookPage } from './pages/MoltbookPage'
 import { ShowcasePage } from './pages/ShowcasePage'
 import { newId } from './lib/id'
-import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, type AuthUser } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
 export default function App() {
+  // Auth state
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [showLogin, setShowLogin] = useState(false)
+  
   const [navActive, setNavActive] = useState<NavId>('chat')
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -127,6 +133,64 @@ export default function App() {
       return remaining
     })
   }
+
+  // Check for existing auth session on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const token = getAuthToken()
+      if (!token) {
+        setAuthLoading(false)
+        // Show login for first-time users
+        const hasSeenLogin = localStorage.getItem('crt-seen-login')
+        if (!hasSeenLogin) {
+          setShowLogin(true)
+        }
+        return
+      }
+
+      try {
+        const result = await authGetMe()
+        if (result.ok && result.user) {
+          setAuthUser(result.user)
+          // Load user's chat history from server
+          const serverThreads = await authLoadChats()
+          if (serverThreads.length > 0) {
+            setThreads(serverThreads.map(t => ({
+              id: t.id,
+              title: t.title,
+              messages: t.messages as any[],
+              updatedAt: t.updatedAt
+            })))
+            if (serverThreads[0]) {
+              setSelectedThreadId(serverThreads[0].id)
+            }
+          }
+        }
+      } catch {
+        // Session invalid
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    checkAuth()
+  }, [])
+
+  // Sync threads to server when logged in
+  useEffect(() => {
+    if (!authUser) return
+    
+    const syncTimer = window.setTimeout(() => {
+      authSyncChats(threads.map(t => ({
+        id: t.id,
+        title: t.title,
+        messages: t.messages,
+        updatedAt: t.updatedAt
+      }))).catch(() => {})
+    }, 2000) // Debounce sync
+    
+    return () => window.clearTimeout(syncTimer)
+  }, [authUser, threads])
 
   useEffect(() => {
     // Persist threads + selection for the Recent chats sidebar.
@@ -517,6 +581,59 @@ export default function App() {
     }
   }
 
+  const handleLogin = async (user: AuthUser) => {
+    setAuthUser(user)
+    setShowLogin(false)
+    localStorage.setItem('crt-seen-login', 'true')
+    
+    // Load user's chat history
+    try {
+      const serverThreads = await authLoadChats()
+      if (serverThreads.length > 0) {
+        setThreads(serverThreads.map(t => ({
+          id: t.id,
+          title: t.title,
+          messages: t.messages as any[],
+          updatedAt: t.updatedAt
+        })))
+        if (serverThreads[0]) {
+          setSelectedThreadId(serverThreads[0].id)
+        }
+      }
+    } catch {
+      // Keep local threads
+    }
+  }
+
+  const handleLogout = async () => {
+    await authLogout()
+    setAuthUser(null)
+  }
+
+  const handleSkipLogin = () => {
+    setShowLogin(false)
+    localStorage.setItem('crt-seen-login', 'true')
+  }
+
+  // Show login screen
+  if (showLogin && !authUser) {
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        onSkip={handleSkipLogin}
+      />
+    )
+  }
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="aetheris-dark h-screen w-full flex items-center justify-center">
+        <div className="text-white/60">Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="aetheris-dark h-screen w-full overflow-hidden">
       <div className="mx-auto h-full max-w-[1480px] px-2 py-2 sm:px-4 sm:py-4 lg:py-6">
@@ -538,13 +655,19 @@ export default function App() {
             onNewThread={newThread}
             onDeleteThread={deleteThread}
             onRequestRenameThread={openRename}
+            apiStatus={apiStatus}
+            apiBaseUrl={apiBaseUrl}
+            onChangeApiBaseUrl={setApiBaseUrl}
+            authUser={authUser}
+            onLogout={handleLogout}
+            onShowLogin={() => setShowLogin(true)}
           />
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 sm:gap-3 lg:gap-4">
             <Topbar
               onToggleSidebarMobile={() => setSidebarOpen((v) => !v)}
               title="CRT"
-              userName={userName}
+              userName={authUser?.display_name || userName}
               userEmail={userEmail}
               apiStatus={apiStatus}
               apiBaseUrl={apiBaseUrl}

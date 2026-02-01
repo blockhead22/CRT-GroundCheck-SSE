@@ -810,12 +810,28 @@ class ReasoningEngine:
                 fading = trends.get("fading") or []
                 
                 if rising:
-                    rising_topics = ", ".join(rising[:2])
-                    reflection_section.append(f"Recently increasing focus on: {rising_topics}")
+                    # Handle both string and dict formats for topics
+                    rising_strs = []
+                    for t in rising[:2]:
+                        if isinstance(t, str):
+                            rising_strs.append(t)
+                        elif isinstance(t, dict):
+                            rising_strs.append(str(t.get("topic", t.get("name", str(t)))))
+                    if rising_strs:
+                        rising_topics = ", ".join(rising_strs)
+                        reflection_section.append(f"Recently increasing focus on: {rising_topics}")
                 
                 if fading:
-                    fading_topics = ", ".join(fading[:2])
-                    reflection_section.append(f"Decreased interest in: {fading_topics}")
+                    # Handle both string and dict formats for topics
+                    fading_strs = []
+                    for t in fading[:2]:
+                        if isinstance(t, str):
+                            fading_strs.append(t)
+                        elif isinstance(t, dict):
+                            fading_strs.append(str(t.get("topic", t.get("name", str(t)))))
+                    if fading_strs:
+                        fading_topics = ", ".join(fading_strs)
+                        reflection_section.append(f"Decreased interest in: {fading_topics}")
                 
                 reflection_section.append(f"(Preference confidence: {confidence:.0%})")
 
