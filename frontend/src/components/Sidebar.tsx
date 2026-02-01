@@ -8,7 +8,6 @@ const nav: Array<{ id: NavId; label: string; icon: string }> = [
   { id: 'loops', label: 'Loops', icon: 'L' },
   { id: 'journal', label: 'Journal', icon: 'J' },
   { id: 'moltbook', label: 'Ledger', icon: 'L' },
-  { id: 'webcam', label: 'Webcam', icon: '📹' },
   { id: 'showcase', label: 'Showcase', icon: '✨' },
   { id: 'jobs', label: 'Jobs', icon: '☷' },
   { id: 'docs', label: 'Docs', icon: '≣' },

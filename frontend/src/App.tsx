@@ -20,7 +20,6 @@ import { LoopsPage } from './pages/LoopsPage'
 import { JournalPage } from './pages/JournalPage'
 import { MoltbookPage } from './pages/MoltbookPage'
 import { ShowcasePage } from './pages/ShowcasePage'
-import { WebcamPage } from './pages/WebcamPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, type AuthUser } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
@@ -749,8 +748,6 @@ export default function App() {
                   <MoltbookPage />
                 ) : navActive === 'showcase' ? (
                   <ShowcasePage />
-                ) : navActive === 'webcam' ? (
-                  <WebcamPage apiBase={apiBaseUrl} />
                 ) : (
                   <DocsPage />
                 )}
