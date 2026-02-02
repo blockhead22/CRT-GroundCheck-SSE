@@ -599,69 +599,6 @@ class JournalReplyResponse(BaseModel):
     auto_reply_created: bool = False
 
 
-class MoltSubmolt(BaseModel):
-    id: Optional[int] = None
-    name: str
-    description: Optional[str] = None
-    created_at: Optional[float] = None
-    created_by: Optional[str] = None
-
-
-class MoltPost(BaseModel):
-    id: Optional[int] = None
-    submolt: str
-    title: str
-    content: str
-    author: str
-    created_at: Optional[float] = None
-    updated_at: Optional[float] = None
-    score: Optional[int] = None
-    source_type: Optional[str] = None
-    source_entry_id: Optional[int] = None
-
-
-class MoltComment(BaseModel):
-    id: Optional[int] = None
-    post_id: int
-    parent_comment_id: Optional[int] = None
-    content: str
-    author: str
-    created_at: Optional[float] = None
-    score: Optional[int] = None
-
-
-class MoltVoteRequest(BaseModel):
-    target_type: str = Field(description="post | comment")
-    target_id: int
-    voter: str = Field(default="user")
-    value: int = Field(default=1, description="+1 or -1")
-
-
-class MoltPostCreateRequest(BaseModel):
-    submolt: str
-    title: str
-    content: str
-    author: str = Field(default="user")
-
-
-class MoltCommentCreateRequest(BaseModel):
-    post_id: int
-    content: str
-    author: str = Field(default="user")
-    parent_comment_id: Optional[int] = None
-
-
-class MoltSubmoltCreateRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
-    created_by: Optional[str] = None
-
-
-class MoltThreadResponse(BaseModel):
-    post: MoltPost
-    comments: List[MoltComment]
-
-
 class FactExtractionRequest(BaseModel):
     text: str = Field(min_length=1, description="Text to extract facts from")
     skip_llm: bool = Field(default=False, description="If true, only extract hard slots (faster)")
@@ -956,48 +893,23 @@ def create_app() -> FastAPI:
     
     # Callback for when a reminder is due
     def on_reminder_due(task: ScheduledTask):
-        """Handle a due reminder by posting to the thoughts ledger."""
+        """Handle a due reminder."""
         try:
             reminder_text = task.payload.get("reminder_text", "Reminder")
             thread_id = task.thread_id
             original_time = task.payload.get("original_time_str", "")
-            logger.info(f"[REMINDER] ⏰ Due reminder for thread {thread_id}: {reminder_text}")
-            
-            # Post to Ledger as a reminder notification
-            try:
-                _tasks_session_db.ensure_default_submolts()
-                _tasks_session_db.create_post(
-                    submolt="thoughts",
-                    title="⏰ Reminder",
-                    content=f"**Scheduled reminder:**\n\n{reminder_text}\n\n*Originally scheduled for: {original_time}*",
-                    author="CRT",
-                )
-                logger.info(f"[REMINDER] Posted reminder to Ledger 'thoughts' submolt")
-            except Exception as e:
-                logger.error(f"[REMINDER] Failed to post to Ledger: {e}")
+            logger.info(f"[REMINDER] ⏰ Due reminder for thread {thread_id}: {reminder_text} (scheduled for: {original_time})")
         except Exception as e:
             logger.error(f"[REMINDER] Error handling reminder: {e}")
     
     # Callback for when a thought is due to be posted
     def on_thought_due(task: ScheduledTask):
-        """Handle a due thought by posting to the Ledger."""
+        """Handle a due thought."""
         try:
             thought_content = task.payload.get("thought_content", "")
             thought_type = task.payload.get("thought_type", "scheduled")
             thread_id = task.thread_id
-            logger.info(f"[THOUGHT] 💭 Posting thought for thread {thread_id}")
-            
-            try:
-                _tasks_session_db.ensure_default_submolts()
-                _tasks_session_db.create_post(
-                    submolt="thoughts",
-                    title="💭 Reflection",
-                    content=f"{thought_content}\n\n*Type: {thought_type}*",
-                    author="CRT",
-                )
-                logger.info(f"[THOUGHT] Posted thought to Ledger 'thoughts' submolt")
-            except Exception as e:
-                logger.error(f"[THOUGHT] Failed to post to Ledger: {e}")
+            logger.info(f"[THOUGHT] 💭 Thought for thread {thread_id}: {thought_content} (type: {thought_type})")
         except Exception as e:
             logger.error(f"[THOUGHT] Error handling thought: {e}")
     
@@ -1014,10 +926,6 @@ def create_app() -> FastAPI:
     # Heartbeat scheduler (OpenClaw-style 24/7 proactive engagement)
     # Continuous reflection + personality + heartbeat loops (24/7, limited scope)
     session_db = get_thread_session_db()
-    try:
-        session_db.ensure_default_submolts()
-    except Exception:
-        pass
     reflection_loop, personality_loop, journal_self_reply_loop, heartbeat_loop = build_loops(session_db)
     app.state.reflection_loop = reflection_loop
     app.state.personality_loop = personality_loop
@@ -2657,96 +2565,6 @@ def create_app() -> FastAPI:
             logger.debug(f"[JOURNAL] Auto-reply failed: {e}")
 
         return JournalReplyResponse(ok=True, entry=entry, auto_reply_created=auto_reply_created)
-
-    # ========================================================================
-    # Moltbook (local) API Endpoints
-    # ========================================================================
-
-    @app.get("/api/moltbook/submolts", response_model=list[MoltSubmolt])
-    def list_molt_submolts(limit: int = Query(default=50, ge=1, le=200)):
-        session_db = get_thread_session_db()
-        try:
-            session_db.ensure_default_submolts()
-        except Exception:
-            pass
-        return [MoltSubmolt(**row) for row in session_db.list_submolts(limit=limit)]
-
-    @app.post("/api/moltbook/submolts", response_model=MoltSubmolt)
-    def create_molt_submolt(req: MoltSubmoltCreateRequest):
-        session_db = get_thread_session_db()
-        row = session_db.create_submolt(name=req.name, description=req.description or "", created_by=req.created_by)
-        return MoltSubmolt(**row)
-
-    @app.get("/api/moltbook/posts", response_model=list[MoltPost])
-    def list_molt_posts(
-        submolt: Optional[str] = Query(default=None),
-        sort: str = Query(default="new"),
-        limit: int = Query(default=50, ge=1, le=200),
-        offset: int = Query(default=0, ge=0),
-    ):
-        session_db = get_thread_session_db()
-        rows = session_db.list_posts(submolt=submolt, sort=sort, limit=limit, offset=offset)
-        return [MoltPost(**row) for row in rows]
-
-    @app.post("/api/moltbook/posts", response_model=MoltPost)
-    def create_molt_post(req: MoltPostCreateRequest):
-        session_db = get_thread_session_db()
-        row = session_db.create_post(
-            submolt=req.submolt,
-            title=req.title,
-            content=req.content,
-            author=req.author or "user",
-            source_type="manual",
-        )
-        return MoltPost(**row)
-
-    @app.get("/api/moltbook/posts/{post_id}", response_model=MoltPost)
-    def get_molt_post(post_id: int):
-        session_db = get_thread_session_db()
-        row = session_db.get_post(post_id)
-        if not row:
-            raise HTTPException(status_code=404, detail="Post not found")
-        return MoltPost(**row)
-
-    @app.get("/api/moltbook/thread/{post_id}", response_model=MoltThreadResponse)
-    def get_molt_thread(post_id: int):
-        session_db = get_thread_session_db()
-        post = session_db.get_post(post_id)
-        if not post:
-            raise HTTPException(status_code=404, detail="Post not found")
-        comments = session_db.list_comments(post_id)
-        return MoltThreadResponse(
-            post=MoltPost(**post),
-            comments=[MoltComment(**c) for c in comments],
-        )
-
-    @app.get("/api/moltbook/comments", response_model=list[MoltComment])
-    def list_molt_comments(post_id: int = Query(..., ge=1)):
-        session_db = get_thread_session_db()
-        rows = session_db.list_comments(post_id)
-        return [MoltComment(**row) for row in rows]
-
-    @app.post("/api/moltbook/comments", response_model=MoltComment)
-    def create_molt_comment(req: MoltCommentCreateRequest):
-        session_db = get_thread_session_db()
-        row = session_db.create_comment(
-            post_id=req.post_id,
-            content=req.content,
-            author=req.author or "user",
-            parent_comment_id=req.parent_comment_id,
-        )
-        return MoltComment(**row)
-
-    @app.post("/api/moltbook/votes")
-    def cast_molt_vote(req: MoltVoteRequest):
-        session_db = get_thread_session_db()
-        row = session_db.cast_vote(
-            target_type=req.target_type,
-            target_id=req.target_id,
-            voter=req.voter or "user",
-            value=req.value,
-        )
-        return {"ok": True, "vote": row}
     
     @app.get("/api/training/stats")
     def get_training_stats():
