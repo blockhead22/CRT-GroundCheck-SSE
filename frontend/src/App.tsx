@@ -60,6 +60,16 @@ export default function App() {
   const [demoModeOpen, setDemoModeOpen] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
   
+  // Model selection
+  const [selectedModel, setSelectedModel] = useState<string>(() => {
+    return localStorage.getItem('crt_selected_model') || 'crt-reasoning'
+  })
+  
+  // Save model selection to localStorage
+  useEffect(() => {
+    localStorage.setItem('crt_selected_model', selectedModel)
+  }, [selectedModel])
+  
   // Streaming state
   const [streamingThinking, setStreamingThinking] = useState<string>('')
   const [streamingResponse, setStreamingResponse] = useState<string>('')
@@ -705,6 +715,9 @@ export default function App() {
               onOpenDemoMode={() => setDemoModeOpen(true)}
               streamingMode={useStreaming}
               onToggleStreaming={() => setUseStreaming((v) => !v)}
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              onLogout={handleLogout}
             />
 
             <div className="relative min-h-0 flex-1">

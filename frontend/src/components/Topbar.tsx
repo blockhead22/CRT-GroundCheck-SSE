@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
+import { UserSettingsPanel } from './UserSettingsPanel'
 
 export function Topbar(props: {
   onToggleSidebarMobile: () => void
@@ -13,7 +15,11 @@ export function Topbar(props: {
   onOpenDemoMode?: () => void
   streamingMode?: boolean
   onToggleStreaming?: () => void
+  selectedModel?: string
+  onModelChange?: (modelId: string) => void
+  onLogout?: () => void
 }) {
+  const [showSettings, setShowSettings] = useState(false)
   const initial = (props.userName?.trim()?.[0] || 'U').toUpperCase()
   const statusColor =
     props.apiStatus === 'connected'
@@ -80,14 +86,31 @@ export function Topbar(props: {
         </div>
 
         {/* User avatar */}
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.2 }}
-          className="grid h-9 w-9 place-items-center rounded-full accent-button text-sm font-semibold text-white"
-        >
-          {initial}
-        </motion.div>
+        <div className="relative">
+          <motion.button
+            onClick={() => setShowSettings(!showSettings)}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.2 }}
+            className="grid h-9 w-9 place-items-center rounded-full accent-button text-sm font-semibold text-white hover:ring-2 hover:ring-white/20 transition-all cursor-pointer"
+            aria-label="User settings"
+          >
+            {initial}
+          </motion.button>
+
+          <UserSettingsPanel
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            userName={props.userName}
+            userEmail={props.userEmail}
+            selectedModel={props.selectedModel}
+            onModelChange={(modelId) => {
+              props.onModelChange?.(modelId)
+              setShowSettings(false)
+            }}
+            onLogout={props.onLogout}
+          />
+        </div>
       </div>
     </div>
   )

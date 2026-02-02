@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clear API URL Cache</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            background: white;
+            padding: 3rem;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+        .status {
+            margin: 2rem 0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin: 5px;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .detail {
+            margin-top: 1rem;
+            font-size: 14px;
+            color: #666;
+            text-align: left;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .code {
+            background: #e9ecef;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix API URL (Port 8124 → 8123)</h1>
+        <div id="status" class="status warning">
+            The API URL is cached in localStorage
+        </div>
+        <button onclick="clearApiUrl()">Clear Cached API URL</button>
+        <button onclick="checkStatus()">Check Current Status</button>
+        <div class="detail" id="detail"></div>
+    </div>
+
+    <script>
+        function checkStatus() {
+            const detail = document.getElementById('detail');
+            const cachedUrl = localStorage.getItem('crt_api_base_url');
+            const envUrl = 'http://127.0.0.1:8123'; // from VITE_API_BASE_URL
+            
+            detail.innerHTML = `
+                <strong>Current Configuration:</strong><br><br>
+                <strong>Environment (.env):</strong><br>
+                <span class="code">${envUrl}</span> ✅<br><br>
+                <strong>localStorage Override:</strong><br>
+                ${cachedUrl ? `<span class="code">${cachedUrl}</span> ⚠️ THIS IS THE PROBLEM` : '<span class="code">null</span> ✅ Not set'}
+                <br><br>
+                ${cachedUrl && cachedUrl.includes('8124') ? 
+                    '<strong style="color: #d9534f;">❌ localStorage is overriding the .env and forcing port 8124!</strong>' : 
+                    '<strong style="color: #5cb85c;">✅ No override detected</strong>'}
+            `;
+        }
+        
+        function clearApiUrl() {
+            const status = document.getElementById('status');
+            const detail = document.getElementById('detail');
+            
+            const oldUrl = localStorage.getItem('crt_api_base_url');
+            localStorage.removeItem('crt_api_base_url');
+            
+            status.className = 'status success';
+            status.textContent = '✓ Cached API URL cleared!';
+            
+            detail.innerHTML = `
+                <strong>Action Completed:</strong><br><br>
+                ${oldUrl ? `Removed: <span class="code">${oldUrl}</span>` : 'No cached URL was found'}<br><br>
+                <strong>The app will now use:</strong><br>
+                <span class="code">http://127.0.0.1:8123</span> (from .env)<br><br>
+                <em style="color: #d9534f; font-weight: bold;">⚠️ REFRESH THE PAGE NOW!</em><br>
+                Press Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)
+            `;
+            
+            setTimeout(() => {
+                if (confirm('Clear complete! Reload the page now?')) {
+                    window.location.href = '/';
+                }
+            }, 2000);
+        }
+        
+        // Show status on load
+        window.addEventListener('load', () => {
+            checkStatus();
+        });
+    </script>
+</body>
+</html>
