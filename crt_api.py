@@ -72,8 +72,19 @@ from personal_agent.heartbeat_api import (
     HeartbeatMDResponse,
 )
 
-# Auth module
-import auth as auth_module
+# Auth module - Use MySQL if configured
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+USE_MYSQL = os.getenv('USE_MYSQL', 'false').lower() == 'true'
+
+if USE_MYSQL:
+    import auth_mysql as auth_module
+    print("Using MySQL authentication backend")
+else:
+    import auth as auth_module
+    print("Using SQLite authentication backend")
 
 # Constants for resolution policies
 RESOLUTION_TRUST_BOOST = 0.1  # Trust boost for chosen memory in OVERRIDE resolution
