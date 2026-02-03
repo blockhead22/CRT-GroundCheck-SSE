@@ -1528,8 +1528,12 @@ class CRTEnhancedRAG:
             if facts:
                 # Return the first extracted value
                 for slot, fact in facts.items():
-                    if hasattr(fact, 'value') and fact.value:
-                        return fact.value
+                    if hasattr(fact, 'value') and fact.value is not None:
+                        value = fact.value
+                        # For duration/year slots, format as "X years" if numeric
+                        if slot in ('programming_years', 'age') and isinstance(value, (int, float)):
+                            return f"{int(value)} years"
+                        return value
         except Exception:
             pass
         
@@ -1850,7 +1854,22 @@ class CRTEnhancedRAG:
         if not blocking_contradictions:
             return True, None, []
         
+        # Check if any contradiction is a hard CONFLICT type (mutually exclusive facts)
+        # Hard CONFLICTs should NOT be auto-resolved - we should ask the user for clarification
+        from .crt_ledger import ContradictionType
+        has_hard_conflict = any(
+            bc.get('category') == ContradictionType.CONFLICT or bc.get('category') == 'conflict'
+            for bc in blocking_contradictions
+        )
+        
+        if has_hard_conflict:
+            # Don't auto-resolve CONFLICT contradictions - fall through to uncertainty response
+            # Return gates NOT passed so the uncertainty response path is triggered
+            logger.info(f"[GATE_CHECK] Hard CONFLICT detected - not auto-resolving, will ask user for clarification")
+            return False, None, blocking_contradictions
+        
         # SPRINT 1: Assertive contradiction resolution instead of passive questioning
+        # Only for non-CONFLICT contradictions (REVISION, REFINEMENT, TEMPORAL)
         # Convert blocking_contradictions back to ContradictionEntry objects
         relevant_contras = []
         for contra in open_contradictions:
@@ -2580,10 +2599,102 @@ class CRTEnhancedRAG:
         
         # Try to find a matching contradiction and determine which value to keep
         for contra in open_contras:
-            # Handle CONFLICT, REVISION, and TEMPORAL contradictions
-            # (REFINEMENT contradictions typically don't need NL resolution)
+            # Handle CONFLICT, REVISION, TEMPORAL, REFINEMENT, and profile_update contradictions
             contradiction_type = getattr(contra, "contradiction_type", None)
-            if contradiction_type not in {ContradictionType.CONFLICT, ContradictionType.REVISION, ContradictionType.TEMPORAL}:
+            # Accept both enum types and the "profile_update" string type
+            allowed_types = {
+                ContradictionType.CONFLICT, 
+                ContradictionType.REVISION, 
+                ContradictionType.TEMPORAL,
+                ContradictionType.REFINEMENT,
+                "profile_update"
+            }
+            if contradiction_type not in allowed_types:
+                continue
+            
+            # Handle profile_update contradictions specially - they have synthetic memory IDs
+            # and the old/new values are encoded in the summary field
+            if contradiction_type == "profile_update":
+                # Parse the slot and values from summary (format: "Profile update: slot changed from 'old' to 'new'")
+                summary = getattr(contra, "summary", "") or ""
+                affects_slots = getattr(contra, "affects_slots", "") or ""
+                
+                profile_slot = affects_slots if affects_slots else None
+                profile_old_value = None
+                profile_new_value = None
+                
+                # Parse values from summary: "Profile update: name changed from 'Sarah' to 'Emily'"
+                summary_match = re.search(r"changed from '([^']+)' to '([^']+)'", summary)
+                if summary_match:
+                    profile_old_value = summary_match.group(1)
+                    profile_new_value = summary_match.group(2)
+                
+                if profile_slot and profile_old_value and profile_new_value:
+                    # Check if user's clarification mentions either value
+                    user_text_lower = user_text.lower()
+                    old_in_text = profile_old_value.lower() in user_text_lower
+                    new_in_text = profile_new_value.lower() in user_text_lower
+                    
+                    if old_in_text or new_in_text:
+                        # Determine which value the user chose
+                        if old_in_text and not new_in_text:
+                            chosen_value = profile_old_value
+                            resolution_method = "user_chose_old"
+                        elif new_in_text and not old_in_text:
+                            chosen_value = profile_new_value
+                            resolution_method = "user_chose_new"
+                        else:
+                            # Both values in text - use position
+                            old_pos = user_text_lower.find(profile_old_value.lower())
+                            new_pos = user_text_lower.find(profile_new_value.lower())
+                            if old_pos < new_pos:
+                                chosen_value = profile_old_value
+                                resolution_method = "user_chose_old"
+                            else:
+                                chosen_value = profile_new_value
+                                resolution_method = "user_chose_new"
+                        
+                        # Log the resolution
+                        trace_logger.log_resolution_matched(
+                            ledger_id=contra.ledger_id,
+                            contradiction_type=str(contradiction_type),
+                            slot_name=profile_slot,
+                            old_value=profile_old_value,
+                            new_value=profile_new_value,
+                            chosen_value=chosen_value,
+                            resolution_method=resolution_method
+                        )
+                        
+                        # Mark the contradiction as resolved
+                        self.ledger.resolve_contradiction(
+                            contra.ledger_id,
+                            method="nl_resolution"
+                        )
+                        
+                        # Update user profile to the chosen value
+                        try:
+                            self.user_profile.set_fact(profile_slot, chosen_value)
+                        except Exception as profile_err:
+                            logger.warning(f"[NL_RESOLUTION] Failed to update profile: {profile_err}")
+                        
+                        trace_logger.log_ledger_update(
+                            ledger_id=contra.ledger_id,
+                            before_status="open",
+                            after_status="resolved",
+                            resolution_method="nl_resolution",
+                            chosen_memory_id=f"profile_{profile_slot}_{chosen_value}"
+                        )
+                        
+                        trace_logger.log_resolution_complete(
+                            ledger_id=contra.ledger_id,
+                            success=True,
+                            details=f"Profile {profile_slot} set to {chosen_value}"
+                        )
+                        
+                        resolved_count += 1
+                        continue
+                
+                # Could not resolve this profile_update contradiction
                 continue
             
             old_mem = self.memory.get_memory_by_id(contra.old_memory_id)

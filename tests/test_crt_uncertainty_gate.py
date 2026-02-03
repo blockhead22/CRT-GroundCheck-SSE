@@ -6,6 +6,7 @@ import pytest
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.crt_ledger import ContradictionType
+from personal_agent.user_profile import GlobalUserProfile
 
 
 class FakeLLM:
@@ -17,7 +18,12 @@ class FakeLLM:
 def rag(tmp_path: Path) -> CRTEnhancedRAG:
     mem_db = tmp_path / "mem.db"
     led_db = tmp_path / "ledger.db"
-    return CRTEnhancedRAG(memory_db=str(mem_db), ledger_db=str(led_db), llm_client=FakeLLM())
+    profile_db = tmp_path / "profile.db"
+    
+    rag_instance = CRTEnhancedRAG(memory_db=str(mem_db), ledger_db=str(led_db), llm_client=FakeLLM())
+    # Use isolated user profile for test
+    rag_instance.user_profile = GlobalUserProfile(db_path=str(profile_db))
+    return rag_instance
 
 
 def test_revision_contradiction_does_not_force_uncertainty_loop(rag: CRTEnhancedRAG):
@@ -45,10 +51,11 @@ def test_provenance_footer_requires_gates_passed(rag: CRTEnhancedRAG, monkeypatc
     rag.query("My name is Sarah.")
 
     # Force reconstruction gates to fail, regardless of embeddings.
+    # Note: Code uses check_reconstruction_gates_v2 with kwargs
     monkeypatch.setattr(
         rag.crt_math,
-        "check_reconstruction_gates",
-        lambda _intent, _mem: (False, "forced_for_test"),
+        "check_reconstruction_gates_v2",
+        lambda *args, **kwargs: (False, "forced_for_test"),
     )
 
     out = rag.query("What's my name?")

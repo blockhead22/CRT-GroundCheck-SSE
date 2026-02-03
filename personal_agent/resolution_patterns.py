@@ -62,6 +62,11 @@ RESOLUTION_PATTERNS = [
     r'\bchoose\s+([A-Za-z0-9\s]+)',  # "choose X"
     r'\bselect\s+([A-Za-z0-9\s]+)',  # "select X"
     r'\bpick\s+([A-Za-z0-9\s]+)',  # "pick X"
+    
+    # Clarification/confirmation patterns
+    r'\bfor\s+the\s+record\b',  # "for the record"
+    r'\bto\s+(be\s+)?clear\b',  # "to be clear" or "to clear"
+    r'\bjust\s+to\s+(confirm|clarify)\b',  # "just to confirm/clarify"
 ]
 
 

@@ -33,6 +33,20 @@ from .crt_semantic_anchor import (
     is_resolution_grounded,
 )
 
+# Import LLM drift assessor (lazy-loaded to avoid startup cost)
+_llm_drift_assessor = None
+
+def _get_drift_assessor():
+    """Lazy-load drift assessor."""
+    global _llm_drift_assessor
+    if _llm_drift_assessor is None:
+        try:
+            from .llm_drift_assessor import get_drift_assessor
+            _llm_drift_assessor = get_drift_assessor()
+        except ImportError:
+            pass
+    return _llm_drift_assessor
+
 
 class ContradictionStatus:
     """Status of contradiction resolution."""
@@ -156,7 +170,9 @@ class ContradictionLedger:
                     if tuple_fact.confidence >= 0.6 and tuple_fact.attribute not in all_facts:
                         # Create a compatible fact object using helper
                         all_facts[tuple_fact.attribute] = create_simple_fact(tuple_fact.value)
-                return all_facts
+                # If two-tier returned results, use them; otherwise fall back
+                if all_facts:
+                    return all_facts
             except Exception as e:
                 # Fall back to regex
                 import logging
@@ -550,6 +566,37 @@ class ContradictionLedger:
             # High similarity but not identical suggests refinement
             if 0.7 <= similarity < 0.9:
                 return ContradictionType.REFINEMENT
+        
+        # =====================================================================
+        # LLM-BASED DRIFT ASSESSMENT (when available)
+        # Uses lightweight local LLM for semantic understanding of gradual drift
+        # =====================================================================
+        drift_assessor = _get_drift_assessor()
+        if drift_assessor is not None:
+            try:
+                from .llm_drift_assessor import DriftType
+                assessment = drift_assessor.assess_drift(old_text, new_text)
+                if assessment is not None:
+                    # Map LLM drift types to contradiction types
+                    drift_to_contradiction = {
+                        DriftType.CONTRADICTION: ContradictionType.CONFLICT,
+                        DriftType.EVOLUTION: ContradictionType.TEMPORAL,
+                        DriftType.REFINEMENT: ContradictionType.REFINEMENT,
+                        DriftType.CORRECTION: ContradictionType.REVISION,
+                        DriftType.TEMPORAL: ContradictionType.TEMPORAL,
+                        DriftType.PREFERENCE: ContradictionType.TEMPORAL,  # Preferences evolve
+                        DriftType.COMPATIBLE: ContradictionType.REFINEMENT,  # Not a real conflict
+                    }
+                    mapped_type = drift_to_contradiction.get(
+                        assessment.drift_type, 
+                        ContradictionType.CONFLICT
+                    )
+                    # Only use LLM result if confident
+                    if assessment.confidence >= 0.6:
+                        return mapped_type
+            except Exception as e:
+                # LLM assessment failed, fall through to default
+                pass
         
         # Default to conflict for mutually exclusive facts
         return ContradictionType.CONFLICT

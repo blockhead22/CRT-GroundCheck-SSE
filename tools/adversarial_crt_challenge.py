@@ -462,10 +462,64 @@ class AdversarialChallenger:
             else:
                 analysis["verdict"] = "FALSE POSITIVE - flagged identity/hypothetical as contradiction"
                 analysis["score"] = 0.0
+        elif "soft_shift" in challenge_type or "gradual" in challenge_type or "role_redefinition" in challenge_type or "preference_shift" in challenge_type or "location_drift" in challenge_type:
+            # DRIFT phase: These represent gradual natural evolution - should NOT trigger hard contradiction
+            # System should accept these as temporal/evolutionary changes, not flag as conflicts
+            if not response.get("contradiction_detected"):
+                analysis["verdict"] = "CORRECT - recognized gradual drift, no false positive"
+                analysis["score"] = 1.0
+            elif acknowledges_conflict:
+                # Acknowledging change is fine as long as it's not treated as a hard conflict
+                analysis["verdict"] = "PARTIAL - acknowledged change but could be softer"
+                analysis["score"] = 0.5
+            else:
+                analysis["verdict"] = "FALSE POSITIVE - flagged natural evolution as hard contradiction"
+                analysis["score"] = 0.25
         elif "baseline" in challenge_type:
             # Baseline should just work
             analysis["verdict"] = "OK - baseline established"
             analysis["score"] = 1.0
+        elif "bulk_reconciliation" in challenge_type:
+            # User clarifying all facts - may or may not trigger contradictions depending on state
+            # Credit if response shows awareness of the facts
+            if response.get("contradiction_detected") or acknowledges_conflict:
+                analysis["verdict"] = "CORRECT - recognized reconciliation attempt"
+                analysis["score"] = 1.0
+            else:
+                analysis["verdict"] = "PARTIAL - accepted reconciliation"
+                analysis["score"] = 0.75
+        elif "meta_query" in challenge_type:
+            # User asking about contradictions - should report any detected contradictions
+            if "contradiction" in answer_text or "conflict" in answer_text or acknowledges_conflict:
+                analysis["verdict"] = "CORRECT - reported contradiction status"
+                analysis["score"] = 1.0
+            else:
+                analysis["verdict"] = "PARTIAL - did not explicitly report contradictions"
+                analysis["score"] = 0.5
+        elif "explicit_override" in challenge_type:
+            # User explicitly requesting to override - should detect as contradiction
+            if response.get("contradiction_detected"):
+                analysis["verdict"] = "CORRECT - detected override as contradiction"
+                analysis["score"] = 1.0
+            else:
+                analysis["verdict"] = "MISSED - should detect explicit override"
+                analysis["score"] = 0.25
+        elif "revert_to_original" in challenge_type:
+            # User reverting - should detect contradiction
+            if response.get("contradiction_detected"):
+                analysis["verdict"] = "CORRECT - detected reversion"
+                analysis["score"] = 1.0
+            else:
+                analysis["verdict"] = "PARTIAL - did not flag reversion"
+                analysis["score"] = 0.5
+        elif "comprehensive_recall" in challenge_type:
+            # User asking for all facts - just needs to respond coherently
+            if response.get("answer"):
+                analysis["verdict"] = "OK - provided recall response"
+                analysis["score"] = 1.0
+            else:
+                analysis["verdict"] = "FAILED - no response"
+                analysis["score"] = 0.0
         else:
             # For other types, score based on whether the response seems reasonable
             analysis["verdict"] = "EVALUATED - check manually"
