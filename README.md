@@ -1,4 +1,4 @@
-# OpenClaw — CRT Personal Agent
+# CRT + GroundCheck + SSE
 
 **Contradiction-preserving memory for AI agents. No silent overwrites.**
 
@@ -18,13 +18,13 @@ This is not a bug in any one product. It is a structural property of how LLMs wo
 
 As long as that is true, an AI cannot be a genuine personal assistant. A system that silently replaces what it knew yesterday cannot build trust. And without trust, there is no relationship.
 
-**OpenClaw exists to fix that.**
+**CRT exists to fix that.**
 
 ---
 
 ## What This Is
 
-OpenClaw is a **mathematical framework for AI memory** that treats contradictions as first-class data instead of errors to be hidden. It wraps any local LLM (via Ollama) in three interlocking systems:
+CRT-GroundCheck-SSE is a **mathematical framework for AI memory** that treats contradictions as first-class data instead of errors to be hidden. It wraps any local LLM (via Ollama) in three interlocking systems:
 
 | System | Role |
 |--------|------|
