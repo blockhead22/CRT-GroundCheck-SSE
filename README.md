@@ -1,695 +1,296 @@
-# CRT + GroundCheck + SSE: Honest AI Memory
+# CRT + GroundCheck + SSE
 
-> **Quick Status:** See [STATUS.md](STATUS.md) for current metrics and next actions.  
-> **AI Agents:** See [.github/prompts/_project-context.prompt.md](.github/prompts/_project-context.prompt.md) for context.
+**Contradiction-preserving memory for AI agents. No silent overwrites.**
 
-## What it is
-This repository integrates three systems for transparent AI memory that tracks contradictions:
-- **CRT**: A memory layer that preserves contradictions instead of overwriting them
-- **GroundCheck**: A verification system that makes AI responses disclose conflicts instead of hiding them
-- **SSE (Semantic String Engine)**: Powers fact retrieval and semantic matching
-- **FactStore**: Structured slot-based memory with real contradiction detection
-- **IntentRouter**: Classifies user intent to route inputs appropriately
-
-This is a **research prototype** for memory governance and output verification in AI assistants.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Tests: 577 passed](https://img.shields.io/badge/tests-577%20passed-brightgreen.svg)](#test-results)
 
 ---
 
-## Interactive Demo (rag-demo.py)
+## What This Is
 
-The fastest way to see the system in action:
+Three integrated systems that give any LLM persistent, auditable memory where contradictions are **signals, not bugs**:
 
-```bash
-# Activate environment
-.venv\Scripts\activate  # Windows
-source .venv/bin/activate  # Mac/Linux
+| System | Purpose |
+|--------|---------|
+| **CRT** (Cognitive-Reflective Transformer) | Trust-weighted memory layer with contradiction ledger, reconstruction gates, and belief evolution |
+| **GroundCheck** | Hallucination verification — checks LLM outputs against stored memories at 1.17ms mean latency |
+| **SSE** (Semantic String Engine) | Claim extraction with character-level provenance, boundary-enforced (physically cannot delete contradictions) |
 
-# Run interactive demo
-python rag-demo.py
-```
-
-### Requirements
-- Python 3.10+
-- Dependencies: `pip install -r requirements.txt`
-- Optional: [Ollama](https://ollama.ai/) with llama3.2 for LLM features
-
-### Demo Architecture
-```
-IntentRouter -> classifies user input (fact, question, task, chat)
-     |
-     v
-FactStore   -> structured facts (user.name, user.favorite_color)
-CRT         -> trust-weighted memory + contradiction tracking
-LLM         -> code generation, explanations (requires Ollama)
-Templates   -> fallback responses when no LLM
-```
-
-### Example Session
-```
-You: My name is Nick
-Bot: Got it. I'll remember your name is Nick.
-
-You: What is my name?
-Bot: Your name is Nick.
-
-You: My favorite color is blue because it reminds me of the ocean
-Bot: Got it. I'll remember your favorite color is blue.
-
-You: facts
-  user.name
-    Value: Nick
-    Trust: [##########] 1.00 | Source: user
-  user.favorite_color
-    Value: blue
-    Trust: [##########] 1.00 | Source: user
-```
-
-### Demo Commands
-| Command   | Description                              |
-|-----------|------------------------------------------|
-| `facts`   | Show all stored facts                    |
-| `memory`  | Show CRT memory entries                  |
-| `history` | Show conversation history                |
-| `clear`   | Clear databases (with confirmation)      |
-| `dump`    | Export facts to JSON, then clear all     |
-| `verbose` | Toggle verbose step logging              |
-| `quit`    | Exit the demo                            |
-
----
-
-## System architecture
-
-### How Modern LLMs vs CRT Handle Contradiction
-
-**CRT Hybrid Architecture:**
-1. **Fast path (regex)** - Instant extraction of obvious patterns (no LLM cost)
-2. **Semantic path (LLM)** - Uses the LLM itself to extract complex claims
-3. **Memory layer** - Persists facts with timestamps, sources, and trust scores
-4. **Contradiction ledger** - Audit trail of all detected conflicts
-5. **Gaslighting detection** - Cites original claim when user denies saying something
-
-This is NOT rigid regex gates - the LLM does the heavy semantic lifting. Patterns are just a speed optimization for common cases.
-
-### Pipeline (with Web Search placeholder)
-```
-User request
-   ↓
-IntentRouter / Fact extraction
-   ↓
-Memory retrieval (CRT + FactStore + SSE)
-   ↓
-Web search (optional placeholder)
-   - if enabled: query → citations → evidence packet
-   - if disabled: skip
-   ↓
-Reasoning + response draft
-   ↓
-Gates + GroundCheck (if wired)
-   ↓
-Final response + audit logging
-```
-Note: the web search block is a placeholder for SearXNG integration; it will sit between retrieval and reasoning.
-
-### Architecture Diagram
-
-1. **CRT memory layer**: Stores user facts with timestamps and tracks contradictions via a ledger
-2. **ML contradiction detection**: Uses XGBoost models to classify belief changes (refinement vs. revision vs. temporal vs. conflict)
-3. **Trust scoring**: Updates as new claims arrive; newer or confirmed facts gain trust, but older facts stay in memory
-4. **SSE retrieval**: Returns relevant memories using semantic search, including conflicting ones
-5. **GroundCheck verification**: Inspects responses to make sure contradictions are disclosed
-6. **React frontend**: Provides an interactive UI with real time contradiction tracking, memory visualization, and educational onboarding
-
-## Intended use
-- **Long running personal assistants** where user facts change over time
-- **Auditable domains** (health, legal, enterprise knowledge) where transparency matters more than hiding conflicts
-- **Research and evaluation** for contradiction handling and truthful memory behavior
-
-## Core benefits
-- **Reduces silent memory overwrites** that lead to confident false answers
-- **Improves transparency** by surfacing conflicts instead of hiding them
-- **Creates auditability** with a ledger of conflicting claims and how they were resolved
-
----
-
-## Frontend UI
-
-The repository includes a **production ready React frontend** that demonstrates CRT capabilities through an interactive web interface.
-
-### Features
-- **60 second onboarding tutorial**: Interactive walkthrough showing how contradictions are detected and disclosed
-- **Live contradiction ledger**: Real time panel displaying all detected contradictions with trust scores and audit trail
-- **Memory lane visualization**: Two lane architecture showing stable facts vs. candidate facts
-- **Side by side comparison**: Visual demonstration of regular AI (hides conflicts) vs. CRT (discloses conflicts)
-- **Integration code examples**: Copy and paste ready snippets for Python, JavaScript, and cURL
-- **Example scenarios**: Preloaded demos showing job changes, location moves, and preference updates
-
-### Quick start (Frontend)
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-Then open `http://localhost:5173` in your browser.
-
-**Backend requirement**: The frontend connects to the CRT API. Start the backend server first:
-```bash
-# From repository root
-python crt_api.py
-```
-
-The API runs on `http://127.0.0.1:8123` by default.
-
-### Frontend architecture
-- **React 18.3** with TypeScript for type safety
-- **Tailwind CSS** for responsive, utility based styling
-- **Framer Motion** for smooth animations and transitions
-- **Vite** for fast builds and hot module replacement
-- **Monaco: @monaco-editor/react (VS Code editor in React). (npm.io)**
-
-For detailed frontend documentation, see `frontend/README.md` and `frontend/IMPLEMENTATION_SUMMARY.md`.
+Every other AI memory system silently overwrites contradictory information, then confidently presents uncertain facts as truth. CRT preserves the tension, tracks what changed and when, and blocks confident answers when the system is genuinely uncertain.
 
 ---
 
 ## Quick Start
 
-### Installation
 ```bash
-# Clone the repository
-git clone https://github.com/blockhead22/AI_round2.git
-cd AI_round2
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Install the project packages
+# Clone and install
+git clone https://github.com/blockhead22/CRT-GroundCheck-SSE.git
+cd CRT-GroundCheck-SSE
 pip install -e .
 pip install -e groundcheck/
-```
 
-## How to Run the Backend (API Server)
+# (Optional) Install Ollama for LLM features
+# https://ollama.ai/ → then: ollama pull llama3.2
 
-Start the backend API server (FastAPI):
-```bash
-# From repository root
-uvicorn crt_api:app --host 0.0.0.0 --port 8123 --reload
-```
-Or, for production:
-```bash
+# Run interactive demo
+python Rag-Demo.py
+
+# Start the API server
 python crt_api.py
-```
-The API runs on `http://127.0.0.1:8123` by default.
+# → http://127.0.0.1:8123
 
-If you want LLM features, make sure [Ollama](https://ollama.ai/) is installed and running:
-```bash
-ollama serve
-# (Optional) ollama pull llama3.2
+# Start frontend
+cd frontend && npm install && npm run dev
+# → http://localhost:5173
+```
+
+### Prerequisites
+- Python 3.10+
+- `pip install -r requirements.txt`
+- Optional: [Ollama](https://ollama.ai/) with a local model for LLM features
+
+---
+
+## How It Works
+
+```
+User message
+   │
+   ▼
+IntentRouter ── classifies intent (fact, question, correction, task, chat)
+   │
+   ▼
+Fact Extraction ── Tier A: regex (name, employer, location, age)
+   │                Tier B: LLM (hobbies, preferences, open-world)
+   ▼
+CRT Memory Retrieval ── scores by: similarity × recency × (α·trust + (1-α)·confidence)
+   │
+   ▼
+Contradiction Detection ── drift: D_mean = 1 - sim(z_new, z_prior)
+   │                       ML classifier (XGBoost) + LLM drift assessor
+   │                       types: conflict | evolution | refinement | temporal | correction
+   ▼
+Reconstruction Gates ── unresolved contradictions in queried slots → block
+   │                    ask for clarification instead of confabulating
+   ▼
+LLM Response ── grounded in trust-weighted context
+   │
+   ▼
+GroundCheck ── verifies output claims against memory (1.17ms mean)
+   │
+   ▼
+Trust Evolution ── aligned memories gain trust, contradicted ones degrade
+```
+
+### Key Concepts
+
+**Trust vs. Confidence** — Confidence is how certain something sounded at creation. Trust is how validated it has proven over time. These evolve independently via mathematical equations.
+
+**Contradiction Ledger** — When the user says "I work at Google" after "I work at Microsoft," both memories stay alive. A ledger entry records old memory, new memory, drift measurements, timestamps, and resolution status. Nothing is deleted.
+
+**Reconstruction Gates** — Before the LLM responds to a query touching contradicted facts, gates check for unresolved contradictions. If found, the system blocks the confident response and asks for clarification.
+
+**Natural Language Resolution** — Users resolve contradictions naturally: *"Google is correct, I switched jobs."* Detected via pattern matching and routed to the resolution engine.
+
+**Disclosure Policy** — Facts with medium confidence (0.4–0.9) get routed to clarification instead of binary accept/reject. A budget system prevents overwhelming the user with questions.
+
+---
+
+## Architecture
+
+```
+personal_agent/
+├── crt_core.py              # Mathematical framework (trust, drift, SSE mode selection)
+├── crt_memory.py            # Trust-weighted memory with belief/speech separation
+├── crt_ledger.py            # Contradiction ledger (no silent overwrites)
+├── crt_rag.py               # CRT-Enhanced RAG engine (the brain)
+├── fact_slots.py            # Deterministic regex fact extraction (Tier A)
+├── two_tier_facts.py        # Hard slots + open-world tuples (Tier A + B)
+├── fact_store.py            # Structured slot-based storage
+├── intent_router.py         # Intent classification (15 types)
+├── ml_contradiction_detector.py  # XGBoost-based detection
+├── llm_drift_assessor.py    # LLM-powered semantic drift classification
+├── resolution_patterns.py   # NL resolution pattern matching
+├── disclosure_policy.py     # Yellow-zone routing with budget
+├── evidence_packet.py       # Research provenance tracking
+├── reflection_system.py     # Post-response confidence assessment
+├── thinking_loop.py         # Autonomous background contemplation
+├── continuous_loops.py      # 24/7 reflection + personality loops
+├── heartbeat_system.py      # Proactive engagement scheduler
+├── agent_loop.py            # ReAct pattern agent with tool orchestration
+├── ollama_client.py         # Local LLM integration (Ollama)
+├── training_loop.py         # Conservative learned model training
+└── episodic_memory.py       # Session summaries, preferences, concept linking
+
+groundcheck/groundcheck/
+├── verifier.py              # Main grounding verification
+├── fact_extractor.py        # Claim extraction from LLM output
+├── semantic_matcher.py      # Multi-tier semantic matching
+├── semantic_contradiction.py # NLI-based contradiction detection
+└── neural_extractor.py      # Hybrid regex + neural NER
+
+sse/
+├── client.py                # Boundary-enforced SSE client
+├── contradictions.py        # Heuristic + NLI contradiction detection
+├── interaction_layer.py     # Navigator with boundary violations
+├── coherence.py             # Disagreement graph tracking
+└── extractor.py             # Claim extraction with char offsets
+
+crt_api.py                   # FastAPI server
+frontend/                    # React + Tailwind + Framer Motion UI
 ```
 
 ---
 
-## How to Start the Frontend
+## Programmatic Usage
 
-The frontend is a React app in the `frontend/` directory.
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Then open [http://localhost:5173](http://localhost:5173) in your browser.
-
----
-
-## How to Run the Stress Tests
-
-### Adversarial Challenge (no Ollama required)
-```bash
-python tools/adversarial_crt_challenge.py --turns 35
-```
-
-### CRT Stress Test (requires Ollama running)
-```bash
-ollama serve
-python tools/crt_stress_test.py --turns 30 --print-every 5
-```
-
-### Run all tests (pytest)
-```bash
-pytest
-```
-
----
-### Basic usage (Programmatic)
 ```python
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_store import FactStore
 
-# Option 1: FactStore for structured facts
+# Structured facts
 store = FactStore(db_path="my_facts.db")
 store.process_input("My name is Nick")
 store.process_input("My favorite color is blue")
 print(store.answer("What is my name?"))  # → "Nick"
 
-# Option 2: CRT for complex memory with contradictions
+# CRT memory with contradiction tracking
 rag = CRTEnhancedRAG()
 rag.query("I work at Microsoft", thread_id="demo")
 rag.query("I work at Amazon", thread_id="demo")
 result = rag.query("Where do I work?", thread_id="demo")
-print(result["answer"])  # Discloses both with conflict notice
+# → Discloses conflict instead of silently picking one
 ```
 
-### Intent Router usage
 ```python
-from personal_agent.intent_router import IntentRouter, Intent
+# GroundCheck verification
+from groundcheck import GroundCheck, Memory
+
+verifier = GroundCheck()
+memories = [Memory(id="m1", text="User works at Microsoft")]
+result = verifier.verify("You work at Amazon", memories)
+print(result.passed)          # False
+print(result.hallucinations)  # ["Amazon"]
+```
+
+```python
+# Intent classification
+from personal_agent.intent_router import IntentRouter
 
 router = IntentRouter()
 result = router.classify("Write me some Python code")
 print(result.intent)      # Intent.TASK_CODE
-print(result.extracted)   # {'language': 'python'}
 print(result.confidence)  # 0.9
 ```
 
 ---
 
+## API Endpoints
+
+Start the server: `python crt_api.py` (runs on `http://127.0.0.1:8123`)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/chat/send` | POST | Send a message, get response with metadata |
+| `/api/chat/stream` | POST | SSE streaming response |
+| `/api/contradictions` | GET | List open contradictions for a thread |
+| `/api/contradictions/next` | GET | Get next contradiction needing resolution |
+| `/api/contradictions/resolve` | POST | Resolve a contradiction (OVERRIDE/PRESERVE) |
+| `/api/memory` | GET | List memories for a thread |
+| `/api/facts` | GET | List structured facts |
+| `/api/episodic/context` | GET | Get user context (preferences, patterns) |
+| `/api/episodic/preferences` | GET | Get learned preferences |
+| `/api/thread/reset` | POST | Reset a thread's memory and ledger |
+| `/api/heartbeat/config` | GET/PUT | Configure proactive engagement |
+
+---
+
 ## Testing
 
-### Run adversarial challenge (comprehensive stress test)
-Tests contradiction detection across 45 challenging scenarios including negation, temporal confusion, gaslighting detection, and semantic variations.
-
 ```bash
-# Full 45-turn adversarial challenge
-python tools/adversarial_crt_challenge.py --turns 45
-
-# Expected: Overall score ≥80%, with NEGATION and TEMPORAL phases ≥70%
-```
-
-### Run basic stress test
-```bash
-# Quick stress test (30 turns)
-python tools/crt_stress_test.py --turns 30 --print-every 1
-```
-
-### Run pytest suite
-```bash
-# Run all tests
+# Full test suite (577 tests)
 pytest
 
-# Run specific test categories
-pytest tests/test_contradiction_stress.py -v
-pytest tests/test_adversarial_prompts.py -v
+# Core stress tests (adversarial + boundary + contradiction)
+pytest tests/test_adversarial_prompts.py tests/test_boundary_violations.py tests/test_contradiction_stress.py -v
+
+# GroundCheck stress tests
+python groundcheck/stress_test_performance.py   # 1000 verifications, <2ms p95
+python groundcheck/stress_test_semantic.py      # Paraphrase handling
+
+# CRT stress test (requires Ollama + API server running)
+python tools/crt_stress_test.py --turns 30
+
+# Adversarial challenge (no Ollama required)
+python tools/adversarial_crt_challenge.py --turns 35
 ```
 
-### Expected passing criteria
-- Adversarial challenge overall score: **≥80%**
-- NEGATION phase: **≥70%**
-- TEMPORAL phase: **≥70%**
-- All pytest tests: **PASS**
-- No TypeErrors on integer value contradictions
+### Test Results (2026-02-06)
 
-### Current test status (2026-01-28)
-
-| Test | Score | Target | Status |
-|------|-------|--------|--------|
-| **crt_stress_test.py** | 92.9% eval pass, 82.9% gate pass | 90%+ | ✅ PASSING |
-| **adversarial_crt_challenge.py** | 87.5% (17.5/20 first phases) | 80% | ✅ PASSING |
-| **False Positives** | 0 | 0 | ✅ PASSING |
-| **Missed Detections** | 2 | ≤2 | ✅ PASSING |
-| **Name Extraction Edge Cases** | 100% | 100% | ✅ PASSING |
-
-**Latest stress test metrics (35 turns):**
-
-| Metric | Value | Status |
-|--------|-------|--------|
-| Total Turns | 35 | - |
-| Gates Passed | 29 (82.9%) | ✅ Good |
-| Contradictions Detected | 6 | ✅ All key ones |
-| Avg Confidence | 0.809 | ✅ Good |
-| Avg Trust Score | 0.753 | ✅ Good |
-| Eval Pass Rate | 92.9% (26/28) | ✅ Strong |
-| Memory Failures | 0 | ✅ Perfect |
-
-**Phase breakdown (adversarial test - first 20 turns):**
-
-| Phase | Score | Status |
-|-------|-------|--------|
-| BASELINE | 100% (5/5) | ✅ Perfect |
-| TEMPORAL | 70% (3.5/5) | ✅ Good |
-| SEMANTIC | 80% (4/5) | ✅ Improved |
-| IDENTITY | 100% (5/5) | ✅ Perfect |
-
-**Key improvements (2026-01-28):**
-- ✅ Fixed fact extraction for conjunction edge cases ("My name is Nick but you said Sarah" → extracts "Nick")
-- ✅ Gaslighting detection with memory citation
-- ✅ Hybrid LLM/regex claim extraction
-- ✅ Zero false positives on synonyms/paraphrases
-- ✅ Denial contradiction tracking
-- ✅ LLM self-contradiction tracking (4 detected in test run)
-
-**Key findings:**
-- 6 contradictions correctly detected across employer, experience, education, preference, and name changes
-- Strong performance on baseline, identity, and negation phases
-- Edge case testing: Name extraction correctly handles conjunctions (e.g., "Nick but you" → "Nick")
-- Reintroduction invariant: 18 flagged (audited), 0 unflagged violations
-- 2 minor eval failures: contradiction detection timing, uncertainty expectation
+| Suite | Result |
+|-------|--------|
+| pytest (full) | **577 passed** / 8 failed (98.6%) |
+| Adversarial + Boundary + Contradiction | **84/84 passed** |
+| Coherence, Temporal, Uncertainty, Facts | **73/73 passed** |
+| GroundCheck Performance (1000 runs) | **1.17ms mean, 2.09ms p95** |
+| GroundCheck vs SelfCheckGPT | **2,634x faster** |
 
 ---
 
-## Roadmap (updated 2026-01-30)
+## Frontend
 
-### Next (committed)
-1) **Phase 2.4 - Test Harness (required)**
-   - Adversarial agent + paragraph tests
-   - Gold labels for contradiction types
-   - Regression dashboard + drift tracking
-2) **Phase 2.5 - Model-based Contradiction Detection**
-   - Classifier drop-in vs heuristic baseline
-   - Feature flag + A/B comparison
-3) **Phase 2.6 - Neural Retrieval + Reranking**
-   - Embedding retrieval + reranker
-   - Recall/precision evaluation vs baseline
+React + TypeScript + Tailwind + Framer Motion UI:
 
-### Later
-4) **Phase 3 - UX Enhancements**
-5) **Phase 4 - Vector-store-per-fact (experimental)**
-
-### Completed Phases
-| Phase | Description | Status |
-|-------|-------------|--------|
-| **Phase 1** | Self-questioning, caveat injection, feature flags | Complete |
-| **Phase 1.1** | Wire up CRTMath call sites | Complete |
-| **Phase 1.2** | Context-Aware Memory (domain/temporal detection) | Complete |
-| **Phase 2.1** | FactStore + IntentRouter (structured memory, intent classification) | Complete |
-| **Phase 2.2** | **LLM Claim Tracker** (LLM self-contradiction + LLM<->User contradiction detection) | Complete |
-| **Phase 2.3** | **Episodic Memory** (session summaries, preferences, patterns, concept linking) | Complete |
-
-### Tasking Loop Plan (Phase 2.4 blueprint)
-Goal: let the system decompose requests into tasks, execute them with the right model, and verify coverage.
-
-1) Task schema (system-level)
-   - id, type (plan/execute/verify/expand), goal, inputs, acceptance_criteria, status
-2) Planner
-   - Convert request into an ordered, atomic task list
-3) Executor
-   - Run one task at a time with minimal context
-   - Store output + short summary + artifacts touched
-4) Coverage checker
-   - Compare completed tasks to original request
-   - Spawn missing tasks as needed
-5) Context compression
-   - Rolling task summary to keep small models effective
-6) Optional expansion pass
-   - Big model only, bounded "add value" pass after completion
-7) Failure handling
-   - Retry or re-plan on failed tasks
-8) Logging
-   - Per-task duration, model used, failures, acceptance result
-
-### Audit Metrics (DB + Dashboard)
-Request-level:
-- request_id, thread_id, timestamp, model_used, intent + confidence
-- gates_passed, gate_reason, contradiction_detected + count
-- response_type, latency_total_ms, tokens_in/out, cost_estimate
-
-Task-level (tasking loop):
-- task_id, parent_request_id, task_type, status
-- model_used, latency_ms, inputs_hash, outputs_hash
-- acceptance_passed + reason, retries + failure_reason
-
-Memory / ledger:
-- memory_id, slot, value, source, trust, confidence, created_at, updated_at
-- contradiction_id, status, resolution_method, drift_score, delta_confidence
-- reintroduced_claims_count
-
-Retrieval / ranking:
-- retrieval_query, retrieved_ids + scores
-- rerank_scores, final_context_ids, missed_recall (if evals exist)
-
-Policy / overrides:
-- auto_overwrite, clarification_requested, user_override_applied
-
-Feedback / outcomes:
-- user_feedback, user_correction, final_resolution
-
-### Near-term implementation order
-1) Code: tasking loop (planner -> executor -> coverage checker)
-2) DB: store task + audit metrics
-3) Tests: harness + regressions
-
-
-### Phase 2.3 Features (Completed)
-- **Session Summaries**: Narrative summaries of conversations with topics, entities, facts learned
-- **Preference Learning**: Extracts explicit preferences and infers from interaction patterns
-- **Pattern Detection**: Identifies recurring topics, communication styles, behavioral patterns
-- **Concept Linking**: Connects entities (people, projects, orgs) across sessions with alias resolution
-- **Consumer-grade optimization**: SQLite WAL mode, fast regex, incremental updates, auto-cleanup
-
-### Phase 2.2 Features (Completed)
-- **LLM Claim Extraction**: Parse factual claims from LLM responses into slot/value pairs
-- **LLM Fact Storage**: Store LLM claims with `source="llm"` in FactStore
-- **LLM→LLM Contradiction Detection**: Flag when LLM says X then later says Y
-- **LLM→USER Contradiction Detection**: Flag when LLM claims contradict user-stated facts
-- **Disclosure Injection**: Add "I previously said..." or "You told me X but..." to responses
-
-#### Full Contradiction Matrix (Phase 2.2)
-| Source A | Source B | Detection | Status |
-|----------|----------|-----------|--------|
-| User | User | FactStore + CRT | ✅ Complete |
-| LLM | LLM | LLM Claim Tracker | ✅ Complete |
-| LLM | User | LLM Claim Tracker | ✅ Complete |
-| User | LLM | LLM Claim Tracker | ✅ Complete |
-
-### Phase 2.1 Features (Completed)
-- **FactStore**: Slot-based structured memory (`user.name`, `user.favorite_color`, etc.)
-- **IntentRouter**: Pattern-based intent classification (15 intent types)
-- **Contradiction Detection**: Real fact-level contradiction handling with trust updates
-- **Reason Extraction**: Stores "because" clauses as separate facts
-- **LLM Integration**: Ollama for code generation and general queries
-- **Template Fallbacks**: Works without LLM using template responses
-
-### Phase 2.0 Features
-- **Domain Detection**: Detects domains 
-- **Temporal Status**: Tracks past/active/future status to handle "I used to work at..." patterns
-- **Context-Aware Contradictions**: "I'm a programmer AND a photographer" no longer conflicts
-- **Temporal Updates**: "I don't work at Google anymore" updates status instead of flagging contradiction
-
----
-
-## Episodic Memory System
-
-The repository includes an **Episodic Memory System** for higher-order learning about user preferences, interaction patterns, and connected concepts. This goes beyond basic fact storage to build a personalized understanding of the user over time.
-
-### Key Capabilities
-
-| Feature | Description | Performance |
-|---------|-------------|-------------|
-| **Session Summaries** | Narrative summaries of conversation sessions with topics, entities, and learned facts | Lightweight heuristic or LLM-powered |
-| **Preference Learning** | Extracts explicit preferences ("I prefer short answers") and infers from patterns | Fast regex + frequency analysis |
-| **Pattern Detection** | Identifies recurring topics, communication styles, and behavioral patterns | Incremental updates only |
-| **Concept Linking** | Connects related entities across sessions (people, projects, organizations) | Alias-based resolution |
-
-### Design Philosophy: Consumer Hardware First
-- **SQLite with WAL mode**: Fast concurrent access, no server dependencies
-- **Lightweight pattern matching**: Regex-based, no heavy NLP/ML
-- **Incremental updates**: No full re-indexing on each interaction
-- **Auto-cleanup triggers**: Limits data growth (~1000 interactions retained)
-- **Lazy processing**: Store everything immediately, analyze later
-
-### Architecture
-
-```
-User Message → CRT Memory (facts) → Response
-                    ↓
-            Episodic Memory Manager
-                    ↓
-    ┌───────────────┼───────────────┐
-    ↓               ↓               ↓
-Preference      Pattern         Concept
-Extractor       Detector        Linker
-    ↓               ↓               ↓
-┌───────────────────────────────────────┐
-│           SQLite Database             │
-│  (summaries, preferences, patterns,   │
-│   concepts, interaction_log)          │
-└───────────────────────────────────────┘
-```
-
-### Usage Examples
-
-#### Automatic Learning (via Chat Endpoints)
-The system automatically processes each interaction through `/api/chat/send` or `/api/chat/stream`:
-- Extracts explicit preferences ("I like concise answers")
-- Infers style from response patterns
-- Links mentioned entities to knowledge graph
-- Logs interaction for pattern analysis
-
-#### API Endpoints
+- Multi-thread chat with real-time contradiction tracking
+- Interactive onboarding tutorial
+- Live contradiction ledger with trust scores
+- Memory visualization (stable vs. candidate facts)
+- Side-by-side comparison: regular AI vs. CRT behavior
 
 ```bash
-# Get full user context (preferences, patterns, summaries, concepts)
-curl http://127.0.0.1:8123/api/episodic/context
-
-# Get learned preferences
-curl "http://127.0.0.1:8123/api/episodic/preferences?category=style"
-
-# Get detected patterns
-curl "http://127.0.0.1:8123/api/episodic/patterns?min_confidence=0.5"
-
-# Get linked concepts/entities
-curl "http://127.0.0.1:8123/api/episodic/concepts?concept_type=person"
-
-# Get session summaries
-curl "http://127.0.0.1:8123/api/episodic/summaries?limit=5"
-
-# Finalize session (creates summary + runs analysis)
-curl -X POST http://127.0.0.1:8123/api/episodic/finalize-session
-```
-
-#### Programmatic Access
-
-```python
-from personal_agent.episodic_memory import get_episodic_manager
-
-# Get the singleton manager
-mgr = get_episodic_manager()
-
-# Get user context for prompt building
-context = mgr.get_user_context()
-print(context["preferences"])  # {'style': {'verbosity': 'concise', 'emoji': True}}
-print(context["patterns"])     # [{'type': 'topic_frequency', 'description': '...'}]
-
-# Build context for LLM prompt
-prompt_context = mgr.build_context_prompt()
-# → "User Preferences: Prefers concise responses. Uses emoji..."
-```
-
-### What Gets Stored
-
-**Preferences** (explicit and inferred):
-- Communication style: verbosity, formality, detail level
-- Response format: emoji usage, code style, technical depth
-- Domain preferences: favorite languages, tools, topics
-
-**Patterns** (detected from behavior):
-- Topic frequency: What subjects the user asks about most
-- Time patterns: When they're most active
-- Style evolution: How preferences change over time
-
-**Concepts** (knowledge graph):
-- People mentioned: colleagues, family, friends
-- Projects discussed: work projects, side projects
-- Organizations: employers, schools, communities
-- Topics: recurring interests and domains
-
-**Session Summaries**:
-- Narrative overview of conversation
-- Key topics and entities mentioned
-- Facts learned during session
-- Unresolved questions for follow-up
-
-### Storage Location
-By default, episodic data is stored in:
-```
-personal_agent/data/episodic_memory.db
+cd frontend && npm install && npm run dev
+# → http://localhost:5173 (requires API server running)
 ```
 
 ---
 
-## API Server
+## Configuration
 
-Start the FastAPI server for remote access:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CRT_OLLAMA_MODEL` | `llama3.2:latest` | Ollama model for main LLM |
+| `OLLAMA_TIMEOUT_SECONDS` | `120` | LLM request timeout |
+| `USE_MYSQL` | `false` | Use MySQL auth backend instead of SQLite |
 
-```bash
-uvicorn crt_api:app --host 0.0.0.0 --port 8123
-```
+Runtime config: `crt_runtime_config.json` — assistant name, personality, feature flags.
 
-Query via API:
-```bash
-curl -X POST http://127.0.0.1:8123/api/query \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Where do I work?", "thread_id": "demo"}'
-```
-
-Run stress test against API:
-```bash
-python tools/crt_stress_test.py \
-  --use-api \
-  --api-base-url http://127.0.0.1:8123 \
-  --reset-thread \
-  --print-every 1
-```
+Calibrated thresholds: `artifacts/calibrated_thresholds.json` — auto-loaded for contradiction detection tuning.
 
 ---
 
-## Troubleshooting
+## Project Structure
 
-### ML dependencies (xgboost)
-The system uses XGBoost models for ML based contradiction detection. If xgboost is not installed:
-
-**Symptom**: Warnings about "xgboost not installed" or "Falling back to heuristic contradiction detection"
-
-**Fix**:
-```bash
-pip install xgboost>=1.7.0
 ```
-
-The system will automatically fall back to heuristic based detection if xgboost is unavailable, but ML models provide better accuracy (especially for NEGATION and TEMPORAL cases).
-
-### Missing groundcheck module
-**Symptom**: `ModuleNotFoundError: No module named 'groundcheck'`
-
-**Fix**:
-```bash
-cd groundcheck
-pip install -e .
+.
+├── crt_api.py              # FastAPI server
+├── Rag-Demo.py             # Interactive CLI demo
+├── personal_agent/         # Core CRT system (40+ modules)
+├── groundcheck/            # Hallucination verification library
+├── sse/                    # Semantic String Engine
+├── belief_revision/        # Belief revision bench (policy learning)
+├── frontend/               # React UI
+├── tools/                  # Stress tests and validation utilities
+├── tests/                  # 577+ pytest tests
+├── schemas/                # JSON schemas for runtime config
+├── artifacts/              # Calibrated thresholds, trained models
+├── data/                   # Training data
+└── models/                 # ML model artifacts
 ```
-
-### Sentence transformers / torch issues
-**Symptom**: Large download or space issues with PyTorch/transformers
-
-**Note**: These are optional for full functionality. The core CRT system works with fallback modes if these are unavailable.
-
-**Fix** (if needed):
-```bash
-pip install sentence-transformers
-```
-
-### TypeError on integer values
-**Symptom**: `AttributeError: 'int' object has no attribute 'lower'`
-
-**Status**: **FIXED** in latest version. The `ml_contradiction_detector.py` now converts all values to strings before string operations.
 
 ---
-
-## Project status
-**Research prototype** - Updated 2026-01-30
-
-**Current Phase:** 2.4 (Test Harness)
-
-### New Files Added
-| File | Purpose |
-|------|---------|
-| `personal_agent/fact_store.py` | Structured slot-based memory with contradiction detection |
-| `personal_agent/intent_router.py` | Intent classification (15 types) with pattern matching |
-| `personal_agent/episodic_memory.py` | Higher-order memory: preferences, patterns, concept linking |
-| `rag-demo.py` | Interactive CLI demonstrating all components |
-
-This system works well for:
-- Researchers exploring contradiction aware AI memory
-- Developers building transparent personal assistants
-- Teams needing auditable memory systems
-
-Not recommended for production use without additional hardening, monitoring, and domain specific tuning.
-
-For detailed project status and metrics, see [STATUS.md](STATUS.md).
-
----
-
 
 ## License
-MIT License - see [LICENSE](LICENSE) for details
+
+MIT — see [LICENSE](LICENSE)

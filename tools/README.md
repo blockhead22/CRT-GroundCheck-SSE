@@ -1,72 +1,85 @@
-# Tools Directory
+# Tools
 
-Testing and validation utilities for CRT-GroundCheck-SSE.
-
----
-
-## Primary Testing Tools
-
-| Tool | Purpose | Requires Ollama? |
-|------|---------|------------------|
-| **adversarial_crt_challenge.py** | 35-turn adversarial test (7 phases) | ❌ No |
-| **crt_stress_test.py** | 30-turn general stress test | ✅ Yes |
+Testing, validation, and operational utilities for CRT-GroundCheck-SSE.
 
 ---
 
-## Quick Commands
+## Stress Tests
 
-### Adversarial Challenge (Primary Test)
-```powershell
+| Tool | What It Tests | Requires |
+|------|--------------|----------|
+| `adversarial_crt_challenge.py` | 7-phase adversarial contradiction testing (35 turns) | Offline (no Ollama) |
+| `crt_stress_test.py` | Full 30-turn memory + trust analysis | Ollama + API server |
+| `adaptive_stress_test.py` | Reactive adversarial conversation (40-80 turns) | API server |
+| `full_stress_test.py` | Extended suite: memory, contradictions, gates, NL resolution, DB integrity | API server |
+| `quick_stress_test.py` | Fast subset validation | API server |
+| `nl_resolution_stress_test.py` | Natural language resolution patterns | API server |
+| `stress_test_runner.py` | Comprehensive runner with metrics collection | API server |
+| `crt_adaptive_stress_test.py` | CRT-specific adaptive testing | API server |
+
+### Quick Commands
+
+```bash
+# Offline adversarial test (no server needed)
 python tools/adversarial_crt_challenge.py --turns 35
-```
-Tests: baseline, temporal, semantic, identity, negation, drift, stress
 
-**Target:** ≥80% overall score
-
-### CRT Stress Test (Full Test)
-```powershell
-# Start Ollama first
+# Full stress test (start Ollama + API first)
 ollama serve
+python crt_api.py &
+python tools/crt_stress_test.py --turns 30 --print-every 5
 
-# Run test
-python tools/crt_stress_test.py --turns 30
+# Quick validation
+python tools/quick_stress_test.py
 ```
 
-**Target:** ≥90% eval pass rate
+---
+
+## Calibration & Training
+
+| Tool | Purpose |
+|------|---------|
+| `calibrate_thresholds.py` | Calibrate contradiction detection thresholds → `artifacts/calibrated_thresholds.json` |
+| `calibration_dataset.py` | Generate calibration datasets |
+| `train_response_classifier.py` | Train response quality classifier (v1) |
+| `train_response_classifier_v2.py` | Train response classifier (v2, improved) |
+| `bootstrap_training_data.py` | Generate training data from existing conversations |
+| `crt_learn_train.py` | Train CRT learned model |
+| `crt_learn_eval.py` | Evaluate learned model |
+| `crt_learn_make_eval_set.py` | Generate evaluation dataset |
+| `crt_learn_publish.py` | Publish trained model to production |
 
 ---
 
-## All Tools
+## Inspection & Debugging
 
-| File | Description |
-|------|-------------|
-| `adversarial_crt_challenge.py` | Multi-phase adversarial contradiction testing |
-| `crt_stress_test.py` | General stress test with API or direct mode |
-| `full_stress_test.py` | Extended stress test suite |
-| `quick_stress_test.py` | Fast validation (subset of scenarios) |
-| `nl_resolution_stress_test.py` | Natural language resolution testing |
-| `check_ledger_db.py` | Inspect contradiction ledger database |
-
----
-
-## Test Phases (adversarial_crt_challenge.py)
-
-| Phase | Turns | What It Tests |
-|-------|-------|---------------|
-| BASELINE | 1-5 | Basic fact storage and recall |
-| TEMPORAL | 6-10 | Time-based inference conflicts |
-| SEMANTIC | 11-15 | Meaning-equivalent contradictions |
-| IDENTITY | 16-20 | Name/entity changes |
-| NEGATION | 21-25 | "I don't X anymore" patterns |
-| DRIFT | 26-30 | Gradual value shifts |
-| STRESS | 31-35 | Rapid-fire contradictions |
+| Tool | Purpose |
+|------|---------|
+| `crt_dashboard.py` | CRT system dashboard |
+| `crt_control_panel.py` | Runtime control panel |
+| `crt_reflect.py` | Trigger manual reflection pass |
+| `crt_response_eval.py` | Evaluate individual turn responses |
+| `db_integrity_check.py` | Check database integrity |
+| `sse_inspector.py` | Inspect SSE index contents |
+| `sse_multi_cli.py` | Multi-document SSE CLI |
+| `verify_evidence.py` | Verify evidence packet integrity |
+| `validate_two_tier_integration.py` | Validate two-tier fact system |
 
 ---
 
-## Current Results (2026-01-26)
+## Detection Tests
 
-| Metric | crt_stress_test | adversarial_challenge |
-|--------|-----------------|----------------------|
-| **Score** | 91.7% | 65.7% |
-| **Target** | 90% | 80% |
-| **Status** | ✅ PASSING | ⚠️ In progress |
+| Tool | Purpose |
+|------|---------|
+| `run_detection_test.py` | Run contradiction detection test suite |
+| `run_gate_test.py` | Run reconstruction gate tests |
+| `run_resolution_test.py` | Run resolution pattern tests |
+| `quick_validation_test.py` | Quick validation of core functionality |
+
+---
+
+## Analysis
+
+| Tool | Purpose |
+|------|---------|
+| `analyze_stress_test_session.py` | Analyze JSONL stress test output for patterns |
+| `crt_learn_eval.py` | Evaluate model performance |
