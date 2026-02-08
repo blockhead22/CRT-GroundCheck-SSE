@@ -103,3 +103,5 @@ belief_revision/data/extraction_report.md
 *.safetensors
 belief_revision/models/bert_belief_classifier/
 
+# White paper (private)
+docs/CRT_WHITE_PAPER.md

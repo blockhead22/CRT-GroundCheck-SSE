@@ -39,15 +39,17 @@ If you tell the system *"I work at Microsoft"* and later say *"I work at Google"
 ## Scope
 
 - Append-only memory where no claim is ever silently overwritten or discarded
-- Trust scores that evolve mathematically — earned through consistency, degraded by contradiction, resistant to noise proportional to evidence history
+- Trust scores that evolve through nonlinear dynamics — earned through consistency, resistant to noise proportional to accumulated evidence mass
 - Contradictions preserved as first-class entities with full lifecycle tracking, not errors to be hidden
 - Inline hallucination verification fast enough to gate every response in real time
-- Reconstruction gates that block confident answers when the epistemic state can't support them
-- The beginning of a topological model of how beliefs relate to, depend on, and invalidate each other
-- Memory that compresses over time without losing the structure that makes it trustworthy
-- A system that learns how *you specifically* communicate — and calibrates accordingly
-- Infrastructure moving toward model-agnostic and storage-agnostic, so the trust layer isn't coupled to any single LLM or database
-- GroundCheck architected to stand on its own — a sub-2ms verification layer any LLM pipeline could use
+- Reconstruction gates that block confident answers when the epistemic state can't support them — with consequence-aware strictness for high-stakes domains
+- A topological model of how beliefs relate to, depend on, and invalidate each other — where a change in one claim propagates through its dependencies
+- Claim-level atomic decomposition — every user statement broken into independently trackable, independently contradictable units
+- Memory that compresses over time without losing the epistemic structure that makes it trustworthy — contradiction-preserving, not lossy summarization
+- A system that learns how *you specifically* communicate and calibrates trust accordingly — personalized epistemics, not universal formulas
+- Hierarchical memory tiers where claims earn promotion through consistency and survive demotion with full history intact
+- Model-agnostic and storage-agnostic infrastructure — the trust layer works with any LLM and any database
+- GroundCheck as a standalone sub-2ms verification layer any LLM pipeline can use independently
 
 ---
 
