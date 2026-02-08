@@ -223,6 +223,7 @@ Mirus: resonance scoring + compression
 - [ ] Both paths go through the same Holden gates and GroundCheck
 - [ ] LLM responses are logged as training data (filtered by trust gate)
 - [ ] DNNT responses are logged for self-evaluation
+  - Started: `ReasoningInference` now writes micro-path self-eval records to `data/dnnt_self_eval.jsonl`
 
 ---
 

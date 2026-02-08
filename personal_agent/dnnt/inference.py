@@ -101,6 +101,17 @@ class ReasoningInference:
         self.training_gate_accepted = 0
         self.training_gate_rejected = 0
         self.last_training_gate_reason = "n/a"
+        self.self_eval_enabled = str(os.getenv("CRT_DNNT_SELF_EVAL_ENABLED", "true")).strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+            "on",
+        }
+        self.self_eval_path = Path("data/dnnt_self_eval.jsonl")
+        self.self_eval_buffer: List[Dict[str, Any]] = []
+        self.self_eval_logged = 0
+        self.self_eval_flushes = 0
         
     def load_model(self, path: str):
         """Load the micro-transformer model."""
@@ -322,6 +333,14 @@ class ReasoningInference:
         )
         
         if use_micro:
+            self._log_self_eval(
+                query=query,
+                facts=facts,
+                thinking=micro_thinking,
+                response=micro_response,
+                confidence=micro_confidence,
+                metadata=training_meta,
+            )
             latency = (time.time() - start_time) * 1000
             return InferenceResult(
                 response=micro_response,
@@ -377,6 +396,33 @@ class ReasoningInference:
         # Periodically flush to disk
         if len(self.training_buffer) >= 10:
             self._flush_training_buffer()
+
+    def _log_self_eval(
+        self,
+        *,
+        query: str,
+        facts: List[str],
+        thinking: str,
+        response: str,
+        confidence: float,
+        metadata: Optional[Dict[str, Any]],
+    ) -> None:
+        if not self.self_eval_enabled:
+            return
+        record = {
+            "timestamp": time.time(),
+            "query": str(query or ""),
+            "facts": [str(x) for x in (facts or [])],
+            "thinking": str(thinking or ""),
+            "response": str(response or ""),
+            "confidence": float(confidence or 0.0),
+            "source": "micro",
+            "meta": dict(metadata or {}),
+        }
+        self.self_eval_buffer.append(record)
+        self.self_eval_logged += 1
+        if len(self.self_eval_buffer) >= 10:
+            self._flush_self_eval_buffer()
             
     def _flush_training_buffer(self):
         """Write collected examples to disk."""
@@ -391,6 +437,18 @@ class ReasoningInference:
                 
         print(f"[ReasoningInference] Flushed {len(self.training_buffer)} examples to {self.training_data_path}")
         self.training_buffer = []
+
+    def _flush_self_eval_buffer(self):
+        """Write DNNT self-evaluation records to disk."""
+        if not self.self_eval_buffer:
+            return
+
+        self.self_eval_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.self_eval_path, "a", encoding="utf-8") as f:
+            for row in self.self_eval_buffer:
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        self.self_eval_flushes += 1
+        self.self_eval_buffer = []
         
     def get_stats(self) -> Dict:
         """Get inference statistics."""
@@ -404,6 +462,10 @@ class ReasoningInference:
             'training_gate_accepted': self.training_gate_accepted,
             'training_gate_rejected': self.training_gate_rejected,
             'training_gate_last_reason': self.last_training_gate_reason,
+            'self_eval_enabled': self.self_eval_enabled,
+            'self_eval_logged': self.self_eval_logged,
+            'self_eval_pending': len(self.self_eval_buffer),
+            'self_eval_path': str(self.self_eval_path),
             'hot_reload_enabled': self.auto_reload_enabled,
             'hot_reload_count': self.hot_reload_count,
             'hot_reload_errors': self.hot_reload_errors,
@@ -421,6 +483,7 @@ class ReasoningInference:
         """Flush any remaining training data."""
         try:
             self._flush_training_buffer()
+            self._flush_self_eval_buffer()
         except:
             pass
 

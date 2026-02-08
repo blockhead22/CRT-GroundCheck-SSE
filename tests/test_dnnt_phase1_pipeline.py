@@ -135,3 +135,26 @@ def test_inference_hot_reload_detects_model_signature_change(tmp_path: Path) -> 
     assert calls == [str(model_dir)]
     assert engine.hot_reload_count == 1
     assert engine.last_hot_reload_reason == "reloaded"
+
+
+def test_inference_logs_micro_self_eval_records(tmp_path: Path) -> None:
+    engine = ReasoningInference(model_path=str(tmp_path / "missing_model"), collect_training_data=False)
+    engine.model_loaded = True
+    engine.self_eval_enabled = True
+    engine.self_eval_path = tmp_path / "dnnt_self_eval.jsonl"
+
+    def fake_generate_micro(query: str, facts: list[str], max_tokens: int = 256, temperature: float = 0.7):
+        return "use memory", "You work at DataCore.", 0.91
+
+    engine.generate_micro = fake_generate_micro  # type: ignore[assignment]
+    result = engine.generate("Where do I work?", ["employer=DataCore (0.95)"], force_micro=True)
+    assert result.source == "micro"
+    assert result.used_llm is False
+    assert len(engine.self_eval_buffer) == 1
+    assert engine.self_eval_logged == 1
+
+    engine._flush_self_eval_buffer()
+    assert engine.self_eval_path.exists()
+    text = engine.self_eval_path.read_text(encoding="utf-8")
+    assert "Where do I work?" in text
+    assert "\"source\": \"micro\"" in text
