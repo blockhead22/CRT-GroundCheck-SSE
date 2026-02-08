@@ -159,10 +159,15 @@ class ReasoningInference:
             return
 
         try:
+            before_sig = self._loaded_signature
             self.load_model(str(self.model_path))
-            self.hot_reload_count += 1
-            self.last_hot_reload_reason = "reloaded"
-            self.last_hot_reload_at = now
+            if self.model_loaded and self._loaded_signature != before_sig:
+                self.hot_reload_count += 1
+                self.last_hot_reload_reason = "reloaded"
+                self.last_hot_reload_at = now
+            else:
+                self.hot_reload_errors += 1
+                self.last_hot_reload_reason = "reload_failed"
         except Exception as e:
             self.hot_reload_errors += 1
             self.last_hot_reload_reason = f"reload_failed:{e}"
