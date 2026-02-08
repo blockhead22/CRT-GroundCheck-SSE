@@ -16,10 +16,11 @@ import argparse
 import torch
 from pathlib import Path
 
-from .trainer import quick_train, ReasoningTrainer, TrainingConfig
-from .model import DNNTMicroTransformer, DNNTConfig, SimpleTokenizer
+from .trainer import ReasoningTrainer, TrainingConfig
+from .model import DNNTMicroTransformer, DNNTConfig
 from .synthetic_generator import SyntheticGenerator
 from .data_extractor import DataExtractor
+from .tokenizer_bpe import create_tokenizer
 
 
 def main():
@@ -33,6 +34,19 @@ def main():
     parser.add_argument('--output-dir', type=str, default='models/dnnt', help='Output directory')
     parser.add_argument('--no-gpu', action='store_true', help='Disable GPU')
     parser.add_argument('--resume', type=str, default=None, help='Resume from checkpoint')
+    parser.add_argument(
+        '--tokenizer-backend',
+        type=str,
+        default='simple',
+        choices=['simple', 'sentencepiece'],
+        help='Tokenizer backend (simple or sentencepiece BPE)',
+    )
+    parser.add_argument(
+        '--tokenizer-vocab-size',
+        type=int,
+        default=8000,
+        help='Tokenizer vocabulary size target',
+    )
     
     args = parser.parse_args()
     
@@ -47,6 +61,7 @@ def main():
     print(f"  Hidden dim: {args.hidden_dim}")
     print(f"  Layers: {args.layers}")
     print(f"  Output: {args.output_dir}")
+    print(f"  Tokenizer: {args.tokenizer_backend} (target vocab={args.tokenizer_vocab_size})")
     print(f"  GPU: {'Disabled' if args.no_gpu else 'Auto'}")
     
     # Check GPU
@@ -90,16 +105,26 @@ def main():
     print("\n2. Initializing model...")
     
     model_config = DNNTConfig(
-        vocab_size=8000,
+        vocab_size=max(256, int(args.tokenizer_vocab_size)),
         hidden_dim=args.hidden_dim,
         num_layers=args.layers,
         num_heads=4,
         max_seq_length=512,
         dropout=0.1,
     )
-    
+
+    tokenizer_texts = [ex.to_training_format() for ex in all_examples]
+    tokenizer = create_tokenizer(
+        backend=args.tokenizer_backend,
+        vocab_size=args.tokenizer_vocab_size,
+        texts=tokenizer_texts,
+        model_dir=str(Path(args.output_dir) / "tokenizer_assets"),
+        allow_fallback=True,
+    )
+    if args.tokenizer_backend == "sentencepiece" and type(tokenizer).__name__ != "SentencePieceTokenizer":
+        print("   Warning: sentencepiece backend requested but unavailable; using SimpleTokenizer fallback")
+    model_config.vocab_size = int(getattr(tokenizer, "vocab_size", model_config.vocab_size))
     model = DNNTMicroTransformer(model_config)
-    tokenizer = SimpleTokenizer()
     
     print(f"   Parameters: {model.n_params:,}")
     print(f"   Size: ~{model.n_params * 4 / 1024 / 1024:.1f} MB")

@@ -152,7 +152,9 @@ The transformer is the capstone, not the foundation. Mirus tells it what's relev
 ### Phase 1.2: Replace SimpleTokenizer with BPE
 
 - [ ] Integrate sentencepiece or tiktoken for proper subword tokenization
+  - Started: added optional SentencePiece BPE backend (`personal_agent/dnnt/tokenizer_bpe.py`) with dynamic OOV fallback
 - [ ] ~8000 vocab with the ability to expand dynamically
+  - Started: training CLI now supports `--tokenizer-backend sentencepiece --tokenizer-vocab-size 8000`
 - [ ] Retrain tokenizer on accumulated conversation data
 - [ ] Character-level fallback for OOV tokens
 

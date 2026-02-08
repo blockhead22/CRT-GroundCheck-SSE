@@ -16,6 +16,7 @@ import torch
 from .data_extractor import TrainingExample
 from .model import DNNTConfig, DNNTMicroTransformer, SimpleTokenizer
 from .trainer import ReasoningTrainer, TrainingConfig
+from .tokenizer_bpe import load_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -383,13 +384,13 @@ class DNNTBackgroundLearner:
             return device
         return "cuda" if torch.cuda.is_available() else "cpu"
 
-    def _load_or_init_model(self, device: str) -> Tuple[DNNTMicroTransformer, SimpleTokenizer]:
+    def _load_or_init_model(self, device: str):
         model_dir = Path(self.config.output_dir) / "model"
         model_pt = model_dir / "model.pt"
         if model_pt.exists():
             model = DNNTMicroTransformer.load(str(model_dir), device=device)
             tok_path = model_dir / "tokenizer.json"
-            tokenizer = SimpleTokenizer.load(str(tok_path)) if tok_path.exists() else SimpleTokenizer()
+            tokenizer = load_tokenizer(str(tok_path), allow_fallback=True) if tok_path.exists() else SimpleTokenizer()
             return model, tokenizer
         config = DNNTConfig(vocab_size=8000)
         return DNNTMicroTransformer(config).to(device), SimpleTokenizer()
@@ -504,4 +505,3 @@ def run_background_learning_once(config: Optional[BackgroundLearningConfig] = No
 def run_background_learning_forever(config: Optional[BackgroundLearningConfig] = None) -> None:
     learner = DNNTBackgroundLearner(config=config)
     learner.run_forever()
-

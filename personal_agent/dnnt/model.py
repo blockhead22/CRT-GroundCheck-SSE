@@ -509,6 +509,7 @@ class SimpleTokenizer:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(
                 {
+                    "tokenizer_type": "simple",
                     "vocab_size": self.vocab_size,
                     "char_to_id": self.char_to_id,
                     "special_tokens": self.special_tokens,

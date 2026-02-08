@@ -26,6 +26,7 @@ from .model import (
 from .trainer import ReasoningTrainer
 from .inference import ReasoningInference
 from .trust_gate import TrustGate, TrustGateConfig
+from .tokenizer_bpe import SentencePieceTokenizer, create_tokenizer, load_tokenizer
 from .background_learning import (
     BackgroundLearningConfig,
     BackgroundLearningState,
@@ -47,6 +48,9 @@ __all__ = [
     'ReasoningInference',
     'TrustGate',
     'TrustGateConfig',
+    'SentencePieceTokenizer',
+    'create_tokenizer',
+    'load_tokenizer',
     'BackgroundLearningConfig',
     'BackgroundLearningState',
     'DNNTBackgroundLearner',

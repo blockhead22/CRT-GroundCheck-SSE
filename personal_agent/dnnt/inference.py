@@ -8,9 +8,10 @@ from typing import Optional, Tuple, List, Dict, Callable, Any
 from dataclasses import dataclass
 import json
 
-from .model import DNNTMicroTransformer, DNNTConfig, SimpleTokenizer
+from .model import DNNTMicroTransformer, SimpleTokenizer
 from .data_extractor import TrainingExample
 from .trust_gate import TrustGate, TrustGateConfig
+from .tokenizer_bpe import load_tokenizer
 
 
 @dataclass
@@ -109,7 +110,7 @@ class ReasoningInference:
             
             tokenizer_path = Path(path) / 'tokenizer.json'
             if tokenizer_path.exists():
-                self.tokenizer = SimpleTokenizer.load(str(tokenizer_path))
+                self.tokenizer = load_tokenizer(str(tokenizer_path), allow_fallback=True)
             else:
                 self.tokenizer = SimpleTokenizer()
                 
@@ -397,6 +398,7 @@ class ReasoningInference:
             'model_loaded': self.model_loaded,
             'device': self.device,
             'model_path': str(self.model_path),
+            'tokenizer_backend': type(self.tokenizer).__name__ if self.tokenizer is not None else None,
             'confidence_threshold': self.confidence_threshold,
             'collected_examples': len(self.training_buffer),
             'training_gate_accepted': self.training_gate_accepted,

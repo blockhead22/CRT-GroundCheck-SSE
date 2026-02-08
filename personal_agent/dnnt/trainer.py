@@ -19,6 +19,7 @@ from .model import (
     expand_model_vocab,
 )
 from .data_extractor import TrainingExample
+from .tokenizer_bpe import create_tokenizer
 
 
 @dataclass
@@ -389,6 +390,7 @@ def quick_train(
     num_synthetic: int = 500,
     num_epochs_equivalent: int = 10,
     use_gpu: bool = True,
+    tokenizer_backend: str = "simple",
 ):
     """Quick training function for testing."""
     from .synthetic_generator import SyntheticGenerator
@@ -432,8 +434,15 @@ def quick_train(
         num_heads=4,
         max_seq_length=512,
     )
+    tokenizer = create_tokenizer(
+        backend=tokenizer_backend,
+        vocab_size=config.vocab_size,
+        texts=[ex.to_training_format() for ex in all_examples],
+        model_dir="models/dnnt/tokenizer_assets",
+        allow_fallback=True,
+    )
+    config.vocab_size = int(getattr(tokenizer, "vocab_size", config.vocab_size))
     model = DNNTMicroTransformer(config)
-    tokenizer = SimpleTokenizer()
     
     print(f"   Parameters: {model.n_params:,}")
     print(f"   Size: ~{model.n_params * 4 / 1024 / 1024:.1f} MB")
