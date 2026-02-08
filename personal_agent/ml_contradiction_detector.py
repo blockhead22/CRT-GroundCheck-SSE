@@ -235,11 +235,10 @@ class MLContradictionDetector:
         Initialize ML detector with trained models.
         
         Args:
-            model_dir: Directory containing trained models. 
-                      Defaults to belief_revision/models/
+            model_dir: Directory containing trained models.
         """
         if model_dir is None:
-            model_dir = Path(__file__).parent.parent / "belief_revision" / "models"
+            model_dir = Path(__file__).parent / "ml_models"
         
         self.model_dir = Path(model_dir)
         
