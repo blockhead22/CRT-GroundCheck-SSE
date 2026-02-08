@@ -31,6 +31,8 @@ from .crt_core import (
     encode_vector, extract_emotion_intensity, extract_future_relevance
 )
 from .policy import validate_external_memory_context
+from .engine.anchors import AnchorSystem
+from .engine.reconstruction import ReconstructionFidelityEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +157,10 @@ class CRTMemorySystem:
         self.db_path = db_path
         self.config = config or CRTConfig()
         self.crt_math = CRTMath(self.config)
-        
+        self.anchor_system = AnchorSystem()
+        self.reconstruction_fidelity = ReconstructionFidelityEvaluator()
+        self.fidelity_min_threshold = 0.60
+
         # Initialize database
         self._init_db()
     
@@ -416,8 +421,41 @@ class CRTMemorySystem:
             trust = self.config.tau_base * 1.2  # Reflection gets higher initial trust
         else:
             trust = self.config.tau_base
-        
+
         trust = np.clip(trust, 0.0, 1.0)
+
+        # Phase 0.5 DNNT hook: reconstruction fidelity + anchor extraction.
+        # The interface is stable so a learned Mirus/Holden module can replace it later.
+        hook_context: Dict[str, Any] = dict(context or {})
+        hook_meta = hook_context.get("crt_hooks")
+        if not isinstance(hook_meta, dict):
+            hook_meta = {}
+        try:
+            fidelity_signal = self.reconstruction_fidelity.evaluate(text=text, sse_mode=sse_mode)
+            hook_meta["reconstruction_fidelity"] = round(float(fidelity_signal.fidelity), 6)
+            hook_meta["reconstruction_loss"] = round(float(fidelity_signal.loss), 6)
+            hook_meta["compressed_preview"] = fidelity_signal.compressed_text[:240]
+            hook_meta["reconstructed_preview"] = fidelity_signal.reconstructed_text[:240]
+
+            if fidelity_signal.fidelity < self.fidelity_min_threshold:
+                # Low-fidelity memories are less trusted by default.
+                delta = (self.fidelity_min_threshold - float(fidelity_signal.fidelity)) * 0.25
+                trust = float(max(0.0, trust - delta))
+                hook_meta["fidelity_trust_penalty"] = round(delta, 6)
+        except Exception as e:
+            logger.debug(f"[FIDELITY] Failed to compute reconstruction fidelity: {e}")
+            hook_meta["reconstruction_fidelity"] = None
+            hook_meta["reconstruction_loss"] = None
+
+        try:
+            anchors = self.anchor_system.matched_anchors(text)
+            if anchors:
+                hook_meta["anchor_matches"] = anchors
+        except Exception as e:
+            logger.debug(f"[ANCHORS] Failed to compute anchor matches: {e}")
+
+        hook_context["crt_hooks"] = hook_meta
+        context = hook_context
         
         # Sprint 1: Extract facts using two-tier system
         fact_tuples_json = None

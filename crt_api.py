@@ -19,6 +19,7 @@ from fastapi import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from routes import register_routes
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
@@ -57,6 +58,7 @@ from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 from personal_agent.db_utils import get_thread_session_db, get_db_connection
+from personal_agent.engine.collapse_trails import get_collapse_trail_logger
 from personal_agent.continuous_loops import build_loops, maybe_reply_to_journal_entry
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
@@ -1055,6 +1057,37 @@ def create_app() -> FastAPI:
             ledger_db = f"personal_agent/crt_ledger_{tid}.db"
         return memory_db, ledger_db
 
+    collapse_logger = get_collapse_trail_logger()
+
+    def _log_collapse_trail(
+        *,
+        thread_id: str,
+        query: str,
+        answer: str,
+        result: Optional[Dict[str, Any]],
+        stage: str,
+        mode: Optional[str] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        try:
+            payload = dict(result or {})
+            payload.setdefault("answer", answer)
+            return collapse_logger.log_trail(
+                thread_id=_sanitize_thread_id(thread_id),
+                query=query,
+                answer=answer,
+                result=payload,
+                stage=stage,
+                mode=mode,
+                extra=extra,
+            )
+        except Exception as e:
+            logger.debug(f"[COLLAPSE_TRAIL] Failed to log trail: {e}")
+            return None
+
+    # Route modules (strangler pattern): endpoints move out of this file incrementally.
+    register_routes(app)
+
     @app.on_event("startup")
     def _startup() -> None:
         # Initialize auth database
@@ -1962,10 +1995,6 @@ def create_app() -> FastAPI:
             return (0, 0)
 
         return (deleted_memories, deleted_trust_log)
-
-    @app.get("/health")
-    def health() -> Dict[str, str]:
-        return {"status": "ok"}
 
     # ========================================================================
     # Auth endpoints
@@ -3412,6 +3441,22 @@ def create_app() -> FastAPI:
             "tasking": tasking_meta,
         }
 
+        collapse_trail_id = _log_collapse_trail(
+            thread_id=req.thread_id,
+            query=req.message,
+            answer=final_answer,
+            result=result,
+            stage="chat_send",
+            mode=str(req.mode) if req.mode else None,
+            extra={
+                "expanded": expanded,
+                "tasking_enabled": tasking_enabled,
+                "agent_activated": agent_activated,
+            },
+        )
+        if collapse_trail_id:
+            metadata["collapse_trail_id"] = collapse_trail_id
+
         # Build X-Ray data (memory transparency mode)
         xray_data = None
         try:
@@ -3621,7 +3666,26 @@ def create_app() -> FastAPI:
                         )
                     except Exception as e:
                         logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
-                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': {'mode': 'fallback', 'thinking': '', 'style_profile': style_profile, 'personality_profile': personality_profile, 'reflection_scorecard': reflection_scorecard, 'profile_updates': result.get('profile_updates') or []}})}\n\n"
+                    stream_metadata = {
+                        'mode': 'fallback',
+                        'thinking': '',
+                        'style_profile': style_profile,
+                        'personality_profile': personality_profile,
+                        'reflection_scorecard': reflection_scorecard,
+                        'profile_updates': result.get('profile_updates') or [],
+                    }
+                    collapse_trail_id = _log_collapse_trail(
+                        thread_id=req.thread_id,
+                        query=req.message,
+                        answer=str(result.get("answer") or ""),
+                        result=result,
+                        stage="chat_stream_fallback",
+                        mode=str(req.mode) if req.mode else "stream",
+                    )
+                    if collapse_trail_id:
+                        stream_metadata["collapse_trail_id"] = collapse_trail_id
+
+                    yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': stream_metadata})}\n\n"
                     return
                 
                 # Stream from LLM with thinking visible
@@ -4079,6 +4143,22 @@ INTERACTION GUIDELINES:
                 
                 if reminder_created:
                     metadata['reminder_created'] = reminder_created
+
+                collapse_trail_id = _log_collapse_trail(
+                    thread_id=req.thread_id,
+                    query=req.message,
+                    answer=clean_response,
+                    result=result,
+                    stage="chat_stream_llm",
+                    mode=str(req.mode) if req.mode else "stream",
+                    extra={
+                        "llm_model": llm_client.model,
+                        "thinking_chars": len(thinking_content),
+                        "phase_mode": bool(req.phase_mode),
+                    },
+                )
+                if collapse_trail_id:
+                    metadata["collapse_trail_id"] = collapse_trail_id
 
                 if phase_enabled and answer_phase_started:
                     yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'answer', 'content': ''})}\n\n"
@@ -5147,7 +5227,17 @@ INTERACTION GUIDELINES:
             "structured_facts": result.get("structured_facts"),
             "fact_store_hit": result.get("fact_store_hit", False),
         }
-        
+        collapse_trail_id = _log_collapse_trail(
+            thread_id=req.thread_id,
+            query=req.message,
+            answer=str(result.get("answer") or ""),
+            result=result,
+            stage="chat_intent",
+            mode="intent",
+        )
+        if collapse_trail_id:
+            metadata["collapse_trail_id"] = collapse_trail_id
+
         return IntentQueryResponse(
             answer=result.get("answer", ""),
             intent=result.get("intent", "unknown"),

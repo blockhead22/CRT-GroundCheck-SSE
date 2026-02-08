@@ -58,6 +58,9 @@ from .ml_contradiction_detector import MLContradictionDetector
 from .resolution_patterns import has_resolution_intent, get_matched_patterns
 from .contradiction_trace_logger import get_trace_logger
 from .domain_detector import detect_domains, detect_query_domains
+from .engine.anchors import AnchorSystem
+from .engine.resonance import ResonanceScorer
+from .engine.degradation import DegradationDetector
 from groundcheck.semantic_matcher import SemanticMatcher
 from sse.contradictions import heuristic_contradiction
 
@@ -121,6 +124,9 @@ class CRTEnhancedRAG:
         
         # Reasoning engine
         self.reasoning = ReasoningEngine(llm_client)
+        self.anchor_system = AnchorSystem()
+        self.resonance_scorer = ResonanceScorer(anchor_system=self.anchor_system)
+        self.degradation_detector = DegradationDetector()
 
         # Optional learned suggestions (metadata-only).
         self.learned_suggestions = LearnedSuggestionEngine()
@@ -654,6 +660,7 @@ class CRTEnhancedRAG:
         # Phase 2.0: Detect query domains for boosting
         if relevant_domains is None:
             relevant_domains = detect_query_domains(query)
+        query_vector = encode_vector(query)
         
         # Default retrieval is intended to ground answers in auditable sources.
         # Assistant-generated outputs (SYSTEM) and non-durable speech (FALLBACK)
@@ -736,12 +743,33 @@ class CRTEnhancedRAG:
             if mem.source == MemorySource.FALLBACK and txt.startswith("i don't expose internal memory ids"):
                 continue
 
+            # Phase 0.5 DNNT hook: resonance scoring (Mirus integration point).
+            try:
+                resonance = self.resonance_scorer.score(
+                    query=query,
+                    memory_text=mem.text,
+                    query_vector=query_vector,
+                    memory_vector=mem.vector,
+                )
+                # Keep trust-weighted score primary, use resonance as bounded multiplier.
+                score *= (0.75 + (0.50 * resonance.resonance))
+
+                if resonance.anchor_matches:
+                    mem.context = dict(mem.context or {})
+                    hook_meta = mem.context.get("crt_hooks")
+                    if not isinstance(hook_meta, dict):
+                        hook_meta = {}
+                    hook_meta["resonance"] = round(float(resonance.resonance), 6)
+                    hook_meta["anchor_overlap"] = round(float(resonance.anchor_overlap), 6)
+                    hook_meta["anchor_matches"] = resonance.anchor_matches
+                    mem.context["crt_hooks"] = hook_meta
+            except Exception as e:
+                logger.debug(f"[RESONANCE] Failed to score resonance for {mem.memory_id}: {e}")
+
             filtered.append((mem, score))
 
-            if len(filtered) >= k:
-                break
-
-        return filtered
+        filtered.sort(key=lambda item: item[1], reverse=True)
+        return filtered[:k]
 
     def _get_latest_user_slot_value(self, slot: str) -> Optional[str]:
         """
@@ -4407,7 +4435,18 @@ class CRTEnhancedRAG:
                     logger.info(f"[LLM_CLAIM_TRACKER] Extracted {len(llm_claim_result['claims'])} claim(s) from LLM response")
         except Exception as e:
             logger.warning(f"[LLM_CLAIM_TRACKER] Failed to process LLM claims: {e}")
-        
+
+        degradation_assessment = self.degradation_detector.assess(
+            text=candidate_output,
+            reasoning=str(reasoning_result.get("thinking") or ""),
+        )
+        if degradation_assessment.is_degraded:
+            logger.warning(
+                "[DEGRADATION] Candidate output flagged degraded (score=%.3f, reasons=%s)",
+                degradation_assessment.score,
+                ",".join(degradation_assessment.reasons),
+            )
+
         candidate_vector = encode_vector(candidate_output)
         
         # 3. Check reconstruction gates
@@ -4496,6 +4535,18 @@ class CRTEnhancedRAG:
             response_type = "speech"
             source = MemorySource.FALLBACK
             confidence = calibrated_confidence  # Already degraded above
+
+        # Phase 0.5 DNNT hook: quarantine degraded outputs as fallback speech.
+        if degradation_assessment.is_degraded:
+            gates_passed = False
+            if gate_reason:
+                gate_reason = f"{gate_reason}|degraded_output"
+            else:
+                gate_reason = "degraded_output"
+            response_type = "speech"
+            source = MemorySource.FALLBACK
+            calibrated_confidence = min(calibrated_confidence, 0.35)
+            confidence = min(confidence, calibrated_confidence)
         
         # 5. Detect contradictions (only when USER made a new assertion)
         contradiction_detected = False
@@ -4751,6 +4802,9 @@ class CRTEnhancedRAG:
             # Contradiction tracking
             'contradiction_detected': contradiction_detected,
             'contradiction_entry': contradiction_entry.to_dict() if contradiction_entry else None,
+            'degradation_detected': degradation_assessment.is_degraded,
+            'degradation_score': degradation_assessment.score,
+            'degradation_reasons': degradation_assessment.reasons,
             
             # Phase 2.2: LLM Claim Tracking
             'llm_claims': llm_claim_result.get('claims', []) if llm_claim_result else [],
