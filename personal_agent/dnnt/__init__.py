@@ -26,6 +26,13 @@ from .model import (
 from .trainer import ReasoningTrainer
 from .inference import ReasoningInference
 from .trust_gate import TrustGate, TrustGateConfig
+from .background_learning import (
+    BackgroundLearningConfig,
+    BackgroundLearningState,
+    DNNTBackgroundLearner,
+    run_background_learning_once,
+    run_background_learning_forever,
+)
 
 __all__ = [
     'DataExtractor',
@@ -40,4 +47,9 @@ __all__ = [
     'ReasoningInference',
     'TrustGate',
     'TrustGateConfig',
+    'BackgroundLearningConfig',
+    'BackgroundLearningState',
+    'DNNTBackgroundLearner',
+    'run_background_learning_once',
+    'run_background_learning_forever',
 ]

@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Optional, Tuple, List, Dict, Callable, Any
 from dataclasses import dataclass
 import json
-import re
 
 from .model import DNNTMicroTransformer, DNNTConfig, SimpleTokenizer
 from .data_extractor import TrainingExample
@@ -69,10 +68,20 @@ class ReasoningInference:
         self.model = None
         self.tokenizer = None
         self.model_loaded = False
-        
-        model_path = Path(model_path)
-        if (model_path / 'model.pt').exists():
-            self.load_model(str(model_path))
+        self.model_path = Path(model_path)
+        self._loaded_signature: tuple[float, float, float] | None = None
+        self._last_reload_check_at: float = 0.0
+        self.auto_reload_enabled = str(
+            os.getenv("CRT_DNNT_HOT_RELOAD", "true")
+        ).strip().lower() in {"1", "true", "yes", "y", "on"}
+        self.reload_check_interval_sec = float(os.getenv("CRT_DNNT_HOT_RELOAD_CHECK_INTERVAL_SEC", "10"))
+        self.hot_reload_count = 0
+        self.hot_reload_errors = 0
+        self.last_hot_reload_reason = "n/a"
+        self.last_hot_reload_at = 0.0
+
+        if (self.model_path / 'model.pt').exists():
+            self.load_model(str(self.model_path))
             
         # Training data collection
         self.training_buffer: List[TrainingExample] = []
@@ -83,6 +92,9 @@ class ReasoningInference:
                 max_unresolved_contradictions=int(os.getenv("CRT_DNNT_MAX_UNRESOLVED_CONTRADICTIONS", "0")),
                 require_groundcheck_pass=str(os.getenv("CRT_DNNT_REQUIRE_GROUNDCHECK", "false")).strip().lower()
                 in {"1", "true", "yes", "y", "on"},
+                reject_if_corrected_within_turns=int(
+                    os.getenv("CRT_DNNT_REJECT_IF_CORRECTED_WITHIN_TURNS", "0")
+                ),
             )
         )
         self.training_gate_accepted = 0
@@ -102,6 +114,7 @@ class ReasoningInference:
                 self.tokenizer = SimpleTokenizer()
                 
             self.model_loaded = True
+            self._loaded_signature = self._model_signature(Path(path))
             print(f"[ReasoningInference] Loaded model from {path}")
             print(f"[ReasoningInference] Device: {self.device}")
             print(f"[ReasoningInference] Parameters: {self.model.n_params:,}")
@@ -109,6 +122,50 @@ class ReasoningInference:
         except Exception as e:
             print(f"[ReasoningInference] Failed to load model: {e}")
             self.model_loaded = False
+
+    @staticmethod
+    def _file_mtime(path: Path) -> float:
+        try:
+            return float(path.stat().st_mtime)
+        except Exception:
+            return 0.0
+
+    def _model_signature(self, model_dir: Path) -> tuple[float, float, float]:
+        return (
+            self._file_mtime(model_dir / "model.pt"),
+            self._file_mtime(model_dir / "config.json"),
+            self._file_mtime(model_dir / "tokenizer.json"),
+        )
+
+    def _maybe_hot_reload_model(self) -> None:
+        """Reload model weights if files changed on disk."""
+        if not self.auto_reload_enabled:
+            return
+        now = time.time()
+        if (now - self._last_reload_check_at) < max(self.reload_check_interval_sec, 0.1):
+            return
+        self._last_reload_check_at = now
+
+        if not (self.model_path / "model.pt").exists():
+            return
+
+        current_sig = self._model_signature(self.model_path)
+        if self._loaded_signature is None:
+            self.last_hot_reload_reason = "initial_signature_missing"
+            self.load_model(str(self.model_path))
+            return
+        if current_sig == self._loaded_signature:
+            self.last_hot_reload_reason = "no_change"
+            return
+
+        try:
+            self.load_model(str(self.model_path))
+            self.hot_reload_count += 1
+            self.last_hot_reload_reason = "reloaded"
+            self.last_hot_reload_at = now
+        except Exception as e:
+            self.hot_reload_errors += 1
+            self.last_hot_reload_reason = f"reload_failed:{e}"
             
     @torch.no_grad()
     def generate_micro(
@@ -241,6 +298,7 @@ class ReasoningInference:
             InferenceResult with response, source, confidence, etc.
         """
         facts = facts or []
+        self._maybe_hot_reload_model()
         start_time = time.time()
         
         # Try micro first (unless forced to use LLM)
@@ -333,11 +391,17 @@ class ReasoningInference:
         stats = {
             'model_loaded': self.model_loaded,
             'device': self.device,
+            'model_path': str(self.model_path),
             'confidence_threshold': self.confidence_threshold,
             'collected_examples': len(self.training_buffer),
             'training_gate_accepted': self.training_gate_accepted,
             'training_gate_rejected': self.training_gate_rejected,
             'training_gate_last_reason': self.last_training_gate_reason,
+            'hot_reload_enabled': self.auto_reload_enabled,
+            'hot_reload_count': self.hot_reload_count,
+            'hot_reload_errors': self.hot_reload_errors,
+            'hot_reload_last_reason': self.last_hot_reload_reason,
+            'hot_reload_last_at': self.last_hot_reload_at,
         }
         
         if self.model_loaded:

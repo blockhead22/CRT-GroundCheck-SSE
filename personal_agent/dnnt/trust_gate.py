@@ -12,6 +12,7 @@ class TrustGateConfig:
     min_fact_trust: float = 0.55
     max_unresolved_contradictions: int = 0
     require_groundcheck_pass: bool = False
+    reject_if_corrected_within_turns: int = 0
 
 
 class TrustGate:
@@ -48,5 +49,18 @@ class TrustGate:
         if self.config.require_groundcheck_pass and not bool(info.get("groundcheck_passed")):
             return False, "groundcheck_failed"
 
-        return True, "accepted"
+        correction_window = int(self.config.reject_if_corrected_within_turns or 0)
+        if correction_window > 0:
+            was_corrected = bool(info.get("was_corrected"))
+            turns_since = info.get("turns_since_response")
+            if was_corrected:
+                if turns_since is None:
+                    return False, "corrected_recently(unknown_turn_distance)"
+                try:
+                    turns_since_val = int(turns_since)
+                except Exception:
+                    turns_since_val = 0
+                if turns_since_val <= correction_window:
+                    return False, f"corrected_recently({turns_since_val})"
 
+        return True, "accepted"

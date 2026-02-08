@@ -159,17 +159,21 @@ The transformer is the capstone, not the foundation. Mirus tells it what's relev
 ### Phase 1.3: Trust-Gated Training Pipeline
 
 - [ ] Rebuild `background_learning()` loop from original model.py
+  - Started: added `personal_agent/dnnt/background_learning.py` with a cycle runner + long-running loop
 - [ ] Training data sources:
+  - Started: background learner now ingests all three sources (when present on disk)
   - **Collapse trails** — every (query, facts, thinking, response) tuple that passed all gates
   - **User corrections** — from active_learning.py, as negative examples with corrected labels
   - **LLM outputs** — only those that passed GroundCheck + reconstruction gates
 - [ ] Trust gate filter: only train on examples where:
+  - Started: added correction-window gating (`CRT_DNNT_REJECT_IF_CORRECTED_WITHIN_TURNS`)
   - Retrieved memories had trust ≥ threshold
   - Response passed GroundCheck
   - No unresolved contradictions in the query's domain
   - User did not correct the response within N turns
   - Started: DNNT inference collector now enforces configurable trust-gate admission before writing training examples
 - [ ] Hot-reload: new weights loaded without restart after background training completes
+  - Started: `ReasoningInference` now checks model/checkpoint mtimes and hot-reloads on change
 
 ### Phase 1.4: Wire DNNT into Query Pipeline
 
