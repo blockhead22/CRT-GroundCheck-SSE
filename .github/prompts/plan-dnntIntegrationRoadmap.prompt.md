@@ -156,6 +156,7 @@ The transformer is the capstone, not the foundation. Mirus tells it what's relev
 - [ ] ~8000 vocab with the ability to expand dynamically
   - Started: training CLI now supports `--tokenizer-backend sentencepiece --tokenizer-vocab-size 8000`
 - [ ] Retrain tokenizer on accumulated conversation data
+  - Started: added `personal_agent/dnnt/train_tokenizer.py` to rebuild tokenizer assets from live corpus sources
 - [ ] Character-level fallback for OOV tokens
 
 ### Phase 1.3: Trust-Gated Training Pipeline

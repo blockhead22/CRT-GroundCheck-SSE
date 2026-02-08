@@ -36,6 +36,31 @@ If you tell the system *"I work at Microsoft"* and later say *"I work at Google"
 
 ---
 
+## DNNT Status (Phase 1)
+
+The DNNT core is now wired into the runtime with:
+`personal_agent/dnnt/`
+
+- `ReasoningInference` runs DNNT-first with confidence-gated LLM fallback.
+- Trust-gated training collection is live; LLM outputs are buffered for distillation.
+- Background learner ingests collapse trails, corrections, and LLM outputs.
+- Hot-reload detects new model weights without restart.
+- Optional SentencePiece BPE tokenizer backend with dynamic OOV fallback.
+
+Quick background learner run:
+
+```powershell
+python -m personal_agent.dnnt.run_background_learning --once
+```
+
+Train with SentencePiece (if installed):
+
+```powershell
+python -m personal_agent.dnnt.train_model --tokenizer-backend sentencepiece --tokenizer-vocab-size 8000
+```
+
+---
+
 ## Scope
 
 - Append-only memory where no claim is ever silently overwritten or discarded
