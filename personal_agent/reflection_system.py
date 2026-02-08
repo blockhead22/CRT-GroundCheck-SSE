@@ -14,6 +14,8 @@ from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass, asdict
 import ollama
 
+from personal_agent.db_utils import get_db_connection
+
 
 @dataclass
 class ReflectionResult:
@@ -222,7 +224,7 @@ class ReflectionDB:
     
     def _ensure_table(self):
         """Create reflection_traces table if not exists"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS reflection_traces (
                     trace_id TEXT PRIMARY KEY,
@@ -251,7 +253,7 @@ class ReflectionDB:
         requery_trace_id: str = None
     ) -> str:
         """Store reflection result"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO reflection_traces
                 (trace_id, thread_id, message_id, confidence_score, confidence_label,
@@ -277,7 +279,7 @@ class ReflectionDB:
     
     def get_reflection(self, trace_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve reflection by trace_id"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             row = conn.execute(
                 "SELECT * FROM reflection_traces WHERE trace_id = ?",
@@ -292,7 +294,7 @@ class ReflectionDB:
     
     def get_thread_reflections(self, thread_id: str, limit: int = 50) -> list:
         """Get all reflections for a thread"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute("""
                 SELECT * FROM reflection_traces 
@@ -328,7 +330,7 @@ class TrainingDataCollector:
         import os
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             # Reflection training samples
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS reflection_samples (
@@ -380,7 +382,7 @@ class TrainingDataCollector:
         was_useful: bool = True
     ):
         """Log a reflection for training"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO reflection_samples
                 (question, response, thinking, confidence_score, confidence_label,
@@ -408,7 +410,7 @@ class TrainingDataCollector:
         confidence_improvement: float
     ):
         """Log successful re-query improvement"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO requery_samples
                 (question, original_response, issues, improved_response,
@@ -432,7 +434,7 @@ class TrainingDataCollector:
         reason: str
     ):
         """Log preference pair for RLHF training"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO preference_samples
                 (question, chosen_response, rejected_response, reason, created_at)
@@ -448,7 +450,7 @@ class TrainingDataCollector:
     
     def export_for_training(self, format: str = "jsonl") -> str:
         """Export training data in specified format"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             
             # Export reflection samples
@@ -490,7 +492,7 @@ class TrainingDataCollector:
     
     def get_stats(self) -> Dict[str, Any]:
         """Get training data statistics"""
-        with sqlite3.connect(self.db_path) as conn:
+        with get_db_connection(self.db_path) as conn:
             reflection_count = conn.execute("SELECT COUNT(*) FROM reflection_samples").fetchone()[0]
             requery_count = conn.execute("SELECT COUNT(*) FROM requery_samples").fetchone()[0]
             preference_count = conn.execute("SELECT COUNT(*) FROM preference_samples").fetchone()[0]

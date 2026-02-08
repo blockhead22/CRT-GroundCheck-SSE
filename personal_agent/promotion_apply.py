@@ -63,14 +63,12 @@ def _normalize_slot_value(slot: str, value_text: str) -> str:
 
 def _existing_slot_values(memory: CRTMemorySystem) -> Dict[str, List[ExtractedFact]]:
     """Return extracted slot facts from existing memories (all sources)."""
-    # Note: using existing public API would require retrieval; simplest is to scan.
-    import sqlite3
+    from personal_agent.db_utils import get_db_connection
 
-    conn = sqlite3.connect(memory.db_path)
-    cur = conn.cursor()
-    cur.execute("SELECT text FROM memories")
-    rows = cur.fetchall()
-    conn.close()
+    with get_db_connection(memory.db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("SELECT text FROM memories")
+        rows = cur.fetchall()
 
     out: Dict[str, List[ExtractedFact]] = {}
     for (text,) in rows:

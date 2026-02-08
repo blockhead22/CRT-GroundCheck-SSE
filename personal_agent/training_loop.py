@@ -3,10 +3,11 @@ from __future__ import annotations
 import os
 import threading
 import time
-import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from personal_agent.db_utils import get_db_connection
 
 
 @dataclass
@@ -184,11 +185,10 @@ class CRTTrainingLoop:
                 contra_total = 0
                 try:
                     if led_db.exists():
-                        conn = sqlite3.connect(str(led_db))
-                        cur = conn.cursor()
-                        cur.execute("SELECT COUNT(1) FROM contradictions")
-                        contra_total = int((cur.fetchone() or [0])[0] or 0)
-                        conn.close()
+                        with get_db_connection(str(led_db)) as conn:
+                            cur = conn.cursor()
+                            cur.execute("SELECT COUNT(1) FROM contradictions")
+                            contra_total = int((cur.fetchone() or [0])[0] or 0)
                 except Exception:
                     contra_total = 0
 

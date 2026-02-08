@@ -20,6 +20,8 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, List, Any
 
+from personal_agent.db_utils import get_db_connection
+
 logger = logging.getLogger(__name__)
 
 # Thinking prompts for different modes
@@ -358,31 +360,29 @@ class ThinkingLoop:
         """Get recent thoughts."""
         try:
             # Query from journal
-            import sqlite3
-            conn = sqlite3.connect(self.session_db.db_path)
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                SELECT entry_type, title, body, created_at, meta_json
-                FROM reflection_journal_entries
-                WHERE entry_type LIKE 'thinking_%'
-                ORDER BY created_at DESC
-                LIMIT ?
-            """, (limit,))
-            
-            thoughts = []
-            for row in cursor.fetchall():
-                meta = json.loads(row[4]) if row[4] else {}
-                thoughts.append({
-                    "mode": row[0].replace("thinking_", ""),
-                    "title": row[1],
-                    "thought": row[2],
-                    "timestamp": row[3],
-                    "topics": meta.get("topics", [])
-                })
-            
-            conn.close()
-            return thoughts
+            with get_db_connection(self.session_db.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT entry_type, title, body, created_at, meta_json
+                    FROM reflection_journal_entries
+                    WHERE entry_type LIKE 'thinking_%'
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                """, (limit,))
+                
+                thoughts = []
+                for row in cursor.fetchall():
+                    meta = json.loads(row[4]) if row[4] else {}
+                    thoughts.append({
+                        "mode": row[0].replace("thinking_", ""),
+                        "title": row[1],
+                        "thought": row[2],
+                        "timestamp": row[3],
+                        "topics": meta.get("topics", [])
+                    })
+                
+                return thoughts
             
         except Exception as e:
             logger.warning(f"[THINKING] Failed to get thoughts: {e}")

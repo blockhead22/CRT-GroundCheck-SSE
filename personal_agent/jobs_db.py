@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
+from personal_agent.db_utils import get_db_connection
+
 
 @dataclass(frozen=True)
 class JobRow:
@@ -24,59 +26,58 @@ def init_jobs_db(db_path: str) -> None:
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
 
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS jobs (
-            id TEXT PRIMARY KEY,
-            type TEXT NOT NULL,
-            status TEXT NOT NULL,
-            priority INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            started_at TEXT,
-            finished_at TEXT,
-            payload_json TEXT NOT NULL,
-            error TEXT
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS jobs (
+                id TEXT PRIMARY KEY,
+                type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                priority INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                started_at TEXT,
+                finished_at TEXT,
+                payload_json TEXT NOT NULL,
+                error TEXT
+            )
+            """
         )
-        """
-    )
 
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS job_events (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            job_id TEXT NOT NULL,
-            ts TEXT NOT NULL,
-            level TEXT NOT NULL,
-            message TEXT NOT NULL,
-            data_json TEXT,
-            FOREIGN KEY(job_id) REFERENCES jobs(id)
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS job_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL,
+                ts TEXT NOT NULL,
+                level TEXT NOT NULL,
+                message TEXT NOT NULL,
+                data_json TEXT,
+                FOREIGN KEY(job_id) REFERENCES jobs(id)
+            )
+            """
         )
-        """
-    )
 
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS job_artifacts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            job_id TEXT NOT NULL,
-            kind TEXT NOT NULL,
-            path TEXT NOT NULL,
-            sha256 TEXT,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(job_id) REFERENCES jobs(id)
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS job_artifacts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                path TEXT NOT NULL,
+                sha256 TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(job_id) REFERENCES jobs(id)
+            )
+            """
         )
-        """
-    )
 
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status_priority ON jobs(status, priority)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_job_events_job_id ON job_events(job_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_job_artifacts_job_id ON job_artifacts(job_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status_priority ON jobs(status, priority)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_job_events_job_id ON job_events(job_id)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_job_artifacts_job_id ON job_artifacts(job_id)")
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def enqueue_job(
@@ -90,30 +91,28 @@ def enqueue_job(
 ) -> None:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO jobs (id, type, status, priority, created_at, payload_json) VALUES (?, ?, ?, ?, ?, ?)",
-        (job_id, job_type, "queued", int(priority), created_at, json.dumps(payload, sort_keys=True)),
-    )
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO jobs (id, type, status, priority, created_at, payload_json) VALUES (?, ?, ?, ?, ?, ?)",
+            (job_id, job_type, "queued", int(priority), created_at, json.dumps(payload, sort_keys=True)),
+        )
+        conn.commit()
 
 
 def fetch_next_queued_job(db_path: str) -> Optional[JobRow]:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
 
-    # Highest priority first, then FIFO by created_at.
-    cur.execute(
-        "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
-        "FROM jobs WHERE status = ? ORDER BY priority DESC, created_at ASC LIMIT 1",
-        ("queued",),
-    )
-    row = cur.fetchone()
-    conn.close()
+        # Highest priority first, then FIFO by created_at.
+        cur.execute(
+            "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
+            "FROM jobs WHERE status = ? ORDER BY priority DESC, created_at ASC LIMIT 1",
+            ("queued",),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -148,27 +147,26 @@ def update_job_status(
 ) -> None:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
 
-    fields: List[str] = ["status = ?"]
-    params: List[Any] = [status]
+        fields: List[str] = ["status = ?"]
+        params: List[Any] = [status]
 
-    if started_at is not None:
-        fields.append("started_at = ?")
-        params.append(started_at)
-    if finished_at is not None:
-        fields.append("finished_at = ?")
-        params.append(finished_at)
-    if error is not None:
-        fields.append("error = ?")
-        params.append(error)
+        if started_at is not None:
+            fields.append("started_at = ?")
+            params.append(started_at)
+        if finished_at is not None:
+            fields.append("finished_at = ?")
+            params.append(finished_at)
+        if error is not None:
+            fields.append("error = ?")
+            params.append(error)
 
-    params.append(job_id)
-    cur.execute(f"UPDATE jobs SET {', '.join(fields)} WHERE id = ?", tuple(params))
+        params.append(job_id)
+        cur.execute(f"UPDATE jobs SET {', '.join(fields)} WHERE id = ?", tuple(params))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 def add_job_event(
@@ -182,14 +180,13 @@ def add_job_event(
 ) -> None:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO job_events (job_id, ts, level, message, data_json) VALUES (?, ?, ?, ?, ?)",
-        (job_id, ts, level, message, json.dumps(data, sort_keys=True) if data is not None else None),
-    )
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO job_events (job_id, ts, level, message, data_json) VALUES (?, ?, ?, ?, ?)",
+            (job_id, ts, level, message, json.dumps(data, sort_keys=True) if data is not None else None),
+        )
+        conn.commit()
 
 
 def add_job_artifact(
@@ -203,27 +200,25 @@ def add_job_artifact(
 ) -> None:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO job_artifacts (job_id, kind, path, sha256, created_at) VALUES (?, ?, ?, ?, ?)",
-        (job_id, kind, path, sha256_hex, created_at),
-    )
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO job_artifacts (job_id, kind, path, sha256, created_at) VALUES (?, ?, ?, ?, ?)",
+            (job_id, kind, path, sha256_hex, created_at),
+        )
+        conn.commit()
 
 
 def get_job(db_path: str, job_id: str) -> Optional[JobRow]:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error FROM jobs WHERE id = ?",
-        (job_id,),
-    )
-    row = cur.fetchone()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error FROM jobs WHERE id = ?",
+            (job_id,),
+        )
+        row = cur.fetchone()
 
     if not row:
         return None
@@ -259,23 +254,22 @@ def list_jobs(
     limit = max(1, min(int(limit), 200))
     offset = max(0, int(offset))
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
 
-    if status:
-        cur.execute(
-            "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
-            "FROM jobs WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (status, limit, offset),
-        )
-    else:
-        cur.execute(
-            "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
-            "FROM jobs ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            (limit, offset),
-        )
-    rows = cur.fetchall()
-    conn.close()
+        if status:
+            cur.execute(
+                "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
+                "FROM jobs WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (status, limit, offset),
+            )
+        else:
+            cur.execute(
+                "SELECT id, type, status, priority, created_at, started_at, finished_at, payload_json, error "
+                "FROM jobs ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            )
+        rows = cur.fetchall()
 
     out: List[JobRow] = []
     for row in rows:
@@ -303,14 +297,13 @@ def list_jobs(
 def list_job_events(db_path: str, job_id: str) -> List[Dict[str, Any]]:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT ts, level, message, data_json FROM job_events WHERE job_id = ? ORDER BY id ASC",
-        (job_id,),
-    )
-    rows = cur.fetchall()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT ts, level, message, data_json FROM job_events WHERE job_id = ? ORDER BY id ASC",
+            (job_id,),
+        )
+        rows = cur.fetchall()
 
     out: List[Dict[str, Any]] = []
     for ts, level, message, data_json in rows:
@@ -326,13 +319,12 @@ def list_job_events(db_path: str, job_id: str) -> List[Dict[str, Any]]:
 def list_job_artifacts(db_path: str, job_id: str) -> List[Dict[str, Any]]:
     init_jobs_db(db_path)
 
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT kind, path, sha256, created_at FROM job_artifacts WHERE job_id = ? ORDER BY id ASC",
-        (job_id,),
-    )
-    rows = cur.fetchall()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT kind, path, sha256, created_at FROM job_artifacts WHERE job_id = ? ORDER BY id ASC",
+            (job_id,),
+        )
+        rows = cur.fetchall()
 
     return [{"kind": r[0], "path": r[1], "sha256": r[2], "created_at": r[3]} for r in rows]

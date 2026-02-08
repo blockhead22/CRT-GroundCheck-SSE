@@ -56,7 +56,7 @@ from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
-from personal_agent.db_utils import get_thread_session_db
+from personal_agent.db_utils import get_thread_session_db, get_db_connection
 from personal_agent.continuous_loops import build_loops, maybe_reply_to_journal_entry
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
@@ -1876,20 +1876,19 @@ def create_app() -> FastAPI:
             return []
 
         try:
-            conn = sqlite3.connect(str(db_path))
-            cursor = conn.cursor()
-            cursor.execute(
-                """
-                SELECT ledger_id, timestamp, status, contradiction_type, drift_mean, confidence_delta,
-                       summary, query, old_memory_id, new_memory_id
-                FROM contradictions
-                ORDER BY timestamp DESC
-                LIMIT ?
-                """,
-                (int(limit),),
-            )
-            rows = cursor.fetchall()
-            conn.close()
+            with get_db_connection(str(db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    """
+                    SELECT ledger_id, timestamp, status, contradiction_type, drift_mean, confidence_delta,
+                           summary, query, old_memory_id, new_memory_id
+                    FROM contradictions
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    """,
+                    (int(limit),),
+                )
+                rows = cursor.fetchall()
         except Exception:
             return []
 
@@ -1934,37 +1933,32 @@ def create_app() -> FastAPI:
         deleted_trust_log = 0
 
         try:
-            conn = sqlite3.connect(str(db_path))
-            cur = conn.cursor()
+            with get_db_connection(str(db_path)) as conn:
+                cur = conn.cursor()
 
-            # Collect ids to clean up trust_log.
-            cur.execute(
-                f"SELECT memory_id FROM memories WHERE lower(source) IN ({placeholders})",
-                tuple(norm_sources),
-            )
-            ids = [str(r[0]) for r in cur.fetchall() if r and r[0]]
-
-            if ids:
-                id_placeholders = ",".join(["?"] * len(ids))
+                # Collect ids to clean up trust_log.
                 cur.execute(
-                    f"DELETE FROM trust_log WHERE memory_id IN ({id_placeholders})",
-                    tuple(ids),
+                    f"SELECT memory_id FROM memories WHERE lower(source) IN ({placeholders})",
+                    tuple(norm_sources),
                 )
-                deleted_trust_log = int(cur.rowcount or 0)
+                ids = [str(r[0]) for r in cur.fetchall() if r and r[0]]
 
-            cur.execute(
-                f"DELETE FROM memories WHERE lower(source) IN ({placeholders})",
-                tuple(norm_sources),
-            )
-            deleted_memories = int(cur.rowcount or 0)
+                if ids:
+                    id_placeholders = ",".join(["?"] * len(ids))
+                    cur.execute(
+                        f"DELETE FROM trust_log WHERE memory_id IN ({id_placeholders})",
+                        tuple(ids),
+                    )
+                    deleted_trust_log = int(cur.rowcount or 0)
 
-            conn.commit()
-            conn.close()
+                cur.execute(
+                    f"DELETE FROM memories WHERE lower(source) IN ({placeholders})",
+                    tuple(norm_sources),
+                )
+                deleted_memories = int(cur.rowcount or 0)
+
+                conn.commit()
         except Exception:
-            try:
-                conn.close()  # type: ignore[name-defined]
-            except Exception:
-                pass
             return (0, 0)
 
         return (deleted_memories, deleted_trust_log)
@@ -2726,21 +2720,18 @@ def create_app() -> FastAPI:
         ledger_db = f"personal_agent/crt_ledger_{tid}.db"
         
         try:
-            import sqlite3
-            conn = sqlite3.connect(ledger_db)
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM contradictions")
-            rows = cursor.fetchall()
-            
-            # Get column names
-            columns = [desc[0] for desc in cursor.description]
-            
-            # Convert to dicts
-            contradictions = []
-            for row in rows:
-                contradictions.append(dict(zip(columns, row)))
-            
-            conn.close()
+            with get_db_connection(ledger_db) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM contradictions")
+                rows = cursor.fetchall()
+                
+                # Get column names
+                columns = [desc[0] for desc in cursor.description]
+                
+                # Convert to dicts
+                contradictions = []
+                for row in rows:
+                    contradictions.append(dict(zip(columns, row)))
             
             return {
                 "contradictions": contradictions,
@@ -2895,25 +2886,23 @@ def create_app() -> FastAPI:
         
         # Load contradiction from ledger
         ledger_db = str(engine.ledger.db_path)
-        conn = sqlite3.connect(ledger_db)
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT old_memory_id, new_memory_id, contradiction_type, status
-            FROM contradictions
-            WHERE ledger_id = ?
-        """, (ledger_id,))
-        
-        result = cursor.fetchone()
-        if not result:
-            conn.close()
-            raise HTTPException(status_code=404, detail="Contradiction not found")
-        
-        old_memory_id, new_memory_id, contra_type, status = result
-        
-        if status != 'open':
-            conn.close()
-            raise HTTPException(status_code=400, detail="Contradiction already resolved")
+        with get_db_connection(ledger_db) as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT old_memory_id, new_memory_id, contradiction_type, status
+                FROM contradictions
+                WHERE ledger_id = ?
+            """, (ledger_id,))
+            
+            result = cursor.fetchone()
+            if not result:
+                raise HTTPException(status_code=404, detail="Contradiction not found")
+            
+            old_memory_id, new_memory_id, contra_type, status = result
+            
+            if status != 'open':
+                raise HTTPException(status_code=400, detail="Contradiction already resolved")
         
         deprecated_id = None
         active_id = None
@@ -2922,7 +2911,6 @@ def create_app() -> FastAPI:
         # Apply resolution policy
         if resolution == "OVERRIDE":
             if not chosen_memory_id:
-                conn.close()
                 raise HTTPException(status_code=400, detail="chosen_memory_id required for OVERRIDE")
             
             # Deprecate the non-chosen memory, keep the chosen one
@@ -2931,52 +2919,50 @@ def create_app() -> FastAPI:
             
             # Update memory database
             mem_db = str(engine.memory.db_path)
-            mem_conn = sqlite3.connect(mem_db)
-            mem_cursor = mem_conn.cursor()
-            
-            # Deprecate old memory
-            mem_cursor.execute("""
-                UPDATE memories 
-                SET deprecated = 1, deprecation_reason = ?
-                WHERE memory_id = ?
-            """, (f"Overridden by {active_id} - user confirmed", deprecated_id))
-            
-            # Boost trust of chosen memory (SQLite doesn't have LEAST, use MIN instead)
-            mem_cursor.execute("""
-                UPDATE memories 
-                SET trust = MIN(trust + ?, 1.0)
-                WHERE memory_id = ?
-            """, (RESOLUTION_TRUST_BOOST, active_id,))
-            
-            mem_conn.commit()
-            mem_conn.close()
+            with get_db_connection(mem_db) as mem_conn:
+                mem_cursor = mem_conn.cursor()
+                
+                # Deprecate old memory
+                mem_cursor.execute("""
+                    UPDATE memories 
+                    SET deprecated = 1, deprecation_reason = ?
+                    WHERE memory_id = ?
+                """, (f"Overridden by {active_id} - user confirmed", deprecated_id))
+                
+                # Boost trust of chosen memory (SQLite doesn't have LEAST, use MIN instead)
+                mem_cursor.execute("""
+                    UPDATE memories 
+                    SET trust = MIN(trust + ?, 1.0)
+                    WHERE memory_id = ?
+                """, (RESOLUTION_TRUST_BOOST, active_id,))
+                
+                mem_conn.commit()
             
             logger.info(f"[OVERRIDE] Deprecated {deprecated_id}, kept {active_id}")
         
         elif resolution == "PRESERVE":
             # Keep both memories, mark as complementary
             mem_db = str(engine.memory.db_path)
-            mem_conn = sqlite3.connect(mem_db)
-            mem_cursor = mem_conn.cursor()
-            
-            # Tag both as "resolved_both_valid"
-            for mem_id in [old_memory_id, new_memory_id]:
-                # Get current tags
-                mem_cursor.execute("SELECT tags_json FROM memories WHERE memory_id = ?", (mem_id,))
-                row = mem_cursor.fetchone()
-                if row:
-                    tags_json = row[0] or '[]'
-                    tags = json.loads(tags_json)
-                    if 'resolved_both_valid' not in tags:
-                        tags.append('resolved_both_valid')
-                    mem_cursor.execute("""
-                        UPDATE memories 
-                        SET tags_json = ?
-                        WHERE memory_id = ?
-                    """, (json.dumps(tags), mem_id))
-            
-            mem_conn.commit()
-            mem_conn.close()
+            with get_db_connection(mem_db) as mem_conn:
+                mem_cursor = mem_conn.cursor()
+                
+                # Tag both as "resolved_both_valid"
+                for mem_id in [old_memory_id, new_memory_id]:
+                    # Get current tags
+                    mem_cursor.execute("SELECT tags_json FROM memories WHERE memory_id = ?", (mem_id,))
+                    row = mem_cursor.fetchone()
+                    if row:
+                        tags_json = row[0] or '[]'
+                        tags = json.loads(tags_json)
+                        if 'resolved_both_valid' not in tags:
+                            tags.append('resolved_both_valid')
+                        mem_cursor.execute("""
+                            UPDATE memories 
+                            SET tags_json = ?
+                            WHERE memory_id = ?
+                        """, (json.dumps(tags), mem_id))
+                
+                mem_conn.commit()
             
             logger.info(f"[PRESERVE] Both memories marked as valid")
             message = "Both memories preserved as valid"
@@ -4294,15 +4280,14 @@ INTERACTION GUIDELINES:
             # Get all tasks
             from personal_agent.scheduled_tasks import init_scheduled_tasks_db
             init_scheduled_tasks_db(db_path)
-            conn = sqlite3.connect(db_path)
-            conn.row_factory = sqlite3.Row
-            cur = conn.cursor()
-            if thread_id:
-                cur.execute("SELECT * FROM scheduled_tasks WHERE thread_id = ? ORDER BY scheduled_at DESC", (thread_id,))
-            else:
-                cur.execute("SELECT * FROM scheduled_tasks ORDER BY scheduled_at DESC")
-            rows = cur.fetchall()
-            conn.close()
+            with get_db_connection(db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cur = conn.cursor()
+                if thread_id:
+                    cur.execute("SELECT * FROM scheduled_tasks WHERE thread_id = ? ORDER BY scheduled_at DESC", (thread_id,))
+                else:
+                    cur.execute("SELECT * FROM scheduled_tasks ORDER BY scheduled_at DESC")
+                rows = cur.fetchall()
             
             tasks = []
             for row in rows:

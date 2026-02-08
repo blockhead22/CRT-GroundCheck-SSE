@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from personal_agent.artifact_store import now_iso_utc
+from personal_agent.db_utils import get_db_connection
 from personal_agent.jobs_db import enqueue_job, init_jobs_db
 
 try:
@@ -28,12 +28,11 @@ def _count_open_contradictions(ledger_db: Path) -> int:
     if not ledger_db.exists():
         return 0
     try:
-        conn = sqlite3.connect(str(ledger_db))
-        cur = conn.cursor()
-        cur.execute("SELECT COUNT(1) FROM contradictions WHERE status = ?", ("open",))
-        n = int((cur.fetchone() or [0])[0] or 0)
-        conn.close()
-        return n
+        with get_db_connection(str(ledger_db)) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(1) FROM contradictions WHERE status = ?", ("open",))
+            n = int((cur.fetchone() or [0])[0] or 0)
+            return n
     except Exception:
         return 0
 
@@ -42,14 +41,13 @@ def _last_user_activity_ts(memory_db: Path) -> float:
     if not memory_db.exists():
         return 0.0
     try:
-        conn = sqlite3.connect(str(memory_db))
-        cur = conn.cursor()
-        cur.execute("SELECT MAX(timestamp) FROM memories WHERE LOWER(source) = 'user'")
-        v = cur.fetchone()
-        conn.close()
-        if not v or v[0] is None:
-            return 0.0
-        return float(v[0])
+        with get_db_connection(str(memory_db)) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT MAX(timestamp) FROM memories WHERE LOWER(source) = 'user'")
+            v = cur.fetchone()
+            if not v or v[0] is None:
+                return 0.0
+            return float(v[0])
     except Exception:
         return 0.0
 

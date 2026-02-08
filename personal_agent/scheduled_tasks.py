@@ -18,6 +18,8 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from personal_agent.db_utils import get_db_connection
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -295,30 +297,29 @@ def init_scheduled_tasks_db(db_path: str) -> None:
     path = Path(db_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS scheduled_tasks (
-            task_id TEXT PRIMARY KEY,
-            task_type TEXT NOT NULL,
-            scheduled_at REAL NOT NULL,
-            thread_id TEXT NOT NULL,
-            payload_json TEXT NOT NULL,
-            created_at REAL NOT NULL,
-            status TEXT NOT NULL DEFAULT 'pending',
-            completed_at REAL,
-            error TEXT,
-            recurrence TEXT
-        )
-    """)
-    
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status ON scheduled_tasks(status)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_scheduled_at ON scheduled_tasks(scheduled_at)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_thread ON scheduled_tasks(thread_id)")
-    
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS scheduled_tasks (
+                task_id TEXT PRIMARY KEY,
+                task_type TEXT NOT NULL,
+                scheduled_at REAL NOT NULL,
+                thread_id TEXT NOT NULL,
+                payload_json TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                completed_at REAL,
+                error TEXT,
+                recurrence TEXT
+            )
+        """)
+        
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_status ON scheduled_tasks(status)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_scheduled_at ON scheduled_tasks(scheduled_at)")
+        cur.execute("CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_thread ON scheduled_tasks(thread_id)")
+        
+        conn.commit()
 
 
 def create_scheduled_task(
@@ -342,24 +343,23 @@ def create_scheduled_task(
         recurrence=recurrence,
     )
     
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO scheduled_tasks 
-        (task_id, task_type, scheduled_at, thread_id, payload_json, created_at, status, recurrence)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        task.task_id,
-        task.task_type,
-        task.scheduled_at,
-        task.thread_id,
-        json.dumps(task.payload),
-        task.created_at,
-        task.status,
-        task.recurrence,
-    ))
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO scheduled_tasks 
+            (task_id, task_type, scheduled_at, thread_id, payload_json, created_at, status, recurrence)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            task.task_id,
+            task.task_type,
+            task.scheduled_at,
+            task.thread_id,
+            json.dumps(task.payload),
+            task.created_at,
+            task.status,
+            task.recurrence,
+        ))
+        conn.commit()
     
     logger.info(f"[SCHEDULED] Created task {task_id}: {task_type} at {task.formatted_time()}")
     return task
@@ -369,25 +369,24 @@ def get_pending_scheduled_tasks(db_path: str, thread_id: Optional[str] = None) -
     """Get all pending scheduled tasks, optionally filtered by thread."""
     init_scheduled_tasks_db(db_path)
     
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    
-    if thread_id:
-        cur.execute("""
-            SELECT * FROM scheduled_tasks 
-            WHERE status = 'pending' AND thread_id = ?
-            ORDER BY scheduled_at ASC
-        """, (thread_id,))
-    else:
-        cur.execute("""
-            SELECT * FROM scheduled_tasks 
-            WHERE status = 'pending'
-            ORDER BY scheduled_at ASC
-        """)
-    
-    rows = cur.fetchall()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        
+        if thread_id:
+            cur.execute("""
+                SELECT * FROM scheduled_tasks 
+                WHERE status = 'pending' AND thread_id = ?
+                ORDER BY scheduled_at ASC
+            """, (thread_id,))
+        else:
+            cur.execute("""
+                SELECT * FROM scheduled_tasks 
+                WHERE status = 'pending'
+                ORDER BY scheduled_at ASC
+            """)
+        
+        rows = cur.fetchall()
     
     tasks = []
     for row in rows:
@@ -412,18 +411,17 @@ def get_due_tasks(db_path: str) -> List[ScheduledTask]:
     init_scheduled_tasks_db(db_path)
     
     now = time.time()
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    
-    cur.execute("""
-        SELECT * FROM scheduled_tasks 
-        WHERE status = 'pending' AND scheduled_at <= ?
-        ORDER BY scheduled_at ASC
-    """, (now,))
-    
-    rows = cur.fetchall()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT * FROM scheduled_tasks 
+            WHERE status = 'pending' AND scheduled_at <= ?
+            ORDER BY scheduled_at ASC
+        """, (now,))
+        
+        rows = cur.fetchall()
     
     tasks = []
     for row in rows:
@@ -445,36 +443,34 @@ def get_due_tasks(db_path: str) -> List[ScheduledTask]:
 
 def mark_task_completed(db_path: str, task_id: str, error: Optional[str] = None) -> None:
     """Mark a task as completed (or failed if error provided)."""
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    
-    status = "failed" if error else "completed"
-    cur.execute("""
-        UPDATE scheduled_tasks 
-        SET status = ?, completed_at = ?, error = ?
-        WHERE task_id = ?
-    """, (status, time.time(), error, task_id))
-    
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        
+        status = "failed" if error else "completed"
+        cur.execute("""
+            UPDATE scheduled_tasks 
+            SET status = ?, completed_at = ?, error = ?
+            WHERE task_id = ?
+        """, (status, time.time(), error, task_id))
+        
+        conn.commit()
     
     logger.info(f"[SCHEDULED] Task {task_id} marked as {status}")
 
 
 def cancel_scheduled_task(db_path: str, task_id: str) -> bool:
     """Cancel a pending scheduled task."""
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    
-    cur.execute("""
-        UPDATE scheduled_tasks 
-        SET status = 'cancelled', completed_at = ?
-        WHERE task_id = ? AND status = 'pending'
-    """, (time.time(), task_id))
-    
-    affected = cur.rowcount
-    conn.commit()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        cur = conn.cursor()
+        
+        cur.execute("""
+            UPDATE scheduled_tasks 
+            SET status = 'cancelled', completed_at = ?
+            WHERE task_id = ? AND status = 'pending'
+        """, (time.time(), task_id))
+        
+        affected = cur.rowcount
+        conn.commit()
     
     if affected > 0:
         logger.info(f"[SCHEDULED] Cancelled task {task_id}")
@@ -484,13 +480,12 @@ def cancel_scheduled_task(db_path: str, task_id: str) -> bool:
 
 def get_task_by_id(db_path: str, task_id: str) -> Optional[ScheduledTask]:
     """Get a specific task by ID."""
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    cur = conn.cursor()
-    
-    cur.execute("SELECT * FROM scheduled_tasks WHERE task_id = ?", (task_id,))
-    row = cur.fetchone()
-    conn.close()
+    with get_db_connection(db_path) as conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        
+        cur.execute("SELECT * FROM scheduled_tasks WHERE task_id = ?", (task_id,))
+        row = cur.fetchone()
     
     if not row:
         return None
