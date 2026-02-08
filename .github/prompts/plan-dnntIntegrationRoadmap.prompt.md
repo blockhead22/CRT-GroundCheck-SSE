@@ -3,7 +3,7 @@
 **Author:** Nick Block  
 **Project:** CRT-GroundCheck-SSE  
 **Date:** February 2026  
-**Status:** Phase 0 completed (integration baseline) on February 8, 2026
+**Status:** Phase 1.1 in progress (started February 8, 2026; Phase 0 complete)
 
 ---
 
@@ -138,15 +138,15 @@ The transformer is the capstone, not the foundation. Mirus tells it what's relev
 
 ### Phase 1.1: Rename + Restructure reasoning_learner → dnnt/
 
-- [ ] Rename `personal_agent/reasoning_learner/` → `personal_agent/dnnt/`
-- [ ] Keep the modern architecture (RoPE, SwiGLU, RMSNorm) from the MicroTransformer
-- [ ] Add triple loss heads from original design:
+- [x] Rename `personal_agent/reasoning_learner/` → `personal_agent/dnnt/` (with compatibility shims left in `reasoning_learner/`)
+- [x] Keep the modern architecture (RoPE, SwiGLU, RMSNorm) from the MicroTransformer
+- [x] Add triple loss heads from original design:
   - **Semantic loss** (0.5 weight) — does the output mean the right thing?
   - **Syntactic loss** (0.3 weight) — is it structured correctly?
   - **Logical loss** (0.2 weight) — is it logically sound given the premises?
-- [ ] Each loss head needs its own evaluation — not just three copies of CrossEntropyLoss
-- [ ] Add dynamic vocab expansion from original `expand_model_vocab()`
-- [ ] Add learnable redundancy penalty (`red_penalty`) from original MirusHoldenTransformer
+- [x] Each loss head has distinct computation/evaluation (content-token CE, structural-token CE, facts↔response logical coherence loss)
+- [x] Add dynamic vocab expansion from original `expand_model_vocab()`
+- [x] Add learnable redundancy penalty (`red_penalty`) from original MirusHoldenTransformer
 - [ ] Target: 2-20M parameters, <200ms CPU inference, <50ms GPU
 
 ### Phase 1.2: Replace SimpleTokenizer with BPE
