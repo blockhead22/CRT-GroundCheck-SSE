@@ -38,16 +38,25 @@ If you tell the system *"I work at Microsoft"* and later say *"I work at Google"
 
 ## DNNT Status (Phase 1)
 
-The DNNT core is now wired into the runtime with:
-`personal_agent/dnnt/`
+Current status from the live roadmap:
+- Phase `1.1` is complete (`reasoning_learner` -> `dnnt`, triple-loss heads, dynamic vocab growth, learnable redundancy penalty).
+- Phase `1.2` is in progress (optional SentencePiece BPE backend + tokenizer retraining utility).
+- Phase `1.3` is in progress (trust-gated collection, background distillation loop, and model hot-reload).
+- Phase `1.4` is in progress (DNNT-first quick path with confidence-gated fallback).
 
-- `ReasoningInference` runs DNNT-first with confidence-gated LLM fallback.
-- Trust-gated training collection is live; LLM outputs are buffered for distillation.
-- Background learner ingests collapse trails, corrections, and LLM outputs.
-- Hot-reload detects new model weights without restart.
-- Optional SentencePiece BPE tokenizer backend with dynamic OOV fallback.
+Key runtime pieces now in `personal_agent/dnnt/`:
+- `inference.py`: DNNT-first inference, trust-gated LLM example collection, micro-path self-eval logging (`data/dnnt_self_eval.jsonl`), and file-mtime hot-reload.
+- `background_learning.py`: background learner that consumes collapse trails, active-learning corrections, and collected LLM training tuples.
+- `tokenizer_bpe.py`: optional SentencePiece backend with dynamic OOV fallback.
+- `train_tokenizer.py`: tokenizer rebuild utility from accumulated corpus sources.
 
-Quick background learner run:
+Rebuild tokenizer assets:
+
+```powershell
+python -m personal_agent.dnnt.train_tokenizer --output-dir models/dnnt/tokenizer_assets --vocab-size 8000
+```
+
+Run one background learning cycle:
 
 ```powershell
 python -m personal_agent.dnnt.run_background_learning --once
