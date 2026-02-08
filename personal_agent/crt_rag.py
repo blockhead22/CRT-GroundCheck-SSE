@@ -27,6 +27,8 @@ from collections import OrderedDict
 import time
 import joblib
 
+from personal_agent.exceptions import log_swallowed_exception
+
 logger = logging.getLogger(__name__)
 
 from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
@@ -143,7 +145,8 @@ class CRTEnhancedRAG:
         # Active learning coordinator (graceful degradation if unavailable)
         try:
             self.active_learning = get_active_learning_coordinator()
-        except Exception:
+        except Exception as e:
+            log_swallowed_exception("crt_rag.__init__.active_learning", e)
             self.active_learning = None
         
         # Load trained response classifier (graceful degradation)
@@ -513,7 +516,8 @@ class CRTEnhancedRAG:
         try:
             model_data = joblib.load(model_path)
             self._classifier_model = model_data
-        except Exception:
+        except Exception as e:
+            log_swallowed_exception("crt_rag._load_classifier", e)
             self._classifier_model = None
     
     def _classify_query_type_ml(self, user_query: str) -> str:
@@ -526,8 +530,8 @@ class CRTEnhancedRAG:
                 query_vec = vectorizer.transform([user_query])
                 prediction = classifier.predict(query_vec)[0]
                 return prediction
-            except Exception:
-                pass  # Fall through to heuristic
+            except Exception as e:
+                log_swallowed_exception("crt_rag._classify_query_type_ml", e)
         
         # Fallback to heuristic if model unavailable/fails
         heuristic = self._classify_query_type_heuristic(user_query)
@@ -1143,7 +1147,8 @@ class CRTEnhancedRAG:
                 if (hasattr(c, 'claim_a_id') and c.claim_a_id == memory_id) or
                    (hasattr(c, 'claim_b_id') and c.claim_b_id == memory_id)
             ]
-        except Exception:
+        except Exception as e:
+            log_swallowed_exception("crt_rag._get_memory_conflicts", e)
             return []
 
     def _add_reintroduction_flags(self, result: Dict[str, Any]) -> Dict[str, Any]:
@@ -1534,8 +1539,8 @@ class CRTEnhancedRAG:
                         if slot in ('programming_years', 'age') and isinstance(value, (int, float)):
                             return f"{int(value)} years"
                         return value
-        except Exception:
-            pass
+        except Exception as e:
+            log_swallowed_exception("crt_rag._extract_value_from_memory_text.fact_slots", e)
         
         # PRIORITY 3: Common natural language patterns
         patterns = [
@@ -3145,17 +3150,17 @@ class CRTEnhancedRAG:
                     thread_id=thread_id,
                     user_marked_important=user_marked_important,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                log_swallowed_exception("crt_rag.query._maybe_store_longform_summary", e)
 
             # If the user is clarifying a previously-detected hard conflict, mark it resolved.
             # This is intentionally conservative: only hard CONFLICT types, and only when
             # the asserted value matches one side of the conflict.
             try:
                 self._resolve_open_conflicts_from_assertion(user_query)
-            except Exception:
+            except Exception as e:
                 # Resolution is best-effort; never block the main chat loop.
-                pass
+                log_swallowed_exception("crt_rag.query._resolve_open_conflicts", e)
             
             # P0 FIX: Track implicit confirmations for lifecycle transitions
             # When user repeats the "new" value from a contradiction, it's an implicit confirmation
@@ -3888,8 +3893,8 @@ class CRTEnhancedRAG:
                                 thread_id="",
                                 session_id=self.session_id,
                             )
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            log_swallowed_exception("crt_rag.query.active_learning.slot_path", e)
 
                     # Do not append provenance footers into the answer text.
                     final_answer = slot_answer
@@ -4002,8 +4007,8 @@ class CRTEnhancedRAG:
                                     thread_id="default",
                                     session_id=self.session_id,
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                log_swallowed_exception("crt_rag.query.active_learning.list_facts", e)
 
                         response_type = "belief" if gates_passed else "speech"
                         source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
@@ -4128,8 +4133,8 @@ class CRTEnhancedRAG:
                                     thread_id="default",
                                     session_id=self.session_id,
                                 )
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                log_swallowed_exception("crt_rag.query.active_learning.summary", e)
 
                         response_type = "belief" if gates_passed else "speech"
                         source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
@@ -4348,7 +4353,8 @@ class CRTEnhancedRAG:
                 style_profile = session_db.get_style_profile(thread_id)
                 personality_profile = session_db.get_personality_profile(thread_id)
                 reflection_scorecard = session_db.get_reflection_scorecard(thread_id)
-        except Exception:
+        except Exception as e:
+            log_swallowed_exception("crt_rag.query.thread_session_profiles", e)
             style_profile = None
             personality_profile = None
             reflection_scorecard = None
@@ -4447,10 +4453,8 @@ class CRTEnhancedRAG:
                     thread_id="default",
                     session_id=self.session_id,
                 )
-            except Exception:
-                pass
-        
-        # Calibrate confidence based on gate failures
+            except Exception as e:
+                log_swallowed_exception("crt_rag.query.active_learning.general", e)
         # This ensures confidence aligns with gate pass/fail status
         raw_confidence = reasoning_result['confidence']
         if not gates_passed:
@@ -4831,8 +4835,8 @@ class CRTEnhancedRAG:
                 summary = llm.generate(prompt, max_tokens=220, temperature=0.2)
                 summary = (summary or "").strip()
                 return summary[:400] if summary else None
-            except Exception:
-                pass
+            except Exception as e:
+                log_swallowed_exception("crt_rag._summarize_longform_text.llm", e)
 
         # Heuristic fallback (no LLM)
         try:
@@ -4886,8 +4890,8 @@ class CRTEnhancedRAG:
                 },
                 user_marked_important=user_marked_important,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            log_swallowed_exception("crt_rag._maybe_store_longform_summary.store", e)
 
     def _get_learned_suggestions_for_slots(self, slots: List[str]) -> List[Dict[str, Any]]:
         ls_cfg = (self.runtime_config or {}).get("learned_suggestions", {})
@@ -6116,8 +6120,8 @@ class CRTEnhancedRAG:
                     if self.ledger.has_open_contradiction(memory_id):
                         txt = f"{txt} ⚠️"
                         conflict_marked_ids.add(memory_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    log_swallowed_exception("crt_rag._build_memory_inventory.conflict_check", e)
 
             lines.append(f"- {txt}")
             added += 1
@@ -6291,8 +6295,8 @@ class CRTEnhancedRAG:
                 try:
                     if self.ledger.has_open_contradiction(mem_id):
                         conflict_ids.add(mem_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    log_swallowed_exception("crt_rag._build_memory_citation.conflict_check", e)
         
         for mem in user_retrieved[: max(1, max_lines)]:
             mt = (mem.text or "").strip()
