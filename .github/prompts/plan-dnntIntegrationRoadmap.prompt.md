@@ -168,6 +168,7 @@ The transformer is the capstone, not the foundation. Mirus tells it what's relev
   - Response passed GroundCheck
   - No unresolved contradictions in the query's domain
   - User did not correct the response within N turns
+  - Started: DNNT inference collector now enforces configurable trust-gate admission before writing training examples
 - [ ] Hot-reload: new weights loaded without restart after background training completes
 
 ### Phase 1.4: Wire DNNT into Query Pipeline

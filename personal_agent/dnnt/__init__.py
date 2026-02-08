@@ -25,6 +25,7 @@ from .model import (
 )
 from .trainer import ReasoningTrainer
 from .inference import ReasoningInference
+from .trust_gate import TrustGate, TrustGateConfig
 
 __all__ = [
     'DataExtractor',
@@ -37,4 +38,6 @@ __all__ = [
     'expand_model_vocab',
     'ReasoningTrainer',
     'ReasoningInference',
+    'TrustGate',
+    'TrustGateConfig',
 ]

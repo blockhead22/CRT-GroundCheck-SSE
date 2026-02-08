@@ -1,15 +1,17 @@
 """DNNT inference with LLM fallback."""
 
+import os
 import torch
 import time
 from pathlib import Path
-from typing import Optional, Tuple, List, Dict, Callable
+from typing import Optional, Tuple, List, Dict, Callable, Any
 from dataclasses import dataclass
 import json
 import re
 
 from .model import DNNTMicroTransformer, DNNTConfig, SimpleTokenizer
 from .data_extractor import TrainingExample
+from .trust_gate import TrustGate, TrustGateConfig
 
 
 @dataclass
@@ -75,6 +77,17 @@ class ReasoningInference:
         # Training data collection
         self.training_buffer: List[TrainingExample] = []
         self.training_data_path = Path("data/dnnt_collected_training_data.jsonl")
+        self.training_gate = TrustGate(
+            TrustGateConfig(
+                min_fact_trust=float(os.getenv("CRT_DNNT_MIN_FACT_TRUST", "0.55")),
+                max_unresolved_contradictions=int(os.getenv("CRT_DNNT_MAX_UNRESOLVED_CONTRADICTIONS", "0")),
+                require_groundcheck_pass=str(os.getenv("CRT_DNNT_REQUIRE_GROUNDCHECK", "false")).strip().lower()
+                in {"1", "true", "yes", "y", "on"},
+            )
+        )
+        self.training_gate_accepted = 0
+        self.training_gate_rejected = 0
+        self.last_training_gate_reason = "n/a"
         
     def load_model(self, path: str):
         """Load the micro-transformer model."""
@@ -213,6 +226,7 @@ class ReasoningInference:
         facts: List[str] = None,
         force_llm: bool = False,
         force_micro: bool = False,
+        training_meta: Optional[Dict[str, Any]] = None,
     ) -> InferenceResult:
         """
         Generate a response with automatic fallback.
@@ -260,7 +274,7 @@ class ReasoningInference:
         
         # Collect for training
         if self.collect_training_data and llm_thinking and llm_response:
-            self._collect_example(query, facts, llm_thinking, llm_response)
+            self._collect_example(query, facts, llm_thinking, llm_response, training_meta=training_meta)
             
         return InferenceResult(
             response=llm_response,
@@ -271,8 +285,21 @@ class ReasoningInference:
             source='llm',
         )
         
-    def _collect_example(self, query: str, facts: List[str], thinking: str, response: str):
+    def _collect_example(
+        self,
+        query: str,
+        facts: List[str],
+        thinking: str,
+        response: str,
+        training_meta: Optional[Dict[str, Any]] = None,
+    ):
         """Collect training example from LLM output."""
+        accepted, reason = self.training_gate.should_accept(facts=facts or [], meta=training_meta or {})
+        self.last_training_gate_reason = reason
+        if not accepted:
+            self.training_gate_rejected += 1
+            return
+
         example = TrainingExample(
             query=query,
             facts=facts,
@@ -281,6 +308,7 @@ class ReasoningInference:
         )
         
         self.training_buffer.append(example)
+        self.training_gate_accepted += 1
         
         # Periodically flush to disk
         if len(self.training_buffer) >= 10:
@@ -307,6 +335,9 @@ class ReasoningInference:
             'device': self.device,
             'confidence_threshold': self.confidence_threshold,
             'collected_examples': len(self.training_buffer),
+            'training_gate_accepted': self.training_gate_accepted,
+            'training_gate_rejected': self.training_gate_rejected,
+            'training_gate_last_reason': self.last_training_gate_reason,
         }
         
         if self.model_loaded:

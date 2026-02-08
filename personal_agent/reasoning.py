@@ -435,7 +435,14 @@ class ReasoningEngine:
         if self.dnnt is not None:
             try:
                 facts = self._extract_facts_for_dnnt(context)
-                dnnt_result = self.dnnt.generate(query=query, facts=facts)
+                dnnt_result = self.dnnt.generate(
+                    query=query,
+                    facts=facts,
+                    training_meta={
+                        "unresolved_contradictions_total": len(context.get("contradictions") or []),
+                        "groundcheck_passed": bool(context.get("groundcheck_passed", True)),
+                    },
+                )
                 answer = str(dnnt_result.response or "").strip()
                 source = str(dnnt_result.source or "dnnt")
                 confidence = float(dnnt_result.confidence or 0.0)
