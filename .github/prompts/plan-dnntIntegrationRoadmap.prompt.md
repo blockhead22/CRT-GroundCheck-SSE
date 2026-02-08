@@ -210,6 +210,7 @@ Mirus: resonance scoring + compression
 ```
 
 - [ ] `ReasoningInference` from inference.py becomes the primary response generator
+  - Started: `personal_agent/reasoning.py` quick mode now runs DNNT-first with confidence-gated fallback
 - [ ] Confidence threshold determines DNNT vs LLM fallback
 - [ ] Both paths go through the same Holden gates and GroundCheck
 - [ ] LLM responses are logged as training data (filtered by trust gate)

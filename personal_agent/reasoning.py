@@ -10,11 +10,15 @@ Supports:
 """
 
 import json
+import logging
+import os
 import re
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 from dataclasses import dataclass, asdict
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 class ReasoningMode(Enum):
@@ -90,9 +94,69 @@ class ReasoningEngine:
         """
         self.llm = llm_client
         self.reasoning_traces = []  # Internal log
-        
+        self.dnnt = None
+        self.dnnt_enabled = str(os.getenv("CRT_DNNT_ENABLED", "true")).strip().lower() in {
+            "1", "true", "yes", "y", "on"
+        }
+        self.dnnt_confidence_threshold = float(os.getenv("CRT_DNNT_CONFIDENCE_THRESHOLD", "0.62"))
+
         if self.llm is None:
             print("[REASONING] No LLM client provided - using fallback reasoning")
+        
+        if self.dnnt_enabled:
+            try:
+                from .dnnt.inference import ReasoningInference
+
+                model_path = str(os.getenv("CRT_DNNT_MODEL_PATH", "models/dnnt/model"))
+                self.dnnt = ReasoningInference(
+                    model_path=model_path,
+                    confidence_threshold=self.dnnt_confidence_threshold,
+                    llm_callback=self._dnnt_llm_callback,
+                    collect_training_data=True,
+                )
+                logger.info(
+                    "[REASONING] DNNT inference initialized (loaded=%s, threshold=%.2f, path=%s)",
+                    bool(getattr(self.dnnt, "model_loaded", False)),
+                    self.dnnt_confidence_threshold,
+                    model_path,
+                )
+            except Exception as e:
+                logger.warning(f"[REASONING] DNNT initialization failed; falling back to LLM path: {e}")
+                self.dnnt = None
+
+    def _extract_facts_for_dnnt(self, context: Dict[str, Any], limit: int = 8) -> List[str]:
+        """Convert retrieval context into compact fact lines for DNNT."""
+        facts: List[str] = []
+        seen: set[str] = set()
+        retrieved = context.get("retrieved_docs") or []
+        for doc in retrieved:
+            if not isinstance(doc, dict):
+                continue
+            text = str(doc.get("text") or "").strip()
+            if not text:
+                continue
+            trust = doc.get("trust")
+            if isinstance(trust, (int, float)):
+                fact = f"{text[:220]} (trust={float(trust):.2f})"
+            else:
+                fact = text[:240]
+            if fact in seen:
+                continue
+            seen.add(fact)
+            facts.append(fact)
+            if len(facts) >= limit:
+                break
+        return facts
+
+    def _dnnt_llm_callback(self, query: str, facts: List[str]) -> tuple[str, str]:
+        """LLM callback used by DNNT inference fallback collection."""
+        context = {
+            "retrieved_docs": [{"text": f} for f in (facts or [])],
+            "contradictions": [],
+        }
+        prompt = self._build_quick_prompt(query, context)
+        answer = self._call_llm(prompt, max_tokens=700)
+        return "", answer
     
     def reason(
         self,
@@ -363,15 +427,33 @@ class ReasoningEngine:
         """
         start_time = datetime.now()
         
-        # Simple prompt
-        prompt = self._build_quick_prompt(query, context)
-        
-        # Generate (using LLM if available)
-        if self.llm:
-            answer = self._call_llm(prompt, max_tokens=500)
-        else:
-            # No LLM - generate contextual fallback response
-            answer = self._generate_fallback_response(query, context)
+        source = "fallback"
+        answer = ""
+        confidence = 0.8
+
+        # DNNT-first path with confidence-gated fallback.
+        if self.dnnt is not None:
+            try:
+                facts = self._extract_facts_for_dnnt(context)
+                dnnt_result = self.dnnt.generate(query=query, facts=facts)
+                answer = str(dnnt_result.response or "").strip()
+                source = str(dnnt_result.source or "dnnt")
+                confidence = float(dnnt_result.confidence or 0.0)
+            except Exception as e:
+                logger.warning(f"[REASONING] DNNT generation failed; falling back to LLM path: {e}")
+                answer = ""
+
+        # Existing LLM/fallback path.
+        if not answer:
+            prompt = self._build_quick_prompt(query, context)
+            if self.llm:
+                answer = self._call_llm(prompt, max_tokens=500)
+                source = "llm"
+                confidence = 0.8
+            else:
+                answer = self._generate_fallback_response(query, context)
+                source = "fallback"
+                confidence = 0.8
         
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
         
@@ -382,13 +464,13 @@ class ReasoningEngine:
             thinking_steps=[
                 ThinkingStep(
                     step_type="direct_answer",
-                    content="No complexity detected, generating direct answer",
+                    content=f"No complexity detected, generating direct answer via {source}",
                     duration_ms=duration_ms,
                     timestamp=datetime.now().isoformat()
                 )
             ],
             decision="quick_answer",
-            confidence=0.8,
+            confidence=confidence,
             contradictions_found=0,
             total_duration_ms=duration_ms
         )
@@ -400,7 +482,9 @@ class ReasoningEngine:
             'thinking': None,  # Not shown in quick mode
             'answer': answer,
             'reasoning_trace': trace.to_dict(),
-            'confidence': 0.8
+            'confidence': confidence,
+            'reasoning_source': source,
+            'dnnt_enabled': bool(self.dnnt is not None),
         }
     
     def _generate_fallback_response(self, query: str, context: Dict) -> str:
