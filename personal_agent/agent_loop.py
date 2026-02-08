@@ -242,7 +242,7 @@ class ToolRegistry:
         return {"memory_id": mem_id, "stored": True}
 
     def _check_contradiction(self, statement: str) -> dict:
-        """Check if statement contradicts existing beliefs."""
+        """Check if statement contradicts existing high-trust memories."""
         if not self.memory:
             return {"error": "Memory engine not available"}
 
@@ -253,12 +253,32 @@ class ToolRegistry:
         if not high_trust:
             return {"contradiction": False, "reason": "No high-trust memories found"}
 
-        # Simple heuristic: check for opposing sentiment
-        # In production, use semantic contradiction detection
+        # Check for semantic opposition using simple keyword negation detection
+        statement_lower = statement.lower().strip()
+        contradictions_found = []
+        for mem in high_trust:
+            mem_text = mem.get("text", "").lower().strip()
+            # Detect negation patterns between statement and memory
+            negation_words = {"not", "no longer", "never", "don't", "doesn't", "isn't", "aren't", "wasn't"}
+            stmt_has_negation = any(nw in statement_lower for nw in negation_words)
+            mem_has_negation = any(nw in mem_text for nw in negation_words)
+            # If one negates and the other doesn't on similar topic, flag potential contradiction
+            if stmt_has_negation != mem_has_negation:
+                # Check for word overlap (shared topic)
+                stmt_words = set(statement_lower.split())
+                mem_words = set(mem_text.split())
+                overlap = stmt_words & mem_words - negation_words - {"i", "a", "the", "is", "am", "was", "my"}
+                if len(overlap) >= 2:
+                    contradictions_found.append({
+                        "memory_id": mem.get("memory_id", "unknown"),
+                        "memory_text": mem.get("text", "")[:100],
+                        "overlap_words": list(overlap)[:5],
+                    })
+
         return {
-            "contradiction": False,
+            "contradiction": len(contradictions_found) > 0,
             "checked_against": len(high_trust),
-            "note": "Semantic contradiction detection not implemented",
+            "contradictions": contradictions_found[:3],
         }
 
     def _calculate(self, expression: str) -> dict:

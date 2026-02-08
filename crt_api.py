@@ -73,7 +73,6 @@ from personal_agent.heartbeat_api import (
 )
 
 # Auth module - Use MySQL if configured
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -933,21 +932,26 @@ def create_app() -> FastAPI:
     app.state.heartbeat_loop = heartbeat_loop
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list or "*" for all.
-    cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,http://192.168.1.91:5173,http://192.168.1.91:5174")
+    cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174")
     if cors_env.strip() == "*":
         origins = ["*"]
+        # CORS spec forbids allow_credentials=True with allow_origins=["*"]
+        allow_creds = False
     else:
         origins = [o.strip() for o in cors_env.split(",") if o.strip()]
+        allow_creds = True
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins if origins else ["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_credentials=allow_creds,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 
     # Cache one CRT engine per thread (isolated DBs per thread).
+    _engines_lock = threading.Lock()
     engines: Dict[str, CRTEnhancedRAG] = {}
+    _turn_lock = threading.Lock()
     turn_counters: Dict[str, int] = {}  # Track turn numbers per thread
 
     docs_dir = root / "docs"
@@ -969,6 +973,7 @@ def create_app() -> FastAPI:
 
     # Initialize shared LLM client for all threads (lazy initialization)
     _llm_client: Optional[OllamaClient] = None
+    _llm_lock = threading.Lock()
     _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
     
     def get_llm_client() -> Optional[OllamaClient]:
@@ -982,17 +987,18 @@ def create_app() -> FastAPI:
         if not _llm_enabled:
             logger.info("[API] LLM extraction disabled (set CRT_ENABLE_LLM=true to enable)")
             return None
-            
-        if _llm_client is None:
-            try:
-                model = os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest")
-                logger.info(f"[API] Initializing OllamaClient with model: {model}...")
-                _llm_client = OllamaClient(model=model)
-                logger.info("[API] ✓ OllamaClient initialized successfully")
-            except Exception as e:
-                logger.warning(f"[API] ✗ Failed to initialize OllamaClient: {e}")
-                logger.warning("[API] Falling back to regex-only extraction")
-                _llm_client = None
+
+        with _llm_lock:
+            if _llm_client is None:
+                try:
+                    model = os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest")
+                    logger.info(f"[API] Initializing OllamaClient with model: {model}...")
+                    _llm_client = OllamaClient(model=model)
+                    logger.info("[API] ✓ OllamaClient initialized successfully")
+                except Exception as e:
+                    logger.warning(f"[API] ✗ Failed to initialize OllamaClient: {e}")
+                    logger.warning("[API] Falling back to regex-only extraction")
+                    _llm_client = None
         return _llm_client
     
     # Shared memory mode: All threads use same databases (optional)
@@ -1000,9 +1006,10 @@ def create_app() -> FastAPI:
     
     def get_engine(thread_id: str) -> CRTEnhancedRAG:
         tid = _sanitize_thread_id(thread_id)
-        engine = engines.get(tid)
-        if engine is not None:
-            return engine
+        with _engines_lock:
+            engine = engines.get(tid)
+            if engine is not None:
+                return engine
 
         # Use shared DBs or per-thread isolation
         if _shared_memory_enabled:
@@ -1025,29 +1032,40 @@ def create_app() -> FastAPI:
             except Exception as e:
                 logger.warning(f"[API] Failed to enable LLM extraction for thread {tid}: {e}")
         
-        engines[tid] = engine
-        turn_counters[tid] = 0  # Initialize turn counter
+        with _engines_lock:
+            engines[tid] = engine
+        with _turn_lock:
+            turn_counters[tid] = 0  # Initialize turn counter
         return engine
     
     def get_turn_number(thread_id: str) -> int:
         """Get current turn number for thread."""
         tid = _sanitize_thread_id(thread_id)
-        return turn_counters.get(tid, 0)
+        with _turn_lock:
+            return turn_counters.get(tid, 0)
     
     def increment_turn(thread_id: str) -> int:
         """Increment and return new turn number."""
         tid = _sanitize_thread_id(thread_id)
-        turn_counters[tid] = turn_counters.get(tid, 0) + 1
-        return turn_counters[tid]
+        with _turn_lock:
+            turn_counters[tid] = turn_counters.get(tid, 0) + 1
+            return turn_counters[tid]
 
     def _thread_db_paths(thread_id: str) -> tuple[str, str]:
         tid = _sanitize_thread_id(thread_id)
-        memory_db = f"personal_agent/crt_memory_{tid}.db"
-        ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+        if _shared_memory_enabled:
+            memory_db = "personal_agent/crt_memory_shared.db"
+            ledger_db = "personal_agent/crt_ledger_shared.db"
+        else:
+            memory_db = f"personal_agent/crt_memory_{tid}.db"
+            ledger_db = f"personal_agent/crt_ledger_{tid}.db"
         return memory_db, ledger_db
 
     @app.on_event("startup")
     def _startup() -> None:
+        # Initialize auth database
+        auth_module.ensure_db_initialized()
+
         # Pre-load embedding model to avoid timeout on first request
         logger.info("[STARTUP] Pre-loading embedding model...")
         try:
@@ -1061,18 +1079,21 @@ def create_app() -> FastAPI:
         # Start the (optional) training loop.
         try:
             training_loop.start()
-        except Exception:
-            pass
+            logger.info("[STARTUP] Training loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start training loop: {e}")
 
         try:
             jobs_worker.start()
-        except Exception:
-            pass
+            logger.info("[STARTUP] Jobs worker started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start jobs worker: {e}")
 
         try:
             idle_scheduler.start()
-        except Exception:
-            pass
+            logger.info("[STARTUP] Idle scheduler started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start idle scheduler: {e}")
 
         try:
             app.state.scheduled_tasks_loop.start()
@@ -1082,63 +1103,89 @@ def create_app() -> FastAPI:
 
         try:
             app.state.reflection_loop.start()
-        except Exception:
-            pass
+            logger.info("[STARTUP] Reflection loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start reflection loop: {e}")
 
         try:
             app.state.personality_loop.start()
-        except Exception:
-            pass
+            logger.info("[STARTUP] Personality loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start personality loop: {e}")
 
         try:
             app.state.journal_self_reply_loop.start()
-        except Exception:
-            pass
+            logger.info("[STARTUP] Journal self-reply loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start journal self-reply loop: {e}")
 
         try:
             app.state.heartbeat_loop.start()
+            logger.info("[STARTUP] Heartbeat loop started")
         except Exception as e:
             logger.warning(f"[STARTUP] Failed to start heartbeat loop: {e}")
+
+        # Schedule periodic session cleanup (every 6 hours)
+        def _session_cleanup_worker():
+            while True:
+                try:
+                    time.sleep(6 * 3600)
+                    removed = auth_module.cleanup_expired_sessions()
+                    if removed:
+                        logger.info(f"[CLEANUP] Purged {removed} expired sessions")
+                except Exception as e:
+                    logger.warning(f"[CLEANUP] Session cleanup error: {e}")
+
+        cleanup_thread = threading.Thread(target=_session_cleanup_worker, daemon=True, name="session-cleanup")
+        cleanup_thread.start()
 
     @app.on_event("shutdown")
     def _shutdown() -> None:
         try:
             training_loop.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Training loop stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping training loop: {e}")
 
         try:
             idle_scheduler.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Idle scheduler stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping idle scheduler: {e}")
 
         try:
             app.state.scheduled_tasks_loop.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Scheduled tasks loop stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping scheduled tasks: {e}")
 
         try:
             jobs_worker.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Jobs worker stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping jobs worker: {e}")
 
         try:
             app.state.reflection_loop.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Reflection loop stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping reflection loop: {e}")
 
         try:
             app.state.personality_loop.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Personality loop stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping personality loop: {e}")
 
         try:
             app.state.journal_self_reply_loop.stop()
-        except Exception:
-            pass
+            logger.info("[SHUTDOWN] Journal self-reply loop stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping journal loop: {e}")
 
         try:
             app.state.heartbeat_loop.stop()
+            logger.info("[SHUTDOWN] Heartbeat loop stopped")
         except Exception as e:
             logger.warning(f"[SHUTDOWN] Error stopping heartbeat loop: {e}")
 
@@ -1969,7 +2016,10 @@ def create_app() -> FastAPI:
     @app.post("/api/auth/login", response_model=AuthLoginResponse)
     def auth_login(req: AuthLoginRequest):
         """Login with username and password."""
-        user = auth_module.authenticate_user(req.username, req.password)
+        try:
+            user = auth_module.authenticate_user(req.username, req.password)
+        except ValueError as e:
+            raise HTTPException(status_code=429, detail=str(e))
         if not user:
             raise HTTPException(status_code=401, detail="Invalid username or password")
         
@@ -2130,7 +2180,7 @@ def create_app() -> FastAPI:
             return {"status": "error", "error": str(e)}
 
     @app.post("/api/profile/set_name")
-    async def set_profile_name(req: ChatSendRequest) -> ChatSendResponse:
+    def set_profile_name(req: ChatSendRequest) -> ChatSendResponse:
         """Set profile name by sending a FACT message through CRT."""
         # Forward to the main chat endpoint - this ensures proper CRT processing
         return chat_send(req)
@@ -5552,7 +5602,7 @@ INTERACTION GUIDELINES:
     # Simple LLM wrapper for code generation
     class CodeLLMExecutor:
         """Wrapper to use Ollama for code generation."""
-        async def generate(self, prompt: str, thread_id: str = None, system_prompt: str = None):
+        def generate(self, prompt: str, thread_id: str = None, system_prompt: str = None):
             client = OllamaClient()
             messages = []
             if system_prompt:
@@ -5565,7 +5615,7 @@ INTERACTION GUIDELINES:
     _code_llm_executor = CodeLLMExecutor()
     
     @app.post("/api/code/task", response_model=CodeTaskResponse)
-    async def api_code_task(req: CodeTaskRequest):
+    def api_code_task(req: CodeTaskRequest):
         """
         Run an autonomous code task - LLM writes code, executes, retries on failure.
         
@@ -5579,7 +5629,7 @@ INTERACTION GUIDELINES:
             timeout_seconds=req.timeout_seconds
         )
         
-        result = await work_loop.run_task(
+        result = work_loop.run_task(
             task_description=req.task_description,
             context=req.context,
             thread_id=req.thread_id

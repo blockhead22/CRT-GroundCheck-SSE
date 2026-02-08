@@ -24,6 +24,7 @@ Philosophy:
 
 import json
 import sqlite3
+import sys
 import threading
 import time
 from datetime import datetime
@@ -57,7 +58,6 @@ class GateEvent:
         return asdict(self)
 
 
-@dataclass
 @dataclass
 class LearningStats:
     """Current learning system statistics."""
@@ -466,14 +466,17 @@ class ActiveLearningCoordinator:
     
     def _start_training_worker(self):
         """Start background worker thread for model training."""
+        import queue as _queue_mod
         def worker():
             while True:
                 try:
                     msg = self._training_queue.get(timeout=1.0)
                     if msg == "TRAIN":
                         self._run_training()
-                except:
-                    pass  # Timeout, continue
+                except _queue_mod.Empty:
+                    pass  # Timeout, continue polling
+                except Exception as e:
+                    print(f"[ActiveLearning] Training worker error: {e}")
         
         thread = threading.Thread(target=worker, daemon=True, name="training-worker")
         thread.start()
@@ -510,7 +513,7 @@ class ActiveLearningCoordinator:
             # Run training script
             result = subprocess.run(
                 [
-                    "python", str(self.training_script),
+                    sys.executable, str(self.training_script),
                     "--input", str(training_file),
                     "--output", str(self.model_path),
                 ],
@@ -529,7 +532,7 @@ class ActiveLearningCoordinator:
                     if 'accuracy' in line.lower():
                         try:
                             accuracy = float(line.split(':')[-1].strip().rstrip('%')) / 100
-                        except:
+                        except (ValueError, IndexError):
                             pass
             
             # Update training run record
@@ -772,9 +775,9 @@ class ActiveLearningCoordinator:
         
         cursor.execute("""
             SELECT event_id, question, response_type_predicted, gates_passed,
-                   intent_score, memory_score, grounding_score, timestamp
+                   intent_align, memory_align, grounding_score, timestamp
             FROM gate_events
-            WHERE user_override = 0
+            WHERE user_override IS NULL OR user_override = 0
             ORDER BY timestamp DESC
             LIMIT ?
         """, (limit,))
@@ -1050,11 +1053,14 @@ class ActiveLearningCoordinator:
 
 # Singleton instance for global access
 _coordinator: Optional[ActiveLearningCoordinator] = None
+_coordinator_lock = threading.Lock()
 
 
 def get_active_learning_coordinator() -> ActiveLearningCoordinator:
-    """Get or create global coordinator instance."""
+    """Get or create global coordinator instance (thread-safe)."""
     global _coordinator
     if _coordinator is None:
-        _coordinator = ActiveLearningCoordinator()
+        with _coordinator_lock:
+            if _coordinator is None:
+                _coordinator = ActiveLearningCoordinator()
     return _coordinator

@@ -9,6 +9,10 @@ import secrets
 import time
 import json
 import os
+import re
+import bcrypt
+import threading
+from collections import defaultdict
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
 from contextlib import contextmanager
@@ -16,6 +20,12 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Rate limiting: track failed login attempts per username
+_login_attempts: Dict[str, list] = defaultdict(list)
+_login_lock = threading.Lock()
+_RATE_LIMIT_WINDOW = 300     # 5 minute window
+_RATE_LIMIT_MAX_ATTEMPTS = 5  # max failures per window
 
 # MySQL Configuration
 MYSQL_CONFIG = {
@@ -60,8 +70,49 @@ class ChatThread:
 
 
 def _hash_password(password: str, salt: str) -> str:
-    """Hash password with salt using SHA-256."""
+    """Hash password with bcrypt (salt parameter kept for interface compatibility)."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def _verify_password(password: str, stored_hash: str) -> bool:
+    """Verify password against stored bcrypt hash."""
+    try:
+        return bcrypt.checkpw(password.encode('utf-8'), stored_hash.encode('utf-8'))
+    except (ValueError, TypeError):
+        return False
+
+
+def _hash_password_legacy(password: str, salt: str) -> str:
+    """Legacy SHA-256 hash for migration verification only."""
     return hashlib.sha256((password + salt).encode()).hexdigest()
+
+
+def _check_password_complexity(password: str) -> Optional[str]:
+    """Validate password meets complexity requirements. Returns error message or None."""
+    if len(password) < 8:
+        return "Password must be at least 8 characters"
+    if not re.search(r'[A-Z]', password):
+        return "Password must contain at least one uppercase letter"
+    if not re.search(r'[a-z]', password):
+        return "Password must contain at least one lowercase letter"
+    if not re.search(r'[0-9]', password):
+        return "Password must contain at least one digit"
+    return None
+
+
+def _check_rate_limit(username: str) -> bool:
+    """Check if login attempts are rate-limited. Returns True if blocked."""
+    now = time.time()
+    with _login_lock:
+        attempts = _login_attempts[username]
+        _login_attempts[username] = [t for t in attempts if now - t < _RATE_LIMIT_WINDOW]
+        return len(_login_attempts[username]) >= _RATE_LIMIT_MAX_ATTEMPTS
+
+
+def _record_failed_login(username: str) -> None:
+    """Record a failed login attempt for rate limiting."""
+    with _login_lock:
+        _login_attempts[username].append(time.time())
 
 
 def _generate_token() -> str:
@@ -156,8 +207,9 @@ def register_user(username: str, password: str, display_name: Optional[str] = No
     
     if len(username) < 3:
         raise ValueError("Username must be at least 3 characters")
-    if len(password) < 4:
-        raise ValueError("Password must be at least 4 characters")
+    complexity_error = _check_password_complexity(password)
+    if complexity_error:
+        raise ValueError(complexity_error)
     
     salt = _generate_salt()
     password_hash = _hash_password(password, salt)
@@ -181,7 +233,11 @@ def register_user(username: str, password: str, display_name: Optional[str] = No
 def authenticate_user(username: str, password: str) -> Optional[User]:
     """Authenticate user with username and password. Returns User on success."""
     username = username.lower().strip()
-    
+
+    # Rate limiting check
+    if _check_rate_limit(username):
+        raise ValueError("Too many login attempts. Please wait before trying again.")
+
     with get_db() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -191,18 +247,36 @@ def authenticate_user(username: str, password: str) -> Optional[User]:
         row = cursor.fetchone()
         
         if not row:
+            _record_failed_login(username)
             return None
-        
-        expected_hash = _hash_password(password, row['password_salt'])
-        if expected_hash != row['password_hash']:
-            return None
-        
-        return User(
-            id=row['id'],
-            username=row['username'],
-            display_name=row['display_name'],
-            created_at=row['created_at']
-        )
+
+        stored_hash = row['password_hash']
+        salt = row['password_salt']
+
+        # Try bcrypt verification first
+        if _verify_password(password, stored_hash):
+            return User(
+                id=row['id'],
+                username=row['username'],
+                display_name=row['display_name'],
+                created_at=row['created_at']
+            )
+
+        # Fallback: check legacy SHA-256 hash and migrate to bcrypt
+        legacy_hash = _hash_password_legacy(password, salt)
+        if legacy_hash == stored_hash:
+            new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (new_hash, row['id']))
+            conn.commit()
+            return User(
+                id=row['id'],
+                username=row['username'],
+                display_name=row['display_name'],
+                created_at=row['created_at']
+            )
+
+        _record_failed_login(username)
+        return None
 
 
 def create_session(user_id: int, duration_hours: int = 24 * 7, user_agent: str = None, ip_address: str = None) -> Session:
@@ -392,9 +466,16 @@ def update_user_display_name(user_id: int, display_name: str) -> bool:
         return cursor.rowcount > 0
 
 
-# Initialize on import
-try:
-    init_auth_db()
-except Exception as e:
-    print(f"Warning: Could not initialize MySQL auth database: {e}")
-    print("The application will attempt to connect when needed.")
+# Lazy initialization — call explicitly at app startup, not on import
+_db_initialized = False
+
+def ensure_db_initialized():
+    """Initialize MySQL auth DB if not already done."""
+    global _db_initialized
+    if not _db_initialized:
+        try:
+            init_auth_db()
+            _db_initialized = True
+        except Exception as e:
+            print(f"Warning: Could not initialize MySQL auth database: {e}")
+

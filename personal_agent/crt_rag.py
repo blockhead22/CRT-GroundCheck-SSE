@@ -442,7 +442,7 @@ class CRTEnhancedRAG:
                 from datetime import datetime
                 ts = datetime.fromisoformat(str(original_timestamp).replace('Z', '+00:00'))
                 time_ref = f" (at {ts.strftime('%H:%M')})"
-            except:
+            except (ValueError, TypeError, AttributeError):
                 pass
         
         # Extract the original text snippet (truncated)
@@ -1610,7 +1610,7 @@ class CRTEnhancedRAG:
         """
         Build a specific caveat based on contradiction context.
         
-        This ensures caveats are informative, not just generic.
+        Handles both dict-based and object-based contradiction representations.
         """
         is_question = user_input_kind in ("question", "instruction")
         
@@ -1621,49 +1621,20 @@ class CRTEnhancedRAG:
         # For assertions, try to be specific about what changed
         if relevant_contradictions and len(relevant_contradictions) > 0:
             contra = relevant_contradictions[0]
-            old_val = contra.get('old_value', '')
-            new_val = contra.get('new_value', '')
+            
+            # Support both dict and object access patterns
+            if isinstance(contra, dict):
+                old_val = contra.get('old_value', '') or contra.get('old_text', '')
+                new_val = contra.get('new_value', '') or contra.get('new_text', '')
+            else:
+                old_val = getattr(contra, 'old_value', '') or getattr(contra, 'old_text', '')
+                new_val = getattr(contra, 'new_value', '') or getattr(contra, 'new_text', '')
             
             if old_val and new_val:
                 # Truncate for readability
-                old_short = old_val[:30] + '...' if len(old_val) > 30 else old_val
-                new_short = new_val[:30] + '...' if len(new_val) > 30 else new_val
+                old_short = str(old_val)[:30] + '...' if len(str(old_val)) > 30 else str(old_val)
+                new_short = str(new_val)[:30] + '...' if len(str(new_val)) > 30 else str(new_val)
                 return f"(changed from {old_short} to {new_short})"
-        
-        # Fallback: generic but clear
-        if reintroduced_count == 1:
-            return "(note: conflicting information exists)"
-        else:
-            return f"(note: {reintroduced_count} conflicting claims exist)"
-    
-    def _build_mandatory_caveat(
-        self,
-        user_input_kind: str,
-        reintroduced_count: int,
-        relevant_contradictions: Optional[List] = None
-    ) -> str:
-        """
-        Build a specific caveat based on contradiction context.
-        
-        This ensures caveats are informative, not just generic.
-        """
-        is_question = user_input_kind in ("question", "instruction")
-        
-        # For questions, use simpler temporal caveat
-        if is_question:
-            return "(most recent update)"
-        
-        # For assertions, try to be specific about what changed
-        if relevant_contradictions and len(relevant_contradictions) > 0:
-            # Get first contradiction for context
-            contra = relevant_contradictions[0]
-            
-            # Try to extract old/new values from summary or contradiction object
-            old_val = getattr(contra, 'old_text', '')[:30] if hasattr(contra, 'old_text') else ''
-            new_val = getattr(contra, 'new_text', '')[:30] if hasattr(contra, 'new_text') else ''
-            
-            if old_val and new_val:
-                return f"(changed from {old_val}... to {new_val}...)"
         
         # Fallback: generic but clear
         if reintroduced_count == 1:
@@ -5451,7 +5422,7 @@ class CRTEnhancedRAG:
                         return "You have one sibling."
                     else:
                         return f"You have {val_str} siblings."
-                except:
+                except (ValueError, TypeError):
                     return f"You have {val_str} siblings."
             
             if slot == "languages_spoken":
@@ -5461,7 +5432,7 @@ class CRTEnhancedRAG:
                         return "You speak one language."
                     else:
                         return f"You speak {val_str} languages."
-                except:
+                except (ValueError, TypeError):
                     return f"You speak {val_str} languages."
             
             if slot == "graduation_year":

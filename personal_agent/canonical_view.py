@@ -48,25 +48,21 @@ def _fetch_contradictions(db_path: str, limit: int = 2000) -> List[Contradiction
         return []
 
     try:
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT ledger_id, timestamp, status, contradiction_type, affects_slots,
-                   old_memory_id, new_memory_id, resolution_timestamp, resolution_method, merged_memory_id
-            FROM contradictions
-            ORDER BY timestamp DESC
-            LIMIT ?
-            """,
-            (int(limit),),
-        )
-        rows = cur.fetchall()
-        conn.close()
-    except Exception:
-        try:
-            conn.close()  # type: ignore[name-defined]
-        except Exception:
-            pass
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT ledger_id, timestamp, status, contradiction_type, affects_slots,
+                       old_memory_id, new_memory_id, resolution_timestamp, resolution_method, merged_memory_id
+                FROM contradictions
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (int(limit),),
+            )
+            rows = cur.fetchall()
+    except Exception as e:
+        logger.warning(f"Failed to fetch contradictions from {db_path}: {e}") if 'logger' in dir() else None
         return []
 
     out: List[ContradictionRow] = []
@@ -93,16 +89,12 @@ def get_contradiction_counts(db_path: str) -> Dict[str, int]:
     if not db_path:
         return {}
     try:
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cur.execute("SELECT lower(status), COUNT(*) FROM contradictions GROUP BY lower(status)")
-        rows = cur.fetchall()
-        conn.close()
-    except Exception:
-        try:
-            conn.close()  # type: ignore[name-defined]
-        except Exception:
-            pass
+        with sqlite3.connect(db_path) as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT lower(status), COUNT(*) FROM contradictions GROUP BY lower(status)")
+            rows = cur.fetchall()
+    except Exception as e:
+        logger.warning(f"Failed to get contradiction counts from {db_path}: {e}") if 'logger' in dir() else None
         return {}
 
     out: Dict[str, int] = {}

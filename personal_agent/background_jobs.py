@@ -194,66 +194,65 @@ def run_auto_resolve_contradictions(*, payload: Dict[str, Any], artifacts_dir: P
     # - only when new_text has an explicit correction marker
     resolved: List[Dict[str, Any]] = []
 
-    conn = sqlite3.connect(ledger_db)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT ledger_id, old_memory_id, new_memory_id, contradiction_type, query, summary FROM contradictions "
-        "WHERE status = ? ORDER BY timestamp ASC LIMIT ?",
-        ("open", max_to_resolve),
-    )
-    rows = cur.fetchall()
-
-    # Pull memory texts for referenced ids.
-    mem_conn = sqlite3.connect(memory_db)
-    mem_cur = mem_conn.cursor()
-
-    now_iso = now_iso_utc()
-    now_ts = time.time()
-
-    for ledger_id, old_id, new_id, ctype, query, summary in rows:
-        ctype_s = str(ctype or "").strip().lower()
-        if ctype_s != "revision":
-            continue
-
-        mem_cur.execute("SELECT text, source FROM memories WHERE memory_id = ?", (str(new_id),))
-        new_row = mem_cur.fetchone()
-        mem_cur.execute("SELECT text, source FROM memories WHERE memory_id = ?", (str(old_id),))
-        old_row = mem_cur.fetchone()
-        if not new_row or not old_row:
-            continue
-
-        new_text = str(new_row[0] or "")
-        new_src = str(new_row[1] or "")
-        old_text = str(old_row[0] or "")
-        old_src = str(old_row[1] or "")
-
-        # Only auto-resolve user-to-user revisions.
-        if new_src.lower() != "user" or old_src.lower() != "user":
-            continue
-
-        nl = new_text.lower()
-        if not ("actually" in nl or "correction" in nl or "i meant" in nl or " not " in nl):
-            continue
-
-        # Mark resolved with the new memory as the effective winner.
+    with sqlite3.connect(ledger_db) as conn:
+        cur = conn.cursor()
         cur.execute(
-            "UPDATE contradictions SET status = ?, resolution_timestamp = ?, resolution_method = ?, merged_memory_id = ? WHERE ledger_id = ?",
-            ("resolved", float(now_ts), "auto_revision", str(new_id), str(ledger_id)),
+            "SELECT ledger_id, old_memory_id, new_memory_id, contradiction_type, query, summary FROM contradictions "
+            "WHERE status = ? ORDER BY timestamp ASC LIMIT ?",
+            ("open", max_to_resolve),
         )
-        resolved.append(
-            {
-                "ledger_id": str(ledger_id),
-                "old_memory_id": str(old_id),
-                "new_memory_id": str(new_id),
-                "method": "auto_revision",
-                "query": (str(query) if query is not None else None),
-                "summary": (str(summary) if summary is not None else None),
-            }
-        )
+        rows = cur.fetchall()
 
-    conn.commit()
-    conn.close()
-    mem_conn.close()
+        # Pull memory texts for referenced ids.
+        with sqlite3.connect(memory_db) as mem_conn:
+            mem_cur = mem_conn.cursor()
+
+            now_iso = now_iso_utc()
+            now_ts = time.time()
+
+            for ledger_id, old_id, new_id, ctype, query, summary in rows:
+                ctype_s = str(ctype or "").strip().lower()
+                if ctype_s != "revision":
+                    continue
+
+                mem_cur.execute("SELECT text, source FROM memories WHERE memory_id = ?", (str(new_id),))
+                new_row = mem_cur.fetchone()
+                mem_cur.execute("SELECT text, source FROM memories WHERE memory_id = ?", (str(old_id),))
+                old_row = mem_cur.fetchone()
+                if not new_row or not old_row:
+                    continue
+
+                new_text = str(new_row[0] or "")
+                new_src = str(new_row[1] or "")
+                old_text = str(old_row[0] or "")
+                old_src = str(old_row[1] or "")
+
+                # Only auto-resolve user-to-user revisions.
+                if new_src.lower() != "user" or old_src.lower() != "user":
+                    continue
+
+                nl = new_text.lower()
+                # Require explicit correction markers (avoid false positives from " not " alone)
+                if not ("actually" in nl or "correction" in nl or "i meant" in nl):
+                    continue
+
+                # Mark resolved with the new memory as the effective winner.
+                cur.execute(
+                    "UPDATE contradictions SET status = ?, resolution_timestamp = ?, resolution_method = ?, merged_memory_id = ? WHERE ledger_id = ?",
+                    ("resolved", float(now_ts), "auto_revision", str(new_id), str(ledger_id)),
+                )
+                resolved.append(
+                    {
+                        "ledger_id": str(ledger_id),
+                        "old_memory_id": str(old_id),
+                        "new_memory_id": str(new_id),
+                        "method": "auto_revision",
+                        "query": (str(query) if query is not None else None),
+                        "summary": (str(summary) if summary is not None else None),
+                    }
+                )
+
+        conn.commit()
 
     out_path = artifacts_dir / "contradictions" / f"auto_resolve.{job_id}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -264,13 +263,12 @@ def run_auto_resolve_contradictions(*, payload: Dict[str, Any], artifacts_dir: P
 
 
 def _read_user_memories(memory_db: str) -> List[Dict[str, Any]]:
-    conn = sqlite3.connect(memory_db)
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT memory_id, text, timestamp, confidence, trust, source FROM memories ORDER BY timestamp ASC"
-    )
-    rows = cur.fetchall()
-    conn.close()
+    with sqlite3.connect(memory_db) as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT memory_id, text, timestamp, confidence, trust, source FROM memories ORDER BY timestamp ASC"
+        )
+        rows = cur.fetchall()
 
     out: List[Dict[str, Any]] = []
     for memory_id, text, ts, conf, trust, source in rows:

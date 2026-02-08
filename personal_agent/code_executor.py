@@ -165,7 +165,7 @@ class CodeWorkLoop:
         self.current_task: Optional[Dict] = None
         self.task_history: List[Dict] = []
     
-    async def run_task(
+    def run_task(
         self,
         task_description: str,
         context: Optional[str] = None,
@@ -204,7 +204,7 @@ class CodeWorkLoop:
             )
             
             # Ask LLM to write code
-            llm_response = await self._generate_code(prompt, thread_id)
+            llm_response = self._generate_code(prompt, thread_id)
             code = self._extract_code(llm_response)
             
             if not code:
@@ -285,11 +285,11 @@ Respond with ONLY the Python code wrapped in ```python ... ```
 """
         return prompt
     
-    async def _generate_code(self, prompt: str, thread_id: Optional[str]) -> str:
+    def _generate_code(self, prompt: str, thread_id: Optional[str]) -> str:
         """Ask LLM to generate code."""
         try:
             # Use the LLM executor
-            response = await self.llm.generate(
+            response = self.llm.generate(
                 prompt=prompt,
                 thread_id=thread_id or "code_executor",
                 system_prompt="You are a Python code generator. Output ONLY valid Python code."
