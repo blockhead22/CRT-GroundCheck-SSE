@@ -404,8 +404,12 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
         # Try "graduated from X" first
         m = re.search(r"\b(?:i\s+|you\s+)?graduated from\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+in\s+\d{4}|\s+with|\.|,|;|\s+and|\s*$)", text, flags=re.IGNORECASE)
         if not m:
-            # Try "studied at X" pattern
-            m = re.search(r"\b(?:i\s+|you\s+)?studied\s+(?:[A-Z]+|[a-z\s]+)\s+at\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+and|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
+            # Try "studied at X" pattern.
+            m = re.search(
+                r"\b(?:i\s+|you\s+)?studied\s+at\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+and|\.|,|;|\s*$)",
+                text,
+                flags=re.IGNORECASE,
+            )
         if m:
             school = m.group(1).strip()
             facts["school"] = ExtractedFact("school", school, _norm_text(school))
@@ -413,11 +417,17 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
     # Major/Degree field
     m = re.search(r"\b(?:degree|major)\s+in\s+([A-Z][A-Za-z\s]{2,40}?)(?:\s+from|\s+and|\s+with|\.|,|;|\s*$)", text, flags=re.IGNORECASE)
     if not m:
-        m = re.search(r"\bstudied\s+([A-Z][A-Za-z\s]{2,40}?)(?:\s+at|\s*$)", text, flags=re.IGNORECASE)
+        m = re.search(
+            r"\bstudied\s+(?!at\b)([A-Z][A-Za-z\s]{2,40}?)(?:\s+at|\s*$)",
+            text,
+            flags=re.IGNORECASE,
+        )
     if m:
         major = m.group(1).strip()
         # Filter out common false positives
-        if major.lower() not in ['university', 'college', 'school', 'institute']:
+        if major.lower().startswith("at "):
+            major = major[3:].strip()
+        if major.lower() not in ['university', 'college', 'school', 'institute'] and major:
             facts["major"] = ExtractedFact("major", major, _norm_text(major))
     
     # Minor

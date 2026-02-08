@@ -1456,12 +1456,9 @@ class CRTEnhancedRAG:
         conflict_beliefs: List[str] = []
 
         open_contras = self.ledger.get_open_contradictions(limit=50)
-        resolvable_types = {
-            ContradictionType.CONFLICT,
-            ContradictionType.REVISION,
-        }
         for contra in open_contras:
-            if getattr(contra, "contradiction_type", None) not in resolvable_types:
+            ctype = str(getattr(contra, "contradiction_type", "")).strip().lower()
+            if ctype not in {ContradictionType.CONFLICT, ContradictionType.REVISION}:
                 continue
 
             # Check affects_slots for fast filtering
@@ -2520,7 +2517,8 @@ class CRTEnhancedRAG:
         resolved = 0
         open_contras = self.ledger.get_open_contradictions(limit=200)
         for contra in open_contras:
-            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+            ctype = str(getattr(contra, "contradiction_type", "")).strip().lower()
+            if ctype not in {ContradictionType.CONFLICT, ContradictionType.REVISION}:
                 continue
 
             old_mem = self.memory.get_memory_by_id(contra.old_memory_id)

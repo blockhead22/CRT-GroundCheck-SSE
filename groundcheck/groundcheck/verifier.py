@@ -562,7 +562,18 @@ class GroundCheck:
         # Check each extracted fact against memories
         for slot, fact in facts_extracted.items():
             slot_l = slot.lower()
-            supported_values = memory_facts_by_slot.get(slot_l, set())
+            support_slot = slot_l
+            supported_values = memory_facts_by_slot.get(support_slot, set())
+            # Allow historical-slot aliases (e.g., previous_employer) to resolve
+            # against the canonical memory slot (e.g., employer).
+            if not supported_values:
+                for prefix in ("previous_", "prior_", "former_"):
+                    if support_slot.startswith(prefix):
+                        canonical_slot = support_slot[len(prefix):]
+                        if canonical_slot in memory_facts_by_slot:
+                            support_slot = canonical_slot
+                            supported_values = memory_facts_by_slot.get(support_slot, set())
+                            break
             
             # Split compound values from the generated text
             fact_values = split_compound_values(str(fact.value))
@@ -577,13 +588,17 @@ class GroundCheck:
                 # Check if this individual value is supported (with fuzzy matching)
                 if self._is_value_supported(val, supported_values, slot=slot_l):
                     # Find which memory supports this value
-                    memory_id = self._find_memory_for_value(val, supported_values, memory_id_by_slot_value.get(slot_l, {}))
+                    memory_id = self._find_memory_for_value(
+                        val,
+                        supported_values,
+                        memory_id_by_slot_value.get(support_slot, {}),
+                    )
                     if memory_id:
                         grounding_map[val] = memory_id
                     
                     # Step 2: Check if this claim involves a contradiction
                     slot_contradiction = next(
-                        (c for c in contradictions if c.slot == slot_l),
+                        (c for c in contradictions if c.slot == support_slot),
                         None
                     )
                     

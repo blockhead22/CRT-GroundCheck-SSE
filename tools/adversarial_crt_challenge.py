@@ -688,6 +688,7 @@ def run_adversarial_challenge(
     output_file = f"artifacts/adversarial_challenge_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     os.makedirs("artifacts", exist_ok=True)
     with open(output_file, "w") as f:
+        llm_available = bool(getattr(getattr(rag, "reasoning", None), "llm", None))
         json.dump({
             "summary": {
                 "total_score": total_score,
@@ -696,6 +697,7 @@ def run_adversarial_challenge(
                 "contradictions_detected": contradictions_detected,
                 "false_positives": false_positives,
                 "missed_detections": missed_detections,
+                "llm_available": llm_available,
             },
             "results": results,
             "challenge_log": challenger.challenge_log,
@@ -703,12 +705,15 @@ def run_adversarial_challenge(
     
     print(f"\nResults saved to: {output_file}")
     
+    llm_available = bool(getattr(getattr(rag, "reasoning", None), "llm", None))
+
     return {
         "total_score": total_score,
         "avg_score": avg_score,
         "contradictions_detected": contradictions_detected,
         "false_positives": false_positives,
         "missed_detections": missed_detections,
+        "llm_available": llm_available,
         "results": results,
     }
 
