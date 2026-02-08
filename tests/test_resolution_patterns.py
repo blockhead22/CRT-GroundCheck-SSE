@@ -205,7 +205,8 @@ class TestPatternExtension:
         initial_count = len(get_all_patterns())
         
         # Try to add existing pattern
-        add_custom_pattern(r'\bactually\b')
+        existing_pattern = get_all_patterns()[0]
+        add_custom_pattern(existing_pattern)
         
         # Count should not increase
         assert len(get_all_patterns()) == initial_count

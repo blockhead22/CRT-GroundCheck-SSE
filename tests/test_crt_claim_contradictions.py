@@ -38,15 +38,27 @@ def test_slot_question_answers_from_canonical_fact_even_with_contradiction(rag: 
 def rag(tmp_path: Path) -> CRTEnhancedRAG:
     mem_db = tmp_path / "mem.db"
     led_db = tmp_path / "ledger.db"
-    return CRTEnhancedRAG(memory_db=str(mem_db), ledger_db=str(led_db), llm_client=FakeLLM())
+    profile_db = tmp_path / "profile.db"
+    return CRTEnhancedRAG(
+        memory_db=str(mem_db),
+        ledger_db=str(led_db),
+        profile_db=str(profile_db),
+        llm_client=FakeLLM(),
+    )
 
 
 @pytest.fixture()
 def capturing_rag(tmp_path: Path):
     mem_db = tmp_path / "mem.db"
     led_db = tmp_path / "ledger.db"
+    profile_db = tmp_path / "profile.db"
     llm = CapturingLLM()
-    return CRTEnhancedRAG(memory_db=str(mem_db), ledger_db=str(led_db), llm_client=llm), llm
+    return CRTEnhancedRAG(
+        memory_db=str(mem_db),
+        ledger_db=str(led_db),
+        profile_db=str(profile_db),
+        llm_client=llm,
+    ), llm
 
 
 def test_question_does_not_create_contradiction(rag: CRTEnhancedRAG):

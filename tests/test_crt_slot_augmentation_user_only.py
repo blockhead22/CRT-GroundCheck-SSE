@@ -11,6 +11,7 @@ def test_slot_augmentation_only_injects_user_sources(monkeypatch, tmp_path) -> N
     engine = CRTEnhancedRAG(
         memory_db=str(tmp_path / "crt_memory_test.db"),
         ledger_db=str(tmp_path / "crt_ledger_test.db"),
+        profile_db=str(tmp_path / "crt_profile_test.db"),
     )
 
     user_name = MemoryItem(

@@ -22,6 +22,7 @@ import os
 import json
 import time
 import random
+import re
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -557,9 +558,22 @@ def run_adversarial_challenge(
     print(f"Max turns: {max_turns}")
     print()
     
-    # Initialize CRT
+    # Initialize CRT with per-run isolated DBs to avoid cross-run contamination.
     print("[INIT] Loading CRT system...")
-    rag = CRTEnhancedRAG()
+    safe_thread = re.sub(r"[^A-Za-z0-9_.-]+", "_", thread_id or "adversarial_challenge")
+    os.makedirs("artifacts", exist_ok=True)
+    memory_db = os.path.join("artifacts", f"adversarial_{safe_thread}_memory.db")
+    ledger_db = os.path.join("artifacts", f"adversarial_{safe_thread}_ledger.db")
+    profile_db = os.path.join("artifacts", f"adversarial_{safe_thread}_profile.db")
+
+    for db_path in (memory_db, ledger_db, profile_db):
+        try:
+            if os.path.exists(db_path):
+                os.remove(db_path)
+        except Exception:
+            pass
+
+    rag = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, profile_db=profile_db)
     
     # Reset thread for clean test
     try:

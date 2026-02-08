@@ -549,6 +549,8 @@ class ContradictionRespondResponse(BaseModel):
     thread_id: str
     ledger_id: str
     recorded: bool = True
+    resolved: bool = False
+    next: Optional[ContradictionNextResponse] = None
 
 
 class LoopRunRequest(BaseModel):

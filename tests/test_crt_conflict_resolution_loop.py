@@ -16,7 +16,13 @@ class FakeLLM:
 def rag(tmp_path: Path) -> CRTEnhancedRAG:
     mem_db = tmp_path / "mem.db"
     led_db = tmp_path / "ledger.db"
-    return CRTEnhancedRAG(memory_db=str(mem_db), ledger_db=str(led_db), llm_client=FakeLLM())
+    profile_db = tmp_path / "profile.db"
+    return CRTEnhancedRAG(
+        memory_db=str(mem_db),
+        ledger_db=str(led_db),
+        profile_db=str(profile_db),
+        llm_client=FakeLLM(),
+    )
 
 
 def test_conflict_resolution_loop_employer(rag: CRTEnhancedRAG):

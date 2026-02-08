@@ -43,8 +43,20 @@ _MOOD_SLOTS = {
 def _is_transient_state_value(value: Optional[str]) -> bool:
     if value is None:
         return False
-    low = str(value).lower()
-    return any(word in low for word in _TRANSIENT_STATE_WORDS)
+    low = str(value).lower().strip()
+    if not low:
+        return False
+    for word in _TRANSIENT_STATE_WORDS:
+        needle = str(word).lower().strip()
+        if not needle:
+            continue
+        if " " in needle:
+            if re.search(rf"(^|\W){re.escape(needle)}($|\W)", low):
+                return True
+        else:
+            if re.search(rf"\b{re.escape(needle)}\b", low):
+                return True
+    return False
 
 
 class SSEMode(Enum):

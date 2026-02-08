@@ -70,7 +70,26 @@ class SemanticMatcher:
         if not text:
             return ""
         t = text.lower().strip()
+        # Canonicalize common paraphrase forms into stable templates.
+        t = re.sub(
+            r'\b(employed by|employed at|works for|working for|working at|works at|job at)\b',
+            'work at',
+            t,
+        )
+        t = re.sub(
+            r'\b(resides in|based in|located in|living in)\b',
+            'live in',
+            t,
+        )
+        t = re.sub(
+            r'\b(graduated from|graduate from|studied at|study at|attended|went to)\b',
+            'study at',
+            t,
+        )
+        # Normalize educational suffix noise.
+        t = re.sub(r'\buniversity\b', '', t)
         t = re.sub(r'\b(a|an|the)\b', '', t)
+        t = re.sub(r'[^a-z0-9\s]', ' ', t)
         t = ' '.join(t.split())
         return t
     
@@ -148,6 +167,14 @@ class SemanticMatcher:
             # Strategy 4: Synonym match
             if slot and self._synonym_match(claimed, supported, slot):
                 return True, "synonym", supported
+
+            # Strategy 4b: Term-overlap for short factual phrases.
+            claimed_terms = set(claimed_norm.split())
+            supported_terms = set(supported_norm.split())
+            if claimed_terms and supported_terms:
+                overlap = len(claimed_terms & supported_terms) / len(claimed_terms)
+                if overlap >= 0.67:
+                    return True, "term_overlap", supported
         
         # Strategy 5: Embedding match (slowest, only if others fail)
         if self.use_embeddings:

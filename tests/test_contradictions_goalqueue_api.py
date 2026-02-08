@@ -25,9 +25,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient,
         def __init__(self, memory_db: str, ledger_db: str, *args, **kwargs):
             mem_name = Path(memory_db).name
             led_name = Path(ledger_db).name
+            profile_name = f"profile_{Path(memory_db).stem}.db"
             super().__init__(
                 memory_db=str(tmp_path / mem_name),
                 ledger_db=str(tmp_path / led_name),
+                profile_db=str(tmp_path / profile_name),
                 llm_client=FakeLLM(),
             )
 

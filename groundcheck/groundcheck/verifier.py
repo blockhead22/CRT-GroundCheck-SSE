@@ -288,8 +288,30 @@ class GroundCheck:
         from collections import defaultdict
         from .types import ContradictionDetail
         
-        # Group memories by fact slot (using both regex and two-tier extraction)
+        # Group memories by fact slot (using both regex and two-tier extraction).
+        # De-duplicate (slot, memory_id, normalized_value) so hybrid extraction
+        # paths do not double-count the same contradiction value.
         slot_to_facts = defaultdict(list)
+        seen_facts = defaultdict(set)
+
+        def _add_fact(slot: str, value: str, memory: Memory, tier: str, confidence: Optional[float] = None) -> None:
+            norm_value = self._normalize_value(value)
+            if not norm_value:
+                return
+            key = (str(memory.id), norm_value)
+            if key in seen_facts[slot]:
+                return
+            seen_facts[slot].add(key)
+            fact_payload = {
+                'value': norm_value,
+                'memory_id': memory.id,
+                'timestamp': memory.timestamp,
+                'trust': memory.trust,
+                'tier': tier,
+            }
+            if confidence is not None:
+                fact_payload['confidence'] = confidence
+            slot_to_facts[slot].append(fact_payload)
         
         for memory in retrieved_memories:
             # Use TwoTierFactSystem if available for enhanced fact extraction
@@ -300,13 +322,7 @@ class GroundCheck:
                     # Process hard facts (Tier A)
                     for slot, fact in result.hard_facts.items():
                         if slot in self.MUTUALLY_EXCLUSIVE_SLOTS:
-                            slot_to_facts[slot].append({
-                                'value': fact.normalized,
-                                'memory_id': memory.id,
-                                'timestamp': memory.timestamp,
-                                'trust': memory.trust,
-                                'tier': 'hard'
-                            })
+                            _add_fact(slot, fact.normalized, memory, tier='hard')
                     
                     # Process open tuples (Tier B) with high confidence
                     for tuple_fact in result.open_tuples:
@@ -316,14 +332,13 @@ class GroundCheck:
                             if attr in self.MUTUALLY_EXCLUSIVE_SLOTS:
                                 # Safely get normalized_value with fallback to value
                                 normalized = getattr(tuple_fact, 'normalized_value', None) or tuple_fact.value
-                                slot_to_facts[attr].append({
-                                    'value': normalized,
-                                    'memory_id': memory.id,
-                                    'timestamp': memory.timestamp,
-                                    'trust': memory.trust,
-                                    'tier': 'open',
-                                    'confidence': tuple_fact.confidence
-                                })
+                                _add_fact(
+                                    attr,
+                                    normalized,
+                                    memory,
+                                    tier='open',
+                                    confidence=float(tuple_fact.confidence),
+                                )
                 except Exception as e:
                     # Fall back to regex-only extraction
                     import logging
@@ -336,13 +351,7 @@ class GroundCheck:
             for slot, fact in facts.items():
                 # Only track mutually exclusive slots for contradiction detection
                 if slot in self.MUTUALLY_EXCLUSIVE_SLOTS:
-                    slot_to_facts[slot].append({
-                        'value': fact.normalized,
-                        'memory_id': memory.id,
-                        'timestamp': memory.timestamp,
-                        'trust': memory.trust,
-                        'tier': 'regex'
-                    })
+                    _add_fact(slot, fact.normalized, memory, tier='regex')
         
         # Find slots with multiple different values
         contradictions = []
@@ -430,10 +439,20 @@ class GroundCheck:
         ]
         has_structure = any(re.search(p, generated_text, re.IGNORECASE) for p in structural_patterns)
         
-        # 3. Contradiction value mention (existing logic)
-        # Check if BOTH old and new values are mentioned
-        values_mentioned = sum(1 for val in contradiction.values if val.lower() in text_lower)
-        both_mentioned = values_mentioned >= 2
+        # 3. Contradiction value mention (existing logic, de-duplicated)
+        # Check if BOTH old and new values are mentioned.
+        unique_values = {
+            self._normalize_value(v)
+            for v in contradiction.values
+            if v
+        }
+        values_mentioned = 0
+        for val in unique_values:
+            if not val:
+                continue
+            if re.search(rf'\b{re.escape(val)}\b', text_lower):
+                values_mentioned += 1
+        both_mentioned = len(unique_values) >= 2 and values_mentioned >= 2
         
         # Success if ANY disclosure method is present
         return has_disclosure_keyword or has_structure or both_mentioned

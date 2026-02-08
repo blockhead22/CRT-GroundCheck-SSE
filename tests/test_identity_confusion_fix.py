@@ -8,6 +8,15 @@ API_BASE = "http://127.0.0.1:8123"
 THREAD_ID = "identity_confusion_test"
 
 
+def _api_available() -> bool:
+    """Return True when local API server is reachable for integration test."""
+    try:
+        resp = requests.get(f"{API_BASE}/health", timeout=1.5)
+        return resp.status_code < 500
+    except requests.RequestException:
+        return False
+
+
 def reset_thread():
     """Reset test thread"""
     resp = requests.post(
@@ -43,6 +52,9 @@ def test_identity_confusion_bug():
     - AI should NOT claim "Nick" as its own identity
     - When asked "who are you", AI should say "I'm CRT, an AI assistant"
     """
+    if not _api_available():
+        pytest.skip(f"API server not available at {API_BASE}")
+
     print("\n=== Testing Identity Confusion Bug Fix ===\n")
     
     # Reset thread

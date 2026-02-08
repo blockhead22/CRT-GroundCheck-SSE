@@ -105,6 +105,7 @@ class CRTEnhancedRAG:
         self,
         memory_db: str = "personal_agent/crt_memory.db",
         ledger_db: str = "personal_agent/crt_ledger.db",
+        profile_db: str = "personal_agent/crt_user_profile.db",
         config: Optional[CRTConfig] = None,
         llm_client=None
     ):
@@ -120,7 +121,7 @@ class CRTEnhancedRAG:
         self.ledger = ContradictionLedger(ledger_db, self.config)
         
         # Global user profile (shared across all threads)
-        self.user_profile = GlobalUserProfile()
+        self.user_profile = GlobalUserProfile(db_path=profile_db)
         
         # Reasoning engine
         self.reasoning = ReasoningEngine(llm_client)
@@ -1455,8 +1456,12 @@ class CRTEnhancedRAG:
         conflict_beliefs: List[str] = []
 
         open_contras = self.ledger.get_open_contradictions(limit=50)
+        resolvable_types = {
+            ContradictionType.CONFLICT,
+            ContradictionType.REVISION,
+        }
         for contra in open_contras:
-            if getattr(contra, "contradiction_type", None) != ContradictionType.CONFLICT:
+            if getattr(contra, "contradiction_type", None) not in resolvable_types:
                 continue
 
             # Check affects_slots for fast filtering
@@ -3141,7 +3146,10 @@ class CRTEnhancedRAG:
             # This enables cross-thread memory (e.g., name persists across chats)
             try:
                 logger.info(f"[PROFILE_DEBUG] Calling user_profile.update_from_text with: {user_query[:100]}")
-                profile_result = self.user_profile.update_from_text(user_query, thread_id="current")
+                profile_result = self.user_profile.update_from_text(
+                    user_query,
+                    thread_id=str(thread_id or "default"),
+                )
                 
                 # Log any profile fact contradictions to the ledger
                 if profile_result and profile_result.get('replaced'):
