@@ -23,7 +23,10 @@ Integration with CRT:
 
 from __future__ import annotations
 
+import ast
 import json
+import operator
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -259,30 +262,70 @@ class ToolRegistry:
         }
 
     def _calculate(self, expression: str) -> dict:
-        """Safely evaluate math expressions."""
+        """Safely evaluate math expressions using AST parsing (no eval)."""
         try:
-            # Whitelist safe operations
-            allowed_names = {"abs": abs, "min": min, "max": max, "sum": sum, "len": len}
-            result = eval(expression, {"__builtins__": {}}, allowed_names)
+            # Reject obviously dangerous input
+            if any(kw in expression for kw in ("import", "exec", "eval", "__", "lambda", "open")):
+                return {"error": "Expression contains forbidden keywords"}
+
+            _SAFE_OPS = {
+                ast.Add: operator.add, ast.Sub: operator.sub,
+                ast.Mult: operator.mul, ast.Div: operator.truediv,
+                ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
+                ast.Pow: operator.pow, ast.USub: operator.neg,
+                ast.UAdd: operator.pos,
+            }
+            _SAFE_FUNCS = {"abs": abs, "min": min, "max": max, "sum": sum, "round": round}
+
+            def _safe_eval(node):
+                if isinstance(node, ast.Expression):
+                    return _safe_eval(node.body)
+                elif isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+                    return node.value
+                elif isinstance(node, ast.BinOp) and type(node.op) in _SAFE_OPS:
+                    left = _safe_eval(node.left)
+                    right = _safe_eval(node.right)
+                    if isinstance(node.op, ast.Pow) and right > 100:
+                        raise ValueError("Exponent too large")
+                    return _SAFE_OPS[type(node.op)](left, right)
+                elif isinstance(node, ast.UnaryOp) and type(node.op) in _SAFE_OPS:
+                    return _SAFE_OPS[type(node.op)](_safe_eval(node.operand))
+                elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+                    fname = node.func.id
+                    if fname not in _SAFE_FUNCS:
+                        raise ValueError(f"Function '{fname}' not allowed")
+                    args = [_safe_eval(a) for a in node.args]
+                    return _SAFE_FUNCS[fname](*args)
+                else:
+                    raise ValueError(f"Unsupported expression: {ast.dump(node)}")
+
+            tree = ast.parse(expression.strip(), mode="eval")
+            result = _safe_eval(tree)
             return {"result": result}
         except Exception as e:
             return {"error": f"Calculation failed: {e}"}
 
     def _read_file(self, path: str, max_lines: int = 100) -> dict:
-        """Read file contents."""
+        """Read file contents (sandboxed to workspace directory)."""
         try:
             file_path = Path(path)
             if not file_path.is_absolute():
                 file_path = self.workspace / file_path
 
-            if not file_path.exists():
+            # Security: resolve symlinks and verify the file is within workspace
+            resolved = file_path.resolve()
+            workspace_resolved = self.workspace.resolve()
+            if not str(resolved).startswith(str(workspace_resolved)):
+                return {"error": f"Access denied: path '{path}' is outside workspace"}
+
+            if not resolved.exists():
                 return {"error": f"File not found: {path}"}
 
-            lines = file_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+            lines = resolved.read_text(encoding="utf-8", errors="ignore").splitlines()
             truncated = lines[:max_lines]
 
             return {
-                "path": str(file_path),
+                "path": str(resolved),
                 "lines": len(lines),
                 "truncated": len(lines) > max_lines,
                 "content": "\n".join(truncated),
