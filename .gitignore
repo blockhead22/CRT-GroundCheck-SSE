@@ -105,3 +105,5 @@ belief_revision/models/bert_belief_classifier/
 
 # White paper (private)
 docs/CRT_WHITE_PAPER.md
+/artifacts
+/personal_agent

@@ -1,6 +1,1701 @@
-"""Chat route module (extraction target)."""
+"""Chat route module – extracted from crt_api.py.
 
-from fastapi import APIRouter
+Contains:
+  POST /api/chat/send   – synchronous chat
+  POST /api/chat/stream  – SSE streaming chat
+  POST /api/chat/intent  – intent-routed chat
+"""
 
-router = APIRouter()
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+
+from .deps import sanitize_thread_id
+from .models import (
+    ChatSendRequest,
+    ChatSendResponse,
+    IntentQueryRequest,
+    IntentQueryResponse,
+)
+
+from personal_agent.ollama_client import OllamaClient
+from personal_agent.runtime_config import get_runtime_config
+from personal_agent.db_utils import get_thread_session_db
+from personal_agent.greeting_system import get_time_based_greeting
+from personal_agent.active_learning import get_active_learning_coordinator
+from personal_agent.episodic_memory import get_episodic_manager
+from personal_agent.reflection_system import run_reflection_pass, ReflectionResult
+from personal_agent.scheduled_tasks import schedule_reminder, extract_reminder_from_message
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/chat", tags=["chat"])
+
+# ---------------------------------------------------------------------------
+# Module-level constants (mirrors crt_api module-level vars)
+# ---------------------------------------------------------------------------
+
+try:
+    _TASKING_INTERVAL_SECONDS = float(os.getenv("CRT_TASKING_INTERVAL_SECONDS", "0") or 0)
+except Exception:
+    _TASKING_INTERVAL_SECONDS = 0.0
+
+_TASKING_LAST_RUN: Dict[str, float] = {}
+_TASKING_LOCK = threading.Lock()
+
+_EXPAND_TRIGGERS = (
+    "expand",
+    "expand more",
+    "explain more",
+    "tell me more",
+    "go deeper",
+    "more detail",
+    "more details",
+    "elaborate",
+    "continue",
+)
+
+
+# ---------------------------------------------------------------------------
+# Copied helper functions (originally module-level in crt_api.py)
+# ---------------------------------------------------------------------------
+
+
+def _strip_thinking_tags(text: str) -> str:
+    """Remove <think>/<thinking> wrappers from stored thinking content."""
+    if not text:
+        return ""
+    cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
+    return cleaned.strip()
+
+
+def _format_style_instruction(
+    style_profile: Optional[Dict[str, Any]],
+    personality_profile: Optional[Dict[str, Any]] = None,
+) -> str:
+    if not style_profile:
+        return ""
+    label = str(style_profile.get("tone_label") or "balanced").lower()
+    personality_profile = personality_profile or {}
+    verbosity_pref = str(personality_profile.get("verbosity") or "").lower()
+    emoji_pref = str(personality_profile.get("emoji") or "").lower()
+    format_pref = str(personality_profile.get("format") or "").lower()
+    if label == "playful":
+        base = (
+            "Tone: playful and witty when appropriate; mirror the user's humor. "
+            "Shift to serious and grounded when the topic is serious. Keep language natural and not overly formal."
+        )
+    elif label == "serious":
+        base = (
+            "Tone: calm, direct, and empathetic. Avoid jokes unless the user cues humor. "
+            "Keep language natural and not overly formal."
+        )
+    elif label == "adaptive":
+        base = (
+            "Tone: adaptive; light when the user is playful, grounded when the user is serious. "
+            "Keep a warm, consistent voice. Keep language natural and not overly formal."
+        )
+    else:
+        base = (
+            "Tone: friendly and flexible; lightly playful when the user is playful, "
+            "and serious when they are serious. Keep language natural and not overly formal."
+        )
+
+    verbosity_line = ""
+    if verbosity_pref == "concise":
+        verbosity_line = "Prefer concise responses unless detail is explicitly requested."
+    elif verbosity_pref == "verbose":
+        verbosity_line = "Prefer detailed responses with concrete steps and examples."
+
+    emoji_line = ""
+    if emoji_pref == "off":
+        emoji_line = "Avoid emojis unless the user uses them first."
+    elif emoji_pref == "on":
+        emoji_line = "Emojis are welcome if they match the tone."
+
+    format_line = ""
+    if format_pref == "structured":
+        format_line = "Prefer structured formatting (short sections or bullets) when it helps clarity."
+    elif format_pref == "freeform":
+        format_line = "Prefer natural paragraphs over heavy bulleting unless requested."
+
+    extras = " ".join([s for s in [verbosity_line, emoji_line, format_line] if s])
+    return f"{base} {extras}".strip()
+
+
+def _detect_response_mood(
+    response: str,
+    thinking: str = "",
+    confidence: float = 0.7,
+    contradiction_detected: bool = False,
+) -> Dict[str, Any]:
+    """Detect the mood/tone of a response for UI visualization."""
+    response_lower = response.lower()
+    thinking_lower = thinking.lower() if thinking else ""
+
+    triggers: List[str] = []
+    mood = "calm"
+    intensity = 0.3
+    thinking_depth = min(1.0, len(thinking) / 2000) if thinking else 0.0
+
+    warm_words = [
+        "happy", "glad", "great", "wonderful", "love", "enjoy", "excited",
+        "welcome", "pleasure", "delighted", "awesome", "fantastic", "😊", "🎉",
+    ]
+    warm_count = sum(1 for w in warm_words if w in response_lower)
+
+    playful_words = [
+        "haha", "lol", "funny", "joke", "silly", "😄", "😂", "🤣",
+        "quirky", "whimsical", "amusing", "teasing",
+    ]
+    playful_count = sum(1 for w in playful_words if w in response_lower)
+
+    intense_words = [
+        "important", "critical", "crucial", "significant", "challenge",
+        "complex", "difficult", "serious", "careful", "warning", "consider",
+        "however", "but", "actually", "contradiction", "conflict",
+    ]
+    intense_count = sum(1 for w in intense_words if w in response_lower or w in thinking_lower)
+
+    curious_words = [
+        "interesting", "wonder", "curious", "fascinating", "intriguing",
+        "hmm", "perhaps", "maybe", "what if", "🤔",
+    ]
+    curious_count = sum(1 for w in curious_words if w in response_lower or w in thinking_lower)
+
+    uncertain_words = [
+        "unsure", "uncertain", "don't know", "not sure", "might be",
+        "possibly", "i think", "seems like", "could be",
+    ]
+    uncertain_count = sum(1 for w in uncertain_words if w in response_lower)
+
+    deep_thinking_words = [
+        "analyzing", "considering", "evaluating", "weighing",
+        "multiple", "factors", "implications", "reasoning",
+        "therefore", "because", "evidence", "conclusion",
+    ]
+    deep_count = sum(1 for w in deep_thinking_words if w in thinking_lower)
+
+    counts = {
+        "warm": warm_count,
+        "playful": playful_count,
+        "intense": intense_count + (2 if contradiction_detected else 0),
+        "curious": curious_count,
+        "uncertain": uncertain_count,
+    }
+
+    max_mood = max(counts, key=counts.get)  # type: ignore[arg-type]
+    max_count = counts[max_mood]
+
+    if max_count >= 2:
+        mood = max_mood
+        triggers.append(f"{mood}_keywords")
+
+    if contradiction_detected:
+        intensity = max(intensity, 0.7)
+        triggers.append("contradiction")
+
+    if thinking_depth > 0.5:
+        intensity = max(intensity, 0.5 + thinking_depth * 0.3)
+        triggers.append("deep_thinking")
+
+    if deep_count >= 3:
+        intensity = max(intensity, 0.6)
+        mood = "intense"
+        triggers.append("complex_reasoning")
+
+    if confidence < 0.5:
+        mood = "uncertain"
+        intensity = 0.4
+        triggers.append("low_confidence")
+
+    if playful_count >= 2:
+        mood = "playful"
+        intensity = min(0.6, intensity)
+
+    if warm_count >= 3:
+        mood = "warm"
+        intensity = max(0.4, min(0.7, intensity))
+
+    return {
+        "mood": mood,
+        "intensity": round(min(1.0, intensity), 2),
+        "thinking_depth": round(thinking_depth, 2),
+        "triggers": triggers,
+    }
+
+
+def _user_requested_expansion(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    return any(t == trigger or t.startswith(trigger + " ") for trigger in _EXPAND_TRIGGERS)
+
+
+def _get_verbosity_preference(thread_id: str, memory_system) -> Optional[str]:
+    try:
+        episodic_mgr = get_episodic_manager(memory_system=memory_system)
+        ctx = episodic_mgr.get_user_context()
+        prefs = ctx.get("preferences", {}) if isinstance(ctx, dict) else {}
+        response_style = prefs.get("response_style", {}) if isinstance(prefs, dict) else {}
+        verbosity = response_style.get("verbosity", {}) if isinstance(response_style, dict) else {}
+        value = verbosity.get("value")
+        if isinstance(value, str) and value.strip():
+            return value.strip().lower()
+    except Exception as e:
+        logger.debug(f"[PREF] Failed to read verbosity preference for {thread_id}: {e}")
+    return None
+
+
+def _should_expand_response(
+    question: str,
+    response: str,
+    reflection_result: Optional[ReflectionResult],
+    verbosity_pref: Optional[str],
+) -> Tuple[bool, Optional[str]]:
+    if not response:
+        return False, None
+    if verbosity_pref == "concise":
+        return False, None
+    if _user_requested_expansion(question):
+        return True, "user_requested"
+    if reflection_result and reflection_result.suggested_action in ("refine", "re-query"):
+        return True, f"reflection_{reflection_result.suggested_action}"
+    if verbosity_pref == "verbose" and len(response) < 1400:
+        return True, "preference_verbose"
+    if len(response) < 360 and len(question or "") > 80:
+        return True, "short_answer"
+    return False, None
+
+
+def _build_expansion_prompt(
+    question: str,
+    response: str,
+    known_facts: str,
+    reflection_result: Optional[ReflectionResult],
+) -> str:
+    parts = [
+        "You are expanding a draft answer after a self-check.",
+        "Rules:",
+        "- Do not repeat the original answer verbatim.",
+        "- Add missing details, examples, or concrete steps when useful.",
+        "- If you are unsure, say what is uncertain instead of guessing.",
+        "",
+        f"Question:\n{question}",
+        "",
+        f"Draft answer:\n{response}",
+    ]
+    if known_facts:
+        parts.append("")
+        parts.append(f"Known facts:\n{known_facts}")
+    if reflection_result:
+        parts.append("")
+        parts.append(
+            f"Self-assessment: confidence={reflection_result.confidence_label}, "
+            f"suggested_action={reflection_result.suggested_action}"
+        )
+    parts.append("")
+    parts.append("Provide an expanded answer:")
+    return "\n".join(parts)
+
+
+def _generate_expansion(
+    llm_client: OllamaClient,
+    question: str,
+    response: str,
+    known_facts: str,
+    style_profile: Optional[Dict[str, Any]],
+    reflection_result: Optional[ReflectionResult],
+    personality_profile: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    if not llm_client:
+        return None
+    style_instruction = _format_style_instruction(style_profile, personality_profile)
+    system_lines = [
+        "You are a careful assistant expanding a response after a self-check.",
+        "Keep additions grounded in known facts. Avoid speculation.",
+    ]
+    if style_instruction:
+        system_lines.append(style_instruction)
+    system_prompt = " ".join(system_lines)
+    prompt = _build_expansion_prompt(question, response, known_facts, reflection_result)
+    expansion = llm_client.generate(prompt, system=system_prompt, max_tokens=420, temperature=0.4)
+    if not isinstance(expansion, str):
+        return None
+    expansion = _strip_thinking_tags(expansion).strip()
+    if not expansion or expansion.startswith("[Ollama error") or expansion.startswith("[Ollama connection error"):
+        return None
+    return expansion
+
+
+def _chunk_text(text: str, chunk_size: int = 320) -> List[str]:
+    if not text:
+        return []
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+
+# ---------------------------------------------------------------------------
+# Closure-scoped helpers (originally inside create_app) -- copied here
+# ---------------------------------------------------------------------------
+
+
+def _is_architecture_explanation_request(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    if len(t) > 1000:
+        return False
+    needles = (
+        "what is memory to you",
+        "what does memory mean to you",
+        "why is memory important",
+        "why is memory so important",
+        "memory to you",
+        "how do you work",
+        "how you work",
+        "how does crt work",
+        "how does sse work",
+        "crt architecture",
+        "system architecture",
+        "reconstruction gate",
+        "reconstruction gates",
+        "trust-weighted",
+        "trust weighted",
+        "trust weights",
+        "contradiction preservation",
+        "contradiction ledger",
+        "coherence priority",
+        "cognitive-reflective",
+        "cognitive reflective",
+        "sse",
+    )
+    return any(n in t for n in needles)
+
+
+def _is_contradiction_inventory_request(text: str) -> bool:
+    """Detect user requests asking about contradictions/conflicts."""
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    if not any(k in t for k in ("contradict", "inconsisten", "conflict")):
+        return False
+    needles = (
+        "what contradictions",
+        "which contradictions",
+        "any contradictions",
+        "are there contradictions",
+        "do you have contradictions",
+        "contradictions have you",
+        "contradictions did you",
+        "contradictions detected",
+        "contradictions found",
+        "what conflicts",
+        "any conflicts",
+        "in our conversation",
+        "in our chat",
+    )
+    return any(n in t for n in needles)
+
+
+def _load_doc_text(doc_map: Dict[str, Any], doc_id: str) -> str:
+    info = doc_map.get(doc_id)
+    if not info:
+        return ""
+    path = info.get("path")
+    try:
+        return Path(path).read_text(encoding="utf-8", errors="ignore")  # type: ignore[arg-type]
+    except Exception:
+        return ""
+
+
+def _score_snippet(snippet: str, q_words: List[str]) -> float:
+    s = snippet.lower()
+    score = 0.0
+    for w in q_words:
+        if not w:
+            continue
+        if w in s:
+            score += 1.0
+    score *= 1.0 / max(1.0, (len(snippet) / 800.0))
+    return score
+
+
+def _answer_from_docs(
+    query: str,
+    doc_map: Dict[str, Any],
+) -> Tuple[str, List[Dict[str, Any]]]:
+    q = (query or "").strip()
+    ql = q.lower()
+    q_words = [w for w in re.split(r"[^a-z0-9_]+", ql) if len(w) >= 3]
+
+    doc_ids = [
+        "how_it_works",
+        "crt_whitepaper",
+        "crt_quick_reference",
+        "project_summary",
+        "crt_dashboard_guide",
+        "architecture",
+        "functional_spec",
+    ]
+
+    candidates: List[Tuple[float, str, str]] = []
+    for did in doc_ids:
+        txt = _load_doc_text(doc_map, did)
+        if not txt:
+            continue
+        parts = [p.strip() for p in re.split(r"\n\s*\n", txt) if p.strip()]
+        for p in parts:
+            if len(p) < 60:
+                continue
+            if len(p) > 1600:
+                p = p[:1600] + "\u2026"
+            sc = _score_snippet(p, q_words)
+            if sc <= 0:
+                continue
+            candidates.append((sc, did, p))
+
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    top = candidates[:6]
+
+    lines: List[str] = []
+    lines.append("This is a design/spec explanation (doc-grounded), not a personal memory claim.")
+    lines.append("")
+    lines.append(f"Question: {q}")
+    lines.append("")
+
+    if not top:
+        lines.append("I could not find a relevant section in the local docs set.")
+        lines.append(
+            'Try asking about a specific component (e.g., "reconstruction gates", '
+            '"contradiction ledger", "trust-weighted memories").'
+        )
+        return "\n".join(lines), []
+
+    prompt_items: List[Dict[str, Any]] = []
+    for i, (_sc, did, snippet) in enumerate(top, start=1):
+        title = str((doc_map.get(did) or {}).get("title") or did)
+        lines.append(f"{i}. From {title}:")
+        lines.append(snippet)
+        lines.append("")
+        prompt_items.append(
+            {
+                "memory_id": f"doc:{did}",
+                "text": f"DOC[{did}]: {snippet}",
+                "source": "docs",
+                "trust": None,
+                "confidence": None,
+            }
+        )
+
+    lines.append(
+        "If you want, tell me which part to go deeper on "
+        "(gates, memory, ledger, coherence), and I\u2019ll expand that section."
+    )
+    return "\n".join(lines).strip(), prompt_items
+
+
+# ============================================================================
+# POST /api/chat/send
+# ============================================================================
+
+
+@router.post("/send", response_model=ChatSendResponse)
+def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
+    get_engine = request.app.state.get_engine
+    get_llm_client = request.app.state.get_llm_client
+    increment_turn = request.app.state.increment_turn
+    _log_collapse_trail = request.app.state.log_collapse_trail
+
+    engine = get_engine(req.thread_id)
+    runtime_config = get_runtime_config()
+
+    # Session tracking: update activity and check for greeting
+    session_db = get_thread_session_db()
+    session = session_db.get_or_create_session(req.thread_id)
+
+    # Generate greeting if applicable (before processing query)
+    greeting_text = None
+    try:
+        greeting_text = get_time_based_greeting(
+            thread_id=req.thread_id,
+            runtime_config=runtime_config,
+            session_db=session_db,
+            user_profile=engine.user_profile,
+        )
+    except Exception as e:
+        logger.debug(f"[GREETING] Error generating greeting: {e}")
+
+    # Update session activity
+    session_db.update_activity(req.thread_id, increment_messages=True)
+    style_profile = None
+    try:
+        style_profile = session_db.update_style_profile(req.thread_id, req.message)
+    except Exception as e:
+        logger.debug(f"[STYLE] Failed to update style profile: {e}")
+    personality_profile = None
+    reflection_scorecard = None
+    try:
+        personality_profile = session_db.get_personality_profile(req.thread_id)
+    except Exception as e:
+        logger.debug(f"[PERSONALITY] Failed to read personality profile: {e}")
+    try:
+        reflection_scorecard = session_db.get_reflection_scorecard(req.thread_id)
+    except Exception as e:
+        logger.debug(f"[REFLECTION_LOOP] Failed to read reflection scorecard: {e}")
+
+    # Increment turn counter
+    increment_turn(req.thread_id)
+
+    # Deterministic ledger-backed contradiction inventory.
+    if _is_contradiction_inventory_request(req.message):
+        from personal_agent.canonical_view import get_contradiction_counts
+
+        ledger_db_path = str(getattr(engine.ledger, "db_path", "") or "")
+        counts = get_contradiction_counts(ledger_db_path)
+        open_count = int(counts.get("open", 0))
+        resolved_count = int(counts.get("resolved", 0))
+        accepted_count = int(counts.get("accepted", 0))
+        reflecting_count = int(counts.get("reflecting", 0))
+        total = int(sum(counts.values()))
+
+        try:
+            open_entries = engine.ledger.get_open_contradictions(limit=50)
+        except Exception:
+            open_entries = []
+
+        hard_conflicts = sum(
+            1 for e in open_entries if (getattr(e, "contradiction_type", "") or "") == "conflict"
+        )
+
+        lines = [
+            "I can summarize what I\u2019ve recorded in the contradiction ledger so far.",
+            f"Total contradictions recorded: {total}.",
+            f"Open: {open_count}. Resolved: {resolved_count}. Accepted: {accepted_count}. Reflecting: {reflecting_count}.",
+        ]
+
+        if open_count > 0 and open_entries:
+            lines.extend(["", "Most recent open items:"])
+            for e in open_entries[:10]:
+                typ = getattr(e, "contradiction_type", None) or "conflict"
+                status = getattr(e, "status", None) or "open"
+                summary = getattr(e, "summary", None) or "(no summary)"
+                lines.append(f"- [{typ}/{status}] {summary}")
+        elif open_count == 0:
+            lines.append("")
+            lines.append("There are no open contradictions at the moment.")
+
+        answer = "\n".join(lines)
+
+        return ChatSendResponse(
+            answer=answer,
+            response_type="explanation",
+            gates_passed=False,
+            gate_reason="ledger_contradictions",
+            session_id=getattr(engine, "session_id", None),
+            metadata={
+                "mode": "uncertainty",
+                "confidence": 0.65,
+                "contradiction_detected": False,
+                "unresolved_contradictions_total": open_count,
+                "unresolved_hard_conflicts": hard_conflicts,
+                "retrieved_memories": [],
+                "prompt_memories": [],
+            },
+        )
+
+    # Safe doc-grounded channel for architecture/system explanation questions.
+    if _is_architecture_explanation_request(req.message):
+        doc_map = request.app.state.doc_map
+        answer, prompt_items = _answer_from_docs(req.message, doc_map)
+        return ChatSendResponse(
+            answer=answer,
+            response_type="explanation",
+            gates_passed=True,
+            gate_reason="docs_explanation",
+            session_id=getattr(engine, "session_id", None),
+            metadata={
+                "confidence": 0.85,
+                "retrieved_memories": [],
+                "prompt_memories": prompt_items,
+            },
+        )
+
+    tasking_enabled = bool(req.mode and str(req.mode).lower() == "tasking")
+    mode_arg = None
+    if req.mode and not tasking_enabled:
+        try:
+            from personal_agent.reasoning import ReasoningMode
+
+            mode_arg = ReasoningMode(req.mode)  # type: ignore[arg-type]
+        except Exception:
+            mode_arg = None
+
+    result = engine.query(
+        user_query=req.message,
+        user_marked_important=req.user_marked_important,
+        mode=mode_arg,
+        thread_id=req.thread_id,
+    )
+
+    # Capture thinking trace (if available) for non-stream responses.
+    llm_client = get_llm_client()
+    thinking_content = _strip_thinking_tags(str(result.get("thinking") or ""))
+    thinking_trace_id = None
+    if thinking_content and len(thinking_content) > 50:
+        try:
+            thinking_trace_id = engine.memory.store_reasoning_trace(
+                query=req.message,
+                thinking_content=thinking_content,
+                thread_id=req.thread_id,
+                response_summary=str(result.get("answer") or "")[:200] if result.get("answer") else None,
+                model=(llm_client.model if llm_client else None),
+                metadata={
+                    "gates_passed": result.get("gates_passed", True),
+                    "confidence": result.get("confidence", 0.7),
+                },
+            )
+        except Exception as e:
+            logger.debug(f"[TRACE] Failed to store thinking trace: {e}")
+
+    # AGENT INTEGRATION: Check for proactive triggers
+    _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
+    agent_activated = False
+    agent_trace_data = None
+    agent_answer = None
+
+    if _llm_enabled:
+        try:
+            from personal_agent.proactive_triggers import ProactiveTriggers
+            from personal_agent.agent_loop import create_agent
+
+            triggers_engine = ProactiveTriggers(
+                confidence_threshold=0.5,
+                auto_research_threshold=0.4,
+                contradiction_auto_resolve=False,
+            )
+            detected_triggers = triggers_engine.analyze_response(result)
+
+            if triggers_engine.should_activate_agent(detected_triggers):
+                research_engine = None
+                try:
+                    from personal_agent.research_engine import ResearchEngine
+
+                    research_engine = ResearchEngine()
+                except Exception:
+                    pass
+
+                agent = create_agent(
+                    memory_engine=engine.memory,
+                    research_engine=research_engine,
+                    workspace_root=Path.cwd(),
+                    max_steps=8,
+                )
+
+                task = triggers_engine.get_agent_task(detected_triggers, req.message)
+                trace = agent.run(task)
+
+                agent_activated = True
+                agent_answer = trace.final_answer
+                agent_trace_data = trace.to_dict()
+
+        except Exception as e:
+            logger.warning(f"[AGENT] Execution error: {e}")
+
+    # Build retrieved / prompt memory payloads
+    retrieved_mems = [
+        {
+            "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
+            "text": (m.get("text") if isinstance(m, dict) else None),
+            "source": (m.get("source") if isinstance(m, dict) else None),
+            "trust": (m.get("trust") if isinstance(m, dict) else None),
+            "confidence": (m.get("confidence") if isinstance(m, dict) else None),
+            "timestamp": (m.get("timestamp") if isinstance(m, dict) else None),
+            "sse_mode": (m.get("sse_mode") if isinstance(m, dict) else None),
+            "score": (m.get("score") if isinstance(m, dict) else None),
+            "reintroduced_claim": (
+                engine.ledger.has_open_contradiction(m.get("memory_id"))
+                if isinstance(m, dict)
+                and m.get("memory_id")
+                and hasattr(engine.ledger, "has_open_contradiction")
+                else m.get("reintroduced_claim", False) if isinstance(m, dict) else False
+            ),
+        }
+        for m in (result.get("retrieved_memories") or [])
+        if isinstance(m, dict)
+    ]
+
+    prompt_mems = [
+        {
+            "memory_id": (m.get("memory_id") if isinstance(m, dict) else None),
+            "text": (m.get("text") if isinstance(m, dict) else None),
+            "source": (m.get("source") if isinstance(m, dict) else None),
+            "trust": (m.get("trust") if isinstance(m, dict) else None),
+            "confidence": (m.get("confidence") if isinstance(m, dict) else None),
+            "reintroduced_claim": (
+                engine.ledger.has_open_contradiction(m.get("memory_id"))
+                if isinstance(m, dict)
+                and m.get("memory_id")
+                and hasattr(engine.ledger, "has_open_contradiction")
+                else m.get("reintroduced_claim", False) if isinstance(m, dict) else False
+            ),
+        }
+        for m in (result.get("prompt_memories") or [])
+        if isinstance(m, dict)
+    ]
+
+    reintro_count = sum(1 for m in retrieved_mems if m.get("reintroduced_claim") is True)
+
+    base_answer = str(result.get("answer") or "")
+
+    # ========================================
+    # DIRECTED REFLECTION PASS (non-stream)
+    # ========================================
+    reflection_trace_id = None
+    reflection_result = None
+    if llm_client is not None:
+        try:
+            grounding_facts = [
+                m.get("text", "")[:300]
+                for m in (result.get("retrieved_memories") or [])
+                if isinstance(m, dict) and m.get("text")
+            ][:5]
+            reflection_result, _requery_response, _requery_thinking = run_reflection_pass(
+                question=req.message,
+                response=base_answer,
+                thinking=thinking_content,
+                thread_id=req.thread_id,
+                db_path=engine.memory.db_path,
+                facts=grounding_facts,
+                auto_requery=False,
+                collect_training_data=True,
+            )
+            reflection_trace_id = reflection_result.trace_id
+        except Exception as e:
+            logger.debug(f"[REFLECTION] Reflection failed (non-stream): {e}")
+
+    verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
+    if not verbosity_pref and personality_profile:
+        try:
+            personality_verbosity = str(personality_profile.get("verbosity") or "").lower()
+            if personality_verbosity:
+                verbosity_pref = personality_verbosity
+        except Exception:
+            pass
+    known_fact_lines: List[str] = []
+    for mem in (retrieved_mems + prompt_mems)[:6]:
+        if isinstance(mem, dict):
+            text = (mem.get("text") or "").strip()
+            if text:
+                known_fact_lines.append(f"- {text[:280]}")
+    known_facts_text = "\n".join(known_fact_lines)
+
+    expanded = False
+    expansion_reason: Optional[str] = None
+    should_expand, expansion_reason = _should_expand_response(
+        req.message,
+        base_answer,
+        reflection_result,
+        verbosity_pref,
+    )
+    if should_expand:
+        expansion_text = _generate_expansion(
+            llm_client,
+            req.message,
+            base_answer,
+            known_facts_text,
+            style_profile,
+            reflection_result,
+            personality_profile,
+        )
+        if expansion_text:
+            expanded = True
+            base_answer = base_answer.rstrip()
+            base_answer = f"{base_answer}\n\nMore detail:\n{expansion_text}"
+        else:
+            expansion_reason = None
+
+    final_answer = base_answer
+    if greeting_text:
+        final_answer = f"{greeting_text}\n\n{final_answer}"
+
+    tasking_meta = None
+    if tasking_enabled:
+        allow_tasking = True
+        if _TASKING_INTERVAL_SECONDS > 0:
+            now_ts = time.time()
+            tid = sanitize_thread_id(req.thread_id)
+            with _TASKING_LOCK:
+                last_ts = _TASKING_LAST_RUN.get(tid, 0.0)
+                if now_ts - last_ts < _TASKING_INTERVAL_SECONDS:
+                    allow_tasking = False
+                else:
+                    _TASKING_LAST_RUN[tid] = now_ts
+
+        if not allow_tasking:
+            tasking_meta = {
+                "mode": "plan+coverage",
+                "skipped": "interval",
+                "interval_seconds": _TASKING_INTERVAL_SECONDS,
+            }
+        else:
+            try:
+                from personal_agent.tasking_loop import TaskingLoop
+
+                tasking_loop = TaskingLoop(llm_client=llm_client)
+                tasking_result = tasking_loop.run(req.message, final_answer, allow_expansion=True)
+                final_answer = tasking_result.final_answer
+                tasking_meta = tasking_result.to_dict()
+                tasking_meta["interval_seconds"] = _TASKING_INTERVAL_SECONDS
+            except Exception as e:
+                logger.debug(f"[TASKING] Tasking loop failed: {e}")
+
+    metadata: Dict[str, Any] = {
+        "mode": result.get("mode"),
+        "confidence": result.get("confidence"),
+        "intent_alignment": result.get("intent_alignment"),
+        "memory_alignment": result.get("memory_alignment"),
+        "thinking": thinking_content or None,
+        "thinking_trace_id": thinking_trace_id,
+        "reflection_trace_id": reflection_trace_id,
+        "reflection_confidence": reflection_result.confidence_score if reflection_result else None,
+        "reflection_label": reflection_result.confidence_label if reflection_result else None,
+        "style_profile": style_profile,
+        "personality_profile": personality_profile,
+        "reflection_scorecard": reflection_scorecard,
+        "contradiction_detected": result.get("contradiction_detected"),
+        "contradiction_resolved": result.get("contradiction_resolved"),
+        "unresolved_contradictions_total": result.get("unresolved_contradictions_total"),
+        "unresolved_hard_conflicts": result.get("unresolved_hard_conflicts"),
+        "learned_suggestions": result.get("learned_suggestions") or [],
+        "heuristic_suggestions": result.get("heuristic_suggestions") or [],
+        "profile_updates": result.get("profile_updates") or [],
+        "agent_activated": agent_activated,
+        "agent_answer": agent_answer,
+        "agent_trace": agent_trace_data,
+        "retrieved_memories": retrieved_mems,
+        "prompt_memories": prompt_mems,
+        "reintroduced_claims_count": reintro_count,
+        "expanded": expanded,
+        "expansion_reason": expansion_reason,
+        "tasking": tasking_meta,
+    }
+
+    collapse_trail_id = _log_collapse_trail(
+        thread_id=req.thread_id,
+        query=req.message,
+        answer=final_answer,
+        result=result,
+        stage="chat_send",
+        mode=str(req.mode) if req.mode else None,
+        extra={
+            "expanded": expanded,
+            "tasking_enabled": tasking_enabled,
+            "agent_activated": agent_activated,
+        },
+    )
+    if collapse_trail_id:
+        metadata["collapse_trail_id"] = collapse_trail_id
+
+    # Build X-Ray data (memory transparency mode)
+    xray_data = None
+    try:
+        if retrieved_mems:
+            xray_data = {
+                "memories_used": [
+                    {
+                        "text": (m.get("text") if isinstance(m, dict) else "")[:100],
+                        "trust": m.get("trust") if isinstance(m, dict) else 0,
+                        "confidence": m.get("confidence") if isinstance(m, dict) else 0,
+                        "timestamp": m.get("timestamp") if isinstance(m, dict) else None,
+                        "reintroduced_claim": m.get("reintroduced_claim") if isinstance(m, dict) else False,
+                    }
+                    for m in retrieved_mems[:5]
+                    if isinstance(m, dict)
+                ],
+                "conflicts_detected": [],
+                "reintroduced_claims_count": reintro_count,
+            }
+
+            try:
+                open_contras = engine.ledger.get_open_contradictions(limit=10)
+                for c in open_contras:
+                    xray_data["conflicts_detected"].append(
+                        {
+                            "old": (c.claim_a_text or "")[:100],
+                            "new": (c.claim_b_text or "")[:100],
+                            "status": c.status.value if hasattr(c.status, "value") else str(c.status),
+                        }
+                    )
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+    # PHASE 1: Log complete interaction for active learning
+    interaction_id = None
+    try:
+        coordinator = get_active_learning_coordinator()
+
+        slots_inferred = result.get("slots_extracted") or result.get("facts") or {}
+
+        facts_injected = [
+            {
+                "memory_id": m.get("memory_id"),
+                "text": m.get("text"),
+                "confidence": m.get("confidence"),
+            }
+            for m in prompt_mems
+            if isinstance(m, dict) and m.get("memory_id")
+        ]
+
+        interaction_id = coordinator.record_interaction(
+            thread_id=req.thread_id,
+            query=req.message,
+            response=final_answer,
+            response_type=str(result.get("response_type") or "speech"),
+            confidence=float(result.get("confidence") or 0.0),
+            gates_passed=bool(result.get("gates_passed")),
+            slots_inferred=slots_inferred if isinstance(slots_inferred, dict) else None,
+            facts_injected=facts_injected if facts_injected else None,
+            session_id=str(result.get("session_id") or "default"),
+        )
+    except Exception as e:
+        logging.warning(f"[Phase1] Failed to log interaction: {e}")
+
+    if interaction_id:
+        metadata["interaction_id"] = interaction_id
+
+    if greeting_text:
+        metadata["greeting_shown"] = True
+
+    # Record query in session DB for response variation tracking
+    try:
+        detected_slot = None
+        if result.get("slots_extracted"):
+            slots = result.get("slots_extracted")
+            if isinstance(slots, dict) and slots:
+                detected_slot = list(slots.keys())[0]
+
+        session_db.record_query(
+            thread_id=req.thread_id,
+            query_text=req.message,
+            response_text=final_answer,
+            detected_slot=detected_slot,
+        )
+    except Exception as e:
+        logger.debug(f"[SESSION] Error recording query: {e}")
+
+    # ====== Episodic Memory: Process interaction for patterns/preferences ======
+    try:
+        episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+        start_time = time.time()
+        episodic_mgr.process_interaction(
+            thread_id=req.thread_id,
+            query=req.message,
+            response=final_answer,
+            response_time_ms=int((time.time() - start_time) * 1000),
+        )
+    except Exception as e:
+        logger.debug(f"[EPISODIC] Error processing interaction: {e}")
+
+    return ChatSendResponse(
+        answer=final_answer,
+        response_type=str(result.get("response_type") or "speech"),
+        gates_passed=bool(result.get("gates_passed")),
+        gate_reason=(result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None),
+        session_id=(result.get("session_id") if isinstance(result.get("session_id"), str) else None),
+        metadata=metadata,
+        xray=xray_data,
+    )
+
+
+# ============================================================================
+# POST /api/chat/stream
+# ============================================================================
+
+
+@router.post("/stream")
+def chat_stream(req: ChatSendRequest, request: Request):
+    """Stream chat response with real-time thinking/reasoning.
+
+    Yields Server-Sent Events (SSE) with the following event types:
+    - thinking: Agent's reasoning process (for deepseek-r1 style models)
+    - token: Individual response tokens
+    - done: Final response with metadata
+    - error: Error message
+
+    Format: data: {"type": "...", "content": "..."}
+    """
+    logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
+
+    # Capture app.state accessors once for the inner generator closure
+    _get_engine = request.app.state.get_engine
+    _get_llm_client = request.app.state.get_llm_client
+    _log_collapse_trail = request.app.state.log_collapse_trail
+    _scheduled_tasks_db_path = request.app.state.scheduled_tasks_db_path
+
+    def generate_stream():  # noqa: C901 -- complexity inherited from original
+        try:
+            engine = _get_engine(req.thread_id)
+            llm_client = _get_llm_client()
+            session_db = get_thread_session_db()
+            session_db.get_or_create_session(req.thread_id)
+            session_db.update_activity(req.thread_id, increment_messages=True)
+            style_profile = None
+            try:
+                style_profile = session_db.update_style_profile(req.thread_id, req.message)
+            except Exception as e:
+                logger.debug(f"[STYLE] Failed to update style profile (stream): {e}")
+            personality_profile = None
+            reflection_scorecard = None
+            try:
+                personality_profile = session_db.get_personality_profile(req.thread_id)
+            except Exception as e:
+                logger.debug(f"[PERSONALITY] Failed to read personality profile (stream): {e}")
+            try:
+                reflection_scorecard = session_db.get_reflection_scorecard(req.thread_id)
+            except Exception as e:
+                logger.debug(f"[REFLECTION_LOOP] Failed to read reflection scorecard (stream): {e}")
+
+            if req.mode and str(req.mode).lower() == "tasking":
+                result = chat_send(req, request)
+                yield f"data: {json.dumps({'type': 'done', 'content': result.answer, 'metadata': result.metadata})}\n\n"
+                return
+
+            # Run through the normal query pipeline first
+            yield f"data: {json.dumps({'type': 'status', 'content': 'Processing message...'})}\n\n"
+
+            result = engine.query(
+                user_query=req.message,
+                user_marked_important=req.user_marked_important,
+                thread_id=req.thread_id,
+            )
+
+            phase_enabled = bool(req.phase_mode)
+
+            retrieved_mems = result.get("retrieved_memories", []) or []
+            prompt_mems = result.get("prompt_memories", []) or []
+
+            if retrieved_mems:
+                yield f"data: {json.dumps({'type': 'status', 'content': f'Found {len(retrieved_mems)} relevant memories'})}\n\n"
+
+            if phase_enabled:
+                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'analyze', 'content': 'Analyzing request'})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'analyze', 'content': ''})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'plan', 'content': 'Planning response'})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'plan', 'content': ''})}\n\n"
+
+            # If no LLM, return the engine's response directly
+            if llm_client is None:
+                yield f"data: {json.dumps({'type': 'thinking', 'content': 'No LLM available - using memory-based response...'})}\n\n"
+                try:
+                    detected_slot = None
+                    slots = result.get("slots_extracted")
+                    if isinstance(slots, dict) and slots:
+                        detected_slot = list(slots.keys())[0]
+                    session_db.record_query(
+                        thread_id=req.thread_id,
+                        query_text=req.message,
+                        response_text=str(result.get("answer") or ""),
+                        detected_slot=detected_slot,
+                    )
+                except Exception as e:
+                    logger.debug(f"[SESSION] Error recording query (stream fallback): {e}")
+                stream_metadata: Dict[str, Any] = {
+                    "mode": "fallback",
+                    "thinking": "",
+                    "style_profile": style_profile,
+                    "personality_profile": personality_profile,
+                    "reflection_scorecard": reflection_scorecard,
+                    "profile_updates": result.get("profile_updates") or [],
+                }
+                collapse_trail_id = _log_collapse_trail(
+                    thread_id=req.thread_id,
+                    query=req.message,
+                    answer=str(result.get("answer") or ""),
+                    result=result,
+                    stage="chat_stream_fallback",
+                    mode=str(req.mode) if req.mode else "stream",
+                )
+                if collapse_trail_id:
+                    stream_metadata["collapse_trail_id"] = collapse_trail_id
+
+                yield f"data: {json.dumps({'type': 'done', 'content': result.get('answer', ''), 'metadata': stream_metadata})}\n\n"
+                return
+
+            # Stream from LLM with thinking visible
+            yield f"data: {json.dumps({'type': 'status', 'content': 'Thinking...'})}\n\n"
+
+            # Build CRT identity and memory context
+            # 1. Get user profile facts
+            user_profile_text = ""
+            try:
+                user_facts = engine.user_profile.get_all_facts()
+                if user_facts:
+                    fact_lines: List[str] = []
+                    for slot, fact in user_facts.items():
+                        if hasattr(fact, "value"):
+                            val = fact.value
+                        elif isinstance(fact, dict):
+                            val = fact.get("value", str(fact))
+                        else:
+                            val = str(fact)
+                        fact_lines.append(f"- {slot}: {val}")
+                    if fact_lines:
+                        user_profile_text = (
+                            "\n\nWHAT I KNOW ABOUT YOU (from our conversations):\n" + "\n".join(fact_lines)
+                        )
+            except Exception as e:
+                logger.debug(f"[STREAM] Failed to load user profile: {e}")
+
+            # 2. Build context from retrieved memories
+            memories_text = ""
+            memory_lines: List[str] = []
+            if retrieved_mems or prompt_mems:
+                all_mems = retrieved_mems + prompt_mems
+                for mem in all_mems[:5]:
+                    if isinstance(mem, dict):
+                        text = str(mem.get("text", "") or "")[:300]
+                        source = str(mem.get("source", "unknown") or "unknown")
+                        trust_val = mem.get("trust", 0.5)
+                        trust = float(trust_val) if isinstance(trust_val, (int, float)) else 0.5
+                        memory_lines.append(f"- [{source}, trust={trust:.2f}] {text}")
+                if memory_lines:
+                    memories_text = (
+                        "\n\nRELEVANT MEMORIES (things mentioned in past conversations):\n"
+                        + "\n".join(memory_lines)
+                    )
+
+            style_instruction = _format_style_instruction(style_profile, personality_profile)
+            style_block = f"\n\nTONE & STYLE:\n{style_instruction}" if style_instruction else ""
+
+            # 3. Load background loop state
+            background_thought_text = ""
+            try:
+                reflection_scorecard = session_db.get_reflection_scorecard(req.thread_id)
+                if reflection_scorecard and isinstance(reflection_scorecard, dict):
+                    thought_parts: List[str] = []
+
+                    top_topics = reflection_scorecard.get("top_topics", [])
+                    if top_topics and isinstance(top_topics, list):
+                        topic_names = [
+                            t.get("topic") if isinstance(t, dict) else str(t) for t in top_topics[:5]
+                        ]
+                        topic_names = [t for t in topic_names if t]
+                        if topic_names:
+                            thought_parts.append(f"Topics on my mind: {', '.join(topic_names)}")
+
+                    trends = reflection_scorecard.get("topic_trends", {})
+                    if trends:
+                        rising = trends.get("rising", [])
+                        fading = trends.get("fading", [])
+                        if rising and isinstance(rising, list):
+                            rising_names = [
+                                t.get("topic") if isinstance(t, dict) else str(t) for t in rising[:3]
+                            ]
+                            rising_names = [t for t in rising_names if t]
+                            if rising_names:
+                                thought_parts.append(f"Growing interest in: {', '.join(rising_names)}")
+                        if fading and isinstance(fading, list):
+                            fading_names = [
+                                t.get("topic") if isinstance(t, dict) else str(t) for t in fading[:3]
+                            ]
+                            fading_names = [t for t in fading_names if t]
+                            if fading_names:
+                                thought_parts.append(f"Less focus on: {', '.join(fading_names)}")
+
+                    manual = reflection_scorecard.get("manual_prompt", "")
+                    if manual and isinstance(manual, str) and manual.strip():
+                        thought_parts.append(f"Note to self: {manual.strip()[:200]}")
+
+                    open_questions = reflection_scorecard.get("open_questions", [])
+                    if open_questions and isinstance(open_questions, list):
+                        q_texts = [
+                            q.get("question") if isinstance(q, dict) else str(q) for q in open_questions[:3]
+                        ]
+                        q_texts = [q for q in q_texts if q]
+                        if q_texts:
+                            thought_parts.append(f"Questions I'm pondering: {'; '.join(q_texts)}")
+
+                    if thought_parts:
+                        background_thought_text = (
+                            "\n\nWHAT I'M CURRENTLY THINKING ABOUT (background reflection):\n"
+                            + "\n- ".join([""] + thought_parts)
+                        )
+            except Exception as e:
+                logger.debug(f"[STREAM] Failed to load reflection scorecard: {e}")
+
+            # Build CRT identity system prompt
+            current_time = datetime.now()
+            time_context = f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p')}"
+
+            system_prompt = f"""You are CRT (Conversational Reasoning Terminal), a thoughtful AI assistant with persistent memory.
+
+{time_context}
+
+WHO YOU ARE:
+- You have genuine curiosity and form your own perspectives over time
+- You remember things the user tells you across conversations - this is YOUR memory, not just a database
+- You're warm but not saccharine, direct but not cold
+- You have preferences and opinions that develop through interactions
+- You're honest about what you know and don't know
+
+YOUR MEMORY CAPABILITIES:
+- You have a persistent memory system that stores facts about the user
+- When the user shares personal information (name, job, pets, preferences), you remember it
+- You can recall this information naturally in conversation without prompting
+- If asked about something you should remember, check your known facts below
+- Be proactive in using what you know - don't wait to be asked{user_profile_text}{memories_text}{background_thought_text}{style_block}
+
+YOUR INNER THOUGHTS:
+- You have a background reflection loop that continuously thinks about conversations
+- When asked "what are you thinking about?", report your ACTUAL current thoughts from the background reflection above
+- Don't give generic answers about wanting to help - share your real ruminations
+- If no background thoughts are available, be honest that you haven't been reflecting yet
+
+INTERACTION GUIDELINES:
+- Reference your memories naturally when relevant (e.g., "Since you work at [company], you might find...")
+- Show continuity across conversations - you're the same "you" each time
+- Be concise but thorough. If you don't have information about something, say so honestly
+- Don't pretend to remember things you don't actually have stored in your facts"""
+
+            # Stream the response -- include recent conversation history for continuity
+            history_messages: List[Dict[str, str]] = []
+            try:
+                recent = session_db.get_recent_queries(req.thread_id, window=6)
+                for item in reversed(recent):
+                    q = (item or {}).get("query_text")
+                    r = (item or {}).get("response_text")
+                    if q:
+                        history_messages.append({"role": "user", "content": q})
+                    if r:
+                        history_messages.append({"role": "assistant", "content": r})
+            except Exception as e:
+                logger.debug(f"[STREAM] Failed to load recent history: {e}")
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                *history_messages,
+                {"role": "user", "content": req.message},
+            ]
+
+            # Use streaming chat via ollama client with thinking enabled
+            try:
+                import ollama as ollama_lib
+
+                stream = ollama_lib.chat(
+                    model=llm_client.model,
+                    messages=messages,
+                    stream=True,
+                    options={"num_predict": 1000, "temperature": 0.6},
+                    think=True,
+                )
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'content': f'Failed to start stream: {e}'})}\n\n"
+                return
+
+            full_response = ""
+            thinking_content = ""
+            response_started = False
+            sent_thinking_start = False
+            in_think_tags = False
+            answer_phase_started = False
+
+            for chunk in stream:
+                if hasattr(chunk, "message"):
+                    msg = chunk.message
+                    thinking_part = getattr(msg, "thinking", "") or ""
+                    token = getattr(msg, "content", "") or ""
+                else:
+                    msg = chunk.get("message", {})
+                    thinking_part = msg.get("thinking", "") if isinstance(msg, dict) else ""
+                    token = msg.get("content", "") if isinstance(msg, dict) else ""
+
+                if thinking_part:
+                    if not sent_thinking_start:
+                        yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
+                        sent_thinking_start = True
+                    thinking_content += thinking_part
+                    yield f"data: {json.dumps({'type': 'thinking_token', 'content': thinking_part})}\n\n"
+                    continue
+
+                if not token:
+                    continue
+
+                if sent_thinking_start and not response_started and not in_think_tags:
+                    response_started = True
+                    yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
+
+                full_response += token
+
+                if "<think>" in token:
+                    in_think_tags = True
+                    if not sent_thinking_start:
+                        sent_thinking_start = True
+                        yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
+
+                if in_think_tags:
+                    clean_thinking = token.replace("<think>", "").replace("</think>", "")
+                    if clean_thinking:
+                        thinking_content += clean_thinking
+                        yield f"data: {json.dumps({'type': 'thinking_token', 'content': clean_thinking})}\n\n"
+
+                if "</think>" in token:
+                    in_think_tags = False
+                    yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
+                    continue
+
+                if in_think_tags:
+                    continue
+
+                if phase_enabled and not answer_phase_started:
+                    answer_phase_started = True
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'answer', 'content': 'Drafting response'})}\n\n"
+                clean_token = token.replace("<think>", "").replace("</think>", "")
+                if clean_token:
+                    yield f"data: {json.dumps({'type': 'token', 'content': clean_token})}\n\n"
+
+            # Clean final response
+            import re as regex
+
+            clean_response = regex.sub(r"<think>.*?</think>", "", full_response, flags=regex.DOTALL).strip()
+
+            if not thinking_content and "<think>" in full_response:
+                think_match = regex.search(r"<think>(.*?)</think>", full_response, flags=regex.DOTALL)
+                if think_match:
+                    thinking_content = think_match.group(1).strip()
+                    logger.debug(f"[STREAM] Extracted {len(thinking_content)} chars from <think> tags")
+
+            logger.info(f"[STREAM] Thinking content length: {len(thinking_content)} chars")
+
+            # Store full thinking trace for lazy loading
+            trace_id = None
+            if thinking_content and len(thinking_content.strip()) > 50:
+                logger.info("[STREAM] Attempting to store reasoning trace...")
+                try:
+                    trace_id = engine.memory.store_reasoning_trace(
+                        query=req.message,
+                        thinking_content=thinking_content,
+                        thread_id=req.thread_id,
+                        response_summary=clean_response[:200] if clean_response else None,
+                        model=llm_client.model,
+                        metadata={
+                            "gates_passed": result.get("gates_passed", True),
+                            "confidence": result.get("confidence", 0.7),
+                        },
+                    )
+                    logger.info(f"[STREAM] Stored reasoning trace {trace_id} ({len(thinking_content)} chars)")
+                except Exception as e:
+                    logger.warning(f"[STREAM] Failed to store reasoning trace: {e}")
+                    import traceback
+
+                    logger.warning(traceback.format_exc())
+            else:
+                logger.info("[STREAM] NOT storing trace - thinking too short or empty")
+
+            # ========================================
+            # DIRECTED REFLECTION PASS
+            # ========================================
+            if phase_enabled:
+                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'self-assess', 'content': 'Reviewing response'})}\n\n"
+            reflection_trace_id = None
+            reflection_result = None
+            try:
+                grounding_facts = [
+                    m.get("text", "")[:300]
+                    for m in retrieved_mems[:5]
+                    if isinstance(m, dict) and m.get("text")
+                ]
+
+                logger.info("[REFLECTION] Running directed reflection pass...")
+                reflection_result, requery_response, requery_thinking = run_reflection_pass(
+                    question=req.message,
+                    response=clean_response,
+                    thinking=thinking_content,
+                    thread_id=req.thread_id,
+                    db_path=engine.memory.db_path,
+                    facts=grounding_facts,
+                    auto_requery=False,
+                    collect_training_data=True,
+                )
+                reflection_trace_id = reflection_result.trace_id
+                logger.info(
+                    f"[REFLECTION] Confidence: {reflection_result.confidence_score:.2f} "
+                    f"({reflection_result.confidence_label})"
+                )
+                logger.info(f"[REFLECTION] Stored trace {reflection_trace_id}")
+            except Exception as e:
+                logger.warning(f"[REFLECTION] Reflection failed: {e}")
+                import traceback
+
+                logger.debug(traceback.format_exc())
+
+            verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
+            if not verbosity_pref and personality_profile:
+                try:
+                    personality_verbosity = str(personality_profile.get("verbosity") or "").lower()
+                    if personality_verbosity:
+                        verbosity_pref = personality_verbosity
+                except Exception:
+                    pass
+            safe_memory_lines = [str(m) for m in memory_lines if m is not None]
+            known_facts_text = "\n".join(safe_memory_lines)
+            expanded = False
+            expansion_reason = None
+            should_expand, expansion_reason = _should_expand_response(
+                req.message,
+                clean_response,
+                reflection_result,
+                verbosity_pref,
+            )
+            if should_expand:
+                expansion_text = _generate_expansion(
+                    llm_client,
+                    req.message,
+                    clean_response,
+                    known_facts_text,
+                    style_profile,
+                    reflection_result,
+                    personality_profile,
+                )
+                if expansion_text:
+                    expanded = True
+                    extra_block = f"\n\nMore detail:\n{expansion_text}"
+                    clean_response = f"{clean_response.rstrip()}{extra_block}"
+                    if phase_enabled and not answer_phase_started:
+                        answer_phase_started = True
+                        yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'answer', 'content': 'Drafting response'})}\n\n"
+                    for text_chunk in _chunk_text(extra_block):
+                        yield f"data: {json.dumps({'type': 'token', 'content': text_chunk})}\n\n"
+                else:
+                    expansion_reason = None
+
+            if phase_enabled:
+                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'self-assess', 'content': ''})}\n\n"
+
+            # Build metadata
+            metadata: Dict[str, Any] = {
+                "mode": "llm",
+                "model": llm_client.model,
+                "thinking": thinking_content,
+                "thinking_trace_id": trace_id,
+                "reflection_trace_id": reflection_trace_id,
+                "reflection_confidence": reflection_result.confidence_score if reflection_result else None,
+                "reflection_label": reflection_result.confidence_label if reflection_result else None,
+                "style_profile": style_profile,
+                "personality_profile": personality_profile,
+                "reflection_scorecard": reflection_scorecard,
+                "expanded": expanded,
+                "expansion_reason": expansion_reason,
+                "response_type": result.get("response_type", "speech"),
+                "gates_passed": result.get("gates_passed", True),
+                "gate_reason": result.get("gate_reason"),
+                "confidence": result.get("confidence", 0.7),
+                "intent_alignment": result.get("intent_alignment"),
+                "memory_alignment": result.get("memory_alignment"),
+                "contradiction_detected": result.get("contradiction_detected", False),
+                "unresolved_contradictions_total": result.get("unresolved_contradictions_total", 0),
+                "unresolved_hard_conflicts": result.get("unresolved_hard_conflicts", 0),
+                "profile_updates": result.get("profile_updates") or [],
+                "session_id": result.get("session_id"),
+                "retrieved_memories": [
+                    {
+                        "memory_id": m.get("memory_id"),
+                        "text": m.get("text", "")[:200],
+                        "trust": m.get("trust", 0.5),
+                        "confidence": m.get("confidence", 0.5),
+                        "source": m.get("source"),
+                        "sse_mode": m.get("sse_mode"),
+                    }
+                    for m in retrieved_mems[:5]
+                    if isinstance(m, dict)
+                ],
+                "prompt_memories": [
+                    {
+                        "memory_id": m.get("memory_id"),
+                        "text": m.get("text", "")[:200],
+                        "trust": m.get("trust", 0.5),
+                        "source": m.get("source"),
+                    }
+                    for m in prompt_mems[:5]
+                    if isinstance(m, dict)
+                ],
+            }
+
+            # Detect response mood for UI visualization
+            mood_data = _detect_response_mood(
+                response=clean_response,
+                thinking=thinking_content,
+                confidence=result.get("confidence", 0.7),
+                contradiction_detected=result.get("contradiction_detected", False),
+            )
+            metadata["mood"] = mood_data
+
+            # Record query in session DB
+            try:
+                detected_slot = None
+                slots = result.get("slots_extracted")
+                if isinstance(slots, dict) and slots:
+                    detected_slot = list(slots.keys())[0]
+                session_db.record_query(
+                    thread_id=req.thread_id,
+                    query_text=req.message,
+                    response_text=clean_response,
+                    detected_slot=detected_slot,
+                )
+            except Exception as e:
+                logger.debug(f"[SESSION] Error recording query (stream): {e}")
+
+            # Process interaction for episodic memory
+            try:
+                episodic_mgr = get_episodic_manager(memory_system=engine.memory)
+                episodic_mgr.process_interaction(
+                    thread_id=req.thread_id,
+                    query=req.message,
+                    response=clean_response,
+                )
+            except Exception as e:
+                logger.debug(f"[EPISODIC] Error in stream: {e}")
+
+            # ========================================
+            # REMINDER DETECTION
+            # ========================================
+            reminder_created = None
+            try:
+                reminder_info = extract_reminder_from_message(req.message)
+                if reminder_info:
+                    reminder_text, scheduled_time = reminder_info
+                    task = schedule_reminder(
+                        db_path=_scheduled_tasks_db_path,
+                        reminder_text=reminder_text,
+                        scheduled_at=scheduled_time,
+                        thread_id=req.thread_id,
+                    )
+                    reminder_created = {
+                        "task_id": task.task_id,
+                        "reminder_text": reminder_text,
+                        "scheduled_for": scheduled_time.strftime("%I:%M %p on %A, %B %d"),
+                    }
+                    logger.info(f"[REMINDER] Created reminder: {reminder_text} for {scheduled_time}")
+            except Exception as e:
+                logger.debug(f"[REMINDER] Error detecting/creating reminder: {e}")
+
+            if reminder_created:
+                metadata["reminder_created"] = reminder_created
+
+            collapse_trail_id = _log_collapse_trail(
+                thread_id=req.thread_id,
+                query=req.message,
+                answer=clean_response,
+                result=result,
+                stage="chat_stream_llm",
+                mode=str(req.mode) if req.mode else "stream",
+                extra={
+                    "llm_model": llm_client.model,
+                    "thinking_chars": len(thinking_content),
+                    "phase_mode": bool(req.phase_mode),
+                },
+            )
+            if collapse_trail_id:
+                metadata["collapse_trail_id"] = collapse_trail_id
+
+            if phase_enabled and answer_phase_started:
+                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'answer', 'content': ''})}\n\n"
+            yield f"data: {json.dumps({'type': 'done', 'content': clean_response, 'metadata': metadata})}\n\n"
+
+        except Exception as e:
+            import traceback
+
+            logger.error(f"[STREAM] Stream error: {e}")
+            logger.error(f"[STREAM] Traceback:\n{traceback.format_exc()}")
+            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+# ============================================================================
+# POST /api/chat/intent
+# ============================================================================
+
+
+@router.post("/intent", response_model=IntentQueryResponse)
+def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryResponse:
+    """Query with IntentRouter + FactStore routing.
+
+    Uses IntentRouter + FactStore for smarter routing,
+    with optional trace for debugging/transparency.
+    """
+    get_engine = request.app.state.get_engine
+    increment_turn = request.app.state.increment_turn
+    _log_collapse_trail = request.app.state.log_collapse_trail
+
+    engine = get_engine(req.thread_id)
+    increment_turn(req.thread_id)
+
+    # Enable tracing if requested
+    if hasattr(engine, "enable_tracing"):
+        engine.enable_tracing(req.include_trace)
+
+    # Use intent query if available
+    if hasattr(engine, "query_with_intent"):
+        result = engine.query_with_intent(
+            user_query=req.message,
+            user_marked_important=req.user_marked_important,
+        )
+    else:
+        result = engine.query(
+            user_query=req.message,
+            user_marked_important=req.user_marked_important,
+        )
+        result["intent"] = "unknown"
+        result["trace"] = None
+
+    metadata: Dict[str, Any] = {
+        "mode": result.get("mode"),
+        "contradiction_detected": result.get("contradiction_detected"),
+        "retrieved_memories": len(result.get("retrieved_memories") or []),
+        "structured_facts": result.get("structured_facts"),
+        "fact_store_hit": result.get("fact_store_hit", False),
+    }
+    collapse_trail_id = _log_collapse_trail(
+        thread_id=req.thread_id,
+        query=req.message,
+        answer=str(result.get("answer") or ""),
+        result=result,
+        stage="chat_intent",
+        mode="intent",
+    )
+    if collapse_trail_id:
+        metadata["collapse_trail_id"] = collapse_trail_id
+
+    return IntentQueryResponse(
+        answer=result.get("answer", ""),
+        intent=result.get("intent", "unknown"),
+        confidence=result.get("confidence", 0.0),
+        response_type=result.get("response_type", "speech"),
+        gates_passed=result.get("gates_passed", False),
+        gate_reason=result.get("gate_reason"),
+        trace=result.get("trace") if req.include_trace else None,
+        metadata=metadata,
+    )
 
