@@ -1087,6 +1087,17 @@ def create_app() -> FastAPI:
             logger.debug(f"[COLLAPSE_TRAIL] Failed to log trail: {e}")
             return None
 
+    # Expose closure-scoped helpers on app.state so modular route files can
+    # access them via ``request.app.state.*`` without importing crt_api.
+    app.state.get_engine = get_engine
+    app.state.get_llm_client = get_llm_client
+    app.state.get_turn_number = get_turn_number
+    app.state.increment_turn = increment_turn
+    app.state.thread_db_paths = _thread_db_paths
+    app.state.doc_map = doc_map
+    app.state.collapse_logger = collapse_logger
+    app.state.log_collapse_trail = _log_collapse_trail
+
     # Route modules (strangler pattern): endpoints move out of this file incrementally.
     register_routes(app)
 
