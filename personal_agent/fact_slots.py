@@ -583,7 +583,8 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
                 facts["name"] = ExtractedFact("name", cand, _norm_text(cand))
 
     # "my name is X" pattern - apply _clean_name_value to handle "my name is nick but you..."
-    m = re.search(r"\bmy name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
+    # Also handles correction-style: "my real name is X", "my actual name is X"
+    m = re.search(r"\bmy\s+(?:real|actual|true|full)?\s*name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
     if m:
         name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
@@ -1005,6 +1006,20 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             facts["degree_type"] = ExtractedFact("degree_type", degree_type, degree_type.lower())
             break
     
+    # School from degree context: "I have a PhD ... from Stanford"
+    # This ensures "I have a PhD in Machine Learning from Stanford" also extracts school,
+    # not just degree_type. Without this, contradiction "I went to MIT, not Stanford"
+    # (which extracts school=MIT) would never match.
+    if "school" not in facts:
+        m = re.search(
+            r"\b(?:i (?:have|got|earned|received)|completed my)\s+(?:a\s+)?(?:phd|ph\.d\.?|doctorate|master'?s?|bachelor'?s?)"
+            r"(?:\s+(?:degree\s+)?in\s+[A-Za-z\s]+?)?\s+from\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\.|,|;|\s*$)",
+            text, flags=re.IGNORECASE
+        )
+        if m:
+            school = m.group(1).strip()
+            facts["school"] = ExtractedFact("school", school, _norm_text(school))
+    
     # Project name/description
     # Examples:
     # - "My project is called CRT"
@@ -1124,6 +1139,89 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     if m:
         book = m.group(1).strip()
         facts["book"] = ExtractedFact("book", book, _norm_text(book))
+
+    # ==================================================================
+    # Correction-aware patterns (F2 fix)
+    # These handle messages like "Actually X", "For the record, X",
+    # "I went to X, not Y", "my partner's name is X, not Y"
+    # ==================================================================
+    
+    # School: "I went to MIT" / "For the record, I went to MIT, not Stanford"
+    if "school" not in facts and "masters_school" not in facts:
+        m = re.search(
+            r"\bi (?:went to|attended|studied at|got my (?:degree|phd|master'?s?) (?:at|from))\s+"
+            r"([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s*[,.]|\s+not\b|\s*$)",
+            text, flags=re.IGNORECASE
+        )
+        if m:
+            school = m.group(1).strip().rstrip(",.")
+            facts["school"] = ExtractedFact("school", school, _norm_text(school))
+    
+    # Spouse/partner: "my partner's name is Casey" / "I'm married to Casey"
+    if "spouse" not in facts:
+        spouse_patterns = [
+            r"\bmy (?:partner|spouse|wife|husband|significant other|fiancee?|girlfriend|boyfriend)(?:'?s)?\s+(?:name\s+is|is)\s+([A-Z][A-Za-z'-]{1,40})",
+            r"\bi(?:'m| am) married to\s+(?:someone (?:named|called)\s+)?([A-Z][A-Za-z'-]{1,40})",
+            r"\bmy (?:partner|spouse|wife|husband)(?:'?s)?\s+(?:name\s+is|is\s+(?:actually\s+)?)\s*([A-Z][A-Za-z'-]{1,40})",
+        ]
+        for pat in spouse_patterns:
+            m = re.search(pat, text, flags=re.IGNORECASE)
+            if m:
+                spouse_name = m.group(1).strip()
+                facts["spouse"] = ExtractedFact("spouse", spouse_name, _norm_text(spouse_name))
+                break
+    
+    # Pet correction: "Murphy is actually a labrador, not a golden retriever"
+    if "pet" not in facts:
+        m = re.search(
+            r"\b([A-Z][a-z]+)\s+is (?:actually )?a\s+([a-z]+(?:\s+[a-z]+)?)\s*[,.]?\s*(?:not\b|$)",
+            text
+        )
+        if m:
+            pet_name = m.group(1).strip()
+            pet_type = m.group(2).strip()
+            if pet_name.lower() not in _PET_NAME_STOPWORDS:
+                facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+                facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
+    
+    # Programming language: "I've fully switched to Rust" / "switched to Rust"
+    if "programming_language" not in facts:
+        m = re.search(
+            r"\b(?:switched|moved|transitioned|migrated)\s+to\s+([A-Z][A-Za-z0-9+#]{1,20})\b",
+            text, flags=re.IGNORECASE
+        )
+        if m:
+            lang = m.group(1).strip()
+            if lang.lower() in _KNOWN_PROG_LANGS:
+                facts["programming_language"] = ExtractedFact("programming_language", lang, _norm_text(lang))
+    
+    # Coffee/drink: "Tea only now" / "I've gone off coffee" / "I switched to tea"
+    if "coffee" not in facts:
+        # "gone off coffee" / "quit coffee" / "stopped drinking coffee"
+        m = re.search(r"\b(?:gone off|quit|stopped|no more)\s+coffee\b", text, flags=re.IGNORECASE)
+        if m:
+            # Check if they mention what they switched TO
+            m2 = re.search(r"\b(tea|matcha|water|juice|decaf)\s+(?:only|now|instead)\b", text, flags=re.IGNORECASE)
+            if m2:
+                drink = m2.group(1).strip()
+                facts["coffee"] = ExtractedFact("coffee", drink, _norm_text(drink))
+            else:
+                facts["coffee"] = ExtractedFact("coffee", "none", "none")
+        else:
+            m = re.search(r"\bswitched to\s+(tea|matcha|water|juice|decaf)\b", text, flags=re.IGNORECASE)
+            if m:
+                drink = m.group(1).strip()
+                facts["coffee"] = ExtractedFact("coffee", drink, _norm_text(drink))
+    
+    # Employer correction: "I work at Amazon, not Google" / "I should clarify — I work at Amazon"
+    if "employer" not in facts:
+        m = re.search(
+            r"\bi (?:work|am working)\s+(?:at|for)\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s*[,.]|\s+not\b|\s*$)",
+            text, flags=re.IGNORECASE
+        )
+        if m:
+            employer = m.group(1).strip().rstrip(",.")
+            facts["employer"] = ExtractedFact("employer", employer, _norm_text(employer))
 
     return facts
 

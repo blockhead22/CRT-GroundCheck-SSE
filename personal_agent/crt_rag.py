@@ -2056,7 +2056,6 @@ class CRTEnhancedRAG:
                 
                 if prev_fact is None:
                     continue
-                
                 # Phase 2.0: Extract temporal and domain context from prior fact
                 prev_temporal_status = getattr(prev_fact, "temporal_status", "active")
                 # Get domains from fact or memory
@@ -3009,6 +3008,8 @@ class CRTEnhancedRAG:
         # Questions and control instructions should not be treated as durable factual claims.
         user_memory: Optional[MemoryItem] = None
         profile_updates: List[Dict[str, str]] = []
+        contradiction_detected: bool = False
+        contradiction_entry = None
 
         # High-risk prompt types should be treated as instructions even if they do not
         # look like questions (multi-paragraph prompt injection often starts as declarative).
@@ -3224,8 +3225,6 @@ class CRTEnhancedRAG:
                 logger.warning(f"[LIFECYCLE] Failed to track implicit confirmations: {e}")
             
             # BUG 1 FIX: Check for contradictions using ML detector (ALL facts, not hardcoded slots)
-            contradiction_detected = False
-            contradiction_entry = None
             try:
                 contradiction_detected, contradiction_entry = self._check_all_fact_contradictions_ml(
                     user_memory, user_query
@@ -4601,8 +4600,12 @@ class CRTEnhancedRAG:
             confidence = min(confidence, calibrated_confidence)
         
         # 5. Detect contradictions (only when USER made a new assertion)
-        contradiction_detected = False
-        contradiction_entry = None
+        # IMPORTANT: Do NOT reset contradiction_detected if _check_all_fact_contradictions_ml()
+        # already detected one earlier in the assertion path (line ~3242).
+        # Previously this unconditionally set contradiction_detected = False, wiping the ML
+        # detector's finding for age, location, pet, language, etc.
+        if not contradiction_detected:
+            contradiction_entry = None
         
         logger.debug("Generic contradiction check: user_input_kind=%s, user_memory=%s", user_input_kind, user_memory is not None)
         if user_input_kind != "question" and user_memory is not None:
