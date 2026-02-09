@@ -154,7 +154,7 @@ class ActiveLearningCoordinator:
                 event_id TEXT PRIMARY KEY,
                 timestamp REAL NOT NULL,
                 question TEXT NOT NULL,
-                response_type_predicted TEXT NOT NULL,
+                response_type_predicted TEXT DEFAULT 'unknown',
                 response_type_actual TEXT,
                 intent_align REAL NOT NULL,
                 memory_align REAL NOT NULL,

@@ -668,6 +668,29 @@ class GlobalUserProfile:
         conn.commit()
         conn.close()
     
+    def clear_thread_data(self, thread_id: str) -> int:
+        """Remove all profile entries sourced from a specific thread.
+        
+        Called during thread reset to prevent phantom data from bleeding
+        into new sessions on the same thread ID.
+        
+        Returns:
+            Number of rows deleted.
+        """
+        if not thread_id:
+            return 0
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM user_profile_multi WHERE source_thread = ?",
+            (thread_id,),
+        )
+        deleted = cursor.rowcount or 0
+        conn.commit()
+        conn.close()
+        logger.info(f"[PROFILE_CLEAR_THREAD] Deleted {deleted} entries for thread '{thread_id}'")
+        return deleted
+    
     def consolidate_single_value_slots(self) -> Dict[str, Dict]:
         """
         Fix existing data: For single-value slots with multiple values,

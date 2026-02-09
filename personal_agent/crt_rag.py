@@ -293,16 +293,34 @@ class CRTEnhancedRAG:
             return result
     
     def _is_semantic_match(self, a: str, b: str, slot: str = "") -> bool:
-        """Check if two values are semantically equivalent (paraphrases)."""
+        """Check if two values are semantically equivalent (paraphrases).
+        
+        For identity-critical slots (name, employer, location, spouse, etc.),
+        only exact string matches count — the semantic model would incorrectly
+        match "Alex Chen" ~ "Jordan Blake" because both are person names.
+        """
+        # Identity-critical hard slots: different values are NEVER semantic matches
+        HARD_IDENTITY_SLOTS = {
+            "name", "employer", "location", "spouse", "pet_name", "child_name",
+            "title", "project_name", "email", "phone", "birthday",
+            "masters_school", "undergrad_school", "first_language",
+            "favorite_color", "favorite_language", "favorite_food",
+            "favorite_drink", "favorite_book", "favorite_movie", "favorite_music",
+        }
+        a_norm = a.lower().strip()
+        b_norm = b.lower().strip()
+        if slot in HARD_IDENTITY_SLOTS:
+            return a_norm == b_norm
+        
         if self.semantic_matcher is None:
-            return a.lower().strip() == b.lower().strip()
+            return a_norm == b_norm
         try:
             is_match, method, _ = self.semantic_matcher.is_match(a, {b}, slot=slot)
             if is_match:
-                logger.debug(f"[SEMANTIC_MATCH] '{a}' ≈ '{b}' via {method}")
+                logger.debug(f"[SEMANTIC_MATCH] '{a}' ~ '{b}' via {method}")
             return is_match
         except Exception:
-            return a.lower().strip() == b.lower().strip()
+            return a_norm == b_norm
     
     def _detect_denial_in_text(self, text: str, slot: str = "") -> Tuple[bool, Optional[str]]:
         """
@@ -2109,10 +2127,12 @@ class CRTEnhancedRAG:
                         )
                         return True, contradiction_entry
                     else:
-                        # Correction pattern found but doesn't match this slot
-                        # Skip numeric_drift and other checks - we're looking for the right slot
-                        logger.debug(f"[CORRECTION_SKIP] Correction pattern found but slot {slot} doesn't match (old_val={old_val_lower}, prev_value={prev_value_str}), continuing to next slot")
-                        continue
+                        # Correction pattern found but doesn't match this slot's values.
+                        # IMPORTANT: Do NOT 'continue' here — we must still fall through
+                        # to the value-mismatch / NO_ML_FALLBACK checks below.
+                        # Previously this was 'continue' which caused 89% of soft corrections
+                        # (e.g. "Actually, my real name is Jordan Blake") to be silently dropped.
+                        logger.debug(f"[CORRECTION_SKIP] Correction pattern found but slot {slot} doesn't match (old_val={old_val_lower}, prev_value={prev_value_str}), falling through to value checks")
                 
                 # ==============================================================
                 # Phase 2.5: Check for numeric_drift (e.g., 32 vs 34 age)
@@ -3892,6 +3912,31 @@ class CRTEnhancedRAG:
                         'confidence': 0.95,
                     }
 
+                    # ── F4: Uncertainty expression ────────────────────────
+                    # Check for open contradictions affecting the queried slots.
+                    # If found, inject hedging language and lower confidence.
+                    slot_contradictions = []
+                    try:
+                        open_contradictions = self.ledger.get_open_contradictions()
+                        for c in open_contradictions:
+                            c_summary = getattr(c, 'summary', '') or ''
+                            for s in inferred_slots:
+                                if s in c_summary.lower() or s.replace('_', ' ') in c_summary.lower():
+                                    slot_contradictions.append(c)
+                                    break
+                        
+                        if slot_contradictions:
+                            # We have unresolved contradictions for these slots
+                            hedge_prefix = ("Note: I have conflicting information on record for this. "
+                                          "Based on the most recent update, ")
+                            reasoning_result['answer'] = hedge_prefix + slot_answer
+                            reasoning_result['confidence'] = 0.65
+                            logger.info(f"[UNCERTAINTY] {len(slot_contradictions)} open contradiction(s) "
+                                      f"affecting slots {inferred_slots} - injecting hedge")
+                    except Exception as e:
+                        log_swallowed_exception("crt_rag.query.uncertainty_check", e)
+                    # ── End F4 ────────────────────────────────────────────
+
                     candidate_output = reasoning_result['answer']
                     candidate_vector = encode_vector(candidate_output)
 
@@ -3899,18 +3944,19 @@ class CRTEnhancedRAG:
                     memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                     # Predict response type using heuristics (89.5% - beats all ML attempts)
-                    response_type_pred = self._classify_query_type_heuristic(user_query)
+                    response_type_pred = self._classify_query_type_heuristic(user_query) or "unknown"
                     
                     # Compute grounding score
                     grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                     
                     # Use gradient gates v2
+                    slot_contradiction_severity = "high" if slot_contradictions else "none"
                     gates_passed, gate_reason = self.crt_math.check_reconstruction_gates_v2(
                         intent_align=intent_align,
                         memory_align=memory_align,
                         response_type=response_type_pred,
                         grounding_score=grounding_score,
-                        contradiction_severity="none",
+                        contradiction_severity=slot_contradiction_severity,
                     )
                     
                     # Log gate event for active learning
@@ -3924,7 +3970,7 @@ class CRTEnhancedRAG:
                                 grounding_score=grounding_score,
                                 gates_passed=gates_passed,
                                 gate_reason=gate_reason,
-                                thread_id="",
+                                thread_id=thread_id or "default",
                                 session_id=self.session_id,
                             )
                         except Exception as e:
@@ -4010,7 +4056,7 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = self._classify_query_type_heuristic(user_query)
+                        response_type_pred = self._classify_query_type_heuristic(user_query) or "unknown"
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -4136,7 +4182,7 @@ class CRTEnhancedRAG:
                         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
 
                         # Predict response type and compute grounding
-                        response_type_pred = self._classify_query_type_heuristic(user_query)
+                        response_type_pred = self._classify_query_type_heuristic(user_query) or "unknown"
                         
                         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
                         open_contradictions = self.ledger.get_open_contradictions()
@@ -4464,7 +4510,7 @@ class CRTEnhancedRAG:
         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
         
         # Predict response type and compute grounding
-        response_type_pred = self._classify_query_type_heuristic(user_query)
+        response_type_pred = self._classify_query_type_heuristic(user_query) or "unknown"
         
         grounding_score = self._compute_grounding_score(candidate_output, retrieved)
         open_contradictions = self.ledger.get_open_contradictions()
@@ -5141,17 +5187,80 @@ class CRTEnhancedRAG:
         """Infer which fact slots a question is asking about.
 
         This is intentionally heuristic and tuned to the stress tests.
+        
+        IMPORTANT: Compound-noun queries like "dog's name" or "spouse's name"
+        must NOT match the bare "name" slot — they have their own dedicated slots.
         """
         t = (text or "").strip().lower()
         if not t:
             return []
 
         slots: List[str] = []
-        if "name" in t:
+        
+        # ── Compound-noun slots (must be checked BEFORE bare "name") ──────
+        # These patterns consume the query so bare "name" won't fire.
+        _compound_name_matched = False
+        
+        # Pet / animal names
+        if re.search(r"\b(dog|cat|pet|puppy|kitten|animal|bird|fish|hamster|rabbit|parrot)('?s)?\s*(name|called)\b", t) or \
+           re.search(r"\bname\s+of\s+(my\s+)?(dog|cat|pet|puppy|kitten|animal)\b", t):
+            slots.append("pet_name")
+            _compound_name_matched = True
+        
+        # Spouse / partner names
+        if re.search(r"\b(spouse|wife|husband|partner|significant other|fiancee?|girlfriend|boyfriend)('?s)?\s*(name|called)\b", t) or \
+           re.search(r"\bname\s+of\s+(my\s+)?(spouse|wife|husband|partner)\b", t) or \
+           re.search(r"\b(married to|dating|engaged to)\b", t):
+            slots.append("spouse")
+            _compound_name_matched = True
+        
+        # Child / kid names
+        if re.search(r"\b(child|kid|son|daughter|baby)('?s)?\s*(name|called)\b", t) or \
+           re.search(r"\bname\s+of\s+(my\s+)?(child|kid|son|daughter)\b", t):
+            slots.append("child_name")
+            _compound_name_matched = True
+        
+        # Project name (already existed but now gates bare "name")
+        if re.search(r"\bproject('?s)?\s*(name|called)\b", t) or \
+           re.search(r"\bname\s+of\s+(my\s+|the\s+)?project\b", t):
+            slots.append("project_name")
+            _compound_name_matched = True
+
+        # Bare "name" — only if no compound-noun matched
+        if not _compound_name_matched and "name" in t:
             slots.append("name")
 
         if ("favorite" in t or "favourite" in t) and ("color" in t or "colour" in t):
             slots.append("favorite_color")
+
+        # ── Favorite language / programming language ──────────────────────
+        if ("favorite" in t or "favourite" in t or "preferred" in t) and \
+           ("language" in t or "programming" in t):
+            slots.append("favorite_language")
+        elif "programming language" in t and not ("how many" in t or "first" in t or "start" in t):
+            slots.append("favorite_language")
+        
+        # ── Favorite food ─────────────────────────────────────────────────
+        if ("favorite" in t or "favourite" in t) and ("food" in t or "meal" in t or "dish" in t or "cuisine" in t):
+            slots.append("favorite_food")
+        
+        # ── Drink / beverage ──────────────────────────────────────────────
+        if ("favorite" in t or "favourite" in t) and ("drink" in t or "beverage" in t or "coffee" in t or "tea" in t):
+            slots.append("favorite_drink")
+        elif re.search(r"\b(what\s+do\s+i\s+drink|coffee\s+or\s+tea|morning\s+drink|beverage)\b", t):
+            slots.append("favorite_drink")
+
+        # ── Favorite book / movie / music ─────────────────────────────────
+        if ("favorite" in t or "favourite" in t) and ("book" in t or "novel" in t):
+            slots.append("favorite_book")
+        if ("favorite" in t or "favourite" in t) and ("movie" in t or "film" in t):
+            slots.append("favorite_movie")
+        if ("favorite" in t or "favourite" in t) and ("music" in t or "song" in t or "band" in t or "artist" in t):
+            slots.append("favorite_music")
+
+        # ── Hobby / interest ──────────────────────────────────────────────
+        if re.search(r"\b(hobby|hobbies|interest|interests|free time|spare time|pastime)\b", t):
+            slots.append("hobby")
 
         if "where" in t and ("work" in t or "job" in t or "employer" in t):
             slots.append("employer")
@@ -5165,9 +5274,6 @@ class CRTEnhancedRAG:
 
         if "title" in t or "job title" in t or "role" in t or "position" in t or "occupation" in t:
             slots.append("title")
-        
-        if "project" in t and ("called" in t or "name" in t):
-            slots.append("project_name")
 
         if "university" in t or "attend" in t or "school" in t:
             # Prefer master's if present; undergrad also possible.
@@ -5200,6 +5306,16 @@ class CRTEnhancedRAG:
 
         if "how many" in t and ("engineer" in t or "manage" in t or "team" in t):
             slots.append("team_size")
+
+        # ── Birthday / birth date ─────────────────────────────────────────
+        if re.search(r"\b(birthday|birth\s*date|born|date\s+of\s+birth|dob)\b", t):
+            slots.append("birthday")
+        
+        # ── Email / phone ─────────────────────────────────────────────────
+        if re.search(r"\b(email|e-mail|mail\s+address)\b", t):
+            slots.append("email")
+        if re.search(r"\b(phone|phone\s+number|cell|mobile)\b", t):
+            slots.append("phone")
 
         # De-dup, preserve order
         seen = set()

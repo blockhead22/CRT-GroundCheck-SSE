@@ -16,6 +16,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.db_utils import get_db_connection
+from personal_agent.user_profile import GlobalUserProfile
 
 from routes.deps import sanitize_thread_id
 from routes.models import (
@@ -254,6 +255,15 @@ def thread_reset(request: Request, req: ThreadResetRequest) -> ThreadResetRespon
 
     if target in {"memory", "all"}:
         _delete_path("memory")
+        # Also purge this thread's entries from the GLOBAL user profile
+        # to prevent phantom data from bleeding into new sessions.
+        try:
+            profile = GlobalUserProfile()
+            profile_deleted = profile.clear_thread_data(tid)
+            deleted["profile_entries"] = profile_deleted > 0
+        except Exception as e:
+            logger.warning(f"[THREAD_RESET] Failed to clear profile for thread {tid}: {e}")
+            deleted["profile_entries"] = False
     if target in {"ledger", "all"}:
         _delete_path("ledger")
 
