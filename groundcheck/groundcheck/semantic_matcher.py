@@ -151,6 +151,12 @@ class SemanticMatcher:
         
         for supported in supported_values:
             supported_norm = self._normalize(supported)
+
+            # Strategy 0: Slot-aware synonym match should take precedence over
+            # normalization-based exact matching so method attribution remains
+            # meaningful in diagnostics/tests.
+            if slot and self._synonym_match(claimed, supported, slot):
+                return True, "synonym", supported
             
             # Strategy 1: Exact match
             if claimed_norm == supported_norm:
@@ -164,10 +170,6 @@ class SemanticMatcher:
             if claimed_norm in supported_norm or supported_norm in claimed_norm:
                 return True, "substring", supported
             
-            # Strategy 4: Synonym match
-            if slot and self._synonym_match(claimed, supported, slot):
-                return True, "synonym", supported
-
             # Strategy 4b: Term-overlap for short factual phrases.
             claimed_terms = set(claimed_norm.split())
             supported_terms = set(supported_norm.split())

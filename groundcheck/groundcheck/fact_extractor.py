@@ -406,7 +406,7 @@ def _extract_education_facts(text: str, facts: Dict[str, ExtractedFact]) -> None
         if not m:
             # Try "studied at X" pattern.
             m = re.search(
-                r"\b(?:i\s+|you\s+)?studied\s+at\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+and|\.|,|;|\s*$)",
+                r"\b(?:i\s+|you\s+)?studied(?:\s+(?!at\b)[A-Za-z][A-Za-z\s]{0,40})?\s+at\s+([A-Z][A-Za-z\s.'-]{1,50}?)(?:\s+and|\.|,|;|\s*$)",
                 text,
                 flags=re.IGNORECASE,
             )
