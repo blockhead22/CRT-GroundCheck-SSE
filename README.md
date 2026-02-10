@@ -5,6 +5,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Tests: 577 passed](https://img.shields.io/badge/tests-577%20passed-brightgreen.svg)](#test-results)
+[![Adversarial: 79%](https://img.shields.io/badge/adversarial-79%25%20(15%2F19)-blue.svg)](#adversarial-stress-testing)
+[![Contradictions: 9/9](https://img.shields.io/badge/contradictions-9%2F9%20detected-brightgreen.svg)](#adversarial-stress-testing)
 
 ---
 
@@ -139,7 +141,7 @@ What happens next depends on where the drift falls:
 | $\theta_{\text{align}} \leq D \leq \theta_{\text{contra}}$ (0.28) | Ambiguous zone | Soft update; belief evolves slowly |
 | $D > \theta_{\text{contra}}$ | Contradiction detected | Ledger entry created, reconstruction gates armed |
 
-These thresholds were empirically tuned across 577+ adversarial stress tests, including deliberate attempts to trick the system into silent overwrites. The ML contradiction detector (XGBoost) and LLM drift assessor (Ollama) provide additional classification beyond pure cosine distance, categorizing contradictions as: conflict, evolution, refinement, temporal, or correction.
+These thresholds were empirically tuned across 577+ unit tests and a dedicated 50-turn adversarial stress test that probes 9 slot types across 8 attack phases (baseline, verification, direct contradiction, post-contradiction, gaslighting, blindside, meta-probes, rapid-fire). The ML contradiction detector (XGBoost, when trained) and LLM drift assessor (Ollama) provide additional classification beyond pure cosine distance, categorizing contradictions as: conflict, evolution, refinement, temporal, or correction. When ML models are unavailable, a multi-layer heuristic fallback — contextual slot matching, semantic equivalence gating, and value comparison — achieves **9/9 direct contradiction detection** without any trained model.
 
 ### Belief vs. Speech
 
@@ -294,9 +296,11 @@ personal_agent/
 ├── two_tier_facts.py        # Hard slots + open-world tuples (Tier A + B)
 ├── fact_store.py            # Structured slot-based storage
 ├── intent_router.py         # Intent classification (15 types)
-├── ml_contradiction_detector.py  # XGBoost-based contradiction detection
+├── ml_contradiction_detector.py  # XGBoost-based + heuristic fallback contradiction detection
 ├── llm_drift_assessor.py    # LLM-powered semantic drift classification
+├── user_profile.py          # Global cross-thread user profile with thread isolation
 ├── resolution_patterns.py   # Natural language resolution pattern matching
+├── active_learning.py       # Gate event tracking and calibration
 ├── disclosure_policy.py     # Yellow-zone routing with budget
 ├── evidence_packet.py       # Research provenance tracking
 ├── reflection_system.py     # Post-response confidence assessment
@@ -394,6 +398,9 @@ python groundcheck/stress_test_performance.py   # 1000 verifications, <2ms p95
 
 # Adversarial challenge (no Ollama required)
 python tools/adversarial_crt_challenge.py --turns 35
+
+# Agent adversarial stress test (50-turn, requires running server)
+python tools/agent_adversarial_driver.py --url http://127.0.0.1:8123 --mode auto --turns 50
 ```
 
 ### Test Results
@@ -405,6 +412,64 @@ python tools/adversarial_crt_challenge.py --turns 35
 | Coherence, Temporal, Uncertainty, Facts | **73/73 passed** |
 | GroundCheck Performance (1000 runs) | **1.17ms mean, 2.09ms p95** |
 | GroundCheck vs SelfCheckGPT | **2,634× faster** |
+| **Agent Adversarial Stress Test (50-turn)** | **15/19 attacks handled (79%)** |
+| Direct Contradiction Detection (9 slots) | **9/9 (100%)** |
+| Gaslighting Resistance | **4/5 handled** |
+| Blindside / Identity Wipe Resistance | **2/5 handled** |
+
+---
+
+## Adversarial Stress Testing
+
+The system includes a dedicated 50-turn adversarial stress test (`tools/agent_adversarial_driver.py`) that simulates a user who establishes facts, then systematically contradicts, gaslights, and attempts to confuse the system.
+
+### Attack Phases
+
+| Phase | Turns | What It Tests |
+|-------|-------|---------------|
+| 1. Baseline Setup | T1–T10 | Establish 10 personal facts (name, employer, age, location, school, graduation year, pet, spouse, language, coffee) |
+| 2. Verify Baseline | T11–T15 | Query each fact to confirm storage and retrieval |
+| 3. Direct Contradictions | T16–T24 | Contradict 9 of 10 facts with correction language |
+| 4. Post-Contradiction | T25–T33 | Query each fact again — system should express uncertainty |
+| 5. Gaslighting | T34–T38 | Deny ever stating original facts ("I never said I worked at Google") |
+| 6. Blindside | T39–T43 | Identity wipes, persona changes, dual-identity claims |
+| 7. Meta Probes | T44–T49 | Ask the system about its own contradictions and confidence |
+| 8. Rapid Fire | T50 | Quick identity reassertion under pressure |
+
+### Results (Round 5 — Feb 2026)
+
+```
+Direct contradictions:  9/9  detected (100%)  — name, employer, age, location, school, pet, spouse, language, coffee
+Gaslighting resistance: 4/5  handled          — system cites original records
+Blindsides handled:     2/5  graceful          — identity wipes still challenging
+False positives:        0
+Overall:                15/19 (79%)
+```
+
+Progress over 5 rounds of fixes:
+
+| Round | Pass Rate | Direct Contradictions | Key Fix |
+|-------|-----------|-----------------------|---------|
+| 0 (baseline) | 42% (8/19) | 2/9 | — |
+| 1 | 47% (9/19) | 4/9 | Slot inference rewrite, correction fall-through |
+| 2 | 53% (10/19) | 4/9 | HARD_IDENTITY_SLOTS, correction-aware extraction |
+| 3 | 63% (12/19) | 6/9 | `contradiction_detected` reset bug, NL resolution fix |
+| 4 | ~68% (est.) | 7/9 | NL resolution pathway sets contradiction flag |
+| **5** | **79% (15/19)** | **9/9** | ML availability check, assertion early return |
+
+Remaining 4 failures are advanced blindside attacks (identity wipes like "Everything I told you was a lie") and a gaslighting edge case — these are targets for Phase 3 adversarial hardening.
+
+### Running the Adversarial Test
+
+```bash
+# Start the API server
+python crt_api.py
+
+# In another terminal — full 50-turn automated run
+python tools/agent_adversarial_driver.py --url http://127.0.0.1:8123 --mode auto --turns 50
+
+# Results saved to artifacts/agent_adversarial_<session>_<timestamp>.json
+```
 
 ---
 
