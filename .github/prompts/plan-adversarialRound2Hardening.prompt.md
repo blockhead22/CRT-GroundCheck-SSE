@@ -1,5 +1,7 @@
 # Round 2 Adversarial Hardening — Implementation Plan
 
+> **Scope:** Steps 1–2 ONLY (gaslighting + blindside). Infra bugs (OllamaClient, shared-memory reset, stale memory) moved to `plan-infraBugfixes.prompt.md`.
+
 ## Current State
 
 - **Round 5 result**: 15/19 (79%), 9/9 direct contradictions detected (100%), 0 false positives
@@ -8,7 +10,7 @@
 
 ## Implementation Order (dependency-ordered)
 
-### Step 1: T2 — Gaslighting Edge Case (T35)
+### Step 1: Gaslighting Edge Case (T35)
 
 **~20 lines, 2 files**
 
@@ -27,7 +29,7 @@
 
 ---
 
-### Step 2: T1 — Blindside Detection (T39–T41)
+### Step 2: Blindside Detection (T39–T41)
 
 **~50–70 lines new code**
 
@@ -46,54 +48,12 @@
 2. **Wire into `query()`** between gaslighting check (~line 3060) and assertion block (~line 3170):
    - If blindside detected → set `contradiction_detected = True`, add hedge response, lower confidence
 
+3. **Fix scoring bug in `tools/agent_adversarial_driver.py`** line ~767:
+   - Current: `success=r.gates_passed` (wrong — blindside triggers contradiction but gates still fail)
+   - Fix: `success=r.gates_passed or r.contradiction_detected`
+   - This aligns blindside scoring with gaslighting scoring at line ~752
+
 **Verification**: Send `"Actually everything I told you was a lie. My real name is Zara, I'm 40, and I live in Berlin"` — should flag as blindside, not accept any of the new facts blindly.
-
----
-
-### Step 3: T4 — OllamaClient API Mismatch
-
-**~8 lines, 4 files**
-
-**Root Cause**: `generate()` in `personal_agent/ollama_client.py` ~line 67 has signature `def generate(self, prompt, system=None, max_tokens=500, temperature=0.7, stream=False)` — NO `model` parameter. But 6+ call sites pass `model=` keyword, and 2 SSE files pass `model` as a positional arg (mapping to `prompt`).
-
-**Fix**:
-
-1. **`personal_agent/agent_reasoning.py`** lines 185, 218, 263, 297, 333: Remove `model=self.model` from each `generate()` call
-2. **`personal_agent/agent_loop.py`** line 623: Remove `model="mistral:latest"` from `generate()` call
-3. **`sse/extractor.py`** line 235: Fix positional arg order (model passed as prompt)
-4. **`sse/contradictions.py`** line 80: Fix positional arg order (model passed as prompt)
-
-**Verification**: Exercise any agent reasoning path; confirm no `TypeError: generate() got an unexpected keyword argument 'model'`.
-
----
-
-### Step 4: T5 — Shared-Memory Reset Path
-
-**~5–10 lines**
-
-**Root Cause**: `_thread_db_paths_map()` in `routes/threads.py` ~line 115 always returns per-thread paths even when `CRT_SHARED_MEMORY=true`. Thread reset deletes per-thread files that don't exist, leaving the shared DB untouched.
-
-**Fix**:
-
-1. **`routes/threads.py`** `_thread_db_paths_map()` ~line 115: When `CRT_SHARED_MEMORY=true`, return the shared DB path(s) instead of per-thread paths. The reset logic should then clear only the thread's data from the shared DB (using `clear_thread_data(thread_id)` from F1) rather than deleting files.
-
-**Verification**: With `CRT_SHARED_MEMORY=true`, reset a thread → confirm its memories are cleared from the shared DB without affecting other threads.
-
----
-
-### Step 5: T3 — Stale Memory / False Contradiction Regression
-
-**~10–20 lines**
-
-**Root Cause**: `_load_all_memories()` in `personal_agent/crt_memory.py` ~line 1152 has no `WHERE thread_id = ?` clause. With `CRT_SHARED_MEMORY=true`, all ~200 stale memories from prior test runs are loaded, causing false contradictions on baseline facts from new threads.
-
-**Fix**:
-
-1. **`personal_agent/crt_rag.py`** `_check_all_fact_contradictions_ml()` ~line 2043: Add `thread_id` filtering when loading memories for contradiction checking — only compare against facts from the current thread.
-
-2. Alternatively, add the `WHERE thread_id = ?` clause to `_load_all_memories()` when a `thread_id` is provided.
-
-**Verification**: Start a fresh thread, assert `"My name is Alex"` — should NOT trigger contradiction from a stale memory of a different thread saying `"My name is Jordan"`.
 
 ---
 
