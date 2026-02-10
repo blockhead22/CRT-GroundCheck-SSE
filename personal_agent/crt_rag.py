@@ -2019,7 +2019,10 @@ class CRTEnhancedRAG:
             (contradiction_detected, contradiction_entry)
         """
         # Flag to track if ML detector is available (affects which checks we can run)
-        ml_available = self.ml_detector is not None
+        # NOTE: MLContradictionDetector() inits without error even if model files are missing.
+        # We must check belief_classifier to know if actual ML inference is possible.
+        ml_available = (self.ml_detector is not None and 
+                        getattr(self.ml_detector, 'belief_classifier', None) is not None)
         if not ml_available:
             logger.debug("[ML_CONTRADICTION] ML detector not available, using pattern-based detection only")
         
@@ -2056,6 +2059,7 @@ class CRTEnhancedRAG:
                 
                 if prev_fact is None:
                     continue
+                
                 # Phase 2.0: Extract temporal and domain context from prior fact
                 prev_temporal_status = getattr(prev_fact, "temporal_status", "active")
                 # Get domains from fact or memory
@@ -2173,13 +2177,40 @@ class CRTEnhancedRAG:
                 )
                 
                 if not is_contextual_contradiction:
-                    logger.debug(f"[PHASE_2.0] Skipped contradiction - {ctx_reason}: {slot}={prev_value} vs {new_value}")
                     continue
                 
                 # Check if values are semantically equivalent (paraphrase, not contradiction)
-                if self._is_semantic_match(str(prev_value), str(new_value), slot):
+                sem_match = self._is_semantic_match(str(prev_value), str(new_value), slot)
+                if sem_match:
                     logger.debug(f"[SEMANTIC_MATCH] Skipping contradiction - semantic match: {prev_value} ≈ {new_value}")
                     continue
+                
+                # ==============================================================
+                # NO_ML_FALLBACK: If ML is unavailable and we've confirmed:
+                # - Values differ
+                # - Contextual check passes (true contradiction)
+                # - Not a semantic match (not a paraphrase)
+                # Then record the contradiction immediately rather than risking
+                # the negation/CRT paraphrase gate suppressing it.
+                # ==============================================================
+                if not ml_available:
+                    logger.info(f"[NO_ML_FALLBACK] Different values detected: {slot}={prev_value_str} vs {new_value_str}")
+                    
+                    contradiction_entry = self.ledger.record_contradiction(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
+                        query=user_query,
+                        summary=f"{slot}: value_mismatch ({prev_value_str} vs {new_value_str})",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=prev_mem.vector,
+                        new_vector=new_memory.vector,
+                        contradiction_type=ContradictionType.CONFLICT,
+                        suggested_policy="ask_user"
+                    )
+                    return True, contradiction_entry
                 
                 # ==============================================================
                 # Phase 2.4: Check for denial (Turn 23)
@@ -2284,27 +2315,6 @@ class CRTEnhancedRAG:
                 # ==============================================================
                 # ML-based contradiction detection (only if ML detector available)
                 # ==============================================================
-                if not ml_available:
-                    # Without ML, fall back to simple value comparison for remaining cases
-                    # If we got here, the values differ and none of our pattern checks matched
-                    # Record as potential CONFLICT for user clarification
-                    logger.info(f"[NO_ML_FALLBACK] Different values detected: {slot}={prev_value_str} vs {new_value_str}")
-                    
-                    contradiction_entry = self.ledger.record_contradiction(
-                        old_memory_id=prev_mem.memory_id,
-                        new_memory_id=new_memory.memory_id,
-                        drift_mean=drift,
-                        confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
-                        query=user_query,
-                        summary=f"{slot}: value_mismatch ({prev_value_str} vs {new_value_str})",
-                        old_text=prev_mem.text,
-                        new_text=user_query,
-                        old_vector=prev_mem.vector,
-                        new_vector=new_memory.vector,
-                        contradiction_type=ContradictionType.CONFLICT,
-                        suggested_policy="ask_user"
-                    )
-                    return True, contradiction_entry
                 
                 # Use ML detector to check for contradiction
                 context = {
@@ -3018,7 +3028,7 @@ class CRTEnhancedRAG:
         is_memory_inventory = self._is_memory_inventory_request(user_query)
 
         user_input_kind = self._classify_user_input(user_query)
-        logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind} | Query: {user_query[:100]}")
+        logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind}")
         
         # Check for natural language contradiction resolution FIRST
         # This prevents the resolution statement from being stored as a new assertion
@@ -3027,6 +3037,8 @@ class CRTEnhancedRAG:
             nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_query)
             if nl_resolution_occurred:
                 logger.info(f"[NL_RESOLUTION] Natural language resolution detected and processed")
+                # The system DID detect a contradiction — mark it so metadata is correct.
+                contradiction_detected = True
                 # If we resolved a contradiction, treat this as an instruction/acknowledgment, not an assertion
                 # This prevents "Google is correct" from being stored as a new fact that creates another contradiction
                 if user_input_kind == "assertion":
@@ -3366,6 +3378,37 @@ class CRTEnhancedRAG:
                     'retrieved_memories': [],
                     'prompt_memories': [],
                     'unresolved_contradictions_total': 0,
+                    'unresolved_hard_conflicts': 0,
+                    'learned_suggestions': [],
+                    'heuristic_suggestions': [],
+                    'best_prior_trust': None,
+                    'session_id': self.session_id,
+                }
+
+            # Non-name assertions that detected a contradiction: return early.
+            # Without this, the assertion falls through to the uncertainty gate
+            # which asks the user to clarify — wrong behaviour when the user IS
+            # providing the correction.
+            if contradiction_detected:
+                facts = extract_fact_slots(user_query) or {}
+                fact_parts = [f"{getattr(v, 'value', v)}" for k, v in facts.items() if k != 'pet_name']
+                fact_hint = f" ({', '.join(fact_parts)})" if fact_parts else ""
+                answer = f"Noted — I've updated my records{fact_hint}. I see this differs from what I had before, so I've flagged the change."
+                return {
+                    'answer': answer,
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.9,
+                    'response_type': 'belief',
+                    'gates_passed': True,
+                    'gate_reason': 'assertion_contradiction_detected',
+                    'intent_alignment': 0.9,
+                    'memory_alignment': 0.9,
+                    'contradiction_detected': True,
+                    'contradiction_entry': (contradiction_entry.to_dict() if contradiction_entry is not None else None),
+                    'retrieved_memories': [],
+                    'prompt_memories': [],
+                    'unresolved_contradictions_total': 1,
                     'unresolved_hard_conflicts': 0,
                     'learned_suggestions': [],
                     'heuristic_suggestions': [],
@@ -4373,8 +4416,10 @@ class CRTEnhancedRAG:
                 gates_passed=False,  # Haven't checked gates yet
             )
         
-        if should_uncertain:
+        if should_uncertain and user_input_kind != "assertion":
             # If we can infer a concrete next action from conflicts, include it.
+            # NOTE: Assertions are corrections FROM the user — never ask them to
+            # re-clarify what they just told us.
             contradiction_goals, conflict_beliefs = self._infer_contradiction_goals_for_query(
                 user_query=user_query,
                 retrieved=retrieved,
@@ -4399,8 +4444,8 @@ class CRTEnhancedRAG:
                 'gate_reason': 'unresolved_contradictions',
                 'intent_alignment': 0.0,
                 'memory_alignment': 0.0,
-                'contradiction_detected': False,
-                'contradiction_entry': None,
+                'contradiction_detected': contradiction_detected,
+                'contradiction_entry': (contradiction_entry.to_dict() if contradiction_entry is not None else None),
                 'retrieved_memories': [
                     {'text': mem.text, 'trust': mem.trust, 'confidence': mem.confidence}
                     for mem, _ in retrieved
