@@ -2095,7 +2095,7 @@ class CRTEnhancedRAG:
         Args:
             new_memory: Newly stored memory item
             user_query: User's input text
-            thread_id: If provided, only compare against memories from this thread
+            thread_id: Reserved for future thread-level filtering (not yet used)
             
         Returns:
             (contradiction_detected, contradiction_entry)
@@ -2116,21 +2116,12 @@ class CRTEnhancedRAG:
         if not new_facts:
             return False, None
         
-        # Get all previous user memories (filter by thread_id when in shared-memory mode)
-        if thread_id:
-            all_memories = self.memory._load_memories_filtered(
-                source=MemorySource.USER, thread_id=thread_id
-            )
-            previous_user_memories = [
-                m for m in all_memories
-                if m.memory_id != new_memory.memory_id
-            ]
-        else:
-            all_memories = self.memory._load_all_memories()
-            previous_user_memories = [
-                m for m in all_memories
-                if m.source == MemorySource.USER and m.memory_id != new_memory.memory_id
-            ]
+        # Get all previous user memories
+        all_memories = self.memory._load_all_memories()
+        previous_user_memories = [
+            m for m in all_memories 
+            if m.source == MemorySource.USER and m.memory_id != new_memory.memory_id
+        ]
         
         # Check each new fact against previous memories
         for slot, new_fact in new_facts.items():
@@ -4806,22 +4797,12 @@ class CRTEnhancedRAG:
             if new_facts:
                 user_vector = encode_vector(user_query)
 
-                # Filter by thread_id in shared-memory mode to avoid false contradictions
-                if thread_id:
-                    all_memories = self.memory._load_memories_filtered(
-                        source=MemorySource.USER, thread_id=thread_id
-                    )
-                    previous_user_memories = [
-                        m for m in all_memories
-                        if m.memory_id != user_memory.memory_id
-                    ]
-                else:
-                    all_memories = self.memory._load_all_memories()
-                    previous_user_memories = [
-                        m
-                        for m in all_memories
-                        if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
-                    ]
+                all_memories = self.memory._load_all_memories()
+                previous_user_memories = [
+                    m
+                    for m in all_memories
+                    if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
+                ]
 
                 from .crt_ledger import ContradictionType
 
