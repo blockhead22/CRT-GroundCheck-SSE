@@ -21,5 +21,8 @@ cryptography>=41.0.0
 # Password hashing
 bcrypt>=4.0.0
 
+# Grounding verification
+groundcheck>=0.2.0
+
 # Webcam support
 opencv-python>=4.8.0
