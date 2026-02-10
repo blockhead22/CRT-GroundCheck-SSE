@@ -108,13 +108,13 @@ export type CtrMessageMeta = {
         status?: string
         summary?: string | null
       }>
-    }
+    } | null
     coverage?: {
       score?: number
       missing_items?: string[]
       notes?: string | null
-    }
-  }
+    } | null
+  } | null
   research_packet?: EvidencePacket | null
   agent_activated?: boolean | null
   agent_answer?: string | null

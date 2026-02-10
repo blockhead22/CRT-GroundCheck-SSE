@@ -257,12 +257,13 @@ export function MessageBubble(props: {
                 return <li className="text-white/80">{children}</li>
               },
               code(props) {
-                const { children, className, inline } = props
+                const { children, className } = props
+                const isInline = !(props as any).inline && !String(children ?? '').includes('\n')
                 const codeText = String(children ?? '').replace(/\n$/, '')
                 const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '')
                 const language = match ? match[1] : undefined
                 const isBlock = Boolean(language) || codeText.includes('\n')
-                if (inline || !isBlock) {
+                if (isInline || !isBlock) {
                   return (
                     <code className="rounded bg-white/10 px-1 py-0.5 text-[0.9em] text-white/90">
                       {children}

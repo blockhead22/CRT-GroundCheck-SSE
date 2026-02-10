@@ -82,23 +82,23 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
         if (payload?.type === 'reflection_scorecard' && payload.scorecard) {
           setLastReflection(payload.scorecard)
           const line = `Reflection updated - ${summarizeReflection(payload.scorecard)}`
-          setEvents((prev) => [...prev, { id: `r-${ts}-${prev.length}`, text: line, ts, tone: 'info' }].slice(-MAX_EVENTS))
+          setEvents((prev) => [...prev, { id: `r-${ts}-${prev.length}`, text: line, ts, tone: 'info' as const }].slice(-MAX_EVENTS))
           return
         }
         if (payload?.type === 'personality_profile' && payload.profile) {
           setLastPersonality(payload.profile)
           const line = `Personality updated - ${summarizePersonality(payload.profile)}`
-          setEvents((prev) => [...prev, { id: `p-${ts}-${prev.length}`, text: line, ts, tone: 'neutral' }].slice(-MAX_EVENTS))
+          setEvents((prev) => [...prev, { id: `p-${ts}-${prev.length}`, text: line, ts, tone: 'neutral' as const }].slice(-MAX_EVENTS))
           return
         }
         if (payload?.type === 'heartbeat') {
           const line = 'heartbeat'
-          setEvents((prev) => [...prev, { id: `h-${ts}-${prev.length}`, text: line, ts, tone: 'neutral' }].slice(-MAX_EVENTS))
+          setEvents((prev) => [...prev, { id: `h-${ts}-${prev.length}`, text: line, ts, tone: 'neutral' as const }].slice(-MAX_EVENTS))
           return
         }
         if (payload?.type === 'error') {
           const line = `Background loop error: ${payload.error || 'unknown'}`
-          setEvents((prev) => [...prev, { id: `e-${ts}-${prev.length}`, text: line, ts, tone: 'warn' }].slice(-MAX_EVENTS))
+          setEvents((prev) => [...prev, { id: `e-${ts}-${prev.length}`, text: line, ts, tone: 'warn' as const }].slice(-MAX_EVENTS))
         }
       } catch (_e) {
         // ignore parse errors

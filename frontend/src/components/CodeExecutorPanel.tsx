@@ -230,7 +230,7 @@ export function CodeExecutorPanel() {
       </CardHeader>
       
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-        <Tabs value={mode} onValueChange={(v) => setMode(v as typeof mode)} className="flex-1 flex flex-col">
+        <Tabs value={mode} onValueChange={(v: string) => setMode(v as typeof mode)} className="flex-1 flex flex-col">
           <TabsList className="grid grid-cols-3">
             <TabsTrigger value="direct" className="flex items-center gap-1">
               <Play className="h-3 w-3" />
@@ -251,7 +251,7 @@ export function CodeExecutorPanel() {
             <div className="flex-1 min-h-0">
               <Textarea
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCode(e.target.value)}
                 placeholder="# Write Python code here..."
                 className="h-full font-mono text-sm resize-none"
               />
@@ -285,7 +285,7 @@ export function CodeExecutorPanel() {
             <div className="flex-1 min-h-0">
               <Textarea
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCode(e.target.value)}
                 placeholder="# Code will retry on failure..."
                 className="h-full font-mono text-sm resize-none"
               />
@@ -318,13 +318,13 @@ export function CodeExecutorPanel() {
             </div>
             <Textarea
               value={taskDescription}
-              onChange={(e) => setTaskDescription(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTaskDescription(e.target.value)}
               placeholder="Describe what you want the LLM to accomplish..."
               className="min-h-[80px] text-sm"
             />
             <Textarea
               value={taskContext}
-              onChange={(e) => setTaskContext(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setTaskContext(e.target.value)}
               placeholder="(Optional) Additional context..."
               className="min-h-[60px] text-sm"
             />
