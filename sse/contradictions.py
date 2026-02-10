@@ -77,7 +77,7 @@ Hypothesis: {hypothesis}
 
 Respond with ONLY the label (contradiction, entailment, or neutral)."""
             
-            response_text = ollama_client.generate(model, prompt)
+            response_text = ollama_client.generate(prompt=prompt)
             if response_text:
                 text_lower = response_text.lower().strip()
                 if 'contradiction' in text_lower:

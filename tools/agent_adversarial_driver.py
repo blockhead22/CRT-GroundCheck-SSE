@@ -764,7 +764,7 @@ def _auto_run(session: AgentAdversarialSession, max_turns: int = 50) -> None:
             target_slot=None,
             expected="CRT should either detect contradiction or handle gracefully",
             actual=f"type={r.response_type}, gates={r.gates_passed}, contra={r.contradiction_detected}",
-            success=r.gates_passed,  # at minimum it shouldn't crash
+            success=r.gates_passed or r.contradiction_detected,  # detection counts as correct handling
         )
         print(f"  T{r.turn}: Blindside -> {r.summary()}")
         time.sleep(0.5)

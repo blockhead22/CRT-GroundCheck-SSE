@@ -182,7 +182,7 @@ class AgentReasoning:
         )
 
         try:
-            response = self.llm.generate(model=self.model, prompt=prompt)
+            response = self.llm.generate(prompt=prompt)
             return response.get("response", "").strip()
         except Exception as e:
             print(f"LLM thought generation failed: {e}")
@@ -215,7 +215,7 @@ class AgentReasoning:
         )
 
         try:
-            response = self.llm.generate(model=self.model, prompt=prompt)
+            response = self.llm.generate(prompt=prompt)
             response_text = response.get("response", "").strip()
 
             # Parse JSON response
@@ -260,7 +260,7 @@ class AgentReasoning:
         )
 
         try:
-            response = self.llm.generate(model=self.model, prompt=prompt)
+            response = self.llm.generate(prompt=prompt)
             response_text = response.get("response", "").strip()
             return json.loads(response_text)
         except Exception as e:
@@ -294,7 +294,7 @@ class AgentReasoning:
         )
 
         try:
-            response = self.llm.generate(model=self.model, prompt=prompt)
+            response = self.llm.generate(prompt=prompt)
             return response.get("response", "").strip()
         except Exception as e:
             print(f"Reflection failed: {e}")
@@ -330,7 +330,7 @@ class AgentReasoning:
         )
 
         try:
-            response = self.llm.generate(model=self.model, prompt=prompt)
+            response = self.llm.generate(prompt=prompt)
             return response.get("response", "").strip()
         except Exception as e:
             print(f"Synthesis failed: {e}")

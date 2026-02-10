@@ -232,7 +232,7 @@ Text:
 Respond with ONLY this JSON format, no markdown:
 {{"claims": [{{"claim_text": "...", "quotes": [{{"text": "...", "start": int, "end": int}}]}}]}}"""
     
-    response_text = ollama_client.generate(model, prompt)
+    response_text = ollama_client.generate(prompt=prompt)
     if not response_text:
         return extract_claims_rule_based(chunk_text, chunk_id, start_char)
     

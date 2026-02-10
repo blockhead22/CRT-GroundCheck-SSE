@@ -7,6 +7,7 @@ Covers both ``/api/thread/`` and ``/api/threads/`` namespaces.
 from __future__ import annotations
 
 import logging
+import os
 import time
 import uuid
 from pathlib import Path
@@ -114,10 +115,48 @@ def _list_contradictions(
 
 def _thread_db_paths_map(tid: str) -> Dict[str, Path]:
     root = Path(__file__).resolve().parent.parent
+    shared = os.getenv("CRT_SHARED_MEMORY", "false").lower() == "true"
+    if shared:
+        return {
+            "memory": (root / "personal_agent/crt_memory_shared.db"),
+            "ledger": (root / "personal_agent/crt_ledger_shared.db"),
+        }
     return {
         "memory": (root / f"personal_agent/crt_memory_{tid}.db"),
         "ledger": (root / f"personal_agent/crt_ledger_{tid}.db"),
     }
+
+
+def _clear_thread_from_shared_db(db_path: Path, tid: str) -> int:
+    """Delete rows belonging to *tid* from a shared database.
+
+    Works for both memory and ledger DBs.  Returns deleted row count.
+    """
+    if not db_path.exists():
+        return 0
+    deleted = 0
+    try:
+        with get_db_connection(str(db_path)) as conn:
+            cur = conn.cursor()
+            # memories table stores thread_id in column 'thread_id'
+            for table in ("memories", "trust_log"):
+                try:
+                    cur.execute(f"DELETE FROM {table} WHERE thread_id = ?", (tid,))
+                    deleted += cur.rowcount or 0
+                except Exception:
+                    pass  # table may not exist
+            # ledger table: contradictions may not have a thread_id column;
+            # fall-through is harmless.
+            for table in ("contradictions",):
+                try:
+                    cur.execute(f"DELETE FROM {table} WHERE thread_id = ?", (tid,))
+                    deleted += cur.rowcount or 0
+                except Exception:
+                    pass
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"[SHARED_RESET] Error clearing thread {tid}: {e}")
+    return deleted
 
 
 def _purge_memory_sources(db_path: Path, sources: list[str]) -> tuple[int, int]:
@@ -240,10 +279,16 @@ def thread_reset(request: Request, req: ThreadResetRequest) -> ThreadResetRespon
         target = "all"
 
     paths = _thread_db_paths_map(tid)
+    shared = os.getenv("CRT_SHARED_MEMORY", "false").lower() == "true"
     deleted: Dict[str, bool] = {}
 
     def _delete_path(name: str) -> None:
         p = paths[name]
+        if shared:
+            # In shared-memory mode, clear only this thread's rows
+            n = _clear_thread_from_shared_db(p, tid)
+            deleted[name] = n > 0
+            return
         try:
             if p.exists() and p.is_file():
                 p.unlink()

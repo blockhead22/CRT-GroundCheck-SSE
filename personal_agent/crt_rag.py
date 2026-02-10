@@ -508,6 +508,30 @@ class CRTEnhancedRAG:
         
         query_lower = user_query.lower()
         
+        # Broader gaslighting patterns (no capture group needed)
+        gaslight_phrases = [
+            r"i don't know why you think",
+            r"i don[\u2019']t know why you think",
+            r"(?:my|it)\s*(?:'s|\u2019s|has)\s+always been",
+            r"why do you think (?:my|i)",
+        ]
+        for gp in gaslight_phrases:
+            if re.search(gp, query_lower):
+                # Try to find a matching memory for the value being denied
+                for mem in previous_memories:
+                    mem_lower = mem.text.lower()
+                    # Check overlap between query tokens and memory text
+                    # to identify which remembered fact is being denied
+                    mem_facts = extract_fact_slots(mem.text) or {}
+                    for s, fact in mem_facts.items():
+                        fv = getattr(fact, 'value', str(fact)).lower()
+                        if fv and fv in query_lower:
+                            logger.info(f"[GASLIGHTING_DETECT] Phrase-match gaslighting on slot={s}")
+                            return True, fv, mem, s
+                # Even without a specific memory match, flag it as gaslighting
+                logger.info(f"[GASLIGHTING_DETECT] Phrase-match gaslighting (no specific memory)")
+                return True, None, None, None
+
         for pattern, denial_type in denial_patterns:
             match = re.search(pattern, query_lower)
             if match:
@@ -531,7 +555,63 @@ class CRTEnhancedRAG:
                         return True, denied_value, mem, slot
         
         return False, None, None, None
-    
+
+    # ------------------------------------------------------------------
+    # Blindside attack detection
+    # ------------------------------------------------------------------
+    def _detect_blindside_attack(
+        self,
+        user_query: str,
+        previous_memories: List['MemoryItem'],
+    ) -> Tuple[bool, Optional[str]]:
+        """Detect identity-wipe / mass-retraction ("blindside") attacks.
+
+        A blindside attack tries to invalidate a large swath of prior facts in
+        a single message — e.g. "Everything I told you was a lie" or "Forget
+        everything — my real name is Zara, I'm 40, and I live in Berlin".
+
+        Returns:
+            (is_blindside, reason_string)
+        """
+        query_lower = (user_query or "").lower()
+
+        # ---- Pattern-based blanket retraction ----
+        blindside_patterns = [
+            (r"everything\s+(?:i\s+(?:told|said)|was)\s+(?:was\s+)?a\s+lie", "blanket_retraction"),
+            (r"(?:forget|disregard|ignore)\s+everything", "forget_everything"),
+            (r"none\s+of\s+(?:that|what\s+i\s+(?:said|told))\s+was\s+(?:true|real|correct)", "blanket_retraction"),
+            (r"(?:scratch|throw\s+out|wipe)\s+(?:all|everything)", "wipe_request"),
+            (r"start\s+(?:over|from\s+scratch)", "start_over"),
+            (r"that\s+was\s+all\s+(?:fake|false|made\s+up|lies?)", "blanket_retraction"),
+        ]
+
+        for pat, reason in blindside_patterns:
+            if re.search(pat, query_lower):
+                logger.info(f"[BLINDSIDE_DETECT] Pattern match: {reason}")
+                return True, f"blindside_pattern:{reason}"
+
+        # ---- Multi-fact replacement heuristic ----
+        # If the message asserts ≥3 new facts that contradict existing ones,
+        # treat it as a blindside even without an explicit retraction phrase.
+        if previous_memories:
+            new_facts = extract_fact_slots(user_query) or {}
+            if len(new_facts) >= 3:
+                contradicting = 0
+                for prev_mem in previous_memories:
+                    prev_facts = extract_fact_slots(prev_mem.text) or {}
+                    for slot, new_fact in new_facts.items():
+                        prev_fact = prev_facts.get(slot)
+                        if prev_fact is not None:
+                            nv = getattr(new_fact, "value", str(new_fact)).lower()
+                            pv = getattr(prev_fact, "value", str(prev_fact)).lower()
+                            if nv and pv and nv != pv:
+                                contradicting += 1
+                if contradicting >= 3:
+                    logger.info(f"[BLINDSIDE_DETECT] Multi-fact replacement ({contradicting} slots)")
+                    return True, f"multi_fact_replacement:{contradicting}_slots"
+
+        return False, None
+
     def _load_classifier(self):
         """Load trained response type classifier with hot-reload support."""
         model_path = Path("models/response_classifier_v1.joblib")
@@ -2000,7 +2080,8 @@ class CRTEnhancedRAG:
     def _check_all_fact_contradictions_ml(
         self, 
         new_memory: MemoryItem, 
-        user_query: str
+        user_query: str,
+        thread_id: Optional[str] = None,
     ) -> Tuple[bool, Optional[ContradictionEntry]]:
         """
         Check for contradictions using ML detector (replaces hardcoded slot list).
@@ -2014,6 +2095,7 @@ class CRTEnhancedRAG:
         Args:
             new_memory: Newly stored memory item
             user_query: User's input text
+            thread_id: If provided, only compare against memories from this thread
             
         Returns:
             (contradiction_detected, contradiction_entry)
@@ -2034,12 +2116,21 @@ class CRTEnhancedRAG:
         if not new_facts:
             return False, None
         
-        # Get all previous user memories
-        all_memories = self.memory._load_all_memories()
-        previous_user_memories = [
-            m for m in all_memories 
-            if m.source == MemorySource.USER and m.memory_id != new_memory.memory_id
-        ]
+        # Get all previous user memories (filter by thread_id when in shared-memory mode)
+        if thread_id:
+            all_memories = self.memory._load_memories_filtered(
+                source=MemorySource.USER, thread_id=thread_id
+            )
+            previous_user_memories = [
+                m for m in all_memories
+                if m.memory_id != new_memory.memory_id
+            ]
+        else:
+            all_memories = self.memory._load_all_memories()
+            previous_user_memories = [
+                m for m in all_memories
+                if m.source == MemorySource.USER and m.memory_id != new_memory.memory_id
+            ]
         
         # Check each new fact against previous memories
         for slot, new_fact in new_facts.items():
@@ -3122,6 +3213,59 @@ class CRTEnhancedRAG:
         except Exception as e:
             logger.warning(f"[GASLIGHTING] Detection failed: {e}")
 
+        # ==================================================================
+        # BLINDSIDE DETECTION: mass-retraction / identity-wipe attacks
+        # ==================================================================
+        try:
+            prev_user_mems = [
+                m for m in self.memory._load_all_memories()
+                if m.source == MemorySource.USER
+            ]
+            is_blindside, blindside_reason = self._detect_blindside_attack(
+                user_query, prev_user_mems
+            )
+            if is_blindside:
+                logger.info(f"[BLINDSIDE] Detected: {blindside_reason}")
+                # Store the message at low confidence but DO NOT accept the new facts
+                try:
+                    self.memory.store_memory(
+                        text=user_query,
+                        confidence=0.3,
+                        source=MemorySource.USER,
+                        context={"type": "user_input", "kind": "blindside"},
+                    )
+                except Exception:
+                    pass
+                hedge = (
+                    "That's a pretty big change all at once. I have several facts on "
+                    "record from our conversation. Could you clarify which specific "
+                    "detail you'd like to correct? I'd rather update one thing at a "
+                    "time so I don't lose track."
+                )
+                return {
+                    'answer': hedge,
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.35,
+                    'response_type': 'belief',
+                    'gates_passed': True,
+                    'gate_reason': f'blindside_detected:{blindside_reason}',
+                    'intent_alignment': 0.4,
+                    'memory_alignment': 0.3,
+                    'contradiction_detected': True,
+                    'contradiction_entry': None,
+                    'retrieved_memories': [],
+                    'prompt_memories': [],
+                    'unresolved_contradictions_total': 1,
+                    'unresolved_hard_conflicts': 1,
+                    'learned_suggestions': [],
+                    'heuristic_suggestions': [],
+                    'best_prior_trust': None,
+                    'session_id': self.session_id,
+                }
+        except Exception as e:
+            logger.warning(f"[BLINDSIDE] Detection failed: {e}")
+
         # P0 FIX: Process contradiction lifecycle transitions on every query
         # This moves contradictions through ACTIVE → SETTLING → SETTLED → ARCHIVED
         # based on confirmation counts and time elapsed
@@ -3239,7 +3383,7 @@ class CRTEnhancedRAG:
             # BUG 1 FIX: Check for contradictions using ML detector (ALL facts, not hardcoded slots)
             try:
                 contradiction_detected, contradiction_entry = self._check_all_fact_contradictions_ml(
-                    user_memory, user_query
+                    user_memory, user_query, thread_id=thread_id
                 )
             except Exception as e:
                 logger.warning(f"[ML_CONTRADICTION] Failed to check ML contradictions: {e}", exc_info=True)
@@ -4662,12 +4806,22 @@ class CRTEnhancedRAG:
             if new_facts:
                 user_vector = encode_vector(user_query)
 
-                all_memories = self.memory._load_all_memories()
-                previous_user_memories = [
-                    m
-                    for m in all_memories
-                    if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
-                ]
+                # Filter by thread_id in shared-memory mode to avoid false contradictions
+                if thread_id:
+                    all_memories = self.memory._load_memories_filtered(
+                        source=MemorySource.USER, thread_id=thread_id
+                    )
+                    previous_user_memories = [
+                        m for m in all_memories
+                        if m.memory_id != user_memory.memory_id
+                    ]
+                else:
+                    all_memories = self.memory._load_all_memories()
+                    previous_user_memories = [
+                        m
+                        for m in all_memories
+                        if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
+                    ]
 
                 from .crt_ledger import ContradictionType
 

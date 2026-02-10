@@ -585,6 +585,16 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # "my name is X" pattern - apply _clean_name_value to handle "my name is nick but you..."
     # Also handles correction-style: "my real name is X", "my actual name is X"
     m = re.search(r"\bmy\s+(?:real|actual|true|full)?\s*name is\s+" + name_pat + r"\b", text, flags=re.IGNORECASE)
+    # Guard: skip extraction when preceded by negation context (gaslighting pattern)
+    if m:
+        prefix = text[:m.start()].lower().strip()
+        _negation_prefixes = (
+            "you think", "why do you think", "you said", "you believe",
+            "you told me", "you claim", "you assumed", "i don't know why you think",
+            "i never said", "who told you",
+        )
+        if any(prefix.endswith(neg) for neg in _negation_prefixes):
+            m = None  # suppress extraction — likely gaslighting
     if m:
         name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]

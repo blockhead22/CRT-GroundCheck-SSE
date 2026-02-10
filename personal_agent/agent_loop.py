@@ -620,7 +620,7 @@ class AgentLoop:
 Provide a clear, accurate answer in 2-4 sentences."""
 
         try:
-            response = self.llm.generate(model="mistral:latest", prompt=prompt)
+            response = self.llm.generate(prompt=prompt)
             answer = response.get("response", "").strip()
             return answer if answer else "Could not generate answer."
         except Exception as e:
