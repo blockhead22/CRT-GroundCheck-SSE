@@ -29,10 +29,12 @@ if ledger_dbs:
     tables = [r[0] for r in cur.fetchall()]
     print(f"Tables: {tables}")
     
-    # Count records
+    # Count records (quote table names to prevent injection)
     for table in tables:
         try:
-            cur.execute(f"SELECT COUNT(*) FROM {table}")
+            # Double-quote the identifier to safely handle any table name
+            safe_table = table.replace('"', '""')
+            cur.execute(f'SELECT COUNT(*) FROM "{safe_table}"')
             count = cur.fetchone()[0]
             print(f"  {table}: {count} records")
         except Exception as e:

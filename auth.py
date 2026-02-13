@@ -245,8 +245,11 @@ def authenticate_user(username: str, password: str) -> Optional[User]:
             )
 
         # Fallback: check legacy SHA-256 hash and migrate to bcrypt if valid
+        # SECURITY: SHA-256 without key stretching is fast to brute-force.
+        # This path auto-migrates on login. Remove once all accounts are migrated.
         legacy_hash = _hash_password_legacy(password, salt)
         if legacy_hash == stored_hash:
+            logger.warning(f"[AUTH] Migrating user '{username}' from legacy SHA-256 to bcrypt")
             # Migrate to bcrypt on successful legacy login
             new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_hash, row['id']))

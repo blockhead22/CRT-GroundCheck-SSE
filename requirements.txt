@@ -2,27 +2,30 @@
 # Install with: pip install -r requirements.txt
 # For dev tools: pip install -e ".[dev]"
 # For full ML stack: pip install -e ".[full]"
+#
+# Versions pinned to exact installed versions (2026-02-12).
+# Run `pip install --upgrade <pkg>` to update individual packages.
 
-fastapi>=0.100.0
-uvicorn[standard]>=0.22.0
-sentence-transformers>=2.2.0
-numpy>=1.24.0
-scikit-learn>=1.3.0
-xgboost>=1.7.0
-jsonschema>=4.0.0
-requests>=2.31.0
-beautifulsoup4>=4.12.0
-python-dotenv>=1.0.0
+fastapi==0.128.0
+uvicorn[standard]==0.40.0
+sentence-transformers==5.2.0
+numpy==2.4.1
+scikit-learn==1.8.0
+xgboost==3.1.3
+jsonschema==4.26.0
+requests==2.32.5
+beautifulsoup4==4.14.3
+python-dotenv==1.2.1
 
 # MySQL support
 pymysql>=1.0.0
 cryptography>=41.0.0
 
 # Password hashing
-bcrypt>=4.0.0
+bcrypt==5.0.0
 
 # Grounding verification
-groundcheck>=0.2.0
+groundcheck>=0.4.0
 
 # Webcam support
-opencv-python>=4.8.0
+opencv-python==4.13.0.90

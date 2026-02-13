@@ -354,16 +354,22 @@ class ToolRegistry:
             return {"error": str(e)}
 
     def _list_files(self, directory: str = ".", pattern: str = "*") -> dict:
-        """List files in directory."""
+        """List files in directory (sandboxed to workspace)."""
         try:
             dir_path = Path(directory)
             if not dir_path.is_absolute():
                 dir_path = self.workspace / dir_path
 
-            if not dir_path.exists():
+            # Security: resolve symlinks and verify within workspace
+            resolved = dir_path.resolve()
+            workspace_resolved = self.workspace.resolve()
+            if not str(resolved).startswith(str(workspace_resolved)):
+                return {"error": f"Access denied: path '{directory}' is outside workspace"}
+
+            if not resolved.exists():
                 return {"error": f"Directory not found: {directory}"}
 
-            files = list(dir_path.glob(pattern))
+            files = list(resolved.glob(pattern))
             return {
                 "directory": str(dir_path),
                 "pattern": pattern,

@@ -139,9 +139,11 @@ def _clear_thread_from_shared_db(db_path: Path, tid: str) -> int:
         with get_db_connection(str(db_path)) as conn:
             cur = conn.cursor()
             # memories table stores thread_id in column 'thread_id'
-            for table in ("memories", "trust_log"):
+            # Allowlisted table names — never interpolate user input here
+            _SAFE_TABLES = ("memories", "trust_log")
+            for table in _SAFE_TABLES:
                 try:
-                    cur.execute(f"DELETE FROM {table} WHERE thread_id = ?", (tid,))
+                    cur.execute(f'DELETE FROM "{table}" WHERE thread_id = ?', (tid,))
                     deleted += cur.rowcount or 0
                 except Exception:
                     pass  # table may not exist
@@ -149,7 +151,7 @@ def _clear_thread_from_shared_db(db_path: Path, tid: str) -> int:
             # fall-through is harmless.
             for table in ("contradictions",):
                 try:
-                    cur.execute(f"DELETE FROM {table} WHERE thread_id = ?", (tid,))
+                    cur.execute('DELETE FROM "contradictions" WHERE thread_id = ?', (tid,))
                     deleted += cur.rowcount or 0
                 except Exception:
                     pass

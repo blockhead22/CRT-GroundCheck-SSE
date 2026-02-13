@@ -1234,8 +1234,8 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     
-    # Use 0.0.0.0 to listen on all interfaces for external access
-    host = os.getenv("CRT_HOST", "0.0.0.0")
+    # Default to localhost — set CRT_HOST=0.0.0.0 only behind a reverse proxy
+    host = os.getenv("CRT_HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host=host, port=port)
 

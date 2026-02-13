@@ -74,14 +74,25 @@ def execute_python_code(
         temp_file = f.name
     
     try:
-        # Run in subprocess
+        # Validate code before executing — reject dangerous imports/calls
+        _validate_code_safety(code)
+
+        # Run in subprocess with MINIMAL env (no leaked secrets)
+        safe_env = {
+            'PATH': os.environ.get('PATH', ''),
+            'PYTHONIOENCODING': 'utf-8',
+            'PYTHONPATH': os.environ.get('PYTHONPATH', ''),
+            'SYSTEMROOT': os.environ.get('SYSTEMROOT', ''),  # Windows needs this
+            'TEMP': os.environ.get('TEMP', ''),
+            'TMP': os.environ.get('TMP', ''),
+        }
         result = subprocess.run(
             [sys.executable, temp_file],
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
             cwd=working_dir or os.getcwd(),
-            env={**os.environ, 'PYTHONIOENCODING': 'utf-8'}
+            env=safe_env
         )
         
         execution_time = int((time.time() - start_time) * 1000)
@@ -385,15 +396,70 @@ def clear_execution_history():
     EXECUTION_HISTORY.clear()
 
 
-# Allowed imports whitelist for sandboxing (optional stricter mode)
+# Allowed imports whitelist — enforced by _validate_code_safety()
 SAFE_IMPORTS = {
-    'json', 'math', 'random', 'datetime', 'collections', 
+    'json', 'math', 'random', 'datetime', 'collections',
     'itertools', 'functools', 'string', 're', 'os.path',
     'pathlib', 'typing', 'dataclasses', 'enum', 'statistics',
     'requests', 'httpx', 'aiohttp',  # Allow HTTP
     'sqlite3',  # Allow DB
     'pandas', 'numpy',  # Data science
+    'csv', 'io', 'textwrap', 'pprint', 'decimal', 'fractions',
+    'hashlib', 'base64', 'urllib.parse', 'html',
 }
+
+# Imports that are NEVER allowed regardless of context
+_BLOCKED_IMPORTS = {
+    'subprocess', 'shutil', 'ctypes', 'importlib', 'code',
+    'pickle', 'shelve', 'marshal', 'socket', 'http.server',
+    'xmlrpc', 'multiprocessing', 'signal', 'pty', 'resource',
+    'webbrowser', 'antigravity', 'turtle',
+}
+
+# Builtin calls that are never allowed
+_BLOCKED_CALLS = {'exec', 'eval', 'compile', '__import__', 'globals', 'locals', 'breakpoint'}
+
+
+def _validate_code_safety(code: str) -> None:
+    """Parse code AST and reject dangerous imports/calls.
+
+    Raises ValueError if the code uses blocked imports or dangerous builtins.
+    """
+    import ast as _ast
+
+    try:
+        tree = _ast.parse(code)
+    except SyntaxError:
+        return  # Let the subprocess report the syntax error naturally
+
+    for node in _ast.walk(tree):
+        # Check import statements
+        if isinstance(node, _ast.Import):
+            for alias in node.names:
+                mod = alias.name.split('.')[0]
+                if mod in _BLOCKED_IMPORTS:
+                    raise ValueError(f"Blocked import: '{alias.name}' is not allowed for safety")
+                if mod == 'os':
+                    # Allow os.path only
+                    if alias.name != 'os.path':
+                        raise ValueError(f"Blocked import: '{alias.name}' — only 'os.path' is permitted")
+        elif isinstance(node, _ast.ImportFrom):
+            mod = (node.module or '').split('.')[0]
+            if mod in _BLOCKED_IMPORTS:
+                raise ValueError(f"Blocked import: 'from {node.module}' is not allowed for safety")
+            if mod == 'os' and node.module != 'os.path':
+                raise ValueError(f"Blocked import: 'from {node.module}' — only 'os.path' is permitted")
+        # Check dangerous builtin calls
+        elif isinstance(node, _ast.Call):
+            if isinstance(node.func, _ast.Name) and node.func.id in _BLOCKED_CALLS:
+                raise ValueError(f"Blocked call: '{node.func.id}()' is not allowed for safety")
+            # Block open() with write modes (allow read-only)
+            if isinstance(node.func, _ast.Name) and node.func.id == 'open':
+                if len(node.args) >= 2:
+                    mode_arg = node.args[1]
+                    if isinstance(mode_arg, _ast.Constant) and isinstance(mode_arg.value, str):
+                        if any(c in mode_arg.value for c in 'wax+'):
+                            raise ValueError("Blocked call: open() with write mode is not allowed")
 
 
 if __name__ == "__main__":

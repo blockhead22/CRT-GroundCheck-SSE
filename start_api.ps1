@@ -2,8 +2,8 @@
 # CRT API Server Startup Script
 
 $env:PORT = "8123"
-$env:CRT_HOST = "0.0.0.0"  # Listen on all interfaces for external access
-$env:CRT_CORS_ORIGINS = "*"  # Allow all origins for external access
+$env:CRT_HOST = "127.0.0.1"  # Localhost only — change to 0.0.0.0 ONLY behind a reverse proxy
+$env:CRT_CORS_ORIGINS = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
 $env:CRT_SHARED_MEMORY = "true"
 $env:CRT_ENABLE_LLM = "true"
 $env:CRT_OLLAMA_MODEL = "deepseek-r1:latest"
