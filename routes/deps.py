@@ -8,26 +8,17 @@ Route modules use ``request.app.state`` to access shared singletons that
 from __future__ import annotations
 
 import logging
-import re
 from typing import Any, Callable, Dict, Optional
 
 from fastapi import Query, Request
 
 from personal_agent.crt_rag import CRTEnhancedRAG
+from personal_agent.text_utils import sanitize_thread_id  # noqa: F401 – re-exported
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# Sanitisation helper (mirrors crt_api._sanitize_thread_id)
-# ---------------------------------------------------------------------------
-
-def sanitize_thread_id(value: str) -> str:
-    value = (value or "").strip()
-    if not value:
-        return "default"
-    value = re.sub(r"[^a-zA-Z0-9_-]+", "_", value)
-    return value[:64] or "default"
+# sanitize_thread_id imported from personal_agent.text_utils (re-exported above)
 
 
 # ---------------------------------------------------------------------------

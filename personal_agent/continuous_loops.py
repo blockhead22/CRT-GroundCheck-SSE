@@ -11,6 +11,7 @@ import time
 from typing import Dict, List, Optional, Tuple
 
 from .db_utils import ThreadSessionDB
+from .text_utils import strip_thinking_tags as _strip_thinking_tags
 
 logger = logging.getLogger(__name__)
 
@@ -190,12 +191,7 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
-def _strip_thinking_tags(text: str) -> str:
-    if not text:
-        return ""
-    cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
-    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
-    return cleaned.strip()
+# _strip_thinking_tags imported from .text_utils
 
 
 def _get_journal_llm_client() -> Optional[object]:

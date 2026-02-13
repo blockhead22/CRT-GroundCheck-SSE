@@ -22,6 +22,11 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from .deps import sanitize_thread_id
+from personal_agent.text_utils import (
+    strip_thinking_tags as _strip_thinking_tags,
+    strip_think_blocks,
+    extract_think_content,
+)
 from .models import (
     ChatSendRequest,
     ChatSendResponse,
@@ -72,13 +77,7 @@ _EXPAND_TRIGGERS = (
 # ---------------------------------------------------------------------------
 
 
-def _strip_thinking_tags(text: str) -> str:
-    """Remove <think>/<thinking> wrappers from stored thinking content."""
-    if not text:
-        return ""
-    cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
-    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
-    return cleaned.strip()
+# _strip_thinking_tags imported from personal_agent.text_utils
 
 
 def _format_style_instruction(
@@ -1368,14 +1367,12 @@ INTERACTION GUIDELINES:
                     yield f"data: {json.dumps({'type': 'token', 'content': clean_token})}\n\n"
 
             # Clean final response
-            import re as regex
-
-            clean_response = regex.sub(r"<think>.*?</think>", "", full_response, flags=regex.DOTALL).strip()
+            clean_response = strip_think_blocks(full_response)
 
             if not thinking_content and "<think>" in full_response:
-                think_match = regex.search(r"<think>(.*?)</think>", full_response, flags=regex.DOTALL)
-                if think_match:
-                    thinking_content = think_match.group(1).strip()
+                extracted_thinking, _ = extract_think_content(full_response)
+                if extracted_thinking:
+                    thinking_content = extracted_thinking
                     logger.debug(f"[STREAM] Extracted {len(thinking_content)} chars from <think> tags")
 
             logger.info(f"[STREAM] Thinking content length: {len(thinking_content)} chars")

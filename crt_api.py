@@ -11,6 +11,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from personal_agent.text_utils import (
+    sanitize_thread_id as _sanitize_thread_id,
+    strip_thinking_tags as _strip_thinking_tags,
+)
+
 logger = logging.getLogger(__name__)
 
 from fastapi import FastAPI, HTTPException
@@ -93,21 +98,7 @@ _TASKING_LAST_RUN: Dict[str, float] = {}
 _TASKING_LOCK = threading.Lock()
 
 
-def _sanitize_thread_id(value: str) -> str:
-    value = (value or "").strip()
-    if not value:
-        return "default"
-    value = re.sub(r"[^a-zA-Z0-9_-]+", "_", value)
-    return value[:64] or "default"
-
-
-def _strip_thinking_tags(text: str) -> str:
-    """Remove <think>/<thinking> wrappers from stored thinking content."""
-    if not text:
-        return ""
-    cleaned = re.sub(r"</?thinking>", "", text, flags=re.IGNORECASE)
-    cleaned = re.sub(r"</?think>", "", cleaned, flags=re.IGNORECASE)
-    return cleaned.strip()
+# _sanitize_thread_id and _strip_thinking_tags imported from personal_agent.text_utils
 
 
 def _env_bool(name: str, default: bool = True) -> bool:

@@ -13,6 +13,7 @@ this generates actual LLM-powered contemplation.
 """
 
 import os
+import re
 import time
 import json
 import threading
@@ -21,6 +22,10 @@ from datetime import datetime
 from typing import Optional, Dict, List, Any
 
 from personal_agent.db_utils import get_db_connection
+from personal_agent.text_utils import (
+    extract_think_content,
+    strip_thinking_tags,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -290,33 +295,25 @@ class ThinkingLoop:
         if not text:
             return ""
         
-        import re
-        
         # For deepseek-r1: Extract content FROM think tags if the response is mostly inside them
         # deepseek-r1 often puts all reasoning in <think> tags and leaves the response empty
-        think_match = re.search(r"<think>(.*?)</think>", text, flags=re.DOTALL | re.IGNORECASE)
-        if think_match:
-            # Get content outside think tags
-            outside_content = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE).strip()
-            
+        thinking, outside_content = extract_think_content(text)
+        if thinking:
             # If there's no content outside think tags, USE the think content
             # (This is the key fix for deepseek-r1)
             if not outside_content or len(outside_content) < 10:
-                think_content = think_match.group(1).strip()
                 # Take the last meaningful sentence from the thinking (usually the conclusion)
-                sentences = re.split(r'[.!?]\s+', think_content)
+                sentences = re.split(r'[.!?]\s+', thinking)
                 meaningful_sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
                 if meaningful_sentences:
                     # Take last 1-2 sentences as the "thought"
                     text = ". ".join(meaningful_sentences[-2:]) + "."
                 else:
-                    text = think_content[:300]  # Fallback: just use first part
+                    text = thinking[:300]  # Fallback: just use first part
             else:
                 text = outside_content
-        
-        # Remove any remaining thinking tags
-        text = re.sub(r"</?think(ing)?>", "", text, flags=re.IGNORECASE)
-        text = text.strip()
+        else:
+            text = strip_thinking_tags(text)
         
         # Remove common prefixes
         for prefix in ["Thought:", "My thought:", "I think:", "Reflection:"]:
