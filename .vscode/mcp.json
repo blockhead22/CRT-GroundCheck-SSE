@@ -1,0 +1,13 @@
+{
+    "servers": {
+        "groundcheck": {
+            "command": "d:\\groundcheck\\.venv\\Scripts\\groundcheck-mcp.exe",
+            "args": ["--db", "d:\\groundcheck\\.groundcheck\\memory.db"]
+        },
+        "crt": {
+            "command": "d:\\AI_round2\\.venv\\Scripts\\python.exe",
+            "args": ["-m", "personal_agent.crt_mcp_server"],
+            "cwd": "d:\\AI_round2"
+        }
+    }
+}

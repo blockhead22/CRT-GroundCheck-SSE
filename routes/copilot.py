@@ -364,6 +364,13 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
         # Forward to active learning (non-blocking)
         _notify_active_learning_correction(req.memory_id, old_text, req.corrected_text)
 
+        # Boost trust — user actively validated this memory
+        try:
+            from personal_agent.trust_decay import reinforce_memory, CORRECTION_BOOST
+            reinforce_memory(req.memory_id, boost=CORRECTION_BOOST)
+        except Exception:
+            pass
+
         return {"ok": True, "memory_id": req.memory_id, "old_text": old_text, "new_text": req.corrected_text}
     finally:
         conn.close()
@@ -634,3 +641,438 @@ def _track_event(
         "INSERT INTO copilot_events (event_type, memory_id, old_text, new_text, timestamp) VALUES (?, ?, ?, ?, ?)",
         (event_type, memory_id, old_text, new_text, int(time.time())),
     )
+
+
+# ===========================================================================
+# Active Learning endpoints
+# ===========================================================================
+
+@router.get("/learning/stats")
+def get_learning_stats() -> Dict[str, Any]:
+    """Return active learning system statistics."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        stats = coordinator.get_stats(force_refresh=True)
+        return stats.to_dict()
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Active learning module not available")
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching learning stats: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/corrections")
+def get_learning_corrections(
+    limit: int = Query(10, ge=1, le=100),
+) -> List[Dict[str, Any]]:
+    """Return recent user corrections for dashboard display."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        return coordinator.get_recent_corrections(limit=limit)
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching corrections: %s", e)
+        return []
+
+
+@router.get("/learning/events")
+def get_learning_events(
+    limit: int = Query(50, ge=1, le=200),
+) -> List[Dict[str, Any]]:
+    """Return gate events that haven't been corrected yet (for labeling UI)."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        return coordinator.get_events_needing_correction(limit=limit)
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching events: %s", e)
+        return []
+
+
+class FeedbackThumbsRequest(BaseModel):
+    interaction_id: str
+    thumbs_up: bool
+    comment: Optional[str] = None
+
+
+@router.post("/learning/feedback")
+def submit_learning_feedback(req: FeedbackThumbsRequest) -> Dict[str, Any]:
+    """Submit thumbs up/down feedback for an interaction."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        ok = coordinator.record_feedback_thumbs(
+            interaction_id=req.interaction_id,
+            thumbs_up=req.thumbs_up,
+            comment=req.comment,
+        )
+        return {"ok": ok}
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Active learning module not available")
+    except Exception as e:
+        logger.warning("[COPILOT] Error submitting feedback: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class FeedbackCorrectionRequest(BaseModel):
+    interaction_id: str
+    correction_type: str
+    field_name: Optional[str] = None
+    incorrect_value: Optional[str] = None
+    correct_value: Optional[str] = None
+    user_comment: Optional[str] = None
+
+
+@router.post("/learning/correct")
+def submit_learning_correction(req: FeedbackCorrectionRequest) -> Dict[str, Any]:
+    """Submit a correction for an interaction."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        correction_id = coordinator.record_feedback_correction(
+            interaction_id=req.interaction_id,
+            correction_type=req.correction_type,
+            field_name=req.field_name,
+            incorrect_value=req.incorrect_value,
+            correct_value=req.correct_value,
+            user_comment=req.user_comment,
+        )
+        return {"ok": True, "correction_id": correction_id}
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Active learning module not available")
+    except Exception as e:
+        logger.warning("[COPILOT] Error submitting correction: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/interaction-stats")
+def get_interaction_stats(
+    hours: int = Query(24, ge=1, le=720),
+) -> Dict[str, Any]:
+    """Return interaction statistics for the last N hours."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        return coordinator.get_interaction_stats(hours=hours)
+    except ImportError:
+        return {"total_interactions": 0, "period_hours": hours}
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching interaction stats: %s", e)
+        return {"total_interactions": 0, "period_hours": hours}
+
+
+@router.post("/learning/retrain")
+def trigger_retrain() -> Dict[str, Any]:
+    """Manually trigger model retraining."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        coordinator._trigger_training()
+        return {"ok": True, "message": "Retraining triggered"}
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Active learning module not available")
+    except Exception as e:
+        logger.warning("[COPILOT] Error triggering retrain: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===========================================================================
+# Episodic Memory endpoints
+# ===========================================================================
+
+@router.get("/preferences")
+def get_preferences(
+    category: Optional[str] = Query(None),
+) -> List[Dict[str, Any]]:
+    """Return learned user preferences from episodic memory."""
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        prefs = manager.db.get_preferences(category=category)
+        return [p.to_dict() for p in prefs]
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching preferences: %s", e)
+        return []
+
+
+@router.get("/sessions")
+def get_session_summaries(
+    thread_id: Optional[str] = Query(None),
+    limit: int = Query(10, ge=1, le=100),
+) -> List[Dict[str, Any]]:
+    """Return recent session summaries from episodic memory."""
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        summaries = manager.db.get_recent_summaries(thread_id=thread_id, limit=limit)
+        return [s.to_dict() for s in summaries]
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching sessions: %s", e)
+        return []
+
+
+@router.get("/sessions/search")
+def search_sessions(
+    topic: str = Query(..., min_length=1),
+    limit: int = Query(10, ge=1, le=100),
+) -> List[Dict[str, Any]]:
+    """Search session summaries by topic keyword."""
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        summaries = manager.db.search_summaries_by_topic(topic, limit=limit)
+        return [s.to_dict() for s in summaries]
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error searching sessions: %s", e)
+        return []
+
+
+@router.get("/patterns")
+def get_interaction_patterns(
+    pattern_type: Optional[str] = Query(None),
+    min_confidence: float = Query(0.3, ge=0.0, le=1.0),
+) -> List[Dict[str, Any]]:
+    """Return detected behavioral patterns from episodic memory."""
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        patterns = manager.db.get_patterns(pattern_type=pattern_type, min_confidence=min_confidence)
+        return [p.to_dict() for p in patterns]
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching patterns: %s", e)
+        return []
+
+
+@router.get("/concepts")
+def get_concepts(
+    concept_type: Optional[str] = Query(None, description="Filter by type: person, project, organization, topic, location"),
+) -> List[Dict[str, Any]]:
+    """Return known entities/concepts from the knowledge graph."""
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        if concept_type:
+            concepts = manager.db.get_concepts_by_type(concept_type)
+        else:
+            # Return all types
+            all_concepts = []
+            for ct in ["person", "project", "organization", "topic", "location"]:
+                all_concepts.extend(manager.db.get_concepts_by_type(ct))
+            concepts = sorted(all_concepts, key=lambda c: c.mention_count, reverse=True)
+        return [c.to_dict() for c in concepts]
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching concepts: %s", e)
+        return []
+
+
+@router.get("/concepts/search")
+def search_concept(
+    name: str = Query(..., min_length=1),
+) -> Optional[Dict[str, Any]]:
+    """Search for a specific concept/entity by name or alias."""
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        concept = manager.db.find_concept_by_name(name)
+        if concept:
+            return concept.to_dict()
+        return None
+    except ImportError:
+        return None
+    except Exception as e:
+        logger.warning("[COPILOT] Error searching concept: %s", e)
+        return None
+
+
+@router.get("/user-context")
+def get_user_context(
+    include_summaries: int = Query(3, ge=0, le=20),
+) -> Dict[str, Any]:
+    """Return comprehensive user context from episodic memory.
+
+    Includes preferences, patterns, session summaries, concepts,
+    and the pre-built context prompt string.
+    """
+    try:
+        from personal_agent.episodic_memory import get_episodic_manager
+        manager = get_episodic_manager()
+        context = manager.get_user_context(include_summaries=include_summaries)
+        context["context_prompt"] = manager.build_context_prompt()
+        return context
+    except ImportError:
+        return {"preferences": {}, "patterns": [], "recent_summaries": [], "concepts": [], "context_prompt": ""}
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching user context: %s", e)
+        return {"preferences": {}, "patterns": [], "recent_summaries": [], "concepts": [], "context_prompt": ""}
+
+
+# ===========================================================================
+# Trust Decay & Scheduler endpoints
+# ===========================================================================
+
+@router.get("/trust-decay/config")
+def get_trust_decay_config() -> Dict[str, Any]:
+    """Return trust decay tuning parameters."""
+    try:
+        from personal_agent.trust_decay import (
+            DECAY_RATE, REINFORCE_BOOST, CORRECTION_BOOST,
+            TRUST_FLOOR, TRUST_CEILING, GRACE_PERIOD_DAYS,
+            MIN_PASS_INTERVAL_SECS,
+        )
+        return {
+            "decay_rate": DECAY_RATE,
+            "reinforce_boost": REINFORCE_BOOST,
+            "correction_boost": CORRECTION_BOOST,
+            "trust_floor": TRUST_FLOOR,
+            "trust_ceiling": TRUST_CEILING,
+            "grace_period_days": GRACE_PERIOD_DAYS,
+            "min_pass_interval_secs": MIN_PASS_INTERVAL_SECS,
+        }
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Trust decay module not available")
+
+
+@router.post("/trust-decay/run")
+def run_trust_decay() -> Dict[str, Any]:
+    """Manually trigger a trust decay pass."""
+    try:
+        from personal_agent.trust_decay import run_trust_decay_pass
+        return run_trust_decay_pass()
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Trust decay module not available")
+    except Exception as e:
+        logger.warning("[COPILOT] Error running trust decay: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/memory/{memory_id}/reinforce")
+def reinforce_memory_endpoint(memory_id: str) -> Dict[str, Any]:
+    """Manually boost a memory's trust score (reinforcement)."""
+    try:
+        from personal_agent.trust_decay import reinforce_memory, REINFORCE_BOOST
+        ok = reinforce_memory(memory_id, boost=REINFORCE_BOOST)
+        if not ok:
+            raise HTTPException(status_code=404, detail="Memory not found")
+        return {"ok": True, "memory_id": memory_id, "boost": REINFORCE_BOOST}
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Trust decay module not available")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/scheduler/status")
+def get_scheduler_status() -> Dict[str, Any]:
+    """Return idle scheduler status and configuration."""
+    try:
+        import json as _json
+        from pathlib import Path as _Path
+        config_path = _Path("crt_runtime_config.json")
+        if config_path.exists():
+            with open(config_path) as f:
+                config = _json.load(f)
+            bg = config.get("background_jobs", {})
+            return {
+                "enabled": bg.get("idle_scheduler_enabled", False),
+                "auto_learning_enabled": bg.get("auto_learning_enabled", False),
+                "auto_resolve_contradictions": bg.get("auto_resolve_idle_contradictions", False),
+                "idle_seconds": bg.get("idle_scheduler_idle_seconds", 120),
+                "interval_seconds": bg.get("idle_scheduler_interval_seconds", 10),
+            }
+        return {"enabled": False, "note": "Config file not found"}
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching scheduler status: %s", e)
+        return {"enabled": False, "error": str(e)}
+
+
+@router.post("/scheduler/tick")
+def force_scheduler_tick() -> Dict[str, Any]:
+    """Force a single scheduler tick (admin/debug)."""
+    try:
+        # The scheduler is wired into the background worker, so we run
+        # the relevant pieces directly
+        results: Dict[str, Any] = {"triggered": []}
+
+        # Trust decay
+        try:
+            from personal_agent.trust_decay import run_trust_decay_pass
+            import personal_agent.trust_decay as td
+            td._last_decay_ts = 0.0  # Force run
+            decay_result = run_trust_decay_pass()
+            results["trust_decay"] = decay_result
+            results["triggered"].append("trust_decay")
+        except ImportError:
+            results["trust_decay"] = "not_available"
+
+        return results
+    except Exception as e:
+        logger.warning("[COPILOT] Error in scheduler tick: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===========================================================================
+# Reflection & Training Data endpoints
+# ===========================================================================
+
+@router.get("/reflections/{thread_id}")
+def get_reflections(
+    thread_id: str,
+    limit: int = Query(50, ge=1, le=200),
+) -> List[Dict[str, Any]]:
+    """Return reflection traces for a thread."""
+    try:
+        from personal_agent.reflection_system import ReflectionDB
+        db = ReflectionDB("data/reflection_traces.db")
+        return db.get_thread_reflections(thread_id, limit=limit)
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching reflections: %s", e)
+        return []
+
+
+@router.get("/training-data/stats")
+def get_training_data_stats() -> Dict[str, Any]:
+    """Return training data collection statistics."""
+    try:
+        from personal_agent.reflection_system import TrainingDataCollector
+        collector = TrainingDataCollector()
+        return collector.get_stats()
+    except ImportError:
+        return {"total_reflections": 0, "total_requeries": 0, "total_preferences": 0}
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching training stats: %s", e)
+        return {"total_reflections": 0, "total_requeries": 0, "total_preferences": 0}
+
+
+@router.get("/training-data/export")
+def export_training_data(
+    format: str = Query("jsonl", description="Export format: jsonl or json"),
+) -> Dict[str, Any]:
+    """Export collected training data for fine-tuning."""
+    try:
+        from personal_agent.reflection_system import TrainingDataCollector
+        collector = TrainingDataCollector()
+        data = collector.export_for_training(format=format)
+        return {"format": format, "data": data}
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Reflection system not available")
+    except Exception as e:
+        logger.warning("[COPILOT] Error exporting training data: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
