@@ -22,6 +22,21 @@ try:
 except ImportError:
     TRUST_DECAY_AVAILABLE = False
 
+# CRT math for volatility-based priority routing
+_crt_math = None
+
+def _get_crt_math():
+    """Lazy-load CRTMath singleton for idle scheduler."""
+    global _crt_math
+    if _crt_math is not None:
+        return _crt_math
+    try:
+        from personal_agent.crt_core import CRTMath, CRTConfig
+        _crt_math = CRTMath(CRTConfig())
+        return _crt_math
+    except Exception:
+        return None
+
 
 def _safe_int(x: Any, default: int) -> int:
     try:
@@ -120,12 +135,14 @@ class CRTIdleScheduler:
             time.sleep(float(self.interval_seconds))
 
     def tick(self) -> None:
-        """Single scheduler tick."""
+        """Single scheduler tick — CRT volatility-prioritized."""
         if not self.enabled:
             return
 
-        # Scan per-thread DBs.
+        # Scan per-thread DBs and compute priority scores
         pa_dir = (self.repo_root / "personal_agent").resolve()
+        thread_candidates = []
+
         for mem_db in pa_dir.glob("crt_memory_*.db"):
             thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
             led_db = pa_dir / f"crt_ledger_{thread_id}.db"
@@ -147,8 +164,50 @@ class CRTIdleScheduler:
             if (now_ts - last_enq) < float(self.idle_seconds):
                 continue
 
+            # CRT volatility score for priority routing
+            # Threads with more contradictions and longer idle time get higher priority
+            priority_score = 0.0
+            crt = _get_crt_math()
+            if crt is not None:
+                # Use CRT volatility formula:
+                # V = β_drift * (normalized idle) + β_contradiction * (normalized contras)
+                # Normalized idle: 1.0 if idle > 1 hour, scaled below
+                norm_idle = min(1.0, idle_for / 3600.0)
+                norm_contras = min(1.0, open_contras / 10.0)
+                priority_score = crt.compute_volatility(
+                    drift=norm_idle,
+                    memory_alignment=1.0 - norm_contras,  # More contras = less alignment
+                    is_contradiction=open_contras > 0,
+                    is_fallback=False,
+                )
+            else:
+                priority_score = float(open_contras)
+
+            thread_candidates.append({
+                "thread_id": thread_id,
+                "mem_db": mem_db,
+                "led_db": led_db,
+                "open_contras": open_contras,
+                "idle_for": idle_for,
+                "priority_score": priority_score,
+                "now_ts": now_ts,
+            })
+
+        # Sort by volatility/priority — highest first
+        thread_candidates.sort(key=lambda t: t["priority_score"], reverse=True)
+
+        for candidate in thread_candidates:
+            thread_id = candidate["thread_id"]
+            now_ts = candidate["now_ts"]
+
             if self.auto_resolve_contradictions_enabled:
-                # Enqueue a conservative auto-resolve attempt.
+                # Determine job priority from CRT volatility
+                crt = _get_crt_math()
+                needs_reflection = False
+                if crt is not None:
+                    needs_reflection = crt.should_reflect(candidate["priority_score"])
+
+                # High-volatility threads get reflection jobs in addition to resolution
                 jid = f"job_auto_resolve_{thread_id}_{int(now_ts)}"
                 enqueue_job(
                     db_path=self.jobs_db_path,
@@ -157,16 +216,17 @@ class CRTIdleScheduler:
                     created_at=now_iso_utc(),
                     payload={
                         "thread_id": thread_id,
-                        "memory_db": str(mem_db),
-                        "ledger_db": str(led_db),
+                        "memory_db": str(candidate["mem_db"]),
+                        "ledger_db": str(candidate["led_db"]),
                         "max_to_resolve": 10,
+                        "volatility": candidate["priority_score"],
+                        "needs_reflection": needs_reflection,
                     },
-                    priority=0,
+                    priority=1 if needs_reflection else 0,
                 )
                 self._last_enqueued_by_thread[thread_id] = now_ts
 
             # auto_web_research_enabled is intentionally a no-op for now.
-            # We need a user-approved trigger (e.g., explicit queued research tasks) to avoid surprise.
         
         # Active learning: retrain during idle time if needed
         if self.auto_learning_enabled and ACTIVE_LEARNING_AVAILABLE:

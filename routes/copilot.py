@@ -346,7 +346,7 @@ def delete_copilot_memory(memory_id: str) -> Dict[str, Any]:
 
 @router.post("/correct")
 def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
-    """Correct an existing memory — keeps the old trust, updates text, logs correction."""
+    """Correct an existing memory — CRT drift-aware trust evolution + fact classification."""
     conn = _open_readwrite()
     try:
         row = conn.execute("SELECT * FROM memories WHERE id = ?", (req.memory_id,)).fetchone()
@@ -364,14 +364,54 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
         # Forward to active learning (non-blocking)
         _notify_active_learning_correction(req.memory_id, old_text, req.corrected_text)
 
-        # Boost trust — user actively validated this memory
+        # CRT drift-aware trust boost + fact classification
+        change_type = "unknown"
+        crt_used = False
         try:
-            from personal_agent.trust_decay import reinforce_memory, CORRECTION_BOOST
-            reinforce_memory(req.memory_id, boost=CORRECTION_BOOST)
-        except Exception:
-            pass
+            from personal_agent.crt_core import CRTMath, CRTConfig, MemorySource, encode_vector
+            crt = CRTMath(CRTConfig())
 
-        return {"ok": True, "memory_id": req.memory_id, "old_text": old_text, "new_text": req.corrected_text}
+            # Classify the type of change
+            change_type = crt.classify_fact_change(
+                slot=row.get("slot", "") or "",
+                value_new=req.corrected_text,
+                value_prior=old_text,
+                text_new=req.corrected_text,
+                text_prior=old_text,
+            )
+
+            # Check if this memory is safe to train on after correction
+            current_trust = float(row.get("trust", 0.7))
+            trainable, train_reason = crt.can_train_on_memory(
+                trust=current_trust,
+                has_open_contradiction=False,
+                source=MemorySource.USER,
+            )
+
+            # Drift-aware reinforcement
+            from personal_agent.trust_decay import reinforce_memory
+            reinforce_memory(
+                req.memory_id,
+                context_text=req.corrected_text,
+                is_correction=True,
+            )
+            crt_used = True
+        except Exception:
+            # Flat fallback
+            try:
+                from personal_agent.trust_decay import reinforce_memory, CORRECTION_BOOST
+                reinforce_memory(req.memory_id, boost=CORRECTION_BOOST)
+            except Exception:
+                pass
+
+        return {
+            "ok": True,
+            "memory_id": req.memory_id,
+            "old_text": old_text,
+            "new_text": req.corrected_text,
+            "change_type": change_type,
+            "crt_drift_aware": crt_used,
+        }
     finally:
         conn.close()
 
