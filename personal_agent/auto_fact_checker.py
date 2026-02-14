@@ -262,10 +262,9 @@ def _run_verification(
         if isinstance(m, dict) and m.get("text"):
             gc_memories.append(
                 Memory(
+                    id=m.get("memory_id", m.get("id", "")),
                     text=m["text"],
                     trust=float(m.get("trust", 0.7)),
-                    source=m.get("source", "user"),
-                    memory_id=m.get("memory_id", ""),
                     timestamp=m.get("timestamp"),
                 )
             )

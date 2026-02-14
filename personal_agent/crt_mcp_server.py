@@ -155,10 +155,9 @@ def crt_fact_check_response(
 
         memories = [
             Memory(
+                id=r["id"],
                 text=r["text"],
                 trust=r["trust"],
-                source=r["source"] or "user",
-                memory_id=r["id"],
                 timestamp=r["timestamp"],
             )
             for r in rows
@@ -193,7 +192,7 @@ def crt_fact_check_response(
                 from personal_agent.auto_fact_checker import schedule_fact_check
 
                 mem_dicts = [
-                    {"text": m.text, "trust": m.trust, "source": m.source, "memory_id": m.memory_id}
+                    {"text": m.text, "trust": m.trust, "source": "user", "id": m.id}
                     for m in memories
                 ]
                 schedule_fact_check(thread_id, query, response, mem_dicts)
