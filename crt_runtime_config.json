@@ -4,10 +4,11 @@
     "jobs_db_path": "artifacts/crt_jobs.db",
     "artifacts_dir": "artifacts",
     "worker_interval_seconds": 2,
-    "idle_scheduler_enabled": false,
+    "idle_scheduler_enabled": true,
     "idle_seconds": 120,
     "auto_resolve_contradictions_enabled": true,
-    "auto_web_research_enabled": false
+    "auto_web_research_enabled": false,
+    "auto_learning_enabled": true
   },
   "learned_suggestions": {
     "enabled": true,

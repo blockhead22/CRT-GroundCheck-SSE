@@ -641,8 +641,33 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         except Exception:
             mode_arg = None
 
+    # ====== Auto Fact-Check: surface pending corrections from last round ======
+    fact_check_preamble = ""
+    try:
+        from personal_agent.auto_fact_checker import get_pending_fact_checks, resolve_fact_check
+        pending = get_pending_fact_checks(thread_id=req.thread_id, limit=3)
+        if pending:
+            issues = []
+            for p in pending:
+                issues.append(f"- [{p['issue_type']}] {p['claim']}")
+                resolve_fact_check(p["id"], resolution="surfaced")
+            fact_check_preamble = (
+                "\n\n[SYSTEM NOTE — self-correction from previous response: "
+                "The following issues were detected in a prior answer. "
+                "If relevant to this question, acknowledge and correct them. "
+                "If not relevant, ignore silently.]\n"
+                + "\n".join(issues)
+                + "\n"
+            )
+    except Exception as e:
+        logger.debug(f"[AUTO_FC] Error surfacing pending checks: {e}")
+
+    query_with_context = req.message
+    if fact_check_preamble:
+        query_with_context = req.message + fact_check_preamble
+
     result = engine.query(
-        user_query=req.message,
+        user_query=query_with_context,
         user_marked_important=req.user_marked_important,
         mode=mode_arg,
         thread_id=req.thread_id,
@@ -755,6 +780,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     ]
 
     reintro_count = sum(1 for m in retrieved_mems if m.get("reintroduced_claim") is True)
+
+    # ====== Trust reinforcement: boost trust for memories actually used ======
+    try:
+        from personal_agent.trust_decay import reinforce_memory
+        for mem in retrieved_mems:
+            mid = mem.get("memory_id")
+            if mid:
+                reinforce_memory(mid)
+    except Exception as e:
+        logger.debug(f"[TRUST_DECAY] Error reinforcing memories: {e}")
 
     base_answer = str(result.get("answer") or "")
 
@@ -1008,6 +1043,18 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         )
     except Exception as e:
         logger.debug(f"[EPISODIC] Error processing interaction: {e}")
+
+    # ====== Auto Fact-Check: verify response against memories (background) ======
+    try:
+        from personal_agent.auto_fact_checker import schedule_fact_check
+        schedule_fact_check(
+            thread_id=req.thread_id,
+            query=req.message,
+            response=final_answer,
+            memories=retrieved_mems if retrieved_mems else [],
+        )
+    except Exception as e:
+        logger.debug(f"[AUTO_FC] Error scheduling fact check: {e}")
 
     return ChatSendResponse(
         answer=final_answer,

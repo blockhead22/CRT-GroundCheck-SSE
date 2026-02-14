@@ -20,6 +20,49 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Active Learning bridge (lazy import to avoid circular deps)
+# ---------------------------------------------------------------------------
+
+def _notify_active_learning_correction(
+    memory_id: str, old_text: str, new_text: str
+) -> None:
+    """Forward a memory correction to the ActiveLearningCoordinator."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        coordinator.record_conflict_resolution(
+            thread_id="copilot",
+            old_fact=old_text,
+            new_fact=new_text,
+            user_action="corrected",
+            ledger_id=memory_id,
+            context="copilot_ui_correction",
+            auto_resolved=False,
+        )
+        logger.info("[COPILOT] Forwarded correction to active learning: %s", memory_id)
+    except Exception as e:
+        logger.warning("[COPILOT] Could not notify active learning of correction: %s", e)
+
+
+def _notify_active_learning_deletion(memory_id: str, deleted_text: str) -> None:
+    """Forward a memory deletion to the ActiveLearningCoordinator."""
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        coordinator = get_active_learning_coordinator()
+        coordinator.record_conflict_resolution(
+            thread_id="copilot",
+            old_fact=deleted_text,
+            new_fact="",
+            user_action="deleted",
+            ledger_id=memory_id,
+            context="copilot_ui_deletion",
+            auto_resolved=False,
+        )
+        logger.info("[COPILOT] Forwarded deletion to active learning: %s", memory_id)
+    except Exception as e:
+        logger.warning("[COPILOT] Could not notify active learning of deletion: %s", e)
+
 router = APIRouter(prefix="/api/copilot", tags=["copilot"])
 
 # ---------------------------------------------------------------------------
@@ -282,12 +325,20 @@ def delete_copilot_memory(memory_id: str) -> Dict[str, Any]:
     """Delete a specific memory by ID."""
     conn = _open_readwrite()
     try:
+        # Fetch text before deletion for active learning
+        row = conn.execute("SELECT text FROM memories WHERE id = ?", (memory_id,)).fetchone()
+        deleted_text = row["text"] if row else ""
+
         # Track deletion for accuracy stats
         _track_event(conn, "deletion", memory_id)
         cur = conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
         conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Memory not found")
+
+        # Forward to active learning (non-blocking)
+        _notify_active_learning_deletion(memory_id, deleted_text)
+
         return {"ok": True, "deleted": memory_id}
     finally:
         conn.close()
@@ -309,6 +360,10 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
         )
         _track_event(conn, "correction", req.memory_id, old_text=old_text, new_text=req.corrected_text)
         conn.commit()
+
+        # Forward to active learning (non-blocking)
+        _notify_active_learning_correction(req.memory_id, old_text, req.corrected_text)
+
         return {"ok": True, "memory_id": req.memory_id, "old_text": old_text, "new_text": req.corrected_text}
     finally:
         conn.close()
@@ -451,6 +506,44 @@ def get_accuracy_stats() -> AccuracyStats:
         )
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Pending fact-checks endpoint
+# ---------------------------------------------------------------------------
+
+@router.get("/fact-checks")
+def get_fact_checks(
+    thread_id: Optional[str] = Query(None),
+    limit: int = Query(10, ge=1, le=50),
+) -> List[Dict[str, Any]]:
+    """Return pending fact-check findings from auto verification."""
+    try:
+        from personal_agent.auto_fact_checker import get_pending_fact_checks
+        return get_pending_fact_checks(thread_id=thread_id, limit=limit)
+    except ImportError:
+        return []
+    except Exception as e:
+        logger.warning("[COPILOT] Error fetching fact checks: %s", e)
+        return []
+
+
+@router.post("/fact-checks/{check_id}/resolve")
+def resolve_fact_check_endpoint(check_id: str) -> Dict[str, Any]:
+    """Mark a pending fact-check as resolved."""
+    try:
+        from personal_agent.auto_fact_checker import resolve_fact_check
+        ok = resolve_fact_check(check_id, resolution="user_resolved")
+        if not ok:
+            raise HTTPException(status_code=404, detail="Fact check not found")
+        return {"ok": True, "resolved": check_id}
+    except ImportError:
+        raise HTTPException(status_code=501, detail="Auto fact-checker not available")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("[COPILOT] Error resolving fact check: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ---------------------------------------------------------------------------

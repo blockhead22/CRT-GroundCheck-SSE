@@ -16,6 +16,12 @@ try:
 except ImportError:
     ACTIVE_LEARNING_AVAILABLE = False
 
+try:
+    from personal_agent.trust_decay import run_trust_decay_pass
+    TRUST_DECAY_AVAILABLE = True
+except ImportError:
+    TRUST_DECAY_AVAILABLE = False
+
 
 def _safe_int(x: Any, default: int) -> int:
     try:
@@ -176,5 +182,12 @@ class CRTIdleScheduler:
                     coordinator._trigger_training()
                 elif stats.pending_training and stats.model_accuracy and stats.model_accuracy < 0.80:
                     coordinator._trigger_training()
+            except Exception:
+                pass  # Graceful degradation
+
+        # Trust decay: gently age stale memories, reinforce active ones
+        if TRUST_DECAY_AVAILABLE:
+            try:
+                run_trust_decay_pass()
             except Exception:
                 pass  # Graceful degradation

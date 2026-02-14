@@ -36,7 +36,8 @@
         "idle_scheduler_enabled": { "type": "boolean" },
         "idle_seconds": { "type": "integer", "minimum": 5 },
         "auto_resolve_contradictions_enabled": { "type": "boolean" },
-        "auto_web_research_enabled": { "type": "boolean" }
+        "auto_web_research_enabled": { "type": "boolean" },
+        "auto_learning_enabled": { "type": "boolean" }
       }
     },
     "greeting": {
