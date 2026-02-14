@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import type { ChatThread, NavId, QuickAction } from './types'
 import { Sidebar } from './components/Sidebar'
@@ -19,6 +20,7 @@ import { JobsPage } from './pages/JobsPage'
 import { LoopsPage } from './pages/LoopsPage'
 import { JournalPage } from './pages/JournalPage'
 import { ShowcasePage } from './pages/ShowcasePage'
+import { CopilotPage } from './pages/CopilotPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, type AuthUser } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
@@ -30,7 +32,24 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [showLogin, setShowLogin] = useState(false)
   
-  const [navActive, setNavActive] = useState<NavId>('chat')
+  // URL-synced navigation
+  const navigate = useNavigate()
+  const location = useLocation()
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot']
+  const navFromUrl = (): NavId => {
+    const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
+    return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
+  }
+  const [navActive, setNavActiveRaw] = useState<NavId>(navFromUrl)
+  const setNavActive = useCallback((id: NavId) => {
+    setNavActiveRaw(id)
+    navigate(id === 'chat' ? '/' : `/${id}`)
+  }, [navigate])
+  // Sync on browser back/forward
+  useEffect(() => {
+    setNavActiveRaw(navFromUrl())
+  }, [location.pathname])
+
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [threads, setThreads] = useState<ChatThread[]>(() => {
@@ -758,6 +777,8 @@ export default function App() {
                   <JournalPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'showcase' ? (
                   <ShowcasePage />
+                ) : navActive === 'copilot' ? (
+                  <CopilotPage />
                 ) : (
                   <DocsPage />
                 )}

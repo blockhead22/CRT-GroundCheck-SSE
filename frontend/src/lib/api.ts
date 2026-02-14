@@ -1240,3 +1240,145 @@ export async function authLoadChats(): Promise<Array<{ id: string; title: string
     return []
   }
 }
+
+// ---------------------------------------------------------------------------
+// Copilot Interactions (GroundCheck MCP Memory)
+// ---------------------------------------------------------------------------
+
+export type CopilotMemory = {
+  id: string
+  thread_id: string
+  text: string
+  trust: number
+  source: string
+  namespace: string
+  timestamp: number
+  created_at: string | null
+}
+
+export type CopilotStats = {
+  total_memories: number
+  namespaces: string[]
+  source_counts: Record<string, number>
+  trust_distribution: Record<string, number>
+  auto_learned_count: number
+  explicit_count: number
+  newest_timestamp: number | null
+  oldest_timestamp: number | null
+}
+
+export type CopilotMemoriesResponse = {
+  memories: CopilotMemory[]
+  total: number
+  stats: CopilotStats
+}
+
+export async function getCopilotMemories(args?: {
+  namespace?: string
+  source?: string
+  search?: string
+  min_trust?: number
+  limit?: number
+  offset?: number
+  sort?: 'newest' | 'oldest' | 'trust_high' | 'trust_low'
+}): Promise<CopilotMemoriesResponse> {
+  const base = getApiBaseUrlInternal()
+  const params = new URLSearchParams()
+  if (args?.namespace) params.set('namespace', args.namespace)
+  if (args?.source) params.set('source', args.source)
+  if (args?.search) params.set('search', args.search)
+  if (args?.min_trust !== undefined) params.set('min_trust', String(args.min_trust))
+  if (args?.limit !== undefined) params.set('limit', String(args.limit))
+  if (args?.offset !== undefined) params.set('offset', String(args.offset))
+  if (args?.sort) params.set('sort', args.sort)
+  const qs = params.toString()
+  const url = `${base}/api/copilot/memories${qs ? '?' + qs : ''}`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to fetch copilot memories: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotStats(): Promise<CopilotStats> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/stats`)
+  if (!res.ok) throw new Error(`Failed to fetch copilot stats: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotNamespaces(): Promise<string[]> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/namespaces`)
+  if (!res.ok) throw new Error(`Failed to fetch copilot namespaces: ${res.status}`)
+  return res.json()
+}
+
+export type CopilotProfile = {
+  name: string | null
+  role: string | null
+  employer: string | null
+  languages: string[]
+  preferences: Record<string, string>
+  all_facts: string[]
+}
+
+export type AccuracyStats = {
+  total_memories: number
+  corrections_made: number
+  deletions_made: number
+  auto_learned: number
+  explicit: number
+  accuracy_rate: number
+  trust_avg: number
+  memories_per_day: number
+  learning_velocity: Array<{
+    timestamp: number
+    count: number
+    auto_learned: number
+    label: string
+  }>
+}
+
+export async function teachCopilot(text: string, namespace?: string): Promise<{ ok: boolean; memory_id: string; text: string; trust: number }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/teach`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, namespace: namespace || 'default', source: 'user' }),
+  })
+  if (!res.ok) throw new Error(`Failed to teach: ${res.status}`)
+  return res.json()
+}
+
+export async function deleteCopilotMemory(memoryId: string): Promise<{ ok: boolean }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/memory/${encodeURIComponent(memoryId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(`Failed to delete: ${res.status}`)
+  return res.json()
+}
+
+export async function correctCopilotMemory(memoryId: string, correctedText: string): Promise<{ ok: boolean; old_text: string; new_text: string }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/correct`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ memory_id: memoryId, corrected_text: correctedText }),
+  })
+  if (!res.ok) throw new Error(`Failed to correct: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotProfile(): Promise<CopilotProfile> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/profile`)
+  if (!res.ok) throw new Error(`Failed to fetch profile: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotAccuracy(): Promise<AccuracyStats> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/accuracy`)
+  if (!res.ok) throw new Error(`Failed to fetch accuracy: ${res.status}`)
+  return res.json()
+}
