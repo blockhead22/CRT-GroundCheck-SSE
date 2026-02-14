@@ -373,7 +373,7 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
 
             # Classify the type of change
             change_type = crt.classify_fact_change(
-                slot=row.get("slot", "") or "",
+                slot="",
                 value_new=req.corrected_text,
                 value_prior=old_text,
                 text_new=req.corrected_text,
@@ -381,7 +381,7 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
             )
 
             # Check if this memory is safe to train on after correction
-            current_trust = float(row.get("trust", 0.7))
+            current_trust = float(row["trust"] if row["trust"] is not None else 0.7)
             trainable, train_reason = crt.can_train_on_memory(
                 trust=current_trust,
                 has_open_contradiction=False,
@@ -396,7 +396,9 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
                 is_correction=True,
             )
             crt_used = True
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).warning("[COPILOT] CRT correction failed: %s", exc, exc_info=True)
             # Flat fallback
             try:
                 from personal_agent.trust_decay import reinforce_memory, CORRECTION_BOOST
