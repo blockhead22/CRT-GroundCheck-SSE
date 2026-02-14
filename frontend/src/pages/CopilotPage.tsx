@@ -271,186 +271,327 @@ function TeachForm({ onTaught }: { onTaught: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Memory Graph
+// Memory Graph (stable, no-flicker, HiDPI)
 // ---------------------------------------------------------------------------
 
+type GraphNode = {
+  x: number; y: number; vx: number; vy: number
+  memory: CopilotMemory; cat: string; radius: number
+  targetX: number; targetY: number
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '')
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+}
+
 function MemoryGraph({ memories }: { memories: CopilotMemory[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hovered, setHovered] = useState<CopilotMemory | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-  const nodesRef = useRef<Array<{
-    x: number; y: number; vx: number; vy: number;
-    memory: CopilotMemory; cat: string; radius: number
-  }>>([])
+  const nodesRef = useRef<GraphNode[]>([])
+  const animIdRef = useRef<number>(0)
+  const settledRef = useRef(false)
+  const frameCountRef = useRef(0)
+  const sizeRef = useRef({ w: 800, h: 500 })
+  const hoveredIdRef = useRef<string | null>(null)
 
+  // Sync nodes with memories without resetting positions
   useEffect(() => {
-    if (!memories.length) return
+    if (!memories.length) { nodesRef.current = []; return }
+
+    const existing = new Map(nodesRef.current.map(n => [n.memory.id, n]))
+    const w = sizeRef.current.w
+    const h = sizeRef.current.h
     const cats = [...new Set(memories.map(m => categorize(m.text)))]
     const catAngles: Record<string, number> = {}
-    cats.forEach((c, i) => { catAngles[c] = (i / cats.length) * Math.PI * 2 })
+    cats.forEach((c, i) => { catAngles[c] = (i / cats.length) * Math.PI * 2 - Math.PI / 2 })
 
-    nodesRef.current = memories.map(m => {
+    const newNodes: GraphNode[] = memories.map(m => {
       const cat = categorize(m.text)
-      const angle = catAngles[cat] + (Math.random() - 0.5) * 0.8
-      const dist = 80 + Math.random() * 100
-      return {
-        x: 250 + Math.cos(angle) * dist,
-        y: 200 + Math.sin(angle) * dist,
-        vx: 0, vy: 0,
-        memory: m,
-        cat,
-        radius: 6 + m.trust * 10,
+      const prev = existing.get(m.id)
+      if (prev) {
+        // Keep position, update data
+        prev.memory = m
+        prev.cat = cat
+        prev.radius = 8 + m.trust * 14
+        return prev
       }
+      // New node — place near its category cluster
+      const angle = catAngles[cat] + (Math.random() - 0.5) * 0.6
+      const dist = 100 + Math.random() * 120
+      const x = w / 2 + Math.cos(angle) * dist
+      const y = h / 2 + Math.sin(angle) * dist
+      return { x, y, vx: 0, vy: 0, memory: m, cat, radius: 8 + m.trust * 14, targetX: x, targetY: y }
     })
+
+    nodesRef.current = newNodes
+    settledRef.current = false
+    frameCountRef.current = 0
   }, [memories])
 
+  // Canvas sizing with HiDPI
+  useEffect(() => {
+    const container = containerRef.current
+    const canvas = canvasRef.current
+    if (!container || !canvas) return
+
+    const resize = () => {
+      const rect = container.getBoundingClientRect()
+      const dpr = window.devicePixelRatio || 1
+      const w = Math.round(rect.width)
+      const h = 500
+      sizeRef.current = { w, h }
+      canvas.width = w * dpr
+      canvas.height = h * dpr
+      canvas.style.width = `${w}px`
+      canvas.style.height = `${h}px`
+      const ctx = canvas.getContext('2d')
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      settledRef.current = false
+      frameCountRef.current = 0
+    }
+
+    resize()
+    const obs = new ResizeObserver(resize)
+    obs.observe(container)
+    return () => obs.disconnect()
+  }, [])
+
+  // Animation loop — runs once, reads nodesRef
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    let animId: number
     const draw = () => {
-      const w = canvas.width
-      const h = canvas.height
+      const { w, h } = sizeRef.current
       ctx.clearRect(0, 0, w, h)
 
       const nodes = nodesRef.current
-      if (!nodes.length) { animId = requestAnimationFrame(draw); return }
+      if (!nodes.length) { animIdRef.current = requestAnimationFrame(draw); return }
 
-      for (let i = 0; i < nodes.length; i++) {
-        const a = nodes[i]
-        a.vx += (w / 2 - a.x) * 0.001
-        a.vy += (h / 2 - a.y) * 0.001
-        const catNodes = nodes.filter(n => n.cat === a.cat)
-        const cx = catNodes.reduce((s, n) => s + n.x, 0) / catNodes.length
-        const cy = catNodes.reduce((s, n) => s + n.y, 0) / catNodes.length
-        a.vx += (cx - a.x) * 0.003
-        a.vy += (cy - a.y) * 0.003
+      frameCountRef.current++
 
-        for (let j = i + 1; j < nodes.length; j++) {
-          const b = nodes[j]
-          const dx = b.x - a.x
-          const dy = b.y - a.y
-          const dist = Math.sqrt(dx * dx + dy * dy) || 1
-          if (dist < 60) {
-            const force = (60 - dist) * 0.02
-            const fx = (dx / dist) * force
-            const fy = (dy / dist) * force
-            a.vx -= fx; a.vy -= fy
-            b.vx += fx; b.vy += fy
-          }
+      // --- Physics (skip after settled) ---
+      if (!settledRef.current) {
+        // Pre-compute category centroids
+        const catCentroids: Record<string, { sx: number; sy: number; count: number }> = {}
+        for (const n of nodes) {
+          if (!catCentroids[n.cat]) catCentroids[n.cat] = { sx: 0, sy: 0, count: 0 }
+          catCentroids[n.cat].sx += n.x
+          catCentroids[n.cat].sy += n.y
+          catCentroids[n.cat].count++
         }
-      }
 
-      for (const n of nodes) {
-        n.vx *= 0.92; n.vy *= 0.92
-        n.x += n.vx; n.y += n.vy
-        n.x = Math.max(n.radius, Math.min(w - n.radius, n.x))
-        n.y = Math.max(n.radius, Math.min(h - n.radius, n.y))
-      }
+        let totalMotion = 0
+        for (let i = 0; i < nodes.length; i++) {
+          const a = nodes[i]
+          // Center gravity (weak)
+          a.vx += (w / 2 - a.x) * 0.0008
+          a.vy += (h / 2 - a.y) * 0.0008
 
-      ctx.globalAlpha = 0.08
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          if (nodes[i].cat === nodes[j].cat) {
-            const dist = Math.sqrt(
-              (nodes[i].x - nodes[j].x) ** 2 + (nodes[i].y - nodes[j].y) ** 2
-            )
-            if (dist < 150) {
-              ctx.beginPath()
-              ctx.strokeStyle = CATEGORY_COLORS[nodes[i].cat] || '#888'
-              ctx.lineWidth = 1
-              ctx.moveTo(nodes[i].x, nodes[i].y)
-              ctx.lineTo(nodes[j].x, nodes[j].y)
-              ctx.stroke()
+          // Category clustering
+          const cc = catCentroids[a.cat]
+          const cx = cc.sx / cc.count
+          const cy = cc.sy / cc.count
+          a.vx += (cx - a.x) * 0.004
+          a.vy += (cy - a.y) * 0.004
+
+          // Repulsion
+          for (let j = i + 1; j < nodes.length; j++) {
+            const b = nodes[j]
+            const dx = b.x - a.x
+            const dy = b.y - a.y
+            const distSq = dx * dx + dy * dy
+            const minDist = a.radius + b.radius + 20
+            if (distSq < minDist * minDist) {
+              const dist = Math.sqrt(distSq) || 1
+              const force = (minDist - dist) * 0.025
+              const fx = (dx / dist) * force
+              const fy = (dy / dist) * force
+              a.vx -= fx; a.vy -= fy
+              b.vx += fx; b.vy += fy
             }
           }
         }
+
+        for (const n of nodes) {
+          n.vx *= 0.88
+          n.vy *= 0.88
+          n.x += n.vx
+          n.y += n.vy
+          // Padding from edges
+          const pad = n.radius + 30
+          n.x = Math.max(pad, Math.min(w - pad, n.x))
+          n.y = Math.max(pad + 20, Math.min(h - pad - 30, n.y))
+          totalMotion += Math.abs(n.vx) + Math.abs(n.vy)
+        }
+
+        // Settle after enough frames and low motion
+        if (frameCountRef.current > 200 && totalMotion < 0.5) {
+          settledRef.current = true
+        }
       }
 
-      ctx.globalAlpha = 1
+      // --- Draw edges (same-category, within distance) ---
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          if (nodes[i].cat !== nodes[j].cat) continue
+          const dx = nodes[i].x - nodes[j].x
+          const dy = nodes[i].y - nodes[j].y
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist > 180) continue
+          const alpha = Math.max(0.03, 0.15 * (1 - dist / 180))
+          const [r, g, b] = hexToRgb(CATEGORY_COLORS[nodes[i].cat] || '#888888')
+          ctx.beginPath()
+          ctx.strokeStyle = `rgba(${r},${g},${b},${alpha})`
+          ctx.lineWidth = 1
+          ctx.moveTo(nodes[i].x, nodes[i].y)
+          ctx.lineTo(nodes[j].x, nodes[j].y)
+          ctx.stroke()
+        }
+      }
+
+      // --- Draw nodes ---
+      const hid = hoveredIdRef.current
       for (const n of nodes) {
-        const color = CATEGORY_COLORS[n.cat] || '#888'
+        const color = CATEGORY_COLORS[n.cat] || '#888888'
+        const [r, g, b] = hexToRgb(color)
+        const isHov = n.memory.id === hid
+
+        // Outer glow
+        const glowR = n.radius + (isHov ? 12 : 6)
+        const glow = ctx.createRadialGradient(n.x, n.y, n.radius * 0.5, n.x, n.y, glowR)
+        glow.addColorStop(0, `rgba(${r},${g},${b},${isHov ? 0.25 : 0.12})`)
+        glow.addColorStop(1, `rgba(${r},${g},${b},0)`)
         ctx.beginPath()
-        ctx.arc(n.x, n.y, n.radius + 4, 0, Math.PI * 2)
-        ctx.fillStyle = color + '15'
+        ctx.arc(n.x, n.y, glowR, 0, Math.PI * 2)
+        ctx.fillStyle = glow
         ctx.fill()
+
+        // Main circle
+        const grad = ctx.createRadialGradient(
+          n.x - n.radius * 0.3, n.y - n.radius * 0.3, n.radius * 0.1,
+          n.x, n.y, n.radius
+        )
+        grad.addColorStop(0, `rgba(${r},${g},${b},${isHov ? 0.9 : 0.6})`)
+        grad.addColorStop(1, `rgba(${r},${g},${b},${isHov ? 0.7 : 0.35})`)
         ctx.beginPath()
         ctx.arc(n.x, n.y, n.radius, 0, Math.PI * 2)
-        ctx.fillStyle = color + '60'
+        ctx.fillStyle = grad
         ctx.fill()
-        ctx.strokeStyle = color
-        ctx.lineWidth = 1.5
+
+        // Border ring
+        ctx.strokeStyle = `rgba(${r},${g},${b},${isHov ? 1 : 0.7})`
+        ctx.lineWidth = isHov ? 2.5 : 1.5
         ctx.stroke()
+
+        // Trust indicator dot (small bright dot at center)
+        const trustR = Math.max(2, n.radius * 0.25)
+        ctx.beginPath()
+        ctx.arc(n.x, n.y, trustR, 0, Math.PI * 2)
+        ctx.fillStyle = n.memory.trust >= 0.7 ? 'rgba(52,211,153,0.8)' :
+                         n.memory.trust >= 0.4 ? 'rgba(251,191,36,0.8)' :
+                                                  'rgba(248,113,113,0.8)'
+        ctx.fill()
       }
 
+      // --- Category labels ---
       const uniqueCats = [...new Set(nodes.map(n => n.cat))]
       for (const cat of uniqueCats) {
         const catNodes = nodes.filter(n => n.cat === cat)
         const lx = catNodes.reduce((s, n) => s + n.x, 0) / catNodes.length
-        const ly = catNodes.reduce((s, n) => s + n.y, 0) / catNodes.length
-        ctx.font = '10px sans-serif'
-        ctx.fillStyle = CATEGORY_COLORS[cat] || '#888'
-        ctx.globalAlpha = 0.6
+        const ly = Math.min(...catNodes.map(n => n.y - n.radius)) - 14
+        const icon = CATEGORY_ICONS[cat] || ''
+        const label = `${icon}  ${cat}`
+        const color = CATEGORY_COLORS[cat] || '#888'
+
+        ctx.font = '600 11px Inter, system-ui, sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText(`${CATEGORY_ICONS[cat] || ''} ${cat}`, lx, ly - 25)
+        const tm = ctx.measureText(label)
+        const pw = tm.width + 12
+        const ph = 18
+
+        // Label pill background
+        const [r, g, b] = hexToRgb(color)
+        ctx.fillStyle = `rgba(${r},${g},${b},0.12)`
+        ctx.beginPath()
+        const rx = lx - pw / 2, ry = ly - ph / 2
+        ctx.roundRect(rx, ry, pw, ph, 4)
+        ctx.fill()
+
+        ctx.fillStyle = color
+        ctx.globalAlpha = 0.85
+        ctx.fillText(label, lx, ly + 4)
         ctx.globalAlpha = 1
       }
 
-      animId = requestAnimationFrame(draw)
+      animIdRef.current = requestAnimationFrame(draw)
     }
 
-    draw()
-    return () => cancelAnimationFrame(animId)
-  }, [memories])
+    animIdRef.current = requestAnimationFrame(draw)
+    return () => cancelAnimationFrame(animIdRef.current)
+  }, []) // empty deps — runs once, reads refs
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = canvasRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const mx = e.clientX - rect.left
-    const my = e.clientY - rect.top
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const scaleX = sizeRef.current.w / rect.width
+    const scaleY = sizeRef.current.h / rect.height
+    const mx = (e.clientX - rect.left) * scaleX
+    const my = (e.clientY - rect.top) * scaleY
     setMousePos({ x: e.clientX, y: e.clientY })
+
     const hit = nodesRef.current.find(n => {
-      const d = Math.sqrt((n.x - mx) ** 2 + (n.y - my) ** 2)
-      return d < n.radius + 4
+      const dx = n.x - mx, dy = n.y - my
+      return dx * dx + dy * dy < (n.radius + 6) * (n.radius + 6)
     })
-    setHovered(hit?.memory || null)
+    const mem = hit?.memory || null
+    hoveredIdRef.current = mem?.id || null
+    setHovered(mem)
+    // Wake up physics briefly on hover for highlight redraw
+    if (mem && settledRef.current) {
+      settledRef.current = false
+      frameCountRef.current = 195 // will re-settle quickly
+    }
   }
 
   return (
-    <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-      <div className="absolute top-3 left-4 text-[10px] uppercase tracking-wider text-white/30 z-10">
+    <div ref={containerRef} className="relative rounded-2xl border border-white/10 bg-[#0d0d1a] overflow-hidden">
+      <div className="absolute top-3 left-4 text-[10px] uppercase tracking-wider text-white/30 z-10 font-medium">
         Memory Graph — {memories.length} facts
       </div>
       <canvas
         ref={canvasRef}
-        width={500}
-        height={400}
-        className="w-full h-[400px]"
+        className="w-full"
+        style={{ height: '500px', cursor: hovered ? 'pointer' : 'default' }}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHovered(null)}
-        style={{ cursor: hovered ? 'pointer' : 'default' }}
+        onMouseLeave={() => { setHovered(null); hoveredIdRef.current = null }}
       />
-      <div className="absolute bottom-3 left-4 flex flex-wrap gap-2">
+      <div className="absolute bottom-3 left-4 flex flex-wrap gap-3">
         {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
-          <span key={cat} className="flex items-center gap-1 text-[9px] text-white/40">
-            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+          <span key={cat} className="flex items-center gap-1.5 text-[10px] text-white/50 font-medium">
+            <span className="inline-block h-2.5 w-2.5 rounded-full shadow-sm" style={{ backgroundColor: color, boxShadow: `0 0 6px ${color}40` }} />
             {cat}
           </span>
         ))}
       </div>
       {hovered && (
         <div
-          className="fixed z-50 rounded-lg border border-white/20 bg-[#1a1a2e]/95 backdrop-blur-xl px-3 py-2 shadow-xl max-w-xs pointer-events-none"
-          style={{ left: mousePos.x + 12, top: mousePos.y - 10 }}
+          className="fixed z-50 rounded-xl border border-white/15 bg-[#12122a]/95 backdrop-blur-xl px-4 py-3 shadow-2xl max-w-xs pointer-events-none"
+          style={{ left: mousePos.x + 14, top: mousePos.y - 12 }}
         >
-          <div className="text-xs text-white/80">{hovered.text}</div>
-          <div className="mt-1 flex items-center gap-2 text-[9px]">
-            <span className={trustColor(hovered.trust)}>Trust: {(hovered.trust * 100).toFixed(0)}%</span>
-            <span className="text-white/30">{hovered.source}</span>
-            <span className="text-white/30">{timeAgo(hovered.timestamp)}</span>
+          <div className="text-[13px] text-white/90 leading-relaxed">{hovered.text}</div>
+          <div className="mt-2 flex items-center gap-3 text-[10px]">
+            <span className={`font-semibold ${trustColor(hovered.trust)}`}>
+              Trust {(hovered.trust * 100).toFixed(0)}%
+            </span>
+            <span className="text-white/30">{sourceBadge(hovered.source).label}</span>
+            <span className="text-white/25">{timeAgo(hovered.timestamp)}</span>
           </div>
         </div>
       )}
