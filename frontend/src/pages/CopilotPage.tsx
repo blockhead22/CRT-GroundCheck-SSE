@@ -8,7 +8,6 @@ import {
   deleteCopilotMemory,
   correctCopilotMemory,
   type CopilotMemory,
-  type CopilotStats,
   type CopilotMemoriesResponse,
   type CopilotProfile,
   type AccuracyStats,
