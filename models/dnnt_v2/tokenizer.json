@@ -1,6 +1,6 @@
 {
   "tokenizer_type": "sentencepiece",
-  "vocab_size": 4000,
+  "vocab_size": 8000,
   "model_file": "tokenizer_sentencepiece.model",
   "special_tokens": {
     "<pad>": 0,
