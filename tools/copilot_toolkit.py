@@ -62,6 +62,7 @@ IGNORE_DIRS = {
     "__pycache__", ".git", ".venv", "venv", "node_modules", ".pytest_cache",
     ".mypy_cache", ".tox", "dist", "build", "*.egg-info", ".eggs",
     "htmlcov", ".coverage", ".ruff_cache", "data", "checkpoints",
+    "site-packages", ".idea", "Lib", "Scripts", "Include",
 }
 
 # File extensions we care about
@@ -184,7 +185,7 @@ def cmd_context(args: argparse.Namespace) -> str:
         sections.append("```")
 
     # Config/constants (if config.py exists)
-    config_files = list(root.rglob("config.py"))
+    config_files = [f for f in _walk_files(root, extensions=PY_EXTS) if f.name == "config.py"]
     for cf in config_files[:2]:
         try:
             content = cf.read_text(errors="replace")
@@ -218,8 +219,11 @@ def cmd_context(args: argparse.Namespace) -> str:
         if len(todo_lines) > 20:
             sections.append(f"  ... +{len(todo_lines) - 20} more")
 
-    # Test count
-    test_files = list(root.rglob("test_*.py")) + list(root.rglob("*_test.py"))
+    # Test count (respects IGNORE_DIRS — won't scan .venv/site-packages)
+    test_files = [
+        f for f in _walk_files(root, extensions=PY_EXTS)
+        if f.name.startswith("test_") or f.name.endswith("_test.py")
+    ]
     if test_files:
         sections.append(f"\n## Tests: {len(test_files)} test file(s)")
         for tf in test_files[:10]:
@@ -573,16 +577,18 @@ def cmd_diff(args: argparse.Namespace) -> str:
 
 def cmd_todos(args: argparse.Namespace) -> str:
     """Scan for TODO/FIXME/HACK/XXX across one or more project directories."""
+    # Match both # comments (Python/Shell) and // comments (JS/TS)
     PATTERNS = re.compile(
-        r"#\s*(TODO|FIXME|HACK|XXX|NOTE|OPTIMIZE|REFACTOR)\b[:\s]*(.*)",
+        r"(?:#|//)\s*(TODO|FIXME|HACK|XXX|NOTE|OPTIMIZE|REFACTOR)\b[:\s]*(.*)",
         re.IGNORECASE,
     )
+    SCAN_EXTS = PY_EXTS | {".js", ".ts", ".tsx", ".jsx"}
 
     paths = [Path(p).resolve() for p in args.paths]
     all_todos: Dict[str, List[Tuple[str, int, str, str]]] = defaultdict(list)
 
     for root in paths:
-        py_files = _walk_files(root, extensions=CODE_EXTS, max_files=300)
+        py_files = _walk_files(root, extensions=SCAN_EXTS, max_files=500)
         for fp in py_files:
             try:
                 for i, line in enumerate(fp.read_text(errors="replace").splitlines(), 1):
@@ -598,7 +604,8 @@ def cmd_todos(args: argparse.Namespace) -> str:
     if not any(all_todos.values()):
         return "No TODOs found across scanned directories."
 
-    sections = ["# TODO Scanner Results"]
+    # Header (avoid "TODO" in string to prevent self-matching)
+    sections = ["# " + "TODO" + " Scanner Results"]
 
     # Summary
     total = sum(len(v) for v in all_todos.values())
