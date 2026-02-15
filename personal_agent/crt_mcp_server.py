@@ -172,10 +172,8 @@ def crt_fact_check_response(
         result = {
             "passed": report.passed,
             "confidence": report.confidence,
-            "hallucinated_facts": {
-                k: {"slot": v.slot, "value": v.value}
-                for k, v in (report.hallucinated_facts or {}).items()
-            },
+            "hallucinations": report.hallucinations or [],
+            "corrected": report.corrected,
             "contradictions": [
                 {
                     "slot": c.slot,

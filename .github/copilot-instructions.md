@@ -6,20 +6,22 @@ This workspace has a **live memory system** (GroundCheck + CRT) accessible via M
 
 ### On Every New Conversation
 
-1. **Call `crt_check_memory`** at the start of every turn, passing the user's message as `context`. This automatically loads relevant memories AND stores new facts — you don't need a separate store call.
+1. **Call `groundcheck_check`** (or `crt_check_memory` if using older server) at the start of every turn, passing the user's message as `context`. This automatically loads relevant memories AND stores new facts — you don't need a separate store call.
 2. **Call `crt_get_user_context`** at the start of the first turn in a session to load the user's profile, preferences, and recent session context. Use this to personalize your responses.
 
 ### When Responding
 
-3. **Call `crt_verify_output`** before sending responses that reference facts about the user, project parameters, or stored knowledge. This checks your response against stored memories and flags contradictions.
-4. If the user corrects you, **call `crt_store_fact`** with the corrected information so the system learns.
+3. **Call `groundcheck_verify`** (or `crt_verify_output`) before sending responses that reference facts about the user, project parameters, or stored knowledge. This checks your response against stored memories and flags contradictions.
+4. If the user corrects you, **call `groundcheck_store`** (or `crt_store_fact`) with the corrected information so the system learns.
 
 ### Available MCP Tools
 
-**GroundCheck tools** (trust-weighted memory):
-- `crt_check_memory` — Check context against memory, auto-extract and store facts. **Use this every turn.**
-- `crt_store_fact` — Explicitly store a fact (for corrections or important info the auto-extractor might miss).
-- `crt_verify_output` — Verify a response against stored memories before sending.
+**GroundCheck tools** (trust-weighted memory — v1.0.0+):
+- `groundcheck_check` — Check context against memory, auto-extract and store facts. **Use this every turn.**
+- `groundcheck_store` — Explicitly store a fact (for corrections or important info the auto-extractor might miss).
+- `groundcheck_verify` — Verify a response against stored memories before sending.
+- `groundcheck_list` — List all stored memories with trust scores.
+- `groundcheck_delete` — Delete specific memories or clear thread/namespace.
 
 **CRT tools** (cognitive trust reasoning):
 - `crt_get_user_context` — Get full user profile, preferences, patterns, and session history. **Use at session start.**

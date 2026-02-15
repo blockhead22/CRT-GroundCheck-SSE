@@ -3,11 +3,10 @@
         "groundcheck": {
             "command": "d:\\groundcheck\\.venv\\Scripts\\groundcheck-mcp.exe",
             "args": ["--db", "d:\\groundcheck\\.groundcheck\\memory.db"],
-            "description": "Trust-weighted memory system. ALWAYS call crt_check_memory at the start of every turn to load relevant context and auto-store facts. Call crt_verify_output before responding with factual claims about the user. Call crt_store_fact for explicit corrections."
+            "description": "Trust-weighted memory system. ALWAYS call groundcheck_check at the start of every turn to load relevant context and auto-store facts. Call groundcheck_verify before responding with factual claims about the user. Call groundcheck_store for explicit corrections."
         },
         "crt": {
-            "command": "d:\\AI_round2\\.venv\\Scripts\\python.exe",
-            "args": ["-m", "personal_agent.crt_mcp_server"],
+            "command": "d:\\AI_round2\\.venv\\Scripts\\crt-mcp.exe",
             "cwd": "d:\\AI_round2",
             "description": "CRT cognitive trust engine. Call crt_get_user_context at session start to load user profile and preferences. Use crt_search_sessions to find relevant past conversations. Use crt_get_pending_fact_checks to surface auto-detected issues."
         }

@@ -58,12 +58,18 @@ full = [
     "hdbscan>=0.8.0",
     "datasets>=2.14.0",
 ]
+mcp = [
+    "mcp>=1.0.0",
+]
+
+[project.scripts]
+crt-mcp = "personal_agent.crt_mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/blockhead22/AI_round2"
-Documentation = "https://github.com/blockhead22/AI_round2#readme"
-Repository = "https://github.com/blockhead22/AI_round2"
-Issues = "https://github.com/blockhead22/AI_round2/issues"
+Homepage = "https://github.com/blockhead22/CRT-GroundCheck-SSE"
+Documentation = "https://github.com/blockhead22/CRT-GroundCheck-SSE#readme"
+Repository = "https://github.com/blockhead22/CRT-GroundCheck-SSE"
+Issues = "https://github.com/blockhead22/CRT-GroundCheck-SSE/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
