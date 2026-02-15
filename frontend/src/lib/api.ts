@@ -1382,3 +1382,223 @@ export async function getCopilotAccuracy(): Promise<AccuracyStats> {
   if (!res.ok) throw new Error(`Failed to fetch accuracy: ${res.status}`)
   return res.json()
 }
+
+// ---------------------------------------------------------------------------
+// Copilot — Fact Checks
+// ---------------------------------------------------------------------------
+
+export type FactCheck = {
+  id: string
+  thread_id: string
+  response_text: string
+  finding: string
+  severity: string
+  volatility: number
+  status: string
+  created_at: string
+  resolved_at: string | null
+}
+
+export async function getCopilotFactChecks(args?: {
+  thread_id?: string
+  limit?: number
+}): Promise<FactCheck[]> {
+  const base = getApiBaseUrlInternal()
+  const params = new URLSearchParams()
+  if (args?.thread_id) params.set('thread_id', args.thread_id)
+  if (args?.limit !== undefined) params.set('limit', String(args.limit))
+  const qs = params.toString()
+  const res = await fetch(`${base}/api/copilot/fact-checks${qs ? '?' + qs : ''}`)
+  if (!res.ok) throw new Error(`Failed to fetch fact checks: ${res.status}`)
+  return res.json()
+}
+
+export async function resolveFactCheck(checkId: string): Promise<{ ok: boolean; resolved: string }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/fact-checks/${encodeURIComponent(checkId)}/resolve`, { method: 'POST' })
+  if (!res.ok) throw new Error(`Failed to resolve: ${res.status}`)
+  return res.json()
+}
+
+// ---------------------------------------------------------------------------
+// Copilot — Trust Decay & Scheduler
+// ---------------------------------------------------------------------------
+
+export type TrustDecayConfig = {
+  decay_rate: number
+  reinforce_boost: number
+  correction_boost: number
+  trust_floor: number
+  trust_ceiling: number
+  grace_period_days: number
+  min_pass_interval_secs: number
+}
+
+export async function getTrustDecayConfig(): Promise<TrustDecayConfig> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/trust-decay/config`)
+  if (!res.ok) throw new Error(`Failed to fetch trust decay config: ${res.status}`)
+  return res.json()
+}
+
+export async function runTrustDecay(): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/trust-decay/run`, { method: 'POST' })
+  if (!res.ok) throw new Error(`Failed to run trust decay: ${res.status}`)
+  return res.json()
+}
+
+export async function reinforceMemory(memoryId: string): Promise<{ ok: boolean; memory_id: string; boost: number }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/memory/${encodeURIComponent(memoryId)}/reinforce`, { method: 'POST' })
+  if (!res.ok) throw new Error(`Failed to reinforce: ${res.status}`)
+  return res.json()
+}
+
+export async function getSchedulerStatus(): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/scheduler/status`)
+  if (!res.ok) throw new Error(`Failed to fetch scheduler status: ${res.status}`)
+  return res.json()
+}
+
+export async function forceSchedulerTick(): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/scheduler/tick`, { method: 'POST' })
+  if (!res.ok) throw new Error(`Failed to trigger scheduler tick: ${res.status}`)
+  return res.json()
+}
+
+// ---------------------------------------------------------------------------
+// Copilot — Active Learning
+// ---------------------------------------------------------------------------
+
+export async function getCopilotLearningStats(): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/learning/stats`)
+  if (!res.ok) throw new Error(`Failed to fetch learning stats: ${res.status}`)
+  return res.json()
+}
+
+export async function getLearningCorrections(limit?: number): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const qs = limit ? `?limit=${limit}` : ''
+  const res = await fetch(`${base}/api/copilot/learning/corrections${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch corrections: ${res.status}`)
+  return res.json()
+}
+
+export async function getLearningEvents(limit?: number): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const qs = limit ? `?limit=${limit}` : ''
+  const res = await fetch(`${base}/api/copilot/learning/events${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch events: ${res.status}`)
+  return res.json()
+}
+
+export async function getInteractionStats(hours?: number): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const qs = hours ? `?hours=${hours}` : ''
+  const res = await fetch(`${base}/api/copilot/learning/interaction-stats${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch interaction stats: ${res.status}`)
+  return res.json()
+}
+
+export async function triggerRetrain(): Promise<{ ok: boolean; message: string }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/learning/retrain`, { method: 'POST' })
+  if (!res.ok) throw new Error(`Failed to trigger retrain: ${res.status}`)
+  return res.json()
+}
+
+// ---------------------------------------------------------------------------
+// Copilot — Episodic Memory (Sessions, Concepts, Patterns, Preferences)
+// ---------------------------------------------------------------------------
+
+export async function getCopilotSessions(args?: {
+  thread_id?: string
+  limit?: number
+}): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const params = new URLSearchParams()
+  if (args?.thread_id) params.set('thread_id', args.thread_id)
+  if (args?.limit !== undefined) params.set('limit', String(args.limit))
+  const qs = params.toString()
+  const res = await fetch(`${base}/api/copilot/sessions${qs ? '?' + qs : ''}`)
+  if (!res.ok) throw new Error(`Failed to fetch sessions: ${res.status}`)
+  return res.json()
+}
+
+export async function searchSessions(topic: string, limit?: number): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const params = new URLSearchParams({ topic })
+  if (limit) params.set('limit', String(limit))
+  const res = await fetch(`${base}/api/copilot/sessions/search?${params}`)
+  if (!res.ok) throw new Error(`Failed to search sessions: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotConcepts(conceptType?: string): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const qs = conceptType ? `?concept_type=${encodeURIComponent(conceptType)}` : ''
+  const res = await fetch(`${base}/api/copilot/concepts${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch concepts: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotPatterns(args?: {
+  pattern_type?: string
+  min_confidence?: number
+}): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const params = new URLSearchParams()
+  if (args?.pattern_type) params.set('pattern_type', args.pattern_type)
+  if (args?.min_confidence !== undefined) params.set('min_confidence', String(args.min_confidence))
+  const qs = params.toString()
+  const res = await fetch(`${base}/api/copilot/patterns${qs ? '?' + qs : ''}`)
+  if (!res.ok) throw new Error(`Failed to fetch patterns: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotPreferences(category?: string): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const qs = category ? `?category=${encodeURIComponent(category)}` : ''
+  const res = await fetch(`${base}/api/copilot/preferences${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch preferences: ${res.status}`)
+  return res.json()
+}
+
+export async function getCopilotUserContext(includeSummaries?: number): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const qs = includeSummaries !== undefined ? `?include_summaries=${includeSummaries}` : ''
+  const res = await fetch(`${base}/api/copilot/user-context${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch user context: ${res.status}`)
+  return res.json()
+}
+
+// ---------------------------------------------------------------------------
+// Copilot — Training Data & Reflections
+// ---------------------------------------------------------------------------
+
+export async function getTrainingDataStats(): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/copilot/training-data/stats`)
+  if (!res.ok) throw new Error(`Failed to fetch training stats: ${res.status}`)
+  return res.json()
+}
+
+export async function exportTrainingData(format?: string): Promise<Record<string, any>> {
+  const base = getApiBaseUrlInternal()
+  const qs = format ? `?format=${format}` : ''
+  const res = await fetch(`${base}/api/copilot/training-data/export${qs}`)
+  if (!res.ok) throw new Error(`Failed to export training data: ${res.status}`)
+  return res.json()
+}
+
+export async function getReflections(threadId: string, limit?: number): Promise<any[]> {
+  const base = getApiBaseUrlInternal()
+  const qs = limit ? `?limit=${limit}` : ''
+  const res = await fetch(`${base}/api/copilot/reflections/${encodeURIComponent(threadId)}${qs}`)
+  if (!res.ok) throw new Error(`Failed to fetch reflections: ${res.status}`)
+  return res.json()
+}

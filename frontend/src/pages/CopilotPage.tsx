@@ -7,10 +7,29 @@ import {
   teachCopilot,
   deleteCopilotMemory,
   correctCopilotMemory,
+  getCopilotFactChecks,
+  resolveFactCheck,
+  getTrustDecayConfig,
+  runTrustDecay,
+  reinforceMemory,
+  getSchedulerStatus,
+  forceSchedulerTick,
+  getCopilotLearningStats,
+  getLearningCorrections,
+  getInteractionStats,
+  triggerRetrain,
+  getCopilotSessions,
+  searchSessions,
+  getCopilotConcepts,
+  getCopilotPatterns,
+  getCopilotPreferences,
+  getTrainingDataStats,
   type CopilotMemory,
   type CopilotMemoriesResponse,
   type CopilotProfile,
   type AccuracyStats,
+  type FactCheck,
+  type TrustDecayConfig,
 } from '../lib/api'
 
 // ---------------------------------------------------------------------------
@@ -711,6 +730,614 @@ function AccuracyTracker({ accuracy }: { accuracy: AccuracyStats | null }) {
 }
 
 // ---------------------------------------------------------------------------
+// Fact Checks Panel
+// ---------------------------------------------------------------------------
+
+function FactChecksPanel() {
+  const [checks, setChecks] = useState<FactCheck[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await getCopilotFactChecks({ limit: 50 })
+      setChecks(data)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleResolve = async (id: string) => {
+    try {
+      await resolveFactCheck(id)
+      setChecks(prev => prev.filter(c => c.id !== id))
+    } catch { /* ignore */ }
+  }
+
+  const severityStyle = (s: string) => {
+    if (s === 'critical') return 'bg-red-500/15 text-red-400 border-red-500/30'
+    if (s === 'warning') return 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+    return 'bg-sky-500/15 text-sky-400 border-sky-500/30'
+  }
+
+  if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" /></div>
+
+  if (!checks.length) return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <span className="text-5xl opacity-40">✅</span>
+      <div className="mt-3 text-sm text-white/50">No pending fact checks</div>
+      <div className="text-xs text-white/25 mt-1">The auto fact-checker will flag contradictions and hallucinations here</div>
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">
+        {checks.length} pending finding{checks.length !== 1 ? 's' : ''} — sorted by volatility
+      </div>
+      {checks.map(c => (
+        <div key={c.id} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase ${severityStyle(c.severity)}`}>
+                  {c.severity}
+                </span>
+                {c.volatility > 0 && (
+                  <span className="text-[10px] text-white/30 font-mono">
+                    V={c.volatility.toFixed(3)}
+                  </span>
+                )}
+                <span className="text-[10px] text-white/20 ml-auto">{c.created_at}</span>
+              </div>
+              <div className="text-sm text-white/80 leading-relaxed mb-2">{c.finding}</div>
+              <div className="text-xs text-white/30 line-clamp-2 italic">
+                Response: &ldquo;{c.response_text?.slice(0, 200)}{(c.response_text?.length || 0) > 200 ? '...' : ''}&rdquo;
+              </div>
+            </div>
+            <button
+              onClick={() => handleResolve(c.id)}
+              className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all flex-shrink-0"
+              title="Mark as resolved"
+            >
+              ✓ Resolve
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Trust & Decay Panel
+// ---------------------------------------------------------------------------
+
+function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; onRefresh: () => void }) {
+  const [config, setConfig] = useState<TrustDecayConfig | null>(null)
+  const [scheduler, setScheduler] = useState<Record<string, any> | null>(null)
+  const [decayResult, setDecayResult] = useState<Record<string, any> | null>(null)
+  const [running, setRunning] = useState(false)
+  const [reinforcing, setReinforcing] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    try {
+      const [c, s] = await Promise.all([getTrustDecayConfig(), getSchedulerStatus()])
+      setConfig(c)
+      setScheduler(s)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleRunDecay = async () => {
+    setRunning(true)
+    try {
+      const result = await runTrustDecay()
+      setDecayResult(result)
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setRunning(false) }
+  }
+
+  const handleForceTick = async () => {
+    setRunning(true)
+    try {
+      const result = await forceSchedulerTick()
+      setDecayResult(result)
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setRunning(false) }
+  }
+
+  const handleReinforce = async (id: string) => {
+    setReinforcing(id)
+    try {
+      await reinforceMemory(id)
+      onRefresh()
+    } catch { /* ignore */ }
+    finally { setReinforcing(null) }
+  }
+
+  if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" /></div>
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Config + Scheduler cards */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {config && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-[10px] uppercase tracking-wider text-white/30 mb-4">⚙️ Trust Decay Config</div>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(config).map(([k, v]) => (
+                <div key={k} className="flex flex-col">
+                  <span className="text-[10px] text-white/30">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-sm font-mono text-white/80">{typeof v === 'number' ? v.toFixed(v < 1 ? 3 : 0) : String(v)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {scheduler && (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="text-[10px] uppercase tracking-wider text-white/30 mb-4">🔄 Idle Scheduler</div>
+            <div className="grid grid-cols-2 gap-3">
+              {Object.entries(scheduler).map(([k, v]) => (
+                <div key={k} className="flex flex-col">
+                  <span className="text-[10px] text-white/30">{k.replace(/_/g, ' ')}</span>
+                  <span className="text-sm font-mono text-white/80">
+                    {typeof v === 'boolean' ? (
+                      <span className={v ? 'text-emerald-400' : 'text-red-400'}>{v ? 'ON' : 'OFF'}</span>
+                    ) : String(v)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleRunDecay}
+          disabled={running}
+          className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
+        >
+          {running ? '...' : '⏳ Run Trust Decay Pass'}
+        </button>
+        <button
+          onClick={handleForceTick}
+          disabled={running}
+          className="rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 border border-white/10 px-5 py-2.5 text-sm text-white/70 transition-all"
+        >
+          Force Scheduler Tick
+        </button>
+      </div>
+
+      {/* Decay result */}
+      {decayResult && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4"
+        >
+          <div className="text-[10px] uppercase tracking-wider text-emerald-400 mb-2">Last Run Result</div>
+          <pre className="text-xs text-white/60 font-mono whitespace-pre-wrap overflow-auto max-h-40">
+            {JSON.stringify(decayResult, null, 2)}
+          </pre>
+        </motion.div>
+      )}
+
+      {/* Low trust memories — reinforce candidates */}
+      {memories.filter(m => m.trust < 0.5).length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="text-[10px] uppercase tracking-wider text-amber-400/60 mb-3">
+            ⚠️ Low-trust memories ({memories.filter(m => m.trust < 0.5).length}) — click to reinforce
+          </div>
+          <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+            {memories.filter(m => m.trust < 0.5).sort((a, b) => a.trust - b.trust).map(m => (
+              <div key={m.id} className="flex items-center gap-3 rounded-lg bg-white/[0.02] border border-white/5 p-3">
+                <span className={`font-mono text-xs font-bold ${trustColor(m.trust)}`}>
+                  {(m.trust * 100).toFixed(0)}%
+                </span>
+                <span className="text-sm text-white/60 flex-1 truncate">{m.text}</span>
+                <button
+                  onClick={() => handleReinforce(m.id)}
+                  disabled={reinforcing === m.id}
+                  className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-[11px] text-emerald-400 hover:bg-emerald-500/20 transition-all flex-shrink-0"
+                >
+                  {reinforcing === m.id ? '...' : '↑ Boost'}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sessions Panel
+// ---------------------------------------------------------------------------
+
+function SessionsPanel() {
+  const [sessions, setSessions] = useState<any[]>([])
+  const [searchTopic, setSearchTopic] = useState('')
+  const [searching, setSearching] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null)
+
+  const load = useCallback(async () => {
+    try {
+      const data = await getCopilotSessions({ limit: 30 })
+      setSessions(data)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleSearch = async () => {
+    if (!searchTopic.trim()) { load(); return }
+    setSearching(true)
+    try {
+      const results = await searchSessions(searchTopic.trim(), 30)
+      setSessions(results)
+    } catch { /* ignore */ }
+    finally { setSearching(false) }
+  }
+
+  if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" /></div>
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Search */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={searchTopic}
+          onChange={e => setSearchTopic(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          placeholder="Search sessions by topic..."
+          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 transition-colors"
+        />
+        <button
+          onClick={handleSearch}
+          disabled={searching}
+          className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
+        >
+          {searching ? '...' : 'Search'}
+        </button>
+        {searchTopic && (
+          <button
+            onClick={() => { setSearchTopic(''); load() }}
+            className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-4 py-2.5 text-sm text-white/50 transition-all"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
+      {sessions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <span className="text-5xl opacity-40">📂</span>
+          <div className="mt-3 text-sm text-white/50">No sessions found</div>
+          <div className="text-xs text-white/25 mt-1">Session summaries are created from episodic memory</div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">
+            {sessions.length} session{sessions.length !== 1 ? 's' : ''}
+          </div>
+          {sessions.map((s, i) => (
+            <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+              <div
+                className="flex items-start gap-3 p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+                onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
+              >
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sm">
+                  📋
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-xs font-medium text-white/70">
+                      {s.thread_id || s.session_id || `Session ${i + 1}`}
+                    </span>
+                    {s.message_count && (
+                      <span className="text-[10px] text-white/25">{s.message_count} messages</span>
+                    )}
+                    <span className="text-[10px] text-white/20 ml-auto">
+                      {s.created_at || s.timestamp ? new Date((s.created_at || s.timestamp) * 1000).toLocaleDateString() : ''}
+                    </span>
+                  </div>
+                  <div className="text-sm text-white/50 line-clamp-2">
+                    {s.summary || s.topics?.join(', ') || 'No summary'}
+                  </div>
+                </div>
+                <span className="text-white/20 text-xs mt-1">{expandedIdx === i ? '▲' : '▼'}</span>
+              </div>
+              {expandedIdx === i && (
+                <div className="border-t border-white/5 p-4 bg-white/[0.01]">
+                  <pre className="text-xs text-white/50 font-mono whitespace-pre-wrap overflow-auto max-h-60">
+                    {JSON.stringify(s, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CRT Insights Panel (Concepts, Patterns, Learning Stats)
+// ---------------------------------------------------------------------------
+
+function CrtInsightsPanel() {
+  const [concepts, setConcepts] = useState<any[]>([])
+  const [patterns, setPatterns] = useState<any[]>([])
+  const [preferences, setPreferences] = useState<any[]>([])
+  const [learningStats, setLearningStats] = useState<Record<string, any> | null>(null)
+  const [trainingStats, setTrainingStats] = useState<Record<string, any> | null>(null)
+  const [interactionStats, setInteractionStats] = useState<Record<string, any> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [retraining, setRetraining] = useState(false)
+  const [subTab, setSubTab] = useState<'concepts' | 'patterns' | 'learning' | 'training'>('concepts')
+
+  const load = useCallback(async () => {
+    try {
+      const [con, pat, pref, ls, ts, is] = await Promise.all([
+        getCopilotConcepts().catch(() => []),
+        getCopilotPatterns().catch(() => []),
+        getCopilotPreferences().catch(() => []),
+        getCopilotLearningStats().catch(() => null),
+        getTrainingDataStats().catch(() => null),
+        getInteractionStats(24).catch(() => null),
+      ])
+      setConcepts(con)
+      setPatterns(pat)
+      setPreferences(pref)
+      setLearningStats(ls)
+      setTrainingStats(ts)
+      setInteractionStats(is)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleRetrain = async () => {
+    setRetraining(true)
+    try { await triggerRetrain() } catch { /* ignore */ }
+    finally { setRetraining(false); load() }
+  }
+
+  if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" /></div>
+
+  const conceptTypes: Record<string, { icon: string; color: string }> = {
+    person: { icon: '👤', color: 'text-sky-400' },
+    project: { icon: '📦', color: 'text-violet-400' },
+    organization: { icon: '🏢', color: 'text-amber-400' },
+    topic: { icon: '💡', color: 'text-emerald-400' },
+    location: { icon: '📍', color: 'text-rose-400' },
+  }
+
+  const subTabItems = [
+    { id: 'concepts' as const, label: 'Knowledge Graph', count: concepts.length },
+    { id: 'patterns' as const, label: 'Patterns', count: patterns.length },
+    { id: 'learning' as const, label: 'Active Learning', count: null },
+    { id: 'training' as const, label: 'Training Data', count: null },
+  ]
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Sub-tabs */}
+      <div className="flex items-center gap-1">
+        {subTabItems.map(st => (
+          <button
+            key={st.id}
+            onClick={() => setSubTab(st.id)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              subTab === st.id
+                ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
+                : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            {st.label} {st.count !== null && <span className="text-white/20 ml-1">({st.count})</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* Concepts sub-tab */}
+      {subTab === 'concepts' && (
+        <div className="flex flex-col gap-4">
+          {/* Preferences */}
+          {preferences.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-[10px] uppercase tracking-wider text-white/30 mb-3">🎨 Learned Preferences</div>
+              <div className="flex flex-wrap gap-2">
+                {preferences.map((p, i) => (
+                  <span key={i} className="rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-1.5 text-xs text-violet-300">
+                    <span className="text-white/30 mr-1">{p.category || 'pref'}:</span>
+                    {p.key || p.preference || JSON.stringify(p)}
+                    {p.value && <span className="text-white/50 ml-1">= {p.value}</span>}
+                    {p.confidence && <span className="text-white/20 ml-1">({(p.confidence * 100).toFixed(0)}%)</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Concepts grid */}
+          {concepts.length > 0 ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {concepts.map((c, i) => {
+                const ct = conceptTypes[c.concept_type || c.type] || { icon: '🔹', color: 'text-white/60' }
+                return (
+                  <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-lg">{ct.icon}</span>
+                      <span className={`text-sm font-semibold ${ct.color}`}>
+                        {c.name || c.concept_name || 'Unknown'}
+                      </span>
+                      {c.mention_count && (
+                        <span className="ml-auto text-[10px] text-white/25 font-mono">
+                          {c.mention_count}× mentioned
+                        </span>
+                      )}
+                    </div>
+                    {(c.aliases && c.aliases.length > 0) && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {c.aliases.map((a: string, ai: number) => (
+                          <span key={ai} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/30">
+                            {a}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {c.description && (
+                      <div className="text-xs text-white/40 line-clamp-2">{c.description}</div>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-[10px] text-white/20">{c.concept_type || c.type}</span>
+                      {c.first_seen && (
+                        <span className="text-[10px] text-white/15">
+                          since {new Date(c.first_seen * 1000).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <span className="text-5xl opacity-40">🕸</span>
+              <div className="mt-3 text-sm text-white/50">No concepts discovered yet</div>
+              <div className="text-xs text-white/25 mt-1">Concepts are extracted from conversations over time</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Patterns sub-tab */}
+      {subTab === 'patterns' && (
+        <div className="flex flex-col gap-3">
+          {patterns.length > 0 ? patterns.map((p, i) => (
+            <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-[10px] uppercase text-white/30 font-medium">
+                  {p.pattern_type || p.type || 'pattern'}
+                </span>
+                {p.confidence !== undefined && (
+                  <div className="flex items-center gap-1 ml-auto">
+                    <div className="w-16 h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-violet-500/60"
+                        style={{ width: `${(p.confidence || 0) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-white/30 font-mono">
+                      {((p.confidence || 0) * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="text-sm text-white/70">{p.description || p.pattern || JSON.stringify(p)}</div>
+              {p.examples && (
+                <div className="mt-2 text-xs text-white/30 italic">
+                  e.g.: {Array.isArray(p.examples) ? p.examples.slice(0, 3).join(' · ') : p.examples}
+                </div>
+              )}
+            </div>
+          )) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <span className="text-5xl opacity-40">📈</span>
+              <div className="mt-3 text-sm text-white/50">No behavioral patterns detected</div>
+              <div className="text-xs text-white/25 mt-1">Patterns emerge from repeated interactions</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active Learning sub-tab */}
+      {subTab === 'learning' && (
+        <div className="flex flex-col gap-4">
+          {/* Interaction stats */}
+          {interactionStats && (
+            <div className="grid gap-3 sm:grid-cols-3">
+              {Object.entries(interactionStats).filter(([k]) => k !== 'period_hours').map(([k, v]) => (
+                <div key={k} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">{k.replace(/_/g, ' ')}</div>
+                  <div className="text-xl font-bold text-white">{typeof v === 'number' ? v.toLocaleString() : String(v)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Learning stats detail */}
+          {learningStats && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-[10px] uppercase tracking-wider text-white/30 mb-3">🧠 Active Learning Stats</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {Object.entries(learningStats).map(([k, v]) => (
+                  <div key={k}>
+                    <span className="text-[10px] text-white/25">{k.replace(/_/g, ' ')}</span>
+                    <div className="text-sm font-mono text-white/70">
+                      {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleRetrain}
+            disabled={retraining}
+            className="self-start rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
+          >
+            {retraining ? 'Retraining...' : '🔄 Trigger Model Retrain'}
+          </button>
+        </div>
+      )}
+
+      {/* Training Data sub-tab */}
+      {subTab === 'training' && (
+        <div className="flex flex-col gap-4">
+          {trainingStats ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <div className="text-[10px] uppercase tracking-wider text-white/30 mb-3">📊 Training Data Collection</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {Object.entries(trainingStats).map(([k, v]) => (
+                  <div key={k} className="flex flex-col">
+                    <span className="text-[10px] text-white/30">{k.replace(/_/g, ' ')}</span>
+                    <span className="text-lg font-bold text-white">
+                      {typeof v === 'number' ? v.toLocaleString() : String(v)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <span className="text-5xl opacity-40">📊</span>
+              <div className="mt-3 text-sm text-white/50">No training data available</div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Stat Card + Trust Bar
 // ---------------------------------------------------------------------------
 
@@ -882,7 +1509,7 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect }: {
 // ---------------------------------------------------------------------------
 
 type SortOrder = 'newest' | 'oldest' | 'trust_high' | 'trust_low'
-type Tab = 'memories' | 'profile' | 'graph' | 'accuracy'
+type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights'
 
 export function CopilotPage() {
   const [data, setData] = useState<CopilotMemoriesResponse | null>(null)
@@ -1008,6 +1635,10 @@ export function CopilotPage() {
     { id: 'profile', label: 'Profile', icon: '👤' },
     { id: 'graph', label: 'Graph', icon: '🕸' },
     { id: 'accuracy', label: 'Accuracy', icon: '📊' },
+    { id: 'factchecks', label: 'Fact Checks', icon: '🔍' },
+    { id: 'trust', label: 'Trust & Decay', icon: '⚖️' },
+    { id: 'sessions', label: 'Sessions', icon: '📂' },
+    { id: 'insights', label: 'CRT Insights', icon: '💡' },
   ]
 
   return (
@@ -1173,6 +1804,30 @@ export function CopilotPage() {
         {tab === 'accuracy' && (
           <div className="p-4 sm:p-6">
             <AccuracyTracker accuracy={accuracy} />
+          </div>
+        )}
+
+        {tab === 'factchecks' && (
+          <div className="p-4 sm:p-6">
+            <FactChecksPanel />
+          </div>
+        )}
+
+        {tab === 'trust' && (
+          <div className="p-4 sm:p-6">
+            <TrustDecayPanel memories={memories} onRefresh={() => { fetchData(); fetchSideData() }} />
+          </div>
+        )}
+
+        {tab === 'sessions' && (
+          <div className="p-4 sm:p-6">
+            <SessionsPanel />
+          </div>
+        )}
+
+        {tab === 'insights' && (
+          <div className="p-4 sm:p-6">
+            <CrtInsightsPanel />
           </div>
         )}
       </div>
