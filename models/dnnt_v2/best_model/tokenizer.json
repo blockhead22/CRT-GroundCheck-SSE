@@ -1,0 +1,21 @@
+{
+  "tokenizer_type": "sentencepiece",
+  "vocab_size": 8000,
+  "model_file": "tokenizer_sentencepiece.model",
+  "special_tokens": {
+    "<pad>": 0,
+    "<bos>": 3,
+    "<eos>": 3,
+    "<unk>": 3,
+    "<query>": 4,
+    "</query>": 5,
+    "<facts>": 6,
+    "</facts>": 7,
+    "<think>": 8,
+    "</think>": 9,
+    "<response>": 10,
+    "</response>": 11
+  },
+  "extra_tokens": {},
+  "char_to_id": {}
+}
