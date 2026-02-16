@@ -365,6 +365,7 @@ def main():
 
     # Enable gradient checkpointing to save VRAM
     model.gradient_checkpointing_enable()
+    model.enable_input_require_grads()  # required for PEFT + gradient checkpointing
     print(f"    Gradient checkpointing: ON")
 
     model = model.to(device)
