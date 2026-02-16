@@ -109,6 +109,19 @@ python scripts/vilt_pretrained.py
 
 Outputs are saved to `models/vilt_smollm/` — LoRA adapters (`best_lora/`, `final_lora/`) and a `vilt_metrics.json` results log.
 
+### Interactive Chat (vilt-chat)
+
+Once you have trained adapters (or using the included ones), run the interactive CLI:
+
+```bash
+python scripts/vilt_chat.py                              # defaults (SmolLM + best_lora)
+python scripts/vilt_chat.py --facts data/my_facts.json   # your own facts
+python scripts/vilt_chat.py --adapter path/to/lora        # different adapter
+python scripts/vilt_chat.py --no-verify                  # skip GroundCheck
+```
+
+Every response is verified against your fact ledger in real time. Commands inside the chat: `/facts` (show loaded facts), `/verify <text>` (check arbitrary text), `/quit`.
+
 The original DNNT-based VILT experiment is in `scripts/vilt_experiment.py`.
 
 ### Key Takeaway
