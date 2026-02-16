@@ -43,23 +43,41 @@ from groundcheck import GroundCheck, Memory
 # ==============================================================
 
 FACT_LEDGER = [
-    Memory(id="f1", text="FACT: name = Nick",          trust=0.95),
-    Memory(id="f2", text="FACT: location = Wisconsin",  trust=0.92),
-    Memory(id="f3", text="FACT: occupation = freelance full-stack developer", trust=0.90),
-    Memory(id="f4", text="FACT: favorite_language = Python", trust=0.85),
-    Memory(id="f5", text="FACT: project = CRT-GroundCheck-SSE", trust=0.88),
-    Memory(id="f6", text="FACT: framework = React",     trust=0.80),
-    Memory(id="f7", text="FACT: framework = FastAPI",   trust=0.80),
-    Memory(id="f8", text="FACT: editor = VS Code",      trust=0.82),
+    # ── original 8 ──
+    Memory(id="f1",  text="FACT: name = Nick",          trust=0.95),
+    Memory(id="f2",  text="FACT: location = Wisconsin",  trust=0.92),
+    Memory(id="f3",  text="FACT: occupation = freelance full-stack developer", trust=0.90),
+    Memory(id="f4",  text="FACT: favorite_language = Python", trust=0.85),
+    Memory(id="f5",  text="FACT: project = CRT-GroundCheck-SSE", trust=0.88),
+    Memory(id="f6",  text="FACT: framework = React",     trust=0.80),
+    Memory(id="f7",  text="FACT: framework = FastAPI",   trust=0.80),
+    Memory(id="f8",  text="FACT: editor = VS Code",      trust=0.82),
+    # ── new 8 ──
+    Memory(id="f9",  text="FACT: favorite_drink = IPA",  trust=0.78),
+    Memory(id="f10", text="FACT: pet_peeve = Mondays",   trust=0.75),
+    Memory(id="f11", text="FACT: os = Windows",          trust=0.88),
+    Memory(id="f12", text="FACT: database = PostgreSQL", trust=0.82),
+    Memory(id="f13", text="FACT: cloud = none",          trust=0.70),
+    Memory(id="f14", text="FACT: experience_years = 10+",trust=0.85),
+    Memory(id="f15", text="FACT: hobby = building AI agents", trust=0.90),
+    Memory(id="f16", text="FACT: ai_model = DNNT",       trust=0.88),
 ]
 
 TEST_QUERIES = [
+    # ── personal fact recall (8) ──
     {"query": "What is my name?",  "facts": ["name=Nick (trust=0.95)"],
      "expected_slot": "name",      "expected": "Nick"},
     {"query": "Where do I live?",  "facts": ["location=Wisconsin (trust=0.92)"],
      "expected_slot": "location",  "expected": "Wisconsin"},
     {"query": "What do I do?",     "facts": ["occupation=freelance full-stack developer (trust=0.90)"],
      "expected_slot": "occupation","expected": "developer"},
+    {"query": "What do I like to drink?", "facts": ["favorite_drink=IPA (trust=0.78)"],
+     "expected_slot": "favorite_drink", "expected": "IPA"},
+    {"query": "What OS do I use?", "facts": ["os=Windows (trust=0.88)"],
+     "expected_slot": "os",        "expected": "Windows"},
+    {"query": "What is my hobby?", "facts": ["hobby=building AI agents (trust=0.90)"],
+     "expected_slot": "hobby",     "expected": "AI"},
+    # ── knowledge (no personal facts) ──
     {"query": "What is gravity?",  "facts": [],
      "expected_slot": None,        "expected": None},
     {"query": "What is an API?",   "facts": [],
@@ -67,6 +85,7 @@ TEST_QUERIES = [
 ]
 
 TRAINING_EXAMPLES = [
+    # ── original 8 ──
     {"query": "What is my name?",
      "facts": ["name=Nick (trust=0.95)", "location=Wisconsin (trust=0.92)"],
      "target": " I need to recall the user's name from the facts.</think>\n<response>Your name is Nick.</response>"},
@@ -91,6 +110,31 @@ TRAINING_EXAMPLES = [
     {"query": "What is an API?",
      "facts": [],
      "target": " This is a technical question about software.</think>\n<response>An API is a set of rules and protocols that allows different software applications to communicate.</response>"},
+    # ── new 8 ──
+    {"query": "What do I like to drink?",
+     "facts": ["favorite_drink=IPA (trust=0.78)", "name=Nick (trust=0.95)"],
+     "target": " The user wants to know their favorite drink.</think>\n<response>Your favorite drink is IPA.</response>"},
+    {"query": "What do I hate?",
+     "facts": ["pet_peeve=Mondays (trust=0.75)", "name=Nick (trust=0.95)"],
+     "target": " Checking the facts for things the user dislikes.</think>\n<response>You hate Mondays.</response>"},
+    {"query": "What OS do I use?",
+     "facts": ["os=Windows (trust=0.88)", "name=Nick (trust=0.95)"],
+     "target": " The user wants to know their operating system.</think>\n<response>You use Windows.</response>"},
+    {"query": "What database do I prefer?",
+     "facts": ["database=PostgreSQL (trust=0.82)", "name=Nick (trust=0.95)"],
+     "target": " Checking the facts for database preference.</think>\n<response>You prefer PostgreSQL.</response>"},
+    {"query": "How many years of experience do I have?",
+     "facts": ["experience_years=10+ (trust=0.85)", "occupation=freelance full-stack developer (trust=0.90)"],
+     "target": " The user is asking about their experience level.</think>\n<response>You have over 10 years of experience.</response>"},
+    {"query": "What is my hobby?",
+     "facts": ["hobby=building AI agents (trust=0.90)", "name=Nick (trust=0.95)"],
+     "target": " Looking at the facts for hobbies.</think>\n<response>Your hobby is building AI agents.</response>"},
+    {"query": "What AI model did I build?",
+     "facts": ["ai_model=DNNT (trust=0.88)", "project=CRT-GroundCheck-SSE (trust=0.88)"],
+     "target": " The user built their own AI model.</think>\n<response>You built the DNNT model.</response>"},
+    {"query": "Do I use cloud services?",
+     "facts": ["cloud=none (trust=0.70)", "os=Windows (trust=0.88)"],
+     "target": " Checking if the user uses cloud services.</think>\n<response>No, you don't use cloud services.</response>"},
 ]
 
 
@@ -315,8 +359,13 @@ def main():
     else:
         print("    PPL looks reasonable")
 
-    cfg = VILTConfig(num_steps=100, learning_rate=5e-5, contradiction_weight=0.5)
-    trainer = VILTTrainer(model, tokenizer, FACT_LEDGER, cfg)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"\n    Device: {device}")
+    if device == "cuda":
+        model = model.to(device)
+
+    cfg = VILTConfig(num_steps=200, learning_rate=5e-5, contradiction_weight=0.5)
+    trainer = VILTTrainer(model, tokenizer, FACT_LEDGER, cfg, device=device)
 
     # ── baseline ──
     print("\n[5] Pre-VILT baseline...")
