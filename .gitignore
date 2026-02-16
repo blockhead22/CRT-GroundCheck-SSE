@@ -111,3 +111,6 @@ docs/CRT_WHITE_PAPER.md
 # DNNT training checkpoints (large files)
 models/*/checkpoint_*.pt
 models/*/checkpoint_final.pt
+# VILT/LoRA model checkpoints (large, reproducible)
+models/vilt_*/
+models/dnnt_*/

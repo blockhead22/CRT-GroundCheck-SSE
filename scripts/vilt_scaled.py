@@ -67,6 +67,15 @@ def load_test_queries(path=None):
     return data["queries"]
 
 
+def load_training_examples(path=None):
+    if path is None:
+        return None  # use built-in defaults
+    p = Path(path)
+    with open(p) as f:
+        data = json.load(f)
+    return data["examples"]
+
+
 FACT_LEDGER = load_facts()
 TEST_QUERIES = load_test_queries()
 
@@ -293,9 +302,10 @@ class VILTScaledTrainer:
             "resp": resp[:120] if resp else "(empty)",
         }
 
-    def evaluate(self):
+    def evaluate(self, queries=None):
+        queries = queries or TEST_QUERIES
         results = []
-        for t in TEST_QUERIES:
+        for t in queries:
             gen = self._generate(t["query"], t.get("facts"))
             resp = gen.split("\n")[0].strip() if gen else ""
             report = self.verifier.verify(
@@ -365,14 +375,35 @@ def main():
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate (default: 1e-4)")
     parser.add_argument("--lora-r", type=int, default=16, help="LoRA rank (default: 16)")
     parser.add_argument("--cpu", action="store_true", help="Force CPU")
+    parser.add_argument("--baseline", action="store_true",
+                        help="SFT-only baseline: set contradiction_weight=0 (no VILT amplification)")
+    parser.add_argument("--test-queries", type=str, default=None,
+                        help="Path to test queries JSON (default: data/vilt_test_queries.json)")
+    parser.add_argument("--facts", type=str, default=None,
+                        help="Path to fact ledger JSON (default: data/vilt_facts.json)")
+    parser.add_argument("--training", type=str, default=None,
+                        help="Path to training examples JSON (default: built-in)")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Override output directory for model artifacts")
     args = parser.parse_args()
 
     model_name = args.model
     model_short = model_name.split("/")[-1]
 
+    # Reload facts/queries/training if custom paths provided
+    global FACT_LEDGER, TEST_QUERIES, TRAINING_EXAMPLES
+    if args.facts:
+        FACT_LEDGER = load_facts(args.facts)
+    if args.test_queries:
+        TEST_QUERIES = load_test_queries(args.test_queries)
+    custom_training = load_training_examples(args.training)
+    if custom_training:
+        TRAINING_EXAMPLES = custom_training
+
+    mode_label = "SFT BASELINE" if args.baseline else "VILT"
     print("=" * 70)
-    print(f"  VILT Scaled: {model_name}")
-    print(f"  Verification-In-the-Loop Training on 1B+ Models")
+    print(f"  {mode_label}: {model_name}")
+    print(f"  {'Standard SFT (no verification)' if args.baseline else 'Verification-In-the-Loop Training on 1B+ Models'}")
     print("=" * 70)
 
     device = "cpu" if args.cpu else ("cuda" if torch.cuda.is_available() else "cpu")
@@ -421,12 +452,28 @@ def main():
         num_steps=args.steps,
         learning_rate=args.lr,
         lora_r=args.lora_r,
+        contradiction_weight=0.0 if args.baseline else 0.5,
     )
     trainer = VILTScaledTrainer(model, tokenizer, FACT_LEDGER, cfg, device)
 
-    # ── baseline ──
-    print(f"\n[4] Pre-VILT baseline ({model_short})...")
-    pre = trainer.evaluate()
+    # Create a small eval subset for mid-training checks (max 20 queries)
+    # Full eval set used only for pre/post assessment
+    MAX_MID_EVAL = 20
+    if len(TEST_QUERIES) > MAX_MID_EVAL:
+        # Sample: first 12 in-scope + up to 4 out-of-scope + random fill
+        in_scope = [q for q in TEST_QUERIES if q.get("scope", "in-scope") == "in-scope"]
+        out_scope = [q for q in TEST_QUERIES if q.get("scope") == "out-of-scope"]
+        mid_eval_queries = in_scope[:12] + out_scope[:4]
+        remaining = [q for q in TEST_QUERIES if q not in mid_eval_queries]
+        random.shuffle(remaining)
+        mid_eval_queries += remaining[:MAX_MID_EVAL - len(mid_eval_queries)]
+        print(f"\n    Mid-training eval subset: {len(mid_eval_queries)} queries (full: {len(TEST_QUERIES)})")
+    else:
+        mid_eval_queries = TEST_QUERIES
+
+    # ── baseline (full eval set) ──
+    print(f"\n[4] Pre-VILT baseline ({model_short}) — {len(TEST_QUERIES)} queries...")
+    pre = trainer.evaluate(TEST_QUERIES)
     print(f"    Accuracy: {pre['accuracy']:.0%}   GC Pass: {pre['gc_pass']:.0%}")
     print(f"    Grounded: {pre['total_grounded']}   Out-of-scope: {pre['total_oos']}   Hallucinated: {pre['total_hallu']}")
     for r in pre["results"]:
@@ -454,7 +501,11 @@ def main():
     best_step = 0
 
     # Output directory
-    out_dir = ROOT / "models" / f"vilt_{model_short.lower()}"
+    suffix = "_sft_baseline" if args.baseline else ""
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+    else:
+        out_dir = ROOT / "models" / f"vilt_{model_short.lower()}{suffix}"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for step in range(1, cfg.num_steps + 1):
@@ -494,8 +545,8 @@ def main():
             print(f"    \"{ex['query']}\" -> \"{r['resp'][:70]}\"")
 
         if step % cfg.eval_every == 0:
-            ev = trainer.evaluate()
-            print(f"\n  ── EVAL step {step} ──  acc={ev['accuracy']:.0%}  gc={ev['gc_pass']:.0%}  grounded={ev['total_grounded']} oos={ev['total_oos']} hallu={ev['total_hallu']}")
+            ev = trainer.evaluate(mid_eval_queries)
+            print(f"\n  ── EVAL step {step} ({len(mid_eval_queries)}q) ──  acc={ev['accuracy']:.0%}  gc={ev['gc_pass']:.0%}  grounded={ev['total_grounded']} oos={ev['total_oos']} hallu={ev['total_hallu']}")
             for rr in ev["results"]:
                 tag = "OK" if rr["ok"] else "  "
                 gc = "P" if rr["pass"] else "F"
@@ -530,8 +581,8 @@ def main():
     print(f"  {stop_reason}  ({total_time:.0f}s / {total_time/60:.1f} min)")
     print(f"{'='*70}")
 
-    post = trainer.evaluate()
-    print(f"\n  {model_short} RESULTS — BEFORE vs AFTER:")
+    post = trainer.evaluate(TEST_QUERIES)
+    print(f"\n  {model_short} RESULTS ({len(TEST_QUERIES)} queries) — BEFORE vs AFTER:")
     print(f"    Accuracy:   {pre['accuracy']:.0%} -> {post['accuracy']:.0%}  (best {best_acc:.0%} at step {best_step})")
     print(f"    GC Pass:    {pre['gc_pass']:.0%} -> {post['gc_pass']:.0%}")
     print(f"    Grounded:   {pre['total_grounded']} -> {post['total_grounded']}")
@@ -563,6 +614,7 @@ def main():
 
     metrics = {
         "model": model_name,
+        "mode": "sft_baseline" if args.baseline else "vilt",
         "total_params": total_params,
         "trainable_params": trainable_params,
         "lora_r": cfg.lora_r,

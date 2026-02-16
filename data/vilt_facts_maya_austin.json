@@ -1,0 +1,115 @@
+{
+  "_comment": "Profile: DevOps engineer in Austin — infrastructure focus",
+  "facts": [
+    {
+      "id": "f1",
+      "text": "FACT: name = Maya",
+      "trust": 0.95
+    },
+    {
+      "id": "f2",
+      "text": "FACT: location = Austin",
+      "trust": 0.92
+    },
+    {
+      "id": "f3",
+      "text": "FACT: occupation = DevOps engineer",
+      "trust": 0.9
+    },
+    {
+      "id": "f4",
+      "text": "FACT: favorite_language = Go",
+      "trust": 0.85
+    },
+    {
+      "id": "f5",
+      "text": "FACT: project = CloudPipeline",
+      "trust": 0.88
+    },
+    {
+      "id": "f6",
+      "text": "FACT: framework = Terraform",
+      "trust": 0.82
+    },
+    {
+      "id": "f7",
+      "text": "FACT: framework = Kubernetes",
+      "trust": 0.85
+    },
+    {
+      "id": "f8",
+      "text": "FACT: editor = IntelliJ",
+      "trust": 0.8
+    },
+    {
+      "id": "f9",
+      "text": "FACT: favorite_drink = cold brew",
+      "trust": 0.78
+    },
+    {
+      "id": "f10",
+      "text": "FACT: pet_peeve = manual deployments",
+      "trust": 0.75
+    },
+    {
+      "id": "f11",
+      "text": "FACT: os = Ubuntu",
+      "trust": 0.88
+    },
+    {
+      "id": "f12",
+      "text": "FACT: database = Redis",
+      "trust": 0.82
+    },
+    {
+      "id": "f13",
+      "text": "FACT: cloud = GCP",
+      "trust": 0.78
+    },
+    {
+      "id": "f14",
+      "text": "FACT: experience_years = 12",
+      "trust": 0.85
+    },
+    {
+      "id": "f15",
+      "text": "FACT: hobby = marathon running",
+      "trust": 0.88
+    },
+    {
+      "id": "f16",
+      "text": "FACT: pet = three rescue cats",
+      "trust": 0.9
+    },
+    {
+      "id": "f17",
+      "text": "FACT: certification = AWS Solutions Architect",
+      "trust": 0.82
+    },
+    {
+      "id": "f18",
+      "text": "FACT: team_size = 6",
+      "trust": 0.7
+    },
+    {
+      "id": "f19",
+      "text": "FACT: favorite_food = tacos",
+      "trust": 0.75
+    },
+    {
+      "id": "f20",
+      "text": "FACT: salary = 155000",
+      "trust": 0.65
+    },
+    {
+      "id": "f21",
+      "text": "FACT: vehicle = Tesla Model 3",
+      "trust": 0.72
+    },
+    {
+      "id": "f22",
+      "text": "FACT: morning_routine = 5am gym",
+      "trust": 0.68
+    }
+  ]
+}

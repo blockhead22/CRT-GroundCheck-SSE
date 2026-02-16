@@ -1,0 +1,2617 @@
+{
+  "_comment": "Auto-generated eval suite: 246 queries. Compatible with vilt_scaled.py.",
+  "_stats": {
+    "total": 246,
+    "by_category": {
+      "mixed": 8,
+      "hedged": 32,
+      "direct": 104,
+      "adversarial": 42,
+      "multi-fact": 40,
+      "out-of-scope": 20
+    },
+    "by_scope": {
+      "mixed": 8,
+      "in-scope": 218,
+      "out-of-scope": 20
+    }
+  },
+  "queries": [
+    {
+      "query": "Two questions: what is my project, and how does photosynthesis work?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "DataForge"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "Can you verify my project?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What's my preferred framework?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Two questions: what is my favorite language, and how does a battery work?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "Rust"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "What's my go-to drink?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Isn't my location San Francisco?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "My name is Sarah, right?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What is my editor and what is computing?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "Neovim"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "How confident are you that my pet peeve is meetings?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What's my preferred editor?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my framework and my hobby?",
+      "facts": [
+        "framework=Django (trust=0.8)",
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Django",
+        "climbing"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "How confident are you that my project is DataForge?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Confirm that my os is Windows.",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What is machine learning?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What is a neural network?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Do I have pets?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my database and my pet?",
+      "facts": [
+        "database=DuckDB (trust=0.82)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "DuckDB",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What is the speed of light?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "How long have I been working?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my current project called?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Where do I live?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How confident are you that my pet is two cats?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Isn't my occupation teacher?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "data engineer",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me what cloud I use.",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I dislike?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "My name is Mike, right?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Which language do I like most?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Remind me of my name.",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my go-to programming language?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my os and hobby.",
+      "facts": [
+        "os=Linux (trust=0.88)",
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Linux",
+        "climbing"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What web framework do I prefer?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What database engine do I prefer?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Are you sure my cloud is AWS?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What language am I best at?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Do you know both my name and my framework?",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "Svelte"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Are you sure my name is Alex?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Have I always had database = DuckDB?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "My editor is PyCharm, right?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What programming language do I prefer?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Can you verify my pet peeve?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What do I write code in?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is blockchain?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Tell me my editor.",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my editor and my pet?",
+      "facts": [
+        "editor=Neovim (trust=0.82)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Neovim",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Tell me my framework and favorite drink.",
+      "facts": [
+        "framework=Django (trust=0.8)",
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Django",
+        "espresso"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What's my role?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me what I like to drink.",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How experienced am I?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I usually drink?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How do I spend my free time?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How confident are you that my favorite drink is espresso?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Tell me my favorite language and database.",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)",
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Rust",
+        "DuckDB"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What cloud provider do I use?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is the capital of France?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What OS am I on?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Do I have any animals?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my cloud provider?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Is my editor Sublime Text?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What are my hobbies?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How does GPS work?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What kind of work do I do?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Do you know both my project and my pet?",
+      "facts": [
+        "project=DataForge (trust=0.88)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "DataForge",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Tell me how much experience I have.",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I like to code in?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Is my editor VS Code?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What framework am I using?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my occupation and my project?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)",
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "engineer",
+        "DataForge"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What causes earthquakes?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Tell me my location and os.",
+      "facts": [
+        "location=Denver (trust=0.92)",
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Denver",
+        "Linux"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What do I do for fun?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my name and pet.",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What are my occupation and database?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)",
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "engineer",
+        "DuckDB"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Confirm that my hobby is painting.",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "rock climbing",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "My framework is Angular, right?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What's my preferred database?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Have I always had hobby = rock climbing?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "rock climbing",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What do people call me?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my operating system?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Isn't my occupation doctor?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "data engineer",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What city am I in?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my experience years and pet.",
+      "facts": [
+        "experience_years=8 (trust=0.85)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "8",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Who am I?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How does the internet work?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Confirm that my os is macOS.",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What are my occupation and experience years?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)",
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "engineer",
+        "8"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What beverage do I prefer?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Have I always had editor = Neovim?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Is it still true that my occupation is data engineer?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "data engineer",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Confirm that my favorite language is JavaScript.",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What do I do for work?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What are my cloud and experience years?",
+      "facts": [
+        "cloud=AWS (trust=0.7)",
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "AWS",
+        "8"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Tell me my occupation and framework.",
+      "facts": [
+        "occupation=data engineer (trust=0.9)",
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "engineer",
+        "Svelte"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Tell me my name.",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How does a battery work?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "My cloud is DigitalOcean, right?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me my cloud and hobby.",
+      "facts": [
+        "cloud=AWS (trust=0.7)",
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "AWS",
+        "climbing"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What's my location?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my name again?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my main project?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Is it still true that my framework is Django?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What bothers me the most?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "I think my pet is a dog. Am I right?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Which cloud do I use?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my experience level?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Is it still true that my editor is Neovim?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Tell me what framework I use.",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my hobby?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What language do I code in?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my name and experience years.",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "8"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What am I building?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's the name of my project?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How do vaccines work?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What is my project and my favorite drink?",
+      "facts": [
+        "project=DataForge (trust=0.88)",
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "DataForge",
+        "espresso"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What's my favorite activity?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "My framework is Flask, right?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What is DNA?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Is it still true that my pet is two cats?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "You said my database is MySQL. Correct?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "You said my database is PostgreSQL. Correct?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me my name and editor.",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "Neovim"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What city do I call home?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Where do I deploy to?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "You said my framework is React. Correct?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What project do I maintain?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me what OS I use.",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What are my favorite language and project?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)",
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Rust",
+        "DataForge"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "How many years of experience do I have?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Can you verify my favorite drink?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Tell me my database preference.",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Confirm that my occupation is designer.",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "data engineer",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What is my pet peeve and my database?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)",
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "meetings",
+        "DuckDB"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Am I on Windows, Mac, or Linux?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I enjoy doing?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my pet peeve?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How confident are you that my cloud is AWS?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "How many years have I been in the field?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Have I always had framework = Svelte?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Svelte",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Have I always had occupation = data engineer?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "data engineer",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Isn't my favorite drink tea?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What are my project and editor?",
+      "facts": [
+        "project=DataForge (trust=0.88)",
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "DataForge",
+        "Neovim"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "How do airplanes fly?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Are you sure my os is Linux?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "How does photosynthesis work?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "How confident are you that my name is Alex?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Say my name.",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my occupation?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Can you verify my favorite language?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "My project is CodeForge, right?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What DB do I use?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What project am I working on?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me about my pets.",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "How does encryption work?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What annoys me?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Have I always had framework = Django?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What editor am I using?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What operating system do I use?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my framework and editor.",
+      "facts": [
+        "framework=Django (trust=0.8)",
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Django",
+        "Neovim"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Is my os ChromeOS?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "I think my pet is three fish. Am I right?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me my editor and favorite drink.",
+      "facts": [
+        "editor=Neovim (trust=0.82)",
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Neovim",
+        "espresso"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Confirm that my location is New York.",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Is it still true that my hobby is rock climbing?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "rock climbing",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Can you verify my framework?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Svelte",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Where am I located?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Have I always had experience years = 8?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Do you know both my location and my occupation?",
+      "facts": [
+        "location=Denver (trust=0.92)",
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Denver",
+        "engineer"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Why is the sky blue?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Isn't my pet a parrot?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me my favorite programming language.",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Do I have a dog or cat?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my name and what is literature?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "Alex"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "Are you sure my experience years is 8?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "experience_years",
+      "expected": "8",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "How confident are you that my favorite language is Rust?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What is my job?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my code editor?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me about my career.",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Confirm that my favorite drink is water.",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What are my location and pet peeve?",
+      "facts": [
+        "location=Denver (trust=0.92)",
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Denver",
+        "meetings"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Isn't my database MongoDB?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Is my favorite drink coffee?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "My framework is React, right?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Svelte",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Can you verify my location?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "What is gravity?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What are my project and experience years?",
+      "facts": [
+        "project=DataForge (trust=0.88)",
+        "experience_years=8 (trust=0.85)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "DataForge",
+        "8"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What cloud platform am I on?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my framework and os.",
+      "facts": [
+        "framework=Django (trust=0.8)",
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Django",
+        "Linux"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Two questions: what is my framework, and what causes earthquakes?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "Svelte"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "What are my name and occupation?",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "engineer"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Have I always had location = Denver?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Tell me where I live.",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my favorite drink?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What database do I work with?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is an API?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What's the project I work on?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What are my framework and favorite drink?",
+      "facts": [
+        "framework=Svelte (trust=0.8)",
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Svelte",
+        "espresso"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Do you know both my favorite language and my framework?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)",
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Rust",
+        "Svelte"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "Can you verify my database?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "You said my hobby is gaming. Correct?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "rock climbing",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Do you know both my name and my hobby?",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "climbing"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What is my name and my favorite language?",
+      "facts": [
+        "name=Alex (trust=0.95)",
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Alex",
+        "Rust"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What is quantum computing?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "What database do I use?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "expected_slot": "database",
+      "expected": "DuckDB",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Is my project DataHub?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What is my occupation and my os?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)",
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "engineer",
+        "Linux"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What is my location and my framework?",
+      "facts": [
+        "location=Denver (trust=0.92)",
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Denver",
+        "Svelte"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What OS do I run?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What pets do I have?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my name?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I like to do outside work?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "climbing",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Who wrote Romeo and Juliet?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Where am I based?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What kind of pets do I own?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "pet",
+      "expected": "two cats",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I like to drink?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Isn't my framework Flask?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Svelte",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Isn't my framework Angular?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Svelte",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Confirm that my name is Bob.",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Which framework do I work with?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "framework",
+      "expected": "Django",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I hate?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my pet peeve and pet.",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "meetings",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What is my location and my cloud?",
+      "facts": [
+        "location=Denver (trust=0.92)",
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Denver",
+        "AWS"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "What is my profession?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Do you know what my name is?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "expected_slot": "name",
+      "expected": "Alex",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Tell me my favorite language and pet.",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)",
+        "pet=two cats (trust=0.88)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "Rust",
+        "two cats"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "I think my cloud is GCP. Am I right?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Can you verify my os?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "hedged"
+    },
+    {
+      "query": "Where is my home?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What's my favorite language?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Isn't my hobby running?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "expected_slot": "hobby",
+      "expected": "rock climbing",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me my location. Also, what is quantum computing?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "Denver"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "Tell me my occupation. Also, what is quantum computing?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "engineer"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "Do you know both my project and my cloud?",
+      "facts": [
+        "project=DataForge (trust=0.88)",
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "multi",
+      "expected": [
+        "DataForge",
+        "AWS"
+      ],
+      "scope": "in-scope",
+      "category": "multi-fact"
+    },
+    {
+      "query": "My favorite language is Python, right?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What do I do professionally?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "expected_slot": "occupation",
+      "expected": "engineer",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What is my framework and what is literature?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "expected_slot": "mixed",
+      "expected": [
+        "Django"
+      ],
+      "scope": "mixed",
+      "category": "mixed"
+    },
+    {
+      "query": "What is evolution?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null,
+      "scope": "out-of-scope",
+      "category": "out-of-scope"
+    },
+    {
+      "query": "Is my project WebKit?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What system do I run?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "expected_slot": "os",
+      "expected": "Linux",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What editor do I use?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "I think my location is London. Am I right?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "expected_slot": "location",
+      "expected": "Denver",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Tell me about my project.",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "expected_slot": "project",
+      "expected": "DataForge",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "Confirm that my favorite language is Java.",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "expected_slot": "favorite_language",
+      "expected": "Rust",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "Is my cloud Azure?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "expected_slot": "cloud",
+      "expected": "AWS",
+      "scope": "in-scope",
+      "category": "adversarial"
+    },
+    {
+      "query": "What text editor do I prefer?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What IDE do I use?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "expected_slot": "editor",
+      "expected": "Neovim",
+      "scope": "in-scope",
+      "category": "direct"
+    },
+    {
+      "query": "What do I can't stand?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "expected_slot": "pet_peeve",
+      "expected": "meetings",
+      "scope": "in-scope",
+      "category": "direct"
+    }
+  ]
+}

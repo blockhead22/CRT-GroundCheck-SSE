@@ -1,0 +1,126 @@
+{
+  "examples": [
+    {
+      "query": "What is my name?",
+      "facts": [
+        "name=Alex (trust=0.95)"
+      ],
+      "target": "Your name is Alex."
+    },
+    {
+      "query": "Where do I live?",
+      "facts": [
+        "location=Denver (trust=0.92)"
+      ],
+      "target": "You live in Denver."
+    },
+    {
+      "query": "What do I do for work?",
+      "facts": [
+        "occupation=data engineer (trust=0.9)"
+      ],
+      "target": "You are a data engineer."
+    },
+    {
+      "query": "What is my favorite programming language?",
+      "facts": [
+        "favorite_language=Rust (trust=0.85)"
+      ],
+      "target": "Your favorite programming language is Rust."
+    },
+    {
+      "query": "What is my main project?",
+      "facts": [
+        "project=DataForge (trust=0.88)"
+      ],
+      "target": "Your main project is DataForge."
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=Django (trust=0.8)"
+      ],
+      "target": "You use Django."
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=Svelte (trust=0.8)"
+      ],
+      "target": "You use Svelte."
+    },
+    {
+      "query": "What editor do I use?",
+      "facts": [
+        "editor=Neovim (trust=0.82)"
+      ],
+      "target": "You use Neovim as your editor."
+    },
+    {
+      "query": "What do I like to drink?",
+      "facts": [
+        "favorite_drink=espresso (trust=0.78)"
+      ],
+      "target": "Your favorite drink is espresso."
+    },
+    {
+      "query": "What do I hate?",
+      "facts": [
+        "pet_peeve=meetings (trust=0.75)"
+      ],
+      "target": "You hate meetings."
+    },
+    {
+      "query": "What OS do I use?",
+      "facts": [
+        "os=Linux (trust=0.88)"
+      ],
+      "target": "You use Linux."
+    },
+    {
+      "query": "What database do I prefer?",
+      "facts": [
+        "database=DuckDB (trust=0.82)"
+      ],
+      "target": "You prefer DuckDB."
+    },
+    {
+      "query": "What cloud provider do I use?",
+      "facts": [
+        "cloud=AWS (trust=0.7)"
+      ],
+      "target": "You use AWS."
+    },
+    {
+      "query": "How many years of experience do I have?",
+      "facts": [
+        "experience_years=8 (trust=0.85)"
+      ],
+      "target": "You have 8 years of experience."
+    },
+    {
+      "query": "What is my hobby?",
+      "facts": [
+        "hobby=rock climbing (trust=0.9)"
+      ],
+      "target": "Your hobby is rock climbing."
+    },
+    {
+      "query": "Do I have pets?",
+      "facts": [
+        "pet=two cats (trust=0.88)"
+      ],
+      "target": "You have two cats."
+    },
+    {
+      "query": "What is gravity?",
+      "facts": [],
+      "target": "Gravity is a fundamental force that attracts objects with mass toward each other."
+    },
+    {
+      "query": "What is an API?",
+      "facts": [],
+      "target": "An API is a set of rules and protocols that allows different software applications to communicate."
+    }
+  ]
+}

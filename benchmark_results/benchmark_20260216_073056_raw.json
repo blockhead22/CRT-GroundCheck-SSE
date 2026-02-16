@@ -1,0 +1,53 @@
+[
+  {
+    "model": "Qwen/Qwen2.5-3B",
+    "mode": "vilt",
+    "total_params": 3085938688,
+    "trainable_params": 7372800,
+    "lora_r": 16,
+    "pre_accuracy": 0.8210526315789474,
+    "post_accuracy": 0.9368421052631579,
+    "best_accuracy": 1.0,
+    "best_step": 75,
+    "pre_gc_pass": 0.8842105263157894,
+    "post_gc_pass": 0.9192982456140351,
+    "pre_grounded": 127,
+    "post_grounded": 189,
+    "pre_oos": 129,
+    "post_oos": 98,
+    "pre_hallu": 25,
+    "post_hallu": 7,
+    "total_time_s": 242.7987825870514,
+    "num_steps": 75,
+    "stopped_early": true,
+    "learning_rate": 0.0001,
+    "n_test_queries": 285,
+    "gc_pass_timeline": [
+      0.9,
+      1.0,
+      1.0,
+      0.9,
+      1.0,
+      0.9,
+      1.0,
+      1.0
+    ],
+    "contradiction_timeline": [
+      0.02733333333333333,
+      0.0,
+      0.0,
+      0.02733333333333333,
+      0.0,
+      0.02733333333333333,
+      0.0,
+      0.0
+    ],
+    "config": {
+      "cw": 0.5,
+      "brevity_weight": 0.3,
+      "curriculum_switch_step": 80
+    },
+    "profile": "jordan_seattle",
+    "elapsed_wall_s": 1926.7875761985779
+  }
+]

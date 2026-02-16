@@ -1,0 +1,98 @@
+[
+  {
+    "model": "Qwen/Qwen2.5-3B",
+    "mode": "sft_baseline",
+    "total_params": 3085938688,
+    "trainable_params": 7372800,
+    "lora_r": 16,
+    "pre_accuracy": 0.761437908496732,
+    "post_accuracy": 0.9444444444444444,
+    "best_accuracy": 1.0,
+    "best_step": 50,
+    "pre_gc_pass": 0.8823529411764706,
+    "post_gc_pass": 0.9313725490196079,
+    "pre_grounded": 119,
+    "post_grounded": 207,
+    "pre_oos": 174,
+    "post_oos": 131,
+    "pre_hallu": 34,
+    "post_hallu": 8,
+    "total_time_s": 152.1712007522583,
+    "num_steps": 50,
+    "stopped_early": true,
+    "learning_rate": 0.0001,
+    "n_test_queries": 306,
+    "gc_pass_timeline": [
+      1.0,
+      1.0,
+      1.0,
+      0.9,
+      1.0
+    ],
+    "contradiction_timeline": [
+      0.0,
+      0.0,
+      0.0,
+      0.028333333333333332,
+      0.0
+    ],
+    "config": {
+      "cw": 0.0,
+      "brevity_weight": 0.3,
+      "curriculum_switch_step": 80
+    },
+    "profile": "maya_austin",
+    "elapsed_wall_s": 1730.3938255310059
+  },
+  {
+    "model": "Qwen/Qwen2.5-3B",
+    "mode": "vilt",
+    "total_params": 3085938688,
+    "trainable_params": 7372800,
+    "lora_r": 16,
+    "pre_accuracy": 0.7908496732026143,
+    "post_accuracy": 0.9738562091503268,
+    "best_accuracy": 1.0,
+    "best_step": 75,
+    "pre_gc_pass": 0.8660130718954249,
+    "post_gc_pass": 0.9509803921568627,
+    "pre_grounded": 117,
+    "post_grounded": 223,
+    "pre_oos": 165,
+    "post_oos": 132,
+    "pre_hallu": 43,
+    "post_hallu": 2,
+    "total_time_s": 272.8176770210266,
+    "num_steps": 75,
+    "stopped_early": true,
+    "learning_rate": 0.0001,
+    "n_test_queries": 306,
+    "gc_pass_timeline": [
+      0.9,
+      1.0,
+      1.0,
+      0.9,
+      1.0,
+      0.9,
+      1.0,
+      1.0
+    ],
+    "contradiction_timeline": [
+      0.028333333333333332,
+      0.0,
+      0.0,
+      0.028333333333333332,
+      0.0,
+      0.028333333333333332,
+      0.0,
+      0.0
+    ],
+    "config": {
+      "cw": 0.5,
+      "brevity_weight": 0.3,
+      "curriculum_switch_step": 80
+    },
+    "profile": "maya_austin",
+    "elapsed_wall_s": 1940.4314029216766
+  }
+]

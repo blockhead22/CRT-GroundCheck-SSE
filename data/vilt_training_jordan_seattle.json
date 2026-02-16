@@ -1,0 +1,154 @@
+{
+  "examples": [
+    {
+      "query": "What is my name?",
+      "facts": [
+        "name=Jordan (trust=0.95)"
+      ],
+      "target": "Your name is Jordan."
+    },
+    {
+      "query": "Where do I live?",
+      "facts": [
+        "location=Seattle (trust=0.92)"
+      ],
+      "target": "You live in Seattle."
+    },
+    {
+      "query": "What do I do for work?",
+      "facts": [
+        "occupation=UX designer (trust=0.9)"
+      ],
+      "target": "You are a UX designer."
+    },
+    {
+      "query": "What is my favorite programming language?",
+      "facts": [
+        "favorite_language=TypeScript (trust=0.85)"
+      ],
+      "target": "Your favorite programming language is TypeScript."
+    },
+    {
+      "query": "What is my main project?",
+      "facts": [
+        "project=PixelFlow (trust=0.88)"
+      ],
+      "target": "Your main project is PixelFlow."
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=React (trust=0.82)"
+      ],
+      "target": "You use React."
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=Tailwind (trust=0.8)"
+      ],
+      "target": "You use Tailwind."
+    },
+    {
+      "query": "What editor do I use?",
+      "facts": [
+        "editor=VS Code (trust=0.9)"
+      ],
+      "target": "You use VS Code as your editor."
+    },
+    {
+      "query": "What do I like to drink?",
+      "facts": [
+        "favorite_drink=matcha (trust=0.78)"
+      ],
+      "target": "Your favorite drink is matcha."
+    },
+    {
+      "query": "What do I hate?",
+      "facts": [
+        "pet_peeve=slow wifi (trust=0.72)"
+      ],
+      "target": "You hate slow wifi."
+    },
+    {
+      "query": "What OS do I use?",
+      "facts": [
+        "os=macOS (trust=0.88)"
+      ],
+      "target": "You use macOS."
+    },
+    {
+      "query": "What database do I prefer?",
+      "facts": [
+        "database=PostgreSQL (trust=0.82)"
+      ],
+      "target": "You prefer PostgreSQL."
+    },
+    {
+      "query": "What cloud provider do I use?",
+      "facts": [
+        "cloud=Vercel (trust=0.75)"
+      ],
+      "target": "You use Vercel."
+    },
+    {
+      "query": "How many years of experience do I have?",
+      "facts": [
+        "experience_years=5 (trust=0.85)"
+      ],
+      "target": "You have 5 years of experience."
+    },
+    {
+      "query": "What is my hobby?",
+      "facts": [
+        "hobby=watercolor painting (trust=0.88)"
+      ],
+      "target": "Your hobby is watercolor painting."
+    },
+    {
+      "query": "Do I have pets?",
+      "facts": [
+        "pet=golden retriever named Pixel (trust=0.9)"
+      ],
+      "target": "You have golden retriever named Pixel."
+    },
+    {
+      "query": "Where did I go to school?",
+      "facts": [
+        "school=RISD (trust=0.8)"
+      ],
+      "target": "You went to RISD."
+    },
+    {
+      "query": "What certifications do I have?",
+      "facts": [
+        "certification=Google UX Design (trust=0.78)"
+      ],
+      "target": "You have a Google UX Design certification."
+    },
+    {
+      "query": "What is my favorite food?",
+      "facts": [
+        "favorite_food=sushi (trust=0.75)"
+      ],
+      "target": "Your favorite food is sushi."
+    },
+    {
+      "query": "What is my side project?",
+      "facts": [
+        "side_project=design blog (trust=0.7)"
+      ],
+      "target": "Your side project is a design blog."
+    },
+    {
+      "query": "What is gravity?",
+      "facts": [],
+      "target": "Gravity is a fundamental force that attracts objects with mass toward each other."
+    },
+    {
+      "query": "What is an API?",
+      "facts": [],
+      "target": "An API is a set of rules and protocols that allows different software applications to communicate."
+    }
+  ]
+}

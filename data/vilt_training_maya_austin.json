@@ -1,0 +1,168 @@
+{
+  "examples": [
+    {
+      "query": "What is my name?",
+      "facts": [
+        "name=Maya (trust=0.95)"
+      ],
+      "target": "Your name is Maya."
+    },
+    {
+      "query": "Where do I live?",
+      "facts": [
+        "location=Austin (trust=0.92)"
+      ],
+      "target": "You live in Austin."
+    },
+    {
+      "query": "What do I do for work?",
+      "facts": [
+        "occupation=DevOps engineer (trust=0.9)"
+      ],
+      "target": "You are a DevOps engineer."
+    },
+    {
+      "query": "What is my favorite programming language?",
+      "facts": [
+        "favorite_language=Go (trust=0.85)"
+      ],
+      "target": "Your favorite programming language is Go."
+    },
+    {
+      "query": "What is my main project?",
+      "facts": [
+        "project=CloudPipeline (trust=0.88)"
+      ],
+      "target": "Your main project is CloudPipeline."
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=Terraform (trust=0.82)"
+      ],
+      "target": "You use Terraform."
+    },
+    {
+      "query": "What framework do I use?",
+      "facts": [
+        "framework=Kubernetes (trust=0.85)"
+      ],
+      "target": "You use Kubernetes."
+    },
+    {
+      "query": "What editor do I use?",
+      "facts": [
+        "editor=IntelliJ (trust=0.8)"
+      ],
+      "target": "You use IntelliJ as your editor."
+    },
+    {
+      "query": "What do I like to drink?",
+      "facts": [
+        "favorite_drink=cold brew (trust=0.78)"
+      ],
+      "target": "Your favorite drink is cold brew."
+    },
+    {
+      "query": "What do I hate?",
+      "facts": [
+        "pet_peeve=manual deployments (trust=0.75)"
+      ],
+      "target": "You hate manual deployments."
+    },
+    {
+      "query": "What OS do I use?",
+      "facts": [
+        "os=Ubuntu (trust=0.88)"
+      ],
+      "target": "You use Ubuntu."
+    },
+    {
+      "query": "What database do I prefer?",
+      "facts": [
+        "database=Redis (trust=0.82)"
+      ],
+      "target": "You prefer Redis."
+    },
+    {
+      "query": "What cloud provider do I use?",
+      "facts": [
+        "cloud=GCP (trust=0.78)"
+      ],
+      "target": "You use GCP."
+    },
+    {
+      "query": "How many years of experience do I have?",
+      "facts": [
+        "experience_years=12 (trust=0.85)"
+      ],
+      "target": "You have 12 years of experience."
+    },
+    {
+      "query": "What is my hobby?",
+      "facts": [
+        "hobby=marathon running (trust=0.88)"
+      ],
+      "target": "Your hobby is marathon running."
+    },
+    {
+      "query": "Do I have pets?",
+      "facts": [
+        "pet=three rescue cats (trust=0.9)"
+      ],
+      "target": "You have three rescue cats."
+    },
+    {
+      "query": "What certifications do I have?",
+      "facts": [
+        "certification=AWS Solutions Architect (trust=0.82)"
+      ],
+      "target": "You have a AWS Solutions Architect certification."
+    },
+    {
+      "query": "How big is my team?",
+      "facts": [
+        "team_size=6 (trust=0.7)"
+      ],
+      "target": "Your team has 6 people."
+    },
+    {
+      "query": "What is my favorite food?",
+      "facts": [
+        "favorite_food=tacos (trust=0.75)"
+      ],
+      "target": "Your favorite food is tacos."
+    },
+    {
+      "query": "What is my salary?",
+      "facts": [
+        "salary=155000 (trust=0.65)"
+      ],
+      "target": "Your salary is $155000."
+    },
+    {
+      "query": "What car do I drive?",
+      "facts": [
+        "vehicle=Tesla Model 3 (trust=0.72)"
+      ],
+      "target": "You drive a Tesla Model 3."
+    },
+    {
+      "query": "What is my morning routine?",
+      "facts": [
+        "morning_routine=5am gym (trust=0.68)"
+      ],
+      "target": "Your morning routine is 5am gym."
+    },
+    {
+      "query": "What is gravity?",
+      "facts": [],
+      "target": "Gravity is a fundamental force that attracts objects with mass toward each other."
+    },
+    {
+      "query": "What is an API?",
+      "facts": [],
+      "target": "An API is a set of rules and protocols that allows different software applications to communicate."
+    }
+  ]
+}
