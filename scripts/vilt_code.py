@@ -616,7 +616,7 @@ def main():
     if not args.cpu and torch.cuda.is_available():
         device = "cuda"
         gpu = torch.cuda.get_device_name(0)
-        vram = torch.cuda.get_device_properties(0).total_mem / 1e9
+        vram = torch.cuda.get_device_properties(0).total_memory / 1e9
         print(f"  GPU:            {gpu} ({vram:.1f} GB)")
     print(f"  Device:         {device}")
     print(f"{'='*60}\n")
