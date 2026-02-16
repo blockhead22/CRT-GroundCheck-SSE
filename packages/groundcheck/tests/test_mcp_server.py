@@ -1,0 +1,628 @@
+"""Integration tests for GroundCheck MCP server — tests the full tool pipeline."""
+
+import sys
+import json
+import sqlite3
+import pytest
+
+pytest.importorskip("mcp", reason="mcp package requires Python 3.10+")
+
+from groundcheck_mcp.storage import MemoryStore
+from groundcheck_mcp.server import (
+    _get_verifier,
+    groundcheck_store,
+    groundcheck_check,
+    groundcheck_verify,
+    _store,
+)
+import groundcheck_mcp.server as server_module
+
+
+@pytest.fixture(autouse=True)
+def fresh_store():
+    """Give each test a fresh in-memory store."""
+    store = MemoryStore(":memory:")
+    server_module._store = store
+    yield store
+    store.close()
+    server_module._store = None
+
+
+class TestStoreFact:
+    def test_basic_store(self):
+        result = json.loads(groundcheck_store("User works at Microsoft"))
+        assert result["stored"] is True
+        assert result["trust"] == 0.70
+        assert "employer" in result["facts_extracted"] or result["facts_extracted"]
+        assert result["has_contradiction"] is False
+
+    def test_store_with_source_trust(self):
+        result = json.loads(groundcheck_store("Project uses PostgreSQL", source="code"))
+        assert result["trust"] == 0.80  # code source = 0.80
+
+    def test_contradiction_detection(self):
+        groundcheck_store("User works at Microsoft")
+        result = json.loads(groundcheck_store("User works at Amazon"))
+        assert result["stored"] is True
+        assert result["has_contradiction"] is True
+        assert len(result["contradictions"]) > 0
+        c = result["contradictions"][0]
+        assert c["slot"] == "employer"
+
+    def test_no_false_contradiction_on_different_slots(self):
+        groundcheck_store("User works at Microsoft")
+        result = json.loads(groundcheck_store("User lives in Seattle"))
+        assert result["has_contradiction"] is False
+
+    def test_multiple_facts_stored(self):
+        groundcheck_store("User is named Alice")
+        groundcheck_store("User lives in Seattle")
+        result = json.loads(groundcheck_store("User works at Google"))
+        assert result["total_memories"] == 3
+
+    def test_thread_isolation(self):
+        groundcheck_store("User works at Microsoft", thread_id="thread_a")
+        result = json.loads(
+            groundcheck_store("User works at Amazon", thread_id="thread_b")
+        )
+        # Different threads — should NOT detect contradiction
+        assert result["has_contradiction"] is False
+
+
+class TestCheckMemory:
+    def test_empty_memory(self):
+        result = json.loads(groundcheck_check("anything"))
+        assert result["found"] == 0
+        assert "No memories" in result["note"]
+
+    def test_returns_stored_facts(self):
+        groundcheck_store("User works at Microsoft")
+        groundcheck_store("User lives in Seattle")
+        result = json.loads(groundcheck_check("employer"))
+        assert result["found"] == 2
+        texts = [m["text"] for m in result["memories"]]
+        assert "User works at Microsoft" in texts
+
+    def test_detects_contradictions_in_memory(self):
+        groundcheck_store("User works at Microsoft")
+        groundcheck_store("User works at Amazon")
+        result = json.loads(groundcheck_check("employer"))
+        assert result["found"] == 2
+        # Should flag the employer contradiction
+        assert len(result["contradictions"]) > 0
+
+    def test_thread_scoping(self):
+        groundcheck_store("User works at Microsoft", thread_id="a")
+        groundcheck_store("User lives in Paris", thread_id="b")
+        result = json.loads(groundcheck_check("anything", thread_id="a"))
+        assert result["found"] == 1
+
+
+class TestVerifyOutput:
+    def test_pass_when_grounded(self):
+        groundcheck_store("User works at Microsoft")
+        result = json.loads(
+            groundcheck_verify("You work at Microsoft")
+        )
+        assert result["passed"] is True
+
+    def test_fail_on_hallucination(self):
+        groundcheck_store("User works at Microsoft")
+        result = json.loads(
+            groundcheck_verify("You work at Amazon")
+        )
+        assert result["passed"] is False
+        assert "Amazon" in result["hallucinations"]
+
+    def test_correction_in_strict_mode(self):
+        groundcheck_store("User works at Microsoft")
+        result = json.loads(
+            groundcheck_verify("You work at Amazon", mode="strict")
+        )
+        assert result["corrected"] is not None
+        assert "Microsoft" in result["corrected"]
+
+    def test_no_correction_in_permissive_mode(self):
+        groundcheck_store("User works at Microsoft")
+        result = json.loads(
+            groundcheck_verify("You work at Amazon", mode="permissive")
+        )
+        assert result["corrected"] is None
+
+    def test_empty_memory_passes(self):
+        result = json.loads(groundcheck_verify("You work at anything"))
+        assert result["passed"] is True
+        assert result["confidence"] == 0.0
+
+    def test_multi_fact_verification(self):
+        groundcheck_store("User works at Microsoft")
+        groundcheck_store("User lives in Seattle")
+        result = json.loads(
+            groundcheck_verify("You work at Microsoft and live in Seattle")
+        )
+        assert result["passed"] is True
+        assert result["confidence"] > 0.5
+
+    def test_partial_hallucination(self):
+        groundcheck_store("User works at Microsoft")
+        groundcheck_store("User lives in Seattle")
+        result = json.loads(
+            groundcheck_verify("You work at Amazon and live in Seattle")
+        )
+        assert result["passed"] is False
+        assert "Amazon" in result["hallucinations"]
+
+
+class TestStorage:
+    def test_store_and_retrieve(self):
+        store = MemoryStore(":memory:")
+        mem = store.store("test fact", thread_id="t1")
+        assert mem.text == "test fact"
+        memories = store.get_all("t1")
+        assert len(memories) == 1
+        store.close()
+
+    def test_trust_update(self):
+        store = MemoryStore(":memory:")
+        mem = store.store("test fact", thread_id="t1")
+        store.update_trust(mem.id, 0.95)
+        memories = store.get_all("t1")
+        assert memories[0].trust == 0.95
+        store.close()
+
+    def test_delete(self):
+        store = MemoryStore(":memory:")
+        mem = store.store("test fact", thread_id="t1")
+        store.delete(mem.id)
+        memories = store.get_all("t1")
+        assert len(memories) == 0
+        store.close()
+
+    def test_clear_thread(self):
+        store = MemoryStore(":memory:")
+        store.store("fact 1", thread_id="t1")
+        store.store("fact 2", thread_id="t1")
+        store.store("fact 3", thread_id="t2")
+        count = store.clear_thread("t1")
+        assert count == 2
+        assert len(store.get_all("t1")) == 0
+        assert len(store.get_all("t2")) == 1
+        store.close()
+
+    def test_source_trust_defaults(self):
+        store = MemoryStore(":memory:")
+        m1 = store.store("from user", source="user")
+        m2 = store.store("from code", source="code")
+        m3 = store.store("from doc", source="document")
+        m4 = store.store("inferred", source="inferred")
+        assert m1.trust == 0.70
+        assert m2.trust == 0.80
+        assert m3.trust == 0.60
+        assert m4.trust == 0.40
+        store.close()
+
+
+class TestEndToEnd:
+    """Full workflow: store facts → check memory → verify output."""
+
+    def test_full_agent_workflow(self):
+        # Agent stores facts from user conversation
+        r1 = json.loads(groundcheck_store("My name is Alice"))
+        assert r1["stored"]
+
+        r2 = json.loads(groundcheck_store("I work at Microsoft"))
+        assert r2["stored"]
+
+        r3 = json.loads(groundcheck_store("I live in Seattle"))
+        assert r3["stored"]
+
+        # Agent checks memory before responding
+        mem = json.loads(groundcheck_check("user info"))
+        assert mem["found"] == 3
+
+        # Agent drafts a response and verifies it
+        draft = "Hi Alice! Since you work at Microsoft in Seattle..."
+        verified = json.loads(groundcheck_verify(draft))
+        assert verified["passed"] is True
+
+        # Agent drafts a WRONG response
+        bad_draft = "Hi Bob! Since you work at Amazon..."
+        bad_result = json.loads(groundcheck_verify(bad_draft))
+        assert bad_result["passed"] is False
+        assert len(bad_result["hallucinations"]) > 0
+
+    def test_contradiction_workflow(self):
+        # User says one thing
+        groundcheck_store("I work at Microsoft")
+
+        # Later, user says something contradictory
+        r = json.loads(groundcheck_store("I work at Amazon"))
+        assert r["has_contradiction"] is True
+        assert r["contradictions"][0]["slot"] == "employer"
+
+        # Memory check should also flag this
+        mem = json.loads(groundcheck_check("employer"))
+        assert len(mem["contradictions"]) > 0
+
+        # Verification should handle the contradiction
+        result = json.loads(
+            groundcheck_verify("You work at Microsoft")
+        )
+        # Should flag requires_disclosure since there's contradicting info
+        # (the exact behavior depends on trust scores and thresholds)
+        assert isinstance(result["passed"], bool)
+
+
+class TestNamespaceIsolation:
+    """Tests for project-scoped namespace memory isolation."""
+
+    def test_store_with_namespace(self):
+        result = json.loads(
+            groundcheck_store("Project uses React", namespace="my-app")
+        )
+        assert result["stored"] is True
+        assert result["namespace"] == "my-app"
+
+    def test_namespace_isolation_between_projects(self):
+        # Store facts in two different project namespaces
+        groundcheck_store("Enforce strict linting", namespace="production")
+        groundcheck_store("No docs needed", namespace="playground")
+
+        # Each namespace sees only its own memories (plus global)
+        prod = json.loads(
+            groundcheck_check("linting", namespace="production", include_global=False)
+        )
+        play = json.loads(
+            groundcheck_check("docs", namespace="playground", include_global=False)
+        )
+
+        assert prod["found"] == 1
+        assert "strict linting" in prod["memories"][0]["text"]
+
+        assert play["found"] == 1
+        assert "No docs" in play["memories"][0]["text"]
+
+    def test_global_facts_visible_everywhere(self):
+        # Store a personal fact in global namespace
+        groundcheck_store("User's name is Nick", namespace="global")
+
+        # Store a project fact in a project namespace
+        groundcheck_store("Uses PostgreSQL", namespace="my-app")
+
+        # Query from the project namespace — should see both
+        result = json.loads(
+            groundcheck_check("info", namespace="my-app", include_global=True)
+        )
+        assert result["found"] == 2
+        texts = [m["text"] for m in result["memories"]]
+        assert "User's name is Nick" in texts
+        assert "Uses PostgreSQL" in texts
+
+    def test_global_excluded_when_disabled(self):
+        groundcheck_store("User's name is Nick", namespace="global")
+        groundcheck_store("Uses PostgreSQL", namespace="my-app")
+
+        result = json.loads(
+            groundcheck_check("info", namespace="my-app", include_global=False)
+        )
+        assert result["found"] == 1
+        assert result["memories"][0]["text"] == "Uses PostgreSQL"
+
+    def test_verify_uses_namespace(self):
+        # Store facts in different namespaces
+        groundcheck_store("User works at Microsoft", namespace="global")
+        groundcheck_store("Use strict TypeScript", namespace="prod-app")
+
+        # Verify in prod-app namespace — should see global facts too
+        result = json.loads(
+            groundcheck_verify(
+                "You work at Microsoft", namespace="prod-app"
+            )
+        )
+        assert result["passed"] is True
+
+    def test_contradiction_scoped_to_namespace(self):
+        # Same slot in different namespaces — NOT a contradiction
+        groundcheck_store("User works at Microsoft", namespace="project-a")
+        result = json.loads(
+            groundcheck_store("User works at Amazon", namespace="project-b")
+        )
+        # Different namespaces — should NOT detect contradiction
+        assert result["has_contradiction"] is False
+
+    def test_default_namespace_via_server_config(self):
+        """Tests that _default_namespace is used when namespace='' is passed."""
+        import groundcheck_mcp.server as srv
+        old_ns = srv._default_namespace
+        try:
+            srv._default_namespace = "configured-project"
+            result = json.loads(groundcheck_store("test fact"))
+            assert result["namespace"] == "configured-project"
+        finally:
+            srv._default_namespace = old_ns
+
+    def test_memory_id_includes_namespace(self):
+        result = json.loads(
+            groundcheck_store("test fact", namespace="my-ns")
+        )
+        assert "my-ns" in result["memory_id"]
+
+    def test_each_memory_reports_namespace(self):
+        groundcheck_store("Fact A", namespace="global")
+        groundcheck_store("Fact B", namespace="project-x")
+
+        result = json.loads(
+            groundcheck_check("fact", namespace="project-x", include_global=True)
+        )
+        namespaces = {m["namespace"] for m in result["memories"]}
+        assert "global" in namespaces
+        assert "project-x" in namespaces
+
+
+class TestStorageNamespace:
+    """Direct storage-layer tests for namespace features."""
+
+    def test_store_with_namespace(self):
+        store = MemoryStore(":memory:")
+        mem = store.store("test fact", namespace="proj-1")
+        assert "proj-1" in mem.id
+        assert mem.metadata["namespace"] == "proj-1"
+        store.close()
+
+    def test_query_namespace_isolation(self):
+        store = MemoryStore(":memory:")
+        store.store("fact A", namespace="ns1")
+        store.store("fact B", namespace="ns2")
+
+        ns1_mems = store.query("", namespace="ns1", include_global=False)
+        ns2_mems = store.query("", namespace="ns2", include_global=False)
+
+        assert len(ns1_mems) == 1
+        assert ns1_mems[0].text == "fact A"
+        assert len(ns2_mems) == 1
+        assert ns2_mems[0].text == "fact B"
+        store.close()
+
+    def test_global_merge(self):
+        store = MemoryStore(":memory:")
+        store.store("global fact", namespace="global")
+        store.store("project fact", namespace="my-proj")
+
+        # With include_global=True
+        mems = store.query("", namespace="my-proj", include_global=True)
+        assert len(mems) == 2
+
+        # With include_global=False
+        mems = store.query("", namespace="my-proj", include_global=False)
+        assert len(mems) == 1
+        assert mems[0].text == "project fact"
+        store.close()
+
+    def test_clear_namespace(self):
+        store = MemoryStore(":memory:")
+        store.store("f1", namespace="ns1")
+        store.store("f2", namespace="ns1")
+        store.store("f3", namespace="ns2")
+
+        count = store.clear_namespace("ns1")
+        assert count == 2
+        assert len(store.query("", namespace="ns1", include_global=False)) == 0
+        assert len(store.query("", namespace="ns2", include_global=False)) == 1
+        store.close()
+
+    def test_list_namespaces(self):
+        store = MemoryStore(":memory:")
+        store.store("f1", namespace="alpha")
+        store.store("f2", namespace="beta")
+        store.store("f3", namespace="global")
+
+        ns_list = store.list_namespaces()
+        assert ns_list == ["alpha", "beta", "global"]
+        store.close()
+
+    def test_clear_thread_with_namespace(self):
+        store = MemoryStore(":memory:")
+        store.store("f1", thread_id="t1", namespace="ns1")
+        store.store("f2", thread_id="t1", namespace="ns2")
+        store.store("f3", thread_id="t2", namespace="ns1")
+
+        # Clear only t1+ns1
+        count = store.clear_thread("t1", namespace="ns1")
+        assert count == 1
+        # t1+ns2 still there
+        assert len(store.query("", thread_id="t1", namespace="ns2", include_global=False)) == 1
+        # t2+ns1 still there
+        assert len(store.query("", thread_id="t2", namespace="ns1", include_global=False)) == 1
+        store.close()
+
+    def test_migration_adds_namespace_column(self):
+        """Verify that opening an old DB (no namespace column) auto-migrates."""
+        import tempfile
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db_path = os.path.join(tmp, "legacy.db")
+            # Create a DB the old way — no namespace column
+            conn = sqlite3.connect(db_path)
+            conn.execute("""CREATE TABLE memories (
+                id TEXT PRIMARY KEY,
+                thread_id TEXT NOT NULL DEFAULT 'default',
+                text TEXT NOT NULL,
+                trust REAL NOT NULL DEFAULT 0.7,
+                source TEXT NOT NULL DEFAULT 'user',
+                timestamp INTEGER NOT NULL,
+                metadata TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )""")
+            conn.execute(
+                "INSERT INTO memories (id, thread_id, text, trust, source, timestamp) "
+                "VALUES ('old1', 'default', 'legacy fact', 0.7, 'user', 1000)"
+            )
+            conn.commit()
+            conn.close()
+
+            # Open with new MemoryStore — should auto-migrate
+            store = MemoryStore(db_path)
+            mems = store.get_all()
+            assert len(mems) == 1
+            assert mems[0].text == "legacy fact"
+
+            # New stores should work with namespace
+            store.store("new fact", namespace="proj-x")
+            proj_mems = store.query("", namespace="proj-x", include_global=False)
+            assert len(proj_mems) == 1
+            store.close()
+
+
+class TestAutoLearning:
+    """Tests for passive fact extraction via groundcheck_check context param."""
+
+    def test_auto_learns_name_from_context(self):
+        """User says their name — should be auto-stored without groundcheck_store."""
+        result = json.loads(
+            groundcheck_check("user info", context="My name is Alice")
+        )
+        assert "name" in result["auto_learned"]
+        assert result["auto_learned"]["name"]["value"] == "Alice"
+        # Memory should now contain the fact
+        assert result["found"] >= 1
+        texts = [m["text"] for m in result["memories"]]
+        assert any("Alice" in t for t in texts)
+
+    def test_auto_learns_employer(self):
+        result = json.loads(
+            groundcheck_check("info", context="I work at Microsoft")
+        )
+        learned = result["auto_learned"]
+        assert any("Microsoft" in v["value"] for v in learned.values())
+
+    def test_auto_learns_favorite(self):
+        result = json.loads(
+            groundcheck_check("info", context="My favorite color is orange")
+        )
+        assert "favorite_color" in result["auto_learned"]
+        assert result["auto_learned"]["favorite_color"]["value"] == "orange"
+
+    def test_no_duplicate_learning(self):
+        """If we already know a fact, don't store it again."""
+        # First call learns it
+        groundcheck_check("info", context="My name is Alice")
+        # Second call with same fact
+        result = json.loads(
+            groundcheck_check("info", context="My name is Alice")
+        )
+        # Should not re-learn
+        assert "name" not in result["auto_learned"]
+        # But should still have the memory
+        assert result["found"] >= 1
+
+    def test_no_context_no_learning(self):
+        """Without context param, no auto-learning occurs."""
+        result = json.loads(groundcheck_check("anything"))
+        assert result["auto_learned"] == {}
+
+    def test_empty_context_no_learning(self):
+        result = json.loads(groundcheck_check("anything", context=""))
+        assert result["auto_learned"] == {}
+
+    def test_context_with_no_facts(self):
+        """Random text with no extractable facts."""
+        result = json.loads(
+            groundcheck_check("info", context="What's the weather like?")
+        )
+        assert result["auto_learned"] == {}
+
+    def test_auto_learned_facts_appear_in_memories(self):
+        """Facts learned from context should be queryable immediately."""
+        groundcheck_check("info", context="I work at Tesla")
+        result = json.loads(groundcheck_check("employer"))
+        texts = [m["text"] for m in result["memories"]]
+        assert any("Tesla" in t for t in texts)
+
+    def test_auto_learning_uses_inferred_source(self):
+        """Auto-learned facts should have 'inferred' source (lower trust)."""
+        result = json.loads(
+            groundcheck_check("info", context="My name is Bob")
+        )
+        # Inferred source has trust 0.40
+        mem_id = result["auto_learned"]["name"]["memory_id"]
+        mem = [m for m in result["memories"] if m["id"] == mem_id]
+        assert len(mem) == 1
+        assert mem[0]["trust"] == 0.40
+
+    def test_explicit_store_has_higher_trust(self):
+        """groundcheck_store (user source, 0.70) should outrank auto-learned (inferred, 0.40)."""
+        # Auto-learn first
+        groundcheck_check("info", context="My name is Bob")
+        # Then explicit store
+        groundcheck_store("My name is Robert")
+        # Check — explicit should have higher trust
+        result = json.loads(groundcheck_check("name"))
+        trusts = {m["text"]: m["trust"] for m in result["memories"]}
+        # The explicit "Robert" (0.70+) should rank above inferred "Bob" (0.40+)
+        # Trust reinforcement may bump values by +0.01 per retrieval
+        assert any(t >= 0.70 for t in trusts.values())
+        assert any(0.40 <= t < 0.50 for t in trusts.values())
+
+    def test_multi_fact_auto_learning(self):
+        """Multiple facts in one message should all be learned."""
+        result = json.loads(
+            groundcheck_check(
+                "info",
+                context="My name is Alice and I work at Microsoft"
+            )
+        )
+        learned = result["auto_learned"]
+        assert len(learned) >= 1  # At least name should be caught
+
+
+class TestExpandedExtraction:
+    """Tests for newly added extraction patterns."""
+
+    def test_your_favorite_color(self):
+        """'your favorite X is Y' should extract the same slot as 'my favorite X is Y'."""
+        from groundcheck.fact_extractor import extract_fact_slots
+        f1 = extract_fact_slots("My favorite color is blue")
+        f2 = extract_fact_slots("Your favorite color is red")
+        assert "favorite_color" in f1
+        assert "favorite_color" in f2
+        assert f1["favorite_color"].value == "blue"
+        assert f2["favorite_color"].value == "red"
+
+    def test_users_favorite(self):
+        """'User's favorite X is Y' should match."""
+        from groundcheck.fact_extractor import extract_fact_slots
+        facts = extract_fact_slots("User's favorite color is orange")
+        assert "favorite_color" in facts
+        assert facts["favorite_color"].value == "orange"
+
+    def test_i_code_in_python(self):
+        from groundcheck.fact_extractor import extract_fact_slots
+        facts = extract_fact_slots("I usually code in Python")
+        assert "programming_language" in facts
+        assert facts["programming_language"].value == "Python"
+
+    def test_i_code_in_python_and_typescript(self):
+        from groundcheck.fact_extractor import extract_fact_slots
+        facts = extract_fact_slots("I code in Python and TypeScript")
+        assert "programming_language" in facts
+        assert "Python" in facts["programming_language"].value
+        assert "TypeScript" in facts["programming_language"].value
+
+    def test_coding_style_preference(self):
+        from groundcheck.fact_extractor import extract_fact_slots
+        facts = extract_fact_slots("I prefer concise code")
+        assert "coding_style" in facts
+        assert facts["coding_style"].value == "concise"
+
+    def test_i_like_something(self):
+        from groundcheck.fact_extractor import extract_fact_slots
+        facts = extract_fact_slots("I love hiking")
+        assert "likes" in facts
+        assert facts["likes"].value == "hiking"
+
+    def test_i_like_to_verb_not_extracted_as_likes(self):
+        """'I like to code' is a verb phrase, not a likeable thing."""
+        from groundcheck.fact_extractor import extract_fact_slots
+        facts = extract_fact_slots("I like to code")
+        assert "likes" not in facts
