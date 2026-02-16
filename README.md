@@ -72,6 +72,51 @@ python -m personal_agent.dnnt.train_model --tokenizer-backend sentencepiece --to
 
 ---
 
+## VILT — Verification-In-the-Loop Training
+
+**VILT** wires GroundCheck's contradiction detection directly into a training loop so that a language model learns *not to hallucinate* about user-specific facts.
+
+### How It Works
+
+1. The model generates an answer conditioned on a fact ledger (slot–value memory triples).
+2. GroundCheck verifies the answer against those facts in real time (~1 ms).
+3. Contradictions **amplify the loss** on that sample — the gradient signal gets louder for answers that conflict with stored memories.
+4. Anti-gaming guards (brevity penalty, minimum-length floor, curriculum scheduling) prevent the model from learning to dodge the verifier with vague or short answers.
+
+Loss amplification formula:
+
+$$\mathcal{L}_{\text{VILT}} = \mathcal{L}_{\text{sup}} \times \min\!\bigl(2,\; 1 + \min(1,\; w_c \cdot s_c) + p_{\text{brevity}}\bigr)$$
+
+where $w_c$ is the contradiction weight, $s_c$ is the contradiction score from GroundCheck, and $p_{\text{brevity}}$ penalises responses shorter than a minimum length floor.
+
+### Experiments
+
+| Model | Params (trainable) | Steps | Accuracy | Notes |
+|---|---|---|---|---|
+| DNNT v2.2 | 6.2 M (all) | 200 | 62 % | Capacity ceiling — mode collapse across facts |
+| DNNT v2.3 | 6.2 M (all) | 500 | 75 % peak → collapsed | Adversarial gaming discovered — model generated shorter/vaguer text to dodge verifier |
+| DNNT v3 | 6.2 M (all) | 500 | 62 % | Anti-gaming fixes eliminated gaming, but capacity bottleneck persisted |
+| **SmolLM-135M + LoRA** | **1.8 M (1.4 %)** | **200** | **88 %** | No mode collapse. Coherent English. 0.52 GB VRAM on RTX 3060. |
+
+The DNNT experiments proved VILT's training signal is correct but exposed a model-capacity ceiling: a 6.2 M parameter micro-transformer cannot hold 16 distinct fact-query mappings without mode collapse. Switching to a pretrained language model (SmolLM-135M, ~134 M total params) with LoRA adapters (rank 16, only 1.8 M trainable) resolved the issue entirely — accuracy jumped from 25 % baseline to 88 % in 200 steps (26 min on an RTX 3060 12 GB).
+
+### Running VILT Pretrained
+
+```bash
+# Requires: torch (CUDA), transformers, peft, groundcheck
+python scripts/vilt_pretrained.py
+```
+
+Outputs are saved to `models/vilt_smollm/` — LoRA adapters (`best_lora/`, `final_lora/`) and a `vilt_metrics.json` results log.
+
+The original DNNT-based VILT experiment is in `scripts/vilt_experiment.py`.
+
+### Key Takeaway
+
+VILT proved that real-time verification feedback (GroundCheck) can teach a model to respect user-specific facts — **if** the model has enough capacity to absorb them. The technique is model-agnostic: it only requires a verifier that returns a contradiction score.
+
+---
+
 ## Scope
 
 - Append-only memory where no claim is ever silently overwritten or discarded
@@ -498,12 +543,17 @@ Calibrated thresholds: `artifacts/calibrated_thresholds.json` — auto-loaded fo
 ├── sse/                    # Semantic String Engine
 ├── belief_revision/        # Belief revision bench (policy learning)
 ├── frontend/               # React UI
+├── scripts/
+│   ├── vilt_pretrained.py  # VILT on SmolLM-135M + LoRA (88% acc)
+│   └── vilt_experiment.py  # VILT on DNNT (original proof-of-concept)
 ├── tools/                  # Stress tests and validation utilities
 ├── tests/                  # 577+ pytest tests
 ├── schemas/                # JSON schemas for runtime config
 ├── artifacts/              # Calibrated thresholds, trained models
 ├── data/                   # Training data
-└── models/                 # ML model artifacts
+└── models/
+    ├── dnnt_v2/            # DNNT model checkpoints
+    └── vilt_smollm/        # LoRA adapters + metrics from VILT pretrained
 ```
 
 ---
