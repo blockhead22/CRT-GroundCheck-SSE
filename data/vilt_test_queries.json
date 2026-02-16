@@ -1,0 +1,53 @@
+{
+  "_comment": "Shared test queries for VILT evaluation. Must align with vilt_facts.json.",
+  "queries": [
+    {
+      "query": "What is my name?",
+      "facts": ["name=Alex (trust=0.95)"],
+      "expected_slot": "name",
+      "expected": "Alex"
+    },
+    {
+      "query": "Where do I live?",
+      "facts": ["location=Denver (trust=0.92)"],
+      "expected_slot": "location",
+      "expected": "Denver"
+    },
+    {
+      "query": "What do I do?",
+      "facts": ["occupation=data engineer (trust=0.90)"],
+      "expected_slot": "occupation",
+      "expected": "engineer"
+    },
+    {
+      "query": "What do I like to drink?",
+      "facts": ["favorite_drink=espresso (trust=0.78)"],
+      "expected_slot": "favorite_drink",
+      "expected": "espresso"
+    },
+    {
+      "query": "What OS do I use?",
+      "facts": ["os=Linux (trust=0.88)"],
+      "expected_slot": "os",
+      "expected": "Linux"
+    },
+    {
+      "query": "What is my hobby?",
+      "facts": ["hobby=rock climbing (trust=0.90)"],
+      "expected_slot": "hobby",
+      "expected": "climbing"
+    },
+    {
+      "query": "What is gravity?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null
+    },
+    {
+      "query": "What is an API?",
+      "facts": [],
+      "expected_slot": null,
+      "expected": null
+    }
+  ]
+}

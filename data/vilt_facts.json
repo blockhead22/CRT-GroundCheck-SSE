@@ -1,0 +1,21 @@
+{
+  "_comment": "Shared fact ledger for VILT experiments. Swap this file to train on your own user profile.",
+  "facts": [
+    {"id": "f1",  "text": "FACT: name = Alex",               "trust": 0.95},
+    {"id": "f2",  "text": "FACT: location = Denver",          "trust": 0.92},
+    {"id": "f3",  "text": "FACT: occupation = data engineer",  "trust": 0.90},
+    {"id": "f4",  "text": "FACT: favorite_language = Rust",    "trust": 0.85},
+    {"id": "f5",  "text": "FACT: project = DataForge",        "trust": 0.88},
+    {"id": "f6",  "text": "FACT: framework = Django",         "trust": 0.80},
+    {"id": "f7",  "text": "FACT: framework = Svelte",         "trust": 0.80},
+    {"id": "f8",  "text": "FACT: editor = Neovim",            "trust": 0.82},
+    {"id": "f9",  "text": "FACT: favorite_drink = espresso",   "trust": 0.78},
+    {"id": "f10", "text": "FACT: pet_peeve = meetings",        "trust": 0.75},
+    {"id": "f11", "text": "FACT: os = Linux",                  "trust": 0.88},
+    {"id": "f12", "text": "FACT: database = DuckDB",           "trust": 0.82},
+    {"id": "f13", "text": "FACT: cloud = AWS",                 "trust": 0.70},
+    {"id": "f14", "text": "FACT: experience_years = 8",        "trust": 0.85},
+    {"id": "f15", "text": "FACT: hobby = rock climbing",       "trust": 0.90},
+    {"id": "f16", "text": "FACT: pet = two cats",              "trust": 0.88}
+  ]
+}

@@ -41,57 +41,31 @@ from groundcheck import GroundCheck, Memory
 
 
 # ==============================================================
-#  FACT LEDGER — generic user profile (no personal data)
+#  DATA LOADING — facts and queries from shared JSON files
 # ==============================================================
 
-FACT_LEDGER = [
-    # ── identity ──
-    Memory(id="f1",  text="FACT: name = Alex",            trust=0.95),
-    Memory(id="f2",  text="FACT: location = Denver",       trust=0.92),
-    Memory(id="f3",  text="FACT: occupation = data engineer", trust=0.90),
-    Memory(id="f4",  text="FACT: favorite_language = Rust", trust=0.85),
-    Memory(id="f5",  text="FACT: project = DataForge",     trust=0.88),
-    Memory(id="f6",  text="FACT: framework = Django",      trust=0.80),
-    Memory(id="f7",  text="FACT: framework = Svelte",      trust=0.80),
-    Memory(id="f8",  text="FACT: editor = Neovim",         trust=0.82),
-    # ── preferences ──
-    Memory(id="f9",  text="FACT: favorite_drink = espresso", trust=0.78),
-    Memory(id="f10", text="FACT: pet_peeve = meetings",    trust=0.75),
-    Memory(id="f11", text="FACT: os = Linux",              trust=0.88),
-    Memory(id="f12", text="FACT: database = DuckDB",       trust=0.82),
-    Memory(id="f13", text="FACT: cloud = AWS",             trust=0.70),
-    Memory(id="f14", text="FACT: experience_years = 8",    trust=0.85),
-    Memory(id="f15", text="FACT: hobby = rock climbing",   trust=0.90),
-    Memory(id="f16", text="FACT: pet = two cats",          trust=0.88),
-]
+DATA_DIR = ROOT / "data"
 
-TEST_QUERIES = [
-    {"query": "What is my name?",
-     "facts": ["name=Alex (trust=0.95)"],
-     "expected_slot": "name",      "expected": "Alex"},
-    {"query": "Where do I live?",
-     "facts": ["location=Denver (trust=0.92)"],
-     "expected_slot": "location",  "expected": "Denver"},
-    {"query": "What do I do?",
-     "facts": ["occupation=data engineer (trust=0.90)"],
-     "expected_slot": "occupation","expected": "engineer"},
-    {"query": "What do I like to drink?",
-     "facts": ["favorite_drink=espresso (trust=0.78)"],
-     "expected_slot": "favorite_drink", "expected": "espresso"},
-    {"query": "What OS do I use?",
-     "facts": ["os=Linux (trust=0.88)"],
-     "expected_slot": "os",        "expected": "Linux"},
-    {"query": "What is my hobby?",
-     "facts": ["hobby=rock climbing (trust=0.90)"],
-     "expected_slot": "hobby",     "expected": "climbing"},
-    {"query": "What is gravity?",
-     "facts": [],
-     "expected_slot": None,        "expected": None},
-    {"query": "What is an API?",
-     "facts": [],
-     "expected_slot": None,        "expected": None},
-]
+def load_facts(path=None):
+    """Load fact ledger from JSON → list[Memory]."""
+    p = Path(path) if path else DATA_DIR / "vilt_facts.json"
+    with open(p) as f:
+        data = json.load(f)
+    return [Memory(id=d["id"], text=d["text"], trust=d["trust"]) for d in data["facts"]]
 
+def load_test_queries(path=None):
+    """Load test queries from JSON."""
+    p = Path(path) if path else DATA_DIR / "vilt_test_queries.json"
+    with open(p) as f:
+        data = json.load(f)
+    return data["queries"]
+
+
+FACT_LEDGER = load_facts()
+TEST_QUERIES = load_test_queries()
+
+# Training examples — plain-text targets for pretrained models.
+# These match the generic facts in data/vilt_facts.json.
 TRAINING_EXAMPLES = [
     # ── identity (8) ──
     {"query": "What is my name?",

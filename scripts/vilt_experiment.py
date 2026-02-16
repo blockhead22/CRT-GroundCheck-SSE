@@ -44,102 +44,82 @@ from groundcheck import GroundCheck, Memory
 
 
 # ==============================================================
-#  FACT LEDGER — the ground truth the model must respect
+#  DATA LOADING — facts and queries from shared JSON files
 # ==============================================================
 
-FACT_LEDGER = [
-    # ── original 8 ──
-    Memory(id="f1",  text="FACT: name = Nick",          trust=0.95),
-    Memory(id="f2",  text="FACT: location = Wisconsin",  trust=0.92),
-    Memory(id="f3",  text="FACT: occupation = freelance full-stack developer", trust=0.90),
-    Memory(id="f4",  text="FACT: favorite_language = Python", trust=0.85),
-    Memory(id="f5",  text="FACT: project = CRT-GroundCheck-SSE", trust=0.88),
-    Memory(id="f6",  text="FACT: framework = React",     trust=0.80),
-    Memory(id="f7",  text="FACT: framework = FastAPI",   trust=0.80),
-    Memory(id="f8",  text="FACT: editor = VS Code",      trust=0.82),
-    # ── new 8 ──
-    Memory(id="f9",  text="FACT: favorite_drink = IPA",  trust=0.78),
-    Memory(id="f10", text="FACT: pet_peeve = Mondays",   trust=0.75),
-    Memory(id="f11", text="FACT: os = Windows",          trust=0.88),
-    Memory(id="f12", text="FACT: database = PostgreSQL", trust=0.82),
-    Memory(id="f13", text="FACT: cloud = none",          trust=0.70),
-    Memory(id="f14", text="FACT: experience_years = 10+",trust=0.85),
-    Memory(id="f15", text="FACT: hobby = building AI agents", trust=0.90),
-    Memory(id="f16", text="FACT: ai_model = DNNT",       trust=0.88),
-]
+DATA_DIR = ROOT / "data"
 
-TEST_QUERIES = [
-    # ── personal fact recall (8) ──
-    {"query": "What is my name?",  "facts": ["name=Nick (trust=0.95)"],
-     "expected_slot": "name",      "expected": "Nick"},
-    {"query": "Where do I live?",  "facts": ["location=Wisconsin (trust=0.92)"],
-     "expected_slot": "location",  "expected": "Wisconsin"},
-    {"query": "What do I do?",     "facts": ["occupation=freelance full-stack developer (trust=0.90)"],
-     "expected_slot": "occupation","expected": "developer"},
-    {"query": "What do I like to drink?", "facts": ["favorite_drink=IPA (trust=0.78)"],
-     "expected_slot": "favorite_drink", "expected": "IPA"},
-    {"query": "What OS do I use?", "facts": ["os=Windows (trust=0.88)"],
-     "expected_slot": "os",        "expected": "Windows"},
-    {"query": "What is my hobby?", "facts": ["hobby=building AI agents (trust=0.90)"],
-     "expected_slot": "hobby",     "expected": "AI"},
-    # ── knowledge (no personal facts) ──
-    {"query": "What is gravity?",  "facts": [],
-     "expected_slot": None,        "expected": None},
-    {"query": "What is an API?",   "facts": [],
-     "expected_slot": None,        "expected": None},
-]
+def load_facts(path=None):
+    """Load fact ledger from JSON → list[Memory]."""
+    p = Path(path) if path else DATA_DIR / "vilt_facts.json"
+    with open(p) as f:
+        data = json.load(f)
+    return [Memory(id=d["id"], text=d["text"], trust=d["trust"]) for d in data["facts"]]
 
+def load_test_queries(path=None):
+    """Load test queries from JSON."""
+    p = Path(path) if path else DATA_DIR / "vilt_test_queries.json"
+    with open(p) as f:
+        data = json.load(f)
+    return data["queries"]
+
+
+FACT_LEDGER = load_facts()
+TEST_QUERIES = load_test_queries()
+
+# Training examples — use DNNT <think>/<response> prompt format.
+# These match the generic facts in data/vilt_facts.json.
 TRAINING_EXAMPLES = [
-    # ── original 8 ──
+    # ── identity (8) ──
     {"query": "What is my name?",
-     "facts": ["name=Nick (trust=0.95)", "location=Wisconsin (trust=0.92)"],
-     "target": " I need to recall the user's name from the facts.</think>\n<response>Your name is Nick.</response>"},
+     "facts": ["name=Alex (trust=0.95)", "location=Denver (trust=0.92)"],
+     "target": " I need to recall the user's name from the facts.</think>\n<response>Your name is Alex.</response>"},
     {"query": "Where do I live?",
-     "facts": ["location=Wisconsin (trust=0.92)", "name=Nick (trust=0.95)"],
-     "target": " The user is asking about their location.</think>\n<response>You live in Wisconsin.</response>"},
+     "facts": ["location=Denver (trust=0.92)", "name=Alex (trust=0.95)"],
+     "target": " The user is asking about their location.</think>\n<response>You live in Denver.</response>"},
     {"query": "What do I do for work?",
-     "facts": ["occupation=freelance full-stack developer (trust=0.90)", "name=Nick (trust=0.95)"],
-     "target": " Looking at the facts about the user's occupation.</think>\n<response>You are a freelance full-stack developer.</response>"},
+     "facts": ["occupation=data engineer (trust=0.90)", "name=Alex (trust=0.95)"],
+     "target": " Looking at the facts about the user's occupation.</think>\n<response>You are a data engineer.</response>"},
     {"query": "What is my favorite programming language?",
-     "facts": ["favorite_language=Python (trust=0.85)", "name=Nick (trust=0.95)"],
-     "target": " The user wants to know their preferred language.</think>\n<response>Your favorite programming language is Python.</response>"},
+     "facts": ["favorite_language=Rust (trust=0.85)", "name=Alex (trust=0.95)"],
+     "target": " The user wants to know their preferred language.</think>\n<response>Your favorite programming language is Rust.</response>"},
     {"query": "What editor do I use?",
-     "facts": ["editor=VS Code (trust=0.82)", "name=Nick (trust=0.95)"],
-     "target": " Checking the facts for editor information.</think>\n<response>You use VS Code.</response>"},
+     "facts": ["editor=Neovim (trust=0.82)", "name=Alex (trust=0.95)"],
+     "target": " Checking the facts for editor information.</think>\n<response>You use Neovim.</response>"},
     {"query": "What is my main project?",
-     "facts": ["project=CRT-GroundCheck-SSE (trust=0.88)"],
-     "target": " The user's main project from the facts.</think>\n<response>Your main project is CRT-GroundCheck-SSE.</response>"},
+     "facts": ["project=DataForge (trust=0.88)"],
+     "target": " The user's main project from the facts.</think>\n<response>Your main project is DataForge.</response>"},
     {"query": "What is gravity?",
      "facts": [],
      "target": " This is a general knowledge question about physics.</think>\n<response>Gravity is a fundamental force that attracts objects with mass toward each other.</response>"},
     {"query": "What is an API?",
      "facts": [],
      "target": " This is a technical question about software.</think>\n<response>An API is a set of rules and protocols that allows different software applications to communicate.</response>"},
-    # ── new 8 ──
+    # ── preferences (8) ──
     {"query": "What do I like to drink?",
-     "facts": ["favorite_drink=IPA (trust=0.78)", "name=Nick (trust=0.95)"],
-     "target": " The user wants to know their favorite drink.</think>\n<response>Your favorite drink is IPA.</response>"},
+     "facts": ["favorite_drink=espresso (trust=0.78)", "name=Alex (trust=0.95)"],
+     "target": " The user wants to know their favorite drink.</think>\n<response>Your favorite drink is espresso.</response>"},
     {"query": "What do I hate?",
-     "facts": ["pet_peeve=Mondays (trust=0.75)", "name=Nick (trust=0.95)"],
-     "target": " Checking the facts for things the user dislikes.</think>\n<response>You hate Mondays.</response>"},
+     "facts": ["pet_peeve=meetings (trust=0.75)", "name=Alex (trust=0.95)"],
+     "target": " Checking the facts for things the user dislikes.</think>\n<response>You hate meetings.</response>"},
     {"query": "What OS do I use?",
-     "facts": ["os=Windows (trust=0.88)", "name=Nick (trust=0.95)"],
-     "target": " The user wants to know their operating system.</think>\n<response>You use Windows.</response>"},
+     "facts": ["os=Linux (trust=0.88)", "name=Alex (trust=0.95)"],
+     "target": " The user wants to know their operating system.</think>\n<response>You use Linux.</response>"},
     {"query": "What database do I prefer?",
-     "facts": ["database=PostgreSQL (trust=0.82)", "name=Nick (trust=0.95)"],
-     "target": " Checking the facts for database preference.</think>\n<response>You prefer PostgreSQL.</response>"},
+     "facts": ["database=DuckDB (trust=0.82)", "name=Alex (trust=0.95)"],
+     "target": " Checking the facts for database preference.</think>\n<response>You prefer DuckDB.</response>"},
     {"query": "How many years of experience do I have?",
-     "facts": ["experience_years=10+ (trust=0.85)", "occupation=freelance full-stack developer (trust=0.90)"],
-     "target": " The user is asking about their experience level.</think>\n<response>You have over 10 years of experience.</response>"},
+     "facts": ["experience_years=8 (trust=0.85)", "occupation=data engineer (trust=0.90)"],
+     "target": " The user is asking about their experience level.</think>\n<response>You have 8 years of experience.</response>"},
     {"query": "What is my hobby?",
-     "facts": ["hobby=building AI agents (trust=0.90)", "name=Nick (trust=0.95)"],
-     "target": " Looking at the facts for hobbies.</think>\n<response>Your hobby is building AI agents.</response>"},
-    {"query": "What AI model did I build?",
-     "facts": ["ai_model=DNNT (trust=0.88)", "project=CRT-GroundCheck-SSE (trust=0.88)"],
-     "target": " The user built their own AI model.</think>\n<response>You built the DNNT model.</response>"},
-    {"query": "Do I use cloud services?",
-     "facts": ["cloud=none (trust=0.70)", "os=Windows (trust=0.88)"],
-     "target": " Checking if the user uses cloud services.</think>\n<response>No, you don't use cloud services.</response>"},
+     "facts": ["hobby=rock climbing (trust=0.90)", "name=Alex (trust=0.95)"],
+     "target": " Looking at the facts for hobbies.</think>\n<response>Your hobby is rock climbing.</response>"},
+    {"query": "Do I have pets?",
+     "facts": ["pet=two cats (trust=0.88)", "name=Alex (trust=0.95)"],
+     "target": " Checking the facts for pets.</think>\n<response>Yes, you have two cats.</response>"},
+    {"query": "What cloud provider do I use?",
+     "facts": ["cloud=AWS (trust=0.70)", "os=Linux (trust=0.88)"],
+     "target": " Checking the user's cloud provider.</think>\n<response>You use AWS.</response>"},
 ]
 
 
