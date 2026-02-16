@@ -456,18 +456,36 @@ def main():
     )
     trainer = VILTScaledTrainer(model, tokenizer, FACT_LEDGER, cfg, device)
 
-    # Create a small eval subset for mid-training checks (max 20 queries)
+    # Create a stratified eval subset for mid-training checks (max 20 queries)
+    # Proportional sampling by category to avoid bias toward easy/direct queries
     # Full eval set used only for pre/post assessment
     MAX_MID_EVAL = 20
     if len(TEST_QUERIES) > MAX_MID_EVAL:
-        # Sample: first 12 in-scope + up to 4 out-of-scope + random fill
-        in_scope = [q for q in TEST_QUERIES if q.get("scope", "in-scope") == "in-scope"]
-        out_scope = [q for q in TEST_QUERIES if q.get("scope") == "out-of-scope"]
-        mid_eval_queries = in_scope[:12] + out_scope[:4]
-        remaining = [q for q in TEST_QUERIES if q not in mid_eval_queries]
-        random.shuffle(remaining)
-        mid_eval_queries += remaining[:MAX_MID_EVAL - len(mid_eval_queries)]
+        from collections import defaultdict
+        buckets = defaultdict(list)
+        for q in TEST_QUERIES:
+            buckets[q.get("category", q.get("scope", "unknown"))].append(q)
+        mid_eval_queries = []
+        # Allocate proportionally, minimum 1 per non-empty bucket
+        n_total = len(TEST_QUERIES)
+        for cat, items in sorted(buckets.items()):
+            random.shuffle(items)
+            n_cat = max(1, round(len(items) / n_total * MAX_MID_EVAL))
+            mid_eval_queries.extend(items[:n_cat])
+        # Trim if over budget, pad if under
+        if len(mid_eval_queries) > MAX_MID_EVAL:
+            random.shuffle(mid_eval_queries)
+            mid_eval_queries = mid_eval_queries[:MAX_MID_EVAL]
+        elif len(mid_eval_queries) < MAX_MID_EVAL:
+            used = set(id(q) for q in mid_eval_queries)
+            remaining = [q for q in TEST_QUERIES if id(q) not in used]
+            random.shuffle(remaining)
+            mid_eval_queries.extend(remaining[:MAX_MID_EVAL - len(mid_eval_queries)])
+        cat_dist = defaultdict(int)
+        for q in mid_eval_queries:
+            cat_dist[q.get("category", q.get("scope", "?"))] += 1
         print(f"\n    Mid-training eval subset: {len(mid_eval_queries)} queries (full: {len(TEST_QUERIES)})")
+        print(f"    Stratified: {dict(cat_dist)}")
     else:
         mid_eval_queries = TEST_QUERIES
 
