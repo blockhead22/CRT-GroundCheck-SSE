@@ -97,6 +97,7 @@ where $w_c$ is the contradiction weight, $s_c$ is the contradiction score from G
 | DNNT v2.3 | 6.2 M (all) | 500 | 75 % peak → collapsed | Adversarial gaming discovered — model generated shorter/vaguer text to dodge verifier |
 | DNNT v3 | 6.2 M (all) | 500 | 62 % | Anti-gaming fixes eliminated gaming, but capacity bottleneck persisted |
 | **SmolLM-135M + LoRA** | **1.8 M (1.4 %)** | **200** | **88 %** | No mode collapse. Coherent English. 0.52 GB VRAM on RTX 3060. |
+| **Qwen2.5-1.5B + LoRA** | **4.4 M (0.28 %)** | **200** | **88 %** | 88 % baseline before training. GC pass 62 % → 75 %. 3.05 GB VRAM. 9.3 min. |
 
 The DNNT experiments proved VILT's training signal is correct but exposed a model-capacity ceiling: a 6.2 M parameter micro-transformer cannot hold 16 distinct fact-query mappings without mode collapse. Switching to a pretrained language model (SmolLM-135M, ~134 M total params) with LoRA adapters (rank 16, only 1.8 M trainable) resolved the issue entirely — accuracy jumped from 25 % baseline to 88 % in 200 steps (26 min on an RTX 3060 12 GB).
 
