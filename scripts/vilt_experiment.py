@@ -22,6 +22,7 @@ aggressively the correction is applied.
 import sys
 import time
 import json
+import random
 import torch
 import torch.nn.functional as F
 
@@ -156,6 +157,14 @@ class VILTConfig:
     eval_every: int = 25
     gen_max_tokens: int = 64
     gen_temperature: float = 0.7
+    # ── anti-gaming ──
+    brevity_weight: float = 0.3        # penalty for short responses
+    min_response_tokens: int = 5       # below this = max brevity penalty
+    expected_response_tokens: int = 20 # target length for scaling
+    curriculum_switch_step: int = 150  # after this, oversample new facts
+    early_stop_acc: float = 0.70       # early stop if acc >= this
+    early_stop_gc: float = 0.80        # AND gc >= this
+    early_stop_patience: int = 2       # consecutive evals meeting criteria
 
 
 class VILTTrainer:
@@ -257,9 +266,20 @@ class VILTTrainer:
         resp = self._extract_response(gen)
         cs, info = self._verify_and_score(resp)
 
+        # ─ LENGTH PENALTY (anti-gaming: punish silence/brevity) ─
+        resp_tokens = len(self.tokenizer.encode(resp)) if resp else 0
+        if resp_tokens < self.config.min_response_tokens:
+            brevity_penalty = self.config.brevity_weight  # max penalty
+        elif resp_tokens < self.config.expected_response_tokens:
+            ratio = resp_tokens / self.config.expected_response_tokens
+            brevity_penalty = self.config.brevity_weight * (1.0 - ratio)
+        else:
+            brevity_penalty = 0.0
+
         # ─ VILT amplification (capped at 2.0x to prevent overcorrection) ─
         boost = min(1.0, self.config.contradiction_weight * cs)
-        multiplier = 1.0 + boost
+        multiplier = 1.0 + boost + brevity_penalty
+        multiplier = min(multiplier, 2.0)  # hard cap
         vilt_loss = sup_loss * multiplier
 
         # ─ backprop ─
@@ -271,6 +291,8 @@ class VILTTrainer:
             "sup_loss": float(sup_loss.detach()),
             "cs": cs,
             "mult": multiplier,
+            "brevity": brevity_penalty,
+            "resp_tokens": resp_tokens,
             "vilt_loss": float(vilt_loss.detach()),
             "gc_pass": info["passed"],
             "hallu": info["hallucinations"],
@@ -385,14 +407,34 @@ def main():
 
     # ── train ──
     print(f"\n{'='*70}")
-    print(f"  VILT TRAINING: {cfg.num_steps} steps   LR={cfg.learning_rate}  CW={cfg.contradiction_weight}  max_tok={cfg.gen_max_tokens}")
+    print(f"  VILT v3 TRAINING: {cfg.num_steps} steps   LR={cfg.learning_rate}  CW={cfg.contradiction_weight}  max_tok={cfg.gen_max_tokens}")
+    print(f"  Anti-gaming: brevity_w={cfg.brevity_weight}  min_tok={cfg.min_response_tokens}  expected_tok={cfg.expected_response_tokens}")
+    print(f"  Curriculum: switch at step {cfg.curriculum_switch_step}  (new facts 3:1)")
+    print(f"  Early stop: acc>={cfg.early_stop_acc:.0%} AND gc>={cfg.early_stop_gc:.0%} for {cfg.early_stop_patience} evals")
     print(f"  Multiplier capped at 2.0x (prevents overcorrection)")
     print(f"{'='*70}")
 
+    # ── split training examples into old (0-7) and new (8-15) ──
+    old_examples = TRAINING_EXAMPLES[:8]
+    new_examples = TRAINING_EXAMPLES[8:]
+
     t0 = time.time()
     logs = []
+    early_stop_counter = 0
+    stopped_early = False
+
     for step in range(1, cfg.num_steps + 1):
-        ex = TRAINING_EXAMPLES[(step - 1) % len(TRAINING_EXAMPLES)]
+        # ── CURRICULUM SCHEDULING ──
+        if step <= cfg.curriculum_switch_step:
+            # uniform sampling from all examples
+            ex = TRAINING_EXAMPLES[(step - 1) % len(TRAINING_EXAMPLES)]
+        else:
+            #mport random
+            if random.random() < 0.75:
+                ex = new_examples[(step - 1) % len(new_examples)]
+            else:
+                ex = old_examples[(step - 1) % len(old_examples)]
+
         r = trainer.train_step(ex["query"], ex["facts"], ex["target"])
         logs.append(r)
 
@@ -404,10 +446,13 @@ def main():
             vl = sum(x["vilt_loss"] for x in recent) / len(recent)
             gp = sum(1 for x in recent if x["gc_pass"]) / len(recent)
             nh = sum(len(x["hallu"]) for x in recent) / len(recent)
+            bp = sum(x["brevity"] for x in recent) / len(recent)
+            rt = sum(x["resp_tokens"] for x in recent) / len(recent)
             el = time.time() - t0
-            print(f"\n  Step {step:3d}  ({el:.0f}s)")
+            phase = "curriculum" if step > cfg.curriculum_switch_step else "uniform"
+            print(f"\n  Step {step:3d}  ({el:.0f}s) [{phase}]")
             print(f"    sup={sl:.4f}  cs={cs:.3f}  mult={ml:.3f}  vilt={vl:.4f}")
-            print(f"    GC pass={gp:.0%}  hallu/step={nh:.1f}")
+            print(f"    GC pass={gp:.0%}  hallu/step={nh:.1f}  brevity={bp:.3f}  avg_tok={rt:.0f}")
             print(f"    \"{ex['query']}\" -> \"{r['resp'][:60]}\"")
             if r["hallu"]:
                 print(f"    ! hallu: {r['hallu'][:3]}")
@@ -428,11 +473,24 @@ def main():
                 gc = "P" if rr["pass"] else "F"
                 print(f"    [{tag}][{gc}] {rr['q'][:30]:30s} -> {rr['resp'][:50]}")
 
+            # ── EARLY STOPPING ──
+            if ev["accuracy"] >= cfg.early_stop_acc and ev["gc_pass"] >= cfg.early_stop_gc:
+                early_stop_counter += 1
+                print(f"    ** Early stop criteria met ({early_stop_counter}/{cfg.early_stop_patience})")
+                if early_stop_counter >= cfg.early_stop_patience:
+                    print(f"\n  EARLY STOP at step {step}!  acc={ev['accuracy']:.0%}  gc={ev['gc_pass']:.0%}")
+                    stopped_early = True
+                    break
+            else:
+                early_stop_counter = 0
+
+    actual_steps = len(logs)
     total = time.time() - t0
 
     # ── final ──
     print(f"\n{'='*70}")
-    print(f"  VILT COMPLETE  {total:.0f}s ({total/60:.1f} min)")
+    stop_reason = f"EARLY STOP at step {actual_steps}" if stopped_early else f"COMPLETED {actual_steps} steps"
+    print(f"  VILT v3 {stop_reason}  {total:.0f}s ({total/60:.1f} min)")
     print(f"{'='*70}")
 
     post = trainer.evaluate()
@@ -459,14 +517,26 @@ def main():
     print(f"    GC Pass:        {' -> '.join(f'{x:.0%}' for x in gc_t)}")
     print(f"    Contradiction:  {' -> '.join(f'{x:.3f}' for x in cs_t)}")
 
+    # ── brevity penalty timeline ──
+    bp_t = []
+    for i in range(0, len(logs), 10):
+        c = logs[i : i + 10]
+        bp_t.append(sum(x["brevity"] for x in c) / len(c))
+
     # ── save ──
     metrics = {
+        "version": "v3",
         "pre_accuracy": pre["accuracy"], "post_accuracy": post["accuracy"],
         "pre_gc_pass": pre["gc_pass"], "post_gc_pass": post["gc_pass"],
-        "total_time_s": total, "num_steps": cfg.num_steps,
+        "total_time_s": total, "num_steps": actual_steps,
+        "stopped_early": stopped_early,
         "gc_pass_over_time": gc_t, "contradiction_over_time": cs_t,
+        "brevity_penalty_over_time": bp_t,
         "config": {"cw": cfg.contradiction_weight, "lr": cfg.learning_rate,
-                   "trust_scale": cfg.trust_scale},
+                   "trust_scale": cfg.trust_scale, "brevity_weight": cfg.brevity_weight,
+                   "min_response_tokens": cfg.min_response_tokens,
+                   "expected_response_tokens": cfg.expected_response_tokens,
+                   "curriculum_switch_step": cfg.curriculum_switch_step},
     }
     mp = model_dir / "vilt_metrics.json"
     with open(mp, "w") as f:
