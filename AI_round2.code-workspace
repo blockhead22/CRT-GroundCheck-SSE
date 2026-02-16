@@ -4,16 +4,7 @@
 			"path": "."
 		},
 		{
-			"path": "../groundcheck"
-		},
-		{
 			"path": "C:/filecompression"
-		},
-		{
-			"path": "../CogniForge"
-		},
-		{
-			"path": "../diy_transformer"
 		}
 	],
 	"settings": {
