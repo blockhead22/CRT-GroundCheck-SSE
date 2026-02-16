@@ -1,0 +1,32 @@
+{
+  "vocab_size": 8000,
+  "max_seq_length": 512,
+  "hidden_dim": 256,
+  "num_layers": 4,
+  "num_heads": 4,
+  "dropout": 0.1,
+  "ff_multiplier": 4,
+  "pad_token_id": 0,
+  "bos_token_id": 1,
+  "eos_token_id": 2,
+  "unk_token_id": 3,
+  "special_token_ids": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+  ],
+  "semantic_loss_weight": 0.5,
+  "syntactic_loss_weight": 0.3,
+  "logical_loss_weight": 0.2,
+  "label_smoothing": 0.03,
+  "red_penalty_init": 0.08
+}

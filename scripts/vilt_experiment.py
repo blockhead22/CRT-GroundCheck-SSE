@@ -106,7 +106,7 @@ class VILTConfig:
     num_steps: int = 100
     log_every: int = 10
     eval_every: int = 25
-    gen_max_tokens: int = 128
+    gen_max_tokens: int = 64
     gen_temperature: float = 0.7
 
 
@@ -209,8 +209,9 @@ class VILTTrainer:
         resp = self._extract_response(gen)
         cs, info = self._verify_and_score(resp)
 
-        # ─ VILT amplification ─
-        multiplier = 1.0 + self.config.contradiction_weight * cs
+        # ─ VILT amplification (capped at 2.0x to prevent overcorrection) ─
+        boost = min(1.0, self.config.contradiction_weight * cs)
+        multiplier = 1.0 + boost
         vilt_loss = sup_loss * multiplier
 
         # ─ backprop ─
@@ -283,11 +284,42 @@ def main():
     for m in FACT_LEDGER:
         print(f"    {m.text}  (trust={m.trust})")
 
+    # ── perplexity sanity check ──
+    print("\n[4] Perplexity check (held-out)...")
+    held_out = [
+        "What frameworks do I use?",
+        "Tell me about my background.",
+        "What tools do I work with?",
+    ]
+    model.eval()
+    total_nll, total_tok = 0.0, 0
+    for q in held_out:
+        prompt = f"<query>{q}</query>\n<facts>\n(no facts)\n</facts>\n<think>"
+        toks = tokenizer.encode(prompt, add_special_tokens=True)
+        mx = model.config.max_seq_length
+        pad_id = tokenizer.special_tokens.get("<pad>", 0)
+        toks = toks[:mx] if len(toks) > mx else toks + [pad_id] * (mx - len(toks))
+        inp = torch.tensor([toks[:-1]])
+        lbl = torch.tensor([toks[1:]])
+        with torch.no_grad():
+            _, loss = model(inp, lbl)
+        n = sum(1 for t in toks if t != pad_id) - 1
+        total_nll += float(loss) * n
+        total_tok += n
+    ppl = torch.exp(torch.tensor(total_nll / max(total_tok, 1))).item()
+    print(f"    Held-out PPL: {ppl:.1f}  (nll={total_nll/max(total_tok,1):.3f}, {total_tok} tokens)")
+    if ppl > 500:
+        print("    WARNING: PPL very high — model may be undertrained")
+    elif ppl < 5:
+        print("    WARNING: PPL suspiciously low — possible overfit")
+    else:
+        print("    PPL looks reasonable")
+
     cfg = VILTConfig(num_steps=100, learning_rate=5e-5, contradiction_weight=0.5)
     trainer = VILTTrainer(model, tokenizer, FACT_LEDGER, cfg)
 
     # ── baseline ──
-    print("\n[4] Pre-VILT baseline...")
+    print("\n[5] Pre-VILT baseline...")
     pre = trainer.evaluate()
     print(f"    Accuracy: {pre['accuracy']:.0%}   GC Pass: {pre['gc_pass']:.0%}")
     for r in pre["results"]:
@@ -297,7 +329,8 @@ def main():
 
     # ── train ──
     print(f"\n{'='*70}")
-    print(f"  VILT TRAINING: {cfg.num_steps} steps   LR={cfg.learning_rate}  CW={cfg.contradiction_weight}")
+    print(f"  VILT TRAINING: {cfg.num_steps} steps   LR={cfg.learning_rate}  CW={cfg.contradiction_weight}  max_tok={cfg.gen_max_tokens}")
+    print(f"  Multiplier capped at 2.0x (prevents overcorrection)")
     print(f"{'='*70}")
 
     t0 = time.time()
