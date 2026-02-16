@@ -24,6 +24,10 @@ import time
 import json
 import torch
 import torch.nn.functional as F
+
+# Free speedup on fixed-size inputs
+if torch.cuda.is_available():
+    torch.backends.cudnn.benchmark = True
 from pathlib import Path
 from typing import List, Dict, Tuple
 from dataclasses import dataclass
@@ -270,6 +274,8 @@ class VILTTrainer:
             "vilt_loss": float(vilt_loss.detach()),
             "gc_pass": info["passed"],
             "hallu": info["hallucinations"],
+            "contradicted": info.get("contradicted", []),
+            "n_issues": info.get("n_issues", 0),
             "resp": resp[:100] if resp else "(empty)",
         }
 
@@ -328,6 +334,12 @@ def main():
     for m in FACT_LEDGER:
         print(f"    {m.text}  (trust={m.trust})")
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"\n    Device: {device}")
+    if device == "cuda":
+        model = model.to(device)
+        print(f"    GPU: {torch.cuda.get_device_name(0)}")
+
     # ── perplexity sanity check ──
     print("\n[4] Perplexity check (held-out)...")
     held_out = [
@@ -343,8 +355,8 @@ def main():
         mx = model.config.max_seq_length
         pad_id = tokenizer.special_tokens.get("<pad>", 0)
         toks = toks[:mx] if len(toks) > mx else toks + [pad_id] * (mx - len(toks))
-        inp = torch.tensor([toks[:-1]])
-        lbl = torch.tensor([toks[1:]])
+        inp = torch.tensor([toks[:-1]], device=device)
+        lbl = torch.tensor([toks[1:]], device=device)
         with torch.no_grad():
             _, loss = model(inp, lbl)
         n = sum(1 for t in toks if t != pad_id) - 1
@@ -359,12 +371,7 @@ def main():
     else:
         print("    PPL looks reasonable")
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"\n    Device: {device}")
-    if device == "cuda":
-        model = model.to(device)
-
-    cfg = VILTConfig(num_steps=200, learning_rate=5e-5, contradiction_weight=0.5)
+    cfg = VILTConfig(num_steps=500, learning_rate=5e-5, contradiction_weight=0.5)
     trainer = VILTTrainer(model, tokenizer, FACT_LEDGER, cfg, device=device)
 
     # ── baseline ──
@@ -403,7 +410,15 @@ def main():
             print(f"    GC pass={gp:.0%}  hallu/step={nh:.1f}")
             print(f"    \"{ex['query']}\" -> \"{r['resp'][:60]}\"")
             if r["hallu"]:
-                print(f"    ! {r['hallu'][:3]}")
+                print(f"    ! hallu: {r['hallu'][:3]}")
+            if r["contradicted"]:
+                print(f"    ! contra: {r['contradicted'][:3]}")
+
+            # Log every contradiction trigger
+            triggered = [x for x in recent if x["cs"] > 0]
+            if triggered:
+                avg_cs = sum(x["cs"] for x in triggered) / len(triggered)
+                print(f"    triggers: {len(triggered)}/{len(recent)} steps  avg_cs={avg_cs:.3f}")
 
         if step % cfg.eval_every == 0:
             ev = trainer.evaluate()
