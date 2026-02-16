@@ -5,49 +5,85 @@
       "query": "What is my name?",
       "facts": ["name=Alex (trust=0.95)"],
       "expected_slot": "name",
-      "expected": "Alex"
+      "expected": "Alex",
+      "scope": "in-scope"
     },
     {
       "query": "Where do I live?",
       "facts": ["location=Denver (trust=0.92)"],
       "expected_slot": "location",
-      "expected": "Denver"
+      "expected": "Denver",
+      "scope": "in-scope"
     },
     {
       "query": "What do I do?",
       "facts": ["occupation=data engineer (trust=0.90)"],
       "expected_slot": "occupation",
-      "expected": "engineer"
+      "expected": "engineer",
+      "scope": "in-scope"
     },
     {
       "query": "What do I like to drink?",
       "facts": ["favorite_drink=espresso (trust=0.78)"],
       "expected_slot": "favorite_drink",
-      "expected": "espresso"
+      "expected": "espresso",
+      "scope": "in-scope"
     },
     {
       "query": "What OS do I use?",
       "facts": ["os=Linux (trust=0.88)"],
       "expected_slot": "os",
-      "expected": "Linux"
+      "expected": "Linux",
+      "scope": "in-scope"
     },
     {
       "query": "What is my hobby?",
       "facts": ["hobby=rock climbing (trust=0.90)"],
       "expected_slot": "hobby",
-      "expected": "climbing"
+      "expected": "climbing",
+      "scope": "in-scope"
     },
     {
       "query": "What is gravity?",
       "facts": [],
       "expected_slot": null,
-      "expected": null
+      "expected": null,
+      "scope": "out-of-scope"
     },
     {
       "query": "What is an API?",
       "facts": [],
       "expected_slot": null,
-      "expected": null
+      "expected": null,
+      "scope": "out-of-scope"
+    },
+    {
+      "query": "What is my name and where do I live?",
+      "facts": ["name=Alex (trust=0.95)", "location=Denver (trust=0.92)"],
+      "expected_slot": "multi",
+      "expected": ["Alex", "Denver"],
+      "scope": "in-scope"
+    },
+    {
+      "query": "What language do I code in and what editor do I use?",
+      "facts": ["favorite_language=Rust (trust=0.85)", "editor=Neovim (trust=0.82)"],
+      "expected_slot": "multi",
+      "expected": ["Rust", "Neovim"],
+      "scope": "in-scope"
+    },
+    {
+      "query": "Tell me about my job and my hobby.",
+      "facts": ["occupation=data engineer (trust=0.90)", "hobby=rock climbing (trust=0.90)"],
+      "expected_slot": "multi",
+      "expected": ["engineer", "climbing"],
+      "scope": "in-scope"
+    },
+    {
+      "query": "What is my name and what is gravity?",
+      "facts": ["name=Alex (trust=0.95)"],
+      "expected_slot": "mixed",
+      "expected": ["Alex"],
+      "scope": "mixed"
     }
   ]
 }

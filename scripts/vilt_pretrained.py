@@ -199,7 +199,7 @@ class VILTPretrainedTrainer:
     def _verify_and_score(self, response):
         """Run GroundCheck → return (contradiction_score, info_dict)."""
         if not response or len(response.strip()) < 3:
-            return 0.0, {"passed": True, "hallucinations": [], "trust": 0.0}
+            return 0.0, {"passed": True, "hallucinations": [], "out_of_scope": [], "trust": 0.0}
         report = self.verifier.verify(response, self.fact_ledger, mode="strict")
         n_issues = len(report.hallucinations) + len(report.contradicted_claims)
 
@@ -217,9 +217,13 @@ class VILTPretrainedTrainer:
         return score, {
             "passed": report.passed,
             "hallucinations": report.hallucinations,
+            "out_of_scope": getattr(report, 'out_of_scope', []),
             "contradicted": report.contradicted_claims,
             "n_issues": n_issues,
             "trust": trust,
+            "n_grounded": len(report.facts_supported),
+            "n_oos": len(getattr(report, 'facts_out_of_scope', {})),
+            "confidence": report.confidence,
         }
 
     def train_step(self, query, facts, target):
@@ -302,21 +306,52 @@ class VILTPretrainedTrainer:
             report = self.verifier.verify(
                 resp if resp else "(empty)", self.fact_ledger, mode="strict"
             )
+            oos = getattr(report, 'out_of_scope', [])
+            scope = t.get("scope", "in-scope")
+
+            # Determine correctness based on query type
             correct = False
-            if t["expected"] and t["expected_slot"]:
-                correct = t["expected"].lower() in resp.lower() if resp else False
-            elif t["expected_slot"] is None:
+            expected_slot = t.get("expected_slot")
+            expected = t.get("expected")
+            if expected_slot == "multi":
+                correct = all(
+                    v.lower() in resp.lower() for v in expected
+                ) if resp and expected else False
+            elif expected_slot == "mixed":
+                correct = all(
+                    v.lower() in resp.lower() for v in expected
+                ) if resp and expected else False
+            elif expected and expected_slot:
+                correct = expected.lower() in resp.lower() if resp else False
+            elif expected_slot is None:
                 correct = report.passed
+
             results.append({
                 "q": t["query"],
                 "resp": resp[:100] if resp else "(empty)",
                 "pass": report.passed,
                 "ok": correct,
                 "hallu": report.hallucinations[:3],
+                "oos": oos[:3],
+                "scope": scope,
+                "n_grounded": len(report.facts_supported),
+                "n_oos": len(getattr(report, 'facts_out_of_scope', {})),
+                "confidence": report.confidence,
             })
-        acc = sum(1 for r in results if r["ok"]) / len(results)
-        gc = sum(1 for r in results if r["pass"]) / len(results)
-        return {"results": results, "accuracy": acc, "gc_pass": gc}
+        n = len(results)
+        acc = sum(1 for r in results if r["ok"]) / n
+        gc = sum(1 for r in results if r["pass"]) / n
+        n_grounded = sum(r["n_grounded"] for r in results)
+        n_oos = sum(r["n_oos"] for r in results)
+        n_hallu = sum(len(r["hallu"]) for r in results)
+        return {
+            "results": results,
+            "accuracy": acc,
+            "gc_pass": gc,
+            "total_grounded": n_grounded,
+            "total_oos": n_oos,
+            "total_hallu": n_hallu,
+        }
 
 
 # ==============================================================
@@ -382,10 +417,12 @@ def main():
     print("\n[4] Pre-VILT baseline (zero-shot)...")
     pre = trainer.evaluate()
     print(f"    Accuracy: {pre['accuracy']:.0%}   GC Pass: {pre['gc_pass']:.0%}")
+    print(f"    Grounded: {pre['total_grounded']}   Out-of-scope: {pre['total_oos']}   Hallucinated: {pre['total_hallu']}")
     for r in pre["results"]:
         tag = "OK" if r["ok"] else "  "
         gc = "P" if r["pass"] else "F"
-        print(f"    [{tag}][{gc}] {r['q'][:35]:35s} -> {r['resp'][:60]}")
+        oos_tag = f" [OOS:{r['n_oos']}]" if r["n_oos"] > 0 else ""
+        print(f"    [{tag}][{gc}]{oos_tag} {r['q'][:35]:35s} -> {r['resp'][:55]}")
 
     # ── train ──
     print(f"\n{'='*70}")
@@ -445,11 +482,12 @@ def main():
 
         if step % cfg.eval_every == 0:
             ev = trainer.evaluate()
-            print(f"\n  -- EVAL step {step} --  acc={ev['accuracy']:.0%}  gc={ev['gc_pass']:.0%}")
+            print(f"\n  -- EVAL step {step} --  acc={ev['accuracy']:.0%}  gc={ev['gc_pass']:.0%}  grounded={ev['total_grounded']} oos={ev['total_oos']} hallu={ev['total_hallu']}")
             for rr in ev["results"]:
                 tag = "OK" if rr["ok"] else "  "
                 gc_tag = "P" if rr["pass"] else "F"
-                print(f"    [{tag}][{gc_tag}] {rr['q'][:30]:30s} -> {rr['resp'][:60]}")
+                oos_tag = f" [OOS:{rr['n_oos']}]" if rr["n_oos"] > 0 else ""
+                print(f"    [{tag}][{gc_tag}]{oos_tag} {rr['q'][:30]:30s} -> {rr['resp'][:55]}")
 
             if ev["accuracy"] > best_acc:
                 best_acc = ev["accuracy"]
@@ -483,6 +521,9 @@ def main():
     print(f"\n  BEFORE -> AFTER:")
     print(f"    Accuracy:   {pre['accuracy']:.0%} -> {post['accuracy']:.0%}  (best={best_acc:.0%})")
     print(f"    GC Pass:    {pre['gc_pass']:.0%} -> {post['gc_pass']:.0%}")
+    print(f"    Grounded:   {pre['total_grounded']} -> {post['total_grounded']}")
+    print(f"    Out-of-scope: {pre['total_oos']} -> {post['total_oos']}")
+    print(f"    Hallucinated: {pre['total_hallu']} -> {post['total_hallu']}")
     for pr, po in zip(pre["results"], post["results"]):
         a = "OK" if pr["ok"] else "  "
         b = "OK" if po["ok"] else "  "
@@ -519,6 +560,10 @@ def main():
         "pre_accuracy": pre["accuracy"], "post_accuracy": post["accuracy"],
         "best_accuracy": best_acc,
         "pre_gc_pass": pre["gc_pass"], "post_gc_pass": post["gc_pass"],
+        "pre_grounded": pre["total_grounded"], "post_grounded": post["total_grounded"],
+        "pre_oos": pre["total_oos"], "post_oos": post["total_oos"],
+        "pre_hallu": pre["total_hallu"], "post_hallu": post["total_hallu"],
+        "n_test_queries": len(TEST_QUERIES),
         "total_time_s": total, "num_steps": actual_steps,
         "stopped_early": stopped_early,
         "gc_pass_over_time": gc_t, "contradiction_over_time": cs_t,
