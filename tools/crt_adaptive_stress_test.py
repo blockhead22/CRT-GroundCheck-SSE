@@ -82,7 +82,7 @@ def _build_profile_seed_message(profile_text: str) -> str:
 
     # Keep this short and high-signal; controller prompt limits are stricter than CRT.
     return (
-        "Hi—I'm Nick Block. I built CRT (Cognitive-Reflective Transformer; memory-first, trust evolution + contradiction detection). "
+        "Hi—I'm Nick Block. I built CRT (Cognitive Reflective Trust; memory-first, trust evolution + contradiction detection). "
         "I run The Printing Lair (print/sticker shop)."
     )
 

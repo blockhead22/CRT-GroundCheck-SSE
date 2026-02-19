@@ -325,7 +325,7 @@ Mirus: resonance scoring + compression
 
 ## What This Project Is (For Interviews)
 
-> "I built a personal cognitive architecture called CRT — Cognitive-Reflective Transformer. It has its own small transformer that learns reasoning patterns from external LLMs, filtered through a trust-weighted memory system that guarantees no knowledge is ever silently overwritten. The system gets smarter over time while reducing compute dependency — the small model gradually handles more, the LLM handles less. Every decision is auditable: every trust change, every contradiction, every gate decision is logged with full provenance."
+> "I built a personal cognitive architecture called CRT — Cognitive Reflective Trust. It's a trust-weighted memory system that guarantees no knowledge is ever silently overwritten. Every memory carries a trust score that evolves with evidence — rising when validated, falling when contradicted. Every decision is auditable: every trust change, every contradiction, every gate decision is logged with full provenance."
 
 ### Key differentiators:
 

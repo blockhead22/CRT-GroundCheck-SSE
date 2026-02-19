@@ -30,7 +30,7 @@ CRT-GroundCheck-SSE is a **mathematical framework for AI memory** that treats co
 
 | System | Role |
 |--------|------|
-| **CRT** (Cognitive-Reflective Transformer) | A mathematical trust and drift framework. Every memory carries a trust score that evolves over time through equations — rising when validated, falling when contradicted. Reconstruction gates block the LLM from answering confidently when unresolved conflicts exist. |
+| **CRT** (Cognitive Reflective Trust) | A mathematical trust and drift framework. Every memory carries a trust score that evolves over time through equations — rising when validated, falling when contradicted. Reconstruction gates block the LLM from answering confidently when unresolved conflicts exist. |
 | **GroundCheck** | A hallucination verification layer. Every word the LLM produces is checked against stored memories in real time. Mean latency: **1.17 ms** — 2,634× faster than SelfCheckGPT. |
 | **SSE** (Semantic String Engine) | Claim extraction with character-level provenance. It is architecturally impossible for SSE to delete, merge, or silently resolve a contradiction. The boundary is enforced at the code level, not by policy. |
 

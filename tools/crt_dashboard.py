@@ -1,7 +1,7 @@
 """
 CRT System Dashboard
 
-Streamlit-based visualization for the CRT (Cognitive-Reflective Transformer) system.
+Streamlit-based visualization for the CRT (Cognitive Reflective Trust) system.
 
 Features:
 1. Trust Evolution Viewer - Real-time trust trajectories
@@ -1439,7 +1439,7 @@ def main():
     st.sidebar.markdown("---")
     st.sidebar.markdown("### About CRT")
     st.sidebar.info("""
-    **Cognitive-Reflective Transformer**
+    **Cognitive Reflective Trust**
     
     Philosophy:
     - Memory first, honesty over performance
@@ -1457,7 +1457,7 @@ def main():
     
     # Main content
     st.markdown('<div class="main-header">CRT System Dashboard</div>', unsafe_allow_html=True)
-    st.markdown("**Cognitive-Reflective Transformer** - Memory-first AI with trust-weighted beliefs")
+    st.markdown("**Cognitive Reflective Trust** — Memory-first AI with trust-weighted beliefs")
     st.markdown("---")
     
     # Route to selected page
