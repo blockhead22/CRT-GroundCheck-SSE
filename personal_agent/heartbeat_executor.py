@@ -95,9 +95,54 @@ class HeartbeatLLMExecutor:
     
     def _get_recent_messages(self, thread_id: str, limit: int = 10) -> List[Dict[str, Any]]:
         """Get last N messages from thread."""
-        # TODO: Implement based on your message storage
-        # For now, return empty list
-        return []
+        # Primary path: ThreadSessionDB helper.
+        if self.session_db and hasattr(self.session_db, "get_recent_queries"):
+            try:
+                recent = self.session_db.get_recent_queries(thread_id, window=max(1, int(limit)))
+                messages: List[Dict[str, Any]] = []
+                for row in reversed(recent):
+                    q = str((row or {}).get("query_text") or "").strip()
+                    r = str((row or {}).get("response_text") or "").strip()
+                    ts = float((row or {}).get("timestamp") or 0.0)
+                    if q:
+                        messages.append({"role": "user", "content": q, "timestamp": ts})
+                    if r:
+                        messages.append({"role": "assistant", "content": r, "timestamp": ts})
+                return messages[-(limit * 2):]
+            except Exception as e:
+                logger.debug(f"[HEARTBEAT] Error getting recent messages from session_db: {e}")
+
+        # Fallback: query thread session DB directly when available.
+        if not self.thread_session_db_path:
+            return []
+        try:
+            conn = sqlite3.connect(self.thread_session_db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """
+                SELECT query_text, response_text, timestamp
+                FROM recent_queries
+                WHERE thread_id = ?
+                ORDER BY timestamp DESC
+                LIMIT ?
+                """,
+                (thread_id, max(1, int(limit))),
+            ).fetchall()
+            conn.close()
+
+            messages: List[Dict[str, Any]] = []
+            for row in reversed(rows):
+                q = str(row["query_text"] or "").strip()
+                r = str(row["response_text"] or "").strip()
+                ts = float(row["timestamp"] or 0.0)
+                if q:
+                    messages.append({"role": "user", "content": q, "timestamp": ts})
+                if r:
+                    messages.append({"role": "assistant", "content": r, "timestamp": ts})
+            return messages[-(limit * 2):]
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Error getting recent messages (fallback): {e}")
+            return []
     
     def _get_open_contradictions(self, thread_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Get open contradictions from Ledger DB."""
@@ -138,6 +183,22 @@ class HeartbeatLLMExecutor:
     
     def _get_user_profile(self, thread_id: str) -> Optional[Dict[str, Any]]:
         """Get user profile info (name, goals, etc.)."""
+        if self.session_db:
+            try:
+                session = self.session_db.get_or_create_session(thread_id)
+                profile: Dict[str, Any] = {"user_name": session.get("user_name")}
+                try:
+                    style = self.session_db.get_style_profile(thread_id)
+                    if style:
+                        profile["style"] = style
+                except Exception:
+                    pass
+                return profile
+            except Exception as e:
+                logger.debug(f"[HEARTBEAT] Error getting profile from session_db: {e}")
+
+        if not self.thread_session_db_path:
+            return None
         try:
             conn = sqlite3.connect(self.thread_session_db_path, timeout=30.0)
             cursor = conn.cursor()
@@ -210,29 +271,79 @@ class HeartbeatLLMExecutor:
             return {}
         
         try:
+            from personal_agent.fact_slots import extract_fact_slots
+
             conn = sqlite3.connect(self.memory_db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
-            # Get recent memories
-            cursor.execute(
-                """
-                SELECT slot, value, confidence
-                FROM memories
-                WHERE source = 'user' OR source = 'extracted'
-                ORDER BY timestamp DESC
-                LIMIT 20
-                """
-            )
-            
-            rows = cursor.fetchall()
+
+            columns = {
+                str(row[1]).lower()
+                for row in cursor.execute("PRAGMA table_info(memories)").fetchall()
+            }
+            if not {"text", "confidence"}.issubset(columns):
+                conn.close()
+                return {}
+
+            has_thread_id = "thread_id" in columns
+            has_trust = "trust" in columns
+            has_source = "source" in columns
+
+            select_cols = ["text", "confidence", "timestamp"]
+            if has_trust:
+                select_cols.append("trust")
+            if has_source:
+                select_cols.append("source")
+            if has_thread_id:
+                select_cols.append("thread_id")
+
+            query = f"SELECT {', '.join(select_cols)} FROM memories"
+            params: List[Any] = []
+            if has_thread_id:
+                query += " WHERE (thread_id = ? OR thread_id IS NULL OR thread_id = '')"
+                params.append(thread_id)
+            query += " ORDER BY timestamp DESC LIMIT 80"
+
+            rows = cursor.execute(query, tuple(params)).fetchall()
             conn.close()
-            
-            snapshot = {}
+
+            snapshot: Dict[str, Any] = {}
+            generic_counter = 0
             for row in rows:
-                slot, value, conf = row
-                if slot and value:
-                    snapshot[slot] = {"value": value, "confidence": conf}
-            
+                text = str(row["text"] or "").strip()
+                if not text:
+                    continue
+                conf = float(row["confidence"] or 0.0)
+                trust = float(row["trust"] or 0.0) if has_trust else None
+                source = str(row["source"] or "") if has_source else ""
+
+                fact_slots = {}
+                try:
+                    fact_slots = extract_fact_slots(text) or {}
+                except Exception:
+                    fact_slots = {}
+
+                if fact_slots:
+                    for slot, value in fact_slots.items():
+                        if not slot or value is None:
+                            continue
+                        existing = snapshot.get(slot)
+                        if existing is None or conf >= float(existing.get("confidence") or 0.0):
+                            payload = {"value": value, "confidence": conf, "source": source}
+                            if trust is not None:
+                                payload["trust"] = trust
+                            snapshot[slot] = payload
+                    continue
+
+                # Keep a compact fallback view when slot extraction fails.
+                if generic_counter < 8:
+                    generic_counter += 1
+                    key = f"memory_{generic_counter}"
+                    payload = {"value": text[:180], "confidence": conf, "source": source}
+                    if trust is not None:
+                        payload["trust"] = trust
+                    snapshot[key] = payload
+
             return snapshot
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Error getting memory snapshot: {e}")
@@ -612,13 +723,26 @@ Reason carefully. If unsure, reply with action=none.
         # Record to session DB
         try:
             if self.session_db:
-                self.session_db.record_heartbeat_run(thread_id, {
-                    "timestamp": _time.time(),
-                    "summary": summary,
-                    "actions": actions_taken,
-                    "success": True,
-                    "execution_time": elapsed,
-                })
+                run_ts = _time.time()
+                if hasattr(self.session_db, "update_heartbeat_state"):
+                    self.session_db.update_heartbeat_state(
+                        thread_id,
+                        last_run=run_ts,
+                        summary=summary,
+                        actions=actions_taken,
+                    )
+                elif hasattr(self.session_db, "record_heartbeat_run"):
+                    # Backward compatibility with older session DB helpers.
+                    self.session_db.record_heartbeat_run(
+                        thread_id,
+                        {
+                            "timestamp": run_ts,
+                            "summary": summary,
+                            "actions": actions_taken,
+                            "success": True,
+                            "execution_time": elapsed,
+                        },
+                    )
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Failed to record run: {e}")
 

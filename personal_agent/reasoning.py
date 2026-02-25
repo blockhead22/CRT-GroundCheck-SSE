@@ -1055,6 +1055,88 @@ class ReasoningEngine:
             return ""
         
         return "\n\n".join(output_parts)
+
+    def _format_preference_constraints(
+        self,
+        episodic_preferences: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Build hard preference constraints from high-confidence episodic signals.
+
+        These are intentionally stronger than adaptive hints and should be treated as
+        default requirements unless the user overrides them in the current turn.
+        """
+        if not isinstance(episodic_preferences, dict):
+            return ""
+
+        response_style = episodic_preferences.get("response_style")
+        if not isinstance(response_style, dict):
+            response_style = episodic_preferences
+        code_style = episodic_preferences.get("code_style")
+        if not isinstance(code_style, dict):
+            code_style = {}
+
+        def _pref_value(pref_map: Dict[str, Any], key: str) -> tuple[str, float]:
+            raw = pref_map.get(key)
+            if isinstance(raw, dict):
+                val = str(raw.get("value") or "").strip().lower()
+                try:
+                    conf = float(raw.get("confidence") or 0.0)
+                except Exception:
+                    conf = 0.0
+                return val, conf
+            if raw is None:
+                return "", 0.0
+            return str(raw).strip().lower(), 0.5
+
+        constraints: List[str] = []
+
+        verbosity, verbosity_conf = _pref_value(response_style, "verbosity")
+        if verbosity_conf >= 0.6:
+            if verbosity == "concise":
+                constraints.append("Keep the answer concise by default.")
+            elif verbosity == "verbose":
+                constraints.append("Provide thorough detail by default.")
+
+        fmt, fmt_conf = _pref_value(response_style, "format")
+        if fmt_conf >= 0.6:
+            if fmt == "structured":
+                constraints.append("Use structured formatting (sections/lists) when it improves clarity.")
+            elif fmt == "freeform":
+                constraints.append("Prefer natural prose over heavy list formatting unless asked.")
+
+        structure, structure_conf = _pref_value(response_style, "structure")
+        if structure_conf >= 0.6 and structure == "step_by_step":
+            constraints.append("Use step-by-step explanations for tasks and procedures.")
+
+        emoji, emoji_conf = _pref_value(response_style, "emoji_usage")
+        if emoji_conf >= 0.6:
+            if emoji == "none":
+                constraints.append("Do not use emoji.")
+            elif emoji == "minimal":
+                constraints.append("Use emoji only sparingly.")
+
+        citation_style, citation_conf = _pref_value(response_style, "citation_style")
+        if citation_conf >= 0.6:
+            if citation_style == "required":
+                constraints.append("Include sources for factual claims when available.")
+            elif citation_style == "none":
+                constraints.append("Avoid citation-heavy formatting unless explicitly requested.")
+
+        code_examples, code_examples_conf = _pref_value(response_style, "code_examples")
+        if code_examples_conf >= 0.6:
+            if code_examples == "yes":
+                constraints.append("Include code examples when they materially help.")
+            elif code_examples == "no":
+                constraints.append("Prioritize conceptual explanation over code unless asked for code.")
+
+        lang, lang_conf = _pref_value(code_style, "language")
+        if lang_conf >= 0.6 and lang:
+            constraints.append(f"When writing code, prefer {lang} unless user requests another language.")
+
+        if not constraints:
+            return ""
+        return "\n".join(f"- {line}" for line in constraints)
     
     def _build_quick_prompt(self, query: str, context: Dict) -> str:
         """Build prompt for quick mode."""
@@ -1063,6 +1145,9 @@ class ReasoningEngine:
         adaptive_hint = self._format_adaptive_hint(
             context.get("personality_profile"),
             context.get("reflection_scorecard"),
+            context.get("episodic_preferences"),
+        )
+        preference_constraints = self._format_preference_constraints(
             context.get("episodic_preferences"),
         )
         
@@ -1114,6 +1199,13 @@ RESPONSE RULES (follow strictly):
 - If multiple memories are shown but only some are relevant, use ONLY the relevant ones. Ignore the rest.
 
 """
+
+        if preference_constraints:
+            prompt += (
+                "MANDATORY USER PREFERENCE CONSTRAINTS (high confidence):\n"
+                f"{preference_constraints}\n"
+                "Treat these as defaults unless the user overrides them in this turn.\n\n"
+            )
 
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
@@ -1243,6 +1335,9 @@ RESPONSE RULES (follow strictly):
         docs = context.get('retrieved_docs', [])
         contradictions = context.get('contradictions', [])
         style_hint = self._format_style_hint(context.get("style_profile"))
+        preference_constraints = self._format_preference_constraints(
+            context.get("episodic_preferences"),
+        )
         adaptive_hint = self._format_adaptive_hint(
             context.get("personality_profile"),
             context.get("reflection_scorecard"),
@@ -1264,8 +1359,13 @@ When asked "how do you know?", cite the specific memory and its trust score.
 """
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
+        if preference_constraints:
+            prompt += (
+                "MANDATORY USER PREFERENCE CONSTRAINTS (high confidence):\n"
+                f"{preference_constraints}\n\n"
+            )
         if adaptive_hint:
-            prompt += f"ADAPTIVE NUDGE (low priority): {adaptive_hint}\n\n"
+            prompt += f"ADAPTIVE CONTEXT:\n{adaptive_hint}\n\n"
 
         prompt += f"Question: {query}\n\n"
         prompt += f"Analysis: {analysis}\n"
@@ -1284,6 +1384,9 @@ When asked "how do you know?", cite the specific memory and its trust score.
     def _build_deep_prompt(self, query: str, context: Dict, plan: str, execution: str) -> str:
         """Build prompt for deep mode."""
         style_hint = self._format_style_hint(context.get("style_profile"))
+        preference_constraints = self._format_preference_constraints(
+            context.get("episodic_preferences"),
+        )
         adaptive_hint = self._format_adaptive_hint(
             context.get("personality_profile"),
             context.get("reflection_scorecard"),
@@ -1294,8 +1397,13 @@ When asked about yourself, explain your actual architecture: GroundCheck memory 
 Do NOT claim user's personal attributes (name, job, location) as your own.\n\n"""
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
+        if preference_constraints:
+            prompt += (
+                "MANDATORY USER PREFERENCE CONSTRAINTS (high confidence):\n"
+                f"{preference_constraints}\n\n"
+            )
         if adaptive_hint:
-            prompt += f"ADAPTIVE NUDGE (low priority): {adaptive_hint}\n\n"
+            prompt += f"ADAPTIVE CONTEXT:\n{adaptive_hint}\n\n"
         prompt += f"Complex Question: {query}\n\n"
         prompt += f"Reasoning Plan: {plan}\n"
         prompt += f"Execution: {execution}\n\n"

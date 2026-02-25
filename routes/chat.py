@@ -71,6 +71,90 @@ _EXPAND_TRIGGERS = (
     "continue",
 )
 
+_CONTINUITY_FOLLOWUP_HINTS = (
+    "tell me more",
+    "continue",
+    "and then",
+    "what about",
+    "how about",
+    "the highlights",
+    "highlights",
+    "summarize",
+    "summary",
+    "that",
+    "those",
+    "it",
+    "them",
+)
+
+
+def _load_recent_history_messages(
+    session_db,
+    thread_id: str,
+    *,
+    window: int = 6,
+) -> List[Dict[str, str]]:
+    """Load recent user/assistant messages from session DB."""
+    history_messages: List[Dict[str, str]] = []
+    try:
+        recent = session_db.get_recent_queries(thread_id, window=window)
+        for item in reversed(recent):
+            q = str((item or {}).get("query_text") or "").strip()
+            r = str((item or {}).get("response_text") or "").strip()
+            if q:
+                history_messages.append({"role": "user", "content": q})
+            if r:
+                history_messages.append({"role": "assistant", "content": r})
+    except Exception as e:
+        logger.debug(f"[CONTINUITY] Failed to load history for {thread_id}: {e}")
+    return history_messages
+
+
+def _looks_like_follow_up(message: str) -> bool:
+    """Heuristic for short referential prompts that need carry-forward context."""
+    text = str(message or "").strip().lower()
+    if not text:
+        return False
+    words = re.findall(r"\w+", text)
+    if len(words) <= 8:
+        return True
+    return any(hint in text for hint in _CONTINUITY_FOLLOWUP_HINTS)
+
+
+def _augment_query_with_continuity(
+    *,
+    message: str,
+    history_messages: List[Dict[str, str]],
+    max_history_lines: int = 10,
+    max_chars: int = 2200,
+) -> str:
+    """
+    Add compact prior-turn context for follow-up prompts.
+
+    This keeps /send aligned with /stream behavior without changing engine internals.
+    """
+    if not history_messages:
+        return message
+    if not _looks_like_follow_up(message):
+        return message
+
+    lines: List[str] = []
+    for item in history_messages[-max_history_lines:]:
+        role = str(item.get("role") or "user").strip().lower()
+        content = str(item.get("content") or "").strip()
+        if not content:
+            continue
+        role_label = "User" if role == "user" else "Assistant"
+        lines.append(f"{role_label}: {content}")
+
+    if not lines:
+        return message
+
+    context_block = "[RECENT CONVERSATION CONTEXT]\n" + "\n".join(lines)
+    if len(context_block) > max_chars:
+        context_block = context_block[-max_chars:]
+    return f"{message}\n\n{context_block}"
+
 
 # ---------------------------------------------------------------------------
 # Copied helper functions (originally module-level in crt_api.py)
@@ -258,18 +342,36 @@ def _get_verbosity_preference(thread_id: str, memory_system) -> Optional[str]:
         return None
 
 
+def _get_preference_profile(thread_id: str, memory_system) -> Dict[str, Any]:
+    """Load episodic preferences payload for routing/prompt adaptation."""
+    try:
+        episodic_mgr = get_episodic_manager(memory_system=memory_system)
+        ctx = episodic_mgr.get_user_context()
+        prefs = ctx.get("preferences", {}) if isinstance(ctx, dict) else {}
+        if isinstance(prefs, dict):
+            return prefs
+    except Exception as e:
+        logger.debug(f"[PREF] Failed to load preference profile for {thread_id}: {e}")
+    return {}
+
+
 def _route_model_for_request(
     request: Request,
     *,
     query: str,
     mode: Optional[str] = None,
+    preference_profile: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[str], Optional[Dict[str, str]]]:
     """Select a model for this request using app-level model router."""
     router_obj = getattr(request.app.state, "model_router", None)
     if router_obj is None:
         return None, None
     try:
-        routed = router_obj.route(query=query, requested_mode=mode)
+        routed = router_obj.route(
+            query=query,
+            requested_mode=mode,
+            preference_profile=preference_profile,
+        )
         if routed is None:
             return None, None
         model = getattr(routed, "model", None)
@@ -687,14 +789,22 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if fact_check_preamble:
         query_with_context = req.message + fact_check_preamble
 
+    recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
+    query_with_continuity = _augment_query_with_continuity(
+        message=query_with_context,
+        history_messages=recent_history,
+    )
+
+    preference_profile = _get_preference_profile(req.thread_id, engine.memory)
     model_override, model_route = _route_model_for_request(
         request,
         query=req.message,
         mode=req.mode,
+        preference_profile=preference_profile,
     )
 
     result = engine.query(
-        user_query=query_with_context,
+        user_query=query_with_continuity,
         user_marked_important=req.user_marked_important,
         mode=mode_arg,
         thread_id=req.thread_id,
@@ -1075,6 +1185,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     if greeting_text:
         metadata["greeting_shown"] = True
+    if query_with_continuity != query_with_context:
+        metadata["continuity_context_applied"] = True
 
     # Record query in session DB for response variation tracking
     try:
@@ -1161,6 +1273,7 @@ def chat_stream(req: ChatSendRequest, request: Request):
             session_db = get_thread_session_db()
             session_db.get_or_create_session(req.thread_id)
             session_db.update_activity(req.thread_id, increment_messages=True)
+            history_messages = _load_recent_history_messages(session_db, req.thread_id, window=6)
             style_profile = None
             try:
                 style_profile = session_db.update_style_profile(req.thread_id, req.message)
@@ -1177,10 +1290,12 @@ def chat_stream(req: ChatSendRequest, request: Request):
             except Exception as e:
                 logger.debug(f"[REFLECTION_LOOP] Failed to read reflection scorecard (stream): {e}")
 
+            preference_profile = _get_preference_profile(req.thread_id, engine.memory)
             model_override, model_route = _route_model_for_request(
                 request,
                 query=req.message,
                 mode=req.mode,
+                preference_profile=preference_profile,
             )
             selected_stream_model = model_override or (llm_client.model if llm_client else None)
 
@@ -1193,7 +1308,10 @@ def chat_stream(req: ChatSendRequest, request: Request):
             yield f"data: {json.dumps({'type': 'status', 'content': 'Processing message...'})}\n\n"
 
             result = engine.query(
-                user_query=req.message,
+                user_query=_augment_query_with_continuity(
+                    message=req.message,
+                    history_messages=history_messages,
+                ),
                 user_marked_important=req.user_marked_important,
                 thread_id=req.thread_id,
                 model_override=model_override,
@@ -1401,19 +1519,6 @@ CONSTRAINTS:
 - NEVER claim user facts as YOUR identity"""
 
             # Stream the response -- include recent conversation history for continuity
-            history_messages: List[Dict[str, str]] = []
-            try:
-                recent = session_db.get_recent_queries(req.thread_id, window=6)
-                for item in reversed(recent):
-                    q = (item or {}).get("query_text")
-                    r = (item or {}).get("response_text")
-                    if q:
-                        history_messages.append({"role": "user", "content": q})
-                    if r:
-                        history_messages.append({"role": "assistant", "content": r})
-            except Exception as e:
-                logger.debug(f"[STREAM] Failed to load recent history: {e}")
-
             messages = [
                 {"role": "system", "content": system_prompt},
                 *history_messages,
@@ -1792,13 +1897,21 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
             user_marked_important=req.user_marked_important,
         )
     else:
+        session_db = get_thread_session_db()
+        history_messages = _load_recent_history_messages(session_db, req.thread_id, window=6)
+        query_with_continuity = _augment_query_with_continuity(
+            message=req.message,
+            history_messages=history_messages,
+        )
+        preference_profile = _get_preference_profile(req.thread_id, engine.memory)
         model_override, model_route = _route_model_for_request(
             request,
             query=req.message,
             mode=None,
+            preference_profile=preference_profile,
         )
         result = engine.query(
-            user_query=req.message,
+            user_query=query_with_continuity,
             user_marked_important=req.user_marked_important,
             model_override=model_override,
         )
