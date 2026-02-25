@@ -846,14 +846,19 @@ def create_app() -> FastAPI:
     dnnt_learning_cfg = BackgroundLearningConfig(
         output_dir=str(dnnt_cfg.get("output_dir") or "models/dnnt"),
         collected_examples_path=str(dnnt_cfg.get("collected_examples_path") or "data/dnnt_collected_training_data.jsonl"),
-        collapse_trails_path=str(dnnt_cfg.get("collapse_trails_path") or "data/collapse_trails.jsonl"),
+        collapse_trails_db_path=str(
+            dnnt_cfg.get("collapse_trails_db_path")
+            or dnnt_cfg.get("collapse_trails_path")
+            or "personal_agent/crt_collapse_trails.db"
+        ),
+        active_learning_db_path=str(dnnt_cfg.get("active_learning_db_path") or "personal_agent/active_learning.db"),
         state_path=str(dnnt_cfg.get("state_path") or "data/dnnt_background_state.json"),
-        poll_interval_seconds=float(dnnt_cfg.get("poll_interval_seconds") or 1800),
         min_new_examples=int(dnnt_cfg.get("min_new_examples") or 24),
-        max_examples=int(dnnt_cfg.get("max_examples") or 4000),
+        max_examples_per_cycle=int(dnnt_cfg.get("max_examples_per_cycle") or dnnt_cfg.get("max_examples") or 512),
+        max_steps_per_cycle=int(dnnt_cfg.get("max_steps_per_cycle") or 200),
         batch_size=int(dnnt_cfg.get("batch_size") or 8),
-        epochs=int(dnnt_cfg.get("epochs") or 1),
         learning_rate=float(dnnt_cfg.get("learning_rate") or 2e-4),
+        poll_interval_sec=int(dnnt_cfg.get("poll_interval_sec") or 180),
     )
     dnnt_retraining_loop = DNNTBackgroundLoop(
         enabled=bool(dnnt_cfg.get("enabled", False)),

@@ -17,6 +17,8 @@ from fastapi.responses import StreamingResponse
 from .deps import sanitize_thread_id
 from .models import (
     CitationModel,
+    EmailDigestRequest,
+    EmailDigestResponse,
     HealthResponse,
     JournalReplyRequest,
     JournalReplyResponse,
@@ -1153,3 +1155,44 @@ def set_heartbeat_md(req: "HeartbeatMDRequest"):
     except Exception as e:
         logger.error(f"Failed to write HEARTBEAT.md: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Email digest endpoints
+# ============================================================================
+
+
+@router.get("/api/email/status")
+def get_email_status() -> dict:
+    """Get email digest configuration status."""
+    from personal_agent.email_digest import EmailDigestService
+
+    service = EmailDigestService()
+    return service.status()
+
+
+@router.post("/api/email/send-digest", response_model=EmailDigestResponse)
+def send_email_digest(req: EmailDigestRequest) -> EmailDigestResponse:
+    """Build and send a digest email for a thread."""
+    from personal_agent.email_digest import EmailDigestService
+
+    session_db = _get_session_db()
+    service = EmailDigestService()
+    if not service.is_configured():
+        raise HTTPException(status_code=400, detail="Email is not configured/enabled")
+
+    result = service.send_thread_digest(
+        thread_id=sanitize_thread_id(req.thread_id),
+        to_email=req.to,
+        session_db=session_db,
+        subject_override=req.subject,
+    )
+    if not result.get("ok"):
+        raise HTTPException(status_code=500, detail=str(result.get("error") or "email_send_failed"))
+
+    return EmailDigestResponse(
+        ok=True,
+        to=req.to,
+        subject=str(result.get("subject") or req.subject or "CRT Digest"),
+        error=None,
+    )

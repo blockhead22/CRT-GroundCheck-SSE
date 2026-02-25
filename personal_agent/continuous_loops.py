@@ -71,6 +71,20 @@ def _trend_topics(messages: List[str]) -> dict:
     return {"rising": rising[:5], "fading": fading[:5]}
 
 
+def _extract_open_questions(messages: List[str], k: int = 3) -> List[str]:
+    """Pick recent unresolved-looking user questions for reflection context."""
+    out: List[str] = []
+    for msg in reversed(messages):
+        t = str(msg or "").strip()
+        if not t:
+            continue
+        if "?" in t:
+            out.append(t[:220])
+        if len(out) >= k:
+            break
+    return list(reversed(out))
+
+
 def _format_topic_list(items: List[dict], key: str = "topic") -> str:
     topics = [str(item.get(key)) for item in items if isinstance(item, dict) and item.get(key)]
     return ", ".join(topics[:4]) if topics else "--"
@@ -84,6 +98,7 @@ def _summarize_scorecard(scorecard: dict) -> tuple[str, str]:
     pref_conf = scorecard.get("preference_confidence")
     window = scorecard.get("message_window")
     manual_prompt = str(scorecard.get("manual_prompt") or "").strip()
+    open_questions = scorecard.get("open_questions") or []
 
     # Create human-readable title
     if top_topics and top_topics != "--":
@@ -112,6 +127,9 @@ def _summarize_scorecard(scorecard: dict) -> tuple[str, str]:
         lines.append(f"Noticing more discussion about: {rising}.")
     if fading and fading != "--":
         lines.append(f"Less focus on: {fading}.")
+
+    if isinstance(open_questions, list) and open_questions:
+        lines.append(f"Open question to revisit: {str(open_questions[0])[:160]}")
     
     # Context note
     lines.append(f"(Based on last {window or 'N/A'} messages)")
@@ -560,6 +578,7 @@ def build_reflection_scorecard(
         "preference_confidence": min(1.0, len(messages) / 20.0),
         "top_topics": _top_topics(counts, k=5),
         "topic_trends": _trend_topics(messages),
+        "open_questions": _extract_open_questions(messages, k=3),
     }
     if prompt:
         scorecard["manual_prompt"] = prompt

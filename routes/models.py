@@ -512,6 +512,23 @@ class ResearchPromoteResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Email
+# ---------------------------------------------------------------------------
+
+class EmailDigestRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    to: str = Field(min_length=3, description="Recipient email address")
+    subject: Optional[str] = Field(default=None, description="Optional subject override")
+
+
+class EmailDigestResponse(BaseModel):
+    ok: bool
+    to: str
+    subject: str
+    error: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
 # Agent
 # ---------------------------------------------------------------------------
 
@@ -644,4 +661,3 @@ class SyncChatRequest(BaseModel):
 class SyncChatResponse(BaseModel):
     ok: bool
     threads: list[dict]
-

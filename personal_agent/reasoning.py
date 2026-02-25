@@ -1319,6 +1319,9 @@ Do NOT claim user's personal attributes (name, job, location) as your own.\n\n""
                 max_tokens=max_tokens,
                 model=model_override,
             )
+        except TypeError:
+            # Backward compatibility for lightweight test doubles / older clients.
+            return self.llm.generate(prompt, max_tokens=max_tokens)
         except Exception as e:
             return f"[LLM error: {e}]"
     
