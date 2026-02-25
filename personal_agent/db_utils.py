@@ -292,6 +292,19 @@ class ThreadSessionDB:
             ON heartbeat_history(thread_id, timestamp DESC)
         """)
 
+        # Heartbeat news dedupe cache (latest digest hash per topic/thread)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS heartbeat_news_cache (
+                thread_id TEXT NOT NULL,
+                topic TEXT NOT NULL,
+                digest_hash TEXT,
+                last_run REAL NOT NULL,
+                last_summary TEXT,
+                PRIMARY KEY (thread_id, topic),
+                FOREIGN KEY (thread_id) REFERENCES thread_sessions(thread_id)
+            )
+        """)
+
         # Moltbook-style local forum (posts, comments, votes, submolts)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS molt_submolts (
@@ -735,6 +748,57 @@ class ThreadSessionDB:
                 "success": bool(row["success"]),
             })
         return history
+
+    def get_heartbeat_news_cache(self, thread_id: str, topic: str) -> Optional[dict]:
+        """Get latest heartbeat news digest metadata for a topic/thread."""
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT digest_hash, last_run, last_summary
+            FROM heartbeat_news_cache
+            WHERE thread_id = ? AND topic = ?
+            """,
+            (thread_id, topic),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        return {
+            "digest_hash": row["digest_hash"],
+            "last_run": row["last_run"],
+            "last_summary": row["last_summary"],
+        }
+
+    def upsert_heartbeat_news_cache(
+        self,
+        thread_id: str,
+        topic: str,
+        *,
+        digest_hash: Optional[str],
+        last_summary: Optional[str] = None,
+        last_run: Optional[float] = None,
+    ) -> None:
+        """Upsert latest heartbeat news digest metadata for a topic/thread."""
+        self.get_or_create_session(thread_id)
+        run_ts = float(last_run if last_run is not None else time.time())
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO heartbeat_news_cache (thread_id, topic, digest_hash, last_run, last_summary)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(thread_id, topic) DO UPDATE SET
+                digest_hash = excluded.digest_hash,
+                last_run = excluded.last_run,
+                last_summary = excluded.last_summary
+            """,
+            (thread_id, topic, digest_hash, run_ts, last_summary),
+        )
+        conn.commit()
+        conn.close()
     
     # ====== Recent Query Tracking for Response Variation ======
     

@@ -207,6 +207,29 @@ def groundcheck_check(
     if context and context.strip():
         extracted = extract_fact_slots(context)
         if extracted:
+            # Validation: reject garbage extractions before storage
+            _REJECT_SLOTS = {
+                "major", "certification", "experience_years", "team_size",
+                "framework", "project", "system", "purpose", "status",
+                "connectivity", "discussion", "plan", "planning",
+                "focus", "topic", "goal", "step", "process",
+            }
+            _NUMERIC_SLOTS = {"team_size", "experience_years", "salary", "age", "siblings"}
+            validated = {}
+            for slot, fact in extracted.items():
+                # Skip known-bad slots unless they have strong signal
+                if slot in _REJECT_SLOTS:
+                    continue
+                # Skip numeric slots with non-numeric values
+                if slot in _NUMERIC_SLOTS and not fact.value[:1].isdigit():
+                    continue
+                # Skip very short values or obvious noise
+                val = (fact.value or "").strip()
+                if len(val) < 2 or val.lower() in ("none", "null", "n/a", "unknown", "no"):
+                    continue
+                validated[slot] = fact
+            extracted = validated
+
             # Check existing memories to avoid storing duplicates
             existing = store.get_all(thread_id=thread_id, namespace=ns)
             existing_texts_lower = {m.text.lower() for m in existing}

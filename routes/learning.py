@@ -73,6 +73,59 @@ def learn_run(
 
 
 # ========================================================================
+# DNNT BACKGROUND RETRAINING  (/api/dnnt/retraining/*)
+# ========================================================================
+
+
+@router.get("/api/dnnt/retraining/status")
+def dnnt_retraining_status(request: Request) -> Dict[str, Any]:
+    loop = getattr(request.app.state, "dnnt_retraining_loop", None)
+    if loop is None:
+        return {
+            "enabled": False,
+            "running": False,
+            "last_run_at": None,
+            "last_summary": None,
+            "last_error": "dnnt_retraining_loop not configured",
+        }
+    return loop.status().to_dict()
+
+
+@router.post("/api/dnnt/retraining/run")
+def dnnt_retraining_run(request: Request) -> Dict[str, Any]:
+    loop = getattr(request.app.state, "dnnt_retraining_loop", None)
+    if loop is None:
+        raise HTTPException(status_code=404, detail="dnnt_retraining_loop not configured")
+    summary = loop.run_once()
+    status = loop.status().to_dict()
+    return {
+        "ok": bool(not summary.get("error")) if isinstance(summary, dict) else True,
+        "summary": summary,
+        "status": status,
+    }
+
+
+@router.post("/api/dnnt/retraining/start")
+def dnnt_retraining_start(request: Request) -> Dict[str, Any]:
+    loop = getattr(request.app.state, "dnnt_retraining_loop", None)
+    if loop is None:
+        raise HTTPException(status_code=404, detail="dnnt_retraining_loop not configured")
+    loop.enabled = True
+    loop.start()
+    return {"ok": True, "status": loop.status().to_dict()}
+
+
+@router.post("/api/dnnt/retraining/stop")
+def dnnt_retraining_stop(request: Request) -> Dict[str, Any]:
+    loop = getattr(request.app.state, "dnnt_retraining_loop", None)
+    if loop is None:
+        raise HTTPException(status_code=404, detail="dnnt_retraining_loop not configured")
+    loop.enabled = False
+    loop.stop()
+    return {"ok": True, "status": loop.status().to_dict()}
+
+
+# ========================================================================
 # ACTIVE LEARNING ENDPOINTS  (/api/learning/*)
 # ========================================================================
 
@@ -252,4 +305,3 @@ def feedback_stats(
         raise HTTPException(
             status_code=500, detail=f"Failed to get stats: {e}"
         )
-

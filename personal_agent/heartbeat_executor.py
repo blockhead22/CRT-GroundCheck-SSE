@@ -10,6 +10,7 @@ This module:
 from __future__ import annotations
 
 import json
+import hashlib
 import logging
 import sqlite3
 import time
@@ -236,6 +237,165 @@ class HeartbeatLLMExecutor:
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Error getting memory snapshot: {e}")
             return {}
+
+    def _derive_news_topics(self, thread_id: str, config: Dict[str, Any]) -> List[str]:
+        """Derive news topics from config and reflection scorecard."""
+        explicit = config.get("news_topics") if isinstance(config, dict) else None
+        topics: List[str] = []
+        if isinstance(explicit, list):
+            topics = [str(t).strip() for t in explicit if str(t).strip()]
+        if topics:
+            return topics[:5]
+
+        if not self.session_db:
+            return []
+        try:
+            scorecard = self.session_db.get_reflection_scorecard(thread_id)
+            if not isinstance(scorecard, dict):
+                return []
+            top_topics = scorecard.get("top_topics") or []
+            out: List[str] = []
+            for item in top_topics:
+                if isinstance(item, dict):
+                    topic = str(item.get("topic") or "").strip()
+                else:
+                    topic = str(item or "").strip()
+                if topic:
+                    out.append(topic)
+            return out[:3]
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Could not derive reflection topics: {e}")
+            return []
+
+    def _run_news_monitoring(
+        self,
+        thread_id: str,
+        config: Dict[str, Any],
+        *,
+        dry_run: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Search for topic updates and post digest entries when new results appear."""
+        if not isinstance(config, dict) or not bool(config.get("news_monitoring_enabled", False)):
+            return []
+        if not self.session_db:
+            return []
+
+        topics = self._derive_news_topics(thread_id, config)
+        if not topics:
+            return []
+
+        try:
+            from personal_agent.web_search import WebSearchTool
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] News monitor unavailable (web search import failed): {e}")
+            return []
+
+        suffix = str(config.get("news_query_suffix") or "latest news").strip() or "latest news"
+        max_results = max(1, int(config.get("news_max_results", 5) or 5))
+        cooldown_seconds = max(900, int(config.get("news_cooldown_seconds", 21600) or 21600))
+        submolt = str(config.get("news_post_submolt") or "news").strip() or "news"
+
+        search_tool = WebSearchTool(max_results=max_results)
+        now_ts = time.time()
+        actions: List[Dict[str, Any]] = []
+
+        for topic in topics[:3]:
+            safe_topic = str(topic).strip()
+            if not safe_topic:
+                continue
+
+            cache = self.session_db.get_heartbeat_news_cache(thread_id, safe_topic) or {}
+            last_run = float(cache.get("last_run") or 0.0)
+            if last_run > 0 and (now_ts - last_run) < cooldown_seconds:
+                continue
+
+            query = f"{safe_topic} {suffix}".strip()
+            result = search_tool.search(query, max_results=max_results)
+            if result.error or not result.results:
+                self.session_db.upsert_heartbeat_news_cache(
+                    thread_id,
+                    safe_topic,
+                    digest_hash=cache.get("digest_hash"),
+                    last_summary=f"search_error={result.error}" if result.error else "no_results",
+                    last_run=now_ts,
+                )
+                continue
+
+            top = result.results[: min(3, len(result.results))]
+            digest_seed = "|".join(f"{r.title}::{r.url}" for r in top)
+            digest_hash = hashlib.sha1(digest_seed.encode("utf-8", errors="ignore")).hexdigest()[:16]
+            if cache.get("digest_hash") == digest_hash:
+                self.session_db.upsert_heartbeat_news_cache(
+                    thread_id,
+                    safe_topic,
+                    digest_hash=digest_hash,
+                    last_summary="unchanged",
+                    last_run=now_ts,
+                )
+                continue
+
+            lines = []
+            for idx, item in enumerate(top, start=1):
+                title = (item.title or "").strip() or "Untitled"
+                url = (item.url or "").strip()
+                snippet = (item.snippet or "").strip()
+                if len(snippet) > 180:
+                    snippet = snippet[:177].rstrip() + "..."
+                line = f"{idx}. {title}"
+                if snippet:
+                    line += f" — {snippet}"
+                if url:
+                    line += f"\n   {url}"
+                lines.append(line)
+
+            title = f"News digest: {safe_topic}"
+            content = (
+                f"Heartbeat news monitor update for '{safe_topic}'.\n\n"
+                + "\n\n".join(lines)
+            )
+
+            executed = False
+            post_error: Optional[str] = None
+            if not dry_run:
+                post_result = self.execute_action(
+                    {
+                        "action": "post",
+                        "submolt": submolt,
+                        "title": title,
+                        "content": content,
+                        "reasoning": f"New digest hash {digest_hash}",
+                    },
+                    thread_id,
+                    dry_run=dry_run,
+                )
+                executed = bool(post_result.get("success"))
+                post_error = post_result.get("error") if isinstance(post_result, dict) else None
+            else:
+                executed = True
+
+            summary = f"query='{query}', results={len(top)}, posted={executed}"
+            self.session_db.upsert_heartbeat_news_cache(
+                thread_id,
+                safe_topic,
+                digest_hash=digest_hash,
+                last_summary=summary,
+                last_run=now_ts,
+            )
+
+            actions.append(
+                {
+                    "action": "news_monitor",
+                    "topic": safe_topic,
+                    "query": query,
+                    "result_count": len(top),
+                    "posted": bool(executed),
+                    "digest_hash": digest_hash,
+                    "detail": f"News digest for '{safe_topic}' ({len(top)} items)",
+                    "error": post_error,
+                }
+            )
+
+        return actions
     
     def create_decision_prompt(
         self,
@@ -350,6 +510,12 @@ Reason carefully. If unsure, reply with action=none.
         """
         Main heartbeat orchestration method.
         
+        Performs real autonomous work:
+        1. Trust decay on aging memories
+        2. Contradiction inventory check
+        3. Memory consolidation/stats
+        4. Proactive observations
+        
         Args:
             thread_id: Thread ID to run heartbeat for
             config: Heartbeat configuration (dry_run, etc.)
@@ -357,51 +523,112 @@ Reason carefully. If unsure, reply with action=none.
         Returns:
             Dict with heartbeat result
         """
+        import time as _time
+        start = _time.time()
+        actions_taken = []
+        dry_run = config.get('dry_run', False) if config else False
+
+        # --- 1. Trust Decay Pass ---
         try:
-            # Gather context
-            context = self.gather_context(thread_id)
-            
-            # Check if there are any mentions to respond to
-            if not context.ledger_feed:
-                logger.debug(f"[HEARTBEAT] No Ledger activity for {thread_id}")
-                return {"success": True, "action": "none", "reason": "No activity"}
-            
-            # Note: In a full implementation, we would call create_decision_prompt and use LLM
-            # For now, simplified: just respond to mentions
-            
-            # Find mentions in the feed
-            mention = next((post for post in context.ledger_feed 
-                          if any(word in post.get('content', '').lower() or 
-                                word in post.get('title', '').lower()
-                                for word in ['aether', '@agent', 'agent'])), None)
-            
-            if mention:
-                # Respond to the mention
-                post_id = mention.get('id') or mention.get('post_id', '')
-                logger.info(f"[HEARTBEAT] Found mention in post #{post_id}: '{mention.get('title', 'Untitled')}'")
-                
-                action_data = {
-                    "action": "comment",
-                    "post_id": str(post_id),
-                    "content": "Hi! Thanks for reaching out. I'm doing well - just monitoring the system. How can I help?",
-                    "reasoning": f"Responding to mention in post '{mention.get('title', 'Untitled')}'"
-                }
-                
-                # Execute the action
-                result = self.execute_action(
-                    action_data,
-                    thread_id,
-                    dry_run=config.get('dry_run', False) if config else False
-                )
-                
-                logger.info(f"[HEARTBEAT] Responded to mention in thread {thread_id}")
-                return result
-            else:
-                return {"success": True, "action": "none", "reason": "No mentions found"}
-                
+            from personal_agent.trust_decay import run_trust_decay_pass
+            decay_result = run_trust_decay_pass()
+            decayed_count = decay_result.get("decayed", 0) if isinstance(decay_result, dict) else 0
+            if decayed_count > 0:
+                actions_taken.append({
+                    "action": "trust_decay",
+                    "detail": f"Decayed trust on {decayed_count} aging memories",
+                    "count": decayed_count,
+                })
+                logger.info(f"[HEARTBEAT] Trust decay: {decayed_count} memories decayed")
         except Exception as e:
-            logger.error(f"[HEARTBEAT] Error running heartbeat for {thread_id}: {e}")
-            return {"success": False, "error": str(e)}
+            logger.debug(f"[HEARTBEAT] Trust decay skipped: {e}")
+
+        # --- 2. Contradiction Inventory ---
+        try:
+            open_contradictions = self._get_open_contradictions(thread_id, limit=20)
+            if open_contradictions:
+                stale = [c for c in open_contradictions
+                         if _time.time() - float(c.get("timestamp", 0)) > 86400]
+                actions_taken.append({
+                    "action": "contradiction_check",
+                    "detail": f"{len(open_contradictions)} open contradictions ({len(stale)} older than 24h)",
+                    "open": len(open_contradictions),
+                    "stale": len(stale),
+                })
+                logger.info(f"[HEARTBEAT] Contradictions: {len(open_contradictions)} open, {len(stale)} stale")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Contradiction check skipped: {e}")
+
+        # --- 3. Memory Stats ---
+        try:
+            snapshot = self._get_memory_snapshot(thread_id)
+            total_facts = len(snapshot)
+            low_trust = sum(1 for v in snapshot.values()
+                           if (v.get("confidence") or 0) < 0.4)
+            actions_taken.append({
+                "action": "memory_audit",
+                "detail": f"{total_facts} known facts, {low_trust} with low trust (<0.4)",
+                "total": total_facts,
+                "low_trust": low_trust,
+            })
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Memory audit skipped: {e}")
+
+        # --- 4. Respond to mentions (existing behavior) ---
+        # --- 4.5. Optional news monitoring ---
+        try:
+            news_actions = self._run_news_monitoring(thread_id, config or {}, dry_run=dry_run)
+            if news_actions:
+                actions_taken.extend(news_actions)
+                logger.info(f"[HEARTBEAT] News monitor posted {len(news_actions)} digest update(s)")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] News monitor skipped: {e}")
+
+        # --- 5. Respond to mentions (existing behavior) ---
+        try:
+            context = self.gather_context(thread_id)
+            if context.ledger_feed:
+                mention = next((post for post in context.ledger_feed
+                               if any(word in (post.get('content', '') + post.get('title', '')).lower()
+                                      for word in ['aether', '@agent', 'agent'])), None)
+                if mention and not dry_run:
+                    post_id = mention.get('id') or mention.get('post_id', '')
+                    result = self.execute_action({
+                        "action": "comment",
+                        "post_id": str(post_id),
+                        "content": "Noticed this during my heartbeat check. Let me know if you need anything.",
+                        "reasoning": f"Responding to mention in '{mention.get('title', 'Untitled')}'",
+                    }, thread_id, dry_run=dry_run)
+                    actions_taken.append({
+                        "action": "respond_mention",
+                        "detail": f"Responded to mention in post #{post_id}",
+                    })
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Mention check skipped: {e}")
+
+        elapsed = _time.time() - start
+        summary = "; ".join(a["detail"] for a in actions_taken) if actions_taken else "Heartbeat OK, no actions needed"
+        
+        # Record to session DB
+        try:
+            if self.session_db:
+                self.session_db.record_heartbeat_run(thread_id, {
+                    "timestamp": _time.time(),
+                    "summary": summary,
+                    "actions": actions_taken,
+                    "success": True,
+                    "execution_time": elapsed,
+                })
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Failed to record run: {e}")
+
+        logger.info(f"[HEARTBEAT] Completed for {thread_id} in {elapsed:.2f}s: {summary}")
+        return {
+            "success": True,
+            "actions": actions_taken,
+            "summary": summary,
+            "execution_time": elapsed,
+        }
     
     def execute_action(
         self,

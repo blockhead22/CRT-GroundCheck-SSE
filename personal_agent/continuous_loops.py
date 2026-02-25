@@ -128,11 +128,17 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
     verbosity = profile.get("verbosity") or "--"
     emoji_pref = profile.get("emoji") or "--"
     fmt = profile.get("format") or "--"
+    state = str(profile.get("state") or "balanced_companion")
+    state_reason = str(profile.get("state_reason") or "").strip()
+    transitioned = bool(profile.get("state_transitioned"))
     window = profile.get("message_window")
     manual_prompt = str(profile.get("manual_prompt") or "").strip()
 
     # Create descriptive title
-    title = f"Adapting to {verbosity} style" if verbosity and verbosity != "--" else "Personality adjustment"
+    if transitioned:
+        title = f"Personality state -> {state}"
+    else:
+        title = f"Adapting to {verbosity} style" if verbosity and verbosity != "--" else "Personality adjustment"
     
     # Build narrative description
     lines = []
@@ -166,6 +172,9 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
     
     # Context note
     lines.append(f"(Observed over {window or 'N/A'} messages)")
+    lines.append(f"Current state: {state}.")
+    if state_reason:
+        lines.append(f"State rationale: {state_reason}.")
     
     if manual_prompt:
         lines.append(f"\n\nManual prompt: {manual_prompt[:120]}")
@@ -558,10 +567,115 @@ def build_reflection_scorecard(
     return scorecard
 
 
+def _derive_personality_state(
+    profile: dict,
+    *,
+    previous_profile: Optional[dict] = None,
+    reflection_scorecard: Optional[dict] = None,
+) -> dict:
+    """State-machine style persona selection with simple hysteresis."""
+    previous_profile = previous_profile or {}
+    reflection_scorecard = reflection_scorecard or {}
+
+    previous_state = str(previous_profile.get("state") or "balanced_companion")
+    try:
+        previous_score = float(previous_profile.get("state_confidence") or 0.45)
+    except Exception:
+        previous_score = 0.45
+
+    verbosity = str(profile.get("verbosity") or "").lower()
+    fmt = str(profile.get("format") or "").lower()
+    tone_preference = str(profile.get("tone_preference") or "").lower()
+    interaction_style = str(profile.get("interaction_style") or "").lower()
+    urgency = str(profile.get("urgency") or "").lower()
+    tech_ratio = float(profile.get("tech_ratio") or 0.0)
+    question_ratio = float(profile.get("question_ratio") or 0.0)
+    pref_conf = float(reflection_scorecard.get("preference_confidence") or 0.0)
+    open_questions = reflection_scorecard.get("open_questions") or []
+
+    scores: Dict[str, float] = {
+        "balanced_companion": 0.50,
+        "technical_guide": 0.20,
+        "urgent_executor": 0.20,
+        "reflective_partner": 0.20,
+        "structured_coach": 0.20,
+    }
+
+    scores["technical_guide"] += min(0.45, tech_ratio * 0.5)
+    if tone_preference == "technical":
+        scores["technical_guide"] += 0.2
+    if interaction_style == "inquisitive":
+        scores["technical_guide"] += 0.08
+
+    if urgency == "high":
+        scores["urgent_executor"] += 0.45
+    if verbosity == "concise":
+        scores["urgent_executor"] += 0.15
+    if question_ratio < 0.3:
+        scores["urgent_executor"] += 0.08
+
+    scores["reflective_partner"] += min(0.35, pref_conf * 0.4)
+    if open_questions:
+        scores["reflective_partner"] += 0.18
+    if verbosity == "verbose":
+        scores["reflective_partner"] += 0.1
+
+    if fmt == "structured":
+        scores["structured_coach"] += 0.35
+    if interaction_style == "inquisitive":
+        scores["structured_coach"] += 0.12
+    if tone_preference == "technical":
+        scores["structured_coach"] += 0.08
+
+    # Smooth transitions: avoid flipping state unless materially better.
+    next_state = max(scores.items(), key=lambda kv: kv[1])[0]
+    next_score = float(scores.get(next_state, 0.5))
+    previous_candidate = float(scores.get(previous_state, previous_score))
+    transition_margin = 0.08
+
+    transitioned = False
+    if next_state != previous_state and next_score < (previous_candidate + transition_margin):
+        next_state = previous_state
+        next_score = previous_candidate
+    else:
+        transitioned = next_state != previous_state
+
+    reason_bits: List[str] = []
+    if next_state == "urgent_executor":
+        reason_bits.append("high urgency cues")
+        if verbosity == "concise":
+            reason_bits.append("concise preference")
+    elif next_state == "technical_guide":
+        reason_bits.append("technical topic density")
+        if tone_preference == "technical":
+            reason_bits.append("technical tone preference")
+    elif next_state == "structured_coach":
+        reason_bits.append("structured formatting preference")
+        if interaction_style == "inquisitive":
+            reason_bits.append("question-led interactions")
+    elif next_state == "reflective_partner":
+        reason_bits.append("high reflection confidence")
+        if open_questions:
+            reason_bits.append("open reflective questions")
+    else:
+        reason_bits.append("no dominant directional cues")
+
+    return {
+        "state": next_state,
+        "state_confidence": max(0.0, min(next_score, 0.99)),
+        "state_reason": ", ".join(reason_bits),
+        "previous_state": previous_state,
+        "state_transitioned": transitioned,
+        "state_updated_at": time.time(),
+    }
+
+
 def build_personality_profile(
     thread_id: str,
     messages: List[str],
     prompt: str | None = None,
+    previous_profile: Optional[dict] = None,
+    reflection_scorecard: Optional[dict] = None,
 ) -> dict:
     lengths = [len(m) for m in messages if m]
     avg_len = sum(lengths) / len(lengths) if lengths else 0
@@ -610,6 +724,13 @@ def build_personality_profile(
         "question_ratio": question_ratio,
         "tech_ratio": tech_ratio,
     }
+    profile.update(
+        _derive_personality_state(
+            profile,
+            previous_profile=previous_profile,
+            reflection_scorecard=reflection_scorecard,
+        )
+    )
     if prompt:
         profile["manual_prompt"] = prompt
         profile["manual_triggered_at"] = time.time()
@@ -772,7 +893,23 @@ class PersonalityLoop:
 
     def run_for_thread(self, thread_id: str, prompt: str | None = None) -> dict | None:
         messages = _recent_messages(self.session_db, thread_id, self.window)
-        profile = build_personality_profile(thread_id, messages, prompt=prompt)
+        previous_profile = None
+        reflection_scorecard = None
+        try:
+            previous_profile = self.session_db.get_personality_profile(thread_id)
+        except Exception:
+            previous_profile = None
+        try:
+            reflection_scorecard = self.session_db.get_reflection_scorecard(thread_id)
+        except Exception:
+            reflection_scorecard = None
+        profile = build_personality_profile(
+            thread_id,
+            messages,
+            prompt=prompt,
+            previous_profile=previous_profile,
+            reflection_scorecard=reflection_scorecard,
+        )
         self.session_db.store_personality_profile(thread_id, profile)
         try:
             title, body = _summarize_personality(profile)
@@ -965,7 +1102,10 @@ class HeartbeatLoop:
             # Get heartbeat config (or use defaults)
             hb_config = self.session_db.get_heartbeat_config(thread_id)
             enabled = hb_config.get("enabled", True) if hb_config else True
-            every_seconds = int((hb_config or {}).get("every_seconds", 1800))
+            raw_every = (hb_config or {}).get("every")
+            if raw_every is None:
+                raw_every = (hb_config or {}).get("every_seconds", 1800)
+            every_seconds = int(raw_every or 1800)
             
             if not enabled or every_seconds <= 0:
                 return None

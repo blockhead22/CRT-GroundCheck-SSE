@@ -16,6 +16,12 @@ class HeartbeatConfigRequest(BaseModel):
     max_tokens: int = Field(default=500)
     temperature: float = Field(default=0.7)
     dry_run: bool = Field(default=False, description="If true, simulate without executing")
+    news_monitoring_enabled: bool = Field(default=False, description="Enable heartbeat news monitoring")
+    news_topics: List[str] = Field(default_factory=list, description="Topics to monitor for news updates")
+    news_query_suffix: str = Field(default="latest news", description="Suffix appended to each topic query")
+    news_max_results: int = Field(default=5, ge=1, le=20, description="Max search results per monitored topic")
+    news_cooldown_seconds: int = Field(default=21600, ge=900, description="Minimum time between digests per topic")
+    news_post_submolt: str = Field(default="news", description="Moltbook submolt to post news digests into")
 
 
 class HeartbeatConfigResponse(BaseModel):

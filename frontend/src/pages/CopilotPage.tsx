@@ -1511,6 +1511,8 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect }: {
 type SortOrder = 'newest' | 'oldest' | 'trust_high' | 'trust_low'
 type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights'
 
+const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
+
 export function CopilotPage() {
   const [data, setData] = useState<CopilotMemoriesResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -1638,7 +1640,7 @@ export function CopilotPage() {
     { id: 'factchecks', label: 'Fact Checks', icon: '🔍' },
     { id: 'trust', label: 'Trust & Decay', icon: '⚖️' },
     { id: 'sessions', label: 'Sessions', icon: '📂' },
-    { id: 'insights', label: 'CRT Insights', icon: '💡' },
+    ...(isLocalhost ? [{ id: 'insights' as const, label: 'CRT Insights', icon: '💡' }] : []),
   ]
 
   return (
@@ -1825,7 +1827,7 @@ export function CopilotPage() {
           </div>
         )}
 
-        {tab === 'insights' && (
+        {tab === 'insights' && isLocalhost && (
           <div className="p-4 sm:p-6">
             <CrtInsightsPanel />
           </div>

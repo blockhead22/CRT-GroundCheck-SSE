@@ -70,7 +70,8 @@ class OllamaClient:
         system: Optional[str] = None,
         max_tokens: int = 500,
         temperature: float = 0.7,
-        stream: bool = False
+        stream: bool = False,
+        model: Optional[str] = None,
     ) -> str:
         """
         Generate text from prompt.
@@ -99,10 +100,11 @@ class OllamaClient:
         })
         
         try:
+            selected_model = model or self.model
             chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat  # type: ignore[union-attr]
 
             response = chat_fn(
-                model=self.model,
+                model=selected_model,
                 messages=messages,
                 options={
                     'num_predict': max_tokens,
@@ -137,7 +139,8 @@ class OllamaClient:
             if "connection" in error_msg.lower():
                 return f"[Ollama connection error: Is Ollama running? Try: ollama serve]"
             elif "not found" in error_msg.lower():
-                return f"[Model '{self.model}' not found. Try: ollama pull {self.model}]"
+                target = model or self.model
+                return f"[Model '{target}' not found. Try: ollama pull {target}]"
             else:
                 return f"[Ollama error: {e}]"
     
@@ -145,7 +148,8 @@ class OllamaClient:
         self,
         messages: List[Dict[str, str]],
         max_tokens: int = 500,
-        temperature: float = 0.7
+        temperature: float = 0.7,
+        model: Optional[str] = None,
     ) -> str:
         """
         Chat with message history.
@@ -159,10 +163,11 @@ class OllamaClient:
             Generated response
         """
         try:
+            selected_model = model or self.model
             chat_fn = self._client.chat if (self._client is not None and hasattr(self._client, "chat")) else ollama.chat  # type: ignore[union-attr]
 
             response = chat_fn(
-                model=self.model,
+                model=selected_model,
                 messages=messages,
                 options={
                     'num_predict': max_tokens,

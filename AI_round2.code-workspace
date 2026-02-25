@@ -13,6 +13,7 @@
 				"approve": true,
 				"matchCommandLine": true
 			}
-		}
+		},
+		"powershell.cwd": "AI_round2"
 	}
 }

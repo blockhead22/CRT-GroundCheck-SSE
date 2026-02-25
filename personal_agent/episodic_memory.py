@@ -399,6 +399,26 @@ class EpisodicMemoryDB:
         
         conn.commit()
         conn.close()
+
+    def deactivate_conflicting_preferences(
+        self,
+        category: str,
+        key: str,
+        keep_value: str,
+    ) -> None:
+        """Deactivate other values for the same preference key."""
+        conn = self._get_conn()
+        c = conn.cursor()
+        c.execute(
+            """
+            UPDATE user_preferences
+            SET active = 0
+            WHERE category = ? AND key = ? AND value != ?
+            """,
+            (category, key, keep_value),
+        )
+        conn.commit()
+        conn.close()
     
     def get_preferences(self, category: Optional[str] = None) -> List[UserPreference]:
         """Get active preferences, optionally filtered by category."""
@@ -773,70 +793,264 @@ class PreferenceExtractor:
     """
     
     EXPLICIT_PATTERNS = [
-        # Verbosity preferences
-        (r'\b(i\s+)?(prefer|like|want)\s+(more\s+)?(verbose|detailed|thorough)\b', 
-         'response_style', 'verbosity', 'verbose'),
-        (r'\b(i\s+)?(prefer|like|want)\s+(more\s+)?(brief|concise|short)\b', 
-         'response_style', 'verbosity', 'concise'),
-        (r'\bmore\s+detail\s*please\b', 'response_style', 'verbosity', 'verbose'),
-        (r'\bkeep\s+it\s+(short|brief)\b', 'response_style', 'verbosity', 'concise'),
-        
+        # Verbosity / detail
+        (
+            r"\b(?:i\s+)?(?:prefer|like|want)\s+(?:more\s+)?(?:verbose|detailed|thorough|deep(?:er)?)\b",
+            "response_style",
+            "verbosity",
+            "verbose",
+            0.92,
+        ),
+        (
+            r"\b(?:i\s+)?(?:prefer|like|want)\s+(?:more\s+)?(?:brief|concise|short|high[-\s]?level)\b",
+            "response_style",
+            "verbosity",
+            "concise",
+            0.92,
+        ),
+        (
+            r"\b(?:just|only)\s+(?:the\s+)?highlights\b|\btl;?dr\b",
+            "response_style",
+            "verbosity",
+            "concise",
+            0.9,
+        ),
+        (
+            r"\bmore\s+detail\s*please\b|\belaborate\b|\bexpand\s+on\b",
+            "response_style",
+            "verbosity",
+            "verbose",
+            0.86,
+        ),
+        # Structure / format
+        (
+            r"\b(?:use|give|format(?:\s+it)?\s+as|write\s+in)\s+(?:a\s+)?(?:bullet(?:ed)?\s+list|bullet\s+points?|numbered\s+list)\b",
+            "response_style",
+            "format",
+            "structured",
+            0.9,
+        ),
+        (
+            r"\b(?:no|avoid|skip|without)\s+(?:bullet(?:s| points?)?|numbered\s+list)\b",
+            "response_style",
+            "format",
+            "freeform",
+            0.88,
+        ),
+        (
+            r"\b(?:step[-\s]?by[-\s]?step|walk\s+me\s+through)\b",
+            "response_style",
+            "structure",
+            "step_by_step",
+            0.86,
+        ),
         # Emoji preferences
-        (r'\b(don\'?t|no|stop|avoid)\s+(use\s+)?emojis?\b', 
-         'response_style', 'emoji_usage', 'none'),
-        (r'\b(less|fewer)\s+emojis?\b', 'response_style', 'emoji_usage', 'minimal'),
-        (r'\b(more|use)\s+emojis?\b', 'response_style', 'emoji_usage', 'frequent'),
-        
-        # Formality preferences  
-        (r'\b(more\s+)?(casual|informal)\b.*\b(please|tone)\b', 
-         'response_style', 'formality', 'casual'),
-        (r'\b(more\s+)?(formal|professional)\b.*\b(please|tone)\b', 
-         'response_style', 'formality', 'formal'),
-        
-        # Code style preferences
-        (r'\bi\s+(use|prefer|like)\s+(python|javascript|typescript|rust|go)\b', 
-         'code_style', 'language', None),  # Value extracted dynamically
-        (r'\b(show|include)\s+code\s+examples?\b', 
-         'response_style', 'code_examples', 'yes'),
-        (r'\b(no|skip)\s+code\b', 'response_style', 'code_examples', 'no'),
+        (
+            r"\b(?:don'?t|do\s+not|no|stop|avoid)\s+(?:use\s+)?emojis?\b",
+            "response_style",
+            "emoji_usage",
+            "none",
+            0.95,
+        ),
+        (
+            r"\b(?:less|fewer)\s+emojis?\b",
+            "response_style",
+            "emoji_usage",
+            "minimal",
+            0.86,
+        ),
+        (
+            r"\b(?:use|add)\s+(?:more\s+)?emojis?\b",
+            "response_style",
+            "emoji_usage",
+            "frequent",
+            0.85,
+        ),
+        # Tone / formality
+        (
+            r"\b(?:be|keep\s+it|make\s+it)\s+(?:more\s+)?(?:casual|informal)\b",
+            "response_style",
+            "formality",
+            "casual",
+            0.84,
+        ),
+        (
+            r"\b(?:be|keep\s+it|make\s+it)\s+(?:more\s+)?(?:formal|professional)\b",
+            "response_style",
+            "formality",
+            "formal",
+            0.84,
+        ),
+        (
+            r"\b(?:be|keep\s+it)\s+(?:direct|straight(?:forward)?)\b",
+            "response_style",
+            "directness",
+            "direct",
+            0.8,
+        ),
+        # Citation preference
+        (
+            r"\b(?:cite|include|add|show)\s+(?:sources?|citations?|references?)\b",
+            "response_style",
+            "citation_style",
+            "required",
+            0.9,
+        ),
+        (
+            r"\b(?:no|without|skip)\s+(?:sources?|citations?|references?)\b",
+            "response_style",
+            "citation_style",
+            "none",
+            0.88,
+        ),
+        # Code examples
+        (
+            r"\b(?:show|include|add)\s+code\s+(?:examples?|snippets?)\b",
+            "response_style",
+            "code_examples",
+            "yes",
+            0.9,
+        ),
+        (
+            r"\b(?:no|skip|without)\s+code\b",
+            "response_style",
+            "code_examples",
+            "no",
+            0.88,
+        ),
+        # Language preference (dynamic extraction via capture)
+        (
+            r"\b(?:i\s+)?(?:use|prefer|like|love)\s+"
+            r"(python|javascript|typescript|rust|go|java|c\+\+|c#|sql|bash)\b",
+            "code_style",
+            "language",
+            None,
+            0.88,
+        ),
     ]
+
+    EXCLUSIVE_PREFERENCE_KEYS = {
+        ("response_style", "verbosity"),
+        ("response_style", "format"),
+        ("response_style", "structure"),
+        ("response_style", "emoji_usage"),
+        ("response_style", "formality"),
+        ("response_style", "directness"),
+        ("response_style", "citation_style"),
+        ("response_style", "code_examples"),
+        ("code_style", "language"),
+    }
+
+    _LANGUAGE_NORMALIZATION = {
+        "py": "python",
+        "js": "javascript",
+        "ts": "typescript",
+        "c plus plus": "c++",
+        "cpp": "c++",
+    }
     
     def __init__(self, db: EpisodicMemoryDB):
         self.db = db
         import re
         self._compiled_patterns = [
-            (re.compile(p, re.IGNORECASE), cat, key, val) 
-            for p, cat, key, val in self.EXPLICIT_PATTERNS
+            (re.compile(p, re.IGNORECASE), cat, key, val, conf)
+            for p, cat, key, val, conf in self.EXPLICIT_PATTERNS
         ]
-    
+        self._lang_compare_pattern = re.compile(
+            r"\bprefer\s+([a-zA-Z+#\s]{2,20}?)\s+over\s+([a-zA-Z+#\s]{2,20})\b",
+            re.IGNORECASE,
+        )
+
+    def _normalize_language(self, raw: str) -> Optional[str]:
+        v = (raw or "").strip().lower()
+        v = self._LANGUAGE_NORMALIZATION.get(v, v)
+        allowed = {
+            "python",
+            "javascript",
+            "typescript",
+            "rust",
+            "go",
+            "java",
+            "c++",
+            "c#",
+            "sql",
+            "bash",
+        }
+        return v if v in allowed else None
+
+    def _save_preference(self, pref: UserPreference) -> None:
+        if (pref.category, pref.key) in self.EXCLUSIVE_PREFERENCE_KEYS:
+            self.db.deactivate_conflicting_preferences(pref.category, pref.key, pref.value)
+        self.db.save_preference(pref)
+
+    def _build_preference(
+        self,
+        *,
+        category: str,
+        key: str,
+        value: str,
+        confidence: float,
+        source: str,
+        evidence: str,
+    ) -> UserPreference:
+        pref_id = hashlib.md5(f"{category}:{key}:{value}".encode()).hexdigest()[:12]
+        return UserPreference(
+            pref_id=pref_id,
+            category=category,
+            key=key,
+            value=value,
+            confidence=max(0.0, min(float(confidence), 0.98)),
+            source=source,
+            evidence=[evidence],
+        )
+
     def extract_explicit_preferences(self, text: str) -> List[UserPreference]:
         """Extract explicitly stated preferences from text."""
-        found = []
+        found: List[UserPreference] = []
         text_lower = text.lower()
         
-        for pattern, category, key, value in self._compiled_patterns:
+        for pattern, category, key, value, confidence in self._compiled_patterns:
             match = pattern.search(text_lower)
             if match:
-                # Dynamic value extraction for language preference
-                if value is None and key == 'language':
-                    for lang in ['python', 'javascript', 'typescript', 'rust', 'go', 'java', 'c#']:
-                        if lang in text_lower:
-                            value = lang
-                            break
-                
-                if value:
-                    pref_id = hashlib.md5(f"{category}:{key}:{value}".encode()).hexdigest()[:12]
-                    pref = UserPreference(
-                        pref_id=pref_id,
-                        category=category,
-                        key=key,
-                        value=value,
-                        confidence=0.9,  # Explicit statements are high confidence
-                        source='explicit',
-                        evidence=[f"User said: '{text[:100]}'"]
-                    )
-                    found.append(pref)
-                    self.db.save_preference(pref)
+                resolved_value = value
+                if resolved_value is None and key == "language":
+                    captured = match.group(1) if match.lastindex else ""
+                    resolved_value = self._normalize_language(captured)
+                if not resolved_value:
+                    continue
+
+                pref = self._build_preference(
+                    category=category,
+                    key=key,
+                    value=str(resolved_value),
+                    confidence=confidence,
+                    source="explicit",
+                    evidence=f"User said: '{text[:120]}'",
+                )
+                found.append(pref)
+
+        # Explicit language comparisons: "prefer typescript over javascript"
+        for m in self._lang_compare_pattern.finditer(text_lower):
+            preferred = self._normalize_language(m.group(1))
+            if not preferred:
+                continue
+            pref = self._build_preference(
+                category="code_style",
+                key="language",
+                value=preferred,
+                confidence=0.93,
+                source="explicit",
+                evidence=f"Language comparison: '{m.group(0)}'",
+            )
+            found.append(pref)
+
+        # Deduplicate and save
+        dedup: Dict[Tuple[str, str, str], UserPreference] = {}
+        for pref in found:
+            dedup[(pref.category, pref.key, pref.value)] = pref
+        found = list(dedup.values())
+        for pref in found:
+            self._save_preference(pref)
         
         return found
     
@@ -871,6 +1085,22 @@ class PreferenceExtractor:
                 f"User asked for brevity: '{query[:50]}'"
             )
             inferred.append(pref)
+
+        if any(phrase in query_lower for phrase in [
+            'bullet points', 'numbered list', 'step by step', 'structured'
+        ]):
+            pref = self._create_inferred_pref(
+                'response_style', 'format', 'structured', 0.55,
+                f"User requested structured format: '{query[:70]}'"
+            )
+            inferred.append(pref)
+
+        if any(phrase in query_lower for phrase in ['cite', 'sources', 'references']):
+            pref = self._create_inferred_pref(
+                'response_style', 'citation_style', 'required', 0.52,
+                f"User requested citations/sources: '{query[:70]}'"
+            )
+            inferred.append(pref)
         
         # Check response for emoji usage to track what user sees
         has_emoji_response = any(ord(c) > 0x1F300 for c in response)
@@ -883,6 +1113,15 @@ class PreferenceExtractor:
                     f"Negative feedback about emojis: '{user_feedback[:50]}'"
                 )
                 inferred.append(pref)
+
+        # If the user consistently asks concise questions while responses are long,
+        # bias toward concise responses over time.
+        if len(query) < 120 and len(response) > 1400:
+            pref = self._create_inferred_pref(
+                'response_style', 'verbosity', 'concise', 0.35,
+                "Response likely longer than user's desired granularity",
+            )
+            inferred.append(pref)
         
         return inferred
     
@@ -900,7 +1139,7 @@ class PreferenceExtractor:
                 # Update existing with new evidence
                 ep.evidence.append(evidence)
                 ep.confidence = min(0.9, ep.confidence + 0.1)  # Increase confidence
-                self.db.save_preference(ep)
+                self._save_preference(ep)
                 return ep
         
         pref = UserPreference(
@@ -912,7 +1151,7 @@ class PreferenceExtractor:
             source='inferred',
             evidence=[evidence]
         )
-        self.db.save_preference(pref)
+        self._save_preference(pref)
         return pref
 
 

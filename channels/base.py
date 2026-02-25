@@ -1,0 +1,136 @@
+"""Base channel interface for CRT-GroundCheck.
+
+Provides a common abstraction for sending messages through the CRT engine,
+whether called in-process (direct engine access) or via the HTTP API.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
+
+import requests
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ChannelMessage:
+    """A normalized inbound message from any channel."""
+
+    text: str
+    thread_id: str
+    sender_id: str
+    sender_name: str = ""
+    channel: str = "unknown"
+    important: bool = False
+    raw: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ChannelResponse:
+    """A normalized outbound response to any channel."""
+
+    text: str
+    gates_passed: bool = True
+    gate_reason: Optional[str] = None
+    confidence: float = 0.7
+    contradiction_detected: bool = False
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+class CRTBridge:
+    """Bridge between channel bots and the CRT engine.
+
+    Two modes:
+    - HTTP mode (default): POSTs to the running FastAPI server at /api/chat/send.
+      Works when the bot runs as a separate process.
+    - Direct mode: Calls engine.query() in-process. Requires the FastAPI app
+      to be importable and initialized. Set via set_engine_factory().
+    """
+
+    def __init__(self, api_url: str = "http://127.0.0.1:8123"):
+        self.api_url = api_url.rstrip("/")
+        self._engine_factory = None  # Optional: direct engine access
+
+    def set_engine_factory(self, factory):
+        """Set a callable(thread_id) -> CRTEnhancedRAG for direct mode."""
+        self._engine_factory = factory
+
+    def send(self, msg: ChannelMessage) -> ChannelResponse:
+        """Process a message through CRT and return the response."""
+        if self._engine_factory:
+            return self._send_direct(msg)
+        return self._send_http(msg)
+
+    def _send_http(self, msg: ChannelMessage) -> ChannelResponse:
+        """Send via the FastAPI HTTP endpoint."""
+        payload = {
+            "thread_id": msg.thread_id,
+            "message": msg.text,
+            "user_marked_important": msg.important,
+        }
+        try:
+            resp = requests.post(
+                f"{self.api_url}/api/chat/send",
+                json=payload,
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return ChannelResponse(
+                text=data.get("answer", "Sorry, I couldn't process that."),
+                gates_passed=data.get("gates_passed", True),
+                gate_reason=data.get("gate_reason"),
+                confidence=data.get("metadata", {}).get("confidence", 0.7),
+                contradiction_detected=data.get("metadata", {}).get(
+                    "contradiction_detected", False
+                ),
+                metadata=data.get("metadata", {}),
+            )
+        except requests.ConnectionError:
+            logger.error("[BRIDGE] Cannot reach CRT API at %s", self.api_url)
+            return ChannelResponse(
+                text="I'm having trouble connecting to my memory system. Is the CRT server running?",
+                gates_passed=False,
+                gate_reason="connection_error",
+            )
+        except Exception as e:
+            logger.error("[BRIDGE] HTTP error: %s", e)
+            return ChannelResponse(
+                text=f"Something went wrong: {e}",
+                gates_passed=False,
+                gate_reason="error",
+            )
+
+    def _send_direct(self, msg: ChannelMessage) -> ChannelResponse:
+        """Send directly through the CRT engine (in-process)."""
+        try:
+            engine = self._engine_factory(msg.thread_id)
+            result = engine.query(
+                user_query=msg.text,
+                user_marked_important=msg.important,
+                thread_id=msg.thread_id,
+            )
+            answer = result.get("answer", "I don't have an answer for that.")
+            return ChannelResponse(
+                text=answer,
+                gates_passed=result.get("gates_passed", True),
+                gate_reason=result.get("gate_reason"),
+                confidence=result.get("confidence", 0.7),
+                contradiction_detected=result.get("contradiction_detected", False),
+                metadata={
+                    k: v
+                    for k, v in result.items()
+                    if k not in ("answer", "gates_passed", "gate_reason")
+                },
+            )
+        except Exception as e:
+            logger.error("[BRIDGE] Direct engine error: %s", e)
+            return ChannelResponse(
+                text=f"Engine error: {e}",
+                gates_passed=False,
+                gate_reason="engine_error",
+            )

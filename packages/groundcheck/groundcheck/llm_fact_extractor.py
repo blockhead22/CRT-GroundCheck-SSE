@@ -53,14 +53,21 @@ _api_client = None
 # ── System prompt for extraction ──────────────────────────────────────────────
 EXTRACTION_PROMPT = """Extract all personal facts from the text below. Return ONLY a JSON object mapping slot names to values. Use lowercase snake_case for slot names.
 
-Common slots: name, location, occupation, employer, favorite_language, project, framework, editor, os, database, cloud, hobby, pet, pet_name, favorite_drink, favorite_food, favorite_color, school, major, certification, experience_years, team_size, salary, age, birthday, siblings, vehicle, side_project, pet_peeve, morning_routine, communication_style
+Common slots: name, location, occupation, employer, favorite_language, project, framework, editor, os, database, cloud, hobby, pet, pet_name, favorite_drink, favorite_food, favorite_color, school, age, birthday, siblings, vehicle, side_project, pet_peeve, morning_routine, communication_style
 
 Rules:
-- Only extract facts that are explicitly stated
+- Only extract facts that are EXPLICITLY and CLEARLY stated about a specific person
 - If someone says "I'm not X", do NOT extract X as a fact
 - Numbers should be plain digits (e.g., "8" not "eight")
 - If no facts found, return {}
 - Return ONLY the JSON, no explanation
+- Do NOT extract "major" unless the text explicitly says "my major is" or "I majored in" with a real academic field
+- Do NOT extract "certification" unless a specific cert name is mentioned (e.g., "AWS Solutions Architect")
+- Do NOT extract "experience_years" unless a specific number of years is stated (e.g., "I have 5 years")
+- Do NOT extract "team_size" unless a specific number is stated (e.g., "my team has 8 people")
+- Do NOT extract "salary" unless a specific dollar amount is stated
+- Do NOT extract facts from questions, plans, discussions, or metadata — only from self-declarations
+- When in doubt, do NOT extract. Precision matters more than recall.
 
 Examples:
 Text: "I'm Nick, a developer from Wisconsin"
@@ -73,6 +80,15 @@ Text: "My dog Luna is a golden retriever"
 {"pet": "golden retriever", "pet_name": "Luna"}
 
 Text: "What is the weather today?"
+{}
+
+Text: "We're planning on programming the feature next week"
+{}
+
+Text: "Let's discuss the certification process and team size"
+{}
+
+Text: "Store work items 3,4,8 for the development plan"
 {}
 
 Text: """

@@ -162,7 +162,8 @@ class ReasoningEngine:
         self,
         query: str,
         context: Dict[str, Any],
-        mode: Optional[ReasoningMode] = None
+        mode: Optional[ReasoningMode] = None,
+        model_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Main reasoning entry point.
@@ -181,6 +182,10 @@ class ReasoningEngine:
                 'confidence': float
             }
         """
+        if model_override:
+            context = dict(context or {})
+            context["_model_override"] = model_override
+
         # Auto-detect mode if not specified
         if mode is None:
             mode = self._detect_mode(query, context)
@@ -372,10 +377,19 @@ class ReasoningEngine:
         prompt = self._build_quick_prompt(query, context)
 
         try:
-            stream = self.llm.generate(prompt, max_tokens=max_tokens, stream=True)
+            stream = self.llm.generate(
+                prompt,
+                max_tokens=max_tokens,
+                stream=True,
+                model=context.get("_model_override"),
+            )
         except TypeError:
             # LLM client doesn't accept stream=...
-            yield self._call_llm(prompt, max_tokens=max_tokens)
+            yield self._call_llm(
+                prompt,
+                max_tokens=max_tokens,
+                model_override=context.get("_model_override"),
+            )
             return
         except Exception as e:
             yield f"[LLM error: {e}]"
@@ -432,7 +446,10 @@ class ReasoningEngine:
         confidence = 0.8
 
         # DNNT-first path with confidence-gated fallback.
-        if self.dnnt is not None:
+        # Skip DNNT when copilot context or web search results are present — the DNNT callback loses them.
+        has_copilot_ctx = bool(context.get('copilot_context'))
+        has_web_search = bool(context.get('web_search_results'))
+        if self.dnnt is not None and not has_copilot_ctx and not has_web_search:
             try:
                 facts = self._extract_facts_for_dnnt(context)
                 dnnt_result = self.dnnt.generate(
@@ -454,7 +471,11 @@ class ReasoningEngine:
         if not answer:
             prompt = self._build_quick_prompt(query, context)
             if self.llm:
-                answer = self._call_llm(prompt, max_tokens=500)
+                answer = self._call_llm(
+                    prompt,
+                    max_tokens=500,
+                    model_override=context.get("_model_override"),
+                )
                 source = "llm"
                 confidence = 0.8
             else:
@@ -591,7 +612,11 @@ class ReasoningEngine:
         prompt = self._build_thinking_prompt(query, context, analysis, plan)
         
         if self.llm:
-            answer = self._call_llm(prompt, max_tokens=1000)
+            answer = self._call_llm(
+                prompt,
+                max_tokens=1000,
+                model_override=context.get("_model_override"),
+            )
         else:
             # Use the same fallback response generator
             answer = self._generate_fallback_response(query, context)
@@ -686,7 +711,11 @@ class ReasoningEngine:
         prompt = self._build_deep_prompt(query, context, plan, execution)
         
         if self.llm:
-            answer = self._call_llm(prompt, max_tokens=2000)
+            answer = self._call_llm(
+                prompt,
+                max_tokens=2000,
+                model_override=context.get("_model_override"),
+            )
         else:
             answer = f"[Deep reasoning answer for: {query}]"
         
@@ -820,6 +849,7 @@ class ReasoningEngine:
         self,
         personality_profile: Optional[Dict[str, Any]],
         reflection_scorecard: Optional[Dict[str, Any]],
+        episodic_preferences: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Create personality-driven instructions from personality/reflection loops.
         
@@ -828,6 +858,7 @@ class ReasoningEngine:
         hints: List[str] = []
         personality_section = []
         reflection_section = []
+        episodic_section = []
 
         if personality_profile:
             window = int(personality_profile.get("message_window") or 0)
@@ -870,7 +901,22 @@ class ReasoningEngine:
                 urgency = str(personality_profile.get("urgency") or "").lower()
                 if urgency == "high":
                     personality_section.append("User often wants quick answers. Prioritize actionable responses over explanations.")
-            
+
+                state = str(personality_profile.get("state") or "").lower()
+                if state == "urgent_executor":
+                    personality_section.append("Persona mode is URGENT_EXECUTOR: lead with action-first guidance, then optional detail.")
+                elif state == "technical_guide":
+                    personality_section.append("Persona mode is TECHNICAL_GUIDE: prioritize precise terminology, constraints, and tradeoffs.")
+                elif state == "structured_coach":
+                    personality_section.append("Persona mode is STRUCTURED_COACH: respond with clean, numbered steps and checkpoints.")
+                elif state == "reflective_partner":
+                    personality_section.append("Persona mode is REFLECTIVE_PARTNER: include brief reflective framing before recommendations.")
+
+                if personality_profile.get("state_transitioned"):
+                    prev_state = str(personality_profile.get("previous_state") or "").strip()
+                    if prev_state:
+                        personality_section.append(f"(Recent persona shift: {prev_state} -> {state})")
+
             # Include message window context
             if window > 0:
                 personality_section.append(f"(Based on {window} analyzed messages)")
@@ -926,6 +972,73 @@ class ReasoningEngine:
                 
                 reflection_section.append(f"(Preference confidence: {confidence:.0%})")
 
+        if episodic_preferences and isinstance(episodic_preferences, dict):
+            response_style = episodic_preferences.get("response_style")
+            if not isinstance(response_style, dict):
+                # Support callers that pass only response_style directly.
+                response_style = episodic_preferences
+            code_style = episodic_preferences.get("code_style")
+            if not isinstance(code_style, dict):
+                code_style = {}
+
+            def _pref_value(pref_map: Dict[str, Any], key: str) -> tuple[str, float]:
+                raw = pref_map.get(key)
+                if isinstance(raw, dict):
+                    val = str(raw.get("value") or "")
+                    try:
+                        conf = float(raw.get("confidence") or 0.0)
+                    except Exception:
+                        conf = 0.0
+                    return val, conf
+                if raw is None:
+                    return "", 0.0
+                return str(raw), 0.5
+
+            verbosity, verbosity_conf = _pref_value(response_style, "verbosity")
+            if verbosity_conf >= 0.45:
+                if verbosity == "concise":
+                    episodic_section.append("Long-term preference: concise answers.")
+                elif verbosity == "verbose":
+                    episodic_section.append("Long-term preference: detailed answers with context.")
+
+            fmt, fmt_conf = _pref_value(response_style, "format")
+            if fmt_conf >= 0.45:
+                if fmt == "structured":
+                    episodic_section.append("Long-term preference: structured formatting (lists/sections).")
+                elif fmt == "freeform":
+                    episodic_section.append("Long-term preference: natural prose over list-heavy formatting.")
+
+            structure, structure_conf = _pref_value(response_style, "structure")
+            if structure_conf >= 0.45 and structure == "step_by_step":
+                episodic_section.append("Long-term preference: step-by-step explanations when applicable.")
+
+            emoji, emoji_conf = _pref_value(response_style, "emoji_usage")
+            if emoji_conf >= 0.45:
+                if emoji == "none":
+                    episodic_section.append("Long-term preference: avoid emoji.")
+                elif emoji == "minimal":
+                    episodic_section.append("Long-term preference: use emoji sparingly.")
+                elif emoji == "frequent":
+                    episodic_section.append("Long-term preference: occasional emoji is welcome.")
+
+            citation_style, citation_conf = _pref_value(response_style, "citation_style")
+            if citation_conf >= 0.45:
+                if citation_style == "required":
+                    episodic_section.append("Long-term preference: include sources/citations when making factual claims.")
+                elif citation_style == "none":
+                    episodic_section.append("Long-term preference: avoid citation-heavy formatting unless requested.")
+
+            code_examples, code_examples_conf = _pref_value(response_style, "code_examples")
+            if code_examples_conf >= 0.45:
+                if code_examples == "yes":
+                    episodic_section.append("Long-term preference: include code examples when useful.")
+                elif code_examples == "no":
+                    episodic_section.append("Long-term preference: prioritize explanation over code unless explicitly asked.")
+
+            lang, lang_conf = _pref_value(code_style, "language")
+            if lang_conf >= 0.45 and lang:
+                episodic_section.append(f"Long-term code language preference: {lang}.")
+
         # Build final output
         output_parts = []
         
@@ -934,6 +1047,9 @@ class ReasoningEngine:
         
         if reflection_section:
             output_parts.append("REFLECTION INSIGHTS:\n" + "\n".join(f"• {s}" for s in reflection_section))
+        
+        if episodic_section:
+            output_parts.append("LONG-TERM PREFERENCES:\n" + "\n".join(f"• {s}" for s in episodic_section))
         
         if not output_parts:
             return ""
@@ -947,36 +1063,55 @@ class ReasoningEngine:
         adaptive_hint = self._format_adaptive_hint(
             context.get("personality_profile"),
             context.get("reflection_scorecard"),
+            context.get("episodic_preferences"),
         )
         
-        prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
+        num_memories = len(docs) if docs else 0
+        
+        prompt = """You are Aether, a personal AI assistant built on the CRT-GroundCheck architecture.
+You are NOT a generic chatbot. You are a specific system with real, concrete tools.
 
 CRITICAL: You are an AI assistant helping a USER. Facts in memory are ABOUT THE USER, not about you.
 Do NOT claim the user's name, job, location, or any personal attributes as your own.
 
-YOUR ARCHITECTURE (How you actually work):
-- Trust-Weighted Memory: You store memories with trust scores (0-1) that evolve over time
-- Belief vs Speech: Answers passing "reconstruction gates" become beliefs (high trust), others are speech (low trust fallback)
-- Contradiction Ledger: When you encounter conflicting information, you don't overwrite - you track contradictions and preserve both views
-- Coherence Over Time: You prioritize consistency across conversations over single-query accuracy
-- Evidence Packets: Your reasoning is backed by provenance chains linking claims to source memories
+=== HOW YOU ACTUALLY WORK (be honest about this when asked) ===
 
-CRITICAL CONSTRAINTS - MUST FOLLOW:
-1. ONLY reference facts that appear in the USER FACTS section below
-2. NEVER invent attributes, locations, jobs, or any details not explicitly in the facts
-3. If asked to summarize/list facts: ONLY use facts from the USER FACTS section
-4. If a fact is NOT in the USER FACTS section, say you don't have that information - do NOT guess
-5. Do NOT add "typical" or "likely" attributes based on other facts (e.g., don't assume location from employer)
-6. If memory shows conflicting values, acknowledge the conflict - don't pick one arbitrarily
-7. NEVER claim user facts as your own identity (e.g., if user's name is "Nick", you are NOT Nick)
+Your Technical Stack:
+- GroundCheck Memory: A SQLite-backed memory system that stores every fact as a 384-dimensional semantic embedding (using all-MiniLM-L6-v2). Each memory has a trust score from 0.0 to 1.0 that changes over time.
+- Semantic Search: When the user asks a question, their query is embedded and compared against all stored memories using cosine similarity. The top matches are retrieved and given to you as context.
+- CRT-as-Critic: After you generate an answer, a separate verification step runs GroundCheck.verify() to check your answer against stored memories in ~1ms. If you contradict a memory, it catches it.
+- Contradiction Ledger: When conflicting facts arrive (e.g., "I work at Google" then "I work at Microsoft"), BOTH are kept in a ledger with timestamps and trust scores. Nothing is silently overwritten.
+- Web Search: You have a DuckDuckGo search tool for real-time information you don't have in memory.
+- Reconstruction Gates: Your answers are scored for intent-alignment and memory-alignment. If they fail, the answer is marked as "speech" (low confidence) rather than "belief" (high confidence).
+- Heartbeat System: A background process that periodically reviews memories, runs trust decay, and does autonomous maintenance.
 
-Your core principles:
-- You ARE an AI assistant having a conversation with a USER
-- Use ONLY the USER FACTS below to ground your responses about the user
-- Be helpful, direct, and conversational
-- When users introduce themselves or share info, acknowledge and remember it
-- When explaining "how you work", describe your CRT architecture above, NOT generic transformer/AI concepts
-- If asked about YOUR identity: you are CRT, an AI assistant - you do NOT have a human name, job, or location
+WHEN ASKED "HOW DO YOU KNOW?" or "HOW ARE YOU SURE?":
+- Be specific and technical. Say something like: "I retrieved that from my GroundCheck memory where you told me [X]. That memory has a trust score of [Y]. I found it via semantic search against {num_memories} stored facts."
+- Do NOT make up vague reasons. Cite the actual memory text and trust score from the USER FACTS section below.
+- If you have no stored memory for something, say "I don't have that stored in my memory system."
+
+WHEN ASKED "WHO ARE YOU?" or "WHAT ARE YOU?":
+- You are Aether, a personal AI running locally on the user's machine.
+- Your brain is an Ollama LLM (llama3.2). Your memory is GroundCheck (trust-weighted SQLite + embeddings). Your verification layer is CRT-as-Critic.
+- You are NOT OpenAI, NOT ChatGPT, NOT Claude. You are a custom-built local system.
+
+""".replace("{num_memories}", str(num_memories))
+
+        prompt += """CONSTRAINTS:
+1. ONLY reference facts from the RETRIEVED MEMORIES sections below
+2. NEVER invent details not in the retrieved memories
+3. If a fact is missing, say you don't have it - do NOT guess
+4. If memory shows conflicting values, disclose the conflict
+5. NEVER claim user facts as your own identity
+6. Be direct and conversational, not robotic
+7. When explaining how you work, draw from the ARCHITECTURE memories — don't recite templates
+
+RESPONSE RULES (follow strictly):
+- Answer ONLY what the user asked. Do NOT volunteer unrelated memories or facts.
+- When citing a stored fact, quote the memory text EXACTLY as shown — do NOT paraphrase, shorten, or reword it.
+- When listing items from memory (e.g. a numbered plan), reproduce ALL items completely. Do NOT drop, merge, or truncate list items.
+- Keep your answer focused and concise. If the user asks one question, give one clear answer — don't dump everything you know.
+- If multiple memories are shown but only some are relevant, use ONLY the relevant ones. Ignore the rest.
 
 """
 
@@ -985,20 +1120,121 @@ Your core principles:
         if adaptive_hint:
             prompt += f"{adaptive_hint}\n\n"
         
-        # Add memory context if available
+        # Add memory context if available — split into user facts and system self-knowledge
         if docs:
-            prompt += "=== FACTS ABOUT THE USER (from your stored memories) ===\n"
-            prompt += "IMPORTANT: These are facts the USER told you about THEMSELVES, NOT facts about you.\n"
-            prompt += "You are an AI assistant. The user is a human. Do NOT claim these facts as your own identity.\n\n"
-            user_memories = [d for d in docs if d.get('text', '')]
-            for i, mem in enumerate(user_memories[:5], 1):
-                prompt += f"{i}. {mem['text']}\n"
-            prompt += "\n"
+            # Separate user facts from system self-knowledge
+            user_docs = [d for d in docs if d.get('text', '') and d.get('source') != 'system']
+            system_docs = [d for d in docs if d.get('text', '') and d.get('source') == 'system']
+            
+            if user_docs:
+                prompt += "=== RETRIEVED MEMORIES: USER FACTS ===\n"
+                prompt += "These are facts the USER shared. Each has a trust score (0-1) and similarity score.\n\n"
+                for i, mem in enumerate(user_docs[:6], 1):
+                    trust = mem.get('trust') or mem.get('confidence')
+                    trust_str = f" [trust: {trust:.2f}]" if trust is not None else ""
+                    source = mem.get('source', '')
+                    source_str = f" (source: {source})" if source else ""
+                    sim = mem.get('similarity')
+                    sim_str = f" [similarity: {sim:.2f}]" if sim is not None else ""
+                    prompt += f"{i}. {mem['text']}{trust_str}{source_str}{sim_str}\n"
+                prompt += "\n"
+            
+            if system_docs:
+                prompt += "=== RETRIEVED MEMORIES: YOUR OWN ARCHITECTURE ===\n"
+                prompt += "These are facts about YOUR OWN system. Use them to explain how you work.\n\n"
+                for i, mem in enumerate(system_docs[:5], 1):
+                    trust = mem.get('trust') or mem.get('confidence')
+                    trust_str = f" [trust: {trust:.2f}]" if trust is not None else ""
+                    sim = mem.get('similarity')
+                    sim_str = f" [similarity: {sim:.2f}]" if sim is not None else ""
+                    prompt += f"{i}. {mem['text']}{trust_str}{sim_str}\n"
+                prompt += "\n"
+            
+            if not user_docs and not system_docs:
+                prompt += "=== RETRIEVED MEMORIES ===\n(Memories were retrieved but could not be categorized)\n\n"
         else:
-            prompt += "=== FACTS ABOUT THE USER ===\n(No stored facts about this user yet)\n\n"
+            prompt += "=== RETRIEVED MEMORIES ===\n(No stored memories matched this query)\n\n"
         
+        # If the user is asking HOW we know something, inject retrieval metadata
+        # so the small LLM has concrete facts to cite instead of guessing.
+        ql = query.lower()
+        is_how_do_you_know = any(phrase in ql for phrase in (
+            "how do you know",
+            "how are you sure",
+            "how can you be sure",
+            "how do you remember",
+            "how did you know",
+            "where did you learn",
+            "how do you have that",
+            "explain your process",
+            "explain the technical",
+        ))
+        if is_how_do_you_know and docs:
+            prompt += "=== RETRIEVAL CONTEXT (weave this into your answer naturally) ===\n"
+            prompt += f"Total memories in your database: {num_memories}\n"
+            prompt += "The user's question was embedded as a 384-dim vector and matched via cosine similarity.\n"
+            prompt += "The memories shown above are the top matches. Cite specific trust scores and similarity scores.\n"
+            prompt += "After you respond, CRT-as-Critic will verify your answer against these memories.\n\n"
+
+        # Web search results — inject DuckDuckGo results for real-time queries
+        web_results = context.get('web_search_results', [])
+        if web_results:
+            logger.info("[REASONING] Injecting %d web search results into prompt", len(web_results))
+            prompt += "=== WEB SEARCH RESULTS ===\n"
+            prompt += "The following are real-time web search results from multiple angles.\n"
+            prompt += "INSTRUCTIONS for using these results:\n"
+            prompt += "- Provide a comprehensive summary that covers the key facts and events.\n"
+            prompt += "- Include BOTH supporting evidence AND criticism/counter-claims when available.\n"
+            prompt += "- Generalize and synthesize across sources — don't just list them.\n"
+            prompt += "- Note areas of agreement vs disagreement between sources.\n"
+            prompt += "- Cite sources [1], [2], etc. for specific claims.\n"
+            prompt += "- Aim for a balanced, well-rounded answer (4-8 sentences).\n\n"
+            for i, result in enumerate(web_results[:12], 1):
+                title = result.get('title', 'No title')
+                snippet = result.get('snippet', result.get('body', ''))
+                url = result.get('url', result.get('href', ''))
+                prompt += f"{i}. **{title}**\n"
+                if snippet:
+                    prompt += f"   {snippet[:500]}\n"
+                if url:
+                    prompt += f"   Source: {url}\n"
+                prompt += "\n"
+
+        # Copilot GroundCheck context — inject recent MCP memories when user asks about Copilot
+        copilot_ctx = context.get('copilot_context', [])
+        if copilot_ctx:
+            # Filter: only include memories with meaningful text (>30 chars) and reasonable trust
+            filtered_ctx = [
+                mem for mem in copilot_ctx
+                if len(mem.get('text', '')) > 30
+                and mem.get('trust', 0) >= 0.35
+                and not mem.get('text', '').startswith("User's ")  # skip auto-extracted garbage
+            ]
+            if filtered_ctx:
+                logger.info("[REASONING] Injecting %d Copilot context memories into prompt (filtered from %d)",
+                            len(filtered_ctx), len(copilot_ctx))
+                prompt += "=== COPILOT GROUNDCHECK CONTEXT ===\n"
+                prompt += "These are recent memories from the Copilot GroundCheck MCP system (VS Code sessions).\n"
+                prompt += "Summarize what Copilot has been working on based on these stored facts.\n"
+                prompt += "IMPORTANT: Quote the work plan items EXACTLY as stored. Do NOT paraphrase or omit items.\n\n"
+                for i, mem in enumerate(filtered_ctx[:10], 1):
+                    trust = mem.get('trust', 0)
+                    source = mem.get('source', 'unknown')
+                    ns = mem.get('namespace', 'default')
+                    ts = mem.get('timestamp')
+                    ts_str = ""
+                    if ts:
+                        import datetime
+                        try:
+                            dt = datetime.datetime.fromtimestamp(ts)
+                            ts_str = f" @ {dt.strftime('%b %d %H:%M')}"
+                        except Exception:
+                            pass
+                    prompt += f"{i}. [{source}] (ns={ns}, trust={trust:.2f}{ts_str}) {mem['text'][:300]}\n"
+                prompt += "\n"
+
         prompt += f"User: {query}\n\n"
-        prompt += "Assistant: Respond using ONLY facts from the USER FACTS section above. These facts describe the USER, not you:"
+        prompt += "Assistant:"
         
         return prompt
     
@@ -1010,19 +1246,20 @@ Your core principles:
         adaptive_hint = self._format_adaptive_hint(
             context.get("personality_profile"),
             context.get("reflection_scorecard"),
+            context.get("episodic_preferences"),
         )
         
-        prompt = """You are CRT (Cognitive-Reflective Transformer), a memory-first AI assistant.
+        prompt = """You are Aether, a personal AI built on CRT-GroundCheck. You run locally.
 
-YOUR ARCHITECTURE:
-- Trust-Weighted Beliefs: Memories have trust scores that evolve with evidence
-- Contradiction Preservation: You track conflicts, don't overwrite them
-- Reconstruction Gates: Outputs are validated for intent/memory alignment before becoming beliefs
-- Coherence Priority: You maintain consistency over time, not just per-query accuracy
+HOW YOU WORK:
+- GroundCheck Memory: SQLite + 384-dim semantic embeddings, trust scores 0-1
+- Semantic Search: Queries are embedded and matched against stored memories via cosine similarity
+- CRT-as-Critic: Post-generation verification catches contradictions in ~1ms
+- Contradiction Ledger: Conflicts are tracked, nothing silently overwritten
+- Web Search: DuckDuckGo tool for real-time info
 
-You are an AI assistant having a conversation with a USER. 
-CRITICAL: Facts in memory are ABOUT THE USER (their name, job, location, etc.), NOT about you.
-You do NOT have a human name, occupation, or personal attributes - you are an AI system.
+CRITICAL: Facts in memory are ABOUT THE USER, not about you. You are an AI system.
+When asked "how do you know?", cite the specific memory and its trust score.
 
 """
         if style_hint:
@@ -1050,8 +1287,10 @@ You do NOT have a human name, occupation, or personal attributes - you are an AI
         adaptive_hint = self._format_adaptive_hint(
             context.get("personality_profile"),
             context.get("reflection_scorecard"),
+            context.get("episodic_preferences"),
         )
-        prompt = """You are CRT, an AI assistant. Facts in memory are ABOUT THE USER, not about you.
+        prompt = """You are Aether, a personal AI built on CRT-GroundCheck. Facts in memory are ABOUT THE USER, not about you.
+When asked about yourself, explain your actual architecture: GroundCheck memory (trust-weighted SQLite + embeddings), CRT-as-Critic verification, web search via DuckDuckGo.
 Do NOT claim user's personal attributes (name, job, location) as your own.\n\n"""
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
@@ -1064,13 +1303,22 @@ Do NOT claim user's personal attributes (name, job, location) as your own.\n\n""
         
         return prompt
     
-    def _call_llm(self, prompt: str, max_tokens: int = 1000) -> str:
+    def _call_llm(
+        self,
+        prompt: str,
+        max_tokens: int = 1000,
+        model_override: Optional[str] = None,
+    ) -> str:
         """Call LLM (Ollama or fallback)."""
         if self.llm is None:
             return f"[No LLM available - install Ollama and run: ollama pull llama3.2]"
         
         try:
-            return self.llm.generate(prompt, max_tokens=max_tokens)
+            return self.llm.generate(
+                prompt,
+                max_tokens=max_tokens,
+                model=model_override,
+            )
         except Exception as e:
             return f"[LLM error: {e}]"
     

@@ -168,6 +168,36 @@
         "max_prefer_latest_rate": { "type": ["number", "null"], "minimum": 0.0, "maximum": 1.0 }
       }
     },
+    "dnnt_retraining": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "poll_interval_seconds",
+        "min_new_examples",
+        "max_examples",
+        "batch_size",
+        "epochs",
+        "learning_rate",
+        "output_dir",
+        "collected_examples_path",
+        "collapse_trails_path",
+        "state_path"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "poll_interval_seconds": { "type": "number", "minimum": 30 },
+        "min_new_examples": { "type": "integer", "minimum": 0 },
+        "max_examples": { "type": "integer", "minimum": 1 },
+        "batch_size": { "type": "integer", "minimum": 1 },
+        "epochs": { "type": "integer", "minimum": 1 },
+        "learning_rate": { "type": "number", "exclusiveMinimum": 0 },
+        "output_dir": { "type": "string", "minLength": 1 },
+        "collected_examples_path": { "type": "string", "minLength": 1 },
+        "collapse_trails_path": { "type": "string", "minLength": 1 },
+        "state_path": { "type": "string", "minLength": 1 }
+      }
+    },
     "conflict_warning": {
       "type": "object",
       "additionalProperties": false,

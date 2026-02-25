@@ -428,29 +428,144 @@ def names_are_related(name1: str, name2: str) -> bool:
 
 _NAME_STOPWORDS = {
     # Common non-name tokens that appear after "I'm ..." in normal sentences.
+    # --- articles / pronouns / misc ---
     "a",
     "an",
     "the",
     "ai",
+    "to",
+    "just",
+    "not",
+    "also",
+    "really",
+    "very",
+    "so",
+    "quite",
+    "pretty",
+    "kinda",
+    # --- common state / activity words ---
     "back",
     "building",
     "build",
     "busy",
-    "fine",
-    "good",
-    "great",
+    "done",
     "here",
     "help",
-    "okay",
-    "ok",
+    "home",
+    "new",
     "ready",
-    "sorry",
-    "sure",
-    "tired",
     "trying",
     "working",
     "going",
-    "to",
+    "looking",
+    "thinking",
+    "wondering",
+    "learning",
+    "running",
+    "leaving",
+    "staying",
+    "moving",
+    "starting",
+    "waiting",
+    "telling",
+    "asking",
+    "saying",
+    "getting",
+    "having",
+    "making",
+    "coming",
+    "taking",
+    "doing",
+    "using",
+    "feeling",
+    "talking",
+    "writing",
+    "reading",
+    "playing",
+    "testing",
+    # --- emotional / sentiment adjectives (the big fix) ---
+    "annoyed",
+    "angry",
+    "furious",
+    "mad",
+    "upset",
+    "frustrated",
+    "irritated",
+    "pissed",
+    "happy",
+    "glad",
+    "pleased",
+    "thrilled",
+    "excited",
+    "ecstatic",
+    "delighted",
+    "cheerful",
+    "sad",
+    "depressed",
+    "miserable",
+    "unhappy",
+    "heartbroken",
+    "worried",
+    "anxious",
+    "nervous",
+    "stressed",
+    "scared",
+    "afraid",
+    "terrified",
+    "confused",
+    "puzzled",
+    "lost",
+    "bored",
+    "lonely",
+    "jealous",
+    "embarrassed",
+    "ashamed",
+    "guilty",
+    "proud",
+    "grateful",
+    "thankful",
+    "hopeful",
+    "optimistic",
+    "pessimistic",
+    "curious",
+    "surprised",
+    "shocked",
+    "amazed",
+    "disgusted",
+    "overwhelmed",
+    "exhausted",
+    "disappointed",
+    "content",
+    # --- common adjectives / states ---
+    "fine",
+    "good",
+    "great",
+    "okay",
+    "ok",
+    "alright",
+    "sorry",
+    "sure",
+    "tired",
+    "sick",
+    "hungry",
+    "cold",
+    "hot",
+    "warm",
+    "sleepy",
+    "awake",
+    "alive",
+    "well",
+    "better",
+    "worse",
+    "interested",
+    "impressed",
+    "concerned",
+    "convinced",
+    "aware",
+    "certain",
+    "available",
+    "unable",
+    "able",
 }
 
 
@@ -629,8 +744,25 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         looks_like_infinitive = trailing.startswith("to ")
         has_stopword = any(t in _NAME_STOPWORDS for t in token_lowers)
 
-        # Reject common non-name tokens and infinitive phrases.
-        if tokens and not has_stopword and not looks_like_infinitive:
+        # Structural guard: if the extracted "name" is followed by a preposition,
+        # it's almost certainly an adjective/state, not a name.
+        # E.g. "I'm annoyed with you", "I'm angry at this", "I'm confused about it"
+        _PREPOSITIONS = {"with", "at", "about", "of", "for", "by", "in", "on",
+                         "over", "from", "into", "that", "because", "right"}
+        looks_like_adjective = any(
+            trailing.startswith(prep + " ") or trailing == prep
+            for prep in _PREPOSITIONS
+        )
+
+        # Also reject words ending in common adjective suffixes (ed, ing, ous, ful, etc.)
+        first_token = token_lowers[0] if token_lowers else ""
+        _ADJ_SUFFIXES = ("ed", "ing", "ous", "ful", "ive", "ish", "ent", "ant", "ble", "ious", "ical")
+        looks_like_suffix = (
+            len(first_token) > 4 and any(first_token.endswith(s) for s in _ADJ_SUFFIXES)
+        )
+
+        # Reject common non-name tokens, infinitive phrases, adjective+preposition, and suffix patterns.
+        if tokens and not has_stopword and not looks_like_infinitive and not looks_like_adjective and not looks_like_suffix:
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
 
     # Compound introduction: "I am a Web Developer from Milwaukee Wisconsin"

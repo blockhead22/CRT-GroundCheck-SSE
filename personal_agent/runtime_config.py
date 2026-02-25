@@ -133,6 +133,21 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         "max_prefer_latest_rate": None,
     },
 
+    # DNNT background retraining loop (distills trusted traces into local model updates).
+    "dnnt_retraining": {
+        "enabled": False,
+        "poll_interval_seconds": 1800,
+        "min_new_examples": 24,
+        "max_examples": 4000,
+        "batch_size": 8,
+        "epochs": 1,
+        "learning_rate": 0.0002,
+        "output_dir": "models/dnnt",
+        "collected_examples_path": "data/dnnt_collected_training_data.jsonl",
+        "collapse_trails_path": "data/collapse_trails.jsonl",
+        "state_path": "data/dnnt_background_state.json",
+    },
+
     # When enabled, uncertainty responses include a layperson-friendly explanation
     # that the assistant might be wrong due to conflicting information.
     "conflict_warning": {

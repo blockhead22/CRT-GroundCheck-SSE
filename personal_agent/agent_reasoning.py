@@ -22,6 +22,15 @@ except ImportError as e:
     print(f"Warning: Import failed in agent_reasoning.py: {e}")
 
 
+def _extract_text(response: Any) -> str:
+    """Extract text from an LLM response (str or dict)."""
+    if isinstance(response, str):
+        return response.strip()
+    if isinstance(response, dict):
+        return (response.get("response", "") or response.get("text", "") or "").strip()
+    return str(response).strip()
+
+
 # Prompts for LLM reasoning
 THOUGHT_PROMPT = """You are an AI assistant with access to tools. Based on the task and your progress so far, decide what to do next.
 
@@ -183,7 +192,7 @@ class AgentReasoning:
 
         try:
             response = self.llm.generate(prompt=prompt)
-            return response.get("response", "").strip()
+            return _extract_text(response)
         except Exception as e:
             print(f"LLM thought generation failed: {e}")
             return self._default_thought(len(trace.steps) + 1)
@@ -216,7 +225,7 @@ class AgentReasoning:
 
         try:
             response = self.llm.generate(prompt=prompt)
-            response_text = response.get("response", "").strip()
+            response_text = _extract_text(response)
 
             # Parse JSON response
             action_data = json.loads(response_text)
@@ -261,7 +270,7 @@ class AgentReasoning:
 
         try:
             response = self.llm.generate(prompt=prompt)
-            response_text = response.get("response", "").strip()
+            response_text = _extract_text(response)
             return json.loads(response_text)
         except Exception as e:
             print(f"Plan creation failed: {e}")
@@ -295,7 +304,7 @@ class AgentReasoning:
 
         try:
             response = self.llm.generate(prompt=prompt)
-            return response.get("response", "").strip()
+            return _extract_text(response)
         except Exception as e:
             print(f"Reflection failed: {e}")
             return self._default_reflection(result)
@@ -331,7 +340,7 @@ class AgentReasoning:
 
         try:
             response = self.llm.generate(prompt=prompt)
-            return response.get("response", "").strip()
+            return _extract_text(response)
         except Exception as e:
             print(f"Synthesis failed: {e}")
             return f"Gathered {len(gathered_info)} pieces of information but synthesis failed: {e}"

@@ -27,5 +27,11 @@ bcrypt==5.0.0
 # Grounding verification (vendored via git subtree)
 -e packages/groundcheck
 
+# Channel integrations
+python-telegram-bot>=21.0
+
+# Agent tools
+duckduckgo-search>=7.0
+
 # Webcam support
 opencv-python==4.13.0.90

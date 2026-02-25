@@ -13,10 +13,13 @@ Production extension points marked with # PROD:
 
 import re
 import sqlite3
+import logging
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List, Any, Tuple
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 class FactSource(Enum):
@@ -638,7 +641,14 @@ class FactStore:
             return [dict(row) for row in rows]
         return self._execute_db(_query)
     
+    # Reject values that are clearly garbage or placeholders
+    _GARBAGE_VALUES = {"none", "null", "n/a", "unknown", "undefined", ""}
+
     def _store_fact(self, fact: Fact) -> int:
+        # Guard: reject None-like or empty values
+        if not fact.value or fact.value.strip().lower() in self._GARBAGE_VALUES:
+            logger.debug(f"[FACT_STORE] Rejected garbage value for slot {fact.slot}: {fact.value!r}")
+            return -1
         def _insert(conn):
             cur = conn.execute(
                 "INSERT INTO facts (slot, value, trust, source, timestamp) VALUES (?, ?, ?, ?, ?)",
@@ -649,6 +659,10 @@ class FactStore:
     
     def _update_fact(self, old_id: int, new_fact: Fact):
         """Supersede old fact with new one."""
+        # Guard: reject None-like or empty values
+        if not new_fact.value or new_fact.value.strip().lower() in self._GARBAGE_VALUES:
+            logger.debug(f"[FACT_STORE] Rejected garbage update for slot {new_fact.slot}: {new_fact.value!r}")
+            return
         def _update(conn):
             # Insert new fact
             cur = conn.execute(

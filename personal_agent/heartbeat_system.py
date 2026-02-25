@@ -25,7 +25,7 @@ import re
 import sqlite3
 import threading
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -48,6 +48,12 @@ class HeartbeatConfig:
     max_tokens: int = 500
     temperature: float = 0.7
     dry_run: bool = False  # If True, simulate without writing to Ledger
+    news_monitoring_enabled: bool = False
+    news_topics: List[str] = field(default_factory=list)  # User-defined topics for proactive updates
+    news_query_suffix: str = "latest news"
+    news_max_results: int = 5
+    news_cooldown_seconds: int = 21600  # 6 hours per topic
+    news_post_submolt: str = "news"
     
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> HeartbeatConfig:
@@ -56,7 +62,7 @@ class HeartbeatConfig:
             return HeartbeatConfig()
         return HeartbeatConfig(
             enabled=data.get("enabled", True),
-            every_seconds=int(data.get("every", 1800)),
+            every_seconds=int(data.get("every", data.get("every_seconds", 1800))),
             target=data.get("target", "none"),
             active_hours_start=data.get("active_hours_start"),
             active_hours_end=data.get("active_hours_end"),
@@ -65,6 +71,12 @@ class HeartbeatConfig:
             max_tokens=int(data.get("max_tokens", 500)),
             temperature=float(data.get("temperature", 0.7)),
             dry_run=bool(data.get("dry_run", False)),
+            news_monitoring_enabled=bool(data.get("news_monitoring_enabled", False)),
+            news_topics=list(data.get("news_topics") or []),
+            news_query_suffix=str(data.get("news_query_suffix") or "latest news").strip() or "latest news",
+            news_max_results=max(1, int(data.get("news_max_results", 5))),
+            news_cooldown_seconds=max(900, int(data.get("news_cooldown_seconds", 21600))),
+            news_post_submolt=str(data.get("news_post_submolt") or "news").strip() or "news",
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -80,6 +92,12 @@ class HeartbeatConfig:
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
             "dry_run": self.dry_run,
+            "news_monitoring_enabled": bool(self.news_monitoring_enabled),
+            "news_topics": list(self.news_topics or []),
+            "news_query_suffix": self.news_query_suffix,
+            "news_max_results": int(self.news_max_results),
+            "news_cooldown_seconds": int(self.news_cooldown_seconds),
+            "news_post_submolt": self.news_post_submolt,
         }
 
 

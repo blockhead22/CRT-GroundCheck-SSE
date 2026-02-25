@@ -46,10 +46,18 @@ except ImportError as e:
     EvidencePacket = None
     get_ollama_client = None
 
+try:
+    from personal_agent.crt_critic import CRTCritic, CriticResult, VerifyVerdict
+except ImportError:
+    CRTCritic = None
+    CriticResult = None
+    VerifyVerdict = None
+
 
 class AgentAction(str, Enum):
     """Available agent actions."""
     SEARCH_MEMORY = "search_memory"
+    SEARCH_WEB = "search_web"
     SEARCH_RESEARCH = "search_research"
     STORE_MEMORY = "store_memory"
     CHECK_CONTRADICTION = "check_contradiction"
@@ -151,6 +159,7 @@ class ToolRegistry:
         """Register all available tools."""
         return {
             AgentAction.SEARCH_MEMORY: self._search_memory,
+            AgentAction.SEARCH_WEB: self._search_web,
             AgentAction.SEARCH_RESEARCH: self._search_research,
             AgentAction.STORE_MEMORY: self._store_memory,
             AgentAction.CHECK_CONTRADICTION: self._check_contradiction,
@@ -210,6 +219,31 @@ class ToolRegistry:
                 for m in memories
             ],
         }
+
+    def _search_web(self, query: str, max_results: int = 8) -> dict:
+        """Search the web via DuckDuckGo with multi-angle research."""
+        try:
+            from personal_agent.web_search import WebSearchTool
+            searcher = WebSearchTool(max_results=max_results)
+            response = searcher.research(query, max_results=max_results)
+            if response.error:
+                return {"error": response.error}
+            return {
+                "found": len(response.results),
+                "results": [
+                    {
+                        "title": r.title,
+                        "url": r.url,
+                        "snippet": r.snippet,
+                    }
+                    for r in response.results
+                ],
+                "context": response.to_context_string(),
+            }
+        except ImportError:
+            return {"error": "duckduckgo-search not installed. Run: pip install duckduckgo-search"}
+        except Exception as e:
+            return {"error": f"Web search failed: {e}"}
 
     def _search_research(self, query: str, top_k: int = 3) -> dict:
         """Search local documents."""
@@ -463,12 +497,15 @@ class AgentLoop:
         max_steps: int = 10,
         llm_client: Optional[Any] = None,
         reasoning_engine: Optional[Any] = None,
+        critic: Optional["CRTCritic"] = None,
     ):
         self.tools = tool_registry
         self.max_steps = max_steps
         self.llm = llm_client
         self.reasoning = reasoning_engine
         self.trace: Optional[AgentTrace] = None
+        self.critic = critic or (CRTCritic() if CRTCritic else None)
+        self.last_critic_result: Optional["CriticResult"] = None
         
         # Pass LLM to tools for finish action
         self.tools.llm_client = llm_client
@@ -497,14 +534,19 @@ class AgentLoop:
                     placeholder_answer = step.action.args.get("answer", "")
                     if "placeholder" in placeholder_answer.lower() or "built-in knowledge" in placeholder_answer.lower():
                         if self.llm:
-                            # Use LLM to answer the original query
                             real_answer = self._generate_llm_answer(self.trace.query)
                             self.trace.final_answer = real_answer
                         else:
                             self.trace.final_answer = "I don't have access to web search or enough local information to answer this general knowledge question."
                     else:
                         self.trace.final_answer = placeholder_answer
-                    
+
+                    # CRT-AS-CRITIC: Post-generation verification
+                    self.trace.final_answer = self._post_process_draft(
+                        query=self.trace.query,
+                        draft=self.trace.final_answer,
+                    )
+
                     self.trace.success = True
                     break
 
@@ -586,12 +628,43 @@ class AgentLoop:
                     reasoning="Checking existing knowledge in memory",
                 )
             elif step_num == 2:
+                # Check if memory search had useful results
+                prev = self.trace.steps[-1] if self.trace.steps else None
+                mem_found = 0
+                if prev and prev.observation and prev.observation.success:
+                    res = prev.observation.result
+                    if isinstance(res, dict):
+                        mem_found = res.get("found", 0)
+
+                if mem_found > 0:
+                    # Memory had results — search local docs for more
+                    return ToolCall(
+                        tool=AgentAction.SEARCH_RESEARCH,
+                        args={"query": self.trace.query, "top_k": 3},
+                        reasoning="Memory had results; searching local docs for more context",
+                    )
+                else:
+                    # No memory results — try the web
+                    return ToolCall(
+                        tool=AgentAction.SEARCH_WEB,
+                        args={"query": self.trace.query, "max_results": 5},
+                        reasoning="No relevant memories found; searching the web",
+                    )
+            elif step_num == 3:
+                # If we haven't searched the web yet, do it now
+                prev_tools = [s.action.tool for s in self.trace.steps if s.action]
+                if AgentAction.SEARCH_WEB not in prev_tools:
+                    return ToolCall(
+                        tool=AgentAction.SEARCH_WEB,
+                        args={"query": self.trace.query, "max_results": 5},
+                        reasoning="Supplementing with web search results",
+                    )
                 return ToolCall(
-                    tool=AgentAction.SEARCH_RESEARCH,
-                    args={"query": self.trace.query, "top_k": 3},
-                    reasoning="Searching local documents for additional context",
+                    tool=AgentAction.FINISH,
+                    args={"answer": "Placeholder answer - LLM synthesis not implemented"},
+                    reasoning="Sufficient information gathered",
                 )
-            elif step_num >= 3:
+            elif step_num >= 4:
                 return ToolCall(
                     tool=AgentAction.FINISH,
                     args={"answer": "Placeholder answer - LLM synthesis not implemented"},
@@ -615,22 +688,126 @@ class AgentLoop:
             return "Evaluating previous step"
     
     def _generate_llm_answer(self, query: str) -> str:
-        """Generate answer using LLM's general knowledge."""
+        """Generate answer using LLM, incorporating any web/memory context from trace."""
         if not self.llm:
             return "LLM not available for general knowledge queries."
-        
-        prompt = f"""Answer this question concisely using your general knowledge:
+
+        # Gather context from all observations in the trace
+        context_parts = []
+        for step in (self.trace.steps if self.trace else []):
+            if not step.observation or not step.observation.success:
+                continue
+            result = step.observation.result
+            if not isinstance(result, dict):
+                continue
+
+            # Web search results
+            if step.action and step.action.tool == AgentAction.SEARCH_WEB:
+                ctx = result.get("context", "")
+                if ctx:
+                    context_parts.append(ctx)
+
+            # Memory results
+            if step.action and step.action.tool == AgentAction.SEARCH_MEMORY:
+                mems = result.get("memories", [])
+                if mems:
+                    mem_text = "\n".join(
+                        f"- [{m.get('source','?')}] (trust={m.get('trust',0):.1f}) {m.get('text','')}"
+                        for m in mems
+                    )
+                    context_parts.append(f"From memory:\n{mem_text}")
+
+            # Research results
+            if step.action and step.action.tool == AgentAction.SEARCH_RESEARCH:
+                summary = result.get("summary", "")
+                if summary:
+                    context_parts.append(f"From local documents:\n{summary}")
+
+        context_block = "\n\n".join(context_parts) if context_parts else ""
+
+        if context_block:
+            prompt = (
+                f"Answer this question using the context provided below.\n\n"
+                f"Question: {query}\n\n"
+                f"Context:\n{context_block}\n\n"
+                f"Give a clear, factual answer in 2-4 sentences. "
+                f"If using web search results, cite the source number [1], [2], etc. "
+                f"Give a balanced view — cover supporting evidence AND criticism/counter-claims when available. "
+                f"Generalize and synthesize across sources rather than listing them."
+            )
+        else:
+            prompt = f"""Answer this question concisely using your general knowledge:
 
 {query}
 
 Provide a clear, accurate answer in 2-4 sentences."""
 
         try:
-            response = self.llm.generate(prompt=prompt)
-            answer = response.get("response", "").strip()
+            response = self.llm.generate(
+                prompt=prompt,
+                system="You are CRT, a helpful AI assistant with persistent memory and web search. Answer accurately and concisely.",
+                max_tokens=400,
+                temperature=0.5,
+            )
+            if isinstance(response, dict):
+                answer = response.get("response", "") or response.get("text", "")
+            else:
+                answer = str(response)
+            answer = answer.strip()
             return answer if answer else "Could not generate answer."
         except Exception as e:
             return f"Error generating answer: {e}"
+
+    def _post_process_draft(self, query: str, draft: str) -> str:
+        """
+        CRT-as-Critic: Verify draft answer against stored memories.
+
+        This replaces unreliable LLM self-critique with GroundCheck's
+        external memory-grounded verification (~1ms).
+
+        Returns:
+            Possibly revised answer, or disclosure text for hard fails.
+        """
+        if not self.critic or not draft:
+            return draft
+
+        # Gather retrieved memories from the trace (search_memory steps)
+        retrieved_memories = []
+        for step in (self.trace.steps if self.trace else []):
+            if (
+                step.observation
+                and step.observation.success
+                and step.action
+                and step.action.tool == AgentAction.SEARCH_MEMORY
+            ):
+                result = step.observation.result
+                if isinstance(result, dict) and "memories" in result:
+                    retrieved_memories.extend(result["memories"])
+
+        if not retrieved_memories:
+            return draft
+
+        try:
+            critic_result = self.critic.verify_draft(
+                query=query,
+                draft_answer=draft,
+                retrieved_memories=retrieved_memories,
+                llm_client=self.llm,
+            )
+            self.last_critic_result = critic_result
+
+            if critic_result.verdict == VerifyVerdict.PASS:
+                return critic_result.final_answer
+            elif critic_result.verdict == VerifyVerdict.SOFT_FAIL:
+                # Use revised answer
+                return critic_result.final_answer
+            else:
+                # HARD_FAIL — surface contradiction to user
+                return critic_result.final_answer
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"[CRT-CRITIC] Post-process failed: {e}")
+            return draft
 
 
 # Convenience functions

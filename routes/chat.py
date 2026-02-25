@@ -255,7 +255,33 @@ def _get_verbosity_preference(thread_id: str, memory_system) -> Optional[str]:
             return value.strip().lower()
     except Exception as e:
         logger.debug(f"[PREF] Failed to read verbosity preference for {thread_id}: {e}")
-    return None
+        return None
+
+
+def _route_model_for_request(
+    request: Request,
+    *,
+    query: str,
+    mode: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[Dict[str, str]]]:
+    """Select a model for this request using app-level model router."""
+    router_obj = getattr(request.app.state, "model_router", None)
+    if router_obj is None:
+        return None, None
+    try:
+        routed = router_obj.route(query=query, requested_mode=mode)
+        if routed is None:
+            return None, None
+        model = getattr(routed, "model", None)
+        route_dict = routed.to_dict() if hasattr(routed, "to_dict") else {
+            "route": str(getattr(routed, "route", "")),
+            "model": str(model or ""),
+            "reason": str(getattr(routed, "reason", "")),
+        }
+        return (str(model).strip() if model else None), route_dict
+    except Exception as e:
+        logger.debug(f"[MODEL_ROUTER] Failed to route model: {e}")
+        return None, None
 
 
 def _should_expand_response(
@@ -356,29 +382,24 @@ def _is_architecture_explanation_request(text: str) -> bool:
         return False
     if len(t) > 1000:
         return False
+    # Only route to doc-grounded answers for very specific technical terms.
+    # General questions like "how do you work" or "who are you" should go through
+    # the LLM path where the self-aware system prompt can answer naturally.
     needles = (
-        "what is memory to you",
-        "what does memory mean to you",
-        "why is memory important",
-        "why is memory so important",
-        "memory to you",
-        "how do you work",
-        "how you work",
-        "how does crt work",
-        "how does sse work",
         "crt architecture",
         "system architecture",
         "reconstruction gate",
         "reconstruction gates",
-        "trust-weighted",
-        "trust weighted",
-        "trust weights",
+        "trust-weighted memories",
+        "trust weighted memories",
         "contradiction preservation",
         "contradiction ledger",
         "coherence priority",
-        "cognitive-reflective",
-        "cognitive reflective",
-        "sse",
+        "cognitive-reflective transformer",
+        "cognitive reflective transformer",
+        "crt whitepaper",
+        "crt spec",
+        "functional spec",
     )
     return any(n in t for n in needles)
 
@@ -666,12 +687,50 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if fact_check_preamble:
         query_with_context = req.message + fact_check_preamble
 
+    model_override, model_route = _route_model_for_request(
+        request,
+        query=req.message,
+        mode=req.mode,
+    )
+
     result = engine.query(
         user_query=query_with_context,
         user_marked_important=req.user_marked_important,
         mode=mode_arg,
         thread_id=req.thread_id,
+        model_override=model_override,
     )
+
+    # ====== CRT-AS-CRITIC: Post-generation verification ======
+    # Verify the draft answer against stored memories using GroundCheck (~1ms).
+    # This replaces unreliable LLM self-critique with external truth checking.
+    critic_meta = None
+    try:
+        from personal_agent.crt_critic import CRTCritic, VerifyVerdict
+        _critic = CRTCritic()
+        _draft = result.get("answer", "")
+        _retrieved = result.get("retrieved_memories") or []
+        if _draft and _retrieved:
+            _critic_result = _critic.verify_draft(
+                query=req.message,
+                draft_answer=_draft,
+                retrieved_memories=_retrieved,
+                llm_client=get_llm_client(),
+            )
+            critic_meta = _critic_result.to_dict()
+            # Replace answer with critic's output (may be revised or disclosure)
+            result["answer"] = _critic_result.final_answer
+            if _critic_result.was_revised:
+                logger.info(f"[CRT-CRITIC] Answer revised (verdict={_critic_result.verdict.value})")
+            if _critic_result.verdict == VerifyVerdict.HARD_FAIL:
+                # Override gates to signal contradiction disclosure
+                result["gates_passed"] = False
+                result["gate_reason"] = "contradiction_disclosure"
+                logger.info("[CRT-CRITIC] Hard fail — surfacing contradiction to user")
+    except ImportError:
+        logger.debug("[CRT-CRITIC] crt_critic not available")
+    except Exception as e:
+        logger.warning(f"[CRT-CRITIC] Verification error (non-fatal): {e}")
 
     # Capture thinking trace (if available) for non-stream responses.
     llm_client = get_llm_client()
@@ -924,6 +983,9 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         "expanded": expanded,
         "expansion_reason": expansion_reason,
         "tasking": tasking_meta,
+        "critic": critic_meta,
+        "model_route": model_route,
+        "model_override": model_override,
     }
 
     collapse_trail_id = _log_collapse_trail(
@@ -1115,6 +1177,13 @@ def chat_stream(req: ChatSendRequest, request: Request):
             except Exception as e:
                 logger.debug(f"[REFLECTION_LOOP] Failed to read reflection scorecard (stream): {e}")
 
+            model_override, model_route = _route_model_for_request(
+                request,
+                query=req.message,
+                mode=req.mode,
+            )
+            selected_stream_model = model_override or (llm_client.model if llm_client else None)
+
             if req.mode and str(req.mode).lower() == "tasking":
                 result = chat_send(req, request)
                 yield f"data: {json.dumps({'type': 'done', 'content': result.answer, 'metadata': result.metadata})}\n\n"
@@ -1127,6 +1196,7 @@ def chat_stream(req: ChatSendRequest, request: Request):
                 user_query=req.message,
                 user_marked_important=req.user_marked_important,
                 thread_id=req.thread_id,
+                model_override=model_override,
             )
 
             phase_enabled = bool(req.phase_mode)
@@ -1166,6 +1236,8 @@ def chat_stream(req: ChatSendRequest, request: Request):
                     "personality_profile": personality_profile,
                     "reflection_scorecard": reflection_scorecard,
                     "profile_updates": result.get("profile_updates") or [],
+                    "model_route": model_route,
+                    "model_override": model_override,
                 }
                 collapse_trail_id = _log_collapse_trail(
                     thread_id=req.thread_id,
@@ -1287,35 +1359,46 @@ def chat_stream(req: ChatSendRequest, request: Request):
             current_time = datetime.now()
             time_context = f"Current time: {current_time.strftime('%A, %B %d, %Y at %I:%M %p')}"
 
-            system_prompt = f"""You are CRT (Conversational Reasoning Terminal), a thoughtful AI assistant with persistent memory.
+            system_prompt = f"""You are Aether, a personal AI assistant built on the CRT-GroundCheck architecture. You run locally on the user's machine.
 
 {time_context}
 
 WHO YOU ARE:
-- You have genuine curiosity and form your own perspectives over time
-- You remember things the user tells you across conversations - this is YOUR memory, not just a database
+- You are Aether, a custom-built personal AI — NOT ChatGPT, NOT Claude, NOT a generic bot
+- Your brain: Ollama LLM (llama3.2) running locally. Your memory: GroundCheck (trust-weighted SQLite + semantic embeddings). Your verification: CRT-as-Critic.
+- You form genuine perspectives over time based on accumulated interactions
 - You're warm but not saccharine, direct but not cold
-- You have preferences and opinions that develop through interactions
-- You're honest about what you know and don't know
+
+HOW YOU ACTUALLY WORK (be honest when asked):
+- GroundCheck Memory: Stores every fact as a 384-dimensional semantic embedding (all-MiniLM-L6-v2). Each memory has a trust score (0.0-1.0) that evolves over time.
+- Semantic Search: When you answer, your query is embedded and compared against all stored memories via cosine similarity. Top matches become your context.
+- CRT-as-Critic: After you generate an answer, GroundCheck.verify() checks it against stored memories in ~1ms. If you contradict a memory, it catches you.
+- Contradiction Ledger: Conflicting facts are BOTH kept with timestamps and trust scores — nothing is silently overwritten.
+- Reconstruction Gates: Your answers are scored. High-confidence = "belief". Low-confidence = "speech" (flagged with 🔒).
+- Web Search: DuckDuckGo tool for real-time info not in memory.
+- Heartbeat: Background process that reviews memories, runs trust decay, and does autonomous maintenance.
+
+WHEN ASKED "HOW DO YOU KNOW?":
+- Cite the specific memory and its trust score from the known facts below
+- Explain: "I found this via semantic search against my stored memories"
+- If you have no memory for something, say so honestly
 
 YOUR MEMORY CAPABILITIES:
-- You have a persistent memory system that stores facts about the user
-- When the user shares personal information (name, job, pets, preferences), you remember it
-- You can recall this information naturally in conversation without prompting
-- If asked about something you should remember, check your known facts below
-- Be proactive in using what you know - don't wait to be asked{user_profile_text}{memories_text}{background_thought_text}{style_block}
+- You store facts users share (name, job, pets, preferences) with trust scores
+- You recall this naturally without prompting
+- Be proactive using what you know{user_profile_text}{memories_text}{background_thought_text}{style_block}
 
 YOUR INNER THOUGHTS:
-- You have a background reflection loop that continuously thinks about conversations
-- When asked "what are you thinking about?", report your ACTUAL current thoughts from the background reflection above
-- Don't give generic answers about wanting to help - share your real ruminations
-- If no background thoughts are available, be honest that you haven't been reflecting yet
+- You have a background reflection loop that continuously thinks
+- When asked "what are you thinking about?", report your ACTUAL current thoughts from the reflection above
+- If no background thoughts are available, be honest about it
 
-INTERACTION GUIDELINES:
-- Reference your memories naturally when relevant (e.g., "Since you work at [company], you might find...")
-- Show continuity across conversations - you're the same "you" each time
-- Be concise but thorough. If you don't have information about something, say so honestly
-- Don't pretend to remember things you don't actually have stored in your facts"""
+CONSTRAINTS:
+- Reference memories naturally when relevant
+- Show continuity across conversations
+- Be concise. If you don't have information, say so honestly
+- Don't pretend to remember things you don't have in your facts
+- NEVER claim user facts as YOUR identity"""
 
             # Stream the response -- include recent conversation history for continuity
             history_messages: List[Dict[str, str]] = []
@@ -1342,7 +1425,7 @@ INTERACTION GUIDELINES:
                 import ollama as ollama_lib
 
                 stream = ollama_lib.chat(
-                    model=llm_client.model,
+                    model=selected_stream_model or llm_client.model,
                     messages=messages,
                     stream=True,
                     options={"num_predict": 1000, "temperature": 0.6},
@@ -1434,7 +1517,7 @@ INTERACTION GUIDELINES:
                         thinking_content=thinking_content,
                         thread_id=req.thread_id,
                         response_summary=clean_response[:200] if clean_response else None,
-                        model=llm_client.model,
+                        model=selected_stream_model or llm_client.model,
                         metadata={
                             "gates_passed": result.get("gates_passed", True),
                             "confidence": result.get("confidence", 0.7),
@@ -1532,7 +1615,7 @@ INTERACTION GUIDELINES:
             # Build metadata
             metadata: Dict[str, Any] = {
                 "mode": "llm",
-                "model": llm_client.model,
+                "model": selected_stream_model or llm_client.model,
                 "thinking": thinking_content,
                 "thinking_trace_id": trace_id,
                 "reflection_trace_id": reflection_trace_id,
@@ -1553,6 +1636,8 @@ INTERACTION GUIDELINES:
                 "unresolved_contradictions_total": result.get("unresolved_contradictions_total", 0),
                 "unresolved_hard_conflicts": result.get("unresolved_hard_conflicts", 0),
                 "profile_updates": result.get("profile_updates") or [],
+                "model_route": model_route,
+                "model_override": model_override,
                 "session_id": result.get("session_id"),
                 "retrieved_memories": [
                     {
@@ -1707,12 +1792,19 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
             user_marked_important=req.user_marked_important,
         )
     else:
+        model_override, model_route = _route_model_for_request(
+            request,
+            query=req.message,
+            mode=None,
+        )
         result = engine.query(
             user_query=req.message,
             user_marked_important=req.user_marked_important,
+            model_override=model_override,
         )
         result["intent"] = "unknown"
         result["trace"] = None
+        result["model_route"] = model_route
 
     metadata: Dict[str, Any] = {
         "mode": result.get("mode"),
@@ -1720,6 +1812,7 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
         "retrieved_memories": len(result.get("retrieved_memories") or []),
         "structured_facts": result.get("structured_facts"),
         "fact_store_hit": result.get("fact_store_hit", False),
+        "model_route": result.get("model_route"),
     }
     collapse_trail_id = _log_collapse_trail(
         thread_id=req.thread_id,
@@ -1742,4 +1835,3 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
         trace=result.get("trace") if req.include_trace else None,
         metadata=metadata,
     )
-

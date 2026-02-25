@@ -3078,7 +3078,8 @@ class CRTEnhancedRAG:
         user_query: str,
         user_marked_important: bool = False,
         mode: Optional[ReasoningMode] = None,
-        thread_id: Optional[str] = None
+        thread_id: Optional[str] = None,
+        model_override: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Query with CRT principles applied.
@@ -3551,34 +3552,13 @@ class CRTEnhancedRAG:
                     'session_id': self.session_id,
                 }
 
-        # Deterministic safe path: assistant-profile questions.
-        # These are about the assistant/system, not the user, so we should not
-        # invent chat-backed claims about what the user said.
-        assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
-        assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
-        if assistant_profile_enabled and user_input_kind in ("question", "instruction") and self._is_assistant_profile_question(user_query):
-            answer = self._build_assistant_profile_answer(user_query)
-            return {
-                'answer': answer,
-                'thinking': None,
-                'mode': 'quick',
-                'confidence': 0.95,
-                'response_type': 'speech',
-                'gates_passed': False,
-                'gate_reason': 'assistant_profile',
-                'intent_alignment': 0.95,
-                'memory_alignment': 1.0,
-                'contradiction_detected': False,
-                'contradiction_entry': None,
-                'retrieved_memories': [],
-                'prompt_memories': [],
-                'unresolved_contradictions_total': 0,
-                'unresolved_hard_conflicts': 0,
-                'learned_suggestions': [],
-                'heuristic_suggestions': [],
-                'best_prior_trust': None,
-                'session_id': self.session_id,
-            }
+        # NOTE: Assistant-profile questions ("who are you?", "what are you?") are
+        # NO LONGER intercepted here with a hardcoded response. Instead, the system's
+        # self-knowledge is stored as GroundCheck memories (seeded on startup) so the
+        # LLM can retrieve and explain its own architecture naturally, in context.
+        # The _is_assistant_profile_question() and _build_assistant_profile_answer()
+        # methods still exist for the name-ack combo path ("Hi I'm Nick. Who are you?")
+        # but are not used as an early return gate in the main query flow.
         
         # 1. Trust-weighted retrieval
         # First pass to infer slots before retrieval (enables scope filtering)
@@ -3700,8 +3680,41 @@ class CRTEnhancedRAG:
         # Use broader retrieval (k=15) for synthesis queries that need to gather multiple related facts
         is_synthesis = self._is_synthesis_query(user_query)
         retrieval_k = 15 if is_synthesis else 5
+
+        # Copilot GroundCheck context bridge — fetch MCP memories when asked
+        _is_copilot_query = self._is_copilot_context_query(user_query)
+        _copilot_context: List[Dict[str, Any]] = []
+        if _is_copilot_query:
+            _copilot_context = self._fetch_copilot_context(user_query)
+            logger.info("[COPILOT_CTX] Detected copilot query, fetched %d MCP memories", len(_copilot_context))
+
+        # Web search bridge — run DuckDuckGo search for real-time information
+        _is_search_query = self._is_web_search_query(user_query)
+        _web_search_results: List[Dict[str, Any]] = []
+        if _is_search_query:
+            search_query = self._extract_search_query(user_query)
+            _web_search_results = self._run_web_search(search_query)
+            logger.info("[WEB_SEARCH] Detected search query, got %d results for '%s'", len(_web_search_results), search_query)
+
+        # Include SYSTEM-source memories when the query is about the system itself
+        # (e.g., "who are you?", "how do you know?", "how does your memory work?").
+        # This ensures self-knowledge stored as SYSTEM memories gets retrieved.
+        _ql_for_sys = user_query.lower()
+        _is_self_referential = any(p in _ql_for_sys for p in (
+            "who are you", "what are you", "how do you", "how does your",
+            "your memory", "your architecture", "how you work",
+            "how are you sure", "how did you know", "your process",
+            "do you remember", "do you know", "how do you know",
+            "what do you do", "tell me about yourself",
+            "how does that work", "your system", "your tools",
+        ))
         
-        retrieved = self.retrieve(user_query, k=retrieval_k, relevant_slots=relevant_slots_set if relevant_slots_set else None)
+        retrieved = self.retrieve(
+            user_query,
+            k=retrieval_k,
+            relevant_slots=relevant_slots_set if relevant_slots_set else None,
+            include_system=_is_self_referential,
+        )
         
         # Check for sentiment contradictions in retrieved memories
         sentiment_contradiction = self._detect_sentiment_contradiction(user_query, retrieved)
@@ -4074,7 +4087,27 @@ class CRTEnhancedRAG:
 
         # Slot-based fast-path: if the user asks a simple personal-fact question and we have
         # an answer in memory, answer directly from canonical resolved facts.
-        if user_input_kind in ("question", "instruction") and inferred_slots:
+        # BUT: if the user is asking HOW/WHY we know (meta-question about our process),
+        # skip the fast-path and let the LLM explain the retrieval mechanism.
+        _ql = user_query.lower()
+        _is_meta_question = any(phrase in _ql for phrase in (
+            "how do you know",
+            "how are you sure",
+            "how can you be sure",
+            "how did you know",
+            "how do you remember",
+            "where did you learn",
+            "how did you learn",
+            "explain your process",
+            "explain the technical",
+            "how does your memory",
+            "how does that work",
+            "how do you have that",
+            "what makes you sure",
+            "why are you sure",
+            "why do you think",
+        ))
+        if user_input_kind in ("question", "instruction") and inferred_slots and not _is_meta_question and not _is_search_query:
             slot_answer = self._answer_from_fact_slots(inferred_slots, user_query=user_query, thread_id=thread_id)
             if slot_answer is not None:
                     # Ensure we still have retrieval context for metadata/alignment.
@@ -4471,8 +4504,8 @@ class CRTEnhancedRAG:
                             'session_id': self.session_id,
                         }
         
-        if not retrieved:
-            # No memories → fallback speech
+        if not retrieved and not _copilot_context and not _web_search_results:
+            # No memories, no copilot context, and no web results → fallback speech
             return self._fallback_response(user_query)
         
         # GLOBAL COHERENCE GATE: Check for unresolved contradictions.
@@ -4598,7 +4631,9 @@ class CRTEnhancedRAG:
         # Build a conflict-resolved memory view for prompting.
         # We keep raw retrieval for scoring/alignment, but present canonical facts
         # (latest, user-first) to reduce "snap back" to older contradictory text.
-        prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=0)
+        # When self-referential, allow more non-slot lines so self-knowledge surfaces.
+        _doc_fallback_lines = 5 if _is_self_referential else 0
+        prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=_doc_fallback_lines)
         learned = self._get_learned_suggestions_for_slots(self._infer_slots_from_query(user_query))
         heuristic = self._get_heuristic_suggestions_for_slots(self._infer_slots_from_query(user_query))
         
@@ -4606,6 +4641,7 @@ class CRTEnhancedRAG:
         style_profile = None
         personality_profile = None
         reflection_scorecard = None
+        episodic_preferences = None
         try:
             if thread_id:
                 session_db = get_thread_session_db()
@@ -4618,6 +4654,19 @@ class CRTEnhancedRAG:
             personality_profile = None
             reflection_scorecard = None
 
+        # Episodic preferences (explicit + inferred from chat).
+        try:
+            from .episodic_memory import get_episodic_manager
+            episodic_mgr = get_episodic_manager(memory_system=self.memory)
+            episodic_ctx = episodic_mgr.get_user_context()
+            if isinstance(episodic_ctx, dict):
+                prefs = episodic_ctx.get("preferences")
+                if isinstance(prefs, dict):
+                    episodic_preferences = prefs
+        except Exception as e:
+            log_swallowed_exception("crt_rag.query.episodic_preferences", e)
+            episodic_preferences = None
+
         reasoning_context = {
             'retrieved_docs': [
                 doc for doc in prompt_docs
@@ -4627,12 +4676,15 @@ class CRTEnhancedRAG:
             'style_profile': style_profile,
             'personality_profile': personality_profile,
             'reflection_scorecard': reflection_scorecard,
+            'episodic_preferences': episodic_preferences,
+            'copilot_context': _copilot_context if _is_copilot_query else [],
+            'web_search_results': _web_search_results if _is_search_query else [],
         }
-        
         reasoning_result = self.reasoning.reason(
             query=user_query,
             context=reasoning_context,
-            mode=mode
+            mode=mode,
+            model_override=model_override,
         )
         
         candidate_output = reasoning_result['answer']
@@ -5323,13 +5375,17 @@ class CRTEnhancedRAG:
         slots_sorted = sorted(best_for_slot.keys(), key=lambda s: (slot_priority.index(s) if s in slot_priority else 999, s))
         for slot in slots_sorted[:max_fact_lines]:
             mem, fact = best_for_slot[slot]
+            # Find similarity score from the original retrieval list
+            sim_score = next((s for m, s in retrieved if m.memory_id == mem.memory_id), None)
             resolved_docs.append(
                 {
                     "text": f"FACT: {slot} = {fact.value}",
+                    "raw_text": mem.text,
                     "memory_id": mem.memory_id,
                     "trust": mem.trust,
                     "confidence": mem.confidence,
                     "source": mem.source.value,
+                    "similarity": sim_score,
                 }
             )
 
@@ -5338,28 +5394,37 @@ class CRTEnhancedRAG:
             return [
                 {
                     "text": mem.text,
+                    "raw_text": mem.text,
                     "memory_id": mem.memory_id,
                     "trust": mem.trust,
                     "confidence": mem.confidence,
                     "source": mem.source.value,
+                    "similarity": score,
                 }
-                for mem, _score in retrieved
+                for mem, score in retrieved
             ]
 
-        # Add a couple of non-slot raw lines for conversational continuity.
+        # Add non-slot raw memory lines (including self-knowledge, conversation context, etc.).
+        # These are crucial for questions about the system's architecture or conversational flow.
+        seen_ids = {d["memory_id"] for d in resolved_docs}
         fallback_added = 0
-        for mem, _score in retrieved:
-            if fallback_added >= max_fallback_lines:
+        # When max_fallback_lines > 0 (self-referential queries), allow up to 5 non-slot docs.
+        # Otherwise, respect the caller's limit (0 = no extra context for plain fact queries).
+        max_non_slot = max(max_fallback_lines, 5) if max_fallback_lines > 0 else 0
+        for mem, score in retrieved:
+            if fallback_added >= max_non_slot:
                 break
-            if extract_fact_slots(mem.text):
+            if mem.memory_id in seen_ids:
                 continue
             resolved_docs.append(
                 {
                     "text": mem.text,
+                    "raw_text": mem.text,
                     "memory_id": mem.memory_id,
                     "trust": mem.trust,
                     "confidence": mem.confidence,
                     "source": mem.source.value,
+                    "similarity": score,
                 }
             )
             fallback_added += 1
@@ -5556,19 +5621,19 @@ class CRTEnhancedRAG:
         if re.search(r"\b(name)\b", q) and not re.search(r"\b(my|user|their)\b", q):
             return _resp(
                 "name",
-                "I'm an AI assistant. I don't have a personal name, but you can call me CRT or GitHub Copilot.",
+                "I'm Aether, a personal AI built on CRT-GroundCheck. I run locally using Ollama for reasoning and GroundCheck for trust-weighted memory.",
             )
 
         if re.search(r"\b(occupation|job|role)\b", q):
             return _resp(
                 "occupation",
-                "I'm an AI assistant (a software system). I don't have a human occupation, but my role is to help with tasks.",
+                "I'm Aether, a personal AI system. My role is to remember what you tell me, verify my answers against stored memories, and catch contradictions.",
             )
 
         if re.search(r"\b(purpose)\b", q) or re.search(r"\bwhat\s+do\s+you\s+do\b", q):
             return _resp(
                 "purpose",
-                "I'm an AI assistant designed to help with information and tasks.",
+                "I store your facts as trust-weighted memories, verify my answers with CRT-as-Critic, track contradictions, and search the web when I don't have the answer.",
             )
 
         if (
@@ -5581,15 +5646,15 @@ class CRTEnhancedRAG:
             if re.search(r"\bfilmmaking\b|\bfilm\b|\bmovie\b|\bcinema\b|\bdirector\b|\bproducer\b", q):
                 return _resp(
                     "background_filmmaking",
-                    "I don't have personal filmmaking experience—I'm an AI system. I can still help with filmmaking concepts.",
+                    "I don't have filmmaking experience — I'm an AI system. But I can help with filmmaking concepts and remember your projects.",
                 )
             return _resp(
                 "background_general",
-                "I don't have personal experiences—I'm an AI system. I can still help with information and planning.",
+                "I don't have personal experiences — I'm a software system built on GroundCheck memory, CRT-as-Critic verification, and a contradiction ledger.",
             )
 
         # Generic fallback for "who/what are you".
-        return _resp("identity", "I'm an AI assistant (a software system) designed to help with information and tasks.")
+        return _resp("identity", "I'm Aether — a personal AI built on CRT-GroundCheck. My brain is Ollama (llama3.2), my memory is trust-weighted GroundCheck, and CRT-as-Critic verifies my answers in ~1ms.")
 
     def _augment_retrieval_with_slot_memories(
         self,
@@ -6379,6 +6444,155 @@ class CRTEnhancedRAG:
             return "\n".join(answer_parts)
         
         return None
+
+    # ==================================================================
+    # Copilot GroundCheck Context Bridge
+    # ==================================================================
+
+    _COPILOT_QUERY_PATTERNS = (
+        "copilot", "what is copilot", "copilot doing", "copilot context",
+        "copilot memories", "copilot working on", "copilot session",
+        "what does copilot", "copilot know", "copilot remember",
+        "copilot stored", "copilot learned", "groundcheck mcp",
+        "mcp memories", "mcp context", "what has been stored",
+        "what have you stored", "what's in groundcheck",
+        "whats in groundcheck", "vscode context", "vs code context",
+    )
+
+    def _is_copilot_context_query(self, text: str) -> bool:
+        """True if the user is asking about Copilot / GroundCheck MCP context."""
+        t = (text or "").strip().lower()
+        return any(p in t for p in self._COPILOT_QUERY_PATTERNS)
+
+    def _fetch_copilot_context(self, query: str, limit: int = 15) -> List[Dict[str, Any]]:
+        """Read recent memories from the GroundCheck MCP database (Copilot's memory).
+
+        Returns a list of dicts with keys: text, trust, source, namespace,
+        thread_id, timestamp, created_at.
+        """
+        import sqlite3 as _sqlite3
+        from pathlib import Path as _Path
+        import os as _os
+
+        candidates = [
+            _Path(_os.environ.get("GROUNDCHECK_DB", "")) if _os.environ.get("GROUNDCHECK_DB") else None,
+            _Path("D:/groundcheck/.groundcheck/memory.db"),
+            _Path("../.groundcheck/memory.db"),
+            _Path(".groundcheck/memory.db"),
+        ]
+        db_path = None
+        for p in candidates:
+            if p and p.is_file():
+                db_path = p
+                break
+        if not db_path:
+            logger.warning("[COPILOT_CTX] GroundCheck MCP database not found")
+            return []
+
+        try:
+            conn = _sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+            conn.row_factory = _sqlite3.Row
+
+            # Check for namespace column
+            col_names = {r[1] for r in conn.execute("PRAGMA table_info(memories)").fetchall()}
+            ns_col = "namespace" if "namespace" in col_names else "'default' as namespace"
+
+            rows = conn.execute(
+                f"SELECT text, trust, source, {ns_col}, thread_id, timestamp, created_at "
+                f"FROM memories ORDER BY timestamp DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+
+            results = []
+            for r in rows:
+                results.append({
+                    "text": r["text"],
+                    "trust": r["trust"],
+                    "source": r["source"] or "unknown",
+                    "namespace": r["namespace"] if "namespace" in col_names else "default",
+                    "thread_id": r["thread_id"],
+                    "timestamp": r["timestamp"],
+                    "created_at": r["created_at"] if "created_at" in col_names else None,
+                })
+            conn.close()
+            logger.info("[COPILOT_CTX] Fetched %d memories from MCP database", len(results))
+            return results
+        except Exception as e:
+            logger.warning("[COPILOT_CTX] Failed to read MCP database: %s", e)
+            return []
+
+    # ==================================================================
+    # Web Search Bridge — DuckDuckGo search for real-time information
+    # ==================================================================
+
+    _WEB_SEARCH_PATTERNS = (
+        "search for", "search the web", "search duckduckgo", "search ddg",
+        "look up", "look it up", "google", "find out about",
+        "latest news", "recent news", "current news", "what happened",
+        "what's happening", "whats happening", "breaking news",
+        "state of the union", "election results", "weather in", "weather today",
+        "weather forecast", "weather tomorrow",
+        "score of", "price of", "stock price", "who won",
+        "search online", "web search", "can you search",
+        "find me", "find information",
+        "today's news", "news about", "news on",
+    )
+
+    def _is_web_search_query(self, text: str) -> bool:
+        """True if the user is asking for a web search / real-time information."""
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+        # Don't trigger on meta-questions about the search tool itself
+        if "how does" in t and "search" in t:
+            return False
+        return any(p in t for p in self._WEB_SEARCH_PATTERNS)
+
+    def _extract_search_query(self, text: str) -> str:
+        """Extract the actual search query from the user's message.
+
+        Strips common prefixes like 'search for', 'look up', etc.
+        """
+        t = (text or "").strip()
+        tl = t.lower()
+        prefixes = [
+            "search for", "search the web for", "search duckduckgo for",
+            "search ddg for", "look up", "google", "find out about",
+            "can you search for", "can you search", "can you look up",
+            "search online for", "web search for", "web search",
+            "find me", "find information about", "find information on",
+        ]
+        for prefix in prefixes:
+            if tl.startswith(prefix):
+                return t[len(prefix):].strip().lstrip(":")
+        # If no prefix matched, use the full text as the search query
+        return t
+
+    def _run_web_search(self, query: str, max_results: int = 8) -> List[Dict[str, Any]]:
+        """Run a DuckDuckGo web search and return results.
+
+        Uses multi-angle research mode for comprehensive, balanced results.
+        Returns a list of dicts with keys: title, url, snippet.
+        """
+        try:
+            from personal_agent.web_search import WebSearchTool
+            searcher = WebSearchTool(max_results=max_results)
+            response = searcher.research(query, max_results=max_results)
+            if response.error:
+                logger.warning("[WEB_SEARCH] Search error: %s", response.error)
+                return []
+            results = []
+            for r in response.results:
+                results.append({
+                    "title": r.title,
+                    "url": r.url,
+                    "snippet": r.snippet,
+                })
+            logger.info("[WEB_SEARCH] '%s' → %d results (research mode)", query, len(results))
+            return results
+        except Exception as e:
+            logger.warning("[WEB_SEARCH] Failed: %s", e)
+            return []
 
     def _is_memory_citation_request(self, text: str) -> bool:
         """True if the user explicitly asks for chat-grounded recall/citation.

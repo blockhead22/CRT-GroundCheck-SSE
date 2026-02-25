@@ -505,6 +505,10 @@ def get_introspection(request: Request, thread_id: str = Query("default")):
                 "verbosity": personality.get("verbosity", "balanced"),
                 "emoji": personality.get("emoji", "moderate"),
                 "format": personality.get("format", "mixed"),
+                "state": personality.get("state", "balanced_companion"),
+                "state_confidence": personality.get("state_confidence"),
+                "state_reason": personality.get("state_reason"),
+                "state_transitioned": personality.get("state_transitioned", False),
             }
     except Exception as e:
         logger.debug(f"[INTROSPECTION] Error: {e}")
@@ -1029,6 +1033,12 @@ def set_heartbeat_config(request: Request, thread_id: str, req: "HeartbeatConfig
         max_tokens=req.max_tokens,
         temperature=req.temperature,
         dry_run=req.dry_run,
+        news_monitoring_enabled=req.news_monitoring_enabled,
+        news_topics=list(req.news_topics or []),
+        news_query_suffix=req.news_query_suffix,
+        news_max_results=req.news_max_results,
+        news_cooldown_seconds=req.news_cooldown_seconds,
+        news_post_submolt=req.news_post_submolt,
     )
 
     # Store in DB

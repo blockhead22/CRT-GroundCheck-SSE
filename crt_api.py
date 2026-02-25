@@ -61,6 +61,9 @@ from personal_agent.jobs_db import (
 from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.training_loop import CRTTrainingLoop
+from personal_agent.dnnt.background_learning import BackgroundLearningConfig
+from personal_agent.dnnt_retraining_loop import DNNTBackgroundLoop
+from personal_agent.model_router import ModelRouter
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 from personal_agent.db_utils import get_thread_session_db, get_db_connection
 from personal_agent.engine.collapse_trails import get_collapse_trail_logger
@@ -828,6 +831,7 @@ def create_app() -> FastAPI:
     learned_cfg = (runtime_cfg.get("learned_suggestions") or {}) if isinstance(runtime_cfg, dict) else {}
     loop_cfg = (runtime_cfg.get("training_loop") or {}) if isinstance(runtime_cfg, dict) else {}
     jobs_cfg = (runtime_cfg.get("background_jobs") or {}) if isinstance(runtime_cfg, dict) else {}
+    dnnt_cfg = (runtime_cfg.get("dnnt_retraining") or {}) if isinstance(runtime_cfg, dict) else {}
 
     # Shared training loop (suggestion-only model). Stored in app.state for endpoints.
     training_loop = CRTTrainingLoop(
@@ -837,6 +841,26 @@ def create_app() -> FastAPI:
         loop_cfg=loop_cfg,
     )
     app.state.training_loop = training_loop
+
+    # Optional managed DNNT background retraining loop.
+    dnnt_learning_cfg = BackgroundLearningConfig(
+        output_dir=str(dnnt_cfg.get("output_dir") or "models/dnnt"),
+        collected_examples_path=str(dnnt_cfg.get("collected_examples_path") or "data/dnnt_collected_training_data.jsonl"),
+        collapse_trails_path=str(dnnt_cfg.get("collapse_trails_path") or "data/collapse_trails.jsonl"),
+        state_path=str(dnnt_cfg.get("state_path") or "data/dnnt_background_state.json"),
+        poll_interval_seconds=float(dnnt_cfg.get("poll_interval_seconds") or 1800),
+        min_new_examples=int(dnnt_cfg.get("min_new_examples") or 24),
+        max_examples=int(dnnt_cfg.get("max_examples") or 4000),
+        batch_size=int(dnnt_cfg.get("batch_size") or 8),
+        epochs=int(dnnt_cfg.get("epochs") or 1),
+        learning_rate=float(dnnt_cfg.get("learning_rate") or 2e-4),
+    )
+    dnnt_retraining_loop = DNNTBackgroundLoop(
+        enabled=bool(dnnt_cfg.get("enabled", False)),
+        poll_interval_seconds=float(dnnt_cfg.get("poll_interval_seconds") or 1800),
+        config=dnnt_learning_cfg,
+    )
+    app.state.dnnt_retraining_loop = dnnt_retraining_loop
 
     # Optional: background jobs worker + idle scheduler.
     # Stored on app.state so endpoints can report status.
@@ -964,6 +988,7 @@ def create_app() -> FastAPI:
     _llm_client: Optional[OllamaClient] = None
     _llm_lock = threading.Lock()
     _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
+    model_router = ModelRouter(default_model=os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest"))
     
     def get_llm_client() -> Optional[OllamaClient]:
         """Get or create shared LLM client for hybrid extraction.
@@ -1020,6 +1045,13 @@ def create_app() -> FastAPI:
                 logger.info(f"[API] Enabled hybrid LLM extraction for thread {tid}")
             except Exception as e:
                 logger.warning(f"[API] Failed to enable LLM extraction for thread {tid}: {e}")
+        
+        # Seed self-knowledge into this thread's memory (idempotent)
+        try:
+            from scripts.seed_self_knowledge import seed_self_knowledge
+            seed_self_knowledge(engine.memory)
+        except Exception as e:
+            logger.debug(f"[API] Self-knowledge seed for {tid}: {e}")
         
         with _engines_lock:
             engines[tid] = engine
@@ -1090,6 +1122,7 @@ def create_app() -> FastAPI:
     app.state.log_collapse_trail = _log_collapse_trail
     app.state.engines = engines
     app.state.turn_counters = turn_counters
+    app.state.model_router = model_router
 
     # Route modules (strangler pattern): endpoints move out of this file incrementally.
     register_routes(app)
@@ -1135,6 +1168,12 @@ def create_app() -> FastAPI:
             logger.warning(f"[STARTUP] Failed to start scheduled tasks loop: {e}")
 
         try:
+            app.state.dnnt_retraining_loop.start()
+            logger.info("[STARTUP] DNNT retraining loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start DNNT retraining loop: {e}")
+
+        try:
             app.state.reflection_loop.start()
             logger.info("[STARTUP] Reflection loop started")
         except Exception as e:
@@ -1157,6 +1196,34 @@ def create_app() -> FastAPI:
             logger.info("[STARTUP] Heartbeat loop started")
         except Exception as e:
             logger.warning(f"[STARTUP] Failed to start heartbeat loop: {e}")
+
+        # Seed self-knowledge (idempotent — skips facts that already exist)
+        try:
+            from scripts.seed_self_knowledge import seed_self_knowledge
+            import glob
+            # Seed into all existing per-thread memory databases
+            pattern = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personal_agent", "crt_memory_*.db")
+            thread_dbs = glob.glob(pattern)
+            # Also seed the shared DB if it exists
+            shared_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personal_agent", "crt_memory_shared.db")
+            if os.path.exists(shared_db) and shared_db not in thread_dbs:
+                thread_dbs.append(shared_db)
+            total_seeded = 0
+            for db_p in thread_dbs:
+                try:
+                    from personal_agent.crt_memory import CRTMemorySystem
+                    from personal_agent.crt_core import CRTConfig
+                    ms = CRTMemorySystem(db_p, CRTConfig())
+                    c = seed_self_knowledge(ms)
+                    total_seeded += c
+                except Exception as e:
+                    logger.warning(f"[STARTUP] Failed to seed {db_p}: {e}")
+            if total_seeded:
+                logger.info(f"[STARTUP] Seeded {total_seeded} self-knowledge memories across {len(thread_dbs)} DBs")
+            else:
+                logger.info(f"[STARTUP] Self-knowledge already seeded in {len(thread_dbs)} DBs")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to seed self-knowledge: {e}")
 
         # Schedule periodic session cleanup (every 6 hours)
         def _session_cleanup_worker():
@@ -1191,6 +1258,12 @@ def create_app() -> FastAPI:
             logger.info("[SHUTDOWN] Scheduled tasks loop stopped")
         except Exception as e:
             logger.warning(f"[SHUTDOWN] Error stopping scheduled tasks: {e}")
+
+        try:
+            app.state.dnnt_retraining_loop.stop()
+            logger.info("[SHUTDOWN] DNNT retraining loop stopped")
+        except Exception as e:
+            logger.warning(f"[SHUTDOWN] Error stopping DNNT retraining loop: {e}")
 
         try:
             jobs_worker.stop()

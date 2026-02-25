@@ -61,6 +61,9 @@ full = [
 mcp = [
     "mcp>=1.0.0",
 ]
+channels = [
+    "python-telegram-bot>=21.0",
+]
 
 [project.scripts]
 crt-mcp = "personal_agent.crt_mcp_server:main"
