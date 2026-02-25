@@ -137,21 +137,46 @@ def _augment_query_with_continuity(
     if not _looks_like_follow_up(message):
         return message
 
-    lines: List[str] = []
-    for item in history_messages[-max_history_lines:]:
+    # Keep the newest lines first when fitting into budget so follow-up cues remain relevant.
+    instruction = (
+        "[CONTINUITY INSTRUCTION] Treat this as a follow-up to the recent conversation. "
+        "Resolve references like 'it', 'that', or 'the highlights' using context below."
+    )
+    context_header = "[RECENT CONVERSATION CONTEXT]"
+    fixed_cost = len(instruction) + len(context_header) + 8
+    budget = max(240, max_chars - fixed_cost)
+
+    lines_rev: List[str] = []
+    used = 0
+    for item in reversed(history_messages):
         role = str(item.get("role") or "user").strip().lower()
-        content = str(item.get("content") or "").strip()
+        content = re.sub(r"\s+", " ", str(item.get("content") or "")).strip()
         if not content:
             continue
         role_label = "User" if role == "user" else "Assistant"
-        lines.append(f"{role_label}: {content}")
+        per_line_cap = 260 if role == "user" else 420
+        if len(content) > per_line_cap:
+            content = content[: per_line_cap - 3].rstrip() + "..."
+        line = f"{role_label}: {content}"
+        line_len = len(line) + 1
 
-    if not lines:
+        if used + line_len > budget and lines_rev:
+            continue
+        if used + line_len > budget:
+            keep = max(32, budget - used - len(role_label) - 6)
+            line = f"{role_label}: {content[:keep].rstrip()}..."
+            line_len = len(line) + 1
+
+        lines_rev.append(line)
+        used += line_len
+        if len(lines_rev) >= max_history_lines:
+            break
+
+    if not lines_rev:
         return message
 
-    context_block = "[RECENT CONVERSATION CONTEXT]\n" + "\n".join(lines)
-    if len(context_block) > max_chars:
-        context_block = context_block[-max_chars:]
+    lines = list(reversed(lines_rev))
+    context_block = f"{instruction}\n{context_header}\n" + "\n".join(lines)
     return f"{message}\n\n{context_block}"
 
 
@@ -1595,13 +1620,47 @@ CONSTRAINTS:
             try:
                 import ollama as ollama_lib
 
-                stream = ollama_lib.chat(
-                    model=selected_stream_model or llm_client.model,
-                    messages=messages,
-                    stream=True,
-                    options={"num_predict": 1000, "temperature": 0.6},
-                    think=True,
-                )
+                model_name = selected_stream_model or llm_client.model
+                model_name_l = str(model_name or "").lower()
+                supports_thinking = any(tag in model_name_l for tag in ("deepseek-r1", "qwen3", "qwq"))
+                use_thinking = supports_thinking
+                try:
+                    if use_thinking:
+                        stream = ollama_lib.chat(
+                            model=model_name,
+                            messages=messages,
+                            stream=True,
+                            options={"num_predict": 1000, "temperature": 0.6},
+                            think=True,
+                        )
+                    else:
+                        stream = ollama_lib.chat(
+                            model=model_name,
+                            messages=messages,
+                            stream=True,
+                            options={"num_predict": 1000, "temperature": 0.6},
+                        )
+                except Exception as think_err:
+                    think_msg = str(think_err or "").lower()
+                    unsupported_thinking = (
+                        "does not support thinking" in think_msg
+                        or "unexpected keyword argument 'think'" in think_msg
+                        or "unsupported parameter" in think_msg and "think" in think_msg
+                    )
+                    if not unsupported_thinking:
+                        raise
+                    logger.warning(
+                        "[STREAM] Model '%s' does not support thinking; retrying without think: %s",
+                        model_name,
+                        think_err,
+                    )
+                    yield f"data: {json.dumps({'type': 'status', 'content': 'Model does not support thinking; continuing without thinking mode.'})}\n\n"
+                    stream = ollama_lib.chat(
+                        model=model_name,
+                        messages=messages,
+                        stream=True,
+                        options={"num_predict": 1000, "temperature": 0.6},
+                    )
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'content': f'Failed to start stream: {e}'})}\n\n"
                 return
