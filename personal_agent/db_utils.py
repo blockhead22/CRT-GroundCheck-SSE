@@ -772,6 +772,33 @@ class ThreadSessionDB:
             "last_summary": row["last_summary"],
         }
 
+    def list_heartbeat_news_cache(self, thread_id: str, limit: int = 10) -> list[dict]:
+        """List latest heartbeat news cache entries for a thread."""
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT topic, digest_hash, last_run, last_summary
+            FROM heartbeat_news_cache
+            WHERE thread_id = ?
+            ORDER BY last_run DESC
+            LIMIT ?
+            """,
+            (thread_id, max(1, int(limit))),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            {
+                "topic": row["topic"],
+                "digest_hash": row["digest_hash"],
+                "last_run": row["last_run"],
+                "last_summary": row["last_summary"],
+            }
+            for row in rows
+        ]
+
     def upsert_heartbeat_news_cache(
         self,
         thread_id: str,

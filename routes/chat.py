@@ -355,6 +355,67 @@ def _get_preference_profile(thread_id: str, memory_system) -> Dict[str, Any]:
     return {}
 
 
+def _format_preference_instruction(preference_profile: Optional[Dict[str, Any]]) -> str:
+    """Create concise, high-confidence preference constraints for stream prompts."""
+    if not isinstance(preference_profile, dict):
+        return ""
+
+    response_style = preference_profile.get("response_style")
+    if not isinstance(response_style, dict):
+        response_style = preference_profile
+    code_style = preference_profile.get("code_style")
+    if not isinstance(code_style, dict):
+        code_style = {}
+
+    def _pref_value(pref_map: Dict[str, Any], key: str) -> tuple[str, float]:
+        raw = pref_map.get(key)
+        if isinstance(raw, dict):
+            val = str(raw.get("value") or "").strip().lower()
+            try:
+                conf = float(raw.get("confidence") or 0.0)
+            except Exception:
+                conf = 0.0
+            return val, conf
+        if raw is None:
+            return "", 0.0
+        return str(raw).strip().lower(), 0.5
+
+    lines: List[str] = []
+
+    verbosity, verbosity_conf = _pref_value(response_style, "verbosity")
+    if verbosity_conf >= 0.6:
+        if verbosity == "concise":
+            lines.append("Keep responses concise unless the user asks for detail.")
+        elif verbosity == "verbose":
+            lines.append("Provide detailed responses with context by default.")
+
+    fmt, fmt_conf = _pref_value(response_style, "format")
+    if fmt_conf >= 0.6:
+        if fmt == "structured":
+            lines.append("Prefer structured formatting (sections/lists) when helpful.")
+        elif fmt == "freeform":
+            lines.append("Prefer natural prose over list-heavy formatting.")
+
+    emoji, emoji_conf = _pref_value(response_style, "emoji_usage")
+    if emoji_conf >= 0.6:
+        if emoji == "none":
+            lines.append("Do not use emoji.")
+        elif emoji == "minimal":
+            lines.append("Use emoji sparingly.")
+
+    citation, citation_conf = _pref_value(response_style, "citation_style")
+    if citation_conf >= 0.6 and citation == "required":
+        lines.append("When providing factual claims, include sources where possible.")
+
+    language, language_conf = _pref_value(code_style, "language")
+    if language_conf >= 0.6 and language:
+        lines.append(f"For code examples, prefer {language} unless user asks otherwise.")
+
+    if not lines:
+        return ""
+    return "LEARNED USER PREFERENCES:\n" + "\n".join(f"- {line}" for line in lines)
+
+
 def _route_model_for_request(
     request: Request,
     *,
@@ -1415,7 +1476,13 @@ def chat_stream(req: ChatSendRequest, request: Request):
                     )
 
             style_instruction = _format_style_instruction(style_profile, personality_profile)
-            style_block = f"\n\nTONE & STYLE:\n{style_instruction}" if style_instruction else ""
+            pref_instruction = _format_preference_instruction(preference_profile)
+            style_parts: List[str] = []
+            if style_instruction:
+                style_parts.append("TONE & STYLE:\n" + style_instruction)
+            if pref_instruction:
+                style_parts.append(pref_instruction)
+            style_block = ("\n\n" + "\n\n".join(style_parts)) if style_parts else ""
 
             # 3. Load background loop state
             background_thought_text = ""
