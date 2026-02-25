@@ -525,16 +525,21 @@ def get_introspection(request: Request, thread_id: str = Query("default")):
 
 @router.get("/api/loops/stream")
 def loops_stream(
+    request: Request,
     thread_id: str = Query("default"),
     interval_seconds: float = Query(2.5, ge=0.5, le=60.0),
 ):
-    """Stream background loop updates (reflection scorecards + personality profiles)."""
+    """Stream background runtime updates for observability."""
 
     def generate():
         session_db = _get_session_db()
         last_reflection_ts = 0.0
         last_personality_ts = 0.0
         last_heartbeat = 0.0
+        last_heartbeat_state_sig = ""
+        last_news_sig = ""
+        last_jobs_sig = ""
+        last_tasks_sig = ""
 
         while True:
             try:
@@ -566,6 +571,72 @@ def loops_stream(
                 if now - last_heartbeat >= interval_seconds:
                     last_heartbeat = now
                     yield f"data: {json.dumps({'type': 'heartbeat', 'thread_id': thread_id, 'ts': now})}\n\n"
+
+                # Heartbeat state + latest actions
+                try:
+                    hb_state = session_db.get_heartbeat_state(thread_id)
+                    hb_sig = json.dumps(hb_state or {}, sort_keys=True, default=str)
+                    if hb_sig != last_heartbeat_state_sig:
+                        last_heartbeat_state_sig = hb_sig
+                        yield f"data: {json.dumps({'type': 'heartbeat_state', 'thread_id': thread_id, 'state': hb_state})}\n\n"
+                except Exception as e:
+                    logger.debug(f"[LOOPS] heartbeat_state stream error: {e}")
+
+                # Heartbeat news monitor cache
+                try:
+                    news_rows = session_db.list_heartbeat_news_cache(thread_id, limit=8)
+                    news_sig = json.dumps(news_rows or [], sort_keys=True, default=str)
+                    if news_sig != last_news_sig:
+                        last_news_sig = news_sig
+                        payload = {
+                            "type": "heartbeat_news",
+                            "thread_id": thread_id,
+                            "items": news_rows,
+                        }
+                        yield f"data: {json.dumps(payload)}\n\n"
+                except Exception as e:
+                    logger.debug(f"[LOOPS] heartbeat_news stream error: {e}")
+
+                # Background jobs worker status
+                try:
+                    jobs_worker = getattr(request.app.state, "jobs_worker", None)
+                    jobs_status = jobs_worker.status().to_dict() if jobs_worker else {"enabled": False, "running": False}
+                    jobs_sig = json.dumps(jobs_status or {}, sort_keys=True, default=str)
+                    if jobs_sig != last_jobs_sig:
+                        last_jobs_sig = jobs_sig
+                        payload = {
+                            "type": "jobs_worker_status",
+                            "status": jobs_status,
+                        }
+                        yield f"data: {json.dumps(payload)}\n\n"
+                except Exception as e:
+                    logger.debug(f"[LOOPS] jobs status stream error: {e}")
+
+                # Scheduled tasks status
+                try:
+                    from personal_agent.scheduled_tasks import get_due_tasks, get_pending_scheduled_tasks
+
+                    scheduled_db = str(getattr(request.app.state, "scheduled_tasks_db_path", "") or "")
+                    tasks_status: Dict[str, Any] = {"pending_count": 0, "due_count": 0, "next_due_at": None}
+                    if scheduled_db:
+                        pending = get_pending_scheduled_tasks(scheduled_db, thread_id=thread_id)
+                        due = [t for t in pending if float(t.scheduled_at) <= now]
+                        next_due = min((float(t.scheduled_at) for t in pending), default=None)
+                        # Global due queue can include non-thread tasks; useful for portal awareness.
+                        global_due = get_due_tasks(scheduled_db)
+                        tasks_status = {
+                            "pending_count": len(pending),
+                            "due_count": len(due),
+                            "global_due_count": len(global_due),
+                            "next_due_at": next_due,
+                        }
+                    tasks_sig = json.dumps(tasks_status, sort_keys=True, default=str)
+                    if tasks_sig != last_tasks_sig:
+                        last_tasks_sig = tasks_sig
+                        payload = {"type": "scheduled_tasks_status", "status": tasks_status}
+                        yield f"data: {json.dumps(payload)}\n\n"
+                except Exception as e:
+                    logger.debug(f"[LOOPS] scheduled tasks stream error: {e}")
 
                 time.sleep(interval_seconds)
             except GeneratorExit:

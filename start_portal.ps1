@@ -15,7 +15,7 @@ Write-Host "- Host: $env:CRT_HOST"
 Write-Host "- Port: $env:PORT"
 Write-Host "- HMR: enabled"
 Write-Host ""
-Write-Host "Portal commands: status | restart api | restart telegram | quit"
+Write-Host "Portal commands: status | restart api | restart telegram | restart heartbeat | restart dnnt | quit"
 Write-Host ""
 
 & .venv\Scripts\python.exe tools\runtime_portal.py --api-url $env:CRT_API_URL

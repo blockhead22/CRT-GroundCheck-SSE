@@ -42,6 +42,26 @@ def _http_get_json(url: str, timeout: float = 2.0) -> tuple[Optional[dict], Opti
         return None, str(e)
 
 
+def _http_post_json(url: str, payload: Optional[dict] = None, timeout: float = 3.0) -> tuple[Optional[dict], Optional[str]]:
+    body = b""
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+    try:
+        req = urllib.request.Request(
+            url,
+            method="POST",
+            data=body,
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = resp.read().decode("utf-8", errors="ignore")
+        return json.loads(data or "{}"), None
+    except urllib.error.HTTPError as e:
+        return None, f"http_{e.code}"
+    except Exception as e:
+        return None, str(e)
+
+
 @dataclass
 class ManagedProcess:
     name: str
@@ -279,7 +299,13 @@ class RuntimePortal:
             self.log(f"[portal] unknown command: {raw}")
 
     def _print_help(self) -> None:
-        self.log("commands: status | start <api|telegram|all> | stop <...> | restart <...> | hmr <on|off|status> | quit")
+        self.log(
+            "commands: status | "
+            "start <api|telegram|all|heartbeat|dnnt> | "
+            "stop <api|telegram|all|heartbeat|dnnt> | "
+            "restart <api|telegram|all|heartbeat|dnnt> | "
+            "hmr <on|off|status> | quit"
+        )
 
     def _print_status(self) -> None:
         if self.api_external:
@@ -290,6 +316,9 @@ class RuntimePortal:
         self.log(f"[status] api_health={'up' if up else f'down ({err})'}")
 
     def _handle_process_command(self, action: str, target: str) -> None:
+        if target in {"heartbeat", "dnnt"}:
+            self._handle_api_background_command(action, target)
+            return
         names = ["api", "telegram"] if target == "all" else [target]
         for name in names:
             proc = self.processes.get(name)
@@ -305,6 +334,38 @@ class RuntimePortal:
                     self.log("[portal] API is external; cannot restart unmanaged process")
                 else:
                     proc.restart(reason="manual")
+
+    def _handle_api_background_command(self, action: str, target: str) -> None:
+        endpoint_map = {
+            "heartbeat": ("/api/heartbeat/start", "/api/heartbeat/stop"),
+            "dnnt": ("/api/dnnt/retraining/start", "/api/dnnt/retraining/stop"),
+        }
+        endpoints = endpoint_map.get(target)
+        if endpoints is None:
+            self.log(f"[portal] unsupported background target: {target}")
+            return
+        start_ep, stop_ep = endpoints
+
+        if action == "start":
+            _, err = _http_post_json(f"{self.api_url}{start_ep}")
+            self.log(
+                f"[portal] {target} start {'ok' if not err else f'failed ({err})'}"
+            )
+            return
+        if action == "stop":
+            _, err = _http_post_json(f"{self.api_url}{stop_ep}")
+            self.log(
+                f"[portal] {target} stop {'ok' if not err else f'failed ({err})'}"
+            )
+            return
+        if action == "restart":
+            _, err1 = _http_post_json(f"{self.api_url}{stop_ep}")
+            _, err2 = _http_post_json(f"{self.api_url}{start_ep}")
+            if not err1 and not err2:
+                self.log(f"[portal] {target} restart ok")
+            else:
+                self.log(f"[portal] {target} restart failed (stop={err1}, start={err2})")
+            return
 
     def _handle_hmr_command(self, arg: str) -> None:
         if arg == "status":
@@ -353,6 +414,7 @@ class RuntimePortal:
 
         hb, hb_err = _http_get_json(f"{self.api_url}/api/heartbeat/status", timeout=1.5)
         jobs, jobs_err = _http_get_json(f"{self.api_url}/api/jobs/status", timeout=1.5)
+        dnnt, dnnt_err = _http_get_json(f"{self.api_url}/api/dnnt/retraining/status", timeout=1.5)
 
         hb_state = "unknown"
         if isinstance(hb, dict):
@@ -367,7 +429,13 @@ class RuntimePortal:
         elif jobs_err:
             jobs_state = f"err:{jobs_err}"
 
-        return f"[health] api=up heartbeat={hb_state} jobs={jobs_state}"
+        dnnt_state = "unknown"
+        if isinstance(dnnt, dict):
+            dnnt_state = "running" if dnnt.get("running") else "idle"
+        elif dnnt_err:
+            dnnt_state = f"err:{dnnt_err}"
+
+        return f"[health] api=up heartbeat={hb_state} jobs={jobs_state} dnnt={dnnt_state}"
 
     def _watchdog_loop(self) -> None:
         while not self._stop.is_set():

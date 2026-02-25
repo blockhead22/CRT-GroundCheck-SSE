@@ -81,10 +81,6 @@ _CONTINUITY_FOLLOWUP_HINTS = (
     "highlights",
     "summarize",
     "summary",
-    "that",
-    "those",
-    "it",
-    "them",
 )
 
 
@@ -114,6 +110,9 @@ def _looks_like_follow_up(message: str) -> bool:
     """Heuristic for short referential prompts that need carry-forward context."""
     text = str(message or "").strip().lower()
     if not text:
+        return False
+    # Avoid attaching history to explicit new-profile assertions.
+    if re.search(r"\b(i am|i'm|my name|call me|i work|i live|my favorite|i prefer)\b", text):
         return False
     words = re.findall(r"\w+", text)
     if len(words) <= 8:
