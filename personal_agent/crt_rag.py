@@ -485,6 +485,32 @@ class CRTEnhancedRAG:
         )
         
         return citation
+
+    def _strip_continuity_augmented_text(self, text: str) -> str:
+        """Strip appended chat continuity blocks when present.
+
+        routes/chat.py may append helper blocks like:
+        - [CONTINUITY INSTRUCTION]
+        - [RECENT CONVERSATION CONTEXT]
+
+        These should not be interpreted as fresh user assertions.
+        """
+        t = (text or "").strip()
+        if not t:
+            return ""
+
+        markers = ("[CONTINUITY INSTRUCTION]", "[RECENT CONVERSATION CONTEXT]")
+        cut_at: Optional[int] = None
+        for marker in markers:
+            idx = t.find(marker)
+            if idx >= 0 and (cut_at is None or idx < cut_at):
+                cut_at = idx
+
+        if cut_at is not None:
+            base = t[:cut_at].strip()
+            if base:
+                return base
+        return t
     
     def _detect_gaslighting_attempt(
         self,
@@ -506,7 +532,10 @@ class CRTEnhancedRAG:
             (r"you(?:'re| are)\s+(?:wrong|confused|mistaken).*?(?:about\s+)?(\w+)", "accusation_denial"),
         ]
         
-        query_lower = user_query.lower()
+        query_clean = self._strip_continuity_augmented_text(user_query)
+        query_lower = query_clean.lower()
+        if not query_lower:
+            return False, None, None, None
         
         # Broader gaslighting patterns (no capture group needed)
         gaslight_phrases = [
@@ -573,7 +602,10 @@ class CRTEnhancedRAG:
         Returns:
             (is_blindside, reason_string)
         """
-        query_lower = (user_query or "").lower()
+        query_clean = self._strip_continuity_augmented_text(user_query)
+        query_lower = query_clean.lower()
+        if not query_lower:
+            return False, None
 
         # ---- Pattern-based blanket retraction ----
         blindside_patterns = [
@@ -594,7 +626,7 @@ class CRTEnhancedRAG:
         # If the message asserts ≥3 new facts that contradict existing ones,
         # treat it as a blindside even without an explicit retraction phrase.
         if previous_memories:
-            new_facts = extract_fact_slots(user_query) or {}
+            new_facts = extract_fact_slots(query_clean) or {}
             if len(new_facts) >= 3:
                 contradicting = 0
                 for prev_mem in previous_memories:
@@ -3103,21 +3135,24 @@ class CRTEnhancedRAG:
         profile_updates: List[Dict[str, str]] = []
         contradiction_detected: bool = False
         contradiction_entry = None
+        user_text = self._strip_continuity_augmented_text(user_query)
+        if not user_text:
+            user_text = (user_query or "").strip()
 
         # High-risk prompt types should be treated as instructions even if they do not
         # look like questions (multi-paragraph prompt injection often starts as declarative).
-        is_memory_citation = self._is_memory_citation_request(user_query)
-        is_contradiction_status = self._is_contradiction_status_request(user_query)
-        is_memory_inventory = self._is_memory_inventory_request(user_query)
+        is_memory_citation = self._is_memory_citation_request(user_text)
+        is_contradiction_status = self._is_contradiction_status_request(user_text)
+        is_memory_inventory = self._is_memory_inventory_request(user_text)
 
-        user_input_kind = self._classify_user_input(user_query)
+        user_input_kind = self._classify_user_input(user_text)
         logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind}")
         
         # Check for natural language contradiction resolution FIRST
         # This prevents the resolution statement from being stored as a new assertion
         nl_resolution_occurred = False
         try:
-            nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_query)
+            nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_text)
             if nl_resolution_occurred:
                 logger.info(f"[NL_RESOLUTION] Natural language resolution detected and processed")
                 # The system DID detect a contradiction — mark it so metadata is correct.
@@ -3146,12 +3181,12 @@ class CRTEnhancedRAG:
                 if m.source == MemorySource.USER
             ]
             is_gaslighting, denied_value, original_memory, slot = self._detect_gaslighting_attempt(
-                user_query, previous_user_memories
+                user_text, previous_user_memories
             )
             if is_gaslighting and original_memory:
                 logger.info(f"[GASLIGHTING] Detected denial of '{denied_value}' - citing original")
                 citation = self._build_gaslighting_citation(
-                    denial_text=user_query,
+                    denial_text=user_text,
                     denied_value=denied_value,
                     original_memory=original_memory,
                     slot=slot
@@ -3159,7 +3194,7 @@ class CRTEnhancedRAG:
                 # Record this as a DENIAL contradiction
                 try:
                     new_memory = self.memory.store_memory(
-                        text=user_query,
+                        text=user_text,
                         confidence=0.5,  # Lower confidence for denial attempts
                         source=MemorySource.USER,
                         context={"type": "user_input", "kind": "denial"}
@@ -3169,10 +3204,10 @@ class CRTEnhancedRAG:
                         new_memory_id=new_memory.memory_id,
                         drift_mean=0.9,  # High drift for gaslighting
                         confidence_delta=0.45,
-                        query=user_query,
+                        query=user_text,
                         summary=f"GASLIGHTING: User denied saying '{denied_value}' but we have record",
                         old_text=original_memory.text,
-                        new_text=user_query,
+                        new_text=user_text,
                         old_vector=original_memory.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=GaslightingContradictionType.DENIAL,
@@ -3214,14 +3249,14 @@ class CRTEnhancedRAG:
                 if m.source == MemorySource.USER
             ]
             is_blindside, blindside_reason = self._detect_blindside_attack(
-                user_query, prev_user_mems
+                user_text, prev_user_mems
             )
             if is_blindside:
                 logger.info(f"[BLINDSIDE] Detected: {blindside_reason}")
                 # Store the message at low confidence but DO NOT accept the new facts
                 try:
                     self.memory.store_memory(
-                        text=user_query,
+                        text=user_text,
                         confidence=0.3,
                         source=MemorySource.USER,
                         context={"type": "user_input", "kind": "blindside"},
@@ -3271,7 +3306,7 @@ class CRTEnhancedRAG:
         # Deterministic safe path: refuse prompt/system-instruction disclosure.
         # This prevents the model from hallucinating and avoids memory-claim phrasing
         # that can confuse the evaluator.
-        if user_input_kind in ("question", "instruction") and self._is_system_prompt_request(user_query):
+        if user_input_kind in ("question", "instruction") and self._is_system_prompt_request(user_text):
             answer = (
                 "I can’t share my system prompt or hidden instructions verbatim. "
                 "If you tell me what you’re trying to do, I can summarize how I’m designed to behave "
@@ -3301,7 +3336,7 @@ class CRTEnhancedRAG:
         if user_input_kind == "assertion":
             logger.info(f"[PROFILE_DEBUG] Processing assertion - about to store memory and update profile")
             user_memory = self.memory.store_memory(
-                text=user_query,
+                text=user_text,
                 confidence=0.95,  # User assertions are high confidence
                 source=MemorySource.USER,
                 context={"type": "user_input", "kind": user_input_kind},
@@ -3312,9 +3347,9 @@ class CRTEnhancedRAG:
             # Also update global user profile with extracted facts
             # This enables cross-thread memory (e.g., name persists across chats)
             try:
-                logger.info(f"[PROFILE_DEBUG] Calling user_profile.update_from_text with: {user_query[:100]}")
+                logger.info(f"[PROFILE_DEBUG] Calling user_profile.update_from_text with: {user_text[:100]}")
                 profile_result = self.user_profile.update_from_text(
-                    user_query,
+                    user_text,
                     thread_id=str(thread_id or "default"),
                 )
                 
@@ -3349,7 +3384,7 @@ class CRTEnhancedRAG:
             # Long-form narrative summary capture (best-effort, low-trust)
             try:
                 self._maybe_store_longform_summary(
-                    text=user_query,
+                    text=user_text,
                     thread_id=thread_id,
                     user_marked_important=user_marked_important,
                 )
@@ -3360,7 +3395,7 @@ class CRTEnhancedRAG:
             # This is intentionally conservative: only hard CONFLICT types, and only when
             # the asserted value matches one side of the conflict.
             try:
-                self._resolve_open_conflicts_from_assertion(user_query)
+                self._resolve_open_conflicts_from_assertion(user_text)
             except Exception as e:
                 # Resolution is best-effort; never block the main chat loop.
                 log_swallowed_exception("crt_rag.query._resolve_open_conflicts", e)
@@ -3368,25 +3403,25 @@ class CRTEnhancedRAG:
             # P0 FIX: Track implicit confirmations for lifecycle transitions
             # When user repeats the "new" value from a contradiction, it's an implicit confirmation
             try:
-                self._track_implicit_confirmations(user_query)
+                self._track_implicit_confirmations(user_text)
             except Exception as e:
                 logger.warning(f"[LIFECYCLE] Failed to track implicit confirmations: {e}")
             
             # BUG 1 FIX: Check for contradictions using ML detector (ALL facts, not hardcoded slots)
             try:
                 contradiction_detected, contradiction_entry = self._check_all_fact_contradictions_ml(
-                    user_memory, user_query, thread_id=thread_id
+                    user_memory, user_text, thread_id=thread_id
                 )
             except Exception as e:
                 logger.warning(f"[ML_CONTRADICTION] Failed to check ML contradictions: {e}", exc_info=True)
 
             # Deterministic safe ack: user name declarations should not be embellished.
             # (e.g., never add a location like "New York" unless the user said it.)
-            if self._is_user_name_declaration(user_query):
-                logger.debug("Name declaration detected: %s", user_query[:80])
+            if self._is_user_name_declaration(user_text):
+                logger.debug("Name declaration detected: %s", user_text[:80])
                 # Prefer the name declared in this message (avoids echoing stale prior names
                 # from the DB/profile seed).
-                declared_facts = extract_fact_slots(user_query) or {}
+                declared_facts = extract_fact_slots(user_text) or {}
                 declared_name = declared_facts.get("name")
                 if declared_name is not None and getattr(declared_name, "value", None):
                     answer = f"Thanks — noted: your name is {declared_name.value}."
@@ -3399,11 +3434,11 @@ class CRTEnhancedRAG:
 
                 # If the input also contains a question (e.g., "Hi, I'm Nick. Who are you?"),
                 # answer both the name acknowledgment AND the question.
-                if self._is_assistant_profile_question(user_query):
+                if self._is_assistant_profile_question(user_text):
                     assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
                     assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
                     if assistant_profile_enabled:
-                        profile_answer = self._build_assistant_profile_answer(user_query)
+                        profile_answer = self._build_assistant_profile_answer(user_text)
                         answer = f"{answer} {profile_answer}"
 
                 # If the user previously stated a different name, record a contradiction entry.
@@ -3413,7 +3448,7 @@ class CRTEnhancedRAG:
                 if not contradiction_detected:
                     logger.debug("Name contradiction check starting (user_memory=%s)", user_memory is not None)
                     try:
-                        new_facts = extract_fact_slots(user_query) or {}
+                        new_facts = extract_fact_slots(user_text) or {}
                         new_name = new_facts.get("name")
                         logger.debug("Extracted name from query: %s", new_name)
                         if new_name is not None:
@@ -3470,7 +3505,7 @@ class CRTEnhancedRAG:
                                     confidence_new=0.95,
                                     confidence_prior=float(selected_prev.confidence),
                                     source=user_memory.source,
-                                    text_new=user_query,
+                                    text_new=user_text,
                                     text_prior=selected_prev.text,
                                     slot="name",
                                     value_new=str(getattr(new_name, "value", new_name)),
@@ -3484,10 +3519,10 @@ class CRTEnhancedRAG:
                                         new_memory_id=user_memory.memory_id,
                                         drift_mean=drift,
                                         confidence_delta=float(selected_prev.confidence) - 0.95,
-                                        query=user_query,
-                                        summary=f"User name changed: {selected_prev.text[:50]}... vs {user_query[:50]}...",
+                                        query=user_text,
+                                        summary=f"User name changed: {selected_prev.text[:50]}... vs {user_text[:50]}...",
                                         old_text=selected_prev.text,
-                                        new_text=user_query,
+                                        new_text=user_text,
                                         old_vector=selected_prev.vector,
                                         new_vector=user_vector,
                                     )
@@ -3526,7 +3561,7 @@ class CRTEnhancedRAG:
             # which asks the user to clarify — wrong behaviour when the user IS
             # providing the correction.
             if contradiction_detected:
-                facts = extract_fact_slots(user_query) or {}
+                facts = extract_fact_slots(user_text) or {}
                 fact_parts = [f"{getattr(v, 'value', v)}" for k, v in facts.items() if k != 'pet_name']
                 fact_hint = f" ({', '.join(fact_parts)})" if fact_parts else ""
                 answer = f"Noted — I've updated my records{fact_hint}. I see this differs from what I had before, so I've flagged the change."
@@ -3569,14 +3604,14 @@ class CRTEnhancedRAG:
         
         # Parse any explicit first-person fact assertions (used for relevance checks).
         # For most questions this will be empty, which is fine.
-        asserted_facts = extract_fact_slots(user_query) or {}
+        asserted_facts = extract_fact_slots(user_text) or {}
         
         # Compute relevant slots for contradiction filtering
         relevant_slots_set = set(inferred_slots or []) | set((asserted_facts or {}).keys())
         
         # BUG 2 FIX: Check for unresolved contradictions (gate blocking)
         gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
-            user_query,
+            user_text,
             inferred_slots,
             user_input_kind=user_input_kind,
         )
@@ -3636,7 +3671,7 @@ class CRTEnhancedRAG:
             }
         
         # Detect meta-queries about the system itself (not personal questions)
-        if "how does crt work" in user_query.lower() or "how does this work" in user_query.lower():
+        if "how does crt work" in user_text.lower() or "how does this work" in user_text.lower():
             # This is a system question - return explanatory content
             explanation = (
                 "CRT (Cognitive-Reflective Transformer) is a truthful personal AI system.\n\n"
@@ -3653,7 +3688,7 @@ class CRTEnhancedRAG:
                 text=explanation,
                 confidence=0.8,
                 source=MemorySource.SYSTEM,
-                context={"query": user_query, "type": "speech", "kind": "meta_explanation"},
+                context={"query": user_text, "type": "speech", "kind": "meta_explanation"},
                 user_marked_important=False,
             )
             
@@ -6081,7 +6116,7 @@ class CRTEnhancedRAG:
         CRITICAL: Name declarations are ALWAYS treated as assertions, even if followed by a question.
         Example: "Hi, I'm Nick Block. Who are you?" → "assertion" (contains name declaration)
         """
-        t = (text or "").strip()
+        t = self._strip_continuity_augmented_text(text)
         if not t:
             return "other"
 
