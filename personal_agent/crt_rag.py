@@ -5894,8 +5894,12 @@ class CRTEnhancedRAG:
                 seen_names: set[str] = set()
                 name_pat = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
                 first_person_patterns = (
-                    re.compile(r"\bmy name is\s+" + name_pat + r"(?:\b|[,.!?])"),
-                    re.compile(r"\bi(?:'m| am)\s+" + name_pat + r"(?:\b|[,.!?])"),
+                    # Anchor to start-ish phrasing so transcript blocks like
+                    # "Assistant: I'm Aether ..." are not mis-read as user declarations.
+                    re.compile(r"^\s*(?:hi|hey|hello)?[\s,.:!-]*(?:my name is)\s+" + name_pat + r"(?:\b|[,.!?])", re.IGNORECASE),
+                    re.compile(r"^\s*(?:hi|hey|hello)?[\s,.:!-]*(?:i(?:'m| am))\s+" + name_pat + r"(?:\b|[,.!?])", re.IGNORECASE),
+                    re.compile(r"^\s*(?:please\s+)?(?:call me)\s+" + name_pat + r"(?:\b|[,.!?])", re.IGNORECASE),
+                    re.compile(r"^\s*(?:people call me)\s+" + name_pat + r"(?:\b|[,.!?])", re.IGNORECASE),
                 )
                 for mem in sorted(user_memories, key=lambda m: m.timestamp, reverse=True):
                     txt = (mem.text or "").strip()
@@ -5907,6 +5911,9 @@ class CRTEnhancedRAG:
                         if m:
                             candidate = (m.group(1) or "").strip()
                             break
+                    if not candidate:
+                        continue
+                    candidate = re.sub(r"^(?:also|aka|a\.k\.a\.)\s+", "", candidate, flags=re.IGNORECASE).strip()
                     if not candidate:
                         continue
                     norm = candidate.lower()
