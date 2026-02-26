@@ -3197,7 +3197,8 @@ class CRTEnhancedRAG:
                         text=user_text,
                         confidence=0.5,  # Lower confidence for denial attempts
                         source=MemorySource.USER,
-                        context={"type": "user_input", "kind": "denial"}
+                        context={"type": "user_input", "kind": "denial"},
+                        thread_id=thread_id,
                     )
                     self.ledger.record_contradiction(
                         old_memory_id=original_memory.memory_id,
@@ -3260,6 +3261,7 @@ class CRTEnhancedRAG:
                         confidence=0.3,
                         source=MemorySource.USER,
                         context={"type": "user_input", "kind": "blindside"},
+                        thread_id=thread_id,
                     )
                 except Exception:
                     pass
@@ -3340,7 +3342,8 @@ class CRTEnhancedRAG:
                 confidence=0.95,  # User assertions are high confidence
                 source=MemorySource.USER,
                 context={"type": "user_input", "kind": user_input_kind},
-                user_marked_important=user_marked_important
+                user_marked_important=user_marked_important,
+                thread_id=thread_id,
             )
             logger.info(f"[PROFILE_DEBUG] Memory stored, now updating user profile...")
             
@@ -3722,6 +3725,7 @@ class CRTEnhancedRAG:
                 source=MemorySource.SYSTEM,
                 context={"query": user_text, "type": "speech", "kind": "meta_explanation"},
                 user_marked_important=False,
+                thread_id=thread_id,
             )
             
             return {
@@ -3757,11 +3761,42 @@ class CRTEnhancedRAG:
 
         # Web search bridge — run DuckDuckGo search for real-time information
         _is_search_query = self._is_web_search_query(user_query)
+        _web_search_query = ""
         _web_search_results: List[Dict[str, Any]] = []
+        _web_evidence_packet: Optional[Dict[str, Any]] = None
         if _is_search_query:
-            search_query = self._extract_search_query(user_query)
-            _web_search_results = self._run_web_search(search_query)
-            logger.info("[WEB_SEARCH] Detected search query, got %d results for '%s'", len(_web_search_results), search_query)
+            _web_search_query = self._extract_search_query(user_query)
+            _web_search_results = self._run_web_search(_web_search_query)
+            _web_evidence_packet = self._build_web_evidence_packet(_web_search_query, _web_search_results)
+            evidence_citations = (_web_evidence_packet or {}).get("citations") or []
+            logger.info(
+                "[WEB_SEARCH] Detected search query, got %d results / %d citations for '%s'",
+                len(_web_search_results),
+                len(evidence_citations),
+                _web_search_query,
+            )
+            if len(evidence_citations) == 0:
+                return {
+                    'answer': self._format_web_fetch_failed_answer(_web_search_query),
+                    'thinking': None,
+                    'mode': 'quick',
+                    'confidence': 0.0,
+                    'response_type': 'speech',
+                    'gates_passed': False,
+                    'gate_reason': 'web_fetch_failed',
+                    'intent_alignment': 0.0,
+                    'memory_alignment': 0.0,
+                    'contradiction_detected': False,
+                    'contradiction_entry': None,
+                    'retrieved_memories': [],
+                    'prompt_memories': [],
+                    'learned_suggestions': [],
+                    'heuristic_suggestions': [],
+                    'best_prior_trust': None,
+                    'web_search_results': _web_search_results,
+                    'web_evidence_packet': _web_evidence_packet,
+                    'session_id': self.session_id,
+                }
 
         # Include SYSTEM-source memories when the query is about the system itself
         # (e.g., "who are you?", "how do you know?", "how does your memory work?").
@@ -3792,6 +3827,7 @@ class CRTEnhancedRAG:
                 source=MemorySource.SYSTEM,
                 context={"query": user_query, "type": "speech", "kind": "sentiment_contradiction"},
                 user_marked_important=False,
+                thread_id=thread_id,
             )
             
             return {
@@ -3842,6 +3878,7 @@ class CRTEnhancedRAG:
                 source=MemorySource.FALLBACK,
                 context={"query": user_query, "type": "speech", "kind": "memory_citation"},
                 user_marked_important=False,
+                thread_id=thread_id,
             )
 
             best_prior = retrieved[0][0] if retrieved else None
@@ -3897,6 +3934,7 @@ class CRTEnhancedRAG:
                 source=MemorySource.SYSTEM,
                 context={"query": user_query, "type": "belief", "kind": "synthesis"},
                 user_marked_important=False,
+                thread_id=thread_id,
             )
 
             best_prior = retrieved[0][0] if retrieved else None
@@ -3947,6 +3985,7 @@ class CRTEnhancedRAG:
                 source=MemorySource.FALLBACK,
                 context={"query": user_query, "type": "speech", "kind": "memory_inventory"},
                 user_marked_important=False,
+                thread_id=thread_id,
             )
 
             best_prior = retrieved[0][0] if retrieved else None
@@ -4007,6 +4046,7 @@ class CRTEnhancedRAG:
                 source=MemorySource.FALLBACK,
                 context={"query": user_query, "type": "speech", "kind": "contradiction_status"},
                 user_marked_important=False,
+                thread_id=thread_id,
             )
 
             best_prior = retrieved[0][0] if retrieved else None
@@ -4269,6 +4309,7 @@ class CRTEnhancedRAG:
                         source=source,
                         context={'query': user_query, 'type': response_type, 'kind': 'slot_answer'},
                         user_marked_important=False,
+                        thread_id=thread_id,
                     )
 
                     learned = self._get_learned_suggestions_for_slots(inferred_slots)
@@ -4379,6 +4420,7 @@ class CRTEnhancedRAG:
                             source=source,
                             context={'query': user_query, 'type': response_type, 'kind': 'fact_list'},
                             user_marked_important=False,
+                            thread_id=thread_id,
                         )
 
                         learned = self._get_learned_suggestions_for_slots(
@@ -4505,6 +4547,7 @@ class CRTEnhancedRAG:
                             source=source,
                             context={'query': user_query, 'type': response_type, 'kind': 'fact_summary'},
                             user_marked_important=False,
+                            thread_id=thread_id,
                         )
 
                         learned = self._get_learned_suggestions_for_slots(
@@ -4573,7 +4616,7 @@ class CRTEnhancedRAG:
         
         if not retrieved and not _copilot_context and not _web_search_results:
             # No memories, no copilot context, and no web results → fallback speech
-            return self._fallback_response(user_query)
+            return self._fallback_response(user_query, thread_id=thread_id)
         
         # GLOBAL COHERENCE GATE: Check for unresolved contradictions.
         # Only hard CONFLICT contradictions should trigger an uncertainty early-exit.
@@ -4746,6 +4789,7 @@ class CRTEnhancedRAG:
             'episodic_preferences': episodic_preferences,
             'copilot_context': _copilot_context if _is_copilot_query else [],
             'web_search_results': _web_search_results if _is_search_query else [],
+            'web_evidence_packet': _web_evidence_packet if _is_search_query else None,
         }
         reasoning_result = self.reasoning.reason(
             query=user_query,
@@ -5044,9 +5088,9 @@ class CRTEnhancedRAG:
         
         # SPRINT 1: Force append caveats when contradictions exist
         # This ensures caveat violations are reduced to 0
+        relevant_contradictions: List[Any] = []
         if query_slots and open_contradictions:
             # Check if any open contradictions affect the queried slots
-            relevant_contradictions = []
             for contra in open_contradictions:
                 affects_slots_str = getattr(contra, 'affects_slots', None)
                 if affects_slots_str and query_slots:
@@ -5083,6 +5127,14 @@ class CRTEnhancedRAG:
                 final_answer = candidate_output.rstrip() + disclosure
                 
                 logger.info(f"[CAVEAT] Forced disclosure appended: {len(relevant_contradictions)} contradictions")
+
+        # Real-time web policy: responses must carry explicit citations.
+        if _is_search_query:
+            final_answer = self._enforce_web_answer_policy(
+                answer=final_answer,
+                web_results=_web_search_results,
+                evidence_packet=_web_evidence_packet,
+            )
         
         # INVARIANT ENFORCEMENT: Flag all reintroduced claims
         # This creates machine-readable proof that contradicted facts are marked
@@ -5112,7 +5164,8 @@ class CRTEnhancedRAG:
             confidence=confidence,
             source=source,
             context={'query': user_query, 'type': response_type},
-            user_marked_important=False  # System responses not marked important
+            user_marked_important=False,  # System responses not marked important
+            thread_id=thread_id,
         )
         
         # Update trust for aligned USER memories when gates pass
@@ -5211,6 +5264,10 @@ class CRTEnhancedRAG:
 
             # Profile updates (auto-overwrite transparency)
             'profile_updates': profile_updates,
+
+            # Web evidence (real-time answer policy)
+            'web_search_results': _web_search_results if _is_search_query else [],
+            'web_evidence_packet': _web_evidence_packet if _is_search_query else None,
             
             # Trust evolution
             'best_prior_trust': best_prior.trust if best_prior else None,
@@ -5297,6 +5354,7 @@ class CRTEnhancedRAG:
                     "source_text_len": len(text),
                 },
                 user_marked_important=user_marked_important,
+                thread_id=thread_id,
             )
         except Exception as e:
             log_swallowed_exception("crt_rag._maybe_store_longform_summary.store", e)
@@ -6508,7 +6566,7 @@ class CRTEnhancedRAG:
     
     # ====== END Orchestration Methods ======
     
-    def _fallback_response(self, query: str) -> Dict:
+    def _fallback_response(self, query: str, thread_id: Optional[str] = None) -> Dict:
         """Generate fallback response when no memories exist."""
         # Simple fallback
         result = self.reasoning.reason(
@@ -6522,7 +6580,8 @@ class CRTEnhancedRAG:
             text=result['answer'],
             confidence=0.3,
             source=MemorySource.FALLBACK,
-            context={'query': query, 'type': 'fallback_no_memory'}
+            context={'query': query, 'type': 'fallback_no_memory'},
+            thread_id=thread_id,
         )
         
         self.memory.record_speech(query, result['answer'], "no_memory")
@@ -6763,6 +6822,97 @@ class CRTEnhancedRAG:
         except Exception as e:
             logger.warning("[WEB_SEARCH] Failed: %s", e)
             return []
+
+    def _build_web_evidence_packet(self, query: str, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Build a citation-bearing evidence packet from web search results."""
+        try:
+            from datetime import datetime
+            from .evidence_packet import Citation, EvidencePacket
+
+            citations: List[Citation] = []
+            for result in results[:10]:
+                url = str(result.get("url") or result.get("href") or "").strip()
+                snippet = str(result.get("snippet") or result.get("body") or "").strip()
+                if not url or not snippet:
+                    continue
+
+                quote = re.sub(r"\s+", " ", snippet).strip()
+                if len(quote) > 260:
+                    quote = quote[:257].rstrip() + "..."
+
+                citations.append(
+                    Citation(
+                        quote_text=quote,
+                        source_url=url,
+                        char_offset=(0, min(len(quote), 260)),
+                        fetched_at=datetime.now(),
+                        confidence=0.72,
+                    )
+                )
+
+            packet = EvidencePacket.create(
+                query=query,
+                summary="",
+                citations=citations,
+            )
+            return packet.to_dict()
+        except Exception as e:
+            logger.warning("[WEB_SEARCH] Failed to build evidence packet: %s", e)
+            return {
+                "packet_id": None,
+                "query": query,
+                "summary": "",
+                "citations": [],
+                "created_at": None,
+                "trust": 0.4,
+                "lane": "notes",
+            }
+
+    def _format_web_fetch_failed_answer(self, query: str) -> str:
+        """Explicit failure response for real-time web queries."""
+        q = (query or "").strip() or "that query"
+        return (
+            f"Web fetch failed for \"{q}\", so I cannot provide a real-time answer with citations right now. "
+            "Please retry in a moment."
+        )
+
+    def _enforce_web_answer_policy(
+        self,
+        answer: str,
+        web_results: List[Dict[str, Any]],
+        evidence_packet: Optional[Dict[str, Any]],
+    ) -> str:
+        """Ensure web answers include citations and a source list."""
+        citations = (evidence_packet or {}).get("citations") or []
+        if not citations:
+            return self._format_web_fetch_failed_answer(
+                (evidence_packet or {}).get("query") or ""
+            )
+
+        out = (answer or "").strip()
+        if not out:
+            out = "I fetched web results but could not synthesize a reliable summary."
+
+        if not re.search(r"\[\d+\]", out):
+            out = f"{out} [1]"
+
+        if "sources:" not in out.lower():
+            lines: List[str] = []
+            for i, citation in enumerate(citations[:6], start=1):
+                url = str((citation or {}).get("source_url") or "").strip()
+                if not url:
+                    continue
+                title = ""
+                if i - 1 < len(web_results):
+                    title = str((web_results[i - 1] or {}).get("title") or "").strip()
+                if title:
+                    lines.append(f"[{i}] {title} - {url}")
+                else:
+                    lines.append(f"[{i}] {url}")
+            if lines:
+                out = f"{out.rstrip()}\n\nSources:\n" + "\n".join(lines)
+
+        return out
 
     def _is_memory_citation_request(self, text: str) -> bool:
         """True if the user explicitly asks for chat-grounded recall/citation.

@@ -12,11 +12,14 @@ from __future__ import annotations
 import json
 import hashlib
 import logging
+import os
 import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from .text_utils import sanitize_thread_id
 
 logger = logging.getLogger(__name__)
 
@@ -57,9 +60,110 @@ class HeartbeatLLMExecutor:
         memory_db_path: Optional[str] = None,
     ):
         self.session_db = session_db
-        self.thread_session_db_path = str(thread_session_db_path) if thread_session_db_path else None
-        self.ledger_db_path = ledger_db_path
-        self.memory_db_path = memory_db_path
+        if thread_session_db_path:
+            self.thread_session_db_path = str(thread_session_db_path)
+        elif session_db is not None and getattr(session_db, "db_path", None):
+            self.thread_session_db_path = str(getattr(session_db, "db_path"))
+        else:
+            self.thread_session_db_path = None
+        self.ledger_db_path = str(ledger_db_path) if ledger_db_path else None
+        self.memory_db_path = str(memory_db_path) if memory_db_path else None
+
+    def _default_personal_agent_dir(self) -> Path:
+        return Path(__file__).resolve().parent
+
+    def _resolve_memory_db_path(self, thread_id: str) -> Optional[str]:
+        """Resolve memory DB path for a thread (shared or per-thread)."""
+        tid = sanitize_thread_id(str(thread_id or "default"))
+        pa_dir = self._default_personal_agent_dir()
+        shared_enabled = os.getenv("CRT_SHARED_MEMORY", "false").lower() == "true"
+
+        candidates: List[Path] = []
+        if self.memory_db_path:
+            try:
+                rendered = str(self.memory_db_path).format(thread_id=tid)
+            except Exception:
+                rendered = str(self.memory_db_path)
+            candidates.append(Path(rendered))
+
+        if shared_enabled:
+            candidates.append(pa_dir / "crt_memory_shared.db")
+        candidates.append(pa_dir / f"crt_memory_{tid}.db")
+        if not shared_enabled:
+            candidates.append(pa_dir / "crt_memory_shared.db")
+
+        seen: set[str] = set()
+        for c in candidates:
+            cs = str(c)
+            if cs in seen:
+                continue
+            seen.add(cs)
+            if c.exists():
+                return cs
+        return str(candidates[0]) if candidates else None
+
+    def _resolve_ledger_db_path(self, thread_id: str) -> Optional[str]:
+        """Resolve contradiction ledger DB path for a thread (shared or per-thread)."""
+        tid = sanitize_thread_id(str(thread_id or "default"))
+        pa_dir = self._default_personal_agent_dir()
+        shared_enabled = os.getenv("CRT_SHARED_MEMORY", "false").lower() == "true"
+
+        candidates: List[Path] = []
+        if self.ledger_db_path:
+            try:
+                rendered = str(self.ledger_db_path).format(thread_id=tid)
+            except Exception:
+                rendered = str(self.ledger_db_path)
+            candidates.append(Path(rendered))
+
+        if shared_enabled:
+            candidates.append(pa_dir / "crt_ledger_shared.db")
+        candidates.append(pa_dir / f"crt_ledger_{tid}.db")
+        if not shared_enabled:
+            candidates.append(pa_dir / "crt_ledger_shared.db")
+
+        seen: set[str] = set()
+        for c in candidates:
+            cs = str(c)
+            if cs in seen:
+                continue
+            seen.add(cs)
+            if c.exists():
+                return cs
+        return str(candidates[0]) if candidates else None
+
+    def _get_thread_memory_ids(self, thread_id: str, limit: int = 500) -> List[str]:
+        """Return recent memory IDs for a thread to scope shared-ledger queries."""
+        mem_db_path = self._resolve_memory_db_path(thread_id)
+        if not mem_db_path or not Path(mem_db_path).exists():
+            return []
+        try:
+            conn = sqlite3.connect(mem_db_path, timeout=30.0)
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            columns = {
+                str(row[1]).lower()
+                for row in cursor.execute("PRAGMA table_info(memories)").fetchall()
+            }
+            if "memory_id" not in columns:
+                conn.close()
+                return []
+            if "thread_id" not in columns:
+                conn.close()
+                return []
+            has_deprecated = "deprecated" in columns
+            query = "SELECT memory_id FROM memories WHERE thread_id = ?"
+            params: List[Any] = [thread_id]
+            if has_deprecated:
+                query += " AND COALESCE(deprecated, 0) = 0"
+            query += " ORDER BY timestamp DESC LIMIT ?"
+            params.append(max(1, int(limit)))
+            rows = cursor.execute(query, tuple(params)).fetchall()
+            conn.close()
+            return [str(row["memory_id"]) for row in rows if row["memory_id"]]
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Error getting thread memory ids: {e}")
+            return []
     
     def gather_context(self, thread_id: str) -> ThreadContext:
         """Gather all context needed for heartbeat decision."""
@@ -146,24 +250,35 @@ class HeartbeatLLMExecutor:
     
     def _get_open_contradictions(self, thread_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Get open contradictions from Ledger DB."""
-        if not self.ledger_db_path:
+        ledger_path = self._resolve_ledger_db_path(thread_id)
+        if not ledger_path:
             return []
         
         try:
-            conn = sqlite3.connect(self.ledger_db_path, timeout=30.0)
+            conn = sqlite3.connect(ledger_path, timeout=30.0)
             cursor = conn.cursor()
-            
-            cursor.execute(
-                """
-                SELECT ledger_id, timestamp, summary, status, contradiction_type
-                FROM contradictions
-                WHERE status = 'open'
-                ORDER BY timestamp DESC
-                LIMIT ?
-                """,
-                (limit,)
+
+            thread_memory_ids = self._get_thread_memory_ids(thread_id, limit=600)
+            params: List[Any] = []
+            query = (
+                "SELECT ledger_id, timestamp, summary, status, contradiction_type "
+                "FROM contradictions WHERE status = 'open'"
             )
-            
+            if thread_memory_ids:
+                placeholders = ",".join("?" for _ in thread_memory_ids)
+                query += (
+                    f" AND (old_memory_id IN ({placeholders}) OR new_memory_id IN ({placeholders}))"
+                )
+                params.extend(thread_memory_ids)
+                params.extend(thread_memory_ids)
+            elif str(ledger_path).endswith("crt_ledger_shared.db"):
+                # In shared mode, no thread-bound memories means no safe scope.
+                conn.close()
+                return []
+
+            query += " ORDER BY timestamp DESC LIMIT ?"
+            params.append(max(1, int(limit)))
+            cursor.execute(query, tuple(params))
             rows = cursor.fetchall()
             conn.close()
             
@@ -267,13 +382,14 @@ class HeartbeatLLMExecutor:
     
     def _get_memory_snapshot(self, thread_id: str) -> Dict[str, Any]:
         """Get snapshot of key facts about the user."""
-        if not self.memory_db_path:
+        memory_path = self._resolve_memory_db_path(thread_id)
+        if not memory_path:
             return {}
         
         try:
             from personal_agent.fact_slots import extract_fact_slots
 
-            conn = sqlite3.connect(self.memory_db_path, timeout=30.0)
+            conn = sqlite3.connect(memory_path, timeout=30.0)
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
@@ -300,8 +416,27 @@ class HeartbeatLLMExecutor:
             query = f"SELECT {', '.join(select_cols)} FROM memories"
             params: List[Any] = []
             if has_thread_id:
-                query += " WHERE (thread_id = ? OR thread_id IS NULL OR thread_id = '')"
-                params.append(thread_id)
+                # Prefer strict thread affinity when any thread-bound rows exist.
+                try:
+                    thread_count = int(
+                        cursor.execute(
+                            "SELECT COUNT(*) FROM memories WHERE thread_id = ?",
+                            (thread_id,),
+                        ).fetchone()[0]
+                    )
+                except Exception:
+                    thread_count = 0
+
+                if thread_count > 0:
+                    query += " WHERE thread_id = ?"
+                    params.append(thread_id)
+                elif str(thread_id or "").strip().lower() == "default":
+                    # Legacy fallback for historical single-thread DBs.
+                    query += " WHERE (thread_id IS NULL OR thread_id = '')"
+                else:
+                    # Non-default thread with no bound rows: avoid cross-thread bleed.
+                    query += " WHERE thread_id = ?"
+                    params.append(thread_id)
             query += " ORDER BY timestamp DESC LIMIT 80"
 
             rows = cursor.execute(query, tuple(params)).fetchall()

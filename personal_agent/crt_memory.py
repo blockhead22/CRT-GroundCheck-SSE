@@ -20,6 +20,7 @@ import sqlite3
 import json
 import logging
 import numpy as np
+import re
 from typing import List, Dict, Optional, Any, Tuple, Set
 from datetime import datetime
 from dataclasses import dataclass, asdict
@@ -35,6 +36,14 @@ from .engine.anchors import AnchorSystem
 from .engine.reconstruction import ReconstructionFidelityEvaluator
 
 logger = logging.getLogger(__name__)
+
+
+_TRANSCRIPT_GUARD_MARKERS = (
+    "[CONTINUITY INSTRUCTION]",
+    "[RECENT CONVERSATION CONTEXT]",
+)
+
+_TRANSCRIPT_LINE_RE = re.compile(r"(?im)^\s*(user|assistant)\s*:")
 
 
 @dataclass
@@ -357,6 +366,46 @@ class CRTMemorySystem:
     # ========================================================================
     # Memory Storage
     # ========================================================================
+
+    def _sanitize_transcript_pollution(self, text: str) -> Tuple[str, Optional[str]]:
+        """
+        Remove continuity/transcript helper blocks before persistence.
+
+        Returns:
+            (clean_text, reason) where reason is set if any cleanup occurred.
+        """
+        raw = str(text or "")
+        cleaned = raw.strip()
+        if not cleaned:
+            return "", None
+
+        reason: Optional[str] = None
+
+        # Remove continuity helper suffix blocks.
+        cut_at: Optional[int] = None
+        for marker in _TRANSCRIPT_GUARD_MARKERS:
+            idx = cleaned.find(marker)
+            if idx >= 0 and (cut_at is None or idx < cut_at):
+                cut_at = idx
+        if cut_at is not None:
+            cleaned = cleaned[:cut_at].strip()
+            reason = "continuity_block_trimmed"
+
+        # Remove appended transcript sections.
+        transcript_match = re.search(r"\n\s*(?:User|Assistant)\s*:", cleaned, flags=re.IGNORECASE)
+        if transcript_match:
+            cleaned = cleaned[: transcript_match.start()].strip()
+            reason = reason or "transcript_block_trimmed"
+
+        # If remaining text still starts with transcript labels, strip one prefix.
+        if _TRANSCRIPT_LINE_RE.match(cleaned):
+            cleaned = _TRANSCRIPT_LINE_RE.sub("", cleaned, count=1).strip()
+            reason = reason or "transcript_prefix_stripped"
+
+        # Defensive: collapse excessive blank lines after trimming.
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+
+        return cleaned, reason
     
     def store_memory(
         self,
@@ -365,7 +414,8 @@ class CRTMemorySystem:
         source: MemorySource,
         context: Optional[Dict] = None,
         user_marked_important: bool = False,
-        contradiction_signal: float = 0.0
+        contradiction_signal: float = 0.0,
+        thread_id: Optional[str] = None,
     ) -> MemoryItem:
         """
         Store new memory with CRT principles.
@@ -376,6 +426,25 @@ class CRTMemorySystem:
         3. Assign initial trust (based on source)
         4. Store with metadata
         """
+        # Write-time guard: strip continuity/transcript contamination from text.
+        text_clean, guard_reason = self._sanitize_transcript_pollution(text)
+        if guard_reason:
+            logger.info("[MEMORY_GUARD] %s", guard_reason)
+        if not text_clean:
+            logger.warning("[MEMORY_GUARD] Skipping empty memory after sanitation")
+            text_clean = "[filtered-empty-memory]"
+
+        text = text_clean
+
+        # Thread affinity: prefer explicit arg, then context thread_id.
+        resolved_thread_id = str(thread_id or "").strip() or None
+        if not resolved_thread_id and isinstance(context, dict):
+            ctx_tid = context.get("thread_id")
+            if ctx_tid is not None:
+                ctx_tid_str = str(ctx_tid).strip()
+                if ctx_tid_str:
+                    resolved_thread_id = ctx_tid_str
+
         # Policy boundary: external/tool memories must be auditable.
         if source == MemorySource.EXTERNAL:
             validate_external_memory_context(context)
@@ -516,6 +585,7 @@ class CRTMemorySystem:
             source=source,
             sse_mode=sse_mode,
             context=context,
+            thread_id=resolved_thread_id,
             fact_tuples=fact_tuples_json,
             extraction_method=extraction_method,
             temporal_status=temporal_status,
@@ -526,25 +596,50 @@ class CRTMemorySystem:
         conn = self._get_connection()
         cursor = conn.cursor()
         
-        cursor.execute("""
-            INSERT INTO memories 
-            (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            memory.memory_id,
-            json.dumps(vector.tolist()),
-            text,
-            memory.timestamp,
-            confidence,
-            trust,
-            source.value,
-            sse_mode.value,
-            json.dumps(context) if context else None,
-            fact_tuples_json,
-            extraction_method,
-            temporal_status,
-            json.dumps(domain_tags) if domain_tags else None
-        ))
+        try:
+            cursor.execute("""
+                INSERT INTO memories 
+                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                memory.memory_id,
+                json.dumps(vector.tolist()),
+                text,
+                memory.timestamp,
+                confidence,
+                trust,
+                source.value,
+                sse_mode.value,
+                json.dumps(context) if context else None,
+                fact_tuples_json,
+                extraction_method,
+                temporal_status,
+                json.dumps(domain_tags) if domain_tags else None,
+                resolved_thread_id,
+            ))
+        except sqlite3.OperationalError as e:
+            # Backward compatibility for old ad-hoc tables that may not include thread_id.
+            if "thread_id" not in str(e).lower():
+                raise
+            cursor.execute("""
+                INSERT INTO memories 
+                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                memory.memory_id,
+                json.dumps(vector.tolist()),
+                text,
+                memory.timestamp,
+                confidence,
+                trust,
+                source.value,
+                sse_mode.value,
+                json.dumps(context) if context else None,
+                fact_tuples_json,
+                extraction_method,
+                temporal_status,
+                json.dumps(domain_tags) if domain_tags else None,
+            ))
         
         conn.commit()
         conn.close()
