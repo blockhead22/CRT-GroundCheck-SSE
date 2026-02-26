@@ -247,6 +247,21 @@ class ThreadSessionDB:
             )
         """)
 
+        # Reflection scorecard history (append-only timeline)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS reflection_scorecard_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                thread_id TEXT NOT NULL,
+                updated_at REAL NOT NULL,
+                scorecard_json TEXT NOT NULL
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_reflection_scorecard_history_thread_ts
+            ON reflection_scorecard_history(thread_id, updated_at DESC)
+        """)
+
         # Personality profiles (single latest per thread)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS personality_profiles (
@@ -254,6 +269,21 @@ class ThreadSessionDB:
                 updated_at REAL NOT NULL,
                 profile_json TEXT NOT NULL
             )
+        """)
+
+        # Personality profile history (append-only timeline)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS personality_profile_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                thread_id TEXT NOT NULL,
+                updated_at REAL NOT NULL,
+                profile_json TEXT NOT NULL
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_personality_profile_history_thread_ts
+            ON personality_profile_history(thread_id, updated_at DESC)
         """)
 
         # Reflection journal entries (append-only log)
@@ -942,6 +972,8 @@ class ThreadSessionDB:
     def store_reflection_scorecard(self, thread_id: str, scorecard: dict) -> None:
         """Upsert the latest reflection scorecard for a thread."""
         import json
+        now = time.time()
+        payload_json = json.dumps(scorecard)
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("""
@@ -950,7 +982,11 @@ class ThreadSessionDB:
             ON CONFLICT(thread_id) DO UPDATE SET
                 updated_at = excluded.updated_at,
                 scorecard_json = excluded.scorecard_json
-        """, (thread_id, time.time(), json.dumps(scorecard)))
+        """, (thread_id, now, payload_json))
+        cursor.execute("""
+            INSERT INTO reflection_scorecard_history (thread_id, updated_at, scorecard_json)
+            VALUES (?, ?, ?)
+        """, (thread_id, now, payload_json))
         conn.commit()
         conn.close()
 
@@ -973,9 +1009,44 @@ class ThreadSessionDB:
         except Exception:
             return None
 
+    def get_reflection_scorecard_history(self, thread_id: str, limit: int = 30) -> list[dict]:
+        """Fetch reflection scorecard history (most recent first)."""
+        import json
+        limit = max(1, min(int(limit or 30), 200))
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, thread_id, updated_at, scorecard_json
+            FROM reflection_scorecard_history
+            WHERE thread_id = ?
+            ORDER BY updated_at DESC, id DESC
+            LIMIT ?
+        """, (thread_id, limit))
+        rows = cursor.fetchall()
+        conn.close()
+
+        out: list[dict] = []
+        for row in rows:
+            payload = None
+            try:
+                payload = json.loads(row["scorecard_json"])
+            except Exception:
+                payload = None
+            out.append(
+                {
+                    "id": row["id"],
+                    "thread_id": row["thread_id"],
+                    "updated_at": row["updated_at"],
+                    "scorecard": payload,
+                }
+            )
+        return out
+
     def store_personality_profile(self, thread_id: str, profile: dict) -> None:
         """Upsert the latest personality profile for a thread."""
         import json
+        now = time.time()
+        payload_json = json.dumps(profile)
         conn = self._get_connection()
         cursor = conn.cursor()
         cursor.execute("""
@@ -984,7 +1055,11 @@ class ThreadSessionDB:
             ON CONFLICT(thread_id) DO UPDATE SET
                 updated_at = excluded.updated_at,
                 profile_json = excluded.profile_json
-        """, (thread_id, time.time(), json.dumps(profile)))
+        """, (thread_id, now, payload_json))
+        cursor.execute("""
+            INSERT INTO personality_profile_history (thread_id, updated_at, profile_json)
+            VALUES (?, ?, ?)
+        """, (thread_id, now, payload_json))
         conn.commit()
         conn.close()
 
@@ -1006,6 +1081,39 @@ class ThreadSessionDB:
             return json.loads(row["profile_json"])
         except Exception:
             return None
+
+    def get_personality_profile_history(self, thread_id: str, limit: int = 30) -> list[dict]:
+        """Fetch personality profile history (most recent first)."""
+        import json
+        limit = max(1, min(int(limit or 30), 200))
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, thread_id, updated_at, profile_json
+            FROM personality_profile_history
+            WHERE thread_id = ?
+            ORDER BY updated_at DESC, id DESC
+            LIMIT ?
+        """, (thread_id, limit))
+        rows = cursor.fetchall()
+        conn.close()
+
+        out: list[dict] = []
+        for row in rows:
+            payload = None
+            try:
+                payload = json.loads(row["profile_json"])
+            except Exception:
+                payload = None
+            out.append(
+                {
+                    "id": row["id"],
+                    "thread_id": row["thread_id"],
+                    "updated_at": row["updated_at"],
+                    "profile": payload,
+                }
+            )
+        return out
 
     def add_reflection_journal_entry(
         self,

@@ -42,4 +42,6 @@ jobs:
             tests/test_endpoint_parity_ci.py \
             tests/test_heartbeat_executor_plumbing.py \
             tests/test_agent_tool_policy.py \
-            tests/test_agent_tool_policy_api.py
+            tests/test_agent_tool_policy_api.py \
+            tests/test_skill_registry.py \
+            tests/test_skills_api.py

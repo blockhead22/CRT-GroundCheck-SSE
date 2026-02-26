@@ -592,6 +592,51 @@ class AgentToolPolicyResponse(BaseModel):
     config: Dict[str, Any]
 
 
+class SkillRecordModel(BaseModel):
+    name: str
+    description: str = ""
+    source_path: Optional[str] = None
+    install_path: Optional[str] = None
+    version: Optional[str] = None
+    trust_level: str = "untrusted"
+    enabled: bool = False
+    installed: bool = False
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    discovered_at: Optional[float] = None
+    last_installed_at: Optional[float] = None
+    updated_at: Optional[float] = None
+
+
+class SkillsListResponse(BaseModel):
+    items: list[SkillRecordModel]
+    total: int
+
+
+class SkillDiscoverRequest(BaseModel):
+    roots: list[str] = Field(default_factory=list)
+
+
+class SkillDiscoverResponse(BaseModel):
+    discovered: list[SkillRecordModel]
+    count: int
+
+
+class SkillInstallRequest(BaseModel):
+    name: Optional[str] = None
+    source_path: Optional[str] = None
+    enabled: bool = True
+    trust_level: Optional[str] = None
+
+
+class SkillTrustRequest(BaseModel):
+    trust_level: str = Field(description="untrusted|trusted|verified|blocked")
+
+
+class SkillLifecycleResponse(BaseModel):
+    ok: bool = True
+    skill: SkillRecordModel
+
+
 # ---------------------------------------------------------------------------
 # Scheduled Tasks
 # ---------------------------------------------------------------------------

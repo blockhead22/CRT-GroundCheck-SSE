@@ -60,6 +60,7 @@ from personal_agent.jobs_db import (
 )
 from personal_agent.jobs_worker import CRTJobsWorker
 from personal_agent.runtime_config import get_runtime_config
+from personal_agent.skill_registry import SkillRegistry
 from personal_agent.training_loop import CRTTrainingLoop
 from personal_agent.dnnt.background_learning import BackgroundLearningConfig
 from personal_agent.dnnt_retraining_loop import DNNTBackgroundLoop
@@ -875,6 +876,23 @@ def create_app() -> FastAPI:
     # Optional: background jobs worker + idle scheduler.
     # Stored on app.state so endpoints can report status.
     root = Path(__file__).resolve().parent
+    skills_db_path = str(root / "data" / "skills_registry.db")
+    skills_managed_dir = str(root / "data" / "managed_skills")
+    skill_source_roots = [
+        str(root / ".agents" / "skills"),
+        str(root / ".github" / "skills"),
+    ]
+    try:
+        app.state.skill_registry = SkillRegistry(
+            db_path=skills_db_path,
+            managed_dir=skills_managed_dir,
+            source_roots=skill_source_roots,
+        )
+        app.state.skill_registry.discover_skills()
+    except Exception as e:
+        logger.warning(f"[STARTUP] Failed to initialize skill registry: {e}")
+        app.state.skill_registry = None
+
     jobs_enabled = bool(jobs_cfg.get("enabled", False))
     jobs_db_path = str(jobs_cfg.get("jobs_db_path") or "artifacts/crt_jobs.db")
     jobs_artifacts_dir = str(jobs_cfg.get("artifacts_dir") or "artifacts")

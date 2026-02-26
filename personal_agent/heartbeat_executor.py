@@ -774,6 +774,47 @@ Reason carefully. If unsure, reply with action=none.
         actions_taken = []
         dry_run = config.get('dry_run', False) if config else False
 
+        # --- 0. GroundCheck bridge sync (optional) ---
+        try:
+            bridge_enabled = str(os.getenv("CRT_GROUNDCHECK_BRIDGE_BACKGROUND_ENABLED", "true")).strip().lower() in {
+                "1",
+                "true",
+                "yes",
+                "y",
+                "on",
+            }
+            if bridge_enabled and not dry_run:
+                memory_db_path = self._resolve_memory_db_path(thread_id)
+                if memory_db_path and Path(memory_db_path).exists():
+                    from personal_agent.crt_memory import CRTMemorySystem
+                    from personal_agent.memory_bridge import sync_groundcheck_to_memory
+
+                    mem = CRTMemorySystem(db_path=str(memory_db_path))
+                    bridge_result = sync_groundcheck_to_memory(
+                        memory_system=mem,
+                        thread_id=thread_id,
+                        min_trust=float(os.getenv("CRT_GROUNDCHECK_BRIDGE_MIN_TRUST", "0.65") or 0.65),
+                        raw_limit=int(os.getenv("CRT_GROUNDCHECK_BRIDGE_RAW_LIMIT", "400") or 400),
+                        narrative_limit=int(os.getenv("CRT_GROUNDCHECK_BRIDGE_NARRATIVE_LIMIT", "30") or 30),
+                        allowed_sources=[
+                            s.strip()
+                            for s in str(os.getenv("CRT_GROUNDCHECK_BRIDGE_SOURCES", "user,inferred") or "").split(",")
+                            if s.strip()
+                        ],
+                    )
+                    imported_count = int(bridge_result.get("imported") or 0)
+                    if imported_count > 0:
+                        actions_taken.append(
+                            {
+                                "action": "groundcheck_bridge_sync",
+                                "detail": f"Imported {imported_count} profile facts from GroundCheck",
+                                "imported": imported_count,
+                                "selected": int(bridge_result.get("selected_rows") or 0),
+                            }
+                        )
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] GroundCheck bridge sync skipped: {e}")
+
         # --- 1. Trust Decay Pass ---
         try:
             from personal_agent.trust_decay import run_trust_decay_pass

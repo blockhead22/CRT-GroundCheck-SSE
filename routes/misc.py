@@ -85,6 +85,127 @@ def _get_llm_client(request: Request):
     return request.app.state.get_llm_client()
 
 
+def _memory_preview_item(mem: Any) -> Dict[str, Any]:
+    return {
+        "memory_id": getattr(mem, "memory_id", ""),
+        "text": getattr(mem, "text", ""),
+        "timestamp": float(getattr(mem, "timestamp", 0.0) or 0.0),
+        "confidence": float(getattr(mem, "confidence", 0.0) or 0.0),
+        "trust": float(getattr(mem, "trust", 0.0) or 0.0),
+        "source": getattr(getattr(mem, "source", None), "value", None) or str(getattr(mem, "source", "")),
+        "sse_mode": getattr(getattr(mem, "sse_mode", None), "value", None) or str(getattr(mem, "sse_mode", "")),
+        "thread_id": getattr(mem, "thread_id", None),
+    }
+
+
+def _contradiction_preview_item(entry: Any) -> Dict[str, Any]:
+    if hasattr(entry, "to_dict"):
+        try:
+            data = dict(entry.to_dict())
+        except Exception:
+            data = {}
+    elif isinstance(entry, dict):
+        data = dict(entry)
+    else:
+        data = {}
+
+    def _field(name: str, default: Any = None) -> Any:
+        if name in data:
+            return data.get(name)
+        return getattr(entry, name, default)
+
+    return {
+        "ledger_id": str(_field("ledger_id", "") or ""),
+        "timestamp": float(_field("timestamp", 0.0) or 0.0),
+        "status": str(_field("status", "open") or "open"),
+        "contradiction_type": str(_field("contradiction_type", "conflict") or "conflict"),
+        "drift_mean": float(_field("drift_mean", 0.0) or 0.0),
+        "confidence_delta": float(_field("confidence_delta", 0.0) or 0.0),
+        "summary": _field("summary"),
+        "query": _field("query"),
+        "old_memory_id": str(_field("old_memory_id", "") or ""),
+        "new_memory_id": str(_field("new_memory_id", "") or ""),
+    }
+
+
+def _derive_self_model_mood(personality: Dict[str, Any], reflection: Dict[str, Any]) -> Dict[str, Any]:
+    state = str(personality.get("state") or "balanced_companion")
+    urgency = str(personality.get("urgency") or "normal")
+    try:
+        state_conf = float(personality.get("state_confidence") or 0.45)
+    except Exception:
+        state_conf = 0.45
+    try:
+        pref_conf = float(reflection.get("preference_confidence") or 0.0)
+    except Exception:
+        pref_conf = 0.0
+    open_questions = reflection.get("open_questions") or []
+
+    mood = "calm"
+    reason = "steady baseline"
+    if urgency == "high":
+        mood = "intense"
+        reason = "urgent user cadence detected"
+    elif state == "technical_guide":
+        mood = "curious"
+        reason = "technical topic density is high"
+    elif state == "reflective_partner":
+        mood = "warm"
+        reason = "reflection loop is emphasizing open questions"
+    elif state == "structured_coach":
+        mood = "curious"
+        reason = "structured, question-led interactions"
+
+    if pref_conf < 0.2:
+        mood = "uncertain"
+        reason = "low preference confidence in recent window"
+    elif open_questions and mood == "calm":
+        mood = "curious"
+        reason = "open questions are still unresolved"
+
+    intensity = max(0.2, min(0.95, 0.25 + (state_conf * 0.55)))
+    return {
+        "mood": mood,
+        "intensity": round(float(intensity), 3),
+        "reason": reason,
+    }
+
+
+def _compute_profile_changes(
+    current: Dict[str, Any],
+    previous: Optional[Dict[str, Any]],
+    *,
+    categorical_keys: List[str],
+    numeric_keys: List[str],
+) -> Dict[str, Dict[str, Any]]:
+    if not previous:
+        return {}
+
+    changes: Dict[str, Dict[str, Any]] = {}
+    for key in categorical_keys:
+        new_v = current.get(key)
+        old_v = previous.get(key)
+        if new_v != old_v:
+            changes[key] = {"from": old_v, "to": new_v}
+
+    for key in numeric_keys:
+        if key not in current or key not in previous:
+            continue
+        try:
+            new_v = float(current.get(key) or 0.0)
+            old_v = float(previous.get(key) or 0.0)
+        except Exception:
+            continue
+        delta = new_v - old_v
+        if abs(delta) >= 0.01:
+            changes[key] = {
+                "from": round(old_v, 4),
+                "to": round(new_v, 4),
+                "delta": round(delta, 4),
+            }
+    return changes
+
+
 # ============================================================================
 # Health
 # ============================================================================
@@ -516,6 +637,185 @@ def get_introspection(request: Request, thread_id: str = Query("default")):
         logger.debug(f"[INTROSPECTION] Error: {e}")
 
     return result
+
+
+# ============================================================================
+# Memory bridge controls (GroundCheck -> CRT)
+# ============================================================================
+
+
+@router.post("/api/memory/bridge/sync/{thread_id}")
+def sync_groundcheck_bridge(
+    request: Request,
+    thread_id: str,
+    min_trust: float = Query(default=0.65, ge=0.0, le=1.0),
+    raw_limit: int = Query(default=400, ge=1, le=5000),
+    narrative_limit: int = Query(default=30, ge=0, le=500),
+):
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+
+    from personal_agent.memory_bridge import sync_groundcheck_to_memory
+
+    allowed_sources_raw = str(os.getenv("CRT_GROUNDCHECK_BRIDGE_SOURCES", "user,inferred") or "").strip()
+    allowed_sources = [s.strip() for s in allowed_sources_raw.split(",") if s.strip()] if allowed_sources_raw else None
+
+    return sync_groundcheck_to_memory(
+        memory_system=engine.memory,
+        thread_id=tid,
+        min_trust=min_trust,
+        raw_limit=raw_limit,
+        narrative_limit=narrative_limit,
+        allowed_sources=allowed_sources,
+    )
+
+
+# ============================================================================
+# Unified self-model snapshot (reflection + personality + memory/ledger surface)
+# ============================================================================
+
+
+@router.get("/api/self-model/{thread_id}")
+def get_self_model(
+    request: Request,
+    thread_id: str,
+    history_limit: int = Query(default=20, ge=1, le=200),
+    journal_limit: int = Query(default=20, ge=1, le=200),
+    memory_limit: int = Query(default=12, ge=1, le=100),
+    contradiction_limit: int = Query(default=12, ge=1, le=100),
+):
+    tid = sanitize_thread_id(thread_id)
+    session_db = _get_session_db()
+    engine = _get_engine(request, tid)
+
+    reflection = session_db.get_reflection_scorecard(tid) or {}
+    personality = session_db.get_personality_profile(tid) or {}
+    style_profile = session_db.get_style_profile(tid) or {}
+    reflection_history = session_db.get_reflection_scorecard_history(tid, limit=history_limit)
+    personality_history = session_db.get_personality_profile_history(tid, limit=history_limit)
+    journal_entries = session_db.get_reflection_journal_entries(tid, limit=journal_limit)
+
+    prev_reflection = None
+    if len(reflection_history) > 1:
+        prev_reflection = reflection_history[1].get("scorecard")
+
+    prev_personality = None
+    if len(personality_history) > 1:
+        prev_personality = personality_history[1].get("profile")
+
+    reflection_changes = _compute_profile_changes(
+        reflection,
+        prev_reflection if isinstance(prev_reflection, dict) else None,
+        categorical_keys=["message_window"],
+        numeric_keys=["preference_confidence"],
+    )
+    personality_changes = _compute_profile_changes(
+        personality,
+        prev_personality if isinstance(prev_personality, dict) else None,
+        categorical_keys=[
+            "verbosity",
+            "emoji",
+            "format",
+            "state",
+            "interaction_style",
+            "tone_preference",
+            "urgency",
+        ],
+        numeric_keys=["state_confidence", "avg_message_length", "question_ratio", "tech_ratio"],
+    )
+
+    # Add compact topic-change signal.
+    try:
+        cur_topics = [
+            str(t.get("topic") or "")
+            for t in (reflection.get("top_topics") or [])
+            if isinstance(t, dict) and t.get("topic")
+        ]
+        prev_topics = [
+            str(t.get("topic") or "")
+            for t in ((prev_reflection or {}).get("top_topics") or [])
+            if isinstance(t, dict) and t.get("topic")
+        ]
+        if cur_topics != prev_topics:
+            reflection_changes["top_topics"] = {
+                "from": prev_topics[:5],
+                "to": cur_topics[:5],
+            }
+    except Exception:
+        pass
+
+    memories_total = 0
+    recent_memories: List[Dict[str, Any]] = []
+    try:
+        memories = engine.memory._load_all_memories()
+        memories.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
+        memories_total = len(memories)
+        recent_memories = [_memory_preview_item(m) for m in memories[:memory_limit]]
+    except Exception as e:
+        logger.debug(f"[SELF_MODEL] Failed to load memories for {tid}: {e}")
+
+    open_entries: List[Any] = []
+    contradiction_items: List[Dict[str, Any]] = []
+    try:
+        open_entries = engine.ledger.get_open_contradictions(limit=10_000)
+        contradiction_items = [_contradiction_preview_item(item) for item in open_entries[:contradiction_limit]]
+    except Exception as e:
+        logger.debug(f"[SELF_MODEL] Failed to load contradictions for {tid}: {e}")
+
+    journal_counts: Dict[str, int] = {}
+    for entry in journal_entries:
+        key = str(entry.get("entry_type") or "unknown")
+        journal_counts[key] = journal_counts.get(key, 0) + 1
+
+    mood = _derive_self_model_mood(personality, reflection)
+    traits = {
+        "verbosity": personality.get("verbosity"),
+        "emoji": personality.get("emoji"),
+        "format": personality.get("format"),
+        "state": personality.get("state"),
+        "state_confidence": personality.get("state_confidence"),
+        "interaction_style": personality.get("interaction_style"),
+        "tone_preference": personality.get("tone_preference"),
+        "urgency": personality.get("urgency"),
+        "humor": style_profile.get("humor"),
+        "seriousness": style_profile.get("seriousness"),
+        "formality": style_profile.get("formality"),
+        "tone_label": style_profile.get("tone_label"),
+    }
+
+    return {
+        "thread_id": tid,
+        "generated_at": time.time(),
+        "mood": mood,
+        "traits": traits,
+        "reflection": reflection,
+        "personality": personality,
+        "style_profile": style_profile,
+        "adaptation": {
+            "personality_changes": personality_changes,
+            "reflection_changes": reflection_changes,
+            "history_points": {
+                "personality": len(personality_history),
+                "reflection": len(reflection_history),
+            },
+        },
+        "history": {
+            "personality": personality_history,
+            "reflection": reflection_history,
+        },
+        "journal": {
+            "entries": journal_entries,
+            "counts": journal_counts,
+        },
+        "memory": {
+            "total": memories_total,
+            "recent": recent_memories,
+        },
+        "contradictions": {
+            "open_total": len(open_entries),
+            "items": contradiction_items,
+        },
+    }
 
 
 # ============================================================================

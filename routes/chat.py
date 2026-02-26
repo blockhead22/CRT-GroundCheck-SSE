@@ -83,6 +83,9 @@ _CONTINUITY_FOLLOWUP_HINTS = (
     "summary",
 )
 
+_GROUNDCHECK_BRIDGE_LOCK = threading.Lock()
+_GROUNDCHECK_BRIDGE_LAST_SYNC: Dict[str, float] = {}
+
 
 def _load_recent_history_messages(
     session_db,
@@ -104,6 +107,77 @@ def _load_recent_history_messages(
     except Exception as e:
         logger.debug(f"[CONTINUITY] Failed to load history for {thread_id}: {e}")
     return history_messages
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _maybe_sync_groundcheck_bridge(
+    *,
+    thread_id: str,
+    engine: Any,
+) -> Dict[str, Any]:
+    """Best-effort GroundCheck -> CRT sync for retrieval parity across channels."""
+    enabled = _env_bool("CRT_GROUNDCHECK_BRIDGE_ENABLED", True)
+    if not enabled:
+        return {"enabled": False, "attempted": False, "reason": "disabled"}
+
+    tid = sanitize_thread_id(thread_id)
+    try:
+        interval = float(os.getenv("CRT_GROUNDCHECK_BRIDGE_INTERVAL_SECONDS", "120") or 120.0)
+    except Exception:
+        interval = 120.0
+    interval = max(5.0, interval)
+
+    now = time.time()
+    with _GROUNDCHECK_BRIDGE_LOCK:
+        last = float(_GROUNDCHECK_BRIDGE_LAST_SYNC.get(tid, 0.0) or 0.0)
+        if now - last < interval:
+            return {
+                "enabled": True,
+                "attempted": False,
+                "reason": "interval",
+                "next_sync_in_seconds": round(interval - (now - last), 3),
+            }
+        _GROUNDCHECK_BRIDGE_LAST_SYNC[tid] = now
+
+    try:
+        from personal_agent.memory_bridge import sync_groundcheck_to_memory
+
+        try:
+            min_trust = float(os.getenv("CRT_GROUNDCHECK_BRIDGE_MIN_TRUST", "0.65") or 0.65)
+        except Exception:
+            min_trust = 0.65
+        try:
+            raw_limit = int(os.getenv("CRT_GROUNDCHECK_BRIDGE_RAW_LIMIT", "400") or 400)
+        except Exception:
+            raw_limit = 400
+        try:
+            narrative_limit = int(os.getenv("CRT_GROUNDCHECK_BRIDGE_NARRATIVE_LIMIT", "30") or 30)
+        except Exception:
+            narrative_limit = 30
+
+        allowed_sources_raw = str(os.getenv("CRT_GROUNDCHECK_BRIDGE_SOURCES", "user,inferred") or "").strip()
+        allowed_sources = [s.strip() for s in allowed_sources_raw.split(",") if s.strip()] if allowed_sources_raw else None
+
+        result = sync_groundcheck_to_memory(
+            memory_system=engine.memory,
+            thread_id=tid,
+            min_trust=min_trust,
+            raw_limit=max(1, raw_limit),
+            narrative_limit=max(0, narrative_limit),
+            allowed_sources=allowed_sources,
+        )
+        result["enabled"] = True
+        result["attempted"] = True
+        return result
+    except Exception as e:
+        logger.debug(f"[MEMORY_BRIDGE] Sync failed for {tid}: {e}")
+        return {"enabled": True, "attempted": True, "ok": False, "error": str(e)}
 
 
 def _looks_like_follow_up(message: str) -> bool:
@@ -767,6 +841,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     # Increment turn counter
     increment_turn(req.thread_id)
 
+    groundcheck_bridge_meta: Optional[Dict[str, Any]] = None
+    try:
+        groundcheck_bridge_meta = _maybe_sync_groundcheck_bridge(
+            thread_id=req.thread_id,
+            engine=engine,
+        )
+    except Exception as e:
+        logger.debug(f"[MEMORY_BRIDGE] Unexpected sync error: {e}")
+        groundcheck_bridge_meta = {"enabled": True, "attempted": True, "ok": False, "error": str(e)}
+
     # Deterministic ledger-backed contradiction inventory.
     if _is_contradiction_inventory_request(req.message):
         from personal_agent.canonical_view import get_contradiction_counts
@@ -821,6 +905,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 "unresolved_hard_conflicts": hard_conflicts,
                 "retrieved_memories": [],
                 "prompt_memories": [],
+                "groundcheck_bridge": groundcheck_bridge_meta,
             },
         )
 
@@ -1183,6 +1268,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         "critic": critic_meta,
         "model_route": model_route,
         "model_override": model_override,
+        "groundcheck_bridge": groundcheck_bridge_meta,
     }
 
     collapse_trail_id = _log_collapse_trail(
@@ -1410,6 +1496,15 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
 
     engine = get_engine(req.thread_id)
     increment_turn(req.thread_id)
+    groundcheck_bridge_meta: Optional[Dict[str, Any]] = None
+    try:
+        groundcheck_bridge_meta = _maybe_sync_groundcheck_bridge(
+            thread_id=req.thread_id,
+            engine=engine,
+        )
+    except Exception as e:
+        logger.debug(f"[MEMORY_BRIDGE] Intent sync failed: {e}")
+        groundcheck_bridge_meta = {"enabled": True, "attempted": True, "ok": False, "error": str(e)}
 
     # Enable tracing if requested
     if hasattr(engine, "enable_tracing"):
@@ -1451,6 +1546,7 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
         "structured_facts": result.get("structured_facts"),
         "fact_store_hit": result.get("fact_store_hit", False),
         "model_route": result.get("model_route"),
+        "groundcheck_bridge": groundcheck_bridge_meta,
     }
     collapse_trail_id = _log_collapse_trail(
         thread_id=req.thread_id,
