@@ -8,7 +8,7 @@ import random
 import re
 import threading
 import time
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .db_utils import ThreadSessionDB
 from .text_utils import strip_thinking_tags as _strip_thinking_tags
@@ -28,12 +28,171 @@ _STOPWORDS = {
     "a", "an", "to", "of", "in", "on", "at", "as", "is", "it",
 }
 
+_ASSISTANT_FALLBACK_PATTERNS = (
+    "i don't have a reliable stored memory",
+    "i dont have a reliable stored memory",
+    "i don t have a reliable stored memory",
+    "i don't have any stored memory",
+    "i dont have any stored memory",
+    "i don t have any stored memory",
+    "there is no information available",
+    "could you provide more details",
+    "no llm available",
+    "ollama error",
+    "ollama connection error",
+    "model returned internal reasoning without a final answer",
+)
+
+_USER_REPAIR_MARKERS = (
+    "hello again",
+    "you should know",
+    "do you remember",
+    "what do you know about me",
+    "who is",
+    "again?",
+)
+
+_INTERNAL_PROMPT_DUMP_MARKERS = (
+    "the user wants",
+    "output must be in json",
+    "keys: title",
+    "one thing i did well",
+    "one thing to improve",
+    "open question to myself",
+    "small next step",
+    "context is minimal",
+    "my response was",
+)
+
 
 def _tokenize(text: str) -> List[str]:
     text = (text or "").lower()
     text = re.sub(r"[^\w\s-]", " ", text)
     tokens = [t for t in text.split() if len(t) >= 3 and t not in _STOPWORDS]
     return tokens
+
+
+def _norm_for_repeat(text: str) -> str:
+    text = str(text or "").lower()
+    text = re.sub(r"[^\w\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _duplicate_ratio(messages: List[str]) -> float:
+    normalized = [m for m in (_norm_for_repeat(x) for x in messages) if m]
+    if len(normalized) < 2:
+        return 0.0
+    seen: Dict[str, int] = {}
+    duplicate_hits = 0
+    for msg in normalized:
+        count = seen.get(msg, 0) + 1
+        seen[msg] = count
+        if count > 1:
+            duplicate_hits += 1
+    return duplicate_hits / float(len(normalized))
+
+
+def _assistant_is_fallback(text: str) -> bool:
+    probe = _norm_for_repeat(text)
+    if not probe:
+        return True
+    return any(marker in probe for marker in _ASSISTANT_FALLBACK_PATTERNS)
+
+
+def _compute_meta_awareness(interactions: List[dict]) -> dict:
+    user_msgs: List[str] = []
+    assistant_msgs: List[str] = []
+    unanswered_questions = 0
+
+    for row in interactions:
+        user_text = str((row or {}).get("user") or "").strip()
+        assistant_text = str((row or {}).get("assistant") or "").strip()
+        if user_text:
+            user_msgs.append(user_text)
+        if assistant_text:
+            assistant_msgs.append(assistant_text)
+
+        if "?" in user_text and _assistant_is_fallback(assistant_text):
+            unanswered_questions += 1
+
+    fallback_count = sum(1 for msg in assistant_msgs if _assistant_is_fallback(msg))
+    assistant_repetition_ratio = _duplicate_ratio(assistant_msgs)
+    user_rephrase_ratio = _duplicate_ratio(user_msgs)
+    user_repair_count = sum(
+        1 for msg in user_msgs if any(marker in _norm_for_repeat(msg) for marker in _USER_REPAIR_MARKERS)
+    )
+    unanswered_ratio = unanswered_questions / float(max(1, len(user_msgs)))
+    fallback_ratio = fallback_count / float(max(1, len(assistant_msgs)))
+
+    pressure = (
+        min(1.0, fallback_ratio * 0.55)
+        + min(1.0, assistant_repetition_ratio * 0.25)
+        + min(1.0, unanswered_ratio * 0.20)
+    )
+    if pressure >= 0.58:
+        priority = "high"
+    elif pressure >= 0.32:
+        priority = "medium"
+    else:
+        priority = "low"
+
+    return {
+        "assistant_fallback_count": fallback_count,
+        "assistant_fallback_ratio": round(fallback_ratio, 4),
+        "assistant_repetition_ratio": round(assistant_repetition_ratio, 4),
+        "user_rephrase_ratio": round(user_rephrase_ratio, 4),
+        "user_repair_count": user_repair_count,
+        "unanswered_question_count": unanswered_questions,
+        "unanswered_question_ratio": round(unanswered_ratio, 4),
+        "meta_reflection_priority": priority,
+    }
+
+
+def _truncate_sentences(text: str, max_sentences: int = 4) -> str:
+    cleaned = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not cleaned:
+        return ""
+    parts = [p.strip() for p in re.split(r"(?<=[.!?])\s+", cleaned) if p.strip()]
+    if not parts:
+        return cleaned[:500]
+    return " ".join(parts[:max_sentences]).strip()
+
+
+def _looks_like_internal_prompt_dump(text: str) -> bool:
+    probe = _norm_for_repeat(text)
+    if not probe:
+        return False
+    marker_hits = sum(1 for marker in _INTERNAL_PROMPT_DUMP_MARKERS if marker in probe)
+    if marker_hits >= 2:
+        return True
+    if probe.startswith("thread") and "the user wants" in probe:
+        return True
+    if "style: casual, first-person, reddit-like" in probe:
+        return True
+    return False
+
+
+def _sanitize_reflection_output(
+    title: str,
+    body: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    clean_title = _truncate_sentences(_strip_thinking_tags(title), max_sentences=1)
+    clean_body = _truncate_sentences(_strip_thinking_tags(body), max_sentences=4)
+
+    if not clean_title and clean_body:
+        first_sentence = re.split(r"[.!?]", clean_body, maxsplit=1)[0].strip()
+        clean_title = first_sentence[:80] if first_sentence else "Reflection"
+
+    if not clean_title or not clean_body:
+        return None, None, "empty"
+    if len(clean_title) > 120:
+        clean_title = clean_title[:117].rstrip() + "..."
+    if len(clean_body) > 700:
+        clean_body = clean_body[:697].rstrip() + "..."
+    if _looks_like_internal_prompt_dump(clean_title) or _looks_like_internal_prompt_dump(clean_body):
+        return None, None, "prompt_dump"
+    return clean_title, clean_body, None
 
 
 def _topic_counts(messages: List[str]) -> Dict[str, int]:
@@ -99,6 +258,7 @@ def _summarize_scorecard(scorecard: dict) -> tuple[str, str]:
     window = scorecard.get("message_window")
     manual_prompt = str(scorecard.get("manual_prompt") or "").strip()
     open_questions = scorecard.get("open_questions") or []
+    meta = scorecard.get("meta_awareness") or {}
 
     # Create human-readable title
     if top_topics and top_topics != "--":
@@ -130,6 +290,19 @@ def _summarize_scorecard(scorecard: dict) -> tuple[str, str]:
 
     if isinstance(open_questions, list) and open_questions:
         lines.append(f"Open question to revisit: {str(open_questions[0])[:160]}")
+
+    fallback_count = int(meta.get("assistant_fallback_count") or 0)
+    repetition_ratio = float(meta.get("assistant_repetition_ratio") or 0.0)
+    unanswered_ratio = float(meta.get("unanswered_question_ratio") or 0.0)
+    priority = str(meta.get("meta_reflection_priority") or "").strip()
+    if fallback_count > 0:
+        lines.append(f"I hit {fallback_count} fallback responses and should ground memory better.")
+    if repetition_ratio >= 0.25:
+        lines.append("My answers got repetitive, so I should vary wording while preserving facts.")
+    if unanswered_ratio >= 0.2:
+        lines.append("Some user questions were not fully resolved; I should close loops faster.")
+    if priority:
+        lines.append(f"Meta reflection priority: {priority}.")
     
     # Context note
     lines.append(f"(Based on last {window or 'N/A'} messages)")
@@ -151,6 +324,9 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
     transitioned = bool(profile.get("state_transitioned"))
     window = profile.get("message_window")
     manual_prompt = str(profile.get("manual_prompt") or "").strip()
+    mood = str(profile.get("mood") or "").strip()
+    mood_reason = str(profile.get("mood_reason") or "").strip()
+    growth_targets = profile.get("growth_targets") or []
 
     # Create descriptive title
     if transitioned:
@@ -193,6 +369,12 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
     lines.append(f"Current state: {state}.")
     if state_reason:
         lines.append(f"State rationale: {state_reason}.")
+    if mood:
+        lines.append(f"Mood signal: {mood}.")
+    if mood_reason:
+        lines.append(f"Mood rationale: {mood_reason}.")
+    if isinstance(growth_targets, list) and growth_targets:
+        lines.append(f"Growth target: {str(growth_targets[0])[:180]}")
     
     if manual_prompt:
         lines.append(f"\n\nManual prompt: {manual_prompt[:120]}")
@@ -295,6 +477,7 @@ def _build_llm_reflection_post(
     top_topics = _format_topic_list(scorecard.get("top_topics") or [])
     rising = _format_topic_list((scorecard.get("topic_trends") or {}).get("rising") or [])
     fading = _format_topic_list((scorecard.get("topic_trends") or {}).get("fading") or [])
+    meta = scorecard.get("meta_awareness") or {}
     window = scorecard.get("message_window") or len(interactions)
 
     trimmed = [i for i in interactions if (i.get("user") or i.get("assistant"))]
@@ -312,7 +495,7 @@ def _build_llm_reflection_post(
         "You are CRT writing a short internal reflection post about your own behavior and the user's recent interactions. "
         "Style: casual, first-person, reddit-like. Be honest, grounded, and concise. "
         "Do not mention system prompts or hidden policies. Do not fabricate details. "
-        "Output JSON with keys: title, body."
+        "Output only valid JSON with keys: title, body. No preface, no analysis dump."
     )
 
     length_hint = "4-6 sentences" if verbosity == "verbose" else "2-4 sentences"
@@ -321,11 +504,16 @@ def _build_llm_reflection_post(
         f"Length: {length_hint}. "
         "Include: (1) one thing you did well, (2) one thing to improve, "
         "(3) one open question to yourself, and (4) a small next step. "
-        "Use first-person voice. Use the context below.\n\n"
+        "Use first-person voice. Do not output planning notes. Use the context below.\n\n"
         f"Window: {window} messages\n"
         f"Top topics: {top_topics}\n"
         f"Rising: {rising}\n"
         f"Fading: {fading}\n\n"
+        "Meta awareness signals:\n"
+        f"- assistant_fallback_count: {int(meta.get('assistant_fallback_count') or 0)}\n"
+        f"- assistant_repetition_ratio: {float(meta.get('assistant_repetition_ratio') or 0.0):.2f}\n"
+        f"- unanswered_question_ratio: {float(meta.get('unanswered_question_ratio') or 0.0):.2f}\n"
+        f"- user_repair_count: {int(meta.get('user_repair_count') or 0)}\n\n"
         "Recent turns (user + assistant):\n"
         f"{snippets}\n"
     )
@@ -347,6 +535,10 @@ def _build_llm_reflection_post(
 
     title, body = _parse_title_body(raw)
     if not title or not body:
+        return None, None, None
+    title, body, reason = _sanitize_reflection_output(title, body)
+    if not title or not body:
+        logger.debug(f"[JOURNAL] Reflection output rejected by sanitizer: {reason}")
         return None, None, None
     model = getattr(client, "model", None)
     return title, body, str(model) if model else None
@@ -500,6 +692,9 @@ def _maybe_append_self_reply(
         profile=profile,
         source_body=source_body,
     )
+    title, body, _ = _sanitize_reflection_output(title, body)
+    if not title or not body:
+        return False
     root_id = _resolve_root_entry_id(session_db, thread_id, source_entry_id)
     meta = {
         "reply_to": source_entry_id,
@@ -568,8 +763,10 @@ def _recent_interactions(session_db: ThreadSessionDB, thread_id: str, window: in
 def build_reflection_scorecard(
     thread_id: str,
     messages: List[str],
+    interactions: Optional[List[dict]] = None,
     prompt: str | None = None,
 ) -> dict:
+    interactions = interactions or []
     counts = _topic_counts(messages)
     scorecard = {
         "thread_id": thread_id,
@@ -579,11 +776,82 @@ def build_reflection_scorecard(
         "top_topics": _top_topics(counts, k=5),
         "topic_trends": _trend_topics(messages),
         "open_questions": _extract_open_questions(messages, k=3),
+        "meta_awareness": _compute_meta_awareness(interactions),
     }
     if prompt:
         scorecard["manual_prompt"] = prompt
         scorecard["manual_triggered_at"] = time.time()
     return scorecard
+
+
+def _derive_personality_mood(
+    profile: dict,
+    reflection_scorecard: Optional[dict] = None,
+) -> Dict[str, str]:
+    reflection_scorecard = reflection_scorecard or {}
+    meta = reflection_scorecard.get("meta_awareness") or {}
+    fallback_ratio = float(meta.get("assistant_fallback_ratio") or 0.0)
+    unanswered_ratio = float(meta.get("unanswered_question_ratio") or 0.0)
+    repair_count = int(meta.get("user_repair_count") or 0)
+    question_ratio = float(profile.get("question_ratio") or 0.0)
+    urgency = str(profile.get("urgency") or "normal").lower()
+
+    if fallback_ratio >= 0.4 or unanswered_ratio >= 0.35:
+        return {"mood": "self_correcting", "mood_reason": "high fallback/unanswered ratio"}
+    if urgency == "high":
+        return {"mood": "focused", "mood_reason": "urgent user intent detected"}
+    if question_ratio >= 0.55 or repair_count >= 2:
+        return {"mood": "curious", "mood_reason": "question-heavy or repair-heavy dialog"}
+    return {"mood": "steady", "mood_reason": "stable interaction quality"}
+
+
+def _derive_growth_targets(
+    profile: dict,
+    reflection_scorecard: Optional[dict] = None,
+) -> List[str]:
+    reflection_scorecard = reflection_scorecard or {}
+    meta = reflection_scorecard.get("meta_awareness") or {}
+    targets: List[str] = []
+
+    if int(meta.get("assistant_fallback_count") or 0) > 0:
+        targets.append("Reduce fallback replies by grounding memory before responding.")
+    if float(meta.get("assistant_repetition_ratio") or 0.0) >= 0.2:
+        targets.append("Increase phrasing variety while keeping facts stable.")
+    if float(meta.get("unanswered_question_ratio") or 0.0) >= 0.2:
+        targets.append("Close user question loops before moving to side details.")
+    if str(profile.get("interaction_style") or "") == "inquisitive":
+        targets.append("Ask one targeted clarifying question when intent is ambiguous.")
+    if str(profile.get("format") or "") == "structured":
+        targets.append("Use tighter structure to make follow-ups easier to scan.")
+
+    if not targets:
+        targets.append("Maintain tone consistency and keep reinforcing stable user preferences.")
+    return targets[:3]
+
+
+def _derive_personality_traits(
+    profile: dict,
+    reflection_scorecard: Optional[dict] = None,
+) -> Dict[str, float]:
+    reflection_scorecard = reflection_scorecard or {}
+    meta = reflection_scorecard.get("meta_awareness") or {}
+    pref_conf = float(reflection_scorecard.get("preference_confidence") or 0.0)
+    fallback_ratio = float(meta.get("assistant_fallback_ratio") or 0.0)
+    repetition_ratio = float(meta.get("assistant_repetition_ratio") or 0.0)
+    question_ratio = float(profile.get("question_ratio") or 0.0)
+    tech_ratio = float(profile.get("tech_ratio") or 0.0)
+
+    grounded = max(0.0, min(1.0, 0.5 + (pref_conf * 0.4) - (fallback_ratio * 0.6)))
+    adaptability = max(0.0, min(1.0, 0.45 + ((1.0 - repetition_ratio) * 0.35)))
+    curiosity = max(0.0, min(1.0, 0.3 + (question_ratio * 0.6)))
+    precision = max(0.0, min(1.0, 0.35 + (tech_ratio * 0.5)))
+
+    return {
+        "grounded": round(grounded, 3),
+        "adaptability": round(adaptability, 3),
+        "curiosity": round(curiosity, 3),
+        "precision": round(precision, 3),
+    }
 
 
 def _derive_personality_state(
@@ -611,6 +879,10 @@ def _derive_personality_state(
     question_ratio = float(profile.get("question_ratio") or 0.0)
     pref_conf = float(reflection_scorecard.get("preference_confidence") or 0.0)
     open_questions = reflection_scorecard.get("open_questions") or []
+    meta = reflection_scorecard.get("meta_awareness") or {}
+    fallback_ratio = float(meta.get("assistant_fallback_ratio") or 0.0)
+    unanswered_ratio = float(meta.get("unanswered_question_ratio") or 0.0)
+    repetition_ratio = float(meta.get("assistant_repetition_ratio") or 0.0)
 
     scores: Dict[str, float] = {
         "balanced_companion": 0.50,
@@ -636,6 +908,8 @@ def _derive_personality_state(
     scores["reflective_partner"] += min(0.35, pref_conf * 0.4)
     if open_questions:
         scores["reflective_partner"] += 0.18
+    if unanswered_ratio >= 0.2:
+        scores["reflective_partner"] += 0.15
     if verbosity == "verbose":
         scores["reflective_partner"] += 0.1
 
@@ -645,6 +919,10 @@ def _derive_personality_state(
         scores["structured_coach"] += 0.12
     if tone_preference == "technical":
         scores["structured_coach"] += 0.08
+    if repetition_ratio >= 0.25:
+        scores["structured_coach"] += 0.1
+    if fallback_ratio >= 0.3:
+        scores["urgent_executor"] -= 0.1
 
     # Smooth transitions: avoid flipping state unless materially better.
     next_state = max(scores.items(), key=lambda kv: kv[1])[0]
@@ -676,6 +954,8 @@ def _derive_personality_state(
         reason_bits.append("high reflection confidence")
         if open_questions:
             reason_bits.append("open reflective questions")
+        if unanswered_ratio >= 0.2:
+            reason_bits.append("unanswered-question pressure")
     else:
         reason_bits.append("no dominant directional cues")
 
@@ -696,6 +976,7 @@ def build_personality_profile(
     previous_profile: Optional[dict] = None,
     reflection_scorecard: Optional[dict] = None,
 ) -> dict:
+    reflection_scorecard = reflection_scorecard or {}
     lengths = [len(m) for m in messages if m]
     avg_len = sum(lengths) / len(lengths) if lengths else 0
     if avg_len <= 60:
@@ -750,6 +1031,10 @@ def build_personality_profile(
             reflection_scorecard=reflection_scorecard,
         )
     )
+    profile.update(_derive_personality_mood(profile, reflection_scorecard=reflection_scorecard))
+    profile["growth_targets"] = _derive_growth_targets(profile, reflection_scorecard=reflection_scorecard)
+    profile["traits"] = _derive_personality_traits(profile, reflection_scorecard=reflection_scorecard)
+    profile["meta_awareness"] = dict((reflection_scorecard or {}).get("meta_awareness") or {})
     if prompt:
         profile["manual_prompt"] = prompt
         profile["manual_triggered_at"] = time.time()
@@ -800,7 +1085,7 @@ class ReflectionLoop:
     def run_for_thread(self, thread_id: str, prompt: str | None = None) -> dict:
         messages = _recent_messages(self.session_db, thread_id, self.window)
         interactions = _recent_interactions(self.session_db, thread_id, self.window)
-        scorecard = build_reflection_scorecard(thread_id, messages, prompt=prompt)
+        scorecard = build_reflection_scorecard(thread_id, messages, interactions=interactions, prompt=prompt)
         self.session_db.store_reflection_scorecard(thread_id, scorecard)
         try:
             profile = self.session_db.get_personality_profile(thread_id)
@@ -812,7 +1097,13 @@ class ReflectionLoop:
                     meta["post_model"] = model
             else:
                 title, body = _summarize_scorecard(scorecard)
+                title, body, reason = _sanitize_reflection_output(title, body)
+                if not title or not body:
+                    title = "Reflection check-in"
+                    body = "Reflection pass completed with safety guard fallback."
                 meta["post_mode"] = "heuristic"
+                if reason:
+                    meta["sanitizer_reason"] = reason
 
             entry_id = self.session_db.add_reflection_journal_entry(
                 thread_id=thread_id,
@@ -932,6 +1223,10 @@ class PersonalityLoop:
         self.session_db.store_personality_profile(thread_id, profile)
         try:
             title, body = _summarize_personality(profile)
+            title, body, _ = _sanitize_reflection_output(title, body)
+            if not title or not body:
+                title = "Personality adjustment"
+                body = "Personality profile updated."
             entry_id = self.session_db.add_reflection_journal_entry(
                 thread_id=thread_id,
                 entry_type="personality",
