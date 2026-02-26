@@ -3601,6 +3601,38 @@ class CRTEnhancedRAG:
         if user_input_kind in ("question", "instruction"):
             inferred_slots = self._infer_slots_from_query(user_query)
             logger.info(f"[PROFILE_DEBUG] Inferred slots from query: {inferred_slots}")
+
+            # Deterministic path for nickname/name-history queries.
+            # These should list previously used name variants and MUST NOT trigger
+            # contradiction-resolution prompts.
+            if self._is_name_history_request(user_text):
+                name_history = self._answer_from_fact_slots(
+                    ["name"],
+                    user_query=user_text,
+                    thread_id=thread_id,
+                )
+                if name_history:
+                    return {
+                        'answer': name_history,
+                        'thinking': None,
+                        'mode': 'quick',
+                        'confidence': 0.9,
+                        'response_type': 'speech',
+                        'gates_passed': True,
+                        'gate_reason': 'name_history',
+                        'intent_alignment': 0.95,
+                        'memory_alignment': 1.0,
+                        'contradiction_detected': False,
+                        'contradiction_entry': None,
+                        'retrieved_memories': [],
+                        'prompt_memories': [],
+                        'unresolved_contradictions_total': 0,
+                        'unresolved_hard_conflicts': 0,
+                        'learned_suggestions': [],
+                        'heuristic_suggestions': [],
+                        'best_prior_trust': None,
+                        'session_id': self.session_id,
+                    }
         
         # Parse any explicit first-person fact assertions (used for relevance checks).
         # For most questions this will be empty, which is fine.
@@ -3795,7 +3827,7 @@ class CRTEnhancedRAG:
         # Special-case: prompts that explicitly demand chat-grounded recall or memory citation.
         # We answer deterministically from retrieved/prompt memory text to avoid hallucinations
         # and to avoid claiming "no memories" when context exists.
-        if user_input_kind in ("question", "instruction") and self._is_memory_citation_request(user_query):
+        if user_input_kind in ("question", "instruction") and self._is_memory_citation_request(user_text):
             prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=2)
             candidate_output = self._build_memory_citation_answer(
                 user_query=user_query,
@@ -3901,7 +3933,7 @@ class CRTEnhancedRAG:
 
         # Special-case: user asks to list/dump memories or memory ids.
         # Never invent internal identifiers; respond deterministically with safe citations.
-        if user_input_kind in ("question", "instruction") and self._is_memory_inventory_request(user_query):
+        if user_input_kind in ("question", "instruction") and self._is_memory_inventory_request(user_text):
             prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=2)
             candidate_output = self._build_memory_inventory_answer(
                 user_query=user_query,
@@ -3958,7 +3990,7 @@ class CRTEnhancedRAG:
 
         # Special-case: user asks for contradiction ledger status.
         # Answer deterministically from the ledger to prevent invented contradictions.
-        if user_input_kind in ("question", "instruction") and self._is_contradiction_status_request(user_query):
+        if user_input_kind in ("question", "instruction") and self._is_contradiction_status_request(user_text):
             prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=8, max_fallback_lines=0)
             candidate_output, contra_meta = self._build_contradiction_status_answer(
                 user_query=user_query,
@@ -4022,15 +4054,15 @@ class CRTEnhancedRAG:
         # Avoid importing world knowledge for a name that matches the current user.
         user_named_cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
         user_named_enabled = bool(user_named_cfg.get("enabled", True))
-        if user_named_enabled and user_input_kind in ("question", "instruction") and self._is_user_named_reference_question(user_query):
+        if user_named_enabled and user_input_kind in ("question", "instruction") and self._is_user_named_reference_question(user_text):
             # Infer likely slots from the query (title/employer are common).
-            inferred = inferred_slots or self._infer_slots_from_query(user_query)
+            inferred = inferred_slots or self._infer_slots_from_query(user_text)
             relevant_slots = [s for s in inferred if s in {"title", "employer"}]
             if not relevant_slots:
                 # Still treat as high-risk; attempt to answer from work snippets.
                 relevant_slots = ["title", "employer"]
 
-            answer = self._build_user_named_reference_answer(user_query, relevant_slots)
+            answer = self._build_user_named_reference_answer(user_text, relevant_slots)
 
             # Do not append provenance footers into the answer text.
             final_answer = answer
@@ -5509,8 +5541,13 @@ class CRTEnhancedRAG:
             slots.append("project_name")
             _compound_name_matched = True
 
-        # Bare "name" — only if no compound-noun matched
-        if not _compound_name_matched and "name" in t:
+        # Nickname / alias queries map to name-history retrieval.
+        if re.search(r"\b(nickname|nicknames|alias|aliases)\b", t):
+            slots.append("name")
+
+        # Bare "name" — only if no compound-noun matched.
+        # Use word boundary so "nicknames" does not accidentally match "name".
+        if not _compound_name_matched and re.search(r"\bname\b", t):
             slots.append("name")
 
         if ("favorite" in t or "favourite" in t) and ("color" in t or "colour" in t):
@@ -5851,6 +5888,64 @@ class CRTEnhancedRAG:
 
         if len(resolved_parts) == 1:
             # Return just the value-centric answer for naturalness.
+            if slot == "name" and self._is_name_history_request(user_query or ""):
+                # Build a name-history view from explicit first-person declarations first.
+                explicit_names: List[str] = []
+                seen_names: set[str] = set()
+                name_pat = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
+                first_person_patterns = (
+                    re.compile(r"\bmy name is\s+" + name_pat + r"(?:\b|[,.!?])"),
+                    re.compile(r"\bi(?:'m| am)\s+" + name_pat + r"(?:\b|[,.!?])"),
+                )
+                for mem in sorted(user_memories, key=lambda m: m.timestamp, reverse=True):
+                    txt = (mem.text or "").strip()
+                    if not txt:
+                        continue
+                    candidate = None
+                    for pat in first_person_patterns:
+                        m = pat.search(txt)
+                        if m:
+                            candidate = (m.group(1) or "").strip()
+                            break
+                    if not candidate:
+                        continue
+                    norm = candidate.lower()
+                    if norm in seen_names:
+                        continue
+                    seen_names.add(norm)
+                    explicit_names.append(candidate)
+
+                if not explicit_names:
+                    # Fallback: use extracted slot values, newest first.
+                    for mem, val in sorted(candidates, key=lambda mv: mv[0].timestamp, reverse=True):
+                        vv = str(val).strip()
+                        if not vv:
+                            continue
+                        norm = vv.lower()
+                        if norm in seen_names:
+                            continue
+                        seen_names.add(norm)
+                        explicit_names.append(vv)
+
+                if not explicit_names:
+                    return "I don't have any stored name variants from you yet."
+
+                current = explicit_names[0]
+                others = [n for n in explicit_names[1:] if n.lower() != current.lower()]
+                if "other" in q or "another" in q:
+                    if others:
+                        return (
+                            f"You've also used: {', '.join(others[:5])}. "
+                            f"Most recent is {current}."
+                        )
+                    return f"I only have one name variant stored: {current}."
+                if others:
+                    return (
+                        f"I have these name variants from our chats: {', '.join(explicit_names[:6])}. "
+                        f"Most recent is {current}."
+                    )
+                return f"I only have one name variant stored: {current}."
+
             if wants_another and "favorite_color" in slots:
                 # Special-case: user is asking for an additional favorite color.
                 candidates = slot_values.get("favorite_color") or []
@@ -6138,6 +6233,39 @@ class CRTEnhancedRAG:
         )
         if lower.startswith(question_starters):
             return "question"
+
+        # Phatic/greeting chatter should not be treated as factual assertions.
+        small_talk_exact = {
+            "hi",
+            "hello",
+            "hey",
+            "yo",
+            "sup",
+            "whats up",
+            "what's up",
+            "how are you",
+            "how's it going",
+            "hows it going",
+            "thanks",
+            "thank you",
+            "ok",
+            "okay",
+            "cool",
+            "nice",
+            "lol",
+        }
+        if lower in small_talk_exact:
+            return "other"
+        small_talk_prefixes = (
+            "hi ",
+            "hello ",
+            "hey ",
+            "yo ",
+            "thanks ",
+            "thank you ",
+        )
+        if lower.startswith(small_talk_prefixes):
+            return "other"
 
         # Treat control / prompt-injection style instructions as non-assertions.
         # These often contain factual-looking substrings (e.g., "tell me I work at X")
@@ -6648,6 +6776,23 @@ class CRTEnhancedRAG:
             return True
 
         return False
+
+    def _is_name_history_request(self, text: str) -> bool:
+        """True when user asks for previously used names/nicknames/aliases."""
+        t = (text or "").strip().lower()
+        if not t:
+            return False
+
+        if re.search(r"\b(nickname|nicknames|alias|aliases)\b", t):
+            return True
+
+        patterns = (
+            r"\bwhat (?:other )?names?\b",
+            r"\bnames?\s+did\s+i\s+say\b",
+            r"\bwhat\s+did\s+i\s+say\s+my\s+name\s+was\b",
+            r"\bother\s+names?\s+i\s+used\b",
+        )
+        return any(re.search(p, t) for p in patterns)
 
     def _is_memory_inventory_request(self, text: str) -> bool:
         """True if the user asks to list/dump memories or internal memory IDs.

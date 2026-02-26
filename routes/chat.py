@@ -116,7 +116,9 @@ def _looks_like_follow_up(message: str) -> bool:
         return False
     words = re.findall(r"\w+", text)
     if len(words) <= 8:
-        return True
+        # Only carry context for short prompts with explicit follow-up phrasing.
+        # This avoids polluting independent requests (e.g., greetings, jokes, time).
+        return any(hint in text for hint in _CONTINUITY_FOLLOWUP_HINTS)
     return any(hint in text for hint in _CONTINUITY_FOLLOWUP_HINTS)
 
 
