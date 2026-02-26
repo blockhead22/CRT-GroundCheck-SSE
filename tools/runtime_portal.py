@@ -20,17 +20,18 @@ import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, Optional
 
 
 def _now() -> str:
     return time.strftime("%H:%M:%S")
 
 
-def _http_get_json(url: str, timeout: float = 2.0) -> tuple[Optional[dict], Optional[str]]:
+def _http_get_json(url: str, timeout: float = 2.0) -> tuple[Optional[Any], Optional[str]]:
     try:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=timeout) as resp:
@@ -42,7 +43,7 @@ def _http_get_json(url: str, timeout: float = 2.0) -> tuple[Optional[dict], Opti
         return None, str(e)
 
 
-def _http_post_json(url: str, payload: Optional[dict] = None, timeout: float = 3.0) -> tuple[Optional[dict], Optional[str]]:
+def _http_post_json(url: str, payload: Optional[dict] = None, timeout: float = 3.0) -> tuple[Optional[Any], Optional[str]]:
     body = b""
     if payload is not None:
         body = json.dumps(payload).encode("utf-8")
@@ -280,7 +281,8 @@ class RuntimePortal:
                 continue
             parts = raw.split()
             cmd = parts[0].lower()
-            arg = parts[1].lower() if len(parts) > 1 else ""
+            args = parts[1:]
+            arg = args[0].lower() if args else ""
 
             if cmd in {"quit", "exit"}:
                 break
@@ -293,6 +295,9 @@ class RuntimePortal:
             if cmd in {"start", "stop", "restart"}:
                 self._handle_process_command(cmd, arg or "all")
                 continue
+            if cmd in {"system", "copilot"}:
+                self._handle_system_command(args)
+                continue
             if cmd == "hmr":
                 self._handle_hmr_command(arg or "status")
                 continue
@@ -304,6 +309,8 @@ class RuntimePortal:
             "start <api|telegram|all|heartbeat|dnnt> | "
             "stop <api|telegram|all|heartbeat|dnnt> | "
             "restart <api|telegram|all|heartbeat|dnnt> | "
+            "system <status|decay|tick|checks [limit]|resolve <check_id>|reinforce <memory_id>|retrain> | "
+            "copilot <...> (alias) | "
             "hmr <on|off|status> | quit"
         )
 
@@ -391,6 +398,165 @@ class RuntimePortal:
             return
         self.log(f"[portal] invalid hmr command: {arg}")
 
+    def _handle_system_command(self, args: list[str]) -> None:
+        sub = args[0].lower() if args else "status"
+
+        if sub == "status":
+            self._print_system_status()
+            return
+
+        if sub == "decay":
+            payload, err = _http_post_json(f"{self.api_url}/api/copilot/trust-decay/run")
+            self._log_system_result("decay", payload, err)
+            return
+
+        if sub == "tick":
+            payload, err = _http_post_json(f"{self.api_url}/api/copilot/scheduler/tick")
+            self._log_system_result("tick", payload, err)
+            return
+
+        if sub == "retrain":
+            payload, err = _http_post_json(f"{self.api_url}/api/copilot/learning/retrain")
+            self._log_system_result("retrain", payload, err)
+            return
+
+        if sub == "checks":
+            limit = 10
+            if len(args) > 1:
+                try:
+                    limit = int(args[1])
+                except ValueError:
+                    self.log(f"[system] invalid checks limit: {args[1]}")
+                    return
+            limit = max(1, min(limit, 100))
+            payload, err = _http_get_json(f"{self.api_url}/api/copilot/fact-checks?limit={limit}")
+            if err:
+                self.log(f"[system] checks failed ({err})")
+                return
+            if not isinstance(payload, list):
+                self.log(f"[system] checks unexpected payload={self._compact_preview(payload)}")
+                return
+            self.log(f"[system] pending fact checks={len(payload)}")
+            for row in payload:
+                if not isinstance(row, dict):
+                    continue
+                check_id = str(row.get("id", "?"))
+                severity = str(row.get("severity", "?"))
+                status = str(row.get("status", "?"))
+                finding = self._truncate(str(row.get("finding", "")))
+                self.log(
+                    f"[system] - id={check_id} severity={severity} status={status} finding={finding}"
+                )
+            return
+
+        if sub == "resolve":
+            if len(args) < 2:
+                self.log("[system] usage: system resolve <check_id>")
+                return
+            check_id = urllib.parse.quote(args[1], safe="")
+            payload, err = _http_post_json(
+                f"{self.api_url}/api/copilot/fact-checks/{check_id}/resolve"
+            )
+            self._log_system_result("resolve", payload, err)
+            return
+
+        if sub == "reinforce":
+            if len(args) < 2:
+                self.log("[system] usage: system reinforce <memory_id>")
+                return
+            memory_id = urllib.parse.quote(args[1], safe="")
+            payload, err = _http_post_json(
+                f"{self.api_url}/api/copilot/memory/{memory_id}/reinforce"
+            )
+            self._log_system_result("reinforce", payload, err)
+            return
+
+        self.log(
+            "[system] usage: system <status|decay|tick|checks [limit]|resolve <check_id>|reinforce <memory_id>|retrain>"
+        )
+
+    def _print_system_status(self) -> None:
+        scheduler, scheduler_err = _http_get_json(
+            f"{self.api_url}/api/copilot/scheduler/status", timeout=1.5
+        )
+        if scheduler_err:
+            self.log(f"[system] scheduler status failed ({scheduler_err})")
+        elif isinstance(scheduler, dict):
+            self.log(
+                "[system] scheduler "
+                f"enabled={bool(scheduler.get('enabled', False))} "
+                f"auto_learning={bool(scheduler.get('auto_learning_enabled', False))} "
+                f"idle_seconds={scheduler.get('idle_seconds')} "
+                f"interval_seconds={scheduler.get('interval_seconds')}"
+            )
+        else:
+            self.log(f"[system] scheduler payload={self._compact_preview(scheduler)}")
+
+        checks, checks_err = _http_get_json(
+            f"{self.api_url}/api/copilot/fact-checks?limit=50", timeout=1.5
+        )
+        if checks_err:
+            self.log(f"[system] fact checks failed ({checks_err})")
+        elif isinstance(checks, list):
+            self.log(f"[system] pending_fact_checks={len(checks)}")
+        else:
+            self.log(f"[system] fact checks payload={self._compact_preview(checks)}")
+
+        learning, learning_err = _http_get_json(
+            f"{self.api_url}/api/copilot/learning/stats", timeout=1.5
+        )
+        if learning_err:
+            self.log(f"[system] learning stats failed ({learning_err})")
+        elif isinstance(learning, dict):
+            self.log(
+                "[system] learning "
+                f"total_events={learning.get('total_events')} "
+                f"total_corrections={learning.get('total_corrections')} "
+                f"pending_training={learning.get('pending_training')}"
+            )
+        else:
+            self.log(f"[system] learning payload={self._compact_preview(learning)}")
+
+        training, training_err = _http_get_json(
+            f"{self.api_url}/api/copilot/training-data/stats", timeout=1.5
+        )
+        if training_err:
+            self.log(f"[system] training-data stats failed ({training_err})")
+        elif isinstance(training, dict):
+            self.log(
+                "[system] training-data "
+                f"total_reflections={training.get('total_reflections')} "
+                f"total_requeries={training.get('total_requeries')} "
+                f"total_preferences={training.get('total_preferences')}"
+            )
+        else:
+            self.log(f"[system] training-data payload={self._compact_preview(training)}")
+
+    def _log_system_result(self, action: str, payload: Optional[Any], err: Optional[str]) -> None:
+        if err:
+            self.log(f"[system] {action} failed ({err})")
+            return
+        self.log(f"[system] {action} ok payload={self._compact_preview(payload)}")
+
+    @staticmethod
+    def _truncate(text: str, max_len: int = 120) -> str:
+        one_line = " ".join(text.split())
+        if len(one_line) <= max_len:
+            return one_line
+        return f"{one_line[:max_len - 3]}..."
+
+    @staticmethod
+    def _compact_preview(payload: Optional[Any], max_len: int = 220) -> str:
+        if payload is None:
+            return "null"
+        try:
+            text = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
+        except Exception:
+            text = str(payload)
+        if len(text) <= max_len:
+            return text
+        return f"{text[:max_len - 3]}..."
+
     def _is_api_up(self) -> tuple[bool, Optional[str]]:
         payload, err = _http_get_json(f"{self.api_url}/health", timeout=1.5)
         if err:
@@ -415,6 +581,9 @@ class RuntimePortal:
         hb, hb_err = _http_get_json(f"{self.api_url}/api/heartbeat/status", timeout=1.5)
         jobs, jobs_err = _http_get_json(f"{self.api_url}/api/jobs/status", timeout=1.5)
         dnnt, dnnt_err = _http_get_json(f"{self.api_url}/api/dnnt/retraining/status", timeout=1.5)
+        system_bg, system_bg_err = _http_get_json(
+            f"{self.api_url}/api/copilot/scheduler/status", timeout=1.5
+        )
 
         hb_state = "unknown"
         if isinstance(hb, dict):
@@ -435,7 +604,18 @@ class RuntimePortal:
         elif dnnt_err:
             dnnt_state = f"err:{dnnt_err}"
 
-        return f"[health] api=up heartbeat={hb_state} jobs={jobs_state} dnnt={dnnt_state}"
+        system_state = "unknown"
+        if isinstance(system_bg, dict):
+            sched = "on" if system_bg.get("enabled") else "off"
+            auto = "on" if system_bg.get("auto_learning_enabled") else "off"
+            system_state = f"sched:{sched},al:{auto}"
+        elif system_bg_err:
+            system_state = f"err:{system_bg_err}"
+
+        return (
+            f"[health] api=up heartbeat={hb_state} jobs={jobs_state} "
+            f"dnnt={dnnt_state} system={system_state}"
+        )
 
     def _watchdog_loop(self) -> None:
         while not self._stop.is_set():

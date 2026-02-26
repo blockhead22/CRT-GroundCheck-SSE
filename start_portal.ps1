@@ -15,7 +15,11 @@ Write-Host "- Host: $env:CRT_HOST"
 Write-Host "- Port: $env:PORT"
 Write-Host "- HMR: enabled"
 Write-Host ""
-Write-Host "Portal commands: status | restart api | restart telegram | restart heartbeat | restart dnnt | quit"
+Write-Host "Portal commands:"
+Write-Host "  status | restart api | restart telegram | restart heartbeat | restart dnnt | quit"
+Write-Host "  system status | system decay | system tick | system checks [limit]"
+Write-Host "  system resolve <check_id> | system reinforce <memory_id> | system retrain"
+Write-Host "  (copilot <...> still works as an alias)"
 Write-Host ""
 
 & .venv\Scripts\python.exe tools\runtime_portal.py --api-url $env:CRT_API_URL
