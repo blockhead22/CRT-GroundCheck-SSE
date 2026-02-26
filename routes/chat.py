@@ -149,9 +149,9 @@ def _maybe_sync_groundcheck_bridge(
         from personal_agent.memory_bridge import sync_groundcheck_to_memory
 
         try:
-            min_trust = float(os.getenv("CRT_GROUNDCHECK_BRIDGE_MIN_TRUST", "0.65") or 0.65)
+            min_trust = float(os.getenv("CRT_GROUNDCHECK_BRIDGE_MIN_TRUST", "0.2") or 0.2)
         except Exception:
-            min_trust = 0.65
+            min_trust = 0.2
         try:
             raw_limit = int(os.getenv("CRT_GROUNDCHECK_BRIDGE_RAW_LIMIT", "400") or 400)
         except Exception:

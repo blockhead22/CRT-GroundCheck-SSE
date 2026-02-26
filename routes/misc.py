@@ -648,7 +648,7 @@ def get_introspection(request: Request, thread_id: str = Query("default")):
 def sync_groundcheck_bridge(
     request: Request,
     thread_id: str,
-    min_trust: float = Query(default=0.65, ge=0.0, le=1.0),
+    min_trust: float = Query(default=0.2, ge=0.0, le=1.0),
     raw_limit: int = Query(default=400, ge=1, le=5000),
     narrative_limit: int = Query(default=30, ge=0, le=500),
 ):
