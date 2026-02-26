@@ -7,6 +7,8 @@ should remain usable even when the `ollama` Python package isn't installed.
 import os
 from typing import Optional, Dict, List, Any
 
+from .text_utils import extract_think_content
+
 try:
     import ollama  # type: ignore
 except ModuleNotFoundError:  # pragma: no cover
@@ -118,18 +120,12 @@ class OllamaClient:
                 return response
             else:
                 # Handle both dict-style and pydantic responses
-                # Also handle deepseek-r1's "thinking" field - it puts reasoning there
-                # and may leave content empty or minimal
                 if hasattr(response, 'message'):
                     # Pydantic model (newer ollama)
                     msg = response.message
                     content = msg.content if msg.content else ""
                     thinking = getattr(msg, 'thinking', None) or ""
-                    
-                    # If content is very short but thinking has substance, use thinking
-                    if len(content.strip()) < 20 and len(thinking.strip()) > 50:
-                        return thinking
-                    return content
+                    return self._resolve_visible_text(content, thinking)
                 else:
                     # Dict-style response (older ollama)
                     return response['message']['content']
@@ -176,19 +172,35 @@ class OllamaClient:
             )
             
             # Handle both dict-style and pydantic responses
-            # Also handle deepseek-r1's "thinking" field
             if hasattr(response, 'message'):
                 msg = response.message
                 content = msg.content if msg.content else ""
                 thinking = getattr(msg, 'thinking', None) or ""
-                
-                if len(content.strip()) < 20 and len(thinking.strip()) > 50:
-                    return thinking
-                return content
+                return self._resolve_visible_text(content, thinking)
             else:
                 return response['message']['content']
         except Exception as e:
             return f"[Ollama error: {e}]"
+
+    def _resolve_visible_text(self, content: str, thinking: str) -> str:
+        """Return safe user-visible text, never raw chain-of-thought."""
+        visible = str(content or "").strip()
+        if visible:
+            return visible
+
+        thinking_text = str(thinking or "").strip()
+        if not thinking_text:
+            return ""
+
+        # If the model emitted <think>...</think> blocks in a single field,
+        # only keep any visible text outside the think block.
+        _, extracted_visible = extract_think_content(thinking_text)
+        extracted_visible = str(extracted_visible or "").strip()
+        if extracted_visible:
+            return extracted_visible
+
+        # Do not leak internal reasoning when no visible answer exists.
+        return "[Model returned internal reasoning without a final answer. Please retry.]"
     
     def extract_intent(self, query: str) -> Dict[str, Any]:
         """
