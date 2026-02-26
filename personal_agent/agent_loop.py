@@ -53,6 +53,12 @@ except ImportError:
     CriticResult = None
     VerifyVerdict = None
 
+try:
+    from personal_agent.tool_policy import AgentToolPolicy, ToolExecutionContext
+except ImportError:
+    AgentToolPolicy = None
+    ToolExecutionContext = None
+
 
 class AgentAction(str, Enum):
     """Available agent actions."""
@@ -148,12 +154,21 @@ class ToolRegistry:
         memory_engine: Optional[CRTMemorySystem] = None,
         research_engine: Optional[ResearchEngine] = None,
         workspace_root: Optional[Path] = None,
+        policy_engine: Optional["AgentToolPolicy"] = None,
+        execution_context: Optional["ToolExecutionContext"] = None,
     ):
         self.memory = memory_engine
         self.research = research_engine
         self.workspace = workspace_root or Path.cwd()
+        self.policy_engine = policy_engine
+        self.execution_context = execution_context
+        self._usage_counts: dict[str, int] = {}
         self.llm_client: Optional[Any] = None  # Set by AgentLoop
         self._tools: dict[AgentAction, Callable] = self._register_tools()
+
+    def set_execution_context(self, context: Optional["ToolExecutionContext"]) -> None:
+        """Update runtime execution context (channel/user/approvals)."""
+        self.execution_context = context
 
     def _register_tools(self) -> dict[AgentAction, Callable]:
         """Register all available tools."""
@@ -183,6 +198,22 @@ class ToolRegistry:
                     error=f"Unknown tool: {tool_call.tool}",
                 )
 
+            if self.policy_engine is not None:
+                decision = self.policy_engine.evaluate(
+                    tool_name=tool_call.tool.value,
+                    context=self.execution_context,
+                    usage_counts=self._usage_counts,
+                )
+                if not decision.allowed:
+                    return ToolResult(
+                        tool=tool_call.tool,
+                        success=False,
+                        result=None,
+                        error=f"policy_blocked:{decision.reason}",
+                    )
+
+            tool_key = tool_call.tool.value
+            self._usage_counts[tool_key] = int(self._usage_counts.get(tool_key, 0) or 0) + 1
             tool_fn = self._tools[tool_call.tool]
             result = tool_fn(**tool_call.args)
 
@@ -816,6 +847,8 @@ def create_agent(
     research_engine: Optional[ResearchEngine] = None,
     workspace_root: Optional[Path] = None,
     max_steps: int = 10,
+    policy_engine: Optional["AgentToolPolicy"] = None,
+    execution_context: Optional["ToolExecutionContext"] = None,
 ) -> AgentLoop:
     """
     Create and configure an agent instance.
@@ -833,6 +866,8 @@ def create_agent(
         memory_engine=memory_engine,
         research_engine=research_engine,
         workspace_root=workspace_root,
+        policy_engine=policy_engine,
+        execution_context=execution_context,
     )
 
     llm_client = None

@@ -13,6 +13,8 @@ from routes.models import (
     AgentRunResponse,
     AgentStepModel,
     AgentStatusResponse,
+    AgentToolPolicyRequest,
+    AgentToolPolicyResponse,
     AgentTraceModel,
     AgentTriggersResponse,
 )
@@ -34,6 +36,7 @@ def run_agent(req: AgentRunRequest, request: Request) -> AgentRunResponse:
     try:
         from personal_agent.agent_loop import create_agent
         from personal_agent.research_engine import ResearchEngine as _RE
+        from personal_agent.tool_policy import AgentToolPolicy, ToolExecutionContext
 
         # Create research engine if not exists
         research_engine = None
@@ -42,11 +45,26 @@ def run_agent(req: AgentRunRequest, request: Request) -> AgentRunResponse:
         except Exception:
             pass
 
+        policy_cfg = getattr(request.app.state, "agent_tool_policy_config", {}) or {}
+        policy_engine = AgentToolPolicy(config=policy_cfg)
+        execution_context = ToolExecutionContext(
+            thread_id=tid,
+            channel=str(req.channel or "api").strip().lower() or "api",
+            actor_id=str(req.actor_id).strip() if req.actor_id else None,
+            approved_tools={
+                str(item or "").strip().lower()
+                for item in (req.approved_tools or [])
+                if str(item or "").strip()
+            },
+        )
+
         agent = create_agent(
             memory_engine=engine.memory,
             research_engine=research_engine,
             workspace_root=Path.cwd(),
             max_steps=req.max_steps,
+            policy_engine=policy_engine,
+            execution_context=execution_context,
         )
 
         trace = agent.run(req.query)
@@ -87,6 +105,37 @@ def run_agent(req: AgentRunRequest, request: Request) -> AgentRunResponse:
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Agent execution failed: {str(e)}")
+
+
+@router.get("/tool-policy", response_model=AgentToolPolicyResponse)
+def get_agent_tool_policy(request: Request) -> AgentToolPolicyResponse:
+    """Get active agent tool policy configuration."""
+    from personal_agent.tool_policy import AgentToolPolicy
+
+    cfg = getattr(request.app.state, "agent_tool_policy_config", {}) or {}
+    normalized = AgentToolPolicy.normalize_config(cfg)
+    version = int(getattr(request.app.state, "agent_tool_policy_version", 1) or 1)
+    return AgentToolPolicyResponse(ok=True, version=version, config=normalized)
+
+
+@router.put("/tool-policy", response_model=AgentToolPolicyResponse)
+def update_agent_tool_policy(
+    payload: AgentToolPolicyRequest,
+    request: Request,
+) -> AgentToolPolicyResponse:
+    """Update active agent tool policy (in-memory runtime update)."""
+    from personal_agent.tool_policy import AgentToolPolicy
+
+    try:
+        normalized = AgentToolPolicy.normalize_config(payload.config)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid tool policy config: {e}")
+
+    request.app.state.agent_tool_policy_config = normalized
+    current = int(getattr(request.app.state, "agent_tool_policy_version", 1) or 1)
+    new_version = current + 1
+    request.app.state.agent_tool_policy_version = new_version
+    return AgentToolPolicyResponse(ok=True, version=new_version, config=normalized)
 
 
 @router.post("/analyze-triggers", response_model=AgentTriggersResponse)
@@ -183,4 +232,3 @@ def agent_status() -> AgentStatusResponse:
         reasoning_available=reasoning_available,
         tools_count=tools_count,
     )
-

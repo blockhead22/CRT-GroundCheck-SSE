@@ -832,6 +832,9 @@ def create_app() -> FastAPI:
     loop_cfg = (runtime_cfg.get("training_loop") or {}) if isinstance(runtime_cfg, dict) else {}
     jobs_cfg = (runtime_cfg.get("background_jobs") or {}) if isinstance(runtime_cfg, dict) else {}
     dnnt_cfg = (runtime_cfg.get("dnnt_retraining") or {}) if isinstance(runtime_cfg, dict) else {}
+    agent_tool_policy_cfg = (
+        (runtime_cfg.get("agent_tool_policy") or {}) if isinstance(runtime_cfg, dict) else {}
+    )
 
     # Shared training loop (suggestion-only model). Stored in app.state for endpoints.
     training_loop = CRTTrainingLoop(
@@ -841,6 +844,8 @@ def create_app() -> FastAPI:
         loop_cfg=loop_cfg,
     )
     app.state.training_loop = training_loop
+    app.state.agent_tool_policy_config = dict(agent_tool_policy_cfg)
+    app.state.agent_tool_policy_version = 1
 
     # Optional managed DNNT background retraining loop.
     dnnt_learning_cfg = BackgroundLearningConfig(

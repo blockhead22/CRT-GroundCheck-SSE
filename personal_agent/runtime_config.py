@@ -26,6 +26,61 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         # Web research can be privacy-surprising; keep off unless explicitly enabled.
         "auto_web_research_enabled": False,
     },
+
+    # OpenClaw-style governance for autonomous tool use.
+    # This is enforced at tool execution time in the agent loop.
+    "agent_tool_policy": {
+        "enabled": True,
+        "default_allow": True,
+        "global_max_calls_per_run": 24,
+        "tools": {
+            "execute_code": {
+                "enabled": True,
+                "require_approval": True,
+                "max_calls_per_run": 2,
+                "allowed_channels": [],
+                "denied_channels": [],
+                "allowed_users": [],
+                "denied_users": [],
+            },
+            "store_memory": {
+                "enabled": True,
+                "require_approval": True,
+                "max_calls_per_run": 4,
+                "allowed_channels": [],
+                "denied_channels": [],
+                "allowed_users": [],
+                "denied_users": [],
+            },
+            "search_web": {
+                "enabled": True,
+                "require_approval": False,
+                "max_calls_per_run": 6,
+                "allowed_channels": [],
+                "denied_channels": [],
+                "allowed_users": [],
+                "denied_users": [],
+            },
+            "read_file": {
+                "enabled": True,
+                "require_approval": False,
+                "max_calls_per_run": 20,
+                "allowed_channels": [],
+                "denied_channels": [],
+                "allowed_users": [],
+                "denied_users": [],
+            },
+            "list_files": {
+                "enabled": True,
+                "require_approval": False,
+                "max_calls_per_run": 20,
+                "allowed_channels": [],
+                "denied_channels": [],
+                "allowed_users": [],
+                "denied_users": [],
+            },
+        },
+    },
     
     # Time-based greeting system: personalized greetings based on time since last interaction.
     # Generates contextual greetings like "Welcome back! It's been 3 days since we last chatted."

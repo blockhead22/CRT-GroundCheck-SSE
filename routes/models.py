@@ -555,6 +555,12 @@ class AgentRunRequest(BaseModel):
     query: str = Field(min_length=1, description="Task for agent")
     max_steps: int = Field(default=10, ge=1, le=50)
     auto_mode: bool = Field(default=True, description="Enable autonomous execution")
+    channel: str = Field(default="api", description="Execution channel (api/telegram/etc)")
+    actor_id: Optional[str] = Field(default=None, description="User/actor identifier for policy checks")
+    approved_tools: list[str] = Field(
+        default_factory=list,
+        description="Tool approvals granted for this run (e.g., ['execute_code'])",
+    )
 
 
 class AgentRunResponse(BaseModel):
@@ -574,6 +580,16 @@ class AgentStatusResponse(BaseModel):
     llm_available: bool
     reasoning_available: bool
     tools_count: int
+
+
+class AgentToolPolicyRequest(BaseModel):
+    config: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentToolPolicyResponse(BaseModel):
+    ok: bool = True
+    version: int
+    config: Dict[str, Any]
 
 
 # ---------------------------------------------------------------------------

@@ -40,4 +40,6 @@ jobs:
             tests/test_web_answer_policy.py \
             tests/test_memory_write_guard.py \
             tests/test_endpoint_parity_ci.py \
-            tests/test_heartbeat_executor_plumbing.py
+            tests/test_heartbeat_executor_plumbing.py \
+            tests/test_agent_tool_policy.py \
+            tests/test_agent_tool_policy_api.py

@@ -40,6 +40,44 @@
         "auto_learning_enabled": { "type": "boolean" }
       }
     },
+    "agent_tool_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "default_allow", "global_max_calls_per_run", "tools"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "default_allow": { "type": "boolean" },
+        "global_max_calls_per_run": { "type": "integer", "minimum": 1 },
+        "tools": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "enabled": { "type": "boolean" },
+              "require_approval": { "type": "boolean" },
+              "max_calls_per_run": { "type": ["integer", "null"], "minimum": 1 },
+              "allowed_channels": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "denied_channels": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "allowed_users": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "denied_users": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
     "greeting": {
       "type": "object",
       "additionalProperties": false,
