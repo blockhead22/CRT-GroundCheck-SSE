@@ -64,6 +64,10 @@ def test_build_personality_profile_includes_growth_and_traits():
     assert profile["growth_targets"]
     assert isinstance(profile.get("traits"), dict)
     assert "grounded" in profile["traits"]
+    assert isinstance(profile.get("curiosity_agenda"), list)
+    assert profile["curiosity_agenda"]
+    assert isinstance(profile.get("learning_drive"), float)
+    assert 0.0 <= float(profile.get("learning_drive") or 0.0) <= 1.0
     assert profile.get("mood") in {"self_correcting", "focused", "curious", "steady"}
     assert profile.get("meta_awareness") == scorecard.get("meta_awareness")
 

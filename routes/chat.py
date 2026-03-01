@@ -12,6 +12,7 @@ import json
 import logging
 import os
 import re
+import sqlite3
 import threading
 import time
 from datetime import datetime
@@ -157,9 +158,9 @@ def _maybe_sync_groundcheck_bridge(
         except Exception:
             raw_limit = 400
         try:
-            narrative_limit = int(os.getenv("CRT_GROUNDCHECK_BRIDGE_NARRATIVE_LIMIT", "30") or 30)
+            narrative_limit = int(os.getenv("CRT_GROUNDCHECK_BRIDGE_NARRATIVE_LIMIT", "120") or 120)
         except Exception:
-            narrative_limit = 30
+            narrative_limit = 120
 
         allowed_sources_raw = str(os.getenv("CRT_GROUNDCHECK_BRIDGE_SOURCES", "user,inferred") or "").strip()
         allowed_sources = [s.strip() for s in allowed_sources_raw.split(",") if s.strip()] if allowed_sources_raw else None
@@ -254,6 +255,77 @@ def _augment_query_with_continuity(
     lines = list(reversed(lines_rev))
     context_block = f"{instruction}\n{context_header}\n" + "\n".join(lines)
     return f"{message}\n\n{context_block}"
+
+
+def _is_bare_web_search_command(text: str) -> bool:
+    """True for generic search commands without a concrete topic/query."""
+    t = re.sub(r"\s+", " ", str(text or "").strip().lower())
+    if not t:
+        return False
+
+    command_markers = (
+        "use duckduckgo",
+        "use duck duck go",
+        "duckduckgo and web search",
+        "duck duck go and web search",
+        "use web search",
+        "web search",
+        "search the web",
+        "search online",
+    )
+    if not any(m in t for m in command_markers):
+        return False
+
+    # If the user already specified a topical query, this is not a bare command.
+    # Examples to keep as non-bare:
+    # - "search the web for dji mic 2 lav input"
+    # - "can you check X using duckduckgo"
+    if any(m in t for m in ("search for ", "for ", "about ", "on ", "regarding ", "using duckduckgo")):
+        # still bare if the whole message is essentially just a command phrase
+        trimmed = t
+        for m in command_markers:
+            trimmed = trimmed.replace(m, " ")
+        trimmed = re.sub(r"[^a-z0-9\s]", " ", trimmed)
+        words = [w for w in trimmed.split() if w and w not in {"use", "and", "please", "can", "you"}]
+        return len(words) <= 2
+
+    return True
+
+
+def _resolve_bare_web_search_command(
+    *,
+    message: str,
+    session_db: Any,
+    thread_id: str,
+) -> str:
+    """Map bare 'use web search' commands to the last substantive user question."""
+    q = str(message or "").strip()
+    if not q or not _is_bare_web_search_command(q):
+        return q
+    if session_db is None:
+        return q
+
+    try:
+        recent = session_db.get_recent_queries(thread_id, window=12)
+    except Exception:
+        recent = []
+
+    # get_recent_queries() already returns newest-first; pick the latest
+    # substantive user query that is not another bare search command.
+    for row in recent:
+        prev_q = str((row or {}).get("query_text") or "").strip()
+        if not prev_q:
+            continue
+        if prev_q.lower() == q.lower():
+            continue
+        if _is_bare_web_search_command(prev_q):
+            continue
+        prev_l = prev_q.lower()
+        if re.match(r"^(search (the web|online|duckduckgo|ddg) for|web search for)\b", prev_l):
+            return prev_q
+        return f"search the web for {prev_q}"
+
+    return q
 
 
 # ---------------------------------------------------------------------------
@@ -645,6 +717,37 @@ def _is_architecture_explanation_request(text: str) -> bool:
         return False
     if len(t) > 1000:
         return False
+    # Do not hijack explicit profile/memory submissions into the doc-grounded lane.
+    # Example: "Here is an about me ... I'm building CRT ..."
+    profile_markers = (
+        "here is an about me",
+        "here's an about me",
+        "question: here is an about me",
+        "about me:",
+        "here is my bio",
+        "here's my bio",
+        "my bio:",
+        "remember this about me",
+        "store this about me",
+        "save this about me",
+        "for your memory",
+    )
+    if any(m in t for m in profile_markers):
+        return False
+    # Also avoid doc-lane hijack when the user is giving profile-like content.
+    if "about me" in t and any(
+        m in t
+        for m in (
+            "my name is",
+            "i'm ",
+            "i am ",
+            "i work",
+            "i build",
+            "i value",
+            "focused on",
+        )
+    ):
+        return False
     # Only route to doc-grounded answers for very specific technical terms.
     # General questions like "how do you work" or "who are you" should go through
     # the LLM path where the self-aware system prompt can answer naturally.
@@ -690,6 +793,275 @@ def _is_contradiction_inventory_request(text: str) -> bool:
         "in our chat",
     )
     return any(n in t for n in needles)
+
+
+def _extract_workplan_items(text: str) -> Dict[int, str]:
+    """Parse 'Items N (label)' pairs from a stored work-plan sentence."""
+    out: Dict[int, str] = {}
+    for num_s, label in re.findall(r"(\d+)\s*\(([^)]+)\)", str(text or "")):
+        try:
+            num = int(num_s)
+        except Exception:
+            continue
+        clean = " ".join(str(label).strip().split())
+        if clean:
+            out[num] = clean
+    return out
+
+
+def _load_latest_workplan_from_groundcheck() -> Optional[Tuple[str, str, Dict[int, str]]]:
+    """Return (memory_id, text, parsed_items) for the latest GroundCheck work-plan row."""
+    try:
+        from personal_agent.memory_bridge import find_groundcheck_db
+
+        db_path = find_groundcheck_db()
+    except Exception:
+        return None
+    if not db_path:
+        return None
+
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            """
+            SELECT id, text, timestamp
+            FROM memories
+            WHERE lower(text) LIKE '%work plan%'
+               OR lower(text) LIKE '%plan for aether%'
+               OR lower(text) LIKE '%item %(%'
+               OR lower(text) LIKE '%items %(%'
+            ORDER BY timestamp DESC
+            LIMIT 20
+            """
+        ).fetchall()
+        for row in rows:
+            text = str(row["text"] or "").strip()
+            parsed = _extract_workplan_items(text)
+            if parsed:
+                return str(row["id"]), text, parsed
+    except Exception:
+        return None
+    finally:
+        conn.close()
+    return None
+
+
+def _load_latest_workplan_from_crt_memory(
+    engine: Any,
+    *,
+    thread_id: Optional[str] = None,
+) -> Optional[Tuple[str, str, Dict[int, str]]]:
+    """Fallback work-plan loader from CRT memory when GroundCheck lookup misses."""
+    if engine is None:
+        return None
+    mem = getattr(engine, "memory", None)
+    if mem is None:
+        return None
+    try:
+        all_mems = mem._load_all_memories()  # internal helper; best-effort fallback path
+    except Exception:
+        return None
+    if not all_mems:
+        return None
+
+    tid = sanitize_thread_id(str(thread_id or "default")) if thread_id else None
+    scoped = []
+    for m in all_mems:
+        m_tid = str(getattr(m, "thread_id", "") or "").strip()
+        if tid and m_tid and m_tid != tid:
+            continue
+        scoped.append(m)
+
+    scoped.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
+    for m in scoped[:120]:
+        text = str(getattr(m, "text", "") or "").strip()
+        if not text:
+            continue
+        tl = text.lower()
+        if "work plan" not in tl and "item" not in tl:
+            continue
+        parsed = _extract_workplan_items(text)
+        if not parsed:
+            continue
+        mem_id = str(getattr(m, "memory_id", "") or getattr(m, "id", "") or "")
+        if mem_id:
+            return mem_id, text, parsed
+    return None
+
+
+def _load_latest_groundcheck_memory_by_phrase(
+    phrases: Tuple[str, ...],
+    *,
+    limit: int = 8,
+) -> Optional[Tuple[str, str]]:
+    """Return latest (memory_id, text) matching any lowercase phrase."""
+    try:
+        from personal_agent.memory_bridge import find_groundcheck_db
+
+        db_path = find_groundcheck_db()
+    except Exception:
+        return None
+    if not db_path:
+        return None
+
+    lowered = [str(p or "").strip().lower() for p in phrases if str(p or "").strip()]
+    if not lowered:
+        return None
+
+    conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    try:
+        where = " OR ".join("lower(text) LIKE ?" for _ in lowered)
+        params = [f"%{p}%" for p in lowered] + [max(1, int(limit))]
+        rows = conn.execute(
+            f"""
+            SELECT id, text, timestamp
+            FROM memories
+            WHERE {where}
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            params,
+        ).fetchall()
+        for row in rows:
+            text = str(row["text"] or "").strip()
+            if text:
+                return str(row["id"]), text
+    except Exception:
+        return None
+    finally:
+        conn.close()
+    return None
+
+
+def _try_answer_workplan_question(
+    message: str,
+    *,
+    engine: Any = None,
+    thread_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """Deterministic answer path for numbered work-plan item questions."""
+    q = str(message or "").strip()
+    if not q:
+        return None
+    ql = q.lower()
+    if not any(k in ql for k in ("work plan", "plan item", "plan items", " item ", "items ", "number ")):
+        return None
+
+    loaded = _load_latest_workplan_from_groundcheck()
+    if not loaded and engine is not None:
+        loaded = _load_latest_workplan_from_crt_memory(engine, thread_id=thread_id)
+    if not loaded:
+        return None
+    source_id, source_text, items = loaded
+    if not items:
+        return None
+
+    explicit_targets = [int(n) for n in re.findall(r"(?:item|number)\s*(\d+)", ql)]
+    numeric_targets = []
+    for n in re.findall(r"\b\d+\b", ql):
+        try:
+            iv = int(n)
+        except Exception:
+            continue
+        if iv in items:
+            numeric_targets.append(iv)
+
+    requested = [n for n in explicit_targets if n in items]
+    if not requested:
+        requested = numeric_targets
+    requested = list(dict.fromkeys(requested))  # preserve order, dedupe
+
+    if "next" in ql and requested:
+        pivot = requested[-1]
+        higher = sorted([n for n in items.keys() if n > pivot])
+        if higher:
+            nxt = higher[0]
+            return {
+                "answer": f"Item {nxt}: {items[nxt]}.",
+                "source_memory_id": source_id,
+                "source_text": source_text,
+                "items": {str(k): v for k, v in sorted(items.items())},
+            }
+
+    summary_like = (
+        "summarize" in ql
+        or "summary" in ql
+        or ("plan items" in ql and len(requested) >= 2)
+        or ("all" in ql and "item" in ql)
+    )
+
+    if not requested and summary_like:
+        requested = sorted(items.keys())
+    if not requested:
+        return None
+
+    if "just the label" in ql and len(requested) == 1:
+        answer = items[requested[0]]
+    elif len(requested) == 1:
+        n = requested[0]
+        answer = f"Item {n}: {items[n]}."
+    else:
+        parts = [f"Item {n}: {items[n]}" for n in requested if n in items]
+        answer = "; ".join(parts) + "."
+
+    return {
+        "answer": answer,
+        "source_memory_id": source_id,
+        "source_text": source_text,
+        "items": {str(k): v for k, v in sorted(items.items())},
+    }
+
+
+def _try_answer_mcp_tools_question(message: str) -> Optional[Dict[str, Any]]:
+    """Deterministic answer path for MCP tools expansion memory queries."""
+    q = str(message or "").strip()
+    if not q:
+        return None
+    ql = q.lower()
+    if not ("mcp" in ql and "tool" in ql):
+        return None
+
+    loaded = _load_latest_groundcheck_memory_by_phrase(
+        ("mcp tools expansion ideas", "new tools to build"),
+        limit=8,
+    )
+    if not loaded:
+        return None
+    source_id, source_text = loaded
+
+    tools = re.findall(r"\b(?:cogniforge|crt)_[a-z0-9_]+\b", source_text.lower())
+    tool_list: List[str] = []
+    for t in tools:
+        if t not in tool_list:
+            tool_list.append(t)
+
+    if not tool_list:
+        return None
+
+    picked: Optional[str] = None
+    if any(k in ql for k in ("topic", "rising", "fading", "drift")) and "crt_topic_drift" in tool_list:
+        picked = "crt_topic_drift"
+    elif "code context" in ql and "crt_search_code_context" in tool_list:
+        picked = "crt_search_code_context"
+    elif "project memory" in ql and "crt_project_memory" in tool_list:
+        picked = "crt_project_memory"
+
+    if picked is None:
+        picked = tool_list[0]
+
+    if any(k in ql for k in ("one tool", "name one", "just one", "single")):
+        answer = picked
+    else:
+        answer = ", ".join(tool_list)
+
+    return {
+        "answer": answer,
+        "source_memory_id": source_id,
+        "source_text": source_text,
+        "tools": tool_list,
+    }
 
 
 def _load_doc_text(doc_map: Dict[str, Any], doc_id: str) -> str:
@@ -841,6 +1213,12 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     # Increment turn counter
     increment_turn(req.thread_id)
 
+    effective_message = _resolve_bare_web_search_command(
+        message=req.message,
+        session_db=session_db,
+        thread_id=req.thread_id,
+    )
+
     groundcheck_bridge_meta: Optional[Dict[str, Any]] = None
     try:
         groundcheck_bridge_meta = _maybe_sync_groundcheck_bridge(
@@ -852,7 +1230,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         groundcheck_bridge_meta = {"enabled": True, "attempted": True, "ok": False, "error": str(e)}
 
     # Deterministic ledger-backed contradiction inventory.
-    if _is_contradiction_inventory_request(req.message):
+    if _is_contradiction_inventory_request(effective_message):
         from personal_agent.canonical_view import get_contradiction_counts
 
         ledger_db_path = str(getattr(engine.ledger, "db_path", "") or "")
@@ -910,9 +1288,9 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         )
 
     # Safe doc-grounded channel for architecture/system explanation questions.
-    if _is_architecture_explanation_request(req.message):
+    if _is_architecture_explanation_request(effective_message):
         doc_map = request.app.state.doc_map
-        answer, prompt_items = _answer_from_docs(req.message, doc_map)
+        answer, prompt_items = _answer_from_docs(effective_message, doc_map)
         return ChatSendResponse(
             answer=answer,
             response_type="explanation",
@@ -924,6 +1302,97 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 "retrieved_memories": [],
                 "prompt_memories": prompt_items,
             },
+        )
+
+    # Deterministic GroundCheck path for numbered work-plan queries.
+    direct_workplan = _try_answer_workplan_question(
+        effective_message,
+        engine=engine,
+        thread_id=req.thread_id,
+    )
+    if direct_workplan:
+        direct_answer = str(direct_workplan.get("answer") or "").strip()
+        if greeting_text:
+            direct_answer = f"{greeting_text}\n\n{direct_answer}"
+        metadata = {
+            "mode": "direct_groundcheck_workplan",
+            "confidence": 0.98,
+            "retrieved_memories": [
+                {
+                    "memory_id": direct_workplan.get("source_memory_id"),
+                    "text": direct_workplan.get("source_text"),
+                    "source": "groundcheck",
+                    "trust": 0.7,
+                    "confidence": 0.98,
+                }
+            ],
+            "prompt_memories": [],
+            "groundcheck_bridge": groundcheck_bridge_meta,
+            "direct_workplan_items": direct_workplan.get("items") or {},
+        }
+        if greeting_text:
+            metadata["greeting_shown"] = True
+
+        try:
+            session_db.record_query(
+                thread_id=req.thread_id,
+                query_text=req.message,
+                response_text=direct_answer,
+                detected_slot="work_plan_item",
+            )
+        except Exception as e:
+            logger.debug(f"[SESSION] Error recording direct workplan query: {e}")
+
+        return ChatSendResponse(
+            answer=direct_answer,
+            response_type="speech",
+            gates_passed=True,
+            gate_reason="groundcheck_workplan_direct",
+            session_id=getattr(engine, "session_id", None),
+            metadata=metadata,
+        )
+
+    direct_mcp_tools = _try_answer_mcp_tools_question(effective_message)
+    if direct_mcp_tools:
+        direct_answer = str(direct_mcp_tools.get("answer") or "").strip()
+        if greeting_text:
+            direct_answer = f"{greeting_text}\n\n{direct_answer}"
+        metadata = {
+            "mode": "direct_groundcheck_mcp_tools",
+            "confidence": 0.97,
+            "retrieved_memories": [
+                {
+                    "memory_id": direct_mcp_tools.get("source_memory_id"),
+                    "text": direct_mcp_tools.get("source_text"),
+                    "source": "groundcheck",
+                    "trust": 0.7,
+                    "confidence": 0.97,
+                }
+            ],
+            "prompt_memories": [],
+            "groundcheck_bridge": groundcheck_bridge_meta,
+            "direct_mcp_tools": direct_mcp_tools.get("tools") or [],
+        }
+        if greeting_text:
+            metadata["greeting_shown"] = True
+
+        try:
+            session_db.record_query(
+                thread_id=req.thread_id,
+                query_text=req.message,
+                response_text=direct_answer,
+                detected_slot="mcp_tools",
+            )
+        except Exception as e:
+            logger.debug(f"[SESSION] Error recording direct MCP-tools query: {e}")
+
+        return ChatSendResponse(
+            answer=direct_answer,
+            response_type="speech",
+            gates_passed=True,
+            gate_reason="groundcheck_mcp_tools_direct",
+            session_id=getattr(engine, "session_id", None),
+            metadata=metadata,
         )
 
     tasking_enabled = bool(req.mode and str(req.mode).lower() == "tasking")
@@ -957,9 +1426,9 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     except Exception as e:
         logger.debug(f"[AUTO_FC] Error surfacing pending checks: {e}")
 
-    query_with_context = req.message
+    query_with_context = effective_message
     if fact_check_preamble:
-        query_with_context = req.message + fact_check_preamble
+        query_with_context = effective_message + fact_check_preamble
 
     recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
     query_with_continuity = _augment_query_with_continuity(
@@ -970,7 +1439,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     preference_profile = _get_preference_profile(req.thread_id, engine.memory)
     model_override, model_route = _route_model_for_request(
         request,
-        query=req.message,
+        query=effective_message,
         mode=req.mode,
         preference_profile=preference_profile,
     )
@@ -994,7 +1463,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         _retrieved = result.get("retrieved_memories") or []
         if _draft and _retrieved:
             _critic_result = _critic.verify_draft(
-                query=req.message,
+                query=effective_message,
                 draft_answer=_draft,
                 retrieved_memories=_retrieved,
                 llm_client=get_llm_client(),
@@ -1021,7 +1490,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if thinking_content and len(thinking_content) > 50:
         try:
             thinking_trace_id = engine.memory.store_reasoning_trace(
-                query=req.message,
+                query=effective_message,
                 thinking_content=thinking_content,
                 thread_id=req.thread_id,
                 response_summary=str(result.get("answer") or "")[:200] if result.get("answer") else None,
@@ -1068,7 +1537,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                     max_steps=8,
                 )
 
-                task = triggers_engine.get_agent_task(detected_triggers, req.message)
+                task = triggers_engine.get_agent_task(detected_triggers, effective_message)
                 trace = agent.run(task)
 
                 agent_activated = True
@@ -1147,7 +1616,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 if isinstance(m, dict) and m.get("text")
             ][:5]
             reflection_result, _requery_response, _requery_thinking = run_reflection_pass(
-                question=req.message,
+                question=effective_message,
                 response=base_answer,
                 thinking=thinking_content,
                 thread_id=req.thread_id,
@@ -1179,7 +1648,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     expanded = False
     expansion_reason: Optional[str] = None
     should_expand, expansion_reason = _should_expand_response(
-        req.message,
+        effective_message,
         base_answer,
         reflection_result,
         verbosity_pref,
@@ -1187,7 +1656,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if should_expand:
         expansion_text = _generate_expansion(
             llm_client,
-            req.message,
+            effective_message,
             base_answer,
             known_facts_text,
             style_profile,
@@ -1229,7 +1698,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 from personal_agent.tasking_loop import TaskingLoop
 
                 tasking_loop = TaskingLoop(llm_client=llm_client)
-                tasking_result = tasking_loop.run(req.message, final_answer, allow_expansion=True)
+                tasking_result = tasking_loop.run(effective_message, final_answer, allow_expansion=True)
                 final_answer = tasking_result.final_answer
                 tasking_meta = tasking_result.to_dict()
                 tasking_meta["interval_seconds"] = _TASKING_INTERVAL_SECONDS

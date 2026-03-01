@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Zap, Settings, Play, Square, RefreshCw, FileText } from 'lucide-react';
+import { Zap, Settings, Play, Square, RefreshCw, FileText } from 'lucide-react';
 import { getEffectiveApiBaseUrl } from '../lib/api';
 
 interface HeartbeatConfig {
@@ -10,6 +10,11 @@ interface HeartbeatConfig {
   max_tokens: number;
   temperature: number;
   dry_run: boolean;
+  curiosity_enabled: boolean;
+  curiosity_threshold: number;
+  curiosity_cooldown_seconds: number;
+  curiosity_post_enabled: boolean;
+  curiosity_post_submolt: string;
 }
 
 interface HeartbeatPanelProps {
@@ -17,6 +22,21 @@ interface HeartbeatPanelProps {
 }
 
 export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
+  const defaultConfig: HeartbeatConfig = {
+    enabled: true,
+    every: 1800,
+    target: 'none',
+    model: '',
+    max_tokens: 500,
+    temperature: 0.7,
+    dry_run: false,
+    curiosity_enabled: true,
+    curiosity_threshold: 0.42,
+    curiosity_cooldown_seconds: 7200,
+    curiosity_post_enabled: true,
+    curiosity_post_submolt: 'reflections',
+  };
+
   const [config, setConfig] = useState<HeartbeatConfig | null>(null);
   const [heartbeatMd, setHeartbeatMd] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,12 +55,21 @@ export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
     checkSchedulerStatus();
   }, [threadId]);
 
+  const normalizeConfig = (raw: any): HeartbeatConfig => {
+    const merged = { ...defaultConfig, ...(raw || {}) };
+    return {
+      ...merged,
+      curiosity_threshold: Math.max(0.1, Math.min(0.95, Number(merged.curiosity_threshold) || defaultConfig.curiosity_threshold)),
+      curiosity_cooldown_seconds: Math.max(900, Number(merged.curiosity_cooldown_seconds) || defaultConfig.curiosity_cooldown_seconds),
+    };
+  };
+
   const loadHeartbeatConfig = async () => {
     try {
       const response = await fetch(`${API_BASE}/threads/${threadId}/heartbeat/config`);
       if (response.ok) {
         const data = await response.json();
-        setConfig(data.config);
+        setConfig(normalizeConfig(data.config));
         if (data.last_run) {
           setLastRun(new Date(data.last_run * 1000).toLocaleString());
         }
@@ -122,7 +151,7 @@ export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
     }
   };
 
-  const handleUpdateConfig = async (newConfig: Partial<HeartbeatConfig>) => {
+  const handleUpdateConfig = async (newConfig: HeartbeatConfig) => {
     try {
       setIsLoading(true);
       const response = await fetch(`${API_BASE}/threads/${threadId}/heartbeat/config`, {
@@ -132,7 +161,7 @@ export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
       });
       if (response.ok) {
         const data = await response.json();
-        setConfig(data.config);
+        setConfig(normalizeConfig(data.config));
         setSuccessMessage('Heartbeat config updated');
       }
     } catch (err) {
@@ -314,8 +343,74 @@ export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
               <span>Dry Run (simulate without executing)</span>
             </label>
 
+            <div className="pt-2 border-t border-slate-200">
+              <div className="text-sm font-semibold text-slate-700 mb-2">Curiosity Learning</div>
+
+              <label className="flex items-center gap-2 text-sm mb-2">
+                <input
+                  type="checkbox"
+                  checked={config.curiosity_enabled}
+                  onChange={(e) => handleConfigChange('curiosity_enabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span>Enable curiosity pulse</span>
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-slate-600">Trigger Threshold</label>
+                  <input
+                    type="number"
+                    value={config.curiosity_threshold}
+                    onChange={(e) => handleConfigChange('curiosity_threshold', parseFloat(e.target.value))}
+                    className="w-full p-1 text-sm border rounded"
+                    min="0.1"
+                    max="0.95"
+                    step="0.05"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-slate-600">Cooldown</label>
+                  <select
+                    value={config.curiosity_cooldown_seconds}
+                    onChange={(e) => handleConfigChange('curiosity_cooldown_seconds', parseInt(e.target.value))}
+                    className="w-full p-1 text-sm border rounded"
+                  >
+                    <option value={900}>15 minutes</option>
+                    <option value={1800}>30 minutes</option>
+                    <option value={3600}>1 hour</option>
+                    <option value={7200}>2 hours</option>
+                    <option value={14400}>4 hours</option>
+                    <option value={28800}>8 hours</option>
+                  </select>
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm mt-2">
+                <input
+                  type="checkbox"
+                  checked={config.curiosity_post_enabled}
+                  onChange={(e) => handleConfigChange('curiosity_post_enabled', e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span>Post curiosity notes to Moltbook</span>
+              </label>
+
+              <div className="mt-2">
+                <label className="block text-xs text-slate-600">Curiosity Submolt</label>
+                <input
+                  type="text"
+                  value={config.curiosity_post_submolt}
+                  onChange={(e) => handleConfigChange('curiosity_post_submolt', e.target.value)}
+                  className="w-full p-1 text-sm border rounded"
+                  placeholder="reflections"
+                />
+              </div>
+            </div>
+
             <button
-              onClick={() => loadHeartbeatConfig()}
+              onClick={() => handleUpdateConfig(config)}
               disabled={isLoading}
               className="w-full px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50"
             >

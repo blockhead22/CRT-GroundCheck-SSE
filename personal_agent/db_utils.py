@@ -210,6 +210,12 @@ class ThreadSessionDB:
                 "heartbeat_last_run": "REAL",
                 "heartbeat_last_summary": "TEXT",
                 "heartbeat_last_actions_json": "TEXT",
+                "last_channel": "TEXT",
+                "last_actor_id": "TEXT",
+                "last_channel_destination_id": "TEXT",
+                "last_channel_updated_at": "REAL",
+                "pending_reminder_json": "TEXT",
+                "pending_reminder_expires_at": "REAL",
             },
         )
         
@@ -333,6 +339,48 @@ class ThreadSessionDB:
                 PRIMARY KEY (thread_id, topic),
                 FOREIGN KEY (thread_id) REFERENCES thread_sessions(thread_id)
             )
+        """)
+
+        # Outbound notification queue (durable, retryable, channel-scoped)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS outbound_notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                notification_id TEXT NOT NULL UNIQUE,
+                thread_id TEXT NOT NULL,
+                channel TEXT NOT NULL,
+                destination_id TEXT,
+                category TEXT,
+                priority TEXT NOT NULL DEFAULT 'medium',
+                content TEXT NOT NULL,
+                payload_json TEXT,
+                dedupe_key TEXT,
+                source_kind TEXT,
+                source_id TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                attempts INTEGER NOT NULL DEFAULT 0,
+                max_attempts INTEGER NOT NULL DEFAULT 5,
+                next_attempt_at REAL NOT NULL,
+                claimed_by TEXT,
+                claimed_at REAL,
+                sent_at REAL,
+                failed_at REAL,
+                last_error TEXT,
+                suppressed_reason TEXT,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_outbound_status_next_attempt
+            ON outbound_notifications(status, next_attempt_at ASC)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_outbound_thread_created
+            ON outbound_notifications(thread_id, created_at DESC)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_outbound_dedupe
+            ON outbound_notifications(thread_id, dedupe_key, created_at DESC)
         """)
 
         # Moltbook-style local forum (posts, comments, votes, submolts)
@@ -650,6 +698,493 @@ class ThreadSessionDB:
         """, (1 if enabled else 0, time.time(), thread_id))
         conn.commit()
         conn.close()
+
+    def update_channel_context(
+        self,
+        thread_id: str,
+        *,
+        channel: str,
+        actor_id: Optional[str] = None,
+        destination_id: Optional[str] = None,
+    ) -> None:
+        """Persist last known inbound channel context for proactive routing."""
+        self.get_or_create_session(thread_id)
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE thread_sessions
+            SET last_channel = ?,
+                last_actor_id = ?,
+                last_channel_destination_id = ?,
+                last_channel_updated_at = ?
+            WHERE thread_id = ?
+            """,
+            (
+                (channel or "api").strip().lower() or "api",
+                (actor_id or "").strip() or None,
+                (destination_id or "").strip() or None,
+                now,
+                thread_id,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_channel_context(self, thread_id: str) -> dict:
+        """Get last known channel context for thread (if any)."""
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT last_channel, last_actor_id, last_channel_destination_id, last_channel_updated_at
+            FROM thread_sessions
+            WHERE thread_id = ?
+            """,
+            (thread_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return {
+                "channel": None,
+                "actor_id": None,
+                "destination_id": None,
+                "updated_at": None,
+            }
+        return {
+            "channel": row["last_channel"],
+            "actor_id": row["last_actor_id"],
+            "destination_id": row["last_channel_destination_id"],
+            "updated_at": row["last_channel_updated_at"],
+        }
+
+    def set_pending_reminder(
+        self,
+        thread_id: str,
+        *,
+        reminder_text: str,
+        scheduled_at: float,
+        source_message: Optional[str] = None,
+        expires_seconds: int = 900,
+    ) -> None:
+        """Store a reminder candidate awaiting explicit user confirmation."""
+        import json
+
+        self.get_or_create_session(thread_id)
+        now = time.time()
+        payload = {
+            "reminder_text": str(reminder_text or "").strip(),
+            "scheduled_at": float(scheduled_at),
+            "source_message": str(source_message or "").strip() or None,
+            "created_at": now,
+        }
+        expires_at = now + max(60, int(expires_seconds or 900))
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE thread_sessions
+            SET pending_reminder_json = ?, pending_reminder_expires_at = ?
+            WHERE thread_id = ?
+            """,
+            (json.dumps(payload), expires_at, thread_id),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_pending_reminder(self, thread_id: str) -> Optional[dict]:
+        """Fetch pending reminder confirmation state, expiring stale entries."""
+        import json
+
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT pending_reminder_json, pending_reminder_expires_at
+            FROM thread_sessions
+            WHERE thread_id = ?
+            """,
+            (thread_id,),
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        raw = row["pending_reminder_json"]
+        exp = float(row["pending_reminder_expires_at"] or 0.0)
+        if not raw:
+            return None
+        now = time.time()
+        if exp > 0 and now > exp:
+            self.clear_pending_reminder(thread_id)
+            return None
+        try:
+            data = json.loads(raw)
+        except Exception:
+            self.clear_pending_reminder(thread_id)
+            return None
+        if not isinstance(data, dict):
+            self.clear_pending_reminder(thread_id)
+            return None
+        data["expires_at"] = exp
+        return data
+
+    def clear_pending_reminder(self, thread_id: str) -> None:
+        """Clear pending reminder confirmation state."""
+        self.get_or_create_session(thread_id)
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE thread_sessions
+            SET pending_reminder_json = NULL, pending_reminder_expires_at = NULL
+            WHERE thread_id = ?
+            """,
+            (thread_id,),
+        )
+        conn.commit()
+        conn.close()
+
+    def enqueue_notification(
+        self,
+        *,
+        thread_id: str,
+        channel: str,
+        destination_id: Optional[str],
+        content: str,
+        category: Optional[str] = None,
+        priority: str = "medium",
+        payload: Optional[dict] = None,
+        dedupe_key: Optional[str] = None,
+        source_kind: Optional[str] = None,
+        source_id: Optional[str] = None,
+        max_attempts: int = 5,
+        next_attempt_at: Optional[float] = None,
+        status: str = "pending",
+        suppressed_reason: Optional[str] = None,
+        dedupe_window_seconds: int = 7200,
+    ) -> dict:
+        """Insert notification into durable queue with optional dedupe window."""
+        import json
+        import uuid
+
+        self.get_or_create_session(thread_id)
+        now = time.time()
+        channel_clean = (channel or "telegram").strip().lower() or "telegram"
+        priority_clean = (priority or "medium").strip().lower()
+        if priority_clean not in {"low", "medium", "high", "critical"}:
+            priority_clean = "medium"
+        status_clean = (status or "pending").strip().lower()
+        if status_clean not in {"pending", "claimed", "sent", "failed", "suppressed"}:
+            status_clean = "pending"
+        dedupe_clean = (dedupe_key or "").strip() or None
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if dedupe_clean:
+            cursor.execute(
+                """
+                SELECT notification_id, status
+                FROM outbound_notifications
+                WHERE thread_id = ?
+                  AND dedupe_key = ?
+                  AND created_at >= ?
+                  AND status IN ('pending', 'claimed', 'sent', 'suppressed')
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+                (thread_id, dedupe_clean, now - max(0, int(dedupe_window_seconds or 0))),
+            )
+            row = cursor.fetchone()
+            if row:
+                conn.close()
+                return {
+                    "inserted": False,
+                    "notification_id": row["notification_id"],
+                    "status": row["status"],
+                }
+
+        notification_id = uuid.uuid4().hex
+        payload_json = json.dumps(payload or {})
+        cursor.execute(
+            """
+            INSERT INTO outbound_notifications (
+                notification_id, thread_id, channel, destination_id, category, priority,
+                content, payload_json, dedupe_key, source_kind, source_id, status,
+                attempts, max_attempts, next_attempt_at, claimed_by, claimed_at,
+                sent_at, failed_at, last_error, suppressed_reason, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?, ?)
+            """,
+            (
+                notification_id,
+                thread_id,
+                channel_clean,
+                (destination_id or "").strip() or None,
+                (category or "").strip() or None,
+                priority_clean,
+                str(content or "").strip(),
+                payload_json,
+                dedupe_clean,
+                (source_kind or "").strip() or None,
+                (source_id or "").strip() or None,
+                status_clean,
+                max(1, int(max_attempts or 5)),
+                float(next_attempt_at if next_attempt_at is not None else now),
+                (suppressed_reason or "").strip() or None,
+                now,
+                now,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return {"inserted": True, "notification_id": notification_id, "status": status_clean}
+
+    def list_notifications(
+        self,
+        *,
+        thread_id: Optional[str] = None,
+        status: Optional[str] = None,
+        channel: Optional[str] = None,
+        limit: int = 50,
+    ) -> list[dict]:
+        """List notifications with optional filters."""
+        import json
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        where = []
+        params: list = []
+        if thread_id:
+            where.append("thread_id = ?")
+            params.append(thread_id)
+        if status:
+            where.append("status = ?")
+            params.append(str(status).strip().lower())
+        if channel:
+            where.append("channel = ?")
+            params.append(str(channel).strip().lower())
+        where_sql = ("WHERE " + " AND ".join(where)) if where else ""
+        cursor.execute(
+            f"""
+            SELECT *
+            FROM outbound_notifications
+            {where_sql}
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            tuple(params + [max(1, int(limit or 50))]),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        out = []
+        for row in rows:
+            payload = {}
+            raw_payload = row["payload_json"]
+            if raw_payload:
+                try:
+                    parsed = json.loads(raw_payload)
+                    if isinstance(parsed, dict):
+                        payload = parsed
+                except Exception:
+                    payload = {}
+            out.append({
+                "notification_id": row["notification_id"],
+                "thread_id": row["thread_id"],
+                "channel": row["channel"],
+                "destination_id": row["destination_id"],
+                "category": row["category"],
+                "priority": row["priority"],
+                "content": row["content"],
+                "payload": payload,
+                "dedupe_key": row["dedupe_key"],
+                "source_kind": row["source_kind"],
+                "source_id": row["source_id"],
+                "status": row["status"],
+                "attempts": int(row["attempts"] or 0),
+                "max_attempts": int(row["max_attempts"] or 0),
+                "next_attempt_at": row["next_attempt_at"],
+                "claimed_by": row["claimed_by"],
+                "claimed_at": row["claimed_at"],
+                "sent_at": row["sent_at"],
+                "failed_at": row["failed_at"],
+                "last_error": row["last_error"],
+                "suppressed_reason": row["suppressed_reason"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+            })
+        return out
+
+    def claim_notifications(
+        self,
+        *,
+        worker_id: str,
+        channel: str,
+        limit: int = 10,
+    ) -> list[dict]:
+        """Claim pending notifications for a worker/channel."""
+        import json
+
+        now = time.time()
+        channel_clean = (channel or "telegram").strip().lower() or "telegram"
+        worker_clean = (worker_id or "worker").strip() or "worker"
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT notification_id
+            FROM outbound_notifications
+            WHERE status = 'pending'
+              AND channel = ?
+              AND next_attempt_at <= ?
+            ORDER BY
+              CASE priority
+                WHEN 'critical' THEN 0
+                WHEN 'high' THEN 1
+                WHEN 'medium' THEN 2
+                ELSE 3
+              END ASC,
+              created_at ASC
+            LIMIT ?
+            """,
+            (channel_clean, now, max(1, int(limit or 10))),
+        )
+        ids = [str(r["notification_id"]) for r in cursor.fetchall() if r["notification_id"]]
+        if not ids:
+            conn.close()
+            return []
+        cursor.executemany(
+            """
+            UPDATE outbound_notifications
+            SET status = 'claimed',
+                attempts = attempts + 1,
+                claimed_by = ?,
+                claimed_at = ?,
+                updated_at = ?
+            WHERE notification_id = ?
+            """,
+            [(worker_clean, now, now, nid) for nid in ids],
+        )
+        conn.commit()
+
+        claimed_rows = []
+        for nid in ids:
+            cursor.execute("SELECT * FROM outbound_notifications WHERE notification_id = ?", (nid,))
+            row = cursor.fetchone()
+            if not row:
+                continue
+            payload = {}
+            raw_payload = row["payload_json"]
+            if raw_payload:
+                try:
+                    parsed = json.loads(raw_payload)
+                    if isinstance(parsed, dict):
+                        payload = parsed
+                except Exception:
+                    payload = {}
+            claimed_rows.append({
+                "notification_id": row["notification_id"],
+                "thread_id": row["thread_id"],
+                "channel": row["channel"],
+                "destination_id": row["destination_id"],
+                "category": row["category"],
+                "priority": row["priority"],
+                "content": row["content"],
+                "payload": payload,
+                "status": row["status"],
+                "attempts": int(row["attempts"] or 0),
+                "max_attempts": int(row["max_attempts"] or 0),
+                "next_attempt_at": row["next_attempt_at"],
+            })
+        conn.close()
+        return claimed_rows
+
+    def ack_notification(self, notification_id: str) -> bool:
+        """Mark claimed notification as sent."""
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE outbound_notifications
+            SET status = 'sent',
+                sent_at = ?,
+                updated_at = ?,
+                claimed_by = NULL,
+                claimed_at = NULL
+            WHERE notification_id = ?
+            """,
+            (now, now, str(notification_id or "")),
+        )
+        affected = int(cursor.rowcount or 0)
+        conn.commit()
+        conn.close()
+        return affected > 0
+
+    def fail_notification(
+        self,
+        notification_id: str,
+        *,
+        error: Optional[str] = None,
+        retry_in_seconds: int = 120,
+    ) -> dict:
+        """Mark notification failed for this attempt, requeue if retries remain."""
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT attempts, max_attempts
+            FROM outbound_notifications
+            WHERE notification_id = ?
+            """,
+            (str(notification_id or ""),),
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return {"ok": False, "status": "missing"}
+        attempts = int(row["attempts"] or 0)
+        max_attempts = int(row["max_attempts"] or 1)
+
+        if attempts >= max_attempts:
+            status = "failed"
+            cursor.execute(
+                """
+                UPDATE outbound_notifications
+                SET status = 'failed',
+                    failed_at = ?,
+                    updated_at = ?,
+                    last_error = ?,
+                    claimed_by = NULL,
+                    claimed_at = NULL
+                WHERE notification_id = ?
+                """,
+                (now, now, (error or "")[:1000], str(notification_id or "")),
+            )
+        else:
+            status = "pending"
+            next_attempt = now + max(5, int(retry_in_seconds or 120))
+            cursor.execute(
+                """
+                UPDATE outbound_notifications
+                SET status = 'pending',
+                    next_attempt_at = ?,
+                    updated_at = ?,
+                    last_error = ?,
+                    claimed_by = NULL,
+                    claimed_at = NULL
+                WHERE notification_id = ?
+                """,
+                (next_attempt, now, (error or "")[:1000], str(notification_id or "")),
+            )
+        conn.commit()
+        conn.close()
+        return {"ok": True, "status": status}
 
     def get_heartbeat_config(self, thread_id: str) -> Optional[dict]:
         """Get per-thread heartbeat config override (None if unset)."""

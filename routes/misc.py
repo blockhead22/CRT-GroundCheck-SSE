@@ -1412,6 +1412,11 @@ def set_heartbeat_config(request: Request, thread_id: str, req: "HeartbeatConfig
         news_max_results=req.news_max_results,
         news_cooldown_seconds=req.news_cooldown_seconds,
         news_post_submolt=req.news_post_submolt,
+        curiosity_enabled=req.curiosity_enabled,
+        curiosity_threshold=req.curiosity_threshold,
+        curiosity_cooldown_seconds=req.curiosity_cooldown_seconds,
+        curiosity_post_enabled=req.curiosity_post_enabled,
+        curiosity_post_submolt=req.curiosity_post_submolt,
     )
 
     # Store in DB

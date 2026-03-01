@@ -127,7 +127,7 @@ function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: st
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[10px] uppercase tracking-wider text-violet-400 font-medium">
-                Copilot learned
+                System learned
               </div>
               <div className="text-sm text-white/80 mt-0.5 leading-snug">{t.text}</div>
               <div className="mt-1 flex items-center gap-2">
@@ -242,7 +242,7 @@ function TeachForm({ onTaught }: { onTaught: () => void }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-white/40 mb-3">
-        ✏️ Teach Copilot
+        ✏️ Teach System
       </div>
       <div className="flex flex-wrap gap-1.5 mb-3">
         {presets.map(p => (
@@ -262,7 +262,7 @@ function TeachForm({ onTaught }: { onTaught: () => void }) {
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleTeach()}
-          placeholder="Tell Copilot something about yourself..."
+          placeholder="Tell the system something about yourself..."
           className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 transition-colors"
         />
         <button
@@ -1650,9 +1650,9 @@ export function CopilotPage() {
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white font-display">Copilot Interactions</h1>
+            <h1 className="text-xl font-bold text-white font-display">System Intelligence</h1>
             <p className="mt-0.5 text-xs text-white/40">
-              Live view — what Copilot knows, learns, and gets wrong
+              Live view — what the system knows, learns, and gets wrong
             </p>
           </div>
 
@@ -1767,7 +1767,7 @@ export function CopilotPage() {
                   <div>
                     <span className="text-5xl opacity-40">🧠</span>
                     <div className="mt-2 text-sm text-white/40">No memories yet</div>
-                    <div className="text-xs text-white/20 max-w-sm mt-1">Use the Teach form above or chat with Copilot to get started</div>
+                    <div className="text-xs text-white/20 max-w-sm mt-1">Use the Teach form above or chat to get started</div>
                   </div>
                 </div>
               ) : (

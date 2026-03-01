@@ -8,6 +8,7 @@ Testing, validation, and operational utilities for CRT-GroundCheck-SSE.
 
 | Tool | What It Tests | Requires |
 |------|--------------|----------|
+| `agentic_conversation_eval.py` | Dual-agent adaptive conversational eval + hard-fail scoring + GroundCheck standalone lane | API server + Ollama |
 | `adversarial_crt_challenge.py` | 7-phase adversarial contradiction testing (35 turns) | Offline (no Ollama) |
 | `crt_stress_test.py` | Full 30-turn memory + trust analysis | Ollama + API server |
 | `adaptive_stress_test.py` | Reactive adversarial conversation (40-80 turns) | API server |
@@ -20,6 +21,9 @@ Testing, validation, and operational utilities for CRT-GroundCheck-SSE.
 ### Quick Commands
 
 ```bash
+# Agentic conversational harness (recommended)
+python tools/agentic_conversation_eval.py --api-base-url http://127.0.0.1:8123
+
 # Offline adversarial test (no server needed)
 python tools/adversarial_crt_challenge.py --turns 35
 

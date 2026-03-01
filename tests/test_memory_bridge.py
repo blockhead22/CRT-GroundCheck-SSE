@@ -127,3 +127,57 @@ def test_sync_groundcheck_respects_source_filter(monkeypatch, tmp_path: Path):
     imported_texts = [m.text for m in fake_mem._items]
     assert all("Telemetry from tool run" not in t for t in imported_texts)
 
+
+def test_sync_groundcheck_includes_medium_long_narrative(monkeypatch, tmp_path: Path):
+    db_path = tmp_path / "groundcheck.db"
+    conn = sqlite3.connect(str(db_path))
+    cur = conn.cursor()
+    cur.execute(
+        """
+        CREATE TABLE memories (
+            id TEXT PRIMARY KEY,
+            thread_id TEXT,
+            text TEXT,
+            trust REAL,
+            source TEXT,
+            timestamp REAL,
+            namespace TEXT,
+            created_at TEXT
+        )
+        """
+    )
+    now = time.time()
+    long_workplan = (
+        "Current work plan for Aether: Items 3 (preference extraction from chat), "
+        "4 (heartbeat news monitoring), 8 (personality state machine), "
+        "9 (background reflection), 10 (DNNT retraining), "
+        "11 (multi-model routing), 12 (email integration). "
+        "These are the next system development priorities."
+    )
+    assert len(long_workplan) > 260  # regression guard for the original bug
+    cur.execute(
+        """
+        INSERT INTO memories (id, thread_id, text, trust, source, timestamp, namespace, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        ("g_long", "copilot_session", long_workplan, 0.70, "user", now, "global", "2026-02-25 18:50:37"),
+    )
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setenv("GROUNDCHECK_DB", str(db_path))
+    fake_mem = _FakeMemorySystem()
+
+    result = sync_groundcheck_to_memory(
+        memory_system=fake_mem,
+        thread_id="copilot_session",
+        min_trust=0.2,
+        raw_limit=100,
+        narrative_limit=30,
+        allowed_sources=["user", "inferred"],
+    )
+
+    assert result["ok"] is True
+    assert result["imported"] >= 1
+    imported_texts = [m.text for m in fake_mem._items]
+    assert any("4 (heartbeat news monitoring)" in t for t in imported_texts)

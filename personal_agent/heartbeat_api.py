@@ -22,6 +22,11 @@ class HeartbeatConfigRequest(BaseModel):
     news_max_results: int = Field(default=5, ge=1, le=20, description="Max search results per monitored topic")
     news_cooldown_seconds: int = Field(default=21600, ge=900, description="Minimum time between digests per topic")
     news_post_submolt: str = Field(default="news", description="Moltbook submolt to post news digests into")
+    curiosity_enabled: bool = Field(default=True, description="Enable personality-driven curiosity learning pulse")
+    curiosity_threshold: float = Field(default=0.42, ge=0.1, le=0.95, description="Minimum curiosity score to trigger pulse")
+    curiosity_cooldown_seconds: int = Field(default=7200, ge=900, description="Minimum interval between similar curiosity pulses")
+    curiosity_post_enabled: bool = Field(default=True, description="Allow heartbeat to post curiosity pulse notes")
+    curiosity_post_submolt: str = Field(default="reflections", description="Submolt used for curiosity pulse posts")
 
 
 class HeartbeatConfigResponse(BaseModel):

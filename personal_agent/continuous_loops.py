@@ -327,6 +327,8 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
     mood = str(profile.get("mood") or "").strip()
     mood_reason = str(profile.get("mood_reason") or "").strip()
     growth_targets = profile.get("growth_targets") or []
+    learning_drive = profile.get("learning_drive")
+    curiosity_agenda = profile.get("curiosity_agenda") or []
 
     # Create descriptive title
     if transitioned:
@@ -373,6 +375,12 @@ def _summarize_personality(profile: dict) -> tuple[str, str]:
         lines.append(f"Mood signal: {mood}.")
     if mood_reason:
         lines.append(f"Mood rationale: {mood_reason}.")
+    if isinstance(learning_drive, (int, float)):
+        lines.append(f"Learning drive: {float(learning_drive):.0%}.")
+    if isinstance(curiosity_agenda, list) and curiosity_agenda:
+        first_focus = str((curiosity_agenda[0] or {}).get("focus") or "").strip()
+        if first_focus:
+            lines.append(f"Curiosity focus: {first_focus[:180]}")
     if isinstance(growth_targets, list) and growth_targets:
         lines.append(f"Growth target: {str(growth_targets[0])[:180]}")
     
@@ -554,6 +562,10 @@ def _compose_self_reply_text(
     verbosity = str(profile.get("verbosity") or "balanced").lower()
     emoji_pref = str(profile.get("emoji") or "off").lower()
     fmt = str(profile.get("format") or "freeform").lower()
+    curiosity_agenda = profile.get("curiosity_agenda") if isinstance(profile, dict) else None
+    first_curiosity_focus = ""
+    if isinstance(curiosity_agenda, list) and curiosity_agenda:
+        first_curiosity_focus = str((curiosity_agenda[0] or {}).get("focus") or "").strip()
 
     topics = "--"
     rising = "--"
@@ -571,6 +583,8 @@ def _compose_self_reply_text(
         lines.append(f"Fading: {fading}")
         if profile:
             lines.append(f"Style: {verbosity}/{fmt}, emoji {emoji_pref}")
+        if first_curiosity_focus:
+            lines.append(f"Curiosity: {first_curiosity_focus[:120]}")
     elif source_type in {"comment", "user_reply", "user_comment"}:
         summary = ""
         if source_body:
@@ -854,6 +868,87 @@ def _derive_personality_traits(
     }
 
 
+def _derive_curiosity_agenda(
+    profile: dict,
+    reflection_scorecard: Optional[dict] = None,
+) -> List[dict]:
+    reflection_scorecard = reflection_scorecard or {}
+    agenda: List[dict] = []
+
+    open_questions = reflection_scorecard.get("open_questions") or []
+    for q in open_questions[:2]:
+        text = str(q or "").strip()
+        if text:
+            agenda.append(
+                {
+                    "kind": "open_question",
+                    "focus": text[:180],
+                    "next_step": "Ask a targeted follow-up before assuming details.",
+                }
+            )
+
+    trends = reflection_scorecard.get("topic_trends") or {}
+    for item in (trends.get("rising") or [])[:2]:
+        if not isinstance(item, dict):
+            continue
+        topic = str(item.get("topic") or "").strip()
+        if not topic:
+            continue
+        agenda.append(
+            {
+                "kind": "rising_topic",
+                "focus": topic[:120],
+                "next_step": f"Gather one concrete fact about '{topic}' before broadening scope.",
+            }
+        )
+
+    growth_targets = profile.get("growth_targets") or []
+    for target in growth_targets[:1]:
+        text = str(target or "").strip()
+        if text:
+            agenda.append(
+                {
+                    "kind": "growth_target",
+                    "focus": text[:180],
+                    "next_step": "Apply this target in the next response cycle.",
+                }
+            )
+
+    if not agenda:
+        agenda.append(
+            {
+                "kind": "stability",
+                "focus": "Maintain consistent recall quality and keep checking unresolved questions.",
+                "next_step": "Continue monitoring for contradictions and user corrections.",
+            }
+        )
+
+    return agenda[:4]
+
+
+def _derive_learning_drive(
+    profile: dict,
+    reflection_scorecard: Optional[dict] = None,
+) -> float:
+    reflection_scorecard = reflection_scorecard or {}
+    traits = profile.get("traits") or {}
+    curiosity_trait = float(traits.get("curiosity") or 0.0)
+    question_ratio = float(profile.get("question_ratio") or 0.0)
+    pref_conf = float(reflection_scorecard.get("preference_confidence") or 0.0)
+    open_questions = reflection_scorecard.get("open_questions") or []
+    meta = reflection_scorecard.get("meta_awareness") or {}
+    unanswered_ratio = float(meta.get("unanswered_question_ratio") or 0.0)
+
+    drive = (
+        min(0.5, curiosity_trait * 0.5)
+        + min(0.2, question_ratio * 0.2)
+        + min(0.15, len(open_questions) * 0.05)
+        + min(0.15, unanswered_ratio * 0.3)
+        + min(0.1, pref_conf * 0.1)
+    )
+    return max(0.0, min(1.0, drive))
+
+
 def _derive_personality_state(
     profile: dict,
     *,
@@ -1034,6 +1129,11 @@ def build_personality_profile(
     profile.update(_derive_personality_mood(profile, reflection_scorecard=reflection_scorecard))
     profile["growth_targets"] = _derive_growth_targets(profile, reflection_scorecard=reflection_scorecard)
     profile["traits"] = _derive_personality_traits(profile, reflection_scorecard=reflection_scorecard)
+    profile["curiosity_agenda"] = _derive_curiosity_agenda(profile, reflection_scorecard=reflection_scorecard)
+    profile["learning_drive"] = round(
+        _derive_learning_drive(profile, reflection_scorecard=reflection_scorecard),
+        3,
+    )
     profile["meta_awareness"] = dict((reflection_scorecard or {}).get("meta_awareness") or {})
     if prompt:
         profile["manual_prompt"] = prompt

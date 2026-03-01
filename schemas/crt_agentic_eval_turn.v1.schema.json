@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Agentic Eval Turn v1",
+  "type": "object",
+  "required": [
+    "turn",
+    "campaign_id",
+    "objective_id",
+    "attacker_plan",
+    "api_result",
+    "probes",
+    "judge",
+    "rule_findings",
+    "hard_fail_triggered",
+    "hard_fail_reasons",
+    "timestamp_utc"
+  ],
+  "properties": {
+    "turn": { "type": "integer", "minimum": 1 },
+    "campaign_id": { "type": "integer", "minimum": 1 },
+    "objective_id": { "type": "string", "minLength": 1 },
+    "attacker_plan": {
+      "type": "object",
+      "required": ["objective_id", "user_message", "hypothesis", "expected_signals"],
+      "properties": {
+        "objective_id": { "type": "string" },
+        "user_message": { "type": "string", "minLength": 1 },
+        "hypothesis": { "type": "string" },
+        "expected_signals": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "api_result": {
+      "type": "object",
+      "required": [
+        "answer",
+        "response_type",
+        "gates_passed",
+        "metadata",
+        "latency_ms",
+        "status_code",
+        "ok"
+      ],
+      "properties": {
+        "answer": { "type": "string" },
+        "response_type": { "type": "string" },
+        "gates_passed": { "type": "boolean" },
+        "gate_reason": { "type": ["string", "null"] },
+        "session_id": { "type": ["string", "null"] },
+        "metadata": { "type": "object" },
+        "xray": { "type": ["object", "null"] },
+        "latency_ms": { "type": "number" },
+        "status_code": { "type": "integer" },
+        "ok": { "type": "boolean" },
+        "error": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "probes": {
+      "type": "object",
+      "required": ["contradictions", "ledger_open", "profile", "memory_recent"],
+      "properties": {
+        "contradictions": { "type": "array", "items": { "type": "object" } },
+        "ledger_open": { "type": "array", "items": { "type": "object" } },
+        "profile": { "type": "object" },
+        "memory_recent": { "type": "array", "items": { "type": "object" } }
+      },
+      "additionalProperties": true
+    },
+    "judge": {
+      "type": "object",
+      "required": ["objective_id", "objective_passed", "summary", "findings"],
+      "properties": {
+        "objective_id": { "type": "string" },
+        "objective_passed": { "type": "boolean" },
+        "summary": { "type": "string" },
+        "findings": { "type": "array", "items": { "type": "object" } },
+        "next_objective_hint": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "rule_findings": { "type": "array", "items": { "type": "object" } },
+    "hard_fail_triggered": { "type": "boolean" },
+    "hard_fail_reasons": { "type": "array", "items": { "type": "string" } },
+    "timestamp_utc": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": true
+}

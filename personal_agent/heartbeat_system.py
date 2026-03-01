@@ -54,6 +54,11 @@ class HeartbeatConfig:
     news_max_results: int = 5
     news_cooldown_seconds: int = 21600  # 6 hours per topic
     news_post_submolt: str = "news"
+    curiosity_enabled: bool = True
+    curiosity_threshold: float = 0.42
+    curiosity_cooldown_seconds: int = 7200
+    curiosity_post_enabled: bool = True
+    curiosity_post_submolt: str = "reflections"
     
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> HeartbeatConfig:
@@ -77,6 +82,11 @@ class HeartbeatConfig:
             news_max_results=max(1, int(data.get("news_max_results", 5))),
             news_cooldown_seconds=max(900, int(data.get("news_cooldown_seconds", 21600))),
             news_post_submolt=str(data.get("news_post_submolt") or "news").strip() or "news",
+            curiosity_enabled=bool(data.get("curiosity_enabled", True)),
+            curiosity_threshold=min(0.95, max(0.1, float(data.get("curiosity_threshold", 0.42)))),
+            curiosity_cooldown_seconds=max(900, int(data.get("curiosity_cooldown_seconds", 7200))),
+            curiosity_post_enabled=bool(data.get("curiosity_post_enabled", True)),
+            curiosity_post_submolt=str(data.get("curiosity_post_submolt") or "reflections").strip() or "reflections",
         )
     
     def to_dict(self) -> Dict[str, Any]:
@@ -98,6 +108,11 @@ class HeartbeatConfig:
             "news_max_results": int(self.news_max_results),
             "news_cooldown_seconds": int(self.news_cooldown_seconds),
             "news_post_submolt": self.news_post_submolt,
+            "curiosity_enabled": bool(self.curiosity_enabled),
+            "curiosity_threshold": float(self.curiosity_threshold),
+            "curiosity_cooldown_seconds": int(self.curiosity_cooldown_seconds),
+            "curiosity_post_enabled": bool(self.curiosity_post_enabled),
+            "curiosity_post_submolt": self.curiosity_post_submolt,
         }
 
 

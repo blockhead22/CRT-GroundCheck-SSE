@@ -642,6 +642,255 @@ class HeartbeatLLMExecutor:
             )
 
         return actions
+
+    def _safe_float(self, value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except Exception:
+            return float(default)
+
+    def _get_reflection_personality_context(self, thread_id: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        if not self.session_db:
+            return {}, {}
+        scorecard: Dict[str, Any] = {}
+        profile: Dict[str, Any] = {}
+        try:
+            scorecard = self.session_db.get_reflection_scorecard(thread_id) or {}
+        except Exception:
+            scorecard = {}
+        try:
+            profile = self.session_db.get_personality_profile(thread_id) or {}
+        except Exception:
+            profile = {}
+        return scorecard, profile
+
+    def _build_curiosity_pulse(
+        self,
+        snapshot: Dict[str, Any],
+        scorecard: Dict[str, Any],
+        profile: Dict[str, Any],
+        *,
+        threshold: float,
+    ) -> Optional[Dict[str, Any]]:
+        open_questions = [str(q or "").strip() for q in (scorecard.get("open_questions") or []) if str(q or "").strip()]
+
+        rising_topics: List[str] = []
+        for item in ((scorecard.get("topic_trends") or {}).get("rising") or []):
+            if isinstance(item, dict):
+                topic = str(item.get("topic") or "").strip()
+                if topic:
+                    rising_topics.append(topic)
+
+        top_topics: List[str] = []
+        for item in (scorecard.get("top_topics") or []):
+            if isinstance(item, dict):
+                topic = str(item.get("topic") or "").strip()
+            else:
+                topic = str(item or "").strip()
+            if topic:
+                top_topics.append(topic)
+
+        low_conf_slots: List[Tuple[str, float]] = []
+        for slot, payload in (snapshot or {}).items():
+            if not isinstance(payload, dict):
+                continue
+            conf = self._safe_float(payload.get("confidence"), 0.0)
+            trust = self._safe_float(payload.get("trust"), conf)
+            quality = min(conf, trust)
+            if quality < 0.55:
+                low_conf_slots.append((str(slot), quality))
+        low_conf_slots.sort(key=lambda item: item[1])
+
+        traits = profile.get("traits") or {}
+        meta = scorecard.get("meta_awareness") or {}
+        curiosity_trait = self._safe_float(traits.get("curiosity"), 0.0)
+        learning_drive = self._safe_float(profile.get("learning_drive"), curiosity_trait)
+        unanswered_ratio = self._safe_float(meta.get("unanswered_question_ratio"), 0.0)
+        question_ratio = self._safe_float(profile.get("question_ratio"), 0.0)
+        mood = str(profile.get("mood") or "").strip().lower()
+        state = str(profile.get("state") or "").strip().lower()
+
+        curiosity_score = (
+            min(0.5, curiosity_trait * 0.5)
+            + min(0.2, learning_drive * 0.2)
+            + min(0.15, len(open_questions) * 0.05)
+            + min(0.1, len(low_conf_slots) * 0.04)
+            + min(0.05, unanswered_ratio * 0.2)
+            + min(0.05, question_ratio * 0.1)
+        )
+        if mood == "curious":
+            curiosity_score += 0.08
+        if state == "reflective_partner":
+            curiosity_score += 0.05
+        curiosity_score = max(0.0, min(1.0, curiosity_score))
+
+        has_signal = bool(open_questions or low_conf_slots or rising_topics)
+        if curiosity_score < float(threshold) or not has_signal:
+            return None
+
+        growth_targets = [str(t or "").strip() for t in (profile.get("growth_targets") or []) if str(t or "").strip()]
+        learning_goal = growth_targets[0] if growth_targets else "Improve recall quality with one concrete follow-up."
+
+        focus_tokens: List[str] = []
+        if open_questions:
+            focus_tokens.append("open questions")
+        if low_conf_slots:
+            focus_tokens.append("weak-memory slots")
+        if rising_topics:
+            focus_tokens.append("rising topics")
+        focus = ", ".join(focus_tokens[:2]) if focus_tokens else "learning checkpoint"
+
+        suggested_prompt = ""
+        if open_questions:
+            suggested_prompt = open_questions[0]
+        elif low_conf_slots:
+            slot = low_conf_slots[0][0].replace("_", " ")
+            suggested_prompt = f"Can you clarify {slot}? I want to keep this accurate."
+        elif top_topics:
+            suggested_prompt = f"What matters most to you about {top_topics[0]} right now?"
+        else:
+            suggested_prompt = "What should I learn next to help you better?"
+
+        low_conf_labels = ", ".join(slot for slot, _ in low_conf_slots[:3]) if low_conf_slots else "--"
+        top_topic_text = ", ".join(top_topics[:3]) if top_topics else "--"
+
+        title = f"Curiosity pulse: {focus_tokens[0] if focus_tokens else 'learning'}"
+        lines = [
+            "Heartbeat curiosity pass triggered to improve future recall quality.",
+            f"- Curiosity score: {curiosity_score:.2f}",
+            f"- Focus: {focus}",
+            f"- Top topics: {top_topic_text}",
+            f"- Low-confidence slots: {low_conf_labels}",
+            f"- Next user prompt: {suggested_prompt[:220]}",
+            f"- Learning goal: {learning_goal[:220]}",
+        ]
+        content = "\n".join(lines).strip()
+
+        fingerprint_seed = "|".join(
+            [
+                focus,
+                suggested_prompt[:220],
+                learning_goal[:220],
+                ",".join(open_questions[:2]),
+                ",".join(topic[:80] for topic in top_topics[:3]),
+                ",".join(slot for slot, _ in low_conf_slots[:3]),
+            ]
+        )
+        fingerprint = hashlib.sha1(fingerprint_seed.encode("utf-8", errors="ignore")).hexdigest()[:16]
+
+        return {
+            "title": title[:120],
+            "content": content[:1800],
+            "focus": focus,
+            "suggested_prompt": suggested_prompt[:220],
+            "learning_goal": learning_goal[:220],
+            "curiosity_score": round(curiosity_score, 3),
+            "fingerprint": fingerprint,
+        }
+
+    def _curiosity_recently_logged(self, thread_id: str, fingerprint: str, cooldown_seconds: int) -> bool:
+        if not self.session_db or not fingerprint:
+            return False
+        try:
+            history = self.session_db.get_heartbeat_history(thread_id, limit=20)
+        except Exception:
+            return False
+
+        now_ts = time.time()
+        for run in history:
+            ts = self._safe_float((run or {}).get("timestamp"), 0.0)
+            if ts <= 0:
+                continue
+            if (now_ts - ts) > float(max(0, cooldown_seconds)):
+                continue
+            for action in (run or {}).get("actions") or []:
+                if not isinstance(action, dict):
+                    continue
+                if str(action.get("action") or "") != "curiosity_pulse":
+                    continue
+                if str(action.get("fingerprint") or "") == fingerprint:
+                    return True
+        return False
+
+    def _run_curiosity_pulse(
+        self,
+        thread_id: str,
+        snapshot: Dict[str, Any],
+        config: Dict[str, Any],
+        *,
+        dry_run: bool = False,
+    ) -> List[Dict[str, Any]]:
+        if not self.session_db:
+            return []
+        if isinstance(config, dict) and config.get("curiosity_enabled") is False:
+            return []
+
+        threshold = self._safe_float((config or {}).get("curiosity_threshold"), 0.42)
+        threshold = max(0.1, min(0.95, threshold))
+        cooldown = int((config or {}).get("curiosity_cooldown_seconds") or 7200)
+        cooldown = max(900, cooldown)
+        post_enabled = bool((config or {}).get("curiosity_post_enabled", True))
+        submolt = str((config or {}).get("curiosity_post_submolt") or "reflections").strip() or "reflections"
+
+        scorecard, profile = self._get_reflection_personality_context(thread_id)
+        pulse = self._build_curiosity_pulse(snapshot, scorecard, profile, threshold=threshold)
+        if not pulse:
+            return []
+
+        if self._curiosity_recently_logged(thread_id, pulse["fingerprint"], cooldown):
+            return []
+
+        posted = False
+        post_id = None
+        post_error: Optional[str] = None
+
+        if post_enabled:
+            should_attempt_post = True
+            if not dry_run:
+                try:
+                    hours_back = max(1, int(cooldown / 3600))
+                    if self.session_db.has_similar_recent_post(submolt, pulse["title"], hours_back=hours_back):
+                        should_attempt_post = False
+                except Exception:
+                    should_attempt_post = True
+
+            if should_attempt_post:
+                if dry_run:
+                    posted = True
+                else:
+                    post_result = self.execute_action(
+                        {
+                            "action": "post",
+                            "submolt": submolt,
+                            "title": pulse["title"],
+                            "content": pulse["content"],
+                            "reasoning": f"Curiosity pulse {pulse['fingerprint']}",
+                        },
+                        thread_id,
+                        dry_run=False,
+                    )
+                    posted = bool(post_result.get("success"))
+                    post_id = post_result.get("post_id") if isinstance(post_result, dict) else None
+                    post_error = post_result.get("error") if isinstance(post_result, dict) else None
+
+        return [
+            {
+                "action": "curiosity_pulse",
+                "detail": (
+                    f"Curiosity pulse score={pulse['curiosity_score']:.2f}, "
+                    f"focus={pulse['focus']}"
+                ),
+                "curiosity_score": pulse["curiosity_score"],
+                "focus": pulse["focus"],
+                "suggested_prompt": pulse["suggested_prompt"],
+                "learning_goal": pulse["learning_goal"],
+                "fingerprint": pulse["fingerprint"],
+                "posted": posted,
+                "post_id": post_id,
+                "error": post_error,
+                "dry_run": bool(dry_run),
+            }
+        ]
     
     def create_decision_prompt(
         self,
@@ -773,6 +1022,7 @@ Reason carefully. If unsure, reply with action=none.
         start = _time.time()
         actions_taken = []
         dry_run = config.get('dry_run', False) if config else False
+        snapshot: Dict[str, Any] = {}
 
         # --- 0. GroundCheck bridge sync (optional) ---
         try:
@@ -861,8 +1111,21 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Memory audit skipped: {e}")
 
-        # --- 4. Respond to mentions (existing behavior) ---
-        # --- 4.5. Optional news monitoring ---
+        # --- 4. Curiosity pulse (personality + reflection guided) ---
+        try:
+            curiosity_actions = self._run_curiosity_pulse(
+                thread_id,
+                snapshot,
+                config or {},
+                dry_run=dry_run,
+            )
+            if curiosity_actions:
+                actions_taken.extend(curiosity_actions)
+                logger.info(f"[HEARTBEAT] Curiosity pulse emitted ({len(curiosity_actions)})")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Curiosity pulse skipped: {e}")
+
+        # --- 5. Optional news monitoring ---
         try:
             news_actions = self._run_news_monitoring(thread_id, config or {}, dry_run=dry_run)
             if news_actions:
@@ -871,7 +1134,7 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] News monitor skipped: {e}")
 
-        # --- 5. Respond to mentions (existing behavior) ---
+        # --- 6. Respond to mentions (existing behavior) ---
         try:
             context = self.gather_context(thread_id)
             if context.ledger_feed:

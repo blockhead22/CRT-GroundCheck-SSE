@@ -3925,6 +3925,7 @@ class CRTEnhancedRAG:
             candidate_output = self._build_synthesis_answer(
                 user_query=user_query,
                 retrieved=retrieved,
+                thread_id=thread_id,
             )
 
             # Synthesis answers cite facts directly, so they should pass gates
@@ -4136,7 +4137,11 @@ class CRTEnhancedRAG:
         # CRITICAL: Do this even if retrieved is empty - profile facts should be available!
         if user_input_kind in ("question", "instruction") and inferred_slots:
             logger.info(f"[PROFILE_DEBUG] Augmenting retrieval with slot memories for slots: {inferred_slots} (current retrieved count: {len(retrieved)})")
-            retrieved = self._augment_retrieval_with_slot_memories(retrieved, inferred_slots)
+            retrieved = self._augment_retrieval_with_slot_memories(
+                retrieved,
+                inferred_slots,
+                thread_id=thread_id,
+            )
             logger.info(f"[PROFILE_DEBUG] After augmentation, retrieved count: {len(retrieved)}")
 
         # M2: If the user is asking about a slot with an OPEN hard CONFLICT, do not silently
@@ -4809,6 +4814,15 @@ class CRTEnhancedRAG:
         # UI cleanliness: the assistant should not leak internal scoring/metrics in the user-visible answer.
         # (These are available in metadata panels instead.)
         candidate_output = re.sub(r"\(\s*trust score[^)]*\)", "", candidate_output, flags=re.IGNORECASE).strip()
+        if _is_search_query:
+            deterministic_web_answer = self._build_web_fulfillment_answer(
+                query=_web_search_query or user_query,
+                web_results=_web_search_results,
+            )
+            if deterministic_web_answer:
+                candidate_output = deterministic_web_answer
+            else:
+                candidate_output = self._sanitize_web_mode_answer(candidate_output)
         
         # Phase 2.2: LLM Claim Tracking
         # Check if LLM response contains claims that contradict:
@@ -5160,7 +5174,7 @@ class CRTEnhancedRAG:
         
         # 6. Store system response memory
         new_memory = self.memory.store_memory(
-            text=candidate_output,
+            text=final_answer,
             confidence=confidence,
             source=source,
             context={'query': user_query, 'type': response_type},
@@ -5180,14 +5194,14 @@ class CRTEnhancedRAG:
         if response_type == "belief":
             self.memory.record_belief(
                 query=user_query,
-                response=candidate_output,
+                response=final_answer,
                 memory_ids=[mem.memory_id for mem, _ in retrieved],
                 avg_trust=np.mean([mem.trust for mem, _ in retrieved])
             )
         else:
             self.memory.record_speech(
                 query=user_query,
-                response=candidate_output,
+                response=final_answer,
                 source="fallback_gates_failed"
             )
         
@@ -5791,6 +5805,7 @@ class CRTEnhancedRAG:
         retrieved: List[Tuple[MemoryItem, float]],
         slots: List[str],
         *,
+        thread_id: Optional[str] = None,
         allowed_sources: Optional[set] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """Merge best per-slot memories into the retrieved list."""
@@ -5807,6 +5822,28 @@ class CRTEnhancedRAG:
 
         retrieved_ids = {m.memory_id for m, _ in retrieved}
         all_memories = self.memory._load_all_memories()
+        thread_key = str(thread_id or "default").strip() or "default"
+
+        def _in_thread_scope(thread_value: Optional[str]) -> bool:
+            tv = str(thread_value or "").strip()
+            if tv == thread_key:
+                return True
+            if thread_key == "default" and not tv:
+                return True
+            return False
+
+        def _normalize_profile_value(slot_name: str, raw_value: Any) -> Optional[str]:
+            value = str(raw_value or "").strip()
+            if not value:
+                return None
+            value_upper = value.upper()
+            if value_upper.startswith("LEFT:"):
+                return None
+            if slot_name == "employer" and value_upper.startswith("BOTH "):
+                value = value[5:].strip()
+                if not value:
+                    return None
+            return value
 
         def _source_priority(mem: MemoryItem) -> int:
             if mem.source == MemorySource.USER:
@@ -5829,20 +5866,27 @@ class CRTEnhancedRAG:
                 logger.info(f"[PROFILE_DEBUG] Retrieved {len(slot_facts)} facts for slot '{slot}'")
                 
                 for idx, fact in enumerate(slot_facts):
+                    if not _in_thread_scope(getattr(fact, "source_thread", None)):
+                        continue
+                    safe_value = _normalize_profile_value(slot, getattr(fact, "value", ""))
+                    if not safe_value:
+                        continue
+
                     # Create a synthetic memory item from profile fact
                     # Use unique memory_id for each value (slot_0, slot_1, etc.)
                     synthetic_mem = MemoryItem(
-                        memory_id=f"profile_{slot}_{idx}",
-                        vector=encode_vector(f"FACT: {slot} = {fact.value}"),
-                        text=f"FACT: {slot.replace('_', ' ')} = {fact.value}",
+                        memory_id=f"profile_{thread_key}_{slot}_{idx}",
+                        vector=encode_vector(f"FACT: {slot} = {safe_value}"),
+                        text=f"FACT: {slot.replace('_', ' ')} = {safe_value}",
                         timestamp=fact.timestamp,
                         confidence=fact.confidence,
                         trust=0.95,  # High trust for profile facts
                         source=MemorySource.USER,
-                        sse_mode=SSEMode.LOSSLESS  # Identity-critical fact
+                        sse_mode=SSEMode.LOSSLESS,  # Identity-critical fact
+                        thread_id=thread_key,
                     )
                     if synthetic_mem.memory_id not in retrieved_ids:
-                        logger.info(f"[PROFILE_DEBUG] Injecting profile fact: {slot} = {fact.value}")
+                        logger.info(f"[PROFILE_DEBUG] Injecting profile fact: {slot} = {safe_value}")
                         injected.append((synthetic_mem, 1.0))
                         retrieved_ids.add(synthetic_mem.memory_id)
         except Exception as e:
@@ -5854,6 +5898,8 @@ class CRTEnhancedRAG:
             best_key: Optional[Tuple[int, float, float]] = None
             for mem in all_memories:
                 if getattr(mem, "source", None) not in allowed_sources:
+                    continue
+                if not _in_thread_scope(getattr(mem, "thread_id", None)):
                     continue
                 facts = extract_fact_slots(mem.text)
                 if slot not in facts:
@@ -6757,6 +6803,10 @@ class CRTEnhancedRAG:
     _WEB_SEARCH_PATTERNS = (
         "search for", "search the web", "search duckduckgo", "search ddg",
         "look up", "look it up", "google", "find out about",
+        "using duckduckgo", "with duckduckgo", "via duckduckgo",
+        "use duckduckgo", "use duck duck go",
+        "duckduckgo", "duck duck go",
+        "using web", "can you research", "research if",
         "latest news", "recent news", "current news", "what happened",
         "what's happening", "whats happening", "breaking news",
         "state of the union", "election results", "weather in", "weather today",
@@ -6788,12 +6838,28 @@ class CRTEnhancedRAG:
             "search for", "search the web for", "search duckduckgo for",
             "search ddg for", "look up", "google", "find out about",
             "can you search for", "can you search", "can you look up",
+            "can you research if", "can you research", "research if", "research",
             "search online for", "web search for", "web search",
+            "use duckduckgo to search for", "use duck duck go to search for",
+            "use duckduckgo", "use duck duck go",
             "find me", "find information about", "find information on",
         ]
         for prefix in prefixes:
             if tl.startswith(prefix):
-                return t[len(prefix):].strip().lstrip(":")
+                t = t[len(prefix):].strip().lstrip(":")
+                tl = t.lower()
+                break
+        # Remove tool-instruction suffixes while preserving the actual topic.
+        t = re.sub(
+            r"^\s*using\s+web\s*(?:,?\s*and\s+duck\s*duck\s*go)?\s*,?\s*can\s+you\s+"
+            r"(?:research|check|look\s+up)\s*(?:if)?\s*",
+            "",
+            t,
+            flags=re.IGNORECASE,
+        )
+        t = re.sub(r"\b(using|with|via)\s+duck\s*duck\s*go\b", "", t, flags=re.IGNORECASE)
+        t = re.sub(r"\b(using|with|via)\s+duckduckgo\b", "", t, flags=re.IGNORECASE)
+        t = re.sub(r"\s+", " ", t).strip(" .,:;!?")
         # If no prefix matched, use the full text as the search query
         return t
 
@@ -6913,6 +6979,125 @@ class CRTEnhancedRAG:
                 out = f"{out.rstrip()}\n\nSources:\n" + "\n".join(lines)
 
         return out
+
+    def _sanitize_web_mode_answer(self, answer: str) -> str:
+        """Remove memory-framed phrasing from web-mode responses."""
+        out = str(answer or "").strip()
+        if not out:
+            return out
+
+        replacements = [
+            (r"(?i)\byes,\s*according to (?:my|the)\s+memory\b", "Yes, based on web results"),
+            (r"(?i)\baccording to (?:my|the)\s+memory\b", "Based on web results"),
+            (r"(?i)\bi retrieved the following from your memory:\s*", ""),
+            (r"(?i)\bthe answer to that query was\b", "The current web evidence indicates"),
+        ]
+        for pattern, repl in replacements:
+            out = re.sub(pattern, repl, out)
+        return out.strip()
+
+    def _is_capability_connector_query(self, query: str) -> bool:
+        """True for binary compatibility questions like connector/input support."""
+        q = str(query or "").strip().lower()
+        if not q:
+            return False
+        has_capability = any(k in q for k in ("can ", "does ", "support", "use ", "work with", "accept", "input"))
+        has_connector = any(
+            k in q for k in ("3.5", "3.5mm", "3.5 mm", "jack", "connector", "lav", "lavalier", "trs", "trrs")
+        )
+        return has_capability and has_connector
+
+    def _build_web_fulfillment_answer(
+        self,
+        *,
+        query: str,
+        web_results: List[Dict[str, Any]],
+    ) -> Optional[str]:
+        """Build a deterministic answer for binary web compatibility questions.
+
+        This avoids hallucinated memory framing and explicitly returns yes/no/unclear
+        based on retrieved snippets.
+        """
+        if not self._is_capability_connector_query(query):
+            return None
+        if not web_results:
+            return None
+
+        ql = str(query or "").lower()
+        focus_transmitter = any(
+            k in ql for k in ("transmitter", "actual mic part", "on the mic", "not the receiver")
+        )
+
+        yes_hits: List[Tuple[int, str, str, bool]] = []
+        no_hits: List[Tuple[int, str, str, bool]] = []
+        for idx, result in enumerate((web_results or [])[:6], start=1):
+            title = str((result or {}).get("title") or "").strip()
+            snippet = str((result or {}).get("snippet") or "").strip()
+            blob = f"{title} {snippet}".lower()
+            if not blob.strip():
+                continue
+
+            has_35 = bool(re.search(r"\b3\.?5\s*mm\b|\b3\.?5mm\b", blob))
+            has_lav_or_mic = any(k in blob for k in ("lav", "lavalier", "microphone", "mic"))
+            has_input = any(k in blob for k in ("input", "jack", "port", "connector", "plug", "supports", "support"))
+            tx_side = any(k in blob for k in ("transmitter", "tx", "mic body", "actual mic", "on the mic"))
+            rx_only = ("receiver" in blob) and (not tx_side)
+
+            neg = any(
+                p in blob
+                for p in (
+                    "does not support",
+                    "doesn't support",
+                    "not supported",
+                    "no 3.5",
+                    "without 3.5",
+                    "no 3.5mm",
+                    "not compatible",
+                )
+            )
+
+            if neg and (has_35 or has_lav_or_mic):
+                no_hits.append((idx, title, snippet, tx_side))
+                continue
+
+            if has_35 and has_lav_or_mic and has_input:
+                if rx_only and focus_transmitter:
+                    # Receiver-only mention does not satisfy a transmitter-specific ask.
+                    no_hits.append((idx, title, snippet, tx_side))
+                else:
+                    yes_hits.append((idx, title, snippet, tx_side))
+
+        yes_tx_hits = [h for h in yes_hits if h[3]]
+
+        lines: List[str] = []
+        if focus_transmitter and yes_hits and not yes_tx_hits:
+            lines.append(
+                "I found web evidence for 3.5 mm lav compatibility, but the snippets do not clearly prove "
+                "that this is on the transmitter (not the receiver)."
+            )
+            chosen = yes_hits[:2]
+        elif yes_hits and len(yes_hits) >= max(1, len(no_hits)):
+            lines.append("Yes. Based on current web results, this appears to support a 3.5 mm lav input.")
+            chosen = (yes_tx_hits[:2] if (focus_transmitter and yes_tx_hits) else yes_hits[:2])
+        elif no_hits and len(no_hits) > len(yes_hits):
+            lines.append("No. Current web snippets indicate this does not support the requested 3.5 mm lav input.")
+            chosen = no_hits[:2]
+        else:
+            lines.append(
+                "I could not verify this conclusively from the current web snippets. "
+                "I need clearer source wording about connector type and input side."
+            )
+            chosen = (yes_hits + no_hits)[:2]
+
+        for idx, _title, snippet, _tx_side in chosen:
+            s = re.sub(r"\s+", " ", str(snippet or "")).strip()
+            if not s:
+                continue
+            if len(s) > 180:
+                s = s[:177].rstrip() + "..."
+            lines.append(f"- [{idx}] {s}")
+
+        return "\n".join(lines).strip()
 
     def _is_memory_citation_request(self, text: str) -> bool:
         """True if the user explicitly asks for chat-grounded recall/citation.
@@ -7057,6 +7242,7 @@ class CRTEnhancedRAG:
         *,
         user_query: str,
         retrieved: List[Tuple[MemoryItem, float]],
+        thread_id: str = "default",
         max_facts: int = 10,
     ) -> str:
         """Build a synthesis answer that combines multiple related facts.
@@ -7123,11 +7309,39 @@ class CRTEnhancedRAG:
                 return "I don't have any stored profile facts about you yet."
             return "\n".join(lines)
 
-        # Get USER memories (facts the user told us)
-        user_memories = [m for m, _s in (retrieved or []) if getattr(m, "source", None) == MemorySource.USER]
+        thread_key = str(thread_id or "default").strip() or "default"
+
+        def _in_thread_scope(thread_value: Optional[str]) -> bool:
+            tv = str(thread_value or "").strip()
+            if tv == thread_key:
+                return True
+            if thread_key == "default" and not tv:
+                return True
+            return False
+
+        def _normalize_profile_value(slot_name: str, raw_value: Any) -> Optional[str]:
+            value = str(raw_value or "").strip()
+            if not value:
+                return None
+            value_upper = value.upper()
+            if value_upper.startswith("LEFT:"):
+                return None
+            if slot_name == "employer" and value_upper.startswith("BOTH "):
+                value = value[5:].strip()
+                if not value:
+                    return None
+            return value
+
+        # Get USER memories (facts the user told us), scoped to this thread.
+        user_memories = [
+            m
+            for m, _s in (retrieved or [])
+            if getattr(m, "source", None) == MemorySource.USER
+            and _in_thread_scope(getattr(m, "thread_id", None))
+        ]
         
         if not user_memories:
-            return "I don't have that information in my memory yet."
+            user_memories = []
         
         # For slot-specific queries (e.g., "what do you remember about my employer?"),
         # check if retrieved memories actually contain facts about the queried slot.
@@ -7144,17 +7358,128 @@ class CRTEnhancedRAG:
             
             # If we have inferred slots but no relevant memories, return "don't have"
             if not relevant_memories:
-                return "I don't have that information in my memory yet."
+                relevant_memories = []
             
             # Use only the relevant memories for building the answer
             user_memories = relevant_memories
         
+        def _is_low_signal_memory_text(text: str) -> bool:
+            t = str(text or "").strip()
+            if not t:
+                return True
+            tl = t.lower()
+            # Filter generic/meta statements that do not add profile facts.
+            low_signal_markers = (
+                "i'm letting you know some info about myself",
+                "im letting you know some info about myself",
+                "i m letting you know some info about myself",
+                "you should know some of my history",
+                "some info about myself",
+                "my history",
+            )
+            strong_fact_markers = (
+                "my name is",
+                "i am a ",
+                "i'm a ",
+                "i work",
+                "i live",
+                "i like",
+                "i prefer",
+                "my goal",
+                "my goals",
+                "i build",
+                "i value",
+            )
+            marker_hit = any(m in tl for m in low_signal_markers) or bool(
+                re.search(r"letting you know some info about myself", tl)
+            )
+            if marker_hit and not any(m in tl for m in strong_fact_markers):
+                return True
+            # Keep memories that have structured fact extraction.
+            try:
+                if extract_fact_slots(t):
+                    return False
+            except Exception:
+                pass
+            # Very short/noisy lines are usually not useful profile facts.
+            if len(t.split()) < 4:
+                return True
+            return False
+
+        def _profile_fact_lines(limit: int) -> List[str]:
+            """Best-effort fallback from structured user profile facts.
+
+            This prevents "I don't know" replies when facts exist in profile DB but
+            were not surfaced by embedding retrieval for broad synthesis prompts.
+            """
+            try:
+                all_profile = self.user_profile.get_all_facts_expanded() or {}
+            except Exception:
+                return []
+            if not all_profile:
+                return []
+
+            scoped_profile: Dict[str, List[Any]] = {}
+            for slot, facts_for_slot in all_profile.items():
+                scoped = [
+                    fact
+                    for fact in (facts_for_slot or [])
+                    if _in_thread_scope(getattr(fact, "source_thread", None))
+                ]
+                if scoped:
+                    scoped_profile[slot] = scoped
+            if not scoped_profile:
+                return []
+
+            query_slots = self._infer_slots_from_query(user_query)
+            if query_slots:
+                slot_order = [s for s in query_slots if s in scoped_profile]
+            else:
+                # Deterministic order for stable answers.
+                slot_order = sorted(scoped_profile.keys())
+
+            lines: List[str] = []
+            for slot in slot_order:
+                facts_for_slot = scoped_profile.get(slot) or []
+                added_for_slot = 0
+                for fact in facts_for_slot:
+                    value = _normalize_profile_value(slot, getattr(fact, "value", ""))
+                    if not value:
+                        continue
+                    lines.append(f"FACT: {slot.replace('_', ' ')} = {value}")
+                    added_for_slot += 1
+                    if len(lines) >= max(1, int(limit)):
+                        return lines
+                    # Broad "about me" summaries should stay concise and avoid contradictory
+                    # multi-values for the same slot in a single response.
+                    if added_for_slot >= 1:
+                        break
+            return lines
+
         # Build synthesis answer
-        facts = [mem.text.strip() for mem in user_memories[:max_facts] if mem.text and mem.text.strip()]
-        facts_deduped = list(dict.fromkeys(facts))  # Remove exact duplicates while preserving order
+        facts = [
+            mem.text.strip()
+            for mem in user_memories[: max_facts * 2]
+            if mem.text and mem.text.strip() and not _is_low_signal_memory_text(mem.text)
+        ]
+        # Include structured profile facts as fallback/augmentation.
+        facts.extend(_profile_fact_lines(max_facts * 2))
+
+        # Remove duplicates while preserving order (case/whitespace insensitive).
+        seen_norm: Set[str] = set()
+        facts_deduped: List[str] = []
+        for fact in facts:
+            norm = re.sub(r"\s+", " ", str(fact or "").strip()).lower()
+            if not norm or norm in seen_norm:
+                continue
+            seen_norm.add(norm)
+            facts_deduped.append(str(fact).strip())
         
         if len(facts_deduped) == 0:
-            return "I don't have that information in my memory yet."
+            return (
+                "I don't have specific profile facts captured yet. "
+                "Share concrete details (for example role, goals, tools, or preferences) and I will remember them."
+            )
         elif len(facts_deduped) == 1:
             return facts_deduped[0]
         else:
