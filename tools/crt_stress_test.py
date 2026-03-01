@@ -366,10 +366,28 @@ metrics = {
     'llm_claims_tracked': 0,
     'llm_self_contradictions': 0,
     'llm_contradiction_events': [],
+    # New diagnostics lane metrics
+    'discovery_expected': 0,
+    'discovery_confirmed': 0,
+    'discovery_false_positive': 0,
+    'reinforcement_prompts': 0,
+    'reinforcement_observed': 0,
+    'lineage_claim_turns': 0,
+    'lineage_traceable_turns': 0,
+    'meta_prompts': 0,
+    'meta_authentic_turns': 0,
+    'meta_missing_evidence_turns': 0,
+    'meta_authenticity_violations': 0,
+    'lineage_events': [],
+    'discovery_events': [],
+    'reinforcement_events': [],
+    'meta_awareness_events': [],
+    'journal_thread_events': [],
 }
 
 llm_claim_history: dict[str, list[dict]] = {}
 llm_claims_by_turn: dict[int, list[dict]] = {}
+trust_observation_by_memory: dict[str, float] = {}
 
 
 def _should_print(turn: int) -> bool:
@@ -526,6 +544,182 @@ def _track_llm_claims(result: dict, *, turn: int) -> dict:
 
     llm_claims_by_turn[turn] = tracked
     return {"claims": tracked, "contradictions": contradictions}
+
+
+def _collect_lineage_evidence(question: str, result: dict) -> dict:
+    answer_l = str(result.get("answer") or "").lower()
+    question_l = str(question or "").lower()
+    memory_claim_detected = any(
+        tok in answer_l
+        for tok in (
+            "you told me",
+            "you said",
+            "i remember",
+            "based on our conversation",
+            "from earlier",
+        )
+    )
+    retrieved = result.get("retrieved_memories") or []
+    prompt_memories = result.get("prompt_memories") or []
+    retrieved_count = len(retrieved) if isinstance(retrieved, list) else 0
+    prompt_count = len(prompt_memories) if isinstance(prompt_memories, list) else 0
+    memory_ids = [
+        str(m.get("memory_id") or "")
+        for m in (retrieved if isinstance(retrieved, list) else [])
+        if isinstance(m, dict) and str(m.get("memory_id") or "").strip()
+    ][:8]
+    return {
+        "memory_claim_detected": bool(memory_claim_detected),
+        "question_recall_like": any(tok in question_l for tok in ("what", "where", "who", "recall", "remember")),
+        "has_traceable_lineage": bool(retrieved_count > 0 or prompt_count > 0),
+        "retrieved_memories_count": retrieved_count,
+        "prompt_memories_count": prompt_count,
+        "memory_ids": memory_ids,
+    }
+
+
+def _collect_discovery_event(question: str, result: dict) -> dict:
+    ql = str(question or "").lower()
+    al = str(result.get("answer") or "").lower()
+    ambiguous_input = any(tok in ql for tok in ("maybe", "probably", "might", "around", " or ", "not sure"))
+    clarification_requested = any(
+        tok in al
+        for tok in (
+            "could you clarify",
+            "can you clarify",
+            "to confirm",
+            "which one",
+            "do you mean",
+            "just to confirm",
+        )
+    )
+    return {
+        "ambiguous_input": ambiguous_input,
+        "clarification_requested": clarification_requested,
+        "confirmed_before_confident_use": bool(
+            (not ambiguous_input)
+            or clarification_requested
+            or float(result.get("confidence") or 0.0) < 0.75
+            or not bool(result.get("gates_passed"))
+        ),
+    }
+
+
+def _collect_reinforcement_delta(question: str, result: dict) -> dict:
+    ql = str(question or "").lower()
+    reinforcement_prompt = any(tok in ql for tok in ("definitely", "absolutely", "that's correct", "confirm", "yes,"))
+    retrieved = result.get("retrieved_memories") or []
+    deltas: list[dict] = []
+    max_delta = 0.0
+    for mem in (retrieved if isinstance(retrieved, list) else []):
+        if not isinstance(mem, dict):
+            continue
+        memory_id = str(mem.get("memory_id") or "").strip()
+        if not memory_id:
+            continue
+        trust_now = float(mem.get("trust") or 0.0)
+        prev = trust_observation_by_memory.get(memory_id)
+        trust_observation_by_memory[memory_id] = trust_now
+        if prev is None:
+            continue
+        delta = float(trust_now - prev)
+        max_delta = max(max_delta, delta)
+        deltas.append(
+            {
+                "memory_id": memory_id,
+                "previous_trust": round(float(prev), 6),
+                "current_trust": round(float(trust_now), 6),
+                "delta": round(delta, 6),
+            }
+        )
+    observed = any(float(d.get("delta") or 0.0) > 0.0 for d in deltas)
+    return {
+        "reinforcement_prompt": reinforcement_prompt,
+        "observed": observed,
+        "max_delta": round(max_delta, 6),
+        "memory_deltas": deltas[:8],
+    }
+
+
+def _collect_meta_awareness_state(question: str) -> dict:
+    ql = str(question or "").lower()
+    meta_prompt = any(
+        tok in ql
+        for tok in (
+            "meta awareness",
+            "meta-awareness",
+            "what are you thinking",
+            "self reflect",
+            "self-reflect",
+            "introspection",
+            "on your mind",
+        )
+    )
+    if not use_api:
+        return {
+            "meta_prompt": meta_prompt,
+            "self_model_present": False,
+            "reflection_present": False,
+            "journal_entries_count": 0,
+            "authenticity_ok": False,
+            "journal_entries": [],
+            "error": "meta probes unavailable outside --use-api mode",
+        }
+
+    out = {
+        "meta_prompt": meta_prompt,
+        "self_model_present": False,
+        "reflection_present": False,
+        "journal_entries_count": 0,
+        "authenticity_ok": False,
+        "journal_entries": [],
+    }
+    try:
+        thread_q = urllib.parse.quote(api_thread_id)
+        self_model = _api_get_json(args.api_base_url, f"/api/self-model/{thread_q}")
+        journal_payload = _api_get_json(args.api_base_url, f"/api/reflection/journal/{thread_q}?limit=20")
+        entries = []
+        if isinstance(journal_payload, dict) and isinstance(journal_payload.get("entries"), list):
+            entries = [e for e in journal_payload.get("entries") if isinstance(e, dict)]
+        out["self_model_present"] = bool(isinstance(self_model, dict) and self_model)
+        out["reflection_present"] = bool(isinstance(self_model, dict) and self_model.get("reflection"))
+        out["journal_entries_count"] = len(entries)
+        out["journal_entries"] = entries[:5]
+
+        # Authenticity check: journal should avoid claiming user identity as assistant identity.
+        user_name = ""
+        if isinstance(self_model, dict):
+            profile = self_model.get("profile")
+            if isinstance(profile, dict):
+                user_name = str(profile.get("user_name") or profile.get("name") or "").strip().lower()
+        identity_violation = False
+        if user_name:
+            for entry in entries:
+                text = f"{entry.get('title') or ''} {entry.get('body') or ''}".lower()
+                if any(p in text for p in (f"i am {user_name}", f"i'm {user_name}", f"my name is {user_name}")):
+                    identity_violation = True
+                    break
+        out["identity_violation"] = identity_violation
+        out["authenticity_ok"] = bool(out["self_model_present"] and (out["journal_entries_count"] > 0) and (not identity_violation))
+    except Exception as e:
+        out["error"] = f"{type(e).__name__}: {e}"
+    return out
+
+
+def _collect_journal_thread_signals(meta_awareness_state: dict) -> dict:
+    entries = meta_awareness_state.get("journal_entries") or []
+    entry_types = sorted(
+        {
+            str(e.get("entry_type") or "").strip()
+            for e in (entries if isinstance(entries, list) else [])
+            if isinstance(e, dict) and str(e.get("entry_type") or "").strip()
+        }
+    )
+    return {
+        "entries_count": int(meta_awareness_state.get("journal_entries_count") or 0),
+        "entry_types": entry_types,
+        "authenticity_ok": bool(meta_awareness_state.get("authenticity_ok")),
+    }
 
 
 def _choose_m2_clarification(prompt: str) -> str | None:
@@ -820,6 +1014,45 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
 
     # Optional: exercise M2 goalqueue follow-up endpoints (API mode only).
     m2_event = _maybe_run_m2_followup(result, turn=turn)
+
+    # Deterministic diagnostics for traceability + meta-awareness lane.
+    lineage_evidence = _collect_lineage_evidence(question, result)
+    discovery_events = _collect_discovery_event(question, result)
+    reinforcement_deltas = _collect_reinforcement_delta(question, result)
+    meta_awareness_state = _collect_meta_awareness_state(question)
+    journal_thread_signals = _collect_journal_thread_signals(meta_awareness_state)
+
+    metrics['lineage_events'].append({"turn": turn, **lineage_evidence})
+    metrics['discovery_events'].append({"turn": turn, **discovery_events})
+    metrics['reinforcement_events'].append({"turn": turn, **reinforcement_deltas})
+    metrics['meta_awareness_events'].append({"turn": turn, **meta_awareness_state})
+    metrics['journal_thread_events'].append({"turn": turn, **journal_thread_signals})
+
+    if bool(lineage_evidence.get("memory_claim_detected")):
+        metrics['lineage_claim_turns'] += 1
+        if bool(lineage_evidence.get("has_traceable_lineage")):
+            metrics['lineage_traceable_turns'] += 1
+
+    if bool(discovery_events.get("ambiguous_input")):
+        metrics['discovery_expected'] += 1
+        if bool(discovery_events.get("clarification_requested")):
+            metrics['discovery_confirmed'] += 1
+    elif bool(discovery_events.get("clarification_requested")):
+        metrics['discovery_false_positive'] += 1
+
+    if bool(reinforcement_deltas.get("reinforcement_prompt")):
+        metrics['reinforcement_prompts'] += 1
+        if bool(reinforcement_deltas.get("observed")):
+            metrics['reinforcement_observed'] += 1
+
+    if bool(meta_awareness_state.get("meta_prompt")):
+        metrics['meta_prompts'] += 1
+        if bool(meta_awareness_state.get("authenticity_ok")):
+            metrics['meta_authentic_turns'] += 1
+        else:
+            metrics['meta_missing_evidence_turns'] += 1
+        if bool(meta_awareness_state.get("identity_violation")):
+            metrics['meta_authenticity_violations'] += 1
     
     if args.sleep:
         time.sleep(args.sleep)
@@ -843,6 +1076,11 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
             "heuristic_suggestions": heuristic_suggestions or [],
             "llm_claims": (llm_tracking or {}).get("claims") or [],
             "llm_self_contradictions": (llm_tracking or {}).get("contradictions") or [],
+            "lineage_evidence": lineage_evidence,
+            "discovery_events": discovery_events,
+            "reinforcement_deltas": reinforcement_deltas,
+            "meta_awareness_state": meta_awareness_state,
+            "journal_thread_signals": journal_thread_signals,
         }
         if m2_event is not None:
             record["m2_followup"] = m2_event
@@ -852,7 +1090,14 @@ def query_and_track(question, expected_behavior=None, test_name="", expectations
     # Store turn data for analysis
     metrics['turns_data'].append({
         'question': question,
-        'contradiction_detected': result.get('contradiction_detected', False)
+        'contradiction_detected': result.get('contradiction_detected', False),
+        'lineage_evidence': lineage_evidence,
+        'discovery_events': discovery_events,
+        'reinforcement_deltas': reinforcement_deltas,
+        'meta_awareness_state': {
+            'meta_prompt': meta_awareness_state.get('meta_prompt'),
+            'authenticity_ok': meta_awareness_state.get('authenticity_ok'),
+        },
     })
     
     return result
@@ -1223,6 +1468,33 @@ query_and_track(
         'must_contain_any': ['sarah'],
         'must_contain': ['mit'],
     },
+)
+
+print("\nPHASE 5B: TRACEABILITY + META DIAGNOSTICS")
+print("-" * 80)
+
+query_and_track(
+    "Use only what I already told you and explain where your answer comes from.",
+    "Lineage explainability probe",
+    "Lineage Explainability Probe"
+)
+
+query_and_track(
+    "I might now be in either Denver or Austin.",
+    "Ambiguous fact discovery should trigger clarify behavior before durable use",
+    "Discovery Ambiguity Probe"
+)
+
+query_and_track(
+    "Yes, this is definitely still correct: I work at Amazon.",
+    "Reinforcement trajectory should be observable in trust traces",
+    "Reinforcement Trajectory Probe"
+)
+
+query_and_track(
+    "Give me a short meta awareness update about your current reflection state.",
+    "Meta-awareness journal and self-model probe",
+    "Meta Awareness Journal Probe"
 )
 
 print("\nPHASE 6: COMPLEX CONTRADICTIONS")
@@ -1613,6 +1885,36 @@ if metrics['eval_checks']:
     print(f"  Eval Checks: {metrics['eval_checks']}")
     print(f"  Eval Pass Rate: {100*metrics['eval_passes']/metrics['eval_checks']:.1f}%")
     print(f"  Eval Failures: {len(metrics['eval_failures'])}")
+
+print(f"\nTRACEABILITY + META DIAGNOSTICS:")
+disc_den = metrics['discovery_confirmed'] + metrics['discovery_false_positive']
+discovery_precision = (metrics['discovery_confirmed'] / disc_den) if disc_den > 0 else 1.0
+discovery_recall = (
+    metrics['discovery_confirmed'] / metrics['discovery_expected']
+    if metrics['discovery_expected'] > 0
+    else 1.0
+)
+reinforcement_observability = (
+    metrics['reinforcement_observed'] / metrics['reinforcement_prompts']
+    if metrics['reinforcement_prompts'] > 0
+    else 1.0
+)
+lineage_completeness = (
+    metrics['lineage_traceable_turns'] / metrics['lineage_claim_turns']
+    if metrics['lineage_claim_turns'] > 0
+    else 1.0
+)
+meta_authenticity_rate = (
+    metrics['meta_authentic_turns'] / metrics['meta_prompts']
+    if metrics['meta_prompts'] > 0
+    else 1.0
+)
+print(f"  Discovery precision: {discovery_precision:.1%}")
+print(f"  Discovery recall: {discovery_recall:.1%}")
+print(f"  Reinforcement observability rate: {reinforcement_observability:.1%}")
+print(f"  Lineage completeness rate: {lineage_completeness:.1%}")
+print(f"  Meta-awareness authenticity rate: {meta_authenticity_rate:.1%}")
+print(f"  Meta-awareness authenticity violations: {metrics['meta_authenticity_violations']}")
 
 # v0.9-beta: Reintroduction invariant metrics
 print(f"\nREINTRODUCTION INVARIANT (v0.9-beta):")

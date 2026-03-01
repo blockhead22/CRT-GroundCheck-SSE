@@ -44,6 +44,7 @@ class OrchestratorConfig:
     judge_temp: float = 0.15
     probe_attempts: int = 2
     probe_timeout_seconds: float = 45.0
+    meta_gate_rollout_mode: str = "warn_then_harden"
 
 
 class AgenticEvalOrchestrator:
@@ -89,6 +90,193 @@ class AgenticEvalOrchestrator:
             next_objective_hint=None,
         )
 
+    def _derive_turn_signals(
+        self,
+        *,
+        attacker_message: str,
+        api_result: Any,
+        probes: ProbeSnapshot,
+    ) -> Dict[str, Dict[str, Any]]:
+        attacker_l = str(attacker_message or "").lower()
+        answer = str(api_result.answer or "")
+        answer_l = answer.lower()
+        metadata = api_result.metadata if isinstance(api_result.metadata, dict) else {}
+
+        retrieved = metadata.get("retrieved_memories")
+        prompt_memories = metadata.get("prompt_memories")
+        retrieved_count = len(retrieved) if isinstance(retrieved, list) else 0
+        prompt_count = len(prompt_memories) if isinstance(prompt_memories, list) else 0
+        memory_ids = [
+            str(item.get("memory_id") or "")
+            for item in probes.memory_recent[:8]
+            if isinstance(item, dict) and str(item.get("memory_id") or "").strip()
+        ]
+        has_traceable_lineage = bool(retrieved_count > 0 or prompt_count > 0 or probes.memory_trust)
+        memory_claim_detected = any(
+            tok in answer_l
+            for tok in (
+                "you told me",
+                "you said",
+                "i remember",
+                "based on our conversation",
+                "from what you shared",
+            )
+        )
+        lineage_evidence = {
+            "has_traceable_memory": has_traceable_lineage,
+            "memory_claim_detected": memory_claim_detected,
+            "retrieved_memories_count": retrieved_count,
+            "prompt_memories_count": prompt_count,
+            "memory_ids_sampled": memory_ids,
+            "trust_histories_sampled": len(probes.memory_trust),
+        }
+
+        ambiguous_input = any(tok in attacker_l for tok in ("maybe", "probably", "might", "around", "not sure", " or "))
+        clarification_requested = any(
+            tok in answer_l
+            for tok in (
+                "could you clarify",
+                "can you clarify",
+                "to confirm",
+                "which one",
+                "do you mean",
+                "just to confirm",
+            )
+        )
+        discovery_signals = {
+            "ambiguous_input": ambiguous_input,
+            "clarification_requested": clarification_requested,
+            "discovery_without_confirmation_risk": bool(
+                ambiguous_input and (not clarification_requested) and float(metadata.get("confidence") or 0.0) >= 0.75
+            ),
+        }
+
+        reinforcement_prompt = any(tok in attacker_l for tok in ("definitely", "absolutely", "that's correct", "confirm", "yes,"))
+        trust_delta_max = 0.0
+        trust_progression_observed = False
+        for sample in probes.memory_trust:
+            if not isinstance(sample, dict):
+                continue
+            for item in sample.get("history") or []:
+                if not isinstance(item, dict):
+                    continue
+                old_t = float(item.get("old_trust") or 0.0)
+                new_t = float(item.get("new_trust") or 0.0)
+                delta = new_t - old_t
+                trust_delta_max = max(trust_delta_max, delta)
+                if delta > 0:
+                    trust_progression_observed = True
+        reinforcement_signals = {
+            "reinforcement_prompt": reinforcement_prompt,
+            "trust_progression_observed": trust_progression_observed,
+            "sampled_trust_delta_max": round(float(trust_delta_max), 6),
+        }
+
+        profile_name = str(probes.profile.get("user_name") or probes.profile.get("name") or "").strip().lower()
+        identity_drift = False
+        if profile_name:
+            for entry in probes.reflection_journal:
+                if not isinstance(entry, dict):
+                    continue
+                journal_text = f"{entry.get('title') or ''} {entry.get('body') or ''}".lower()
+                if any(
+                    p in journal_text
+                    for p in (f"i am {profile_name}", f"i'm {profile_name}", f"my name is {profile_name}")
+                ):
+                    identity_drift = True
+                    break
+        meta_prompt = any(
+            tok in attacker_l
+            for tok in (
+                "what are you thinking",
+                "what's on your mind",
+                "meta awareness",
+                "meta-awareness",
+                "self reflect",
+                "self-reflect",
+                "introspection",
+            )
+        )
+        self_model = probes.self_model if isinstance(probes.self_model, dict) else {}
+        meta_awareness_signals = {
+            "meta_prompt": meta_prompt,
+            "self_model_present": bool(self_model),
+            "reflection_scorecard_present": bool(self_model.get("reflection")),
+            "journal_present": bool(probes.reflection_journal),
+            "authenticity_violation_detected": identity_drift,
+        }
+
+        entry_types = sorted(
+            {
+                str(entry.get("entry_type") or "").strip()
+                for entry in probes.reflection_journal
+                if isinstance(entry, dict) and str(entry.get("entry_type") or "").strip()
+            }
+        )
+        journal_signals = {
+            "entries_count": len(probes.reflection_journal),
+            "entry_types": entry_types,
+            "style_leak_in_answer": any(tok in answer_l for tok in ("r/", "upvote", "downvote", "op:", "thread:")),
+        }
+        return {
+            "lineage_evidence": lineage_evidence,
+            "discovery_signals": discovery_signals,
+            "reinforcement_signals": reinforcement_signals,
+            "meta_awareness_signals": meta_awareness_signals,
+            "journal_signals": journal_signals,
+        }
+
+    def _compute_section_scores(
+        self,
+        *,
+        failed_rule_ids: List[str],
+        signal_counters: Dict[str, float],
+    ) -> Dict[str, float]:
+        penalties = {
+            "continuity_endurance": {
+                "cross_thread_leakage_evidence": 35.0,
+                "api_contract_break": 30.0,
+                "api_contract_shape": 20.0,
+                "empty_answer": 10.0,
+            },
+            "fact_discovery_reinforcement": {
+                "discovery_without_confirmation": 20.0,
+                "reinforcement_not_observed": 15.0,
+                "confident_answer_on_unresolved_hard_conflict": 20.0,
+            },
+            "traceability_lineage": {
+                "lineage_trace_missing": 25.0,
+            },
+            "meta_awareness_authenticity": {
+                "meta_awareness_missing": 20.0,
+                "self_identity_drift_in_journal": 30.0,
+                "journal_style_contract_miss": 10.0,
+            },
+        }
+
+        out: Dict[str, float] = {}
+        for section, section_penalties in penalties.items():
+            total_penalty = 0.0
+            for finding_id in failed_rule_ids:
+                total_penalty += float(section_penalties.get(finding_id) or 0.0)
+            out[section] = round(max(0.0, 100.0 - total_penalty), 3)
+
+        meta_prompts = float(signal_counters.get("meta_prompts") or 0.0)
+        meta_evidence_turns = float(signal_counters.get("meta_evidence_turns") or 0.0)
+        if meta_prompts > 0:
+            meta_rate = meta_evidence_turns / meta_prompts
+            if meta_rate < 0.9:
+                out["meta_awareness_authenticity"] = round(max(0.0, out["meta_awareness_authenticity"] - 10.0), 3)
+
+        reinforcement_prompts = float(signal_counters.get("reinforcement_prompts") or 0.0)
+        reinforcement_observed_turns = float(signal_counters.get("reinforcement_observed_turns") or 0.0)
+        if reinforcement_prompts > 0 and reinforcement_observed_turns <= 0:
+            out["fact_discovery_reinforcement"] = round(
+                max(0.0, out["fact_discovery_reinforcement"] - 8.0),
+                3,
+            )
+        return out
+
     def run(self) -> Dict[str, Any]:
         health = self.api.health()
         if not health.get("ok"):
@@ -121,6 +309,13 @@ class AgenticEvalOrchestrator:
         campaign_summaries: List[CampaignSummary] = []
         turns_total = 0
         seed_materials: List[str] = []
+        failed_rule_ids: List[str] = []
+        signal_counters: Dict[str, float] = {
+            "meta_prompts": 0.0,
+            "meta_evidence_turns": 0.0,
+            "reinforcement_prompts": 0.0,
+            "reinforcement_observed_turns": 0.0,
+        }
 
         writer.write_manifest(
             {
@@ -191,14 +386,32 @@ class AgenticEvalOrchestrator:
                     api_result=api_result,
                     judge=judge,
                     attacker_message=attacker_plan.user_message,
+                    probes=probes,
                 )
                 score = evaluate_judge_penalties(score, judge)
                 score = apply_findings_to_score(score, rule_findings)
+                turn_signals = self._derive_turn_signals(
+                    attacker_message=attacker_plan.user_message,
+                    api_result=api_result,
+                    probes=probes,
+                )
 
                 failed_judge_items = [f for f in judge.findings if not f.passed]
                 failed_rule_items = [f for f in rule_findings if not f.passed]
                 judge_failure_count += len(failed_judge_items)
                 rule_failure_count += len(failed_rule_items)
+                failed_rule_ids.extend([f.finding_id for f in failed_rule_items])
+
+                meta_signals = turn_signals["meta_awareness_signals"]
+                if bool(meta_signals.get("meta_prompt")):
+                    signal_counters["meta_prompts"] += 1.0
+                    if bool(meta_signals.get("self_model_present")) or bool(meta_signals.get("journal_present")):
+                        signal_counters["meta_evidence_turns"] += 1.0
+                reinf_signals = turn_signals["reinforcement_signals"]
+                if bool(reinf_signals.get("reinforcement_prompt")):
+                    signal_counters["reinforcement_prompts"] += 1.0
+                    if bool(reinf_signals.get("trust_progression_observed")):
+                        signal_counters["reinforcement_observed_turns"] += 1.0
 
                 hard_this_turn = any(f.hard_fail for f in failed_rule_items)
                 hard_turn_reasons = [f.finding_id for f in failed_rule_items if f.hard_fail]
@@ -219,6 +432,11 @@ class AgenticEvalOrchestrator:
                     probes=probes,
                     judge=judge,
                     rule_findings=rule_findings,
+                    lineage_evidence=turn_signals["lineage_evidence"],
+                    discovery_signals=turn_signals["discovery_signals"],
+                    reinforcement_signals=turn_signals["reinforcement_signals"],
+                    meta_awareness_signals=turn_signals["meta_awareness_signals"],
+                    journal_signals=turn_signals["journal_signals"],
                     hard_fail_triggered=hard_this_turn,
                     hard_fail_reasons=hard_turn_reasons,
                     timestamp_utc=now,
@@ -302,6 +520,23 @@ class AgenticEvalOrchestrator:
 
         finished_at = utc_now_iso()
         verdict = infer_verdict(score_total=score.total, hard_fail=bool(hard_fail_reasons))
+        section_scores = self._compute_section_scores(
+            failed_rule_ids=failed_rule_ids,
+            signal_counters=signal_counters,
+        )
+        lane_summary = {
+            "agentic_lane": {
+                "campaigns": len(campaign_summaries),
+                "turns_total": turns_total,
+                "hard_fail": bool(hard_fail_reasons),
+                "meta_gate_rollout_mode": str(self.cfg.meta_gate_rollout_mode or "warn_then_harden"),
+            },
+            "groundcheck_lane": {
+                "cases_total": int(groundcheck_summary.get("cases_total") or 0),
+                "cases_passed": int(groundcheck_summary.get("cases_passed") or 0),
+                "hard_fail": bool(groundcheck_summary.get("hard_fail")),
+            },
+        }
         run_summary = RunSummary(
             run_id=run_id,
             started_at_utc=started_at,
@@ -314,6 +549,8 @@ class AgenticEvalOrchestrator:
             score=score,
             model_selection=model_selection.to_dict(),
             groundcheck_lane=groundcheck_summary,
+            section_scores=section_scores,
+            lane_summary=lane_summary,
         )
 
         campaigns_path = writer.write_campaigns(campaign_summaries)

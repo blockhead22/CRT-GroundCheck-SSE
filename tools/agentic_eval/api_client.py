@@ -147,12 +147,60 @@ class ApiClient:
                 return [x for x in items if isinstance(x, dict)]
         return []
 
+    def get_self_model(self, *, thread_id: str) -> Dict[str, Any]:
+        call = self._request("GET", f"/api/self-model/{thread_id}", timeout_seconds=20.0)
+        payload = call.get("json")
+        return payload if isinstance(payload, dict) else {}
+
+    def get_reflection_journal(self, *, thread_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        call = self._request(
+            "GET",
+            f"/api/reflection/journal/{thread_id}?limit={max(1, int(limit))}",
+            timeout_seconds=20.0,
+        )
+        payload = call.get("json")
+        if isinstance(payload, dict):
+            entries = payload.get("entries")
+            if isinstance(entries, list):
+                return [x for x in entries if isinstance(x, dict)]
+        return []
+
+    def get_memory_trust(self, *, memory_id: str, thread_id: str) -> List[Dict[str, Any]]:
+        if not str(memory_id or "").strip():
+            return []
+        call = self._request(
+            "GET",
+            f"/api/memory/{memory_id}/trust?thread_id={thread_id}",
+            timeout_seconds=20.0,
+        )
+        payload = call.get("json")
+        if isinstance(payload, list):
+            return [x for x in payload if isinstance(x, dict)]
+        return []
+
     def collect_probe_snapshot(self, *, thread_id: str, memory_limit: int = 30) -> ProbeSnapshot:
+        recent = self.get_memory_recent(thread_id=thread_id, limit=memory_limit)
+        trust_samples: List[Dict[str, Any]] = []
+        sampled_ids: List[str] = []
+        for item in recent[:5]:
+            memory_id = str(item.get("memory_id") or "").strip()
+            if not memory_id or memory_id in sampled_ids:
+                continue
+            sampled_ids.append(memory_id)
+            trust_samples.append(
+                {
+                    "memory_id": memory_id,
+                    "history": self.get_memory_trust(memory_id=memory_id, thread_id=thread_id),
+                }
+            )
         return ProbeSnapshot(
             contradictions=self.get_contradictions(thread_id=thread_id),
             ledger_open=self.get_ledger_open(thread_id=thread_id),
             profile=self.get_profile(thread_id=thread_id),
-            memory_recent=self.get_memory_recent(thread_id=thread_id, limit=memory_limit),
+            memory_recent=recent,
             introspection=self.get_introspection(thread_id=thread_id),
             notifications_recent=self.get_notifications_recent(thread_id=thread_id, limit=20),
+            self_model=self.get_self_model(thread_id=thread_id),
+            reflection_journal=self.get_reflection_journal(thread_id=thread_id, limit=20),
+            memory_trust=trust_samples,
         )

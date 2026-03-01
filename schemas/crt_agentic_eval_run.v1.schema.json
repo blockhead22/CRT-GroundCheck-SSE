@@ -13,7 +13,9 @@
     "verdict",
     "score",
     "model_selection",
-    "groundcheck_lane"
+    "groundcheck_lane",
+    "section_scores",
+    "lane_summary"
   ],
   "properties": {
     "run_id": { "type": "string", "minLength": 1 },
@@ -45,7 +47,24 @@
       "additionalProperties": true
     },
     "model_selection": { "type": "object" },
-    "groundcheck_lane": { "type": "object" }
+    "groundcheck_lane": { "type": "object" },
+    "section_scores": {
+      "type": "object",
+      "required": [
+        "continuity_endurance",
+        "fact_discovery_reinforcement",
+        "traceability_lineage",
+        "meta_awareness_authenticity"
+      ],
+      "properties": {
+        "continuity_endurance": { "type": "number" },
+        "fact_discovery_reinforcement": { "type": "number" },
+        "traceability_lineage": { "type": "number" },
+        "meta_awareness_authenticity": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "lane_summary": { "type": "object" }
   },
   "additionalProperties": true
 }

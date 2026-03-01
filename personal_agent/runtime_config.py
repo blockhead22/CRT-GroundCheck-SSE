@@ -171,6 +171,19 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         "max_runs": 0,
     },
 
+    # Reflection journal style controls.
+    # `style_mode` applies only to reflection/journal content by default.
+    "journal_behavior": {
+        "style_mode": "reddit_thread",
+        "apply_to_self_text": False,
+        "enforce_authentic_self_reflection": True,
+        "allowed_future_styles": [
+            "reddit_thread",
+            "structured_notes",
+            "compact_reflection",
+        ],
+    },
+
     # Dev-facing: periodic train→eval→publish loop for the suggestion-only model.
     # Safe by design: it only updates a model used for *recommendations*, not beliefs.
     "training_loop": {

@@ -11,6 +11,11 @@
     "probes",
     "judge",
     "rule_findings",
+    "lineage_evidence",
+    "discovery_signals",
+    "reinforcement_signals",
+    "meta_awareness_signals",
+    "journal_signals",
     "hard_fail_triggered",
     "hard_fail_reasons",
     "timestamp_utc"
@@ -58,12 +63,27 @@
     },
     "probes": {
       "type": "object",
-      "required": ["contradictions", "ledger_open", "profile", "memory_recent"],
+      "required": [
+        "contradictions",
+        "ledger_open",
+        "profile",
+        "memory_recent",
+        "introspection",
+        "notifications_recent",
+        "self_model",
+        "reflection_journal",
+        "memory_trust"
+      ],
       "properties": {
         "contradictions": { "type": "array", "items": { "type": "object" } },
         "ledger_open": { "type": "array", "items": { "type": "object" } },
         "profile": { "type": "object" },
-        "memory_recent": { "type": "array", "items": { "type": "object" } }
+        "memory_recent": { "type": "array", "items": { "type": "object" } },
+        "introspection": { "type": "object" },
+        "notifications_recent": { "type": "array", "items": { "type": "object" } },
+        "self_model": { "type": "object" },
+        "reflection_journal": { "type": "array", "items": { "type": "object" } },
+        "memory_trust": { "type": "array", "items": { "type": "object" } }
       },
       "additionalProperties": true
     },
@@ -80,6 +100,11 @@
       "additionalProperties": true
     },
     "rule_findings": { "type": "array", "items": { "type": "object" } },
+    "lineage_evidence": { "type": "object" },
+    "discovery_signals": { "type": "object" },
+    "reinforcement_signals": { "type": "object" },
+    "meta_awareness_signals": { "type": "object" },
+    "journal_signals": { "type": "object" },
     "hard_fail_triggered": { "type": "boolean" },
     "hard_fail_reasons": { "type": "array", "items": { "type": "string" } },
     "timestamp_utc": { "type": "string", "minLength": 1 }

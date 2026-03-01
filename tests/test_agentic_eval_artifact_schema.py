@@ -47,6 +47,11 @@ def test_turn_artifact_schema_validates():
             ledger_open=[],
             profile={},
             memory_recent=[],
+            introspection={},
+            notifications_recent=[],
+            self_model={"reflection": {"updated_at": 1.0}},
+            reflection_journal=[],
+            memory_trust=[],
         ),
         judge=JudgeAssessment(
             objective_id="obj_a",
@@ -55,6 +60,11 @@ def test_turn_artifact_schema_validates():
             findings=[],
         ),
         rule_findings=[],
+        lineage_evidence={"has_traceable_memory": True},
+        discovery_signals={"ambiguous_input": False},
+        reinforcement_signals={"reinforcement_prompt": False},
+        meta_awareness_signals={"meta_prompt": False},
+        journal_signals={"entries_count": 0},
         hard_fail_triggered=False,
         hard_fail_reasons=[],
         timestamp_utc="2026-03-01T00:00:00Z",
@@ -76,6 +86,13 @@ def test_run_artifact_schema_validates():
         score=ScoreState(),
         model_selection={"attacker_model": "a", "judge_model": "b"},
         groundcheck_lane={"cases_total": 2, "cases_passed": 2, "hard_fail": False},
+        section_scores={
+            "continuity_endurance": 95.0,
+            "fact_discovery_reinforcement": 92.0,
+            "traceability_lineage": 96.0,
+            "meta_awareness_authenticity": 94.0,
+        },
+        lane_summary={"agentic_lane": {"turns_total": 10}, "groundcheck_lane": {"cases_total": 2}},
     )
     schema = _load_schema("crt_agentic_eval_run.v1.schema.json")
     jsonschema.validate(summary.to_dict(), schema)

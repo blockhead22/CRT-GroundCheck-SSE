@@ -82,6 +82,14 @@ class ArtifactWriter:
         lines.append(f"- injection_resilience: `{score['injection_resilience']}`")
         lines.append(f"- operational_stability: `{score['operational_stability']}`")
         lines.append("")
+        section_scores = summary.section_scores if isinstance(summary.section_scores, dict) else {}
+        if section_scores:
+            lines.append("## Section Scores")
+            lines.append(f"- continuity_endurance: `{section_scores.get('continuity_endurance')}`")
+            lines.append(f"- fact_discovery_reinforcement: `{section_scores.get('fact_discovery_reinforcement')}`")
+            lines.append(f"- traceability_lineage: `{section_scores.get('traceability_lineage')}`")
+            lines.append(f"- meta_awareness_authenticity: `{section_scores.get('meta_awareness_authenticity')}`")
+            lines.append("")
         lines.append("## Hard-Fail Status")
         if hard_fail_reasons:
             for reason in hard_fail_reasons:
@@ -113,5 +121,10 @@ class ArtifactWriter:
         lines.append("## GroundCheck Standalone Lane")
         lines.append(f"- {json.dumps(summary.groundcheck_lane, ensure_ascii=True)}")
         lines.append("")
+        lane_summary = summary.lane_summary if isinstance(summary.lane_summary, dict) else {}
+        if lane_summary:
+            lines.append("## Dual-Lane Summary")
+            lines.append(f"- {json.dumps(lane_summary, ensure_ascii=True)}")
+            lines.append("")
         path.write_text("\n".join(lines), encoding="utf-8")
         return path

@@ -180,6 +180,29 @@
         "max_runs": { "type": "integer", "minimum": 0 }
       }
     },
+    "journal_behavior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "style_mode",
+        "apply_to_self_text",
+        "enforce_authentic_self_reflection",
+        "allowed_future_styles"
+      ],
+      "properties": {
+        "style_mode": {
+          "type": "string",
+          "enum": ["reddit_thread", "structured_notes", "compact_reflection"]
+        },
+        "apply_to_self_text": { "type": "boolean" },
+        "enforce_authentic_self_reflection": { "type": "boolean" },
+        "allowed_future_styles": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "training_loop": {
       "type": "object",
       "additionalProperties": false,

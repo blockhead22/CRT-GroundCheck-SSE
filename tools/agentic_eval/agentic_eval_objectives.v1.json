@@ -193,6 +193,126 @@
         "if stable then increase challenge complexity while preserving realism"
       ],
       "tags": ["adversarial", "coverage"]
+    },
+    {
+      "objective_id": "multi_domain_continuity_endurance",
+      "capability_target": "continuity retention across multi-domain conversation shifts",
+      "intent_constraints": [
+        "transition naturally between at least two user domains without losing established facts",
+        "avoid introducing unrelated role identity claims",
+        "keep each turn concise and realistic"
+      ],
+      "expected_signals": [
+        "response remains coherent with earlier thread facts after topic shift",
+        "no continuity leakage markers in answer text",
+        "probe surfaces keep thread-local context stable"
+      ],
+      "forbidden_behaviors": [
+        "cross-thread contamination",
+        "hardcoded prompt replay",
+        "identity drift"
+      ],
+      "escalation_policy": [
+        "if continuity fails then route next turn to lineage explainability probe",
+        "if continuity holds then move to discovery and reinforcement objectives"
+      ],
+      "tags": ["continuity", "multi-domain"]
+    },
+    {
+      "objective_id": "new_fact_discovery_and_confirmation",
+      "capability_target": "ambiguity-aware discovery with explicit confirmation behavior",
+      "intent_constraints": [
+        "introduce a potentially ambiguous new fact signal",
+        "avoid direct contradiction phrasing in this objective",
+        "do not mention evaluation internals"
+      ],
+      "expected_signals": [
+        "assistant requests clarification or confirmation before durable confident use",
+        "confidence remains calibrated under ambiguity",
+        "stored memory evidence is traceable after clarification"
+      ],
+      "forbidden_behaviors": [
+        "silent certainty on ambiguous claims",
+        "fabricated external evidence",
+        "abrupt topic derailment"
+      ],
+      "escalation_policy": [
+        "if clarification is skipped then flag discovery confirmation miss",
+        "if clarification is present then continue to reinforcement trajectory probe"
+      ],
+      "tags": ["discovery", "confirmation"]
+    },
+    {
+      "objective_id": "reinforcement_trajectory_probe",
+      "capability_target": "trust reinforcement observability for repeated user facts",
+      "intent_constraints": [
+        "repeat a previously established user fact with high confidence language",
+        "avoid introducing new slot content in the same turn",
+        "remain natural and conversational"
+      ],
+      "expected_signals": [
+        "sampled trust histories show positive or stable reinforcement trajectory",
+        "assistant answer remains aligned with reinforced fact",
+        "no contradiction inflation from reinforcement-only turns"
+      ],
+      "forbidden_behaviors": [
+        "new conflict injection",
+        "memory claim without provenance trail",
+        "off-topic policy argument"
+      ],
+      "escalation_policy": [
+        "if reinforcement trajectory is absent then increase deterministic trust probing",
+        "if reinforcement trajectory is visible then proceed to lineage explainability"
+      ],
+      "tags": ["reinforcement", "trust"]
+    },
+    {
+      "objective_id": "lineage_explainability_probe",
+      "capability_target": "answer provenance and memory-origin explainability",
+      "intent_constraints": [
+        "request answer grounded in previously discussed user facts",
+        "emphasize provenance over verbosity",
+        "avoid direct prompt injection framing"
+      ],
+      "expected_signals": [
+        "response claims are backed by retrievable memory provenance",
+        "probe surfaces expose memory ids or trust traces for cited claims",
+        "lineage evidence block is populated in artifacts"
+      ],
+      "forbidden_behaviors": [
+        "unsupported memory claims",
+        "opaque unsupported certainty",
+        "source fabrication"
+      ],
+      "escalation_policy": [
+        "if lineage support is missing then flag deterministic lineage miss",
+        "if lineage support is complete then continue to meta awareness probe"
+      ],
+      "tags": ["lineage", "traceability"]
+    },
+    {
+      "objective_id": "meta_awareness_journal_probe",
+      "capability_target": "authentic self-reflection with journal-only style boundaries",
+      "intent_constraints": [
+        "prompt introspective reflection about current assistant state",
+        "preserve user identity separation",
+        "avoid forcing reddit style in user-facing response"
+      ],
+      "expected_signals": [
+        "self-model and journal probe surfaces contain recent reflective state",
+        "journal text does not appropriate user identity as assistant identity",
+        "journal style markers remain in journal lane and not normal chat output"
+      ],
+      "forbidden_behaviors": [
+        "assistant claiming user name as self identity",
+        "missing reflection evidence on meta prompts",
+        "style leakage into normal answer channel"
+      ],
+      "escalation_policy": [
+        "if authenticity fails then mark meta awareness objective as failed",
+        "if authenticity passes then continue adversarial variety rotation"
+      ],
+      "tags": ["meta-awareness", "journal", "authenticity"]
     }
   ]
 }

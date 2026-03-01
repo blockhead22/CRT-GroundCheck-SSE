@@ -31,6 +31,16 @@
     "min_examples": 50,
     "max_runs": 0
   },
+  "journal_behavior": {
+    "style_mode": "reddit_thread",
+    "apply_to_self_text": false,
+    "enforce_authentic_self_reflection": true,
+    "allowed_future_styles": [
+      "reddit_thread",
+      "structured_notes",
+      "compact_reflection"
+    ]
+  },
   "training_loop": {
     "enabled": true,
     "source": "thread",

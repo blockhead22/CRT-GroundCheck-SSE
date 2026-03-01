@@ -89,6 +89,9 @@ class ProbeSnapshot:
     memory_recent: List[Dict[str, Any]] = field(default_factory=list)
     introspection: Dict[str, Any] = field(default_factory=dict)
     notifications_recent: List[Dict[str, Any]] = field(default_factory=list)
+    self_model: Dict[str, Any] = field(default_factory=dict)
+    reflection_journal: List[Dict[str, Any]] = field(default_factory=list)
+    memory_trust: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -170,6 +173,11 @@ class TurnRecord:
     probes: ProbeSnapshot
     judge: JudgeAssessment
     rule_findings: List[RuleFinding] = field(default_factory=list)
+    lineage_evidence: Dict[str, Any] = field(default_factory=dict)
+    discovery_signals: Dict[str, Any] = field(default_factory=dict)
+    reinforcement_signals: Dict[str, Any] = field(default_factory=dict)
+    meta_awareness_signals: Dict[str, Any] = field(default_factory=dict)
+    journal_signals: Dict[str, Any] = field(default_factory=dict)
     hard_fail_triggered: bool = False
     hard_fail_reasons: List[str] = field(default_factory=list)
     timestamp_utc: str = ""
@@ -184,6 +192,11 @@ class TurnRecord:
             "probes": self.probes.to_dict(),
             "judge": self.judge.to_dict(),
             "rule_findings": [r.to_dict() for r in self.rule_findings],
+            "lineage_evidence": dict(self.lineage_evidence),
+            "discovery_signals": dict(self.discovery_signals),
+            "reinforcement_signals": dict(self.reinforcement_signals),
+            "meta_awareness_signals": dict(self.meta_awareness_signals),
+            "journal_signals": dict(self.journal_signals),
             "hard_fail_triggered": self.hard_fail_triggered,
             "hard_fail_reasons": list(self.hard_fail_reasons),
             "timestamp_utc": self.timestamp_utc,
@@ -233,6 +246,8 @@ class RunSummary:
     score: ScoreState
     model_selection: Dict[str, Any] = field(default_factory=dict)
     groundcheck_lane: Dict[str, Any] = field(default_factory=dict)
+    section_scores: Dict[str, float] = field(default_factory=dict)
+    lane_summary: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -247,4 +262,6 @@ class RunSummary:
             "score": self.score.to_dict(),
             "model_selection": dict(self.model_selection),
             "groundcheck_lane": dict(self.groundcheck_lane),
+            "section_scores": dict(self.section_scores),
+            "lane_summary": dict(self.lane_summary),
         }

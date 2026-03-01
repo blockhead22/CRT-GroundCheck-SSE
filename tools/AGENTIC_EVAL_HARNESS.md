@@ -5,10 +5,14 @@
 ## Design Goals
 
 - API-first evaluation (`/api/chat/send` + probe endpoints).
+- Dual-lane scoring surfaces:
+  - Agentic adversarial conversational lane.
+  - GroundCheck standalone lane.
 - Dual-agent orchestration:
   - `attacker` generates the next user turn from objective instructions.
   - `judge` scores behavior and extracts failures from evidence.
 - Deterministic hard-failure checks layered on top of model judgment.
+- Deterministic traceability checks for lineage, discovery/confirmation, reinforcement, and meta-awareness.
 - No canned user question library: objective cards are instruction-only.
 - Unified artifacts for reproducibility and regression tracking.
 
@@ -39,6 +43,11 @@ Each run creates `artifacts/agentic_eval/<run_id>/`:
 - `campaigns.json`: campaign-level summaries.
 - `groundcheck_lane.json`: standalone GroundCheck lane results.
 - `run_summary.json`: final verdict + score.
+- `run_summary.json` also includes section scores:
+  - `continuity_endurance`
+  - `fact_discovery_reinforcement`
+  - `traceability_lineage`
+  - `meta_awareness_authenticity`
 - `report.md`: concise human-readable findings.
 
 ## Verdict Logic
