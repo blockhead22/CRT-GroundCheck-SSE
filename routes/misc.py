@@ -32,6 +32,7 @@ from .models import (
     ResearchSearchRequest,
     ResearchSearchResponse,
 )
+from .meta_awareness import build_meta_awareness_snapshot, render_meta_awareness_response
 
 logger = logging.getLogger(__name__)
 
@@ -549,13 +550,12 @@ def export_training_data(format: str = Query(default="jsonl")):
 
 @router.get("/api/introspection")
 def get_introspection(request: Request, thread_id: str = Query("default")):
-    """Get CRT's current inner state – what it's thinking about, tracking topics, etc.
-
-    This endpoint returns what CRT would report if asked "What are you thinking about?"
-    """
+    """Get CRT's current inner state in machine + conversational formats."""
+    tid = sanitize_thread_id(thread_id)
     session_db = _get_session_db()
+    engine = _get_engine(request, tid)
     result: Dict[str, Any] = {
-        "thread_id": thread_id,
+        "thread_id": tid,
         "current_thoughts": [],
         "topics_on_mind": [],
         "rising_interests": [],
@@ -564,75 +564,56 @@ def get_introspection(request: Request, thread_id: str = Query("default")):
         "notes_to_self": None,
         "personality_mode": None,
         "last_reflection_at": None,
+        "reply": "",
+        "meta_awareness": {},
     }
 
     try:
-        # Get reflection scorecard
-        reflection = session_db.get_reflection_scorecard(thread_id)
-        if reflection and isinstance(reflection, dict):
-            result["last_reflection_at"] = reflection.get("updated_at")
+        snapshot = build_meta_awareness_snapshot(
+            thread_id=tid,
+            session_db=session_db,
+            engine=engine,
+            recent_query_limit=8,
+            journal_limit=8,
+            contradiction_limit=8,
+        )
+        reply = render_meta_awareness_response(snapshot)
 
-            # Topics on mind
-            top_topics = reflection.get("top_topics", [])
-            if top_topics:
-                result["topics_on_mind"] = [
-                    {
-                        "topic": t.get("topic") if isinstance(t, dict) else str(t),
-                        "weight": t.get("weight", 0) if isinstance(t, dict) else 0,
-                    }
-                    for t in top_topics[:10]
-                ]
+        topics = snapshot.get("topics_on_mind") or []
+        trends = snapshot.get("topic_trends") or {}
+        rising = trends.get("rising") if isinstance(trends, dict) else []
+        fading = trends.get("fading") if isinstance(trends, dict) else []
+        open_q = snapshot.get("open_questions") or []
+        notes = snapshot.get("notes_to_self")
 
-            # Trends
-            trends = reflection.get("topic_trends", {})
-            if trends:
-                rising = trends.get("rising", [])
-                fading = trends.get("fading", [])
-                result["rising_interests"] = [
-                    t.get("topic") if isinstance(t, dict) else str(t) for t in (rising or [])[:5]
-                ]
-                result["fading_interests"] = [
-                    t.get("topic") if isinstance(t, dict) else str(t) for t in (fading or [])[:5]
-                ]
+        thoughts: List[str] = []
+        topic_names = [str(t.get("topic") or "").strip() for t in topics if isinstance(t, dict)]
+        topic_names = [t for t in topic_names if t]
+        if topic_names:
+            thoughts.append(f"I've been thinking about: {', '.join(topic_names[:5])}")
+        if isinstance(rising, list) and rising:
+            thoughts.append(f"My interest in {', '.join([str(x) for x in rising[:3]])} is growing")
+        if isinstance(open_q, list) and open_q:
+            thoughts.append(f"I'm pondering: {str(open_q[0])}")
+        if isinstance(notes, str) and notes.strip():
+            thoughts.append(f"Note to self: {notes[:120]}")
+        if not thoughts and reply:
+            thoughts = [reply]
 
-            # Open questions
-            open_q = reflection.get("open_questions", [])
-            if open_q:
-                result["open_questions"] = [
-                    q.get("question") if isinstance(q, dict) else str(q) for q in open_q[:5]
-                ]
-
-            # Manual notes
-            manual = reflection.get("manual_prompt", "")
-            if manual and isinstance(manual, str) and manual.strip():
-                result["notes_to_self"] = manual.strip()
-
-            # Build human-readable thought summary
-            thoughts: List[str] = []
-            if result["topics_on_mind"]:
-                topic_names = [t["topic"] for t in result["topics_on_mind"][:5] if t.get("topic")]
-                if topic_names:
-                    thoughts.append(f"I've been thinking about: {', '.join(topic_names)}")
-            if result["rising_interests"]:
-                thoughts.append(f"My interest in {', '.join(result['rising_interests'][:3])} is growing")
-            if result["open_questions"]:
-                thoughts.append(f"I'm pondering: {result['open_questions'][0]}")
-            if result["notes_to_self"]:
-                thoughts.append(f"Note to self: {result['notes_to_self'][:100]}")
-            result["current_thoughts"] = thoughts
-
-        # Get personality profile
-        personality = session_db.get_personality_profile(thread_id)
-        if personality and isinstance(personality, dict):
-            result["personality_mode"] = {
-                "verbosity": personality.get("verbosity", "balanced"),
-                "emoji": personality.get("emoji", "moderate"),
-                "format": personality.get("format", "mixed"),
-                "state": personality.get("state", "balanced_companion"),
-                "state_confidence": personality.get("state_confidence"),
-                "state_reason": personality.get("state_reason"),
-                "state_transitioned": personality.get("state_transitioned", False),
+        result.update(
+            {
+                "current_thoughts": thoughts,
+                "topics_on_mind": topics,
+                "rising_interests": rising if isinstance(rising, list) else [],
+                "fading_interests": fading if isinstance(fading, list) else [],
+                "open_questions": open_q if isinstance(open_q, list) else [],
+                "notes_to_self": notes if isinstance(notes, str) else None,
+                "personality_mode": snapshot.get("personality_mode"),
+                "last_reflection_at": snapshot.get("last_reflection_at"),
+                "reply": reply,
+                "meta_awareness": snapshot,
             }
+        )
     except Exception as e:
         logger.debug(f"[INTROSPECTION] Error: {e}")
 
@@ -1572,3 +1553,4 @@ def send_email_digest(req: EmailDigestRequest) -> EmailDigestResponse:
         subject=str(result.get("subject") or req.subject or "CRT Digest"),
         error=None,
     )
+

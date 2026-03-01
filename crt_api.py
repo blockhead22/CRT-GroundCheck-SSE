@@ -935,13 +935,49 @@ def create_app() -> FastAPI:
     def on_reminder_due(task: ScheduledTask):
         """Handle a due reminder."""
         try:
-            reminder_text = task.payload.get("reminder_text", "Reminder")
-            thread_id = task.thread_id
-            original_time = task.payload.get("original_time_str", "")
-            logger.info(f"[REMINDER] ⏰ Due reminder for thread {thread_id}: {reminder_text} (scheduled for: {original_time})")
+            reminder_text = str(task.payload.get("reminder_text") or "Reminder").strip()
+            thread_id = _sanitize_thread_id(task.thread_id)
+            original_time = str(task.payload.get("original_time_str") or "").strip()
+
+            ctx = _tasks_session_db.get_channel_context(thread_id)
+            channel = str((ctx or {}).get("channel") or "").strip().lower()
+            destination_id = str((ctx or {}).get("destination_id") or "").strip() or None
+            actor_id = str((ctx or {}).get("actor_id") or "").strip() or None
+            if not channel:
+                channel = "telegram" if thread_id.startswith("tg_") else "api"
+            if not destination_id and thread_id.startswith("tg_"):
+                destination_id = thread_id[len("tg_") :]
+
+            payload = {
+                "task_id": task.task_id,
+                "task_type": task.task_type,
+                "thread_id": thread_id,
+                "original_time_str": original_time,
+                "scheduled_at": float(task.scheduled_at),
+                "actor_id": actor_id,
+            }
+            enqueue_result = _tasks_session_db.enqueue_notification(
+                thread_id=thread_id,
+                channel=channel,
+                destination_id=destination_id,
+                content=f"Reminder: {reminder_text}",
+                category="reminder",
+                priority="high",
+                payload=payload,
+                dedupe_key=f"reminder:{task.task_id}",
+                source_kind="scheduled_task",
+                source_id=task.task_id,
+                max_attempts=6,
+            )
+            logger.info(
+                "[REMINDER] Due reminder queued: thread=%s channel=%s destination=%s enqueue=%s",
+                thread_id,
+                channel,
+                destination_id or "-",
+                enqueue_result,
+            )
         except Exception as e:
             logger.error(f"[REMINDER] Error handling reminder: {e}")
-    
     # Callback for when a thought is due to be posted
     def on_thought_due(task: ScheduledTask):
         """Handle a due thought."""
@@ -1339,4 +1375,5 @@ if __name__ == "__main__":
     host = os.getenv("CRT_HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host=host, port=port)
+
 

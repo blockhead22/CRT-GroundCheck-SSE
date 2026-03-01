@@ -129,10 +129,30 @@ class ApiClient:
             return [x for x in payload if isinstance(x, dict)]
         return []
 
+    def get_introspection(self, *, thread_id: str) -> Dict[str, Any]:
+        call = self._request("GET", f"/api/introspection?thread_id={thread_id}", timeout_seconds=20.0)
+        payload = call.get("json")
+        return payload if isinstance(payload, dict) else {}
+
+    def get_notifications_recent(self, *, thread_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+        call = self._request(
+            "GET",
+            f"/api/notifications?thread_id={thread_id}&limit={max(1, int(limit))}",
+            timeout_seconds=20.0,
+        )
+        payload = call.get("json")
+        if isinstance(payload, dict):
+            items = payload.get("items")
+            if isinstance(items, list):
+                return [x for x in items if isinstance(x, dict)]
+        return []
+
     def collect_probe_snapshot(self, *, thread_id: str, memory_limit: int = 30) -> ProbeSnapshot:
         return ProbeSnapshot(
             contradictions=self.get_contradictions(thread_id=thread_id),
             ledger_open=self.get_ledger_open(thread_id=thread_id),
             profile=self.get_profile(thread_id=thread_id),
             memory_recent=self.get_memory_recent(thread_id=thread_id, limit=memory_limit),
+            introspection=self.get_introspection(thread_id=thread_id),
+            notifications_recent=self.get_notifications_recent(thread_id=thread_id, limit=20),
         )

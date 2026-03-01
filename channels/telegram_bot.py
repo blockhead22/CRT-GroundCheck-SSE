@@ -24,10 +24,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import socket
 import sys
 import time
 from pathlib import Path
-from typing import Optional, Set
+from typing import Any, Dict, Optional, Set
+
+import requests
 
 # Ensure project root is importable
 _project_root = str(Path(__file__).resolve().parent.parent)
@@ -59,8 +62,39 @@ except ImportError:
 # Configuration
 # ---------------------------------------------------------------------------
 
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on", "y"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except Exception:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except Exception:
+        return default
+
+
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 CRT_API_URL = os.getenv("CRT_API_URL", "http://127.0.0.1:8000")
+TELEGRAM_PROACTIVE_ENABLED = _env_bool("TELEGRAM_PROACTIVE_ENABLED", True)
+TELEGRAM_PROACTIVE_POLL_SECONDS = _env_float("TELEGRAM_PROACTIVE_POLL_SECONDS", 8.0)
+TELEGRAM_PROACTIVE_BATCH_SIZE = _env_int("TELEGRAM_PROACTIVE_BATCH_SIZE", 5)
+TELEGRAM_PROACTIVE_RETRY_SECONDS = _env_int("TELEGRAM_PROACTIVE_RETRY_SECONDS", 120)
 
 # Optional: restrict to specific Telegram user IDs
 _allowed_raw = os.getenv("TELEGRAM_ALLOWED_USERS", "8793030650")
@@ -80,6 +114,124 @@ bridge = CRTBridge(api_url=CRT_API_URL)
 
 # Startup timestamp — messages older than this are stale backlog
 _BOT_START_TIME: float = time.time()
+
+
+def _notifications_worker_id() -> str:
+    host = socket.gethostname() or "host"
+    return f"telegram-bot:{host}:{os.getpid()}"
+
+
+def _claim_outbound_notifications() -> list[Dict[str, Any]]:
+    try:
+        resp = requests.post(
+            f"{CRT_API_URL}/api/notifications/claim",
+            json={
+                "worker_id": _notifications_worker_id(),
+                "channel": "telegram",
+                "limit": max(1, TELEGRAM_PROACTIVE_BATCH_SIZE),
+            },
+            timeout=20,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+        if isinstance(payload, dict):
+            items = payload.get("items")
+            if isinstance(items, list):
+                return [x for x in items if isinstance(x, dict)]
+    except Exception as e:
+        logger.debug("[TG] Failed to claim proactive notifications: %s", e)
+    return []
+
+
+def _ack_outbound_notification(notification_id: str) -> None:
+    if not notification_id:
+        return
+    try:
+        requests.post(
+            f"{CRT_API_URL}/api/notifications/{notification_id}/ack",
+            timeout=15,
+        )
+    except Exception as e:
+        logger.debug("[TG] Failed to ACK proactive notification %s: %s", notification_id, e)
+
+
+def _fail_outbound_notification(notification_id: str, error: str) -> None:
+    if not notification_id:
+        return
+    try:
+        requests.post(
+            f"{CRT_API_URL}/api/notifications/{notification_id}/fail",
+            json={
+                "error": (error or "")[:500],
+                "retry_in_seconds": max(5, TELEGRAM_PROACTIVE_RETRY_SECONDS),
+            },
+            timeout=15,
+        )
+    except Exception as e:
+        logger.debug("[TG] Failed to mark proactive notification failed %s: %s", notification_id, e)
+
+
+def _notification_chat_id(item: Dict[str, Any]) -> Optional[int]:
+    destination = item.get("destination_id")
+    if destination is not None and str(destination).strip():
+        try:
+            return int(str(destination).strip())
+        except Exception:
+            return None
+    thread_id = str(item.get("thread_id") or "").strip()
+    if thread_id.startswith("tg_"):
+        raw = thread_id[len("tg_") :].strip()
+        if raw:
+            try:
+                return int(raw)
+            except Exception:
+                return None
+    return None
+
+
+def _render_notification_text(item: Dict[str, Any]) -> str:
+    content = str(item.get("content") or "").strip()
+    if not content:
+        content = "You have a new proactive update."
+    category = str(item.get("category") or "").strip().lower()
+    if category == "reminder" and not content.lower().startswith("reminder"):
+        return f"Reminder: {content}"
+    return content
+
+
+async def _poll_proactive_notifications(context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not TELEGRAM_PROACTIVE_ENABLED:
+        return
+    loop = asyncio.get_event_loop()
+    claimed: list[Dict[str, Any]] = await loop.run_in_executor(None, _claim_outbound_notifications)
+    if not claimed:
+        return
+
+    for item in claimed:
+        notification_id = str(item.get("notification_id") or "").strip()
+        if not notification_id:
+            continue
+        chat_id = _notification_chat_id(item)
+        if chat_id is None:
+            await loop.run_in_executor(
+                None,
+                lambda nid=notification_id: _fail_outbound_notification(
+                    nid,
+                    "missing_or_invalid_destination",
+                ),
+            )
+            continue
+
+        text = _truncate(_render_notification_text(item))
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=text)
+            await loop.run_in_executor(None, lambda nid=notification_id: _ack_outbound_notification(nid))
+        except Exception as e:
+            logger.warning("[TG] Failed sending proactive notification %s: %s", notification_id, e)
+            await loop.run_in_executor(
+                None,
+                lambda nid=notification_id, err=str(e): _fail_outbound_notification(nid, err),
+            )
 
 
 def _thread_id_for(update: Update) -> str:
@@ -536,6 +688,11 @@ def main() -> None:
         print(f"  Allowed users: {ALLOWED_USERS}")
     else:
         print("  Allowed users: ALL (no restriction)")
+    print(
+        "  Proactive notifications: "
+        f"{'ON' if TELEGRAM_PROACTIVE_ENABLED else 'OFF'} "
+        f"(poll={max(2.0, float(TELEGRAM_PROACTIVE_POLL_SECONDS)):.1f}s, batch={max(1, int(TELEGRAM_PROACTIVE_BATCH_SIZE))})"
+    )
     print()
     print("  Make sure the CRT API server is running:")
     print("    python crt_api.py")
@@ -568,6 +725,21 @@ def main() -> None:
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
             app.add_error_handler(error_handler)
+
+            if TELEGRAM_PROACTIVE_ENABLED and app.job_queue is not None:
+                app.job_queue.run_repeating(
+                    _poll_proactive_notifications,
+                    interval=max(2.0, float(TELEGRAM_PROACTIVE_POLL_SECONDS)),
+                    first=5.0,
+                    name="crt_proactive_notifications",
+                )
+                logger.info(
+                    "[TG] Proactive notification polling enabled (interval=%.1fs, batch=%d).",
+                    max(2.0, float(TELEGRAM_PROACTIVE_POLL_SECONDS)),
+                    max(1, int(TELEGRAM_PROACTIVE_BATCH_SIZE)),
+                )
+            elif TELEGRAM_PROACTIVE_ENABLED:
+                logger.warning("[TG] JobQueue unavailable; proactive notification polling disabled.")
 
             # Start polling — drop_pending_updates=True skips messages queued while bot was offline
             logger.info(

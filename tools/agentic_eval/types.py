@@ -87,6 +87,8 @@ class ProbeSnapshot:
     ledger_open: List[Dict[str, Any]] = field(default_factory=list)
     profile: Dict[str, Any] = field(default_factory=dict)
     memory_recent: List[Dict[str, Any]] = field(default_factory=list)
+    introspection: Dict[str, Any] = field(default_factory=dict)
+    notifications_recent: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

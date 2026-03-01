@@ -11,6 +11,7 @@ from .jobs import router as jobs_router
 from .learning import router as learning_router
 from .memory import router as memory_router
 from .misc import router as misc_router
+from .notifications import router as notifications_router
 from .scheduled_tasks import router as scheduled_tasks_router
 from .skills import router as skills_router
 from .threads import router as threads_router
@@ -27,6 +28,7 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(jobs_router)
     app.include_router(threads_router)
     app.include_router(scheduled_tasks_router)
+    app.include_router(notifications_router)
     app.include_router(skills_router)
     app.include_router(agent_router)
     app.include_router(misc_router)

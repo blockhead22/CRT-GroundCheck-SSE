@@ -67,10 +67,23 @@ class CRTBridge:
 
     def _send_http(self, msg: ChannelMessage) -> ChannelResponse:
         """Send via the FastAPI HTTP endpoint."""
+        destination_id = None
+        meta_scope = None
+        if isinstance(msg.raw, dict):
+            raw_chat_id = msg.raw.get("chat_id")
+            if raw_chat_id is not None:
+                destination_id = str(raw_chat_id)
+            raw_scope = msg.raw.get("meta_scope")
+            if raw_scope is not None:
+                meta_scope = str(raw_scope)
         payload = {
             "thread_id": msg.thread_id,
             "message": msg.text,
             "user_marked_important": msg.important,
+            "channel": msg.channel,
+            "actor_id": msg.sender_id,
+            "channel_destination_id": destination_id,
+            "meta_scope": meta_scope,
         }
         try:
             resp = requests.post(

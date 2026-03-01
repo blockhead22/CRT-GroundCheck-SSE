@@ -41,6 +41,11 @@ from personal_agent.db_utils import get_thread_session_db
 from personal_agent.greeting_system import get_time_based_greeting
 from personal_agent.active_learning import get_active_learning_coordinator
 from personal_agent.episodic_memory import get_episodic_manager
+from .meta_awareness import (
+    build_meta_awareness_snapshot,
+    is_meta_awareness_prompt,
+    render_meta_awareness_response,
+)
 from personal_agent.reflection_system import run_reflection_pass, ReflectionResult
 from personal_agent.scheduled_tasks import schedule_reminder, extract_reminder_from_message
 
@@ -706,6 +711,74 @@ def _chunk_text(text: str, chunk_size: int = 320) -> List[str]:
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
+def _normalize_confirmation_text(text: str) -> str:
+    return re.sub(r"\s+", " ", str(text or "").strip().lower())
+
+
+def _is_confirmation_yes(text: str) -> bool:
+    normalized = _normalize_confirmation_text(text)
+    if not normalized:
+        return False
+    direct = {
+        "yes",
+        "y",
+        "yeah",
+        "yep",
+        "sure",
+        "ok",
+        "okay",
+        "do it",
+        "confirm",
+        "confirmed",
+        "please do",
+        "set it",
+        "schedule it",
+    }
+    if normalized in direct:
+        return True
+    return bool(
+        re.search(
+            r"\b(confirm|go ahead|sounds good|that works|please schedule|yes please)\b",
+            normalized,
+        )
+    )
+
+
+def _is_confirmation_no(text: str) -> bool:
+    normalized = _normalize_confirmation_text(text)
+    if not normalized:
+        return False
+    direct = {
+        "no",
+        "n",
+        "nope",
+        "nah",
+        "cancel",
+        "stop",
+        "nevermind",
+        "never mind",
+        "dont",
+        "don't",
+        "do not",
+    }
+    if normalized in direct:
+        return True
+    return bool(re.search(r"\b(cancel|don't schedule|do not schedule|skip it)\b", normalized))
+
+
+def _format_reminder_time(ts: Optional[float]) -> str:
+    try:
+        value = float(ts or 0.0)
+    except Exception:
+        value = 0.0
+    if value <= 0:
+        return "the requested time"
+    try:
+        return datetime.fromtimestamp(value).strftime("%A, %B %d at %I:%M %p")
+    except Exception:
+        return "the requested time"
+
+
 # ---------------------------------------------------------------------------
 # Closure-scoped helpers (originally inside create_app) -- copied here
 # ---------------------------------------------------------------------------
@@ -1180,6 +1253,18 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     session_db = get_thread_session_db()
     session = session_db.get_or_create_session(req.thread_id)
 
+    # Persist channel context only when explicit channel metadata is provided.
+    try:
+        if req.channel or req.actor_id or req.channel_destination_id:
+            session_db.update_channel_context(
+                req.thread_id,
+                channel=(req.channel or "api"),
+                actor_id=req.actor_id,
+                destination_id=req.channel_destination_id,
+            )
+    except Exception as e:
+        logger.debug(f"[CHANNEL_CTX] Failed to persist channel context for {req.thread_id}: {e}")
+
     # Generate greeting if applicable (before processing query)
     greeting_text = None
     try:
@@ -1219,6 +1304,172 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         thread_id=req.thread_id,
     )
 
+    def _record_fast_query(answer_text: str, detected_slot: Optional[str]) -> None:
+        try:
+            session_db.record_query(
+                thread_id=req.thread_id,
+                query_text=req.message,
+                response_text=answer_text,
+                detected_slot=detected_slot,
+            )
+        except Exception as e:
+            logger.debug(f"[SESSION] Error recording deterministic query: {e}")
+
+    # Reminder confirmation flow (explicit yes/no before scheduling).
+    pending_reminder: Optional[Dict[str, Any]] = None
+    try:
+        pending_reminder = session_db.get_pending_reminder(req.thread_id)
+    except Exception as e:
+        logger.debug(f"[REMINDER] Failed to load pending reminder for {req.thread_id}: {e}")
+        pending_reminder = None
+
+    if isinstance(pending_reminder, dict):
+        if _is_confirmation_yes(effective_message):
+            reminder_text = str(pending_reminder.get("reminder_text") or "").strip()
+            scheduled_at = float(pending_reminder.get("scheduled_at") or 0.0)
+            if reminder_text and scheduled_at > time.time():
+                db_path = str(getattr(request.app.state, "scheduled_tasks_db_path", "") or "")
+                if db_path:
+                    try:
+                        task = schedule_reminder(
+                            db_path=db_path,
+                            thread_id=req.thread_id,
+                            reminder_text=reminder_text,
+                            scheduled_time=datetime.fromtimestamp(scheduled_at),
+                        )
+                        session_db.clear_pending_reminder(req.thread_id)
+                        answer = (
+                            f"Confirmed. I will remind you to '{reminder_text}' on "
+                            f"{_format_reminder_time(scheduled_at)}."
+                        )
+                        if greeting_text:
+                            answer = f"{greeting_text}\n\n{answer}"
+                        _record_fast_query(answer, "reminder_confirmed")
+                        return ChatSendResponse(
+                            answer=answer,
+                            response_type="speech",
+                            gates_passed=True,
+                            gate_reason="reminder_scheduled",
+                            session_id=getattr(engine, "session_id", None),
+                            metadata={
+                                "mode": "deterministic_reminder",
+                                "confidence": 0.99,
+                                "reminder_scheduled": True,
+                                "reminder_task_id": getattr(task, "task_id", None),
+                                "reminder_text": reminder_text,
+                                "reminder_time": scheduled_at,
+                            },
+                        )
+                    except Exception as e:
+                        logger.warning(f"[REMINDER] Failed to schedule confirmed reminder: {e}")
+                        session_db.clear_pending_reminder(req.thread_id)
+                        error_answer = "I could not schedule that reminder due to an internal error. Please try again."
+                        _record_fast_query(error_answer, "reminder_error")
+                        return ChatSendResponse(
+                            answer=error_answer,
+                            response_type="speech",
+                            gates_passed=False,
+                            gate_reason="reminder_schedule_error",
+                            session_id=getattr(engine, "session_id", None),
+                            metadata={
+                                "mode": "deterministic_reminder",
+                                "confidence": 0.35,
+                                "reminder_scheduled": False,
+                            },
+                        )
+            session_db.clear_pending_reminder(req.thread_id)
+            cleared_answer = "That reminder request expired or had invalid timing, so I cleared it. Ask again and I will re-parse it."
+            _record_fast_query(cleared_answer, "reminder_pending_cleared")
+            return ChatSendResponse(
+                answer=cleared_answer,
+                response_type="speech",
+                gates_passed=True,
+                gate_reason="reminder_pending_cleared",
+                session_id=getattr(engine, "session_id", None),
+                metadata={
+                    "mode": "deterministic_reminder",
+                    "confidence": 0.9,
+                    "reminder_pending_cleared": True,
+                },
+            )
+
+        if _is_confirmation_no(effective_message):
+            session_db.clear_pending_reminder(req.thread_id)
+            answer = "Canceled. I did not schedule that reminder."
+            if greeting_text:
+                answer = f"{greeting_text}\n\n{answer}"
+            _record_fast_query(answer, "reminder_cancelled")
+            return ChatSendResponse(
+                answer=answer,
+                response_type="speech",
+                gates_passed=True,
+                gate_reason="reminder_cancelled",
+                session_id=getattr(engine, "session_id", None),
+                metadata={
+                    "mode": "deterministic_reminder",
+                    "confidence": 0.99,
+                    "reminder_cancelled": True,
+                },
+            )
+
+    reminder_candidate = None
+    try:
+        reminder_candidate = extract_reminder_from_message(effective_message)
+    except Exception as e:
+        logger.debug(f"[REMINDER] Reminder extraction failed: {e}")
+        reminder_candidate = None
+
+    if reminder_candidate:
+        reminder_text, reminder_dt = reminder_candidate
+        scheduled_at = float(reminder_dt.timestamp())
+        if scheduled_at <= time.time():
+            past_answer = "I parsed a reminder request, but the target time is in the past. Please provide a future time."
+            _record_fast_query(past_answer, "reminder_past_time")
+            return ChatSendResponse(
+                answer=past_answer,
+                response_type="speech",
+                gates_passed=True,
+                gate_reason="reminder_past_time",
+                session_id=getattr(engine, "session_id", None),
+                metadata={
+                    "mode": "deterministic_reminder",
+                    "confidence": 0.92,
+                    "reminder_confirmation_required": False,
+                },
+            )
+        session_db.set_pending_reminder(
+            req.thread_id,
+            reminder_text=str(reminder_text),
+            scheduled_at=scheduled_at,
+            source_message=req.message,
+            expires_seconds=900,
+        )
+        human_time = _format_reminder_time(scheduled_at)
+        answer = (
+            f"I parsed this reminder: '{str(reminder_text).strip()}' at {human_time}. "
+            "Reply 'yes' to confirm, or 'no' to cancel."
+        )
+        if greeting_text:
+            answer = f"{greeting_text}\n\n{answer}"
+        _record_fast_query(answer, "reminder_confirmation")
+        return ChatSendResponse(
+            answer=answer,
+            response_type="speech",
+            gates_passed=True,
+            gate_reason="reminder_confirmation_required",
+            session_id=getattr(engine, "session_id", None),
+            metadata={
+                "mode": "deterministic_reminder",
+                "confidence": 0.97,
+                "reminder_confirmation_required": True,
+                "reminder_candidate": {
+                    "text": str(reminder_text).strip(),
+                    "scheduled_at": scheduled_at,
+                    "scheduled_for": human_time,
+                },
+            },
+        )
+
     groundcheck_bridge_meta: Optional[Dict[str, Any]] = None
     try:
         groundcheck_bridge_meta = _maybe_sync_groundcheck_bridge(
@@ -1228,6 +1479,33 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     except Exception as e:
         logger.debug(f"[MEMORY_BRIDGE] Unexpected sync error: {e}")
         groundcheck_bridge_meta = {"enabled": True, "attempted": True, "ok": False, "error": str(e)}
+
+    if is_meta_awareness_prompt(effective_message):
+        snapshot = build_meta_awareness_snapshot(
+            thread_id=req.thread_id,
+            session_db=session_db,
+            engine=engine,
+            recent_query_limit=8,
+            journal_limit=8,
+            contradiction_limit=8,
+        )
+        answer = render_meta_awareness_response(snapshot)
+        if greeting_text:
+            answer = f"{greeting_text}\n\n{answer}"
+        _record_fast_query(answer, "meta_awareness")
+        return ChatSendResponse(
+            answer=answer,
+            response_type="speech",
+            gates_passed=True,
+            gate_reason="meta_awareness",
+            session_id=getattr(engine, "session_id", None),
+            metadata={
+                "mode": "meta_awareness",
+                "confidence": 0.96,
+                "meta_awareness": snapshot,
+                "groundcheck_bridge": groundcheck_bridge_meta,
+            },
+        )
 
     # Deterministic ledger-backed contradiction inventory.
     if _is_contradiction_inventory_request(effective_message):
@@ -1708,6 +1986,10 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     metadata: Dict[str, Any] = {
         "mode": result.get("mode"),
         "confidence": result.get("confidence"),
+        "channel": req.channel,
+        "actor_id": req.actor_id,
+        "channel_destination_id": req.channel_destination_id,
+        "meta_scope": req.meta_scope,
         "intent_alignment": result.get("intent_alignment"),
         "memory_alignment": result.get("memory_alignment"),
         "thinking": thinking_content or None,
