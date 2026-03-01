@@ -29,6 +29,10 @@ class ChatSendRequest(BaseModel):
     user_marked_important: bool = Field(default=False)
     mode: Optional[str] = Field(default=None, description="Optional reasoning mode")
     phase_mode: bool = Field(default=False, description="Emit phase events (analyze/plan/answer) in stream")
+    channel: Optional[str] = Field(default=None, description="Inbound channel (telegram/web/api/etc)")
+    actor_id: Optional[str] = Field(default=None, description="Channel actor/user identifier")
+    channel_destination_id: Optional[str] = Field(default=None, description="Channel destination/chat identifier")
+    meta_scope: Optional[str] = Field(default=None, description="Optional scope tag for channel/meta routing")
 
 
 class ChatSendResponse(BaseModel):
@@ -722,3 +726,32 @@ class SyncChatRequest(BaseModel):
 class SyncChatResponse(BaseModel):
     ok: bool
     threads: list[dict]
+
+
+# ---------------------------------------------------------------------------
+# Notifications
+# ---------------------------------------------------------------------------
+
+class NotificationClaimRequest(BaseModel):
+    worker_id: str = Field(default="worker")
+    channel: str = Field(default="telegram")
+    limit: int = Field(default=5, ge=1, le=100)
+
+
+class NotificationFailRequest(BaseModel):
+    error: Optional[str] = Field(default=None, description="Failure message")
+    retry_in_seconds: int = Field(default=120, ge=5, le=86400)
+
+
+class NotificationEnqueueRequest(BaseModel):
+    thread_id: str = Field(default="default")
+    channel: str = Field(default="telegram")
+    destination_id: Optional[str] = Field(default=None)
+    content: str = Field(min_length=1, max_length=4000)
+    category: Optional[str] = Field(default=None)
+    priority: str = Field(default="medium")
+    payload: Dict[str, Any] = Field(default_factory=dict)
+    dedupe_key: Optional[str] = Field(default=None)
+    source_kind: Optional[str] = Field(default=None)
+    source_id: Optional[str] = Field(default=None)
+    max_attempts: int = Field(default=5, ge=1, le=20)
