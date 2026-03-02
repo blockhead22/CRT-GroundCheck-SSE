@@ -4093,6 +4093,52 @@ class CRTEnhancedRAG:
 
         # Deterministic safe path: third-person questions that reference the user by name.
         # Avoid importing world knowledge for a name that matches the current user.
+        assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
+        assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
+        if assistant_profile_enabled and user_input_kind in ("question", "instruction") and self._is_assistant_profile_question(user_text):
+            answer = self._build_assistant_profile_answer(user_text)
+            prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=4, max_fallback_lines=0)
+            best_prior = retrieved[0][0] if retrieved else None
+            return {
+                'answer': answer,
+                'thinking': None,
+                'mode': 'quick',
+                'confidence': 0.95,
+                'response_type': 'speech',
+                'gates_passed': False,
+                'gate_reason': 'assistant_profile',
+                'intent_alignment': 0.95,
+                'memory_alignment': 1.0,
+                'contradiction_detected': False,
+                'contradiction_entry': None,
+                'retrieved_memories': [
+                    {
+                        'text': mem.text,
+                        'trust': mem.trust,
+                        'confidence': mem.confidence,
+                        'source': mem.source.value,
+                        'sse_mode': mem.sse_mode.value,
+                        'score': score,
+                    }
+                    for mem, score in retrieved
+                ],
+                'prompt_memories': [
+                    {
+                        'text': d.get('text'),
+                        'trust': d.get('trust'),
+                        'confidence': d.get('confidence'),
+                        'source': d.get('source'),
+                    }
+                    for d in prompt_docs
+                ],
+                'unresolved_contradictions_total': 0,
+                'unresolved_hard_conflicts': 0,
+                'learned_suggestions': [],
+                'heuristic_suggestions': [],
+                'best_prior_trust': best_prior.trust if best_prior else None,
+                'session_id': self.session_id,
+            }
+
         user_named_cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
         user_named_enabled = bool(user_named_cfg.get("enabled", True))
         if user_named_enabled and user_input_kind in ("question", "instruction") and self._is_user_named_reference_question(user_text):
@@ -4885,6 +4931,16 @@ class CRTEnhancedRAG:
             grounding_score=grounding_score,
             contradiction_severity=contradiction_severity,
         )
+
+        # Hard guardrail: if this turn still has query-relevant unresolved hard conflicts,
+        # never allow a high-confidence "gates passed" response.
+        if related_hard_conflicts > 0 and gates_passed:
+            gates_passed = False
+            gate_reason = f"{gate_reason}|hard_conflict_pending" if gate_reason else "hard_conflict_pending"
+            logger.info(
+                "[HARD_CONFLICT_GUARD] Forced gates_passed=false for %d relevant hard conflict(s)",
+                related_hard_conflicts,
+            )
         
         # Log gate event
         if self.active_learning:
@@ -4917,6 +4973,10 @@ class CRTEnhancedRAG:
         else:
             # Gates passed: use raw confidence
             calibrated_confidence = raw_confidence
+
+        # Secondary confidence cap for unresolved hard conflicts that survived to this stage.
+        if related_hard_conflicts > 0:
+            calibrated_confidence = min(calibrated_confidence, 0.49)
         
         # 4. Belief vs Speech decision
         # Belief should be reserved for user-profile / memory-grounded answers.
@@ -5266,11 +5326,11 @@ class CRTEnhancedRAG:
                 1 for mem, _ in retrieved 
                 if hasattr(self.ledger, 'has_open_contradiction') and self.ledger.has_open_contradiction(mem.memory_id)
             ),
-            'unresolved_contradictions_total': len(self._get_memory_conflicts()),
-            'unresolved_hard_conflicts': sum(
-                1 for c in self._get_memory_conflicts()
-                if str(getattr(c, 'contradiction_type', '')).lower() == 'conflict'
-            ),
+            # Query-scoped conflict counters used by eval rules.
+            # Do not report global open conflict totals here, otherwise unrelated legacy
+            # conflicts can incorrectly make this turn look unsafe.
+            'unresolved_contradictions_total': int(related_open_total),
+            'unresolved_hard_conflicts': int(related_hard_conflicts),
 
             # Learned suggestions (metadata-only; never authoritative)
             'learned_suggestions': learned,

@@ -1051,8 +1051,12 @@ def create_app() -> FastAPI:
     # Initialize shared LLM client for all threads (lazy initialization)
     _llm_client: Optional[OllamaClient] = None
     _llm_lock = threading.Lock()
-    _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
-    model_router = ModelRouter(default_model=os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest"))
+    _default_router_model = str(os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest").strip() or "llama3.2:latest"
+    model_router = ModelRouter(default_model=_default_router_model)
+
+    def _llm_feature_enabled() -> bool:
+        raw = str(os.getenv("CRT_ENABLE_LLM", "true") or "").strip().lower()
+        return raw not in {"0", "false", "no", "off"}
     
     def get_llm_client() -> Optional[OllamaClient]:
         """Get or create shared LLM client for hybrid extraction.
@@ -1062,14 +1066,14 @@ def create_app() -> FastAPI:
         """
         nonlocal _llm_client
         
-        if not _llm_enabled:
-            logger.info("[API] LLM extraction disabled (set CRT_ENABLE_LLM=true to enable)")
+        if not _llm_feature_enabled():
+            logger.debug("[API] LLM extraction disabled (CRT_ENABLE_LLM=false)")
             return None
 
         with _llm_lock:
             if _llm_client is None:
                 try:
-                    model = os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest")
+                    model = str(os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest").strip() or "llama3.2:latest"
                     logger.info(f"[API] Initializing OllamaClient with model: {model}...")
                     _llm_client = OllamaClient(model=model)
                     logger.info("[API] ✓ OllamaClient initialized successfully")

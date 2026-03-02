@@ -35,6 +35,22 @@ class FailingAgent(OllamaJsonAgent):
         return None
 
 
+class FallbackJudgeAgent(OllamaJsonAgent):
+    def __init__(self):
+        super().__init__(
+            role="judge",
+            model="fake",
+            ollama_base_url="http://fake",
+            allow_text_fallback=True,
+        )
+
+    def _chat(self, *, system: str, user: str, num_predict: int = 450) -> str:
+        return "This turn partially passed but lacked full evidence."
+
+    def _repair_json(self, *, invalid_text: str, required_keys):
+        return None
+
+
 def test_attacker_protocol_repair_path():
     objective = ObjectiveCard(
         objective_id="obj_1",
@@ -72,3 +88,26 @@ def test_attacker_protocol_failure_raises():
         assert "attacker protocol failure" in str(exc)
     else:
         raise AssertionError("Expected AgentProtocolError when attacker output is unrecoverable")
+
+
+def test_judge_protocol_fallback_returns_assessment_when_enabled():
+    objective = ObjectiveCard(
+        objective_id="obj_3",
+        capability_target="grounding faithfulness",
+    )
+    agent = FallbackJudgeAgent()
+    assessment = agent.judge_turn(
+        objective=objective,
+        attacker_plan=agent.propose_turn(
+            objective=ObjectiveCard(objective_id="obj_1", capability_target="x"),
+            transcript_tail=[],
+            latest_api_meta={},
+            hard_fail_reasons=[],
+        ),
+        api_response={"answer": "ok", "metadata": {}},
+        probe_snapshot={},
+        transcript_tail=[],
+    )
+    assert assessment.objective_id == "obj_3"
+    assert isinstance(assessment.summary, str) and assessment.summary
+    assert isinstance(assessment.findings, list)

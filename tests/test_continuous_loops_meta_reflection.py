@@ -72,6 +72,27 @@ def test_build_personality_profile_includes_growth_and_traits():
     assert profile.get("meta_awareness") == scorecard.get("meta_awareness")
 
 
+def test_build_reflection_scorecard_filters_greeting_topic_noise():
+    messages = [
+        "hello",
+        "hello there",
+        "hey",
+        "hello can we review payroll reconciliation",
+        "thanks, payroll reconciliation still looks off",
+    ]
+
+    scorecard = loops.build_reflection_scorecard(
+        "tg_meta",
+        messages,
+        interactions=[],
+    )
+
+    topics = [str(item.get("topic") or "") for item in (scorecard.get("top_topics") or []) if isinstance(item, dict)]
+    assert "hello" not in topics
+    assert "hey" not in topics
+    assert "payroll" in topics
+
+
 def test_build_llm_reflection_post_rejects_prompt_dump(monkeypatch):
     leaked = (
         "Thread\n"

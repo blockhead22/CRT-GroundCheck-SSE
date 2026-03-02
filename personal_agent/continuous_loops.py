@@ -24,8 +24,24 @@ _STOPWORDS = {
     "for", "are", "was", "but", "not", "just", "like", "what", "when", "where",
     "how", "why", "about", "into", "then", "than", "them", "they", "their",
     "here", "there", "some", "could", "would", "should", "been", "did", "does",
+    "can", "will", "also", "really", "still",
     "dont", "doesnt", "cant", "wont", "im", "ive", "its", "we", "our", "us",
     "a", "an", "to", "of", "in", "on", "at", "as", "is", "it",
+}
+
+_TOPIC_NOISE_TOKENS = {
+    "hello",
+    "hi",
+    "hey",
+    "thanks",
+    "thank",
+    "please",
+    "morning",
+    "afternoon",
+    "evening",
+    "night",
+    "yo",
+    "sup",
 }
 
 _ASSISTANT_FALLBACK_PATTERNS = (
@@ -68,7 +84,11 @@ _INTERNAL_PROMPT_DUMP_MARKERS = (
 def _tokenize(text: str) -> List[str]:
     text = (text or "").lower()
     text = re.sub(r"[^\w\s-]", " ", text)
-    tokens = [t for t in text.split() if len(t) >= 3 and t not in _STOPWORDS]
+    tokens = [
+        t
+        for t in text.split()
+        if len(t) >= 3 and t not in _STOPWORDS and t not in _TOPIC_NOISE_TOKENS
+    ]
     return tokens
 
 

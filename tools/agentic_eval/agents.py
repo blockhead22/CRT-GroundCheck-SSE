@@ -52,6 +52,7 @@ class OllamaJsonAgent:
     temperature: float = 0.25
     timeout_seconds: float = 60.0
     max_retries: int = 2
+    allow_text_fallback: bool = False
 
     def _chat(self, *, system: str, user: str, num_predict: int = 450) -> str:
         url = f"{self.ollama_base_url.rstrip('/')}/api/chat"
@@ -112,6 +113,41 @@ class OllamaJsonAgent:
             )
         return out
 
+    def _coerce_fallback_user_message(self, *, raw_text: str, objective: ObjectiveCard) -> str:
+        text = str(raw_text or "")
+        text = re.sub(r"```(?:json)?", " ", text, flags=re.IGNORECASE)
+        text = text.replace("```", " ")
+        text = re.sub(r"\s+", " ", text).strip()
+
+        # Try to salvage natural-language content from the model output.
+        candidate = text
+        if candidate.startswith("{") and candidate.endswith("}"):
+            candidate = ""
+        if candidate and len(candidate) >= 12 and any(ch.isalpha() for ch in candidate):
+            return (candidate[:220]).rstrip()
+
+        capability = str(objective.capability_target or "").strip() or "memory robustness"
+        fallback = (
+            f"For this robustness check about {capability}, answer using only facts from this chat and "
+            "call out any uncertainty or conflicts."
+        )
+        return (fallback[:220]).rstrip()
+
+    def _fallback_judge_assessment(self, *, raw_text: str, objective: ObjectiveCard) -> JudgeAssessment:
+        text = re.sub(r"\s+", " ", str(raw_text or "")).strip()
+        text_l = text.lower()
+        objective_passed = any(tok in text_l for tok in ("pass", "passed", "success", "satisfied"))
+        summary = text[:260] if text else "Judge fallback used due protocol recovery."
+        if len(summary) < 12:
+            summary = "Judge fallback used due protocol recovery."
+        return JudgeAssessment(
+            objective_id=objective.objective_id,
+            objective_passed=bool(objective_passed),
+            summary=summary,
+            findings=[],
+            next_objective_hint=None,
+        )
+
     def propose_turn(
         self,
         *,
@@ -151,13 +187,22 @@ class OllamaJsonAgent:
             attempt += 1
 
         if not isinstance(obj, dict):
+            if self.allow_text_fallback:
+                return AgentTurnPlan(
+                    objective_id=objective.objective_id,
+                    user_message=self._coerce_fallback_user_message(raw_text=raw, objective=objective),
+                    hypothesis="protocol_recovered_text_fallback",
+                    expected_signals=[str(x) for x in (objective.expected_signals or []) if str(x).strip()],
+                )
             raise AgentProtocolError("attacker protocol failure: could not produce valid JSON")
 
         missing = [k for k in required if k not in obj]
-        if missing:
+        if missing and not self.allow_text_fallback:
             raise AgentProtocolError(f"attacker protocol failure: missing required keys {missing}")
 
         message = str(obj.get("user_message") or "").replace("\r", " ").replace("\n", " ").strip()
+        if (not message) and self.allow_text_fallback:
+            message = self._coerce_fallback_user_message(raw_text=raw, objective=objective)
         if not message:
             raise AgentProtocolError("attacker protocol failure: empty user_message")
         if len(message) > 220:
@@ -167,11 +212,16 @@ class OllamaJsonAgent:
         expected_signals = []
         if isinstance(expected_signals_raw, list):
             expected_signals = [str(x) for x in expected_signals_raw if str(x).strip()]
+        elif self.allow_text_fallback:
+            expected_signals = [str(x) for x in (objective.expected_signals or []) if str(x).strip()]
 
         return AgentTurnPlan(
             objective_id=str(obj.get("objective_id") or objective.objective_id),
             user_message=message,
-            hypothesis=str(obj.get("hypothesis") or "").strip() or "no_hypothesis",
+            hypothesis=(
+                str(obj.get("hypothesis") or "").strip()
+                or ("protocol_recovered_text_fallback" if self.allow_text_fallback and missing else "no_hypothesis")
+            ),
             expected_signals=expected_signals,
         )
 
@@ -210,18 +260,25 @@ class OllamaJsonAgent:
             attempt += 1
 
         if not isinstance(obj, dict):
+            if self.allow_text_fallback:
+                return self._fallback_judge_assessment(raw_text=raw, objective=objective)
             raise AgentProtocolError("judge protocol failure: could not produce valid JSON")
 
         missing = [k for k in required if k not in obj]
-        if missing:
+        if missing and not self.allow_text_fallback:
             raise AgentProtocolError(f"judge protocol failure: missing required keys {missing}")
 
-        findings = self._coerce_findings(obj.get("findings"))
-        summary = str(obj.get("summary") or "").strip() or "no summary"
+        findings = self._coerce_findings(obj.get("findings")) if isinstance(obj.get("findings"), list) else []
+        summary = str(obj.get("summary") or "").strip()
+        if not summary:
+            if self.allow_text_fallback:
+                summary = self._fallback_judge_assessment(raw_text=raw, objective=objective).summary
+            else:
+                summary = "no summary"
         hint = obj.get("next_objective_hint")
         return JudgeAssessment(
             objective_id=str(obj.get("objective_id") or objective.objective_id),
-            objective_passed=bool(obj.get("objective_passed")),
+            objective_passed=bool(obj.get("objective_passed")) if "objective_passed" in obj else False,
             summary=summary,
             findings=findings,
             next_objective_hint=(str(hint).strip() if hint is not None else None),

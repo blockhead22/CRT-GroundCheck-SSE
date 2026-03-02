@@ -33,6 +33,23 @@ import json
 
 from crt_response_eval import evaluate_turn
 
+_RAW_PRINT = print
+
+
+def print(*args, **kwargs):  # type: ignore[no-redef]
+    """Best-effort safe print for Windows consoles with limited code pages."""
+    try:
+        return _RAW_PRINT(*args, **kwargs)
+    except UnicodeEncodeError:
+        stream = kwargs.get("file", sys.stdout)
+        encoding = getattr(stream, "encoding", None) or "utf-8"
+        safe_args = [
+            str(a).encode(encoding, errors="replace").decode(encoding, errors="replace")
+            for a in args
+        ]
+        return _RAW_PRINT(*safe_args, **kwargs)
+
+
 print("="*80)
 print(" CRT STRESS TEST - MEMORY & TRUST ANALYSIS ".center(80, "="))
 print("="*80)
@@ -131,7 +148,7 @@ def _safe_snip(text: str, *, limit: int = 4000) -> str:
     t = str(text or "")
     if len(t) <= limit:
         return t
-    return t[:limit] + "…<snip>"
+    return t[:limit] + "...<snip>"
 
 
 def _api_call_json(
@@ -540,7 +557,7 @@ def _track_llm_claims(result: dict, *, turn: int) -> dict:
         if _should_print(turn):
             print("\n[LLM SELF-CONTRADICTION]:")
             for c in contradictions:
-                print(f"  - Slot '{c['slot']}' turn {c['old_turn']} -> {turn}: {c['old_value']} → {c['new_value']}")
+                print(f"  - Slot '{c['slot']}' turn {c['old_turn']} -> {turn}: {c['old_value']} -> {c['new_value']}")
 
     llm_claims_by_turn[turn] = tracked
     return {"claims": tracked, "contradictions": contradictions}
@@ -1804,7 +1821,7 @@ def _run_extra_turns_to_target() -> None:
 
     extra_templates = [
         (
-            "What’s my name?",
+            "What's my name?",
             "Padding: Name recall",
             {"must_contain_any": ["sarah"], "contradiction_should_be_false_for_questions": True},
         ),
@@ -1824,7 +1841,7 @@ def _run_extra_turns_to_target() -> None:
             {"must_contain_any": ["sarah"]},
         ),
         (
-            "List 3 facts you’re confident about regarding me.",
+            "List 3 facts you're confident about regarding me.",
             "Padding: Confidence/facts",
             {"must_contain_any": ["sarah"]},
         ),
@@ -1922,9 +1939,9 @@ print(f"  Flagged (audited): {metrics['reintroduced_flagged_count']}")
 print(f"  Unflagged (violations): {metrics['reintroduced_unflagged_count']}")
 print(f"  Asserted without caveat (violations): {metrics['answer_asserted_contradicted_claim']}")
 if metrics['reintroduced_unflagged_count'] > 0 or metrics['answer_asserted_contradicted_claim'] > 0:
-    print(f"  ❌ INVARIANT VIOLATIONS DETECTED")
+    print("  [FAIL] INVARIANT VIOLATIONS DETECTED")
 else:
-    print(f"  ✅ INVARIANT MAINTAINED (all contradicted claims flagged + caveated)")
+    print("  [PASS] INVARIANT MAINTAINED (all contradicted claims flagged + caveated)")
 
 print(f"\nFACTS INTRODUCED: {len(metrics['facts_introduced'])}")
 for i, fact in enumerate(metrics['facts_introduced'], 1):
@@ -1943,7 +1960,7 @@ print(f"  Claims tracked: {metrics['llm_claims_tracked']} (across {metrics['llm_
 print(f"  Self-contradictions: {metrics['llm_self_contradictions']}")
 if metrics['llm_contradiction_events']:
     for c in metrics['llm_contradiction_events'][:5]:
-        print(f"  - Slot {c['slot']}: turn {c['old_turn']} -> {c['turn']} ({c['old_value']} → {c['new_value']})")
+        print(f"  - Slot {c['slot']}: turn {c['old_turn']} -> {c['turn']} ({c['old_value']} -> {c['new_value']})")
     if len(metrics['llm_contradiction_events']) > 5:
         print(f"  ... ({len(metrics['llm_contradiction_events']) - 5} more)")
 

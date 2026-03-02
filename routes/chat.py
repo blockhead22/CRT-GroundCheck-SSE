@@ -91,6 +91,19 @@ _CONTINUITY_FOLLOWUP_HINTS = (
 
 _GROUNDCHECK_BRIDGE_LOCK = threading.Lock()
 _GROUNDCHECK_BRIDGE_LAST_SYNC: Dict[str, float] = {}
+_CONTRADICTION_CAVEAT_RE = re.compile(
+    r"("
+    r"\b(most recent|latest|conflicting|however|according to)\b|"
+    r"\b(updat(e|ed|ing)|correct(ed|ing|ion)?|clarif(y|ied|ying))\b|"
+    r"\b(earlier|previously|before|prior|former)\b|"
+    r"\b(chang(e|ed|ing)|revis(e|ed|ing)|adjust(ed|ing)?|modif(y|ied|ying))\b|"
+    r"\(changed from|\(most recent|\(updated|"
+    r"\b(versus|vs|compared to)\b|"
+    r"\bno longer\b|"
+    r"\bas of\b"
+    r")",
+    flags=re.IGNORECASE,
+)
 
 
 def _load_recent_history_messages(
@@ -120,6 +133,13 @@ def _env_bool(name: str, default: bool = False) -> bool:
     if raw is None:
         return default
     return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _answer_has_contradiction_caveat(answer: str) -> bool:
+    text = str(answer or "").strip()
+    if not text:
+        return False
+    return bool(_CONTRADICTION_CAVEAT_RE.search(text))
 
 
 def _maybe_sync_groundcheck_bridge(
@@ -1983,6 +2003,28 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             except Exception as e:
                 logger.debug(f"[TASKING] Tasking loop failed: {e}")
 
+    # Reintroduction invariant: if this answer used contradicted memories, enforce
+    # a visible caveat even for deterministic/early-return paths that bypass core assembly.
+    caveat_injected = False
+    if reintro_count > 0:
+        has_caveat = False
+        try:
+            checker = getattr(engine, "_answer_has_caveat", None)
+            if callable(checker):
+                has_caveat = bool(checker(final_answer))
+            else:
+                has_caveat = _answer_has_contradiction_caveat(final_answer)
+        except Exception:
+            has_caveat = _answer_has_contradiction_caveat(final_answer)
+
+        if not has_caveat and str(final_answer or "").strip():
+            final_answer = f"{final_answer.rstrip()} (most recent update)"
+            caveat_injected = True
+            logger.info(
+                "[CAVEAT_ENFORCED] Injected contradiction caveat for reintroduced_claims_count=%d",
+                reintro_count,
+            )
+
     metadata: Dict[str, Any] = {
         "mode": result.get("mode"),
         "confidence": result.get("confidence"),
@@ -2013,6 +2055,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         "retrieved_memories": retrieved_mems,
         "prompt_memories": prompt_mems,
         "reintroduced_claims_count": reintro_count,
+        "caveat_injected_for_reintroduced_claims": caveat_injected,
         "expanded": expanded,
         "expansion_reason": expansion_reason,
         "tasking": tasking_meta,
