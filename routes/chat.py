@@ -1268,6 +1268,39 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     engine = get_engine(req.thread_id)
     runtime_config = get_runtime_config()
+    timing_enabled = str(os.getenv("CRT_CHAT_TIMING", "1")).strip().lower() not in {"0", "false", "off", "no"}
+    t0 = time.perf_counter()
+    stage_marks: List[Dict[str, Any]] = []
+
+    def _mark(stage: str) -> None:
+        if not timing_enabled:
+            return
+        now = time.perf_counter()
+        stage_marks.append(
+            {
+                "stage": stage,
+                "t_ms": round((now - t0) * 1000.0, 2),
+            }
+        )
+
+    def _timings() -> List[Dict[str, Any]]:
+        if not timing_enabled:
+            return []
+        out: List[Dict[str, Any]] = []
+        prev = 0.0
+        for item in stage_marks:
+            current = float(item.get("t_ms") or 0.0)
+            out.append(
+                {
+                    "stage": item.get("stage"),
+                    "t_ms": current,
+                    "dt_ms": round(current - prev, 2),
+                }
+            )
+            prev = current
+        return out
+
+    _mark("chat_send_start")
 
     # Session tracking: update activity and check for greeting
     session_db = get_thread_session_db()
@@ -1317,6 +1350,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     # Increment turn counter
     increment_turn(req.thread_id)
+    _mark("session_and_style_ready")
 
     effective_message = _resolve_bare_web_search_command(
         message=req.message,
@@ -1749,6 +1783,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         thread_id=req.thread_id,
         model_override=model_override,
     )
+    _mark("engine_query_done")
 
     # ====== CRT-AS-CRITIC: Post-generation verification ======
     # Verify the draft answer against stored memories using GroundCheck (~1ms).
@@ -1782,6 +1817,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         logger.debug("[CRT-CRITIC] crt_critic not available")
     except Exception as e:
         logger.warning(f"[CRT-CRITIC] Verification error (non-fatal): {e}")
+    _mark("critic_done")
 
     # Capture thinking trace (if available) for non-stream responses.
     llm_client = get_llm_client()
@@ -1802,6 +1838,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             )
         except Exception as e:
             logger.debug(f"[TRACE] Failed to store thinking trace: {e}")
+    _mark("thinking_trace_done")
 
     # AGENT INTEGRATION: Check for proactive triggers
     _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
@@ -1928,6 +1965,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             reflection_trace_id = reflection_result.trace_id
         except Exception as e:
             logger.debug(f"[REFLECTION] Reflection failed (non-stream): {e}")
+    _mark("reflection_done")
 
     verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
     if not verbosity_pref and personality_profile:
@@ -2004,6 +2042,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 tasking_meta["interval_seconds"] = _TASKING_INTERVAL_SECONDS
             except Exception as e:
                 logger.debug(f"[TASKING] Tasking loop failed: {e}")
+    _mark("tasking_done")
 
     # Reintroduction invariant: if this answer used contradicted memories, enforce
     # a visible caveat even for deterministic/early-return paths that bypass core assembly.
@@ -2151,6 +2190,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     if interaction_id:
         metadata["interaction_id"] = interaction_id
+    _mark("active_learning_done")
 
     if greeting_text:
         metadata["greeting_shown"] = True
@@ -2173,6 +2213,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         )
     except Exception as e:
         logger.debug(f"[SESSION] Error recording query: {e}")
+    _mark("session_record_done")
 
     # ====== Episodic Memory: Process interaction for patterns/preferences ======
     try:
@@ -2186,6 +2227,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         )
     except Exception as e:
         logger.debug(f"[EPISODIC] Error processing interaction: {e}")
+    _mark("episodic_done")
 
     # ====== Auto Fact-Check: verify response against memories (background) ======
     try:
@@ -2198,6 +2240,24 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         )
     except Exception as e:
         logger.debug(f"[AUTO_FC] Error scheduling fact check: {e}")
+    _mark("fact_check_schedule_done")
+
+    timing_rows = _timings()
+    if timing_rows:
+        metadata["pipeline_timings_ms"] = timing_rows
+        metadata.setdefault(
+            "pipeline_statuses",
+            [f"{str(row.get('stage'))}:{float(row.get('dt_ms') or 0.0):.1f}ms" for row in timing_rows],
+        )
+        total_ms = float(timing_rows[-1].get("t_ms") or 0.0)
+        logger.info(
+            "[CHAT_TIMING] thread=%s total_ms=%.1f gate=%s mode=%s stages=%s",
+            req.thread_id,
+            total_ms,
+            str(result.get("gate_reason") or ""),
+            str(result.get("mode") or ""),
+            " | ".join(f"{row.get('stage')}:{row.get('dt_ms')}ms" for row in timing_rows),
+        )
 
     return ChatSendResponse(
         answer=final_answer,
