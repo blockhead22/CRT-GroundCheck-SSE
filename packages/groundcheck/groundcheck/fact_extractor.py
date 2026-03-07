@@ -1100,7 +1100,7 @@ def _extract_general_knowledge_facts(text: str, facts: dict) -> None:
         "major", "certification", "experience", "experience_years",
         "team", "team_size", "discussion", "plan", "planning",
         "focus", "topic", "goal", "step", "process", "approach",
-        "project", "framework", "system", "purpose", "status",
+        "framework", "purpose", "status",
         "next", "first", "priority", "item", "items", "work",
         "feature", "task", "response", "context", "session",
         "connectivity", "development", "test", "testing", "code",
@@ -1121,7 +1121,7 @@ def _extract_general_knowledge_facts(text: str, facts: dict) -> None:
         if slot in _SUBJECT_BLOCKLIST:
             return
         # Reject if value starts with a common continuation word (likely not a fact)
-        if re.match(r"^(?:that|not|also|just|still|always|never|really|very|no|yes|ok|the|a|an)\b", value, re.IGNORECASE):
+        if re.match(r"^(?:that|not|also|just|still|always|never|really|very|no|yes|ok)\b", value, re.IGNORECASE):
             return
         if len(value.strip()) < 1:
             return

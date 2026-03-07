@@ -624,6 +624,13 @@ class RuntimePortal:
                     # Process exited; keep portal alive and expose manual restart path.
                     # Auto-restart only for managed API when not external.
                     if name == "api" and not self.api_external:
+                        # If API is already reachable, another process owns it.
+                        # Treat it as external and stop restart loops on bind errors.
+                        up, _err = self._is_api_up()
+                        if up:
+                            self.api_external = True
+                            self.log("[portal] API became externally managed; disabling managed API restarts")
+                            continue
                         self._restart_with_cooldown(name, "watchdog_exit")
             self._stop.wait(1.5)
 

@@ -207,6 +207,16 @@ def groundcheck_check(
     if context and context.strip():
         extracted = extract_fact_slots(context)
         if extracted:
+            # Canonicalize common alias slots before validation/storage.
+            context_l = context.lower()
+            canonicalized = {}
+            for slot, fact in extracted.items():
+                canon = slot
+                if slot == "color" and "favorite color" in context_l:
+                    canon = "favorite_color"
+                canonicalized[canon] = fact
+            extracted = canonicalized
+
             # Validation: reject garbage extractions before storage
             _REJECT_SLOTS = {
                 "major", "certification", "experience_years", "team_size",

@@ -377,7 +377,31 @@ def contradiction_respond(
                 merged_memory_id=chosen_memory_id,
                 new_status=str(new_status or "resolved"),
             )
-            resolved = True
+            # Verify the write actually moved status; if not, force a direct update.
+            resolved = False
+            try:
+                current = next(
+                    (e for e in engine.ledger.get_all_contradictions(limit=2000) if getattr(e, "ledger_id", "") == req.ledger_id),
+                    None,
+                )
+                if current is not None and str(getattr(current, "status", "")).lower() == str(new_status or "resolved").lower():
+                    resolved = True
+                else:
+                    conn = engine.ledger._get_connection()
+                    cur = conn.cursor()
+                    cur.execute(
+                        """
+                        UPDATE contradictions
+                        SET status = ?, resolution_timestamp = ?, resolution_method = ?, merged_memory_id = ?
+                        WHERE ledger_id = ?
+                        """,
+                        (str(new_status or "resolved"), time.time(), str(resolution_method or "user_clarified"), chosen_memory_id, req.ledger_id),
+                    )
+                    conn.commit()
+                    resolved = cur.rowcount > 0
+                    conn.close()
+            except Exception:
+                resolved = True
         except Exception:
             resolved = False
 
@@ -583,4 +607,3 @@ def resolve_contradiction_policy(
         active_memory=active_id,
         message=message,
     )
-

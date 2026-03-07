@@ -96,6 +96,8 @@ DIRECT_CORRECTION_PATTERNS: List[re.Pattern] = [
     re.compile(r"wait,?\s+(?:it's|it is)\s+(\d+|\w+),?\s+not\s+(\d+|\w+)", re.IGNORECASE),
     # "Wait, I'm actually X" (without explicit "not Y")
     re.compile(r"wait,?\s+(?:i'm|i am)\s+actually\s+(\d+)", re.IGNORECASE),
+    # "Actually, I work at Amazon, not Microsoft"
+    re.compile(r"actually,?\s+i\s+work\s+(?:at|for)\s+([A-Za-z0-9&\-. ]+?),?\s+not\s+([A-Za-z0-9&\-. ]+)", re.IGNORECASE),
 ]
 
 
@@ -874,12 +876,19 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     
     # Try "I work at/for X" pattern
     if "employer" not in facts:
+        has_education_cue = bool(
+            re.search(
+                r"\b(phd|doctorate|doctoral|master'?s|bachelor'?s|degree|graduat(?:ed|ion)|university|college|school)\b",
+                text,
+                flags=re.IGNORECASE,
+            )
+        )
         m = re.search(
             r"\b(?:i work at|i work for)\s+([^\n\r\.;,]+)",
             text,
             flags=re.IGNORECASE,
         )
-        if not m:
+        if not m and not has_education_cue:
             # Fallback: look for "at [company]" anywhere (for "I work as X at Y" patterns)
             m = re.search(r"\bat\s+([A-Z][A-Za-z0-9\s&\-\.]+?)(?:\s+(?:as|and|but|in|on|for|with|where|,|\.|;)|\s*$)", text)
         if m:
