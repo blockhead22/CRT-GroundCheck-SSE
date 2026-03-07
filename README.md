@@ -30,7 +30,7 @@ CRT-GroundCheck-SSE is a **mathematical framework for AI memory** that treats co
 | System | Role |
 |--------|------|
 | **CRT** (Cognitive Reflective Trust) | A mathematical trust and drift framework. Every memory carries a trust score that evolves over time through equations — rising when validated, falling when contradicted. Reconstruction gates block the LLM from answering confidently when unresolved conflicts exist. |
-| **GroundCheck** | A hallucination verification layer. Every word the LLM produces is checked against stored memories in real time. Mean latency: **1.17 ms** — 2,634× faster than SelfCheckGPT. |
+| **GroundCheck** | A hallucination verification layer. Every word the LLM produces is checked against stored memories in real time. Mean latency: **1.17 ms** — 2,634x faster than SelfCheckGPT. |
 | **SSE** (Semantic String Engine) | Claim extraction with character-level provenance. It is architecturally impossible for SSE to delete, merge, or silently resolve a contradiction. The boundary is enforced at the code level, not by policy. |
 
 If you tell the system *"I work at Microsoft"* and later say *"I work at Google"*, both facts survive. A contradiction ledger records the tension. When you later ask *"Where do I work?"*, reconstruction gates detect the unresolved conflict and **surface the contradiction for you to decide** — instead of confidently giving the wrong answer.
@@ -39,7 +39,7 @@ If you tell the system *"I work at Microsoft"* and later say *"I work at Google"
 
 ## Current Status (March 6, 2026)
 
-This repository is active and currently in reliability hardening.
+This repository is active and currently in reliability hardening. It is a research prototype, not a production-hardened platform yet.
 
 Latest full local run (`.venv`, Windows, Python 3.13):
 - `pytest` collected **1068** tests
@@ -52,6 +52,42 @@ Known active regression clusters from that run:
 - deterministic assistant-profile response wording and routing
 
 Historical benchmark numbers are kept below for context and are labeled with dates.
+
+---
+
+## Direction Forward (Now vs Next)
+
+### Now (P0: fix current regressions)
+
+- Restore GroundCheck extraction coverage for non-copular and generic claims (`my car is`, `our mascot is`, `project uses`, `system handles`, architecture statements).
+- Stabilize contradiction lifecycle semantics (revision/correction should not route to the uncertainty loop as unresolved conflict).
+- Re-lock deterministic assistant-profile routing and wording (identity/background/work/experience prompts should avoid chat-backed drift).
+- Repair contradiction API flow (`/api/contradictions/respond`) so answers record and resolve cleanly.
+- Fix NL contradiction resolution and identity-confusion edge cases from adversarial scenarios.
+
+### Next (P1: hardening after green test pass)
+
+- Convert core `datetime.utcnow()` usage to timezone-aware UTC APIs and reduce warning volume.
+- Improve blindside/gaslighting resilience (identity wipe attacks remain the largest adversarial gap).
+- Add CI gating by failure cluster and runbook links so historical benchmarks and current status cannot drift apart.
+- Expand regression fixtures for out-of-scope claim tracking and learned suggestion metadata coverage.
+
+### Who This Is For
+
+- Teams building memory-bearing assistants where contradiction integrity matters more than smooth-but-wrong responses.
+- Researchers evaluating trust dynamics, contradiction handling, and verifier-in-the-loop training.
+- Developers who need a local-first FastAPI + frontend reference stack for contradiction-aware memory experiments.
+
+### Relevance in 2026
+
+The core problem remains relevant: mainstream LLM chat systems still optimize for fluent continuation, not durable epistemic state. This project is relevant where correctness over time, auditability, and contradiction disclosure are product requirements.
+
+### New LLM Behavior Learnings (Mar 2026)
+
+- Small-model capacity ceilings are real: DNNT-scale models can learn the objective but still collapse across many fact-query mappings.
+- Verifier gaming emerges under training pressure: models may become shorter/vaguer to avoid contradiction penalties unless anti-gaming constraints are enforced.
+- Determinism can regress indirectly when routing leaks to chat-backed paths even if fact storage remains correct.
+- Contradiction handling is highly sensitive to language intent (`correction`/`revision` vs `conflict`), requiring explicit lifecycle distinctions.
 
 ---
 
@@ -217,7 +253,7 @@ What happens next depends on where the drift falls:
 | $\theta_{\text{align}} \leq D \leq \theta_{\text{contra}}$ (0.28) | Ambiguous zone | Soft update; belief evolves slowly |
 | $D > \theta_{\text{contra}}$ | Contradiction detected | Ledger entry created, reconstruction gates armed |
 
-These thresholds were empirically tuned across 577+ unit tests and a dedicated 50-turn adversarial stress test that probes 9 slot types across 8 attack phases (baseline, verification, direct contradiction, post-contradiction, gaslighting, blindside, meta-probes, rapid-fire). The ML contradiction detector (XGBoost, when trained) and LLM drift assessor (Ollama) provide additional classification beyond pure cosine distance, categorizing contradictions as: conflict, evolution, refinement, temporal, or correction. When ML models are unavailable, a multi-layer heuristic fallback — contextual slot matching, semantic equivalence gating, and value comparison — achieves **9/9 direct contradiction detection** without any trained model.
+These thresholds were empirically tuned across 1000+ tests and a dedicated 50-turn adversarial stress test that probes 9 slot types across 8 attack phases (baseline, verification, direct contradiction, post-contradiction, gaslighting, blindside, meta-probes, rapid-fire). The ML contradiction detector (XGBoost, when trained) and LLM drift assessor (Ollama) provide additional classification beyond pure cosine distance, categorizing contradictions as: conflict, evolution, refinement, temporal, or correction. Historical no-ML direct contradiction benchmarks reached **9/9 slot detection** in controlled stress runs; current hardening work is focused on edge-case false positives/negatives.
 
 ### Belief vs. Speech
 
@@ -337,20 +373,29 @@ Trust Evolution ── aligned memories gain trust, contradicted ones degrade
 # Clone and install
 git clone https://github.com/blockhead22/CRT-GroundCheck-SSE.git
 cd CRT-GroundCheck-SSE
+
+python -m venv .venv
+# Windows PowerShell:
+# .\.venv\Scripts\Activate.ps1
+
+pip install -r requirements.txt
 pip install -e .
-pip install -e groundcheck/
+pip install -e packages/groundcheck
 
 # (Optional) Install Ollama for LLM features
-# https://ollama.ai/ → then: ollama pull llama3.2
+# https://ollama.ai/ then: ollama pull llama3.2
 
-# Interactive demo
-python Rag-Demo.py
+# API server (PowerShell helper)
+pwsh ./start_api.ps1
 
-# API server
-python crt_api.py                              # → http://127.0.0.1:8123
+# Runtime portal (manages API + Telegram + background controls)
+pwsh ./start_portal.ps1
+
+# Optional legacy CLI
+python personal_agent_cli.py chat
 
 # Frontend
-cd frontend && npm install && npm run dev      # → http://localhost:5173
+cd frontend && npm install && npm run dev      # -> http://localhost:5173
 ```
 
 ### Prerequisites
@@ -388,7 +433,7 @@ personal_agent/
 ├── training_loop.py         # Conservative learned model training
 └── episodic_memory.py       # Session summaries, preferences, concept linking
 
-groundcheck/groundcheck/
+packages/groundcheck/groundcheck/
 ├── verifier.py              # Main grounding verification
 ├── fact_extractor.py        # Claim extraction from LLM output
 ├── semantic_matcher.py      # Multi-tier semantic matching
@@ -402,7 +447,7 @@ sse/
 ├── coherence.py             # Disagreement graph tracking
 └── extractor.py             # Claim extraction with char offsets
 
-crt_api.py                   # FastAPI server (5700+ lines)
+crt_api.py                   # FastAPI server
 frontend/                    # React + Tailwind + Framer Motion UI
 ```
 
@@ -463,31 +508,34 @@ Start the server: `python crt_api.py` → `http://127.0.0.1:8123`
 ## Testing
 
 ```bash
-# Full suite (577 tests)
-pytest
+# Full suite (includes tests/ and packages/groundcheck/tests/)
+pytest -ra
 
 # Core stress tests (adversarial + boundary + contradiction)
 pytest tests/test_adversarial_prompts.py tests/test_boundary_violations.py tests/test_contradiction_stress.py -v
 
-# GroundCheck performance
-python groundcheck/stress_test_performance.py   # 1000 verifications, <2ms p95
-
 # Adversarial challenge (no Ollama required)
 python tools/adversarial_crt_challenge.py --turns 35
 
-# Agent adversarial stress test (50-turn, requires running server)
+# Agent adversarial stress test (50-turn, requires running API server)
 python tools/agent_adversarial_driver.py --url http://127.0.0.1:8123 --mode auto --turns 50
 ```
 
-### Test Results
+### Current Snapshot (Mar 6, 2026)
 
 | Suite | Result |
 |-------|--------|
-| pytest (full) | **577 passed** / 8 failed (98.6%) |
+| pytest (full, local run) | **1046 passed / 22 failed** (1068 collected, 198 warnings, 29m33s) |
+| Last archived run (`test_results.txt`, Feb 8, 2026) | **596 passed, 1 skipped**, 179 warnings |
+
+### Historical Benchmarks (Feb 2026)
+
+| Suite | Result |
+|-------|--------|
 | Adversarial + Boundary + Contradiction | **84/84 passed** |
 | Coherence, Temporal, Uncertainty, Facts | **73/73 passed** |
 | GroundCheck Performance (1000 runs) | **1.17ms mean, 2.09ms p95** |
-| GroundCheck vs SelfCheckGPT | **2,634× faster** |
+| GroundCheck vs SelfCheckGPT | **2,634x faster** |
 | **Agent Adversarial Stress Test (50-turn)** | **15/19 attacks handled (79%)** |
 | Direct Contradiction Detection (9 slots) | **9/9 (100%)** |
 | Gaslighting Resistance | **4/5 handled** |
@@ -565,26 +613,29 @@ Calibrated thresholds: `artifacts/calibrated_thresholds.json` — auto-loaded fo
 
 ## Project Structure
 
-```
+```text
 .
-├── crt_api.py              # FastAPI server
-├── Rag-Demo.py             # Interactive CLI demo
-├── personal_agent/         # Core CRT system (40+ modules)
-├── groundcheck/            # Hallucination verification library
-├── sse/                    # Semantic String Engine
-├── belief_revision/        # Belief revision bench (policy learning)
-├── frontend/               # React UI
-├── scripts/
-│   ├── vilt_pretrained.py  # VILT on SmolLM-135M + LoRA (88% acc)
-│   └── vilt_experiment.py  # VILT on DNNT (original proof-of-concept)
-├── tools/                  # Stress tests and validation utilities
-├── tests/                  # 577+ pytest tests
-├── schemas/                # JSON schemas for runtime config
-├── artifacts/              # Calibrated thresholds, trained models
-├── data/                   # Training data
-└── models/
-    ├── dnnt_v2/            # DNNT model checkpoints
-    └── vilt_smollm/        # LoRA adapters + metrics from VILT pretrained
+|- crt_api.py              # FastAPI server
+|- start_api.ps1           # API startup helper
+|- start_portal.ps1        # Runtime supervisor portal
+|- personal_agent/         # Core CRT system
+|- packages/
+|  `- groundcheck/         # GroundCheck package and tests
+|- sse/                    # Semantic String Engine
+|- frontend/               # React UI
+|- scripts/
+|  |- vilt_pretrained.py   # VILT on SmolLM-135M + LoRA
+|  `- vilt_experiment.py   # VILT on DNNT
+|- tools/                  # Stress tests and validation utilities
+|- tests/                  # Top-level pytest suite
+|- routes/                 # FastAPI route modules
+|- schemas/                # JSON schemas for runtime config
+|- artifacts/              # Calibrated thresholds, trained models
+|- data/                   # Training data
+|- docs/                   # Technical writeups and notes
+`- models/
+   |- dnnt/                # DNNT model assets
+   `- vilt_smollm/         # LoRA adapters + metrics
 ```
 
 ---
@@ -592,3 +643,5 @@ Calibrated thresholds: `artifacts/calibrated_thresholds.json` — auto-loaded fo
 ## License
 
 MIT — see [LICENSE](LICENSE)
+
+
