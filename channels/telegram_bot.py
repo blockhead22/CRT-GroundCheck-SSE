@@ -22,11 +22,13 @@ The bot supports:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import socket
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Set
 
@@ -95,6 +97,7 @@ TELEGRAM_PROACTIVE_ENABLED = _env_bool("TELEGRAM_PROACTIVE_ENABLED", True)
 TELEGRAM_PROACTIVE_POLL_SECONDS = _env_float("TELEGRAM_PROACTIVE_POLL_SECONDS", 8.0)
 TELEGRAM_PROACTIVE_BATCH_SIZE = _env_int("TELEGRAM_PROACTIVE_BATCH_SIZE", 5)
 TELEGRAM_PROACTIVE_RETRY_SECONDS = _env_int("TELEGRAM_PROACTIVE_RETRY_SECONDS", 120)
+TELEGRAM_LIVE_LOG_PATH = os.getenv("TELEGRAM_LIVE_LOG_PATH", "ai_logs/telegram_live.jsonl")
 
 # Optional: restrict to specific Telegram user IDs
 _allowed_raw = os.getenv("TELEGRAM_ALLOWED_USERS", "8793030650")
@@ -114,6 +117,58 @@ bridge = CRTBridge(api_url=CRT_API_URL)
 
 # Startup timestamp — messages older than this are stale backlog
 _BOT_START_TIME: float = time.time()
+
+
+def _append_live_log(event: Dict[str, Any]) -> None:
+    try:
+        path = Path(TELEGRAM_LIVE_LOG_PATH)
+        if not path.is_absolute():
+            path = Path(_project_root) / path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(event, ensure_ascii=False) + "\n")
+    except Exception as e:
+        logger.debug("[TG] live-log append failed: %s", e)
+
+
+def _emit_live_event(
+    *,
+    event_type: str,
+    text: str,
+    update: Optional[Update] = None,
+    response: Optional[ChannelResponse] = None,
+    thread_id: Optional[str] = None,
+) -> None:
+    user_id = None
+    chat_id = None
+    sender_name = None
+    message_id = None
+    if update is not None:
+        try:
+            user_id = update.effective_user.id if update.effective_user else None
+            chat_id = update.effective_chat.id if update.effective_chat else None
+            sender_name = _sender_name(update)
+            message_id = update.message.message_id if update.message else None
+        except Exception:
+            pass
+
+    payload: Dict[str, Any] = {
+        "ts": time.time(),
+        "ts_iso": datetime.now(timezone.utc).isoformat(),
+        "channel": "telegram",
+        "event_type": event_type,
+        "text": str(text or ""),
+        "thread_id": str(thread_id or ""),
+        "chat_id": chat_id,
+        "user_id": user_id,
+        "sender_name": sender_name,
+        "message_id": message_id,
+    }
+    if response is not None:
+        payload["gate_reason"] = response.gate_reason
+        payload["gates_passed"] = bool(response.gates_passed)
+        payload["contradiction_detected"] = bool(response.contradiction_detected)
+    _append_live_log(payload)
 
 
 def _notifications_worker_id() -> str:
@@ -448,6 +503,13 @@ async def cmd_conflicts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         channel="telegram",
     )
     resp = bridge.send(msg)
+    _emit_live_event(
+        event_type="command",
+        text=f"/conflicts -> {resp.text}",
+        update=update,
+        response=resp,
+        thread_id=msg.thread_id,
+    )
     await update.message.reply_text(_truncate(resp.text))
 
 
@@ -466,6 +528,13 @@ async def cmd_facts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         channel="telegram",
     )
     resp = bridge.send(msg)
+    _emit_live_event(
+        event_type="command",
+        text=f"/facts -> {resp.text}",
+        update=update,
+        response=resp,
+        thread_id=msg.thread_id,
+    )
     await update.message.reply_text(_truncate(resp.text))
 
 
@@ -484,6 +553,13 @@ async def cmd_trust(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         channel="telegram",
     )
     resp = bridge.send(msg)
+    _emit_live_event(
+        event_type="command",
+        text=f"/trust -> {resp.text}",
+        update=update,
+        response=resp,
+        thread_id=msg.thread_id,
+    )
     await update.message.reply_text(_truncate(resp.text))
 
 
@@ -522,6 +598,13 @@ async def cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     loop = asyncio.get_event_loop()
     resp: ChannelResponse = await loop.run_in_executor(None, bridge.send, msg)
+    _emit_live_event(
+        event_type="command",
+        text=f"/search {query} -> {resp.text}",
+        update=update,
+        response=resp,
+        thread_id=msg.thread_id,
+    )
 
     reaction_emoji = _pick_reaction_emoji(resp)
     if reaction_emoji:
@@ -606,6 +689,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             "date": str(update.message.date) if update.message.date else None,
         },
     )
+    _emit_live_event(
+        event_type="inbound",
+        text=text,
+        update=update,
+        thread_id=msg.thread_id,
+    )
 
     # Run the blocking bridge.send() in a thread pool to not block the event loop
     loop = asyncio.get_event_loop()
@@ -638,6 +727,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         reply_text = prefix + reply_text
 
     await update.message.reply_text(_truncate(reply_text))
+    _emit_live_event(
+        event_type="outbound",
+        text=reply_text,
+        update=update,
+        response=resp,
+        thread_id=msg.thread_id,
+    )
 
 
 # ---------------------------------------------------------------------------

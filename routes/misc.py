@@ -937,6 +937,83 @@ def loops_stream(
     )
 
 
+@router.get("/api/telegram/live/stream")
+def telegram_live_stream(
+    request: Request,
+    max_initial_lines: int = Query(200, ge=0, le=2000),
+    poll_interval: float = Query(1.0, ge=0.2, le=10.0),
+):
+    """SSE tail for Telegram inbound/outbound runtime events."""
+    log_path = os.getenv("TELEGRAM_LIVE_LOG_PATH", "ai_logs/telegram_live.jsonl")
+    p = Path(log_path)
+    if not p.is_absolute():
+        p = (Path.cwd() / p).resolve()
+
+    def _read_last_lines(path: Path, count: int) -> List[str]:
+        if count <= 0 or not path.exists():
+            return []
+        try:
+            with path.open("r", encoding="utf-8", errors="ignore") as f:
+                lines = f.readlines()
+            if count >= len(lines):
+                return [ln.rstrip("\n") for ln in lines]
+            return [ln.rstrip("\n") for ln in lines[-count:]]
+        except Exception:
+            return []
+
+    def generate():
+        # Initial tail
+        for line in _read_last_lines(p, max_initial_lines):
+            if not line.strip():
+                continue
+            try:
+                payload = json.loads(line)
+            except Exception:
+                payload = {"event_type": "raw", "text": line, "ts": time.time()}
+            yield f"data: {json.dumps(payload)}\n\n"
+
+        # Follow new lines
+        last_size = p.stat().st_size if p.exists() else 0
+        while True:
+            try:
+                if p.exists():
+                    size_now = p.stat().st_size
+                    if size_now < last_size:
+                        # rotated/truncated
+                        last_size = 0
+                    if size_now > last_size:
+                        with p.open("r", encoding="utf-8", errors="ignore") as f:
+                            f.seek(last_size)
+                            chunk = f.read()
+                        last_size = size_now
+                        for raw in chunk.splitlines():
+                            if not raw.strip():
+                                continue
+                            try:
+                                payload = json.loads(raw)
+                            except Exception:
+                                payload = {"event_type": "raw", "text": raw, "ts": time.time()}
+                            yield f"data: {json.dumps(payload)}\n\n"
+                # heartbeat to keep proxies/clients alive
+                yield f"data: {json.dumps({'event_type': 'heartbeat', 'ts': time.time()})}\n\n"
+                time.sleep(poll_interval)
+            except GeneratorExit:
+                break
+            except Exception as e:
+                yield f"data: {json.dumps({'event_type': 'error', 'error': str(e), 'ts': time.time()})}\n\n"
+                time.sleep(poll_interval)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.post("/api/loops/run", response_model=LoopRunResponse)
 def loops_run(request: Request, req: LoopRunRequest) -> LoopRunResponse:
     thread_id = req.thread_id or "default"

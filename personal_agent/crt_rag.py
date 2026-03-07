@@ -1597,6 +1597,27 @@ class CRTEnhancedRAG:
         goals: List[Dict[str, Any]] = []
         conflict_beliefs: List[str] = []
 
+        def _same_identity_value(slot: str, a: str, b: str) -> bool:
+            a_norm = re.sub(r"\s+", " ", str(a or "").strip().lower())
+            b_norm = re.sub(r"\s+", " ", str(b or "").strip().lower())
+            if not a_norm or not b_norm:
+                return False
+            if a_norm == b_norm:
+                return True
+            if slot != "name":
+                return False
+            # Name alias handling: "nick" vs "nick block", or first-name prefix with same last name.
+            if a_norm.startswith(b_norm) or b_norm.startswith(a_norm):
+                return True
+            a_parts = [p for p in a_norm.split(" ") if p]
+            b_parts = [p for p in b_norm.split(" ") if p]
+            if len(a_parts) >= 2 and len(b_parts) >= 2:
+                a_first, a_last = a_parts[0], a_parts[-1]
+                b_first, b_last = b_parts[0], b_parts[-1]
+                if a_last == b_last and (a_first.startswith(b_first) or b_first.startswith(a_first)):
+                    return True
+            return False
+
         open_contras = self.ledger.get_open_contradictions(limit=50)
         for contra in open_contras:
             ctype = str(getattr(contra, "contradiction_type", "")).strip().lower()
@@ -1629,7 +1650,7 @@ class CRTEnhancedRAG:
                 if old_fact is None or new_fact is None:
                     continue
 
-                if old_fact.normalized == new_fact.normalized:
+                if _same_identity_value(slot, str(getattr(old_fact, "value", "")), str(getattr(new_fact, "value", ""))):
                     continue
 
                 is_related_by_slot = bool(inferred_slots) and slot in set(inferred_slots or [])
@@ -1643,16 +1664,22 @@ class CRTEnhancedRAG:
                 slot_name = slot.replace("_", " ")
                 old_val = str(old_fact.value)
                 new_val = str(new_fact.value)
+                option_values: List[str] = []
+                for candidate in (new_val, old_val):
+                    if candidate and not any(_same_identity_value(slot, candidate, v) for v in option_values):
+                        option_values.append(candidate)
+                if len(option_values) <= 1:
+                    continue
 
                 goals.append(
                     {
                         "action_type": "ask_user",
                         "slot": slot,
                         "ledger_id": contra.ledger_id,
-                        "options": [new_val, old_val],
+                        "options": option_values,
                         "question": (
                             f"I have conflicting memories about your {slot_name}. "
-                            f"Which is correct now: {new_val} or {old_val}?"
+                            f"Which is correct now: {' or '.join(option_values)}?"
                         ),
                         "reason": "open_conflict",
                     }
