@@ -439,6 +439,10 @@ _NAME_STOPWORDS = {
     "just",
     "not",
     "also",
+    "now",
+    "currently",
+    "presently",
+    "still",
     "really",
     "very",
     "so",
@@ -763,8 +767,19 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             len(first_token) > 4 and any(first_token.endswith(s) for s in _ADJ_SUFFIXES)
         )
 
-        # Reject common non-name tokens, infinitive phrases, adjective+preposition, and suffix patterns.
-        if tokens and not has_stopword and not looks_like_infinitive and not looks_like_adjective and not looks_like_suffix:
+        # Article guard: "I'm currently a freelance web developer" should not parse "currently" as name.
+        # Names are not normally followed by "a/an/the ..." in first-person declarations.
+        looks_like_role_phrase = trailing.startswith("a ") or trailing.startswith("an ") or trailing.startswith("the ")
+
+        # Reject common non-name tokens, infinitive phrases, adjective+preposition, suffix patterns, and role phrases.
+        if (
+            tokens
+            and not has_stopword
+            and not looks_like_infinitive
+            and not looks_like_adjective
+            and not looks_like_suffix
+            and not looks_like_role_phrase
+        ):
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
 
     # Compound introduction: "I am a Web Developer from Milwaukee Wisconsin"

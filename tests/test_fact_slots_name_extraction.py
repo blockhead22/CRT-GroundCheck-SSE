@@ -9,6 +9,11 @@ def test_fact_slots_name_avoids_im_trying_false_positive() -> None:
     assert "name" not in facts
 
 
+def test_fact_slots_name_avoids_im_currently_role_false_positive() -> None:
+    facts = extract_fact_slots("I'm currently a freelance web developer")
+    assert "name" not in facts
+
+
 def test_fact_slots_name_accepts_lowercase_name() -> None:
     facts = extract_fact_slots("my name is nick")
     assert facts.get("name") is not None
