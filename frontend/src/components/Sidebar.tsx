@@ -6,6 +6,7 @@ const nav: Array<{ id: NavId; label: string; icon: string }> = [
   { id: 'chat', label: 'Chat', icon: '✦' },
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
   { id: 'copilot', label: 'System', icon: '⚡' },
+  { id: 'live', label: 'Live', icon: '◉' },
   { id: 'loops', label: 'Loops', icon: 'L' },
   { id: 'journal', label: 'Journal', icon: 'J' },
   { id: 'showcase', label: 'Showcase', icon: '✨' },

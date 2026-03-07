@@ -21,6 +21,7 @@ import { LoopsPage } from './pages/LoopsPage'
 import { JournalPage } from './pages/JournalPage'
 import { ShowcasePage } from './pages/ShowcasePage'
 import { CopilotPage } from './pages/CopilotPage'
+import { LiveFeedPage } from './pages/LiveFeedPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, type AuthUser } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
@@ -35,7 +36,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -779,6 +780,8 @@ export default function App() {
                   <ShowcasePage />
                 ) : navActive === 'copilot' ? (
                   <CopilotPage />
+                ) : navActive === 'live' ? (
+                  <LiveFeedPage />
                 ) : (
                   <DocsPage />
                 )}
