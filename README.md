@@ -4,9 +4,8 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests: 577 passed](https://img.shields.io/badge/tests-577%20passed-brightgreen.svg)](#test-results)
-[![Adversarial: 79%](https://img.shields.io/badge/adversarial-79%25%20(15%2F19)-blue.svg)](#adversarial-stress-testing)
-[![Contradictions: 9/9](https://img.shields.io/badge/contradictions-9%2F9%20detected-brightgreen.svg)](#adversarial-stress-testing)
+[![Status: Active hardening](https://img.shields.io/badge/status-active%20hardening-orange.svg)](#current-status-march-6-2026)
+[![Latest local pytest (2026-03-06)](https://img.shields.io/badge/local%20pytest%20(2026--03--06)-1046%20passed%20%7C%2022%20failed-yellow.svg)](#current-status-march-6-2026)
 
 ---
 
@@ -35,6 +34,24 @@ CRT-GroundCheck-SSE is a **mathematical framework for AI memory** that treats co
 | **SSE** (Semantic String Engine) | Claim extraction with character-level provenance. It is architecturally impossible for SSE to delete, merge, or silently resolve a contradiction. The boundary is enforced at the code level, not by policy. |
 
 If you tell the system *"I work at Microsoft"* and later say *"I work at Google"*, both facts survive. A contradiction ledger records the tension. When you later ask *"Where do I work?"*, reconstruction gates detect the unresolved conflict and **surface the contradiction for you to decide** — instead of confidently giving the wrong answer.
+
+---
+
+## Current Status (March 6, 2026)
+
+This repository is active and currently in reliability hardening.
+
+Latest full local run (`.venv`, Windows, Python 3.13):
+- `pytest` collected **1068** tests
+- **1046 passed, 22 failed, 198 warnings** in `29m33s`
+- Log: `.tmp_debug/pytest_round_20260306_191838.log`
+
+Known active regression clusters from that run:
+- GroundCheck generic extraction coverage
+- contradiction lifecycle edge-cases (revision vs conflict fast-path behavior)
+- deterministic assistant-profile response wording and routing
+
+Historical benchmark numbers are kept below for context and are labeled with dates.
 
 ---
 
