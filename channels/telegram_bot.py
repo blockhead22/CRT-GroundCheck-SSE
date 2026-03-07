@@ -117,6 +117,8 @@ bridge = CRTBridge(api_url=CRT_API_URL)
 
 # Startup timestamp — messages older than this are stale backlog
 _BOT_START_TIME: float = time.time()
+_THREAD_TURN_COUNTER: Dict[str, int] = {}
+_THREAD_PENDING_REATTEMPT: Dict[str, int] = {}
 
 
 def _append_live_log(event: Dict[str, Any]) -> None:
@@ -131,6 +133,56 @@ def _append_live_log(event: Dict[str, Any]) -> None:
         logger.debug("[TG] live-log append failed: %s", e)
 
 
+def _json_safe(value: Any) -> Any:
+    try:
+        json.dumps(value)
+        return value
+    except Exception:
+        return str(value)
+
+
+def _response_observability(response: ChannelResponse) -> Dict[str, Any]:
+    meta = response.metadata or {}
+    pipeline_statuses = meta.get("pipeline_statuses") if isinstance(meta.get("pipeline_statuses"), list) else []
+    critic = meta.get("critic") if isinstance(meta.get("critic"), dict) else {}
+    tasking = meta.get("tasking") if isinstance(meta.get("tasking"), dict) else {}
+    reflection = {
+        "trace_id": meta.get("reflection_trace_id"),
+        "confidence": meta.get("reflection_confidence"),
+        "label": meta.get("reflection_label"),
+    }
+    gate_reason = response.gate_reason or meta.get("gate_reason")
+    decision_path = [
+        "inbound_received",
+        "bridge_query",
+        "bridge_result",
+        "gate_pass" if bool(response.gates_passed) else "gate_fail",
+        "outbound_ready",
+    ]
+    flags = []
+    if bool(response.contradiction_detected):
+        flags.append("contradiction_detected")
+    non_gate_errors = {"error", "connection_error", "engine_error"}
+    if (not bool(response.gates_passed)) and str(gate_reason or "").strip().lower() not in non_gate_errors:
+        flags.append("reconstruction_gate_active")
+    if isinstance(critic, dict) and critic.get("verdict"):
+        flags.append(f"critic:{critic.get('verdict')}")
+    return {
+        "decision_path": decision_path,
+        "flags": flags,
+        "pipeline_statuses": pipeline_statuses,
+        "critic": _json_safe(critic),
+        "tasking": _json_safe(tasking),
+        "reflection": _json_safe(reflection),
+        "metadata_keys": sorted(str(k) for k in meta.keys())[:40],
+        "response_mode": meta.get("mode"),
+        "confidence": meta.get("confidence"),
+        "unresolved_hard_conflicts": meta.get("unresolved_hard_conflicts"),
+        "reintroduced_claims_count": meta.get("reintroduced_claims_count"),
+        "gate_reason": gate_reason,
+    }
+
+
 def _emit_live_event(
     *,
     event_type: str,
@@ -138,6 +190,7 @@ def _emit_live_event(
     update: Optional[Update] = None,
     response: Optional[ChannelResponse] = None,
     thread_id: Optional[str] = None,
+    extras: Optional[Dict[str, Any]] = None,
 ) -> None:
     user_id = None
     chat_id = None
@@ -168,6 +221,10 @@ def _emit_live_event(
         payload["gate_reason"] = response.gate_reason
         payload["gates_passed"] = bool(response.gates_passed)
         payload["contradiction_detected"] = bool(response.contradiction_detected)
+        payload["obs"] = _response_observability(response)
+    if isinstance(extras, dict):
+        for k, v in extras.items():
+            payload[k] = _json_safe(v)
     _append_live_log(payload)
 
 
@@ -676,9 +733,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # React with 👀 immediately to show we're processing
     await _react_to_message(update, "👀")
 
+    thread_id = _thread_id_for(update)
+    turn_id = _THREAD_TURN_COUNTER.get(thread_id, 0) + 1
+    _THREAD_TURN_COUNTER[thread_id] = turn_id
+    prior_reattempt_turn = _THREAD_PENDING_REATTEMPT.get(thread_id)
+
     msg = ChannelMessage(
         text=text,
-        thread_id=_thread_id_for(update),
+        thread_id=thread_id,
         sender_id=_sender_id(update),
         sender_name=_sender_name(update),
         channel="telegram",
@@ -694,11 +756,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         text=text,
         update=update,
         thread_id=msg.thread_id,
+        extras={
+            "turn_id": turn_id,
+            "important": is_important,
+            "reattempt_after_turn": prior_reattempt_turn,
+            "decision_path": ["inbound_received"],
+        },
     )
 
     # Run the blocking bridge.send() in a thread pool to not block the event loop
     loop = asyncio.get_event_loop()
     resp: ChannelResponse = await loop.run_in_executor(None, bridge.send, msg)
+    _emit_live_event(
+        event_type="bridge_result",
+        text=resp.text,
+        update=update,
+        response=resp,
+        thread_id=msg.thread_id,
+        extras={
+            "turn_id": turn_id,
+            "decision_path": ["inbound_received", "bridge_query", "bridge_result"],
+            "reattempt_after_turn": prior_reattempt_turn,
+        },
+    )
 
     # Update reaction based on response (replaces the 👀)
     reaction_emoji = _pick_reaction_emoji(resp)
@@ -721,18 +801,55 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "engine_error",
     ):
         reply_text += "\n\n🔒 (reconstruction gate active)"
+        _emit_live_event(
+            event_type="flag",
+            text=f"gate_failed:{resp.gate_reason}",
+            update=update,
+            response=resp,
+            thread_id=msg.thread_id,
+            extras={
+                "turn_id": turn_id,
+                "flag_type": "gate_failed",
+                "decision_path": ["bridge_result", "gate_failed"],
+            },
+        )
+
+    if resp.contradiction_detected:
+        _emit_live_event(
+            event_type="flag",
+            text="contradiction_detected",
+            update=update,
+            response=resp,
+            thread_id=msg.thread_id,
+            extras={
+                "turn_id": turn_id,
+                "flag_type": "contradiction_detected",
+                "decision_path": ["bridge_result", "contradiction_flagged"],
+            },
+        )
 
     # Apply prefix
     if prefix:
         reply_text = prefix + reply_text
 
     await update.message.reply_text(_truncate(reply_text))
+
+    if (not bool(resp.gates_passed)) or bool(resp.contradiction_detected):
+        _THREAD_PENDING_REATTEMPT[msg.thread_id] = turn_id
+    else:
+        _THREAD_PENDING_REATTEMPT.pop(msg.thread_id, None)
+
     _emit_live_event(
         event_type="outbound",
         text=reply_text,
         update=update,
         response=resp,
         thread_id=msg.thread_id,
+        extras={
+            "turn_id": turn_id,
+            "reattempt_after_turn": prior_reattempt_turn,
+            "decision_path": ["bridge_result", "outbound_sent"],
+        },
     )
 
 

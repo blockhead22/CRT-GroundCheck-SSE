@@ -1775,6 +1775,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 # Override gates to signal contradiction disclosure
                 result["gates_passed"] = False
                 result["gate_reason"] = "contradiction_disclosure"
+                # Keep metadata consistent with disclosure path for channels/telemetry.
+                result["contradiction_detected"] = True
                 logger.info("[CRT-CRITIC] Hard fail — surfacing contradiction to user")
     except ImportError:
         logger.debug("[CRT-CRITIC] crt_critic not available")
