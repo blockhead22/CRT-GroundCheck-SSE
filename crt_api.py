@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import sqlite3
 import time
@@ -30,7 +30,7 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
 from personal_agent.two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from personal_agent.artifact_store import now_iso_utc
-from personal_agent.ollama_client import OllamaClient
+from personal_agent.hybrid_llm_client import HybridLLMClient, create_primary_llm_client
 from personal_agent.idle_scheduler import CRTIdleScheduler
 from personal_agent.evidence_packet import Citation, EvidencePacket
 from personal_agent.research_engine import ResearchEngine
@@ -216,11 +216,11 @@ def _detect_response_mood(
     
     # Warm/friendly indicators
     warm_words = ["happy", "glad", "great", "wonderful", "love", "enjoy", "excited", 
-                  "welcome", "pleasure", "delighted", "awesome", "fantastic", "😊", "🎉"]
+                  "welcome", "pleasure", "delighted", "awesome", "fantastic", "ðŸ˜Š", "ðŸŽ‰"]
     warm_count = sum(1 for w in warm_words if w in response_lower)
     
     # Playful/humor indicators
-    playful_words = ["haha", "lol", "funny", "joke", "silly", "😄", "😂", "🤣", 
+    playful_words = ["haha", "lol", "funny", "joke", "silly", "ðŸ˜„", "ðŸ˜‚", "ðŸ¤£", 
                      "quirky", "whimsical", "amusing", "teasing"]
     playful_count = sum(1 for w in playful_words if w in response_lower)
     
@@ -232,7 +232,7 @@ def _detect_response_mood(
     
     # Curious/questioning indicators
     curious_words = ["interesting", "wonder", "curious", "fascinating", "intriguing",
-                     "hmm", "perhaps", "maybe", "what if", "🤔"]
+                     "hmm", "perhaps", "maybe", "what if", "ðŸ¤”"]
     curious_count = sum(1 for w in curious_words if w in response_lower or w in thinking_lower)
     
     # Uncertain indicators
@@ -387,7 +387,7 @@ def _build_expansion_prompt(
 
 
 def _generate_expansion(
-    llm_client: OllamaClient,
+    llm_client: Any,
     question: str,
     response: str,
     known_facts: str,
@@ -985,7 +985,7 @@ def create_app() -> FastAPI:
             thought_content = task.payload.get("thought_content", "")
             thought_type = task.payload.get("thought_type", "scheduled")
             thread_id = task.thread_id
-            logger.info(f"[THOUGHT] 💭 Thought for thread {thread_id}: {thought_content} (type: {thought_type})")
+            logger.info(f"[THOUGHT] ðŸ’­ Thought for thread {thread_id}: {thought_content} (type: {thought_type})")
         except Exception as e:
             logger.error(f"[THOUGHT] Error handling thought: {e}")
     
@@ -1049,21 +1049,21 @@ def create_app() -> FastAPI:
     }
 
     # Initialize shared LLM client for all threads (lazy initialization)
-    _llm_client: Optional[OllamaClient] = None
+    _llm_client: Optional[HybridLLMClient] = None
     _llm_lock = threading.Lock()
-    _default_router_model = str(os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest").strip() or "llama3.2:latest"
-    model_router = ModelRouter(default_model=_default_router_model)
+    _default_router_model = str(
+        os.getenv("CRT_OLLAMA_MODEL")
+        or ((runtime_cfg.get("generation_stack") or {}).get("local") or {}).get("default_model")
+        or "llama3.2:latest"
+    ).strip() or "llama3.2:latest"
+    model_router = ModelRouter(default_model=_default_router_model, runtime_config=runtime_cfg)
 
     def _llm_feature_enabled() -> bool:
         raw = str(os.getenv("CRT_ENABLE_LLM", "true") or "").strip().lower()
         return raw not in {"0", "false", "no", "off"}
     
-    def get_llm_client() -> Optional[OllamaClient]:
-        """Get or create shared LLM client for hybrid extraction.
-        
-        Set CRT_ENABLE_LLM=true environment variable to enable.
-        Requires Ollama to be running with llama3.2:latest model available.
-        """
+    def get_llm_client() -> Optional[HybridLLMClient]:
+        """Get or create the shared primary LLM client."""
         nonlocal _llm_client
         
         if not _llm_feature_enabled():
@@ -1073,12 +1073,19 @@ def create_app() -> FastAPI:
         with _llm_lock:
             if _llm_client is None:
                 try:
-                    model = str(os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest").strip() or "llama3.2:latest"
-                    logger.info(f"[API] Initializing OllamaClient with model: {model}...")
-                    _llm_client = OllamaClient(model=model)
-                    logger.info("[API] ✓ OllamaClient initialized successfully")
+                    logger.info("[API] Initializing primary LLM client...")
+                    _llm_client = create_primary_llm_client(runtime_cfg)
+                    if _llm_client is not None:
+                        logger.info(
+                            "[API] Primary LLM initialized (product_mode=%s cloud_available=%s local_model=%s)",
+                            getattr(_llm_client, "product_mode", "unknown"),
+                            getattr(_llm_client, "cloud_available", False),
+                            getattr(_llm_client, "model", ""),
+                        )
+                    else:
+                        logger.warning("[API] No LLM client available after initialization")
                 except Exception as e:
-                    logger.warning(f"[API] ✗ Failed to initialize OllamaClient: {e}")
+                    logger.warning(f"[API] Failed to initialize primary LLM client: {e}")
                     logger.warning("[API] Falling back to regex-only extraction")
                     _llm_client = None
         return _llm_client
@@ -1206,7 +1213,7 @@ def create_app() -> FastAPI:
             from personal_agent.crt_core import encode_vector
             # Trigger model load with dummy text
             _ = encode_vector("test")
-            logger.info("[STARTUP] ✓ Embedding model loaded")
+            logger.info("[STARTUP] âœ“ Embedding model loaded")
         except Exception as e:
             logger.warning(f"[STARTUP] Could not pre-load embedding model: {e}")
         
@@ -1265,7 +1272,7 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"[STARTUP] Failed to start heartbeat loop: {e}")
 
-        # Seed self-knowledge (idempotent — skips facts that already exist)
+        # Seed self-knowledge (idempotent â€” skips facts that already exist)
         try:
             from scripts.seed_self_knowledge import seed_self_knowledge
             import glob
@@ -1375,9 +1382,10 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     
-    # Default to localhost — set CRT_HOST=0.0.0.0 only behind a reverse proxy
+    # Default to localhost â€” set CRT_HOST=0.0.0.0 only behind a reverse proxy
     host = os.getenv("CRT_HOST", "127.0.0.1")
     port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host=host, port=port)
+
 
 

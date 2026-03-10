@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import os
@@ -143,6 +143,50 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
             ],
         },
     },
+
+    # Product mode: where generation happens versus where authority lives.
+    "product_mode": {
+        "mode": "local_only",
+        "memory_authority": "local",
+        "verification_authority": "local",
+        "observability_authority": "local",
+    },
+
+    # Provider stack for generation. The control layer remains local.
+    "generation_stack": {
+        "local": {
+            "enabled": True,
+            "default_model": "llama3.2:latest",
+        },
+        "cloud": {
+            "enabled": False,
+            "provider": "openai_compatible",
+            "model": "gpt-5.4-thinking",
+            "base_url": "https://api.openai.com/v1",
+            "api_key_env": "OPENAI_API_KEY",
+            "timeout_seconds": 120,
+            "redact_memory_metadata": True,
+            "max_context_chars": 14000,
+            "allowed_channels": [],
+            "denied_channels": ["telegram"],
+            "fact_allowlist": [],
+            "slot_denylist": [
+                "name",
+                "pronouns",
+                "location",
+                "address",
+                "email",
+                "phone",
+                "employer",
+                "title",
+                "first_language",
+            ],
+        },
+        "routing": {
+            "cloud_routes": ["reasoning", "research", "creative"],
+            "min_tokens_for_cloud": 16,
+        },
+    },
     
     "learned_suggestions": {
         "enabled": True,
@@ -184,7 +228,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         ],
     },
 
-    # Dev-facing: periodic train→eval→publish loop for the suggestion-only model.
+    # Dev-facing: periodic trainâ†’evalâ†’publish loop for the suggestion-only model.
     # Safe by design: it only updates a model used for *recommendations*, not beliefs.
     "training_loop": {
         "enabled": False,
@@ -230,20 +274,24 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         "enabled": True,
         "responses": {
             "occupation": (
-                "I'm an AI assistant (a software system). I don't have a human occupation, "
-                "but my role is to help with questions, writing, and problem-solving."
+                "I'm an AI assistant system. My role is to keep memory, contradiction checks, "
+                "verification, routing, and observability under local control while helping with questions and tasks."
             ),
             "purpose": (
-                "I'm an AI assistant designed to help you think, write, and get tasks done. "
-                "I can use our chat context when it's provided, and I try to be explicit when I'm uncertain."
+                "I'm a verified agent designed to help with questions and tasks while keeping memory, "
+                "contradiction handling, and verification grounded in a local control layer."
             ),
-            "identity": "I'm an AI assistant (a software system) designed to help with information and tasks.",
+            "identity": (
+                "I'm Aether, a verified AI assistant system. My memory, contradiction checks, "
+                "verification, routing, and observability stay under the local CRT control layer. "
+                "Depending on configuration, generation may use a local or cloud model."
+            ),
             "background_general": (
-                "I don't have personal experiences or a human background—I'm an AI system. "
-                "I can still help with information, planning, and examples if you tell me what you need."
+                "I don't have personal experiences or a human backgroundâ€”I'm an AI system. "
+                "I can still help with information, planning, and examples, and I keep memory and verification under local control."
             ),
             "background_filmmaking": (
-                "I don't have a personal background or real-world experience in filmmaking—I'm an AI system. "
+                "I don't have a personal background or real-world experience in filmmakingâ€”I'm an AI system. "
                 "I can still help with filmmaking concepts, writing, planning, and feedback if you tell me what you're working on."
             ),
         },
@@ -256,7 +304,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         "responses": {
             "known_work_prefix": "From our chat, I only know this about your work:",
             "ask_to_store": "If you want, tell me your current job title/occupation in one line and I'll store it as a fact.",
-            "unknown": "I don't have a reliable stored memory of your occupation/job yet — if you tell me, I can remember it going forward.",
+            "unknown": "I don't have a reliable stored memory of your occupation/job yet â€” if you tell me, I can remember it going forward.",
         },
     },
 
@@ -335,7 +383,7 @@ def load_runtime_config(config_path: Optional[str] = None, *, strict: Optional[b
         path = Path(candidate)
         if path.exists() and path.is_file():
             try:
-                merged = _deep_merge(_DEFAULT_CONFIG, json.loads(path.read_text(encoding="utf-8")))
+                merged = _deep_merge(_DEFAULT_CONFIG, json.loads(path.read_text(encoding="utf-8-sig")))
                 err = _validate_runtime_config(merged, strict=strict_enabled)
                 if err:
                     warnings.warn(err, RuntimeWarning)
@@ -352,7 +400,7 @@ def load_runtime_config(config_path: Optional[str] = None, *, strict: Optional[b
     for candidate_path in (module_default, Path.cwd() / "crt_runtime_config.json"):
         if candidate_path.exists() and candidate_path.is_file():
             try:
-                merged = _deep_merge(_DEFAULT_CONFIG, json.loads(candidate_path.read_text(encoding="utf-8")))
+                merged = _deep_merge(_DEFAULT_CONFIG, json.loads(candidate_path.read_text(encoding="utf-8-sig")))
                 err = _validate_runtime_config(merged, strict=strict_enabled)
                 if err:
                     warnings.warn(err, RuntimeWarning)
@@ -399,3 +447,5 @@ def clear_runtime_config_cache() -> None:
     """
 
     _get_runtime_config_cached.cache_clear()
+
+

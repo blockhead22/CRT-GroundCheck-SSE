@@ -24,6 +24,14 @@ type LiveEvent = {
     gate_reason?: string
     unresolved_hard_conflicts?: number
     reintroduced_claims_count?: number
+    product_mode?: string
+    generation_provider?: string
+    model_route?: {
+      route?: string
+      provider?: string
+      model?: string
+      reason?: string
+    }
     reflection?: {
       trace_id?: string
       confidence?: number
@@ -143,6 +151,11 @@ export function LiveFeedPage() {
                 {(e.obs?.response_mode || typeof e.obs?.confidence === 'number') ? (
                   <div className="mt-1 text-[10px] text-white/60">
                     mode={e.obs?.response_mode || 'n/a'} conf={typeof e.obs?.confidence === 'number' ? e.obs.confidence.toFixed(2) : 'n/a'}
+                  </div>
+                ) : null}
+                {(e.obs?.product_mode || e.obs?.generation_provider || e.obs?.model_route?.route) ? (
+                  <div className="mt-1 text-[10px] text-sky-200/90">
+                    product={e.obs?.product_mode || 'n/a'} provider={e.obs?.generation_provider || e.obs?.model_route?.provider || 'n/a'} route={e.obs?.model_route?.route || 'n/a'}
                   </div>
                 ) : null}
                 {reflection?.trace_id ? (

@@ -1,89 +1,167 @@
 {
-  "background_jobs": {
-    "enabled": true,
-    "jobs_db_path": "artifacts/crt_jobs.db",
-    "artifacts_dir": "artifacts",
-    "worker_interval_seconds": 2,
-    "idle_scheduler_enabled": true,
-    "idle_seconds": 120,
-    "auto_resolve_contradictions_enabled": true,
-    "auto_web_research_enabled": false,
-    "auto_learning_enabled": true
-  },
-  "learned_suggestions": {
-    "enabled": true,
-    "emit_metadata": true,
-    "emit_ab": true,
-    "print_in_stress_test": true,
-    "write_jsonl": true,
-    "jsonl_include_full_answer": true
-  },
-  "provenance": {
-    "enabled": true,
-    "world_check": {
-      "enabled": true,
-      "max_tokens": 140
-    }
-  },
-  "reflection": {
-    "artifacts_dir": "artifacts",
-    "out_model_path": "artifacts/learned_suggestions.latest.joblib",
-    "min_examples": 50,
-    "max_runs": 0
-  },
-  "journal_behavior": {
-    "style_mode": "reddit_thread",
-    "apply_to_self_text": false,
-    "enforce_authentic_self_reflection": true,
-    "allowed_future_styles": [
-      "reddit_thread",
-      "structured_notes",
-      "compact_reflection"
-    ]
-  },
-  "training_loop": {
-    "enabled": true,
-    "source": "thread",
-    "thread_id": "t1",
-    "interval_seconds": 300,
-    "run_on_startup": true,
-    "min_train_examples": 20,
-    "min_eval_examples": 20,
-    "min_eval_accuracy": 0.6,
-    "max_prefer_latest_rate": 0.9
-  },
-  "conflict_warning": {
-    "enabled": true
-  },
-  "assistant_profile": {
-    "enabled": true,
-    "responses": {
-      "occupation": "I'm Aether, your personal AI assistant system. My job is to remember what you tell me, verify my answers against recorded facts, search the web when needed, and catch myself when I contradict something I know. I run entirely on your local machine.",
-      "purpose": "I'm your personal AI assistant. I store everything you tell me as trust-weighted memories (semantic embeddings in SQLite), verify my answers with CRT-as-Critic (~1ms fact-checking), track contradictions instead of silently overwriting them, and search the web via DuckDuckGo when I don't have the answer in memory.",
-      "identity": "I'm Aether — a personal AI assistant built on CRT-GroundCheck. My brain is an Ollama LLM (llama3.2) running locally. My memory is GroundCheck: trust-weighted facts stored as 384-dimensional semantic embeddings. After I generate an answer, CRT-as-Critic verifies it against my memories in ~1ms. I also have a DuckDuckGo web search tool, a contradiction ledger that preserves conflicting facts, and a heartbeat system that does autonomous maintenance in the background.",
-      "background_general": "I don't have personal experiences — I'm an AI assistant software system. But I'm not a generic chatbot either. I'm built on: (1) GroundCheck memory with trust-weighted embeddings, (2) CRT-as-Critic post-generation verification, (3) a contradiction ledger that tracks conflicts instead of overwriting, (4) reconstruction gates that score answer confidence, and (5) a heartbeat loop that runs trust decay and memory audits autonomously.",
-      "background_filmmaking": "I don't have personal filmmaking experience — I'm an AI system. But I can help with filmmaking concepts, and I'll remember what you tell me about your projects with trust-weighted accuracy."
-    }
-  },
-  "user_named_reference": {
-    "enabled": true,
-    "responses": {
-      "known_work_prefix": "From our chat, I only know this about your work:",
-      "ask_to_store": "If you want, tell me your current job title/occupation in one line and I'll store it as a fact.",
-      "unknown": "I don't have a reliable stored memory of your occupation/job yet — if you tell me, I can remember it going forward."
-    }
-  },
-  "onboarding": {
-    "enabled": true,
-    "auto_run_when_memory_empty": true,
-    "questions": [
-      { "slot": "name", "kind": "fact", "prompt": "What name should I call you?" },
-      { "slot": "pronouns", "kind": "fact", "prompt": "What pronouns should I use for you? (optional)" },
-      { "slot": "title", "kind": "fact", "prompt": "What's your job title/role? (optional)" },
-      { "slot": "employer", "kind": "fact", "prompt": "Who do you work for? (optional)" },
-      { "slot": "location", "kind": "fact", "prompt": "Where are you located? (optional)" },
-      { "slot": "communication_style", "kind": "pref", "prompt": "How should I communicate? (e.g., concise, detailed, direct)" },
-      { "slot": "goals", "kind": "pref", "prompt": "What are you hoping to use this assistant for?" }
-    ]
-  }
+    "background_jobs":  {
+                            "enabled":  true,
+                            "jobs_db_path":  "artifacts/crt_jobs.db",
+                            "artifacts_dir":  "artifacts",
+                            "worker_interval_seconds":  2,
+                            "idle_scheduler_enabled":  true,
+                            "idle_seconds":  120,
+                            "auto_resolve_contradictions_enabled":  true,
+                            "auto_web_research_enabled":  false,
+                            "auto_learning_enabled":  true
+                        },
+    "learned_suggestions":  {
+                                "enabled":  true,
+                                "emit_metadata":  true,
+                                "emit_ab":  true,
+                                "print_in_stress_test":  true,
+                                "write_jsonl":  true,
+                                "jsonl_include_full_answer":  true
+                            },
+    "provenance":  {
+                       "enabled":  true,
+                       "world_check":  {
+                                           "enabled":  true,
+                                           "max_tokens":  140
+                                       }
+                   },
+    "reflection":  {
+                       "artifacts_dir":  "artifacts",
+                       "out_model_path":  "artifacts/learned_suggestions.latest.joblib",
+                       "min_examples":  50,
+                       "max_runs":  0
+                   },
+    "journal_behavior":  {
+                             "style_mode":  "reddit_thread",
+                             "apply_to_self_text":  false,
+                             "enforce_authentic_self_reflection":  true,
+                             "allowed_future_styles":  [
+                                                           "reddit_thread",
+                                                           "structured_notes",
+                                                           "compact_reflection"
+                                                       ]
+                         },
+    "training_loop":  {
+                          "enabled":  true,
+                          "source":  "thread",
+                          "thread_id":  "t1",
+                          "interval_seconds":  300,
+                          "run_on_startup":  true,
+                          "min_train_examples":  20,
+                          "min_eval_examples":  20,
+                          "min_eval_accuracy":  0.6,
+                          "max_prefer_latest_rate":  0.9
+                      },
+    "conflict_warning":  {
+                             "enabled":  true
+                         },
+    "assistant_profile":  {
+                              "enabled":  true,
+                              "responses":  {
+                                                "occupation":  "I\u0027m Aether, a verified AI assistant system. My job is to keep memory, contradiction checks, verification, routing, and observability under local control while helping with questions and tasks.",
+                                                "purpose":  "I\u0027m a verified agent designed to help with questions and tasks while keeping memory, contradiction handling, and verification grounded in a local control layer. Depending on configuration, I can use a local or cloud model for generation.",
+                                                "identity":  "I\u0027m Aether - a verified AI assistant built on CRT-GroundCheck. My memory, contradiction checks, verification, routing, and observability stay under the local CRT control layer. Depending on configuration, generation may use a local or cloud model. I also have web search, a contradiction ledger, and runtime supervision.",
+                                                "background_general":  "I don\u0027t have personal experiences - I\u0027m an AI assistant software system. I\u0027m built around GroundCheck memory, CRT-as-Critic verification, a contradiction ledger, reconstruction gates, and local observability. The control layer stays local even when generation is escalated.",
+                                                "background_filmmaking":  "I don\u0027t have personal filmmaking experience Ã¢â‚¬â€ I\u0027m an AI system. But I can help with filmmaking concepts, and I\u0027ll remember what you tell me about your projects with trust-weighted accuracy."
+                                            }
+                          },
+    "user_named_reference":  {
+                                 "enabled":  true,
+                                 "responses":  {
+                                                   "known_work_prefix":  "From our chat, I only know this about your work:",
+                                                   "ask_to_store":  "If you want, tell me your current job title/occupation in one line and I\u0027ll store it as a fact.",
+                                                   "unknown":  "I don\u0027t have a reliable stored memory of your occupation/job yet Ã¢â‚¬â€ if you tell me, I can remember it going forward."
+                                               }
+                             },
+    "onboarding":  {
+                       "enabled":  true,
+                       "auto_run_when_memory_empty":  true,
+                       "questions":  [
+                                         {
+                                             "slot":  "name",
+                                             "kind":  "fact",
+                                             "prompt":  "What name should I call you?"
+                                         },
+                                         {
+                                             "slot":  "pronouns",
+                                             "kind":  "fact",
+                                             "prompt":  "What pronouns should I use for you? (optional)"
+                                         },
+                                         {
+                                             "slot":  "title",
+                                             "kind":  "fact",
+                                             "prompt":  "What\u0027s your job title/role? (optional)"
+                                         },
+                                         {
+                                             "slot":  "employer",
+                                             "kind":  "fact",
+                                             "prompt":  "Who do you work for? (optional)"
+                                         },
+                                         {
+                                             "slot":  "location",
+                                             "kind":  "fact",
+                                             "prompt":  "Where are you located? (optional)"
+                                         },
+                                         {
+                                             "slot":  "communication_style",
+                                             "kind":  "pref",
+                                             "prompt":  "How should I communicate? (e.g., concise, detailed, direct)"
+                                         },
+                                         {
+                                             "slot":  "goals",
+                                             "kind":  "pref",
+                                             "prompt":  "What are you hoping to use this assistant for?"
+                                         }
+                                     ]
+                   },
+    "product_mode":  {
+                         "mode":  "hybrid_verified",
+                         "memory_authority":  "local",
+                         "verification_authority":  "local",
+                         "observability_authority":  "local"
+                     },
+    "generation_stack":  {
+                             "local":  {
+                                           "enabled":  true,
+                                           "default_model":  "llama3.2:latest"
+                                       },
+                             "cloud":  {
+                                           "enabled":  false,
+                                           "provider":  "openai_compatible",
+                                           "model":  "gpt-5.4-thinking",
+                                           "base_url":  "https://api.openai.com/v1",
+                                           "api_key_env":  "OPENAI_API_KEY",
+                                           "timeout_seconds":  120,
+                                           "redact_memory_metadata":  true,
+                                           "max_context_chars":  14000,
+                                           "allowed_channels":  [
+
+                                                                ],
+                                           "denied_channels":  [
+                                                                   "telegram"
+                                                               ],
+                                           "fact_allowlist":  [
+
+                                                              ],
+                                           "slot_denylist":  [
+                                                                 "name",
+                                                                 "pronouns",
+                                                                 "location",
+                                                                 "address",
+                                                                 "email",
+                                                                 "phone",
+                                                                 "employer",
+                                                                 "title",
+                                                                 "first_language"
+                                                             ]
+                                       },
+                             "routing":  {
+                                             "cloud_routes":  [
+                                                                  "reasoning",
+                                                                  "research",
+                                                                  "creative"
+                                                              ],
+                                             "min_tokens_for_cloud":  16
+                                         }
+                         }
 }

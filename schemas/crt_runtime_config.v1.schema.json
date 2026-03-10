@@ -5,6 +5,8 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "product_mode",
+    "generation_stack",
     "learned_suggestions",
     "provenance",
     "reflection",
@@ -128,6 +130,92 @@
           "additionalProperties": {
             "type": "array",
             "items": { "type": "string" }
+          }
+        }
+      }
+    },
+    "product_mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "memory_authority", "verification_authority", "observability_authority"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["local_only", "hybrid_verified"] },
+        "memory_authority": { "type": "string", "enum": ["local"] },
+        "verification_authority": { "type": "string", "enum": ["local"] },
+        "observability_authority": { "type": "string", "enum": ["local"] }
+      }
+    },
+    "generation_stack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local", "cloud", "routing"],
+      "properties": {
+        "local": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "default_model"],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "default_model": { "type": "string", "minLength": 1 }
+          }
+        },
+        "cloud": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled",
+            "provider",
+            "model",
+            "base_url",
+            "api_key_env",
+            "timeout_seconds",
+            "redact_memory_metadata",
+            "max_context_chars",
+            "allowed_channels",
+            "denied_channels",
+            "fact_allowlist",
+            "slot_denylist"
+          ],
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "provider": { "type": "string", "enum": ["openai_compatible"] },
+            "model": { "type": "string", "minLength": 1 },
+            "base_url": { "type": "string", "minLength": 1 },
+            "api_key_env": { "type": "string", "minLength": 1 },
+            "timeout_seconds": { "type": "number", "minimum": 1 },
+            "redact_memory_metadata": { "type": "boolean" },
+            "max_context_chars": { "type": "integer", "minimum": 256 },
+            "allowed_channels": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "denied_channels": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "fact_allowlist": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "slot_denylist": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "routing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["cloud_routes", "min_tokens_for_cloud"],
+          "properties": {
+            "cloud_routes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["fast", "reasoning", "research", "code", "creative"]
+              }
+            },
+            "min_tokens_for_cloud": { "type": "integer", "minimum": 1 }
           }
         }
       }

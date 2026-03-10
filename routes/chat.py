@@ -36,7 +36,6 @@ from .models import (
     IntentQueryResponse,
 )
 
-from personal_agent.ollama_client import OllamaClient
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.db_utils import get_thread_session_db
 from personal_agent.greeting_system import get_time_based_greeting
@@ -732,7 +731,8 @@ def _route_model_for_request(
     query: str,
     mode: Optional[str] = None,
     preference_profile: Optional[Dict[str, Any]] = None,
-) -> Tuple[Optional[str], Optional[Dict[str, str]]]:
+    channel: Optional[str] = None,
+) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
     """Select a model for this request using app-level model router."""
     router_obj = getattr(request.app.state, "model_router", None)
     if router_obj is None:
@@ -742,6 +742,7 @@ def _route_model_for_request(
             query=query,
             requested_mode=mode,
             preference_profile=preference_profile,
+            channel=channel,
         )
         if routed is None:
             return None, None
@@ -810,7 +811,7 @@ def _build_expansion_prompt(
 
 
 def _generate_expansion(
-    llm_client: OllamaClient,
+    llm_client: Any,
     question: str,
     response: str,
     known_facts: str,
@@ -2014,6 +2015,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         query=effective_message,
         mode=req.mode,
         preference_profile=preference_profile,
+        channel=req.channel,
     )
 
     control_state.mark("generate", "drafting", detail="engine_query")
@@ -2363,6 +2365,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         "critic": critic_meta,
         "model_route": model_route,
         "model_override": model_override,
+        "product_mode": ((runtime_config.get("product_mode") or {}).get("mode") if isinstance(runtime_config, dict) else None),
+        "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
         "groundcheck_bridge": groundcheck_bridge_meta,
     }
 
@@ -2656,6 +2660,7 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
             query=req.message,
             mode=None,
             preference_profile=preference_profile,
+            channel=None,
         )
         result = engine.query(
             user_query=query_with_continuity,

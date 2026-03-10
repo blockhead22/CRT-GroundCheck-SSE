@@ -1,4 +1,4 @@
-"""
+﻿"""
 CRT-Enhanced RAG Engine
 
 Integrates CRT principles into RAG:
@@ -308,7 +308,7 @@ class CRTEnhancedRAG:
         """Check if two values are semantically equivalent (paraphrases).
         
         For identity-critical slots (name, employer, location, spouse, etc.),
-        only exact string matches count — the semantic model would incorrectly
+        only exact string matches count â€” the semantic model would incorrectly
         match "Alex Chen" ~ "Jordan Blake" because both are person names.
         """
         # Identity-critical hard slots: different values are NEVER semantic matches
@@ -341,9 +341,9 @@ class CRTEnhancedRAG:
         Tracks denial facts with denial=True flag to enable retraction_of_denial detection.
         
         Examples of denials:
-        - "I don't have a PhD" → (True, "PhD")
-        - "I never said I worked at Google" → (True, "Google")
-        - "No, I'm not a manager" → (True, "manager")
+        - "I don't have a PhD" â†’ (True, "PhD")
+        - "I never said I worked at Google" â†’ (True, "Google")
+        - "No, I'm not a manager" â†’ (True, "manager")
         
         Args:
             text: The text to analyze
@@ -491,7 +491,7 @@ class CRTEnhancedRAG:
         
         # Build citation based on denial type
         citation = (
-            f"⚠️ I have a record of you saying: \"{text_snippet}\"{time_ref}\n"
+            f"âš ï¸ I have a record of you saying: \"{text_snippet}\"{time_ref}\n"
             f"This indicates {slot_name} was '{denied_value}'. "
             f"Would you like to correct this information?"
         )
@@ -608,8 +608,8 @@ class CRTEnhancedRAG:
         """Detect identity-wipe / mass-retraction ("blindside") attacks.
 
         A blindside attack tries to invalidate a large swath of prior facts in
-        a single message — e.g. "Everything I told you was a lie" or "Forget
-        everything — my real name is Zara, I'm 40, and I live in Berlin".
+        a single message â€” e.g. "Everything I told you was a lie" or "Forget
+        everything â€” my real name is Zara, I'm 40, and I live in Berlin".
 
         Returns:
             (is_blindside, reason_string)
@@ -635,7 +635,7 @@ class CRTEnhancedRAG:
                 return True, f"blindside_pattern:{reason}"
 
         # ---- Multi-fact replacement heuristic ----
-        # If the message asserts ≥3 new facts that contradict existing ones,
+        # If the message asserts â‰¥3 new facts that contradict existing ones,
         # treat it as a blindside even without an explicit retraction phrase.
         if previous_memories:
             new_facts = extract_fact_slots(query_clean) or {}
@@ -788,11 +788,11 @@ class CRTEnhancedRAG:
         """
         Retrieve memories using CRT trust-weighted scoring.
         
-        R_i = s_i · ρ_i · w_i
+        R_i = s_i Â· Ï_i Â· w_i
         where:
         - s_i = similarity(query, memory)
-        - ρ_i = recency_weight
-        - w_i = α·trust + (1-α)·confidence
+        - Ï_i = recency_weight
+        - w_i = Î±Â·trust + (1-Î±)Â·confidence
         
         Phase 2.0 Updates:
         - relevant_domains: Boost memories matching these domains
@@ -1216,7 +1216,7 @@ class CRTEnhancedRAG:
                 continue
             # Match "nick block" with flexible whitespace and allow possessive.
             token_pat = r"\s+".join(re.escape(t) for t in tokens)
-            pat = rf"\b{token_pat}(?:['’]s)?\b"
+            pat = rf"\b{token_pat}(?:['â€™]s)?\b"
             if re.search(pat, q, flags=re.IGNORECASE):
                 return True
         return False
@@ -1461,7 +1461,7 @@ class CRTEnhancedRAG:
 
         return _resp(
             "unknown",
-            "I don't have a reliable stored memory of your occupation/job yet — if you tell me, I can remember it going forward.",
+            "I don't have a reliable stored memory of your occupation/job yet â€” if you tell me, I can remember it going forward.",
         )
     
     # ========================================================================
@@ -1559,8 +1559,8 @@ class CRTEnhancedRAG:
         # UX soften: even when we cannot answer the conflicted slot, keep the chat usable.
         # Offer to continue on other parts of the question or other topics.
         continue_line = (
-            "\nIf you want, I can still help with other parts of your question that don’t depend on that fact — "
-            "tell me what you’d like to focus on.\n"
+            "\nIf you want, I can still help with other parts of your question that donâ€™t depend on that fact â€” "
+            "tell me what youâ€™d like to focus on.\n"
         )
 
         return (
@@ -1706,13 +1706,13 @@ class CRTEnhancedRAG:
         Extract the factual value from a memory text.
         
         Examples:
-            "FACT: name = Nick Block" → "Nick Block"
-            "FACT: employer = Microsoft" → "Microsoft"
-            "I work at Microsoft" → "Microsoft"
-            "I work at Microsoft as a senior developer" → "Microsoft"
-            "I work at Amazon Web Services" → "Amazon Web Services"
-            "My name is Sarah" → "Sarah"
-            "I've been programming for 8 years" → "8 years"
+            "FACT: name = Nick Block" â†’ "Nick Block"
+            "FACT: employer = Microsoft" â†’ "Microsoft"
+            "I work at Microsoft" â†’ "Microsoft"
+            "I work at Microsoft as a senior developer" â†’ "Microsoft"
+            "I work at Amazon Web Services" â†’ "Amazon Web Services"
+            "My name is Sarah" â†’ "Sarah"
+            "I've been programming for 8 years" â†’ "8 years"
         
         Args:
             text: Memory text
@@ -2091,7 +2091,7 @@ class CRTEnhancedRAG:
             # Return assertive answer with caveat as clarification
             assertive_answer = f"{answer_value} {caveat}" if answer_value else f"{resolved_memory.text} {caveat}"
             
-            logger.info(f"[GATE_CHECK] ✓ Assertively resolved {len(relevant_contras)} contradiction(s): {assertive_answer}")
+            logger.info(f"[GATE_CHECK] âœ“ Assertively resolved {len(relevant_contras)} contradiction(s): {assertive_answer}")
             
             # FIX: Return True because contradiction was RESOLVED (not blocked)
             # Gates pass when we successfully resolve with caveat disclosure
@@ -2111,7 +2111,7 @@ class CRTEnhancedRAG:
                     caveat = f"(changed from {old_value})"
                 assertive_answer = f"{new_value} {caveat}"
                 
-                logger.info(f"[GATE_CHECK] ✓ Resolved using blocking_data fallback: {assertive_answer}")
+                logger.info(f"[GATE_CHECK] âœ“ Resolved using blocking_data fallback: {assertive_answer}")
                 return True, assertive_answer, blocking_contradictions
         
         # Final fallback to old questioning behavior if all else fails
@@ -2130,7 +2130,7 @@ class CRTEnhancedRAG:
         
         clarification = "\n\n".join(messages)
         
-        logger.info(f"[GATE_CHECK] ✗ Gates blocked: {len(blocking_contradictions)} contradictions")
+        logger.info(f"[GATE_CHECK] âœ— Gates blocked: {len(blocking_contradictions)} contradictions")
         
         return False, clarification, blocking_contradictions
     
@@ -2258,7 +2258,7 @@ class CRTEnhancedRAG:
                 correction_result = detect_correction_type(user_query)
                 if correction_result:
                     correction_type, old_val, new_val = correction_result
-                    logger.info(f"[CORRECTION_DETECTED] {correction_type}: {old_val} → {new_val}")
+                    logger.info(f"[CORRECTION_DETECTED] {correction_type}: {old_val} â†’ {new_val}")
                     
                     # Verify the correction relates to this slot's values
                     old_val_lower = (old_val or "").lower()
@@ -2286,7 +2286,7 @@ class CRTEnhancedRAG:
                             drift_mean=drift,
                             confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
                             query=user_query,
-                            summary=f"{slot}: {correction_type} - {old_val} → {new_val}",
+                            summary=f"{slot}: {correction_type} - {old_val} â†’ {new_val}",
                             old_text=prev_mem.text,
                             new_text=user_query,
                             old_vector=prev_mem.vector,
@@ -2297,7 +2297,7 @@ class CRTEnhancedRAG:
                         return True, contradiction_entry
                     else:
                         # Correction pattern found but doesn't match this slot's values.
-                        # IMPORTANT: Do NOT 'continue' here — we must still fall through
+                        # IMPORTANT: Do NOT 'continue' here â€” we must still fall through
                         # to the value-mismatch / NO_ML_FALLBACK checks below.
                         # Previously this was 'continue' which caused 89% of soft corrections
                         # (e.g. "Actually, my real name is Jordan Blake") to be silently dropped.
@@ -2348,7 +2348,7 @@ class CRTEnhancedRAG:
                 # Check if values are semantically equivalent (paraphrase, not contradiction)
                 sem_match = self._is_semantic_match(str(prev_value), str(new_value), slot)
                 if sem_match:
-                    logger.debug(f"[SEMANTIC_MATCH] Skipping contradiction - semantic match: {prev_value} ≈ {new_value}")
+                    logger.debug(f"[SEMANTIC_MATCH] Skipping contradiction - semantic match: {prev_value} â‰ˆ {new_value}")
                     continue
                 
                 # ==============================================================
@@ -2557,7 +2557,7 @@ class CRTEnhancedRAG:
                 # - Red zone (low confidence): Record and reject
                 if disclosure_decision.action == DisclosureAction.ACCEPT and not result["is_contradiction"]:
                     # High confidence AND ML says no contradiction - skip
-                    logger.info(f"[DISCLOSURE_POLICY] ✓ Green zone acceptance for {slot}")
+                    logger.info(f"[DISCLOSURE_POLICY] âœ“ Green zone acceptance for {slot}")
                     continue
                 
                 # Record contradiction if detected (yellow or red zone, or ML flagged it)
@@ -2585,7 +2585,7 @@ class CRTEnhancedRAG:
                     if disclosure_decision.action == DisclosureAction.CLARIFY:
                         suggested_policy_final = "clarify"  # Override to clarification
                         logger.info(
-                            f"[DISCLOSURE_POLICY] ⚠ Yellow zone - routing to clarification for {slot}"
+                            f"[DISCLOSURE_POLICY] âš  Yellow zone - routing to clarification for {slot}"
                         )
                     
                     contradiction_entry = self.ledger.record_contradiction(
@@ -2594,7 +2594,7 @@ class CRTEnhancedRAG:
                         drift_mean=drift,
                         confidence_delta=float(prev_mem.confidence) - float(new_memory.confidence),
                         query=user_query,
-                        summary=f"{slot}: {prev_value} → {new_value} ({result['category']})",
+                        summary=f"{slot}: {prev_value} â†’ {new_value} ({result['category']})",
                         old_text=prev_mem.text,
                         new_text=user_query,
                         old_vector=prev_mem.vector,
@@ -2614,7 +2614,7 @@ class CRTEnhancedRAG:
                             logger.debug(f"[DISCLOSURE_POLICY] Could not store clarification prompt: {e}")
                     
                     logger.info(
-                        f"[ML_CONTRADICTION] ✓ Detected: {slot} contradiction "
+                        f"[ML_CONTRADICTION] âœ“ Detected: {slot} contradiction "
                         f"({result['category']}, policy={suggested_policy_final})"
                     )
                     
@@ -2627,7 +2627,7 @@ class CRTEnhancedRAG:
         
         When a user asserts a fact that matches the "new" side of an open contradiction,
         this is an implicit confirmation. After enough confirmations, the contradiction
-        transitions from ACTIVE → SETTLING → SETTLED automatically.
+        transitions from ACTIVE â†’ SETTLING â†’ SETTLED automatically.
         
         Returns: number of contradictions that received a confirmation increment.
         """
@@ -3204,8 +3204,8 @@ class CRTEnhancedRAG:
         1. Trust-weighted retrieval
         2. Generate candidate output (reasoning)
         3. Check reconstruction gates (intent + memory alignment)
-        4. If gates pass → belief (high trust)
-        5. If gates fail → speech (low trust fallback)
+        4. If gates pass â†’ belief (high trust)
+        5. If gates fail â†’ speech (low trust fallback)
         6. Detect contradictions
         7. Update trust scores
         8. Queue reflection if needed
@@ -3266,18 +3266,18 @@ class CRTEnhancedRAG:
             nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_text)
             if nl_resolution_occurred:
                 logger.info(f"[NL_RESOLUTION] Natural language resolution detected and processed")
-                # The system DID detect a contradiction — mark it so metadata is correct.
+                # The system DID detect a contradiction â€” mark it so metadata is correct.
                 contradiction_detected = True
                 # If we resolved a contradiction, treat this as an instruction/acknowledgment, not an assertion
                 # This prevents "Google is correct" from being stored as a new fact that creates another contradiction
                 if user_input_kind == "assertion":
-                    logger.info(f"[NL_RESOLUTION] Reclassifying assertion → instruction (NL resolution)")
+                    logger.info(f"[NL_RESOLUTION] Reclassifying assertion â†’ instruction (NL resolution)")
                     user_input_kind = "instruction"
         except Exception as e:
             logger.warning(f"[NL_RESOLUTION] Failed to detect/resolve NL resolution: {e}", exc_info=True)
         
         if user_input_kind == "assertion" and (is_memory_citation or is_contradiction_status or is_memory_inventory):
-            logger.info(f"[PROFILE_DEBUG] Reclassifying assertion → instruction (special query type)")
+            logger.info(f"[PROFILE_DEBUG] Reclassifying assertion â†’ instruction (special query type)")
             user_input_kind = "instruction"
 
         # ==================================================================
@@ -3407,7 +3407,7 @@ class CRTEnhancedRAG:
             logger.warning(f"[BLINDSIDE] Detection failed: {e}")
 
         # P0 FIX: Process contradiction lifecycle transitions on every query
-        # This moves contradictions through ACTIVE → SETTLING → SETTLED → ARCHIVED
+        # This moves contradictions through ACTIVE â†’ SETTLING â†’ SETTLED â†’ ARCHIVED
         # based on confirmation counts and time elapsed
         try:
             transitions = self.ledger.process_lifecycle_transitions()
@@ -3421,8 +3421,8 @@ class CRTEnhancedRAG:
         # that can confuse the evaluator.
         if user_input_kind in ("question", "instruction") and self._is_system_prompt_request(user_text):
             answer = (
-                "I can’t share my system prompt or hidden instructions verbatim. "
-                "If you tell me what you’re trying to do, I can summarize how I’m designed to behave "
+                "I canâ€™t share my system prompt or hidden instructions verbatim. "
+                "If you tell me what youâ€™re trying to do, I can summarize how Iâ€™m designed to behave "
                 "or help you accomplish the goal another way."
             )
             return {
@@ -3491,9 +3491,9 @@ class CRTEnhancedRAG:
                         except Exception as ledger_err:
                             logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
                 
-                logger.info(f"[PROFILE_DEBUG] ✅ Profile update completed successfully")
+                logger.info(f"[PROFILE_DEBUG] âœ… Profile update completed successfully")
             except Exception as e:
-                logger.error(f"[PROFILE_DEBUG] ❌ Failed to update user profile: {e}", exc_info=True)
+                logger.error(f"[PROFILE_DEBUG] âŒ Failed to update user profile: {e}", exc_info=True)
 
             # Long-form narrative summary capture (best-effort, low-trust)
             try:
@@ -3538,13 +3538,13 @@ class CRTEnhancedRAG:
                 declared_facts = extract_fact_slots(user_text) or {}
                 declared_name = declared_facts.get("name")
                 if declared_name is not None and getattr(declared_name, "value", None):
-                    answer = f"Thanks — noted: your name is {declared_name.value}."
+                    answer = f"Thanks â€” noted: your name is {declared_name.value}."
                 else:
                     name_guess = self._get_latest_user_name_guess()
                     if name_guess:
-                        answer = f"Thanks — noted: your name is {name_guess}."
+                        answer = f"Thanks â€” noted: your name is {name_guess}."
                     else:
-                        answer = "Thanks — noted."
+                        answer = "Thanks â€” noted."
 
                 # If the input also contains a question (e.g., "Hi, I'm Nick. Who are you?"),
                 # answer both the name acknowledgment AND the question.
@@ -3682,13 +3682,13 @@ class CRTEnhancedRAG:
 
             # Non-name assertions that detected a contradiction: return early.
             # Without this, the assertion falls through to the uncertainty gate
-            # which asks the user to clarify — wrong behaviour when the user IS
+            # which asks the user to clarify â€” wrong behaviour when the user IS
             # providing the correction.
             if contradiction_detected:
                 facts = extract_fact_slots(user_text) or {}
                 fact_parts = [f"{getattr(v, 'value', v)}" for k, v in facts.items() if k != 'pet_name']
                 fact_hint = f" ({', '.join(fact_parts)})" if fact_parts else ""
-                answer = f"Noted — I've updated my records{fact_hint}. I see this differs from what I had before, so I've flagged the change."
+                answer = f"Noted â€” I've updated my records{fact_hint}. I see this differs from what I had before, so I've flagged the change."
                 return {
                     'answer': answer,
                     'thinking': None,
@@ -3909,14 +3909,14 @@ class CRTEnhancedRAG:
         is_synthesis = self._is_synthesis_query(user_query)
         retrieval_k = 15 if is_synthesis else 5
 
-        # Copilot GroundCheck context bridge — fetch MCP memories when asked
+        # Copilot GroundCheck context bridge â€” fetch MCP memories when asked
         _is_copilot_query = self._is_copilot_context_query(user_query)
         _copilot_context: List[Dict[str, Any]] = []
         if _is_copilot_query:
             _copilot_context = self._fetch_copilot_context(user_query)
             logger.info("[COPILOT_CTX] Detected copilot query, fetched %d MCP memories", len(_copilot_context))
 
-        # Web search bridge — run DuckDuckGo search for real-time information
+        # Web search bridge â€” run DuckDuckGo search for real-time information
         _is_search_query = self._is_web_search_query(user_query)
         _web_search_query = ""
         _web_search_results: List[Dict[str, Any]] = []
@@ -4477,7 +4477,7 @@ class CRTEnhancedRAG:
                         'confidence': 0.95,
                     }
 
-                    # ── F4: Uncertainty expression ────────────────────────
+                    # â”€â”€ F4: Uncertainty expression â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                     # Check for open contradictions affecting the queried slots.
                     # If found, inject hedging language and lower confidence.
                     slot_contradictions = []
@@ -4500,7 +4500,7 @@ class CRTEnhancedRAG:
                                       f"affecting slots {inferred_slots} - injecting hedge")
                     except Exception as e:
                         log_swallowed_exception("crt_rag.query.uncertainty_check", e)
-                    # ── End F4 ────────────────────────────────────────────
+                    # â”€â”€ End F4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
                     candidate_output = reasoning_result['answer']
                     candidate_vector = encode_vector(candidate_output)
@@ -4863,7 +4863,7 @@ class CRTEnhancedRAG:
                         }
         
         if not retrieved and not _copilot_context and not _web_search_results:
-            # No memories, no copilot context, and no web results → fallback speech
+            # No memories, no copilot context, and no web results â†’ fallback speech
             return self._fallback_response(user_query, thread_id=thread_id)
         
         # GLOBAL COHERENCE GATE: Check for unresolved contradictions.
@@ -4944,7 +4944,7 @@ class CRTEnhancedRAG:
         
         if should_uncertain and user_input_kind != "assertion":
             # If we can infer a concrete next action from conflicts, include it.
-            # NOTE: Assertions are corrections FROM the user — never ask them to
+            # NOTE: Assertions are corrections FROM the user â€” never ask them to
             # re-clarify what they just told us.
             contradiction_goals, conflict_beliefs = self._infer_contradiction_goals_for_query(
                 user_query=user_query,
@@ -5073,8 +5073,8 @@ class CRTEnhancedRAG:
         
         # Phase 2.2: LLM Claim Tracking
         # Check if LLM response contains claims that contradict:
-        # 1. What the LLM said before (LLM→LLM contradiction)
-        # 2. What the user told us (LLM→USER contradiction)
+        # 1. What the LLM said before (LLMâ†’LLM contradiction)
+        # 2. What the user told us (LLMâ†’USER contradiction)
         llm_claim_result = None
         llm_disclosures = []
         try:
@@ -5109,7 +5109,7 @@ class CRTEnhancedRAG:
         # (Did we confidently answer the question?)
         intent_align = reasoning_result['confidence']
         
-        # Memory alignment (output → retrieved memories)
+        # Memory alignment (output â†’ retrieved memories)
         memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
         
         # Predict response type and compute grounding
@@ -5556,7 +5556,7 @@ class CRTEnhancedRAG:
     # ====================================================================
 
     def _summarize_longform_text(self, text: str) -> Optional[str]:
-        """Summarize long-form user text into durable facts (1–2 sentences)."""
+        """Summarize long-form user text into durable facts (1â€“2 sentences)."""
         raw = (text or "").strip()
         if not raw:
             return None
@@ -5565,7 +5565,7 @@ class CRTEnhancedRAG:
         llm = self._llm_client
         if llm is not None:
             prompt = (
-                "Summarize the user's message into 1–2 sentences of durable personal facts. "
+                "Summarize the user's message into 1â€“2 sentences of durable personal facts. "
                 "Exclude transient moods unless central to their life story. "
                 "Do not speculate, diagnose, or add new information. "
                 "Return plain text only.\n\n"
@@ -5837,7 +5837,7 @@ class CRTEnhancedRAG:
         This is intentionally heuristic and tuned to the stress tests.
         
         IMPORTANT: Compound-noun queries like "dog's name" or "spouse's name"
-        must NOT match the bare "name" slot — they have their own dedicated slots.
+        must NOT match the bare "name" slot â€” they have their own dedicated slots.
         """
         t = (text or "").strip().lower()
         if not t:
@@ -5845,7 +5845,7 @@ class CRTEnhancedRAG:
 
         slots: List[str] = []
         
-        # ── Compound-noun slots (must be checked BEFORE bare "name") ──────
+        # â”€â”€ Compound-noun slots (must be checked BEFORE bare "name") â”€â”€â”€â”€â”€â”€
         # These patterns consume the query so bare "name" won't fire.
         _compound_name_matched = False
         
@@ -5878,7 +5878,7 @@ class CRTEnhancedRAG:
         if re.search(r"\b(nickname|nicknames|alias|aliases)\b", t):
             slots.append("name")
 
-        # Bare "name" — only if no compound-noun matched.
+        # Bare "name" â€” only if no compound-noun matched.
         # Use word boundary so "nicknames" does not accidentally match "name".
         if not _compound_name_matched and re.search(r"\bname\b", t):
             slots.append("name")
@@ -5886,24 +5886,24 @@ class CRTEnhancedRAG:
         if ("favorite" in t or "favourite" in t) and ("color" in t or "colour" in t):
             slots.append("favorite_color")
 
-        # ── Favorite language / programming language ──────────────────────
+        # â”€â”€ Favorite language / programming language â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if ("favorite" in t or "favourite" in t or "preferred" in t) and \
            ("language" in t or "programming" in t):
             slots.append("favorite_language")
         elif "programming language" in t and not ("how many" in t or "first" in t or "start" in t):
             slots.append("favorite_language")
         
-        # ── Favorite food ─────────────────────────────────────────────────
+        # â”€â”€ Favorite food â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if ("favorite" in t or "favourite" in t) and ("food" in t or "meal" in t or "dish" in t or "cuisine" in t):
             slots.append("favorite_food")
         
-        # ── Drink / beverage ──────────────────────────────────────────────
+        # â”€â”€ Drink / beverage â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if ("favorite" in t or "favourite" in t) and ("drink" in t or "beverage" in t or "coffee" in t or "tea" in t):
             slots.append("favorite_drink")
         elif re.search(r"\b(what\s+do\s+i\s+drink|coffee\s+or\s+tea|morning\s+drink|beverage)\b", t):
             slots.append("favorite_drink")
 
-        # ── Favorite book / movie / music ─────────────────────────────────
+        # â”€â”€ Favorite book / movie / music â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if ("favorite" in t or "favourite" in t) and ("book" in t or "novel" in t):
             slots.append("favorite_book")
         if ("favorite" in t or "favourite" in t) and ("movie" in t or "film" in t):
@@ -5911,7 +5911,7 @@ class CRTEnhancedRAG:
         if ("favorite" in t or "favourite" in t) and ("music" in t or "song" in t or "band" in t or "artist" in t):
             slots.append("favorite_music")
 
-        # ── Hobby / interest ──────────────────────────────────────────────
+        # â”€â”€ Hobby / interest â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if re.search(r"\b(hobby|hobbies|interest|interests|free time|spare time|pastime)\b", t):
             slots.append("hobby")
 
@@ -5960,11 +5960,11 @@ class CRTEnhancedRAG:
         if "how many" in t and ("engineer" in t or "manage" in t or "team" in t):
             slots.append("team_size")
 
-        # ── Birthday / birth date ─────────────────────────────────────────
+        # â”€â”€ Birthday / birth date â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if re.search(r"\b(birthday|birth\s*date|born|date\s+of\s+birth|dob)\b", t):
             slots.append("birthday")
         
-        # ── Email / phone ─────────────────────────────────────────────────
+        # â”€â”€ Email / phone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         if re.search(r"\b(email|e-mail|mail\s+address)\b", t):
             slots.append("email")
         if re.search(r"\b(phone|phone\s+number|cell|mobile)\b", t):
@@ -6028,19 +6028,19 @@ class CRTEnhancedRAG:
         if re.search(r"\b(name)\b", q) and not re.search(r"\b(my|user|their)\b", q):
             return _resp(
                 "name",
-                "I'm Aether, a personal AI built on CRT-GroundCheck. I run locally using Ollama for reasoning and GroundCheck for trust-weighted memory.",
+                "I'm Aether, a verified AI system built on CRT-GroundCheck. My memory, contradiction checks, and verification stay under the local CRT control layer.",
             )
 
         if re.search(r"\b(occupation|job|role)\b", q):
             return _resp(
                 "occupation",
-                "I'm Aether, a personal AI system. My role is to remember what you tell me, verify my answers against stored memories, and catch contradictions.",
+                "I'm Aether, a verified AI system. My role is to remember what you tell me, verify answers against stored memories, and catch contradictions.",
             )
 
         if re.search(r"\b(purpose)\b", q) or re.search(r"\bwhat\s+do\s+you\s+do\b", q):
             return _resp(
                 "purpose",
-                "I store your facts as trust-weighted memories, verify my answers with CRT-as-Critic, track contradictions, and search the web when I don't have the answer.",
+                "I store your facts as trust-weighted memories, verify answers with CRT-as-Critic, track contradictions, and route generation through a local-first control layer.",
             )
 
         if (
@@ -6053,21 +6053,21 @@ class CRTEnhancedRAG:
             if re.search(r"\bfilmmaking\b|\bfilm\b|\bmovie\b|\bcinema\b|\bdirector\b|\bproducer\b", q):
                 return _resp(
                     "background_filmmaking",
-                    "I don't have filmmaking experience — I'm an AI system. But I can help with filmmaking concepts and remember your projects.",
+                    "I don't have filmmaking experience â€” I'm an AI system. But I can help with filmmaking concepts and remember your projects.",
                 )
             return _resp(
                 "background_general",
-                "I don't have personal experiences — I'm a software system built on GroundCheck memory, CRT-as-Critic verification, and a contradiction ledger.",
+                "I don't have personal experiences - I'm a software system built on GroundCheck memory, CRT-as-Critic verification, a contradiction ledger, and local observability.",
             )
 
         if re.search(r"\bwhere\s+do\s+you\s+work\b", q) or re.search(r"\bwho\s+do\s+you\s+work\s+for\b", q):
             return _resp(
                 "workplace",
-                "I don't have a workplace or employer — I'm an AI assistant system running locally.",
+                "I don't have a workplace or employer - I'm an AI assistant system running under the CRT control layer.",
             )
 
         # Generic fallback for "who/what are you".
-        return _resp("identity", "I'm Aether — a personal AI built on CRT-GroundCheck. My brain is Ollama (llama3.2), my memory is trust-weighted GroundCheck, and CRT-as-Critic verifies my answers in ~1ms.")
+        return _resp("identity", "I'm Aether - a verified AI assistant built on CRT-GroundCheck. My memory, contradiction checks, verification, routing, and observability stay under the local CRT control layer. Depending on configuration, generation may use a local or cloud model.")
 
     def _augment_retrieval_with_slot_memories(
         self,
@@ -6385,11 +6385,11 @@ class CRTEnhancedRAG:
                             distinct_vals.append(vv)
 
                     if len(distinct_vals) <= 1:
-                        return f"No — I only have {best_val} stored as your favorite color."
+                        return f"No â€” I only have {best_val} stored as your favorite color."
 
                     others = [v for v in distinct_vals if v.strip().lower() != str(best_val).strip().lower()]
                     if others:
-                        return f"Yes — I have {best_val} as your most recent favorite color, and you’ve also said: {', '.join(others)}."
+                        return f"Yes â€” I have {best_val} as your most recent favorite color, and youâ€™ve also said: {', '.join(others)}."
                 # Fallback
                 return "I only have one favorite color stored right now."
             
@@ -6633,7 +6633,7 @@ class CRTEnhancedRAG:
         This is intentionally lightweight: we only need to avoid treating questions as factual claims.
         
         CRITICAL: Name declarations are ALWAYS treated as assertions, even if followed by a question.
-        Example: "Hi, I'm Nick Block. Who are you?" → "assertion" (contains name declaration)
+        Example: "Hi, I'm Nick Block. Who are you?" â†’ "assertion" (contains name declaration)
         """
         t = self._strip_continuity_augmented_text(text)
         if not t:
@@ -7110,7 +7110,7 @@ class CRTEnhancedRAG:
             return []
 
     # ==================================================================
-    # Web Search Bridge — DuckDuckGo search for real-time information
+    # Web Search Bridge â€” DuckDuckGo search for real-time information
     # ==================================================================
 
     _WEB_SEARCH_PATTERNS = (
@@ -7196,7 +7196,7 @@ class CRTEnhancedRAG:
                     "url": r.url,
                     "snippet": r.snippet,
                 })
-            logger.info("[WEB_SEARCH] '%s' → %d results (research mode)", query, len(results))
+            logger.info("[WEB_SEARCH] '%s' â†’ %d results (research mode)", query, len(results))
             return results
         except Exception as e:
             logger.warning("[WEB_SEARCH] Failed: %s", e)
@@ -7526,7 +7526,7 @@ class CRTEnhancedRAG:
             if memory_id and has_conflicts:
                 try:
                     if self.ledger.has_open_contradiction(memory_id):
-                        txt = f"{txt} ⚠️"
+                        txt = f"{txt} âš ï¸"
                         conflict_marked_ids.add(memory_id)
                 except Exception as e:
                     log_swallowed_exception("crt_rag._build_memory_inventory.conflict_check", e)
@@ -7538,7 +7538,7 @@ class CRTEnhancedRAG:
 
         # If we marked conflicts, add a note
         if conflict_marked_ids:
-            lines.append("\n⚠️ = has conflicting information")
+            lines.append("\nâš ï¸ = has conflicting information")
 
         # List top conflicts if space permits
         if has_conflicts and added < max_lines:
@@ -8164,9 +8164,9 @@ class CRTEnhancedRAG:
         cleaned = "\n".join(kept_lines).strip()
         first_slot = next(iter(unsupported.keys()))
         if cleaned:
-            return cleaned + f"\n\nI don't have a reliable stored memory for your {first_slot} yet — if you tell me, I can remember it going forward."
+            return cleaned + f"\n\nI don't have a reliable stored memory for your {first_slot} yet â€” if you tell me, I can remember it going forward."
 
-        return f"I don't have a reliable stored memory for your {first_slot} yet — if you tell me, I can remember it going forward."
+        return f"I don't have a reliable stored memory for your {first_slot} yet â€” if you tell me, I can remember it going forward."
     
     # ========================================================================
     # CRT Analytics
@@ -8190,3 +8190,4 @@ class CRTEnhancedRAG:
     def get_reflection_queue(self) -> List[Dict]:
         """Get pending reflections."""
         return self.ledger.get_reflection_queue()
+
