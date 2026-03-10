@@ -1,4 +1,4 @@
-﻿# CRT + GroundCheck + SSE
+# CRT + GroundCheck + SSE
 
 **Hybrid verified agent infrastructure with local memory authority. No silent overwrites.**
 
