@@ -5,7 +5,9 @@
       "Bash(grep -E \"\\\\.py$\")",
       "Read(//d/AI_round2/**)",
       "Bash(ls -lh /d/AI_round2/sse/*.py)",
-      "Bash(xargs head:*)"
+      "Bash(xargs head:*)",
+      "Bash(python -m pytest --collect-only tests/)",
+      "Bash(python -m pytest tests/ --collect-only -q)"
     ]
   }
 }
