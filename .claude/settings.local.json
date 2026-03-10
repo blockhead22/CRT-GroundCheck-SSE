@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls -lh /d/AI_round2/personal_agent/*.py)",
+      "Bash(grep -E \"\\\\.py$\")",
+      "Read(//d/AI_round2/**)",
+      "Bash(ls -lh /d/AI_round2/sse/*.py)"
+    ]
+  }
+}
