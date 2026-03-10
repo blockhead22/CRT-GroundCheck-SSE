@@ -15,6 +15,7 @@ import re
 import sqlite3
 import threading
 import time
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -48,6 +49,7 @@ from .meta_awareness import (
 )
 from personal_agent.reflection_system import run_reflection_pass, ReflectionResult
 from personal_agent.scheduled_tasks import schedule_reminder, extract_reminder_from_message
+from personal_agent.fact_slots import extract_fact_slots
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +85,10 @@ _CONTINUITY_FOLLOWUP_HINTS = (
     "and then",
     "what about",
     "how about",
+    "what else",
+    "how do you know",
+    "how are you sure",
+    "how did you know",
     "the highlights",
     "highlights",
     "summarize",
@@ -104,6 +110,37 @@ _CONTRADICTION_CAVEAT_RE = re.compile(
     r")",
     flags=re.IGNORECASE,
 )
+
+
+@dataclass
+class ResponseControlState:
+    request_text: str
+    effective_text: str = ""
+    request_kind: str = "unknown"
+    final_action: str = "pending"
+    stages: List[Dict[str, Any]] = field(default_factory=list)
+
+    def mark(self, stage: str, status: str, detail: Optional[str] = None, **extra: Any) -> None:
+        item: Dict[str, Any] = {"stage": stage, "status": status}
+        if detail:
+            item["detail"] = detail
+        for key, value in extra.items():
+            if value is not None:
+                item[key] = value
+        self.stages.append(item)
+
+
+def _control_status_lines(state: ResponseControlState) -> List[str]:
+    out: List[str] = []
+    for item in state.stages:
+        stage = str(item.get("stage") or "")
+        status = str(item.get("status") or "")
+        detail = str(item.get("detail") or "").strip()
+        line = f"ctrl:{stage}:{status}"
+        if detail:
+            line += f":{detail}"
+        out.append(line)
+    return out
 
 
 def _load_recent_history_messages(
@@ -351,6 +388,82 @@ def _resolve_bare_web_search_command(
         return f"search the web for {prev_q}"
 
     return q
+
+
+def _is_meta_provenance_followup(message: str) -> bool:
+    text = str(message or "").strip().lower()
+    if not text:
+        return False
+    return any(
+        phrase in text
+        for phrase in (
+            "how do you know",
+            "how are you sure",
+            "how did you know",
+            "where did you learn that",
+            "why are you sure",
+        )
+    )
+
+
+def _answer_recent_slot_provenance(*, engine: Any, session_db: Any, thread_id: str) -> Optional[str]:
+    if session_db is None:
+        return None
+    try:
+        recent = session_db.get_recent_queries(thread_id, window=6)
+    except Exception:
+        recent = []
+    if not recent:
+        return None
+
+    target_slot = None
+    for row in recent:
+        slot = str((row or {}).get("detected_slot") or "").strip()
+        if slot:
+            target_slot = slot
+            break
+    if not target_slot:
+        return None
+
+    try:
+        memories = engine.memory._load_all_memories()
+    except Exception:
+        return None
+
+    candidates: List[Tuple[Any, Any]] = []
+    for mem in memories:
+        if getattr(mem, "source", None) is None:
+            continue
+        if bool(getattr(mem, "deprecated", False)):
+            continue
+        try:
+            facts = extract_fact_slots(str(getattr(mem, "text", "") or ""))
+        except Exception:
+            continue
+        if target_slot in facts:
+            candidates.append((mem, facts[target_slot]))
+
+    if not candidates:
+        return None
+
+    best_mem, best_fact = max(
+        candidates,
+        key=lambda item: (
+            float(getattr(item[0], "timestamp", 0.0) or 0.0),
+            float(getattr(item[0], "trust", 0.0) or 0.0),
+        ),
+    )
+    slot_label = target_slot.replace("_", " ")
+    fact_value = str(getattr(best_fact, "value", "") or "").strip()
+    fact_text = str(getattr(best_mem, "text", "") or "").strip()
+    trust = float(getattr(best_mem, "trust", 0.0) or 0.0)
+
+    if not fact_value or not fact_text:
+        return None
+    return (
+        f"I know that because you told me your {slot_label} is {fact_value}. "
+        f"I have that stored from: \"{fact_text}\" (trust: {trust:.2f})."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1268,6 +1381,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     engine = get_engine(req.thread_id)
     runtime_config = get_runtime_config()
+    control_state = ResponseControlState(request_text=str(req.message or ""))
+    control_state.mark("input_pause", "ready", chars=len(str(req.message or "")))
     timing_enabled = str(os.getenv("CRT_CHAT_TIMING", "1")).strip().lower() not in {"0", "false", "off", "no"}
     t0 = time.perf_counter()
     stage_marks: List[Dict[str, Any]] = []
@@ -1299,6 +1414,61 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             )
             prev = current
         return out
+
+    def _response_action(gates_passed: bool, gate_reason: Optional[str], response_type: str) -> str:
+        reason = str(gate_reason or "")
+        if not gates_passed:
+            if "contradiction" in reason or response_type == "uncertainty":
+                return "clarify"
+            return "block"
+        if reason in {"recent_slot_provenance", "meta_awareness", "docs_explanation"}:
+            return "explain"
+        if "reminder" in reason:
+            return "confirm"
+        return "send"
+
+    def _finalize_metadata(
+        metadata: Optional[Dict[str, Any]],
+        *,
+        response_type: str,
+        gates_passed: bool,
+        gate_reason: Optional[str],
+    ) -> Dict[str, Any]:
+        meta = dict(metadata or {})
+        control_state.final_action = _response_action(gates_passed, gate_reason, response_type)
+        meta["response_control"] = {
+            "request_kind": control_state.request_kind,
+            "final_action": control_state.final_action,
+            "effective_text": control_state.effective_text or control_state.request_text,
+            "stages": list(control_state.stages),
+        }
+        existing = list(meta.get("pipeline_statuses") or [])
+        meta["pipeline_statuses"] = _control_status_lines(control_state) + existing
+        return meta
+
+    def _chat_response(
+        *,
+        answer: str,
+        response_type: str,
+        gates_passed: bool,
+        gate_reason: Optional[str],
+        metadata: Optional[Dict[str, Any]] = None,
+        xray: Optional[Dict[str, Any]] = None,
+    ) -> ChatSendResponse:
+        return ChatSendResponse(
+            answer=answer,
+            response_type=response_type,
+            gates_passed=gates_passed,
+            gate_reason=gate_reason,
+            session_id=getattr(engine, "session_id", None),
+            metadata=_finalize_metadata(
+                metadata,
+                response_type=response_type,
+                gates_passed=gates_passed,
+                gate_reason=gate_reason,
+            ),
+            xray=xray,
+        )
 
     _mark("chat_send_start")
 
@@ -1357,6 +1527,45 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         session_db=session_db,
         thread_id=req.thread_id,
     )
+    control_state.effective_text = effective_message
+    control_state.request_kind = "follow_up" if _looks_like_follow_up(effective_message) else "direct"
+    if _is_meta_provenance_followup(effective_message):
+        control_state.request_kind = "meta_provenance"
+    elif _is_architecture_explanation_request(effective_message):
+        control_state.request_kind = "architecture_explanation"
+    elif _is_contradiction_inventory_request(effective_message):
+        control_state.request_kind = "contradiction_inventory"
+    control_state.mark(
+        "determine_request",
+        "classified",
+        request_kind=control_state.request_kind,
+        follow_up=_looks_like_follow_up(effective_message),
+    )
+
+    if _is_meta_provenance_followup(effective_message):
+        control_state.mark("bind", "recent_slot", detail="provenance_followup")
+        provenance_answer = _answer_recent_slot_provenance(
+            engine=engine,
+            session_db=session_db,
+            thread_id=req.thread_id,
+        )
+        if provenance_answer:
+            if greeting_text:
+                provenance_answer = f"{greeting_text}\n\n{provenance_answer}"
+            _record_fast_query(provenance_answer, "provenance")
+            control_state.mark("decide", "ready", detail="recent_slot_provenance")
+            control_state.mark("learn", "recorded", detail="fast_query")
+            return _chat_response(
+                answer=provenance_answer,
+                response_type="explanation",
+                gates_passed=True,
+                gate_reason="recent_slot_provenance",
+                metadata={
+                    "mode": "deterministic_provenance",
+                    "confidence": 0.98,
+                    "continuity_context_applied": True,
+                },
+            )
 
     def _record_fast_query(answer_text: str, detected_slot: Optional[str]) -> None:
         try:
@@ -1379,6 +1588,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     if isinstance(pending_reminder, dict):
         if _is_confirmation_yes(effective_message):
+            control_state.request_kind = "reminder_confirmation"
+            control_state.mark("bind", "pending_reminder", detail="confirm_yes")
             reminder_text = str(pending_reminder.get("reminder_text") or "").strip()
             scheduled_at = float(pending_reminder.get("scheduled_at") or 0.0)
             if reminder_text and scheduled_at > time.time():
@@ -1399,12 +1610,13 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                         if greeting_text:
                             answer = f"{greeting_text}\n\n{answer}"
                         _record_fast_query(answer, "reminder_confirmed")
-                        return ChatSendResponse(
+                        control_state.mark("decide", "ready", detail="reminder_scheduled")
+                        control_state.mark("learn", "recorded", detail="fast_query")
+                        return _chat_response(
                             answer=answer,
                             response_type="speech",
                             gates_passed=True,
                             gate_reason="reminder_scheduled",
-                            session_id=getattr(engine, "session_id", None),
                             metadata={
                                 "mode": "deterministic_reminder",
                                 "confidence": 0.99,
@@ -1419,12 +1631,13 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                         session_db.clear_pending_reminder(req.thread_id)
                         error_answer = "I could not schedule that reminder due to an internal error. Please try again."
                         _record_fast_query(error_answer, "reminder_error")
-                        return ChatSendResponse(
+                        control_state.mark("decide", "blocked", detail="reminder_schedule_error")
+                        control_state.mark("learn", "recorded", detail="fast_query")
+                        return _chat_response(
                             answer=error_answer,
                             response_type="speech",
                             gates_passed=False,
                             gate_reason="reminder_schedule_error",
-                            session_id=getattr(engine, "session_id", None),
                             metadata={
                                 "mode": "deterministic_reminder",
                                 "confidence": 0.35,
@@ -1434,12 +1647,13 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             session_db.clear_pending_reminder(req.thread_id)
             cleared_answer = "That reminder request expired or had invalid timing, so I cleared it. Ask again and I will re-parse it."
             _record_fast_query(cleared_answer, "reminder_pending_cleared")
-            return ChatSendResponse(
+            control_state.mark("decide", "ready", detail="reminder_pending_cleared")
+            control_state.mark("learn", "recorded", detail="fast_query")
+            return _chat_response(
                 answer=cleared_answer,
                 response_type="speech",
                 gates_passed=True,
                 gate_reason="reminder_pending_cleared",
-                session_id=getattr(engine, "session_id", None),
                 metadata={
                     "mode": "deterministic_reminder",
                     "confidence": 0.9,
@@ -1448,17 +1662,20 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             )
 
         if _is_confirmation_no(effective_message):
+            control_state.request_kind = "reminder_confirmation"
+            control_state.mark("bind", "pending_reminder", detail="confirm_no")
             session_db.clear_pending_reminder(req.thread_id)
             answer = "Canceled. I did not schedule that reminder."
             if greeting_text:
                 answer = f"{greeting_text}\n\n{answer}"
             _record_fast_query(answer, "reminder_cancelled")
-            return ChatSendResponse(
+            control_state.mark("decide", "ready", detail="reminder_cancelled")
+            control_state.mark("learn", "recorded", detail="fast_query")
+            return _chat_response(
                 answer=answer,
                 response_type="speech",
                 gates_passed=True,
                 gate_reason="reminder_cancelled",
-                session_id=getattr(engine, "session_id", None),
                 metadata={
                     "mode": "deterministic_reminder",
                     "confidence": 0.99,
@@ -1474,17 +1691,20 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         reminder_candidate = None
 
     if reminder_candidate:
+        control_state.request_kind = "reminder_candidate"
+        control_state.mark("bind", "reminder_candidate")
         reminder_text, reminder_dt = reminder_candidate
         scheduled_at = float(reminder_dt.timestamp())
         if scheduled_at <= time.time():
             past_answer = "I parsed a reminder request, but the target time is in the past. Please provide a future time."
             _record_fast_query(past_answer, "reminder_past_time")
-            return ChatSendResponse(
+            control_state.mark("decide", "ready", detail="reminder_past_time")
+            control_state.mark("learn", "recorded", detail="fast_query")
+            return _chat_response(
                 answer=past_answer,
                 response_type="speech",
                 gates_passed=True,
                 gate_reason="reminder_past_time",
-                session_id=getattr(engine, "session_id", None),
                 metadata={
                     "mode": "deterministic_reminder",
                     "confidence": 0.92,
@@ -1506,12 +1726,13 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         if greeting_text:
             answer = f"{greeting_text}\n\n{answer}"
         _record_fast_query(answer, "reminder_confirmation")
-        return ChatSendResponse(
+        control_state.mark("decide", "ready", detail="reminder_confirmation_required")
+        control_state.mark("learn", "recorded", detail="fast_query")
+        return _chat_response(
             answer=answer,
             response_type="speech",
             gates_passed=True,
             gate_reason="reminder_confirmation_required",
-            session_id=getattr(engine, "session_id", None),
             metadata={
                 "mode": "deterministic_reminder",
                 "confidence": 0.97,
@@ -1535,6 +1756,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         groundcheck_bridge_meta = {"enabled": True, "attempted": True, "ok": False, "error": str(e)}
 
     if is_meta_awareness_prompt(effective_message):
+        control_state.request_kind = "meta_awareness"
+        control_state.mark("bind", "meta_awareness")
         snapshot = build_meta_awareness_snapshot(
             thread_id=req.thread_id,
             session_db=session_db,
@@ -1547,12 +1770,13 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         if greeting_text:
             answer = f"{greeting_text}\n\n{answer}"
         _record_fast_query(answer, "meta_awareness")
-        return ChatSendResponse(
+        control_state.mark("decide", "ready", detail="meta_awareness")
+        control_state.mark("learn", "recorded", detail="fast_query")
+        return _chat_response(
             answer=answer,
             response_type="speech",
             gates_passed=True,
             gate_reason="meta_awareness",
-            session_id=getattr(engine, "session_id", None),
             metadata={
                 "mode": "meta_awareness",
                 "confidence": 0.96,
@@ -1563,6 +1787,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     # Deterministic ledger-backed contradiction inventory.
     if _is_contradiction_inventory_request(effective_message):
+        control_state.request_kind = "contradiction_inventory"
+        control_state.mark("bind", "ledger_inventory")
         from personal_agent.canonical_view import get_contradiction_counts
 
         ledger_db_path = str(getattr(engine.ledger, "db_path", "") or "")
@@ -1601,12 +1827,12 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
         answer = "\n".join(lines)
 
-        return ChatSendResponse(
+        control_state.mark("decide", "clarify", detail="ledger_contradictions")
+        return _chat_response(
             answer=answer,
             response_type="explanation",
             gates_passed=False,
             gate_reason="ledger_contradictions",
-            session_id=getattr(engine, "session_id", None),
             metadata={
                 "mode": "uncertainty",
                 "confidence": 0.65,
@@ -1621,14 +1847,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
 
     # Safe doc-grounded channel for architecture/system explanation questions.
     if _is_architecture_explanation_request(effective_message):
+        control_state.request_kind = "architecture_explanation"
+        control_state.mark("bind", "doc_map")
         doc_map = request.app.state.doc_map
         answer, prompt_items = _answer_from_docs(effective_message, doc_map)
-        return ChatSendResponse(
+        control_state.mark("decide", "ready", detail="docs_explanation")
+        return _chat_response(
             answer=answer,
             response_type="explanation",
             gates_passed=True,
             gate_reason="docs_explanation",
-            session_id=getattr(engine, "session_id", None),
             metadata={
                 "confidence": 0.85,
                 "retrieved_memories": [],
@@ -1643,6 +1871,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         thread_id=req.thread_id,
     )
     if direct_workplan:
+        control_state.request_kind = "groundcheck_workplan"
+        control_state.mark("bind", "groundcheck_workplan")
         direct_answer = str(direct_workplan.get("answer") or "").strip()
         if greeting_text:
             direct_answer = f"{greeting_text}\n\n{direct_answer}"
@@ -1675,17 +1905,20 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         except Exception as e:
             logger.debug(f"[SESSION] Error recording direct workplan query: {e}")
 
-        return ChatSendResponse(
+        control_state.mark("decide", "ready", detail="groundcheck_workplan_direct")
+        control_state.mark("learn", "recorded", detail="session_query")
+        return _chat_response(
             answer=direct_answer,
             response_type="speech",
             gates_passed=True,
             gate_reason="groundcheck_workplan_direct",
-            session_id=getattr(engine, "session_id", None),
             metadata=metadata,
         )
 
     direct_mcp_tools = _try_answer_mcp_tools_question(effective_message)
     if direct_mcp_tools:
+        control_state.request_kind = "groundcheck_mcp_tools"
+        control_state.mark("bind", "groundcheck_mcp_tools")
         direct_answer = str(direct_mcp_tools.get("answer") or "").strip()
         if greeting_text:
             direct_answer = f"{greeting_text}\n\n{direct_answer}"
@@ -1718,12 +1951,13 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         except Exception as e:
             logger.debug(f"[SESSION] Error recording direct MCP-tools query: {e}")
 
-        return ChatSendResponse(
+        control_state.mark("decide", "ready", detail="groundcheck_mcp_tools_direct")
+        control_state.mark("learn", "recorded", detail="session_query")
+        return _chat_response(
             answer=direct_answer,
             response_type="speech",
             gates_passed=True,
             gate_reason="groundcheck_mcp_tools_direct",
-            session_id=getattr(engine, "session_id", None),
             metadata=metadata,
         )
 
@@ -1767,6 +2001,12 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         message=query_with_context,
         history_messages=recent_history,
     )
+    control_state.mark(
+        "bind",
+        "context_ready",
+        continuity_applied=(query_with_continuity != query_with_context),
+        recent_messages=len(recent_history),
+    )
 
     preference_profile = _get_preference_profile(req.thread_id, engine.memory)
     model_override, model_route = _route_model_for_request(
@@ -1776,6 +2016,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         preference_profile=preference_profile,
     )
 
+    control_state.mark("generate", "drafting", detail="engine_query")
     result = engine.query(
         user_query=query_with_continuity,
         user_marked_important=req.user_marked_important,
@@ -1784,6 +2025,12 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         model_override=model_override,
     )
     _mark("engine_query_done")
+    control_state.mark(
+        "generate",
+        "draft_ready",
+        gate_reason=str(result.get("gate_reason") or ""),
+        response_type=str(result.get("response_type") or ""),
+    )
 
     # ====== CRT-AS-CRITIC: Post-generation verification ======
     # Verify the draft answer against stored memories using GroundCheck (~1ms).
@@ -1818,6 +2065,12 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     except Exception as e:
         logger.warning(f"[CRT-CRITIC] Verification error (non-fatal): {e}")
     _mark("critic_done")
+    control_state.mark(
+        "validate",
+        "critic_checked",
+        detail=str((critic_meta or {}).get("verdict") or "no_critic"),
+        gates_passed=bool(result.get("gates_passed")),
+    )
 
     # Capture thinking trace (if available) for non-stream responses.
     llm_client = get_llm_client()
@@ -1966,6 +2219,11 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         except Exception as e:
             logger.debug(f"[REFLECTION] Reflection failed (non-stream): {e}")
     _mark("reflection_done")
+    control_state.mark(
+        "validate",
+        "reflection_checked",
+        detail=str(reflection_trace_id or "none"),
+    )
 
     verbosity_pref = _get_verbosity_preference(req.thread_id, engine.memory)
     if not verbosity_pref and personality_profile:
@@ -2043,6 +2301,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             except Exception as e:
                 logger.debug(f"[TASKING] Tasking loop failed: {e}")
     _mark("tasking_done")
+    if tasking_enabled:
+        control_state.mark("validate", "tasking_checked", detail=str((tasking_meta or {}).get("mode") or "tasking"))
 
     # Reintroduction invariant: if this answer used contradicted memories, enforce
     # a visible caveat even for deterministic/early-return paths that bypass core assembly.
@@ -2241,6 +2501,18 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     except Exception as e:
         logger.debug(f"[AUTO_FC] Error scheduling fact check: {e}")
     _mark("fact_check_schedule_done")
+    control_state.mark(
+        "decide",
+        "ready",
+        detail=str(result.get("gate_reason") or ""),
+        gates_passed=bool(result.get("gates_passed")),
+    )
+    control_state.mark(
+        "learn",
+        "recorded",
+        detail="interaction+session+episodic+fact_check",
+        interaction_id=interaction_id,
+    )
 
     timing_rows = _timings()
     if timing_rows:
@@ -2259,12 +2531,11 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             " | ".join(f"{row.get('stage')}:{row.get('dt_ms')}ms" for row in timing_rows),
         )
 
-    return ChatSendResponse(
+    return _chat_response(
         answer=final_answer,
         response_type=str(result.get("response_type") or "speech"),
         gates_passed=bool(result.get("gates_passed")),
         gate_reason=(result.get("gate_reason") if isinstance(result.get("gate_reason"), str) else None),
-        session_id=(result.get("session_id") if isinstance(result.get("session_id"), str) else None),
         metadata=metadata,
         xray=xray_data,
     )

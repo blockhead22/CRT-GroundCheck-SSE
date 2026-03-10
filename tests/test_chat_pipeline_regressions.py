@@ -94,6 +94,67 @@ def test_continuity_helper_avoids_short_message_contamination():
     assert "[RECENT CONVERSATION CONTEXT]" in augmented
 
 
+def test_continuity_helper_treats_provenance_and_what_else_as_followups():
+    history = [
+        {"role": "user", "content": "What is my favorite drink?"},
+        {"role": "assistant", "content": "Coffee"},
+    ]
+
+    augmented_provenance = chat_routes._augment_query_with_continuity(
+        message="how do you know?",
+        history_messages=history,
+    )
+    augmented_more = chat_routes._augment_query_with_continuity(
+        message="what else?",
+        history_messages=history,
+    )
+
+    assert "[RECENT CONVERSATION CONTEXT]" in augmented_provenance
+    assert "[RECENT CONVERSATION CONTEXT]" in augmented_more
+
+
+def test_recent_slot_provenance_uses_last_detected_slot():
+    class _SessionDB:
+        def get_recent_queries(self, thread_id: str, window: int = 6):
+            return [
+                {
+                    "query_text": "What is my favorite color?",
+                    "detected_slot": "favorite_color",
+                    "response_text": "orange",
+                    "timestamp": 2.0,
+                }
+            ]
+
+    class _Source:
+        value = "user"
+
+    class _MemoryItem:
+        def __init__(self, text: str, trust: float, timestamp: float):
+            self.text = text
+            self.trust = trust
+            self.timestamp = timestamp
+            self.source = _Source()
+            self.deprecated = False
+
+    class _Memory:
+        def _load_all_memories(self):
+            return [_MemoryItem("My favorite color is orange.", 0.7, 5.0)]
+
+    class _Engine:
+        def __init__(self):
+            self.memory = _Memory()
+
+    answer = chat_routes._answer_recent_slot_provenance(
+        engine=_Engine(),
+        session_db=_SessionDB(),
+        thread_id="t1",
+    )
+
+    assert answer is not None
+    assert "favorite color is orange" in answer.lower()
+    assert "trust: 0.70" in answer
+
+
 def test_stream_uses_shared_pipeline_and_surfaces_thinking(monkeypatch: pytest.MonkeyPatch):
     app = FastAPI()
     app.include_router(chat_routes.router)

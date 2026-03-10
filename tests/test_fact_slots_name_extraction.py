@@ -44,6 +44,12 @@ def test_fact_slots_favourite_colour_variant_extracts_value() -> None:
     assert facts["favorite_color"].normalized == "light blue"
 
 
+def test_fact_slots_favorite_soda_preserves_dr_pepper() -> None:
+    facts = extract_fact_slots("my favorite soda is dr. pepper")
+    assert facts.get("favorite_soda") is not None
+    assert facts["favorite_soda"].value.lower() == "dr. pepper"
+
+
 def test_fact_slots_name_stops_at_but_conjunction() -> None:
     """Test that 'My name is nick but you said sarah' extracts 'nick', not 'nick but you'."""
     facts = extract_fact_slots("My name is nick but you said it sarah?")

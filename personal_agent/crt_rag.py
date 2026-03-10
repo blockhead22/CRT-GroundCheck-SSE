@@ -6348,6 +6348,28 @@ class CRTEnhancedRAG:
                     )
                 return f"I only have one name variant stored: {current}."
 
+            if wants_another and slot.startswith("favorite_") and slot != "favorite_color":
+                candidates = slot_values.get(slot) or []
+                if candidates:
+                    best_mem, best_val = max(
+                        candidates,
+                        key=lambda mv: (_source_priority(mv[0]), mv[0].timestamp, mv[0].trust),
+                    )
+                    distinct_vals: list[str] = []
+                    for _m, v in candidates:
+                        vv = str(v).strip()
+                        if vv and vv.lower() not in [x.lower() for x in distinct_vals]:
+                            distinct_vals.append(vv)
+
+                    slot_label = slot.replace("_", " ")
+                    if len(distinct_vals) <= 1:
+                        return f"No - I only have {best_val} stored as your {slot_label}."
+
+                    others = [v for v in distinct_vals if v.strip().lower() != str(best_val).strip().lower()]
+                    if others:
+                        return f"Yes - I have {best_val} as your most recent {slot_label}, and you've also said: {', '.join(others)}."
+                return f"I only have one {slot.replace('_', ' ')} stored right now."
+
             if wants_another and "favorite_color" in slots:
                 # Special-case: user is asking for an additional favorite color.
                 candidates = slot_values.get("favorite_color") or []

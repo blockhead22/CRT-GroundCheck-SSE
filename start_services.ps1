@@ -59,6 +59,8 @@ if (-not $env:CRT_CORS_ORIGINS) { $env:CRT_CORS_ORIGINS = "http://localhost:5173
 if (-not $env:CRT_SHARED_MEMORY) { $env:CRT_SHARED_MEMORY = "true" }
 if (-not $env:CRT_ENABLE_LLM) { $env:CRT_ENABLE_LLM = "true" }
 if (-not $env:CRT_OLLAMA_MODEL) { $env:CRT_OLLAMA_MODEL = "deepseek-r1:latest" }
+if (-not $env:HF_HUB_OFFLINE) { $env:HF_HUB_OFFLINE = "1" }
+if (-not $env:TRANSFORMERS_OFFLINE) { $env:TRANSFORMERS_OFFLINE = "1" }
 $env:CRT_API_URL = "http://$($env:CRT_HOST):$($env:PORT)"
 
 $python = Join-Path $root ".venv\Scripts\python.exe"

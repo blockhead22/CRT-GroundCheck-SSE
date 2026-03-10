@@ -1055,12 +1055,12 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "My favorite color is orange."
     # - "My favourite colour is light blue."
     m = re.search(
-        r"\bmy\s+favou?rite\s+colou?r\s+is\s+([^\n\r\.;,!\?]{2,60})",
+        r"\bmy\s+favou?rite\s+colou?r\s+is\s+([^\n\r;,!\?]{2,60})",
         text,
         flags=re.IGNORECASE,
     )
     if m:
-        color_raw = m.group(1).strip()
+        color_raw = m.group(1).strip().rstrip(" .")
         # Trim at common continuations.
         color_raw = re.split(r"\b(?:and|but|though|however)\b", color_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
         if color_raw:
@@ -1078,13 +1078,13 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "My favourite book is 1984"
     if "favorite_color" not in facts:  # Don't override specific patterns
         m = re.search(
-            r"\bmy\s+favou?rite\s+([a-z_]+)\s+is\s+([^\n\r\.;,!\?]{2,60})",
+            r"\bmy\s+favou?rite\s+([a-z_]+)\s+is\s+([^\n\r;,!\?]{2,60})",
             text,
             flags=re.IGNORECASE,
         )
         if m:
             category = m.group(1).strip().lower()
-            value_raw = m.group(2).strip()
+            value_raw = m.group(2).strip().rstrip(" .")
             # Trim at common continuations
             value_raw = re.split(r"\b(?:and|but|though|however)\b", value_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
             
