@@ -32,9 +32,10 @@ def test_nl_resolution_google_is_correct(rag: CRTEnhancedRAG):
     rag.query("I work at Microsoft")
     rag.query("I work at Google")
     
-    # Verify contradiction detected
+    # Verify contradiction detected — the system should surface the conflict
+    # (no longer returns mode="uncertainty" since responses flow through reasoning engine)
     out1 = rag.query("Where do I work?")
-    assert out1["mode"] == "uncertainty"
+    assert out1.get("contradiction_detected") or "conflict" in (out1.get("answer") or "").lower() or out1.get("gates_passed") is False
     
     # Resolution via natural language
     response = rag.query("Google is correct, I switched jobs")
@@ -122,6 +123,11 @@ def test_nl_resolution_no_false_positives(rag: CRTEnhancedRAG):
     # Not a resolution statement - just a general comment
     rag.query("I think both companies are good")
     
-    # Should still be in uncertainty mode
+    # Should still have unresolved contradiction — the system should not silently pick a winner
     out = rag.query("Where do I work?")
-    assert out["mode"] == "uncertainty", "Should still be uncertain after non-resolution statement"
+    # After removing template early-returns, the system still injects conflict context
+    # and the answer should reflect the unresolved state
+    answer = (out.get("answer") or "").lower()
+    has_both = "microsoft" in answer and "google" in answer
+    has_conflict_signal = out.get("contradiction_detected") or out.get("gates_passed") is False
+    assert has_both or has_conflict_signal, "Should still show conflict after non-resolution statement"

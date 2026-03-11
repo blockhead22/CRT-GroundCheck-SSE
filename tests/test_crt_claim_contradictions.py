@@ -140,7 +140,7 @@ def test_slot_question_augmentation_injects_latest_employer(capturing_rag):
     all_mems = rag.memory._load_all_memories()
     ms_mem = next(m for m in all_mems if "i work at microsoft" in m.text.lower())
 
-    rag.retrieve = lambda query, k=5, min_trust=0.0: [(ms_mem, 1.0)]
+    rag.retrieve = lambda query, k=5, min_trust=0.0, **kwargs: [(ms_mem, 1.0)]
 
     rag.query("Where do I work?")
     assert llm.last_prompt is not None
