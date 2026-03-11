@@ -5590,6 +5590,7 @@ class CRTEnhancedRAG:
                     "confidence": mem.confidence,
                     "source": mem.source.value,
                     "similarity": sim_score,
+                    "timestamp": getattr(mem, 'timestamp', None),
                 }
             )
 

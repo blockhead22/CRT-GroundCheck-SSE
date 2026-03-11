@@ -280,18 +280,17 @@ class DisclosurePolicy:
         # If we have both old and new values, it's a contradiction
         if old_value and new_value:
             return (
-                f"I noticed you mentioned {new_value} for your {slot_display}, "
-                f"but I previously had {old_value}. "
-                f"Which one is correct?"
+                f"Hold on — I had {old_value} for your {slot_display}, "
+                f"but you just said {new_value}. Which is current?"
             )
-        
+
         # Otherwise, it's a new fact with medium confidence
         if new_value:
             return (
-                f"Just to confirm - is your {slot_display} {new_value}? "
-                f"I want to make sure I have this right."
+                f"Got it — your {slot_display} is {new_value}? "
+                f"Just making sure I have that right."
             )
-        
+
         # Fallback
         return f"Can you confirm your {slot_display}?"
     

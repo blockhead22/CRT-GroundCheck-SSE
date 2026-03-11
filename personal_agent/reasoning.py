@@ -1227,15 +1227,25 @@ RESPONSE RULES:
         if adaptive_hint:
             prompt += f"{adaptive_hint}\n\n"
         
+        # Detect provenance queries — user is asking HOW/WHY we know something
+        _provenance_cues = ("how do you know", "why do you think", "where did you learn",
+                            "when did i tell", "how are you sure", "what makes you think",
+                            "how did you learn", "how do you remember")
+        _is_provenance_query = any(cue in query.lower() for cue in _provenance_cues)
+
         # Add memory context if available — split into user facts and system self-knowledge
         if docs:
             # Separate user facts from system self-knowledge
             user_docs = [d for d in docs if d.get('text', '') and d.get('source') != 'system']
             system_docs = [d for d in docs if d.get('text', '') and d.get('source') == 'system']
-            
+
             if user_docs:
-                prompt += "=== RETRIEVED MEMORIES: USER FACTS ===\n"
-                prompt += "These are facts the USER shared. Each has a trust score (0-1) and similarity score.\n\n"
+                if _is_provenance_query:
+                    prompt += "=== RETRIEVED MEMORIES: USER FACTS (WITH PROVENANCE) ===\n"
+                    prompt += "The user is asking HOW you know something. Include provenance details in your answer.\n\n"
+                else:
+                    prompt += "=== RETRIEVED MEMORIES: USER FACTS ===\n"
+                    prompt += "These are facts the USER shared. Each has a trust score (0-1) and similarity score.\n\n"
                 for i, mem in enumerate(user_docs[:6], 1):
                     trust = mem.get('trust') or mem.get('confidence')
                     trust_str = f" [trust: {trust:.2f}]" if trust is not None else ""
@@ -1243,7 +1253,20 @@ RESPONSE RULES:
                     source_str = f" (source: {source})" if source else ""
                     sim = mem.get('similarity')
                     sim_str = f" [similarity: {sim:.2f}]" if sim is not None else ""
-                    prompt += f"{i}. {mem['text']}{trust_str}{source_str}{sim_str}\n"
+                    # Add timestamp for provenance queries
+                    ts_str = ""
+                    if _is_provenance_query:
+                        ts = mem.get('timestamp')
+                        if ts:
+                            try:
+                                from datetime import datetime
+                                if isinstance(ts, (int, float)):
+                                    ts_str = f" [stored: {datetime.fromtimestamp(ts).strftime('%Y-%m-%d')}]"
+                                else:
+                                    ts_str = f" [stored: {str(ts)[:10]}]"
+                            except Exception:
+                                ts_str = f" [stored: {ts}]"
+                    prompt += f"{i}. {mem['text']}{trust_str}{source_str}{sim_str}{ts_str}\n"
                 prompt += "\n"
             
             if system_docs:
