@@ -3738,95 +3738,32 @@ class CRTEnhancedRAG:
             user_input_kind=user_input_kind,
         )
         
-        # Handle resolved contradictions (gates passed with caveat answer)
+        # Handle resolved contradictions — inject context so model responds naturally
         if gates_passed and clarification_message:
-            # Contradiction was RESOLVED - return assertive answer with caveat
             logger.info(f"[GATE_RESOLVED] Contradiction resolved with caveat: {clarification_message}")
-            is_question = user_input_kind in ("question", "instruction")
-            try:
-                llm_obj = getattr(self.reasoning, "llm", None)
-                if llm_obj is not None and hasattr(llm_obj, "last_prompt"):
-                    slots_for_prompt = inferred_slots or self._infer_slots_from_query(user_query)
-                    try:
-                        retrieved_for_prompt = self.retrieve(
-                            user_query,
-                            k=5,
-                            relevant_slots=slots_for_prompt if slots_for_prompt else None,
-                        )
-                    except TypeError:
-                        retrieved_for_prompt = self.retrieve(user_query, k=5)
-                    if slots_for_prompt:
-                        retrieved_for_prompt = self._augment_retrieval_with_slot_memories(
-                            retrieved_for_prompt,
-                            slots_for_prompt,
-                            thread_id=thread_id,
-                        )
-                    prompt_docs = self._build_resolved_memory_docs(retrieved_for_prompt, max_fallback_lines=0)
-                    llm_obj.last_prompt = self.reasoning._build_quick_prompt(
-                        user_query,
-                        {
-                            "retrieved_docs": [doc for doc in prompt_docs],
-                            "contradictions": [],
-                            "memory_context": [],
-                            "style_profile": None,
-                            "personality_profile": None,
-                            "reflection_scorecard": None,
-                            "episodic_preferences": None,
-                            "copilot_context": [],
-                            "web_search_results": [],
-                            "web_evidence_packet": None,
-                        },
-                    )
-            except Exception:
-                pass
-             
-            return {
-                'answer': clarification_message,
-                'thinking': None,
-                'mode': 'quick',
-                'confidence': RESOLVED_CONTRADICTION_CONFIDENCE,  # Good confidence - contradiction resolved with disclosure
-                'response_type': 'speech',  # Regular response, not uncertainty
-                'gates_passed': True,  # Gates passed because we resolved it
-                'gate_reason': 'contradiction_resolved',
-                'intent_alignment': 0.9,
-                'memory_alignment': 0.9,
-                'contradiction_detected': not is_question,  # Only flag contradictions on new assertions
-                'contradiction_resolved': True,  # But we resolved it
-                'unresolved_contradictions_total': 0,  # Zero because we resolved them
-                'unresolved_hard_conflicts': 0,
-                'retrieved_memories': [],
-                'prompt_memories': [],
-                'learned_suggestions': [],
-                'heuristic_suggestions': [],
-                'best_prior_trust': None,
-                'session_id': self.session_id,
-            }
-        
+            extra_context["contradiction_resolved"] = (
+                f"\n[CONTRADICTION RESOLVED]\n"
+                f"A previous conflict in the user's facts was resolved.\n"
+                f"Resolved answer: {clarification_message}\n"
+                f"Mention the resolution naturally — don't use parenthetical caveats.\n"
+            )
+            contradiction_detected = True
+
         if not gates_passed and clarification_message:
-            # Gate blocked - return clarification request instead of confident answer
             logger.info(f"[GATE_BLOCK] Response blocked due to {len(blocking_contradictions)} contradictions")
-            is_question = user_input_kind in ("question", "instruction")
-            
-            return {
-                'answer': clarification_message,
-                'thinking': None,
-                'mode': 'quick',
-                'confidence': 0.0,
-                'response_type': 'uncertainty',
-                'gates_passed': False,
-                'gate_reason': 'contradiction_blocking',
-                'intent_alignment': 0.5,
-                'memory_alignment': 0.5,
-                'contradiction_detected': not is_question,
-                'unresolved_contradictions_total': len(blocking_contradictions),
-                'unresolved_hard_conflicts': len(blocking_contradictions),
-                'retrieved_memories': [],
-                'prompt_memories': [],
-                'learned_suggestions': [],
-                'heuristic_suggestions': [],
-                'best_prior_trust': None,
-                'session_id': self.session_id,
-            }
+            # Build conflict details for the model
+            conflict_details = []
+            for bc in blocking_contradictions[:3]:
+                conflict_details.append(
+                    f"- {bc.get('slot', '?')}: \"{bc.get('old_value', '')[:80]}\" vs \"{bc.get('new_value', '')[:80]}\""
+                )
+            extra_context["contradiction_blocked"] = (
+                f"\n[UNRESOLVED CONFLICT — MUST ADDRESS]\n"
+                f"You have conflicting information and cannot give a confident answer.\n"
+                f"Conflicts:\n" + "\n".join(conflict_details) + "\n"
+                f"Ask the user which is current. Be natural about it.\n"
+            )
+            contradiction_detected = True
         
         # Meta-queries about the system ("how does CRT work?", "how does this work?")
         # are handled by the system prompt in reasoning.py — no hardcoded explanation needed.
@@ -4193,53 +4130,8 @@ class CRTEnhancedRAG:
                 'session_id': self.session_id,
             }
 
-        # Deterministic safe path: third-person questions that reference the user by name.
-        # Avoid importing world knowledge for a name that matches the current user.
-        assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
-        assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
-        if assistant_profile_enabled and user_input_kind in ("question", "instruction") and self._is_assistant_profile_question(user_text):
-            answer = self._build_assistant_profile_answer(user_text)
-            prompt_docs = self._build_resolved_memory_docs(retrieved, max_fact_lines=4, max_fallback_lines=0)
-            best_prior = retrieved[0][0] if retrieved else None
-            return {
-                'answer': answer,
-                'thinking': None,
-                'mode': 'quick',
-                'confidence': 0.95,
-                'response_type': 'speech',
-                'gates_passed': False,
-                'gate_reason': 'assistant_profile',
-                'intent_alignment': 0.95,
-                'memory_alignment': 1.0,
-                'contradiction_detected': False,
-                'contradiction_entry': None,
-                'retrieved_memories': [
-                    {
-                        'text': mem.text,
-                        'trust': mem.trust,
-                        'confidence': mem.confidence,
-                        'source': mem.source.value,
-                        'sse_mode': mem.sse_mode.value,
-                        'score': score,
-                    }
-                    for mem, score in retrieved
-                ],
-                'prompt_memories': [
-                    {
-                        'text': d.get('text'),
-                        'trust': d.get('trust'),
-                        'confidence': d.get('confidence'),
-                        'source': d.get('source'),
-                    }
-                    for d in prompt_docs
-                ],
-                'unresolved_contradictions_total': 0,
-                'unresolved_hard_conflicts': 0,
-                'learned_suggestions': [],
-                'heuristic_suggestions': [],
-                'best_prior_trust': best_prior.trust if best_prior else None,
-                'session_id': self.session_id,
-            }
+        # Assistant-profile questions at this stage are handled by the system prompt.
+        # No second early-return needed — the model identity block covers this.
 
         user_named_cfg = (self.runtime_config.get("user_named_reference") or {}) if isinstance(self.runtime_config, dict) else {}
         user_named_enabled = bool(user_named_cfg.get("enabled", True))
@@ -4305,45 +4197,19 @@ class CRTEnhancedRAG:
             )
             if contradiction_goals:
                 recommended_next_action = contradiction_goals[0]
-
-                uncertain_response = self._generate_uncertain_response(
-                    user_query,
-                    retrieved,
-                    reason="I have an unresolved contradiction that affects your question",
-                    recommended_next_action=recommended_next_action,
-                    conflict_beliefs=conflict_beliefs,
+                # Inject conflict details as context for the model to explain naturally
+                beliefs_text = "\n".join(conflict_beliefs[:6]) if conflict_beliefs else "(no conflicting beliefs found)"
+                ask_text = ""
+                if recommended_next_action and recommended_next_action.get("action_type") == "ask_user":
+                    ask_text = recommended_next_action.get("question", "")
+                extra_context["unresolved_conflict"] = (
+                    f"\n[UNRESOLVED CONFLICT — AFFECTS THIS QUESTION]\n"
+                    f"You have conflicting information relevant to the user's question.\n"
+                    f"Conflicting beliefs:\n{beliefs_text}\n"
+                    + (f"Suggested clarification: {ask_text}\n" if ask_text else "")
+                    + f"Acknowledge the conflict honestly and ask the user to clarify.\n"
                 )
-                return {
-                    'answer': uncertain_response,
-                    'thinking': None,
-                    'mode': 'uncertainty',
-                    'confidence': 0.3,
-                    'response_type': 'uncertainty',
-                    'gates_passed': False,
-                    'gate_reason': 'unresolved_contradictions',
-                    'intent_alignment': 0.0,
-                    'memory_alignment': 0.0,
-                    'contradiction_detected': False,
-                    'contradiction_entry': None,
-                    'retrieved_memories': [
-                        {
-                            'memory_id': mem.memory_id,
-                            'text': mem.text,
-                            'timestamp': getattr(mem, 'timestamp', None),
-                            'trust': mem.trust,
-                            'confidence': mem.confidence,
-                            'source': mem.source.value,
-                            'sse_mode': mem.sse_mode.value,
-                            'score': score,
-                        }
-                        for mem, score in retrieved
-                    ],
-                    'unresolved_contradictions': 1,
-                    'unresolved_contradictions_total': 1,
-                    'unresolved_hard_conflicts': 1,
-                    'contradiction_goals': contradiction_goals,
-                    'recommended_next_action': recommended_next_action,
-                }
+                contradiction_detected = True
 
         # Slot-based fast-path: if the user asks a simple personal-fact question and we have
         # an answer in memory, answer directly from canonical resolved facts.
@@ -4956,10 +4822,21 @@ class CRTEnhancedRAG:
             log_swallowed_exception("crt_rag.query.episodic_preferences", e)
             episodic_preferences = None
 
+        # Inject extra_context blocks (from blindside, contradiction, name-history, etc.)
+        # as synthetic retrieved docs so the reasoning prompt sees them.
+        _injected_docs = list(prompt_docs)
+        if extra_context:
+            for _ctx_key, _ctx_text in extra_context.items():
+                _injected_docs.append({
+                    'text': _ctx_text,
+                    'trust': 1.0,
+                    'confidence': 1.0,
+                    'source': 'system',
+                    '_injected_context': _ctx_key,
+                })
+
         reasoning_context = {
-            'retrieved_docs': [
-                doc for doc in prompt_docs
-            ],
+            'retrieved_docs': _injected_docs,
             'contradictions': [],  # Will detect after generation
             'memory_context': [],
             'style_profile': style_profile,
