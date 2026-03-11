@@ -1205,11 +1205,22 @@ RESPONSE RULES:
 """
 
         if preference_constraints:
-            prompt += (
-                "MANDATORY USER PREFERENCE CONSTRAINTS (high confidence):\n"
-                f"{preference_constraints}\n"
-                "Treat these as defaults unless the user overrides them in this turn.\n\n"
-            )
+            # Skip conciseness constraint when user is asking for explanation
+            _explanation_cues = ("how do you know", "why do you think", "explain",
+                                 "tell me more", "where did you learn", "when did i tell",
+                                 "how are you sure", "what makes you think")
+            if any(cue in query.lower() for cue in _explanation_cues):
+                # Filter out conciseness line so the model expands naturally
+                preference_constraints = "\n".join(
+                    line for line in preference_constraints.split("\n")
+                    if "concise" not in line.lower()
+                )
+            if preference_constraints.strip():
+                prompt += (
+                    "MANDATORY USER PREFERENCE CONSTRAINTS (high confidence):\n"
+                    f"{preference_constraints}\n"
+                    "Treat these as defaults unless the user overrides them in this turn.\n\n"
+                )
 
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
