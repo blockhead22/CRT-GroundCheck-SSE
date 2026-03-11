@@ -3218,6 +3218,7 @@ class CRTEnhancedRAG:
         profile_updates: List[Dict[str, str]] = []
         contradiction_detected: bool = False
         contradiction_entry = None
+        extra_context: Dict[str, str] = {}  # Injected context for template-free paths
         user_text = self._strip_continuity_augmented_text(user_query)
         if not user_text:
             user_text = (user_query or "").strip()
@@ -3231,33 +3232,9 @@ class CRTEnhancedRAG:
         user_input_kind = self._classify_user_input(user_text)
         logger.info(f"[PROFILE_DEBUG] Input classified as: {user_input_kind}")
 
-        # Deterministic assistant-profile path should run early to avoid drift
-        # into synthesis/memory-lookup branches for self-identity questions.
-        assistant_profile_cfg = (self.runtime_config.get("assistant_profile") or {}) if isinstance(self.runtime_config, dict) else {}
-        assistant_profile_enabled = bool(assistant_profile_cfg.get("enabled", True))
-        if assistant_profile_enabled and user_input_kind in ("question", "instruction") and self._is_assistant_profile_question(user_text):
-            answer = self._build_assistant_profile_answer(user_text)
-            return {
-                'answer': answer,
-                'thinking': None,
-                'mode': 'quick',
-                'confidence': 0.95,
-                'response_type': 'speech',
-                'gates_passed': False,
-                'gate_reason': 'assistant_profile',
-                'intent_alignment': 0.95,
-                'memory_alignment': 1.0,
-                'contradiction_detected': False,
-                'contradiction_entry': None,
-                'retrieved_memories': [],
-                'prompt_memories': [],
-                'unresolved_contradictions_total': 0,
-                'unresolved_hard_conflicts': 0,
-                'learned_suggestions': [],
-                'heuristic_suggestions': [],
-                'best_prior_trust': None,
-                'session_id': self.session_id,
-            }
+        # Assistant-profile questions ("who are you?", "what are you?") are handled
+        # by the system prompt in reasoning.py which already has the full identity block.
+        # No early-return needed — let the model respond naturally.
         
         # Check for natural language contradiction resolution FIRST
         # This prevents the resolution statement from being stored as a new assertion
@@ -3376,33 +3353,17 @@ class CRTEnhancedRAG:
                     )
                 except Exception:
                     pass
-                hedge = (
-                    "That's a pretty big change all at once. I have several facts on "
-                    "record from our conversation. Could you clarify which specific "
-                    "detail you'd like to correct? I'd rather update one thing at a "
-                    "time so I don't lose track."
+                # Inject blindside context so the model can respond naturally
+                # instead of returning a hardcoded hedge template.
+                blindside_context = (
+                    f"\n[BLINDSIDE ALERT]\n"
+                    f"The user just tried to change multiple facts at once.\n"
+                    f"Reason: {blindside_reason}\n"
+                    f"You should ask which specific detail they want to correct "
+                    f"rather than accepting everything at once.\n"
                 )
-                return {
-                    'answer': hedge,
-                    'thinking': None,
-                    'mode': 'quick',
-                    'confidence': 0.35,
-                    'response_type': 'belief',
-                    'gates_passed': True,
-                    'gate_reason': f'blindside_detected:{blindside_reason}',
-                    'intent_alignment': 0.4,
-                    'memory_alignment': 0.3,
-                    'contradiction_detected': True,
-                    'contradiction_entry': None,
-                    'retrieved_memories': [],
-                    'prompt_memories': [],
-                    'unresolved_contradictions_total': 1,
-                    'unresolved_hard_conflicts': 1,
-                    'learned_suggestions': [],
-                    'heuristic_suggestions': [],
-                    'best_prior_trust': None,
-                    'session_id': self.session_id,
-                }
+                extra_context["blindside_alert"] = blindside_context
+                contradiction_detected = True
         except Exception as e:
             logger.warning(f"[BLINDSIDE] Detection failed: {e}")
 
@@ -3749,9 +3710,8 @@ class CRTEnhancedRAG:
             inferred_slots = self._infer_slots_from_query(user_query)
             logger.info(f"[PROFILE_DEBUG] Inferred slots from query: {inferred_slots}")
 
-            # Deterministic path for nickname/name-history queries.
-            # These should list previously used name variants and MUST NOT trigger
-            # contradiction-resolution prompts.
+            # Name-history queries: inject the name data as context so the model
+            # can explain it naturally instead of returning a template.
             if self._is_name_history_request(user_text):
                 name_history = self._answer_from_fact_slots(
                     ["name"],
@@ -3759,27 +3719,10 @@ class CRTEnhancedRAG:
                     thread_id=thread_id,
                 )
                 if name_history:
-                    return {
-                        'answer': name_history,
-                        'thinking': None,
-                        'mode': 'quick',
-                        'confidence': 0.9,
-                        'response_type': 'speech',
-                        'gates_passed': True,
-                        'gate_reason': 'name_history',
-                        'intent_alignment': 0.95,
-                        'memory_alignment': 1.0,
-                        'contradiction_detected': False,
-                        'contradiction_entry': None,
-                        'retrieved_memories': [],
-                        'prompt_memories': [],
-                        'unresolved_contradictions_total': 0,
-                        'unresolved_hard_conflicts': 0,
-                        'learned_suggestions': [],
-                        'heuristic_suggestions': [],
-                        'best_prior_trust': None,
-                        'session_id': self.session_id,
-                    }
+                    extra_context["name_history"] = (
+                        f"\n[NAME HISTORY DATA]\n{name_history}\n"
+                        f"Use this data to answer the user's question naturally.\n"
+                    )
         
         # Parse any explicit first-person fact assertions (used for relevance checks).
         # For most questions this will be empty, which is fine.
@@ -3885,48 +3828,9 @@ class CRTEnhancedRAG:
                 'session_id': self.session_id,
             }
         
-        # Detect meta-queries about the system itself (not personal questions)
-        if "how does crt work" in user_text.lower() or "how does this work" in user_text.lower():
-            # This is a system question - return explanatory content
-            explanation = (
-                "CRT (Cognitive-Reflective Transformer) is a truthful personal AI system.\n\n"
-                "How it works:\n"
-                "1. **Memory Storage**: I store everything you tell me with trust scores\n"
-                "2. **Contradiction Detection**: I notice when facts conflict (e.g., different employers)\n"
-                "3. **Gradient Gates**: I only assert facts I'm confident about\n"
-                "4. **Retrieval**: I search my memory using semantic similarity\n"
-                "5. **Response**: I cite facts directly from memory, not hallucinations\n\n"
-                "This keeps me truthful and lets you correct my mistakes."
-            )
-            
-            self.memory.store_memory(
-                text=explanation,
-                confidence=0.8,
-                source=MemorySource.SYSTEM,
-                context={"query": user_text, "type": "speech", "kind": "meta_explanation"},
-                user_marked_important=False,
-                thread_id=thread_id,
-            )
-            
-            return {
-                'answer': explanation,
-                'thinking': None,
-                'mode': 'quick',
-                'confidence': 0.9,
-                'response_type': 'speech',
-                'gates_passed': True,
-                'gate_reason': 'meta_query_explanation',
-                'intent_alignment': 1.0,
-                'memory_alignment': 1.0,
-                'contradiction_detected': False,
-                'contradiction_entry': None,
-                'retrieved_memories': [],
-                'prompt_memories': [],
-                'learned_suggestions': [],
-                'heuristic_suggestions': [],
-                'best_prior_trust': None,
-                'session_id': self.session_id,
-            }
+        # Meta-queries about the system ("how does CRT work?", "how does this work?")
+        # are handled by the system prompt in reasoning.py — no hardcoded explanation needed.
+        # The model draws from architecture memories and the HOW YOU WORK section.
         
         # Use broader retrieval (k=15) for synthesis queries that need to gather multiple related facts
         is_synthesis = self._is_synthesis_query(user_query)
