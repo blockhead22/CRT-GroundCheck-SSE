@@ -76,32 +76,50 @@ Historical benchmark numbers remain below for context and are labeled with dates
 
 ---
 
-## Direction Forward (Now vs Next)
+## Roadmap
 
-### Now (P0: product hardening)
+### Phase A: Natural Agent (current)
 
-- keep the local control layer authoritative
-- reduce end-to-end latency in `engine.query` and reflection-heavy paths
-- tighten follow-up handling and alias-safe resolution for user identity facts
-- expand cloud privacy controls and make redaction decisions observable in the UI
-- keep CI, packaging metadata, and runtime support claims aligned
+Make the agent respond like a real assistant, not a database terminal.
 
-### Next (P1: deployment hardening)
+- Natural generative responses instead of hardcoded templates
+- Open-world fact learning (LLM-driven extraction, not just regex slots)
+- Provenance-aware answers ("you told me this on Jan 15, trust 0.91")
+- Conversational contradiction surfacing instead of scaffold blocks
+- Async post-processing (reflection, active learning off the hot path)
 
-- add explicit cloud escalation policy by channel, route, and risk class
-- expose cloud redaction summaries and escalation reasons in the live feed
-- move remaining deprecated FastAPI startup/shutdown hooks to lifespan handlers
-- expand adversarial coverage around gaslighting, blindside identity wipes, and revision-vs-conflict lifecycle edges
+### Phase B: Hybrid Routing
+
+Wire local and cloud generation end-to-end with automatic escalation.
+
+- Quality threshold triggers for cloud escalation
+- Redaction rules for cloud-bound context
+- Trace logging showing why a query stayed local vs escalated
+- Target: <5s simple queries, <15s complex
+
+### Phase C: Library Extraction
+
+Extract the novel primitives as standalone packages for other agent builders.
+
+| Package | What it does |
+|---------|-------------|
+| `groundcheck` | Post-generation verification engine |
+| `crt-ledger` | Contradiction preservation + lifecycle state machine |
+| `crt-trust` | Trust dynamics — asymmetric earn/decay with evidence mass |
+| `crt-gates` | Reconstruction gates — block answers the system can't support |
+
+### Phase D: Launch
+
+- PyPI publish for extracted libraries
+- Landing page with demo scenarios
+- Hosted API option for teams who want governed memory without self-hosting
 
 ### Who This Is For
 
-- Teams building assistants that need governed memory instead of silent overwrite behavior
-- Researchers working on contradiction handling, verifier-gated generation, and memory trust dynamics
-- Builders who want a private local authority layer with optional cloud escalation for harder generation tasks
-
-### Relevance in 2026
-
-The core problem remains relevant: frontier models are stronger than ever, but durable memory governance, contradiction disclosure, and operator-visible reasoning are still product gaps. This repository is relevant where private memory, traceability, and verification matter more than pretending the model can self-police.
+- Anyone who wants a personal AI that remembers correctly and never gaslights you
+- Teams building agents that need governed memory instead of silent overwrite behavior
+- Regulated contexts where confident-but-wrong answers have real cost
+- Builders who want a private local authority layer with optional cloud escalation
 
 ### New LLM Behavior Learnings (Mar 2026)
 
@@ -146,15 +164,15 @@ python -m personal_agent.dnnt.train_model --tokenizer-backend sentencepiece --to
 
 ---
 
-## VILT â€” Verification-In-the-Loop Training
+## VILT — Verification-In-the-Loop Training
 
 **VILT** wires GroundCheck's contradiction detection directly into a training loop so that a language model learns *not to hallucinate* about user-specific facts.
 
 ### How It Works
 
-1. The model generates an answer conditioned on a fact ledger (slotâ€“value memory triples).
+1. The model generates an answer conditioned on a fact ledger (slot—value memory triples).
 2. GroundCheck verifies the answer against those facts in real time (~1 ms).
-3. Contradictions **amplify the loss** on that sample â€” the gradient signal gets louder for answers that conflict with stored memories.
+3. Contradictions **amplify the loss** on that sample — the gradient signal gets louder for answers that conflict with stored memories.
 4. Anti-gaming guards (brevity penalty, minimum-length floor, curriculum scheduling) prevent the model from learning to dodge the verifier with vague or short answers.
 
 Loss amplification formula:
@@ -167,13 +185,13 @@ where $w_c$ is the contradiction weight, $s_c$ is the contradiction score from G
 
 | Model | Params (trainable) | Steps | Accuracy | Notes |
 |---|---|---|---|---|
-| DNNT v2.2 | 6.2 M (all) | 200 | 62 % | Capacity ceiling â€” mode collapse across facts |
-| DNNT v2.3 | 6.2 M (all) | 500 | 75 % peak â†’ collapsed | Adversarial gaming discovered â€” model generated shorter/vaguer text to dodge verifier |
+| DNNT v2.2 | 6.2 M (all) | 200 | 62 % | Capacity ceiling — mode collapse across facts |
+| DNNT v2.3 | 6.2 M (all) | 500 | 75 % peak → collapsed | Adversarial gaming discovered — model generated shorter/vaguer text to dodge verifier |
 | DNNT v3 | 6.2 M (all) | 500 | 62 % | Anti-gaming fixes eliminated gaming, but capacity bottleneck persisted |
 | **SmolLM-135M + LoRA** | **1.8 M (1.4 %)** | **200** | **88 %** | No mode collapse. Coherent English. 0.52 GB VRAM on RTX 3060. |
-| **Qwen2.5-1.5B + LoRA** | **4.4 M (0.28 %)** | **200** | **88 %** | 88 % baseline before training. GC pass 62 % â†’ 75 %. 3.05 GB VRAM. 9.3 min. |
+| **Qwen2.5-1.5B + LoRA** | **4.4 M (0.28 %)** | **200** | **88 %** | 88 % baseline before training. GC pass 62 % → 75 %. 3.05 GB VRAM. 9.3 min. |
 
-The DNNT experiments proved VILT's training signal is correct but exposed a model-capacity ceiling: a 6.2 M parameter micro-transformer cannot hold 16 distinct fact-query mappings without mode collapse. Switching to a pretrained language model (SmolLM-135M, ~134 M total params) with LoRA adapters (rank 16, only 1.8 M trainable) resolved the issue entirely â€” accuracy jumped from 25 % baseline to 88 % in 200 steps (26 min on an RTX 3060 12 GB).
+The DNNT experiments proved VILT's training signal is correct but exposed a model-capacity ceiling: a 6.2 M parameter micro-transformer cannot hold 16 distinct fact-query mappings without mode collapse. Switching to a pretrained language model (SmolLM-135M, ~134 M total params) with LoRA adapters (rank 16, only 1.8 M trainable) resolved the issue entirely — accuracy jumped from 25 % baseline to 88 % in 200 steps (26 min on an RTX 3060 12 GB).
 
 ### Running VILT Pretrained
 
@@ -182,7 +200,7 @@ The DNNT experiments proved VILT's training signal is correct but exposed a mode
 python scripts/vilt_pretrained.py
 ```
 
-Outputs are saved to `models/vilt_smollm/` â€” LoRA adapters (`best_lora/`, `final_lora/`) and a `vilt_metrics.json` results log.
+Outputs are saved to `models/vilt_smollm/` — LoRA adapters (`best_lora/`, `final_lora/`) and a `vilt_metrics.json` results log.
 
 ### Interactive Chat (vilt-chat)
 
@@ -201,23 +219,23 @@ The original DNNT-based VILT experiment is in `scripts/vilt_experiment.py`.
 
 ### Key Takeaway
 
-VILT proved that real-time verification feedback (GroundCheck) can teach a model to respect user-specific facts â€” **if** the model has enough capacity to absorb them. The technique is model-agnostic: it only requires a verifier that returns a contradiction score.
+VILT proved that real-time verification feedback (GroundCheck) can teach a model to respect user-specific facts — **if** the model has enough capacity to absorb them. The technique is model-agnostic: it only requires a verifier that returns a contradiction score.
 
 ---
 
 ## Scope
 
 - Append-only memory where no claim is ever silently overwritten or discarded
-- Trust scores that evolve through nonlinear dynamics â€” earned through consistency, resistant to noise proportional to accumulated evidence mass
+- Trust scores that evolve through nonlinear dynamics — earned through consistency, resistant to noise proportional to accumulated evidence mass
 - Contradictions preserved as first-class entities with full lifecycle tracking, not errors to be hidden
 - Inline hallucination verification fast enough to gate every response in real time
-- Reconstruction gates that block confident answers when the epistemic state can't support them â€” with consequence-aware strictness for high-stakes domains
-- A topological model of how beliefs relate to, depend on, and invalidate each other â€” where a change in one claim propagates through its dependencies
-- Claim-level atomic decomposition â€” every user statement broken into independently trackable, independently contradictable units
-- Memory that compresses over time without losing the epistemic structure that makes it trustworthy â€” contradiction-preserving, not lossy summarization
-- A system that learns how *you specifically* communicate and calibrates trust accordingly â€” personalized epistemics, not universal formulas
+- Reconstruction gates that block confident answers when the epistemic state can't support them — with consequence-aware strictness for high-stakes domains
+- A topological model of how beliefs relate to, depend on, and invalidate each other — where a change in one claim propagates through its dependencies
+- Claim-level atomic decomposition — every user statement broken into independently trackable, independently contradictable units
+- Memory that compresses over time without losing the epistemic structure that makes it trustworthy — contradiction-preserving, not lossy summarization
+- A system that learns how *you specifically* communicate and calibrates trust accordingly — personalized epistemics, not universal formulas
 - Hierarchical memory tiers where claims earn promotion through consistency and survive demotion with full history intact
-- Model-agnostic and storage-agnostic infrastructure â€” the trust layer works with any LLM and any database
+- Model-agnostic and storage-agnostic infrastructure — the trust layer works with any LLM and any database
 - GroundCheck as a standalone sub-2ms verification layer any LLM pipeline can use independently
 
 ---
@@ -226,9 +244,9 @@ VILT proved that real-time verification feedback (GroundCheck) can teach a model
 
 ### Why Contradictions Matter
 
-Most AI systems treat contradictions as bugs. If fact A and fact B conflict, one must be wrong â€” so delete it, overwrite it, or pick the newer one.
+Most AI systems treat contradictions as bugs. If fact A and fact B conflict, one must be wrong — so delete it, overwrite it, or pick the newer one.
 
-CRT rejects this entirely. A contradiction is a **signal.** It means something changed in the user's world. Maybe they switched jobs. Maybe they misspoke. Maybe they were testing the system. The system cannot know which â€” so it preserves both versions and tracks the tension until the user resolves it.
+CRT rejects this entirely. A contradiction is a **signal.** It means something changed in the user's world. Maybe they switched jobs. Maybe they misspoke. Maybe they were testing the system. The system cannot know which — so it preserves both versions and tracks the tension until the user resolves it.
 
 This is not indecisiveness. It is epistemic honesty. The system's job is to model **what it knows and what it doesn't**, not to guess.
 
@@ -240,13 +258,13 @@ CRT separates two concepts that every other memory system conflates:
 
 - **Trust** is how validated a memory has proven over time. A memory that gets referenced repeatedly without contradiction gains trust. A memory that gets contradicted loses trust. Trust **evolves continuously** via mathematical equations.
 
-Why this matters: a memory can start with high confidence ("I work at Google") but low trust (just said it once, never validated). Over time, if nothing contradicts it and it keeps being relevant, trust climbs. If it gets contradicted, trust drops â€” even though the original confidence was high.
+Why this matters: a memory can start with high confidence ("I work at Google") but low trust (just said it once, never validated). Over time, if nothing contradicts it and it keeps being relevant, trust climbs. If it gets contradicted, trust drops — even though the original confidence was high.
 
 The retrieval score blends both, weighted heavily toward trust:
 
 $$R_i = \text{similarity} \times \text{recency} \times \big(\alpha \cdot \tau_i + (1 - \alpha) \cdot c_i\big)$$
 
-where $\alpha = 0.7$ â€” long-term track record outweighs initial impression by a 7:3 ratio.
+where $\alpha = 0.7$ — long-term track record outweighs initial impression by a 7:3 ratio.
 
 ### Trust Evolution Equations
 
@@ -258,7 +276,7 @@ When a contradiction is detected, trust degrades:
 
 $$\tau_{\text{new}} = \text{clip}\big(\tau_{\text{current}} \cdot (1 - \eta_{\text{neg}} \cdot D_{\text{mean}}),\ 0,\ 1\big)$$
 
-The asymmetry is deliberate: $\eta_{\text{neg}} = 0.15 > \eta_{\text{pos}} = 0.10$. It is easier to lose trust than to gain it. This mirrors how human trust works â€” and it is the mathematically safe default when working with unreliable information.
+The asymmetry is deliberate: $\eta_{\text{neg}} = 0.15 > \eta_{\text{pos}} = 0.10$. It is easier to lose trust than to gain it. This mirrors how human trust works — and it is the mathematically safe default when working with unreliable information.
 
 ### Drift Detection
 
@@ -270,7 +288,7 @@ What happens next depends on where the drift falls:
 
 | Drift Range | Meaning | System Action |
 |---|---|---|
-| $D < \theta_{\text{align}}$ (0.15) | Aligned â€” confirms existing memory | Reinforce trust |
+| $D < \theta_{\text{align}}$ (0.15) | Aligned — confirms existing memory | Reinforce trust |
 | $\theta_{\text{align}} \leq D \leq \theta_{\text{contra}}$ (0.28) | Ambiguous zone | Soft update; belief evolves slowly |
 | $D > \theta_{\text{contra}}$ | Contradiction detected | Ledger entry created, reconstruction gates armed |
 
@@ -280,32 +298,32 @@ These thresholds were empirically tuned across 1000+ tests and a dedicated 50-tu
 
 CRT enforces a hard separation between what the system *believes* and what the LLM *says*:
 
-- **Belief** is the memory store â€” trust-weighted, slowly evolving, resistant to rapid change.
-- **Speech** is the LLM output â€” fast, fluent, and prone to hallucination.
+- **Belief** is the memory store — trust-weighted, slowly evolving, resistant to rapid change.
+- **Speech** is the LLM output — fast, fluent, and prone to hallucination.
 
 The core rule:
 
 > **"The mouth must never outweigh the self."**
 
-If the LLM generates a claim that contradicts stored beliefs, GroundCheck catches it. The system trusts its memory over its own output. Fallback-sourced memories â€” things the LLM said rather than the user â€” are capped at low trust ($\tau_{\text{fallback}} \leq 0.3$). The system knows the difference between what it was told and what it inferred.
+If the LLM generates a claim that contradicts stored beliefs, GroundCheck catches it. The system trusts its memory over its own output. Fallback-sourced memories — things the LLM said rather than the user — are capped at low trust ($\tau_{\text{fallback}} \leq 0.3$). The system knows the difference between what it was told and what it inferred.
 
 ### Reconstruction Gates (Holden Constraints)
 
 Before the LLM's response reaches the user, it passes through two gates:
 
-**1. Intent Alignment** â€” Does the response address what the user actually asked?
+**1. Intent Alignment** — Does the response address what the user actually asked?
 
 $$A_{\text{intent}} = \text{sim}\big(I(x),\ I(\hat{y})\big) \geq \theta_{\text{intent}}$$
 
-**2. Memory Alignment** â€” Is the response grounded in retrieved memories?
+**2. Memory Alignment** — Is the response grounded in retrieved memories?
 
 $$A_{\text{mem}} = \sum_i \text{softmax}(R_i) \cdot \text{sim}\big(E(\hat{y}),\ z_i\big) \geq \theta_{\text{mem}}$$
 
-If either gate fails, the response is blocked. The system asks for clarification instead of delivering a potentially hallucinated answer. These are called **Holden Constraints** â€” the system holds the line rather than letting bad information through.
+If either gate fails, the response is blocked. The system asks for clarification instead of delivering a potentially hallucinated answer. These are called **Holden Constraints** — the system holds the line rather than letting bad information through.
 
 The gates are especially critical when the query touches contradicted facts. If the user asks "Where do I work?" and there are two conflicting memories about their employer, the intent gate passes (it's a valid question) but the memory gate detects conflicting grounding and triggers disclosure.
 
-### SSE Mode Selection â€” Biologically Inspired Compression
+### SSE Mode Selection — Biologically Inspired Compression
 
 Not every memory deserves the same storage fidelity. Humans remember emotionally charged events in vivid detail while compressing routine experiences into gist. CRT does the same.
 
@@ -316,7 +334,7 @@ $$S = w_1 \cdot \text{emotion} + w_2 \cdot \text{novelty} + w_3 \cdot \text{user
 | Score | Mode | What Gets Stored |
 |---|---|---|
 | $S \geq 0.7$ | **Lossless** | Verbatim text with full character-level provenance. Identity-critical memories. |
-| $S \leq 0.3$ | **Cogni** | Compressed sketch â€” "what it felt like." Efficient for casual information. |
+| $S \leq 0.3$ | **Cogni** | Compressed sketch — "what it felt like." Efficient for casual information. |
 | Between | **Hybrid** | Adaptive blend of verbatim and compressed. |
 
 The weights reflect what matters: user-explicit marks carry the most weight ($w_3 = 0.30$), novelty is next ($w_2 = 0.25$), then emotion ($w_1 = 0.20$), contradiction signal ($w_4 = 0.15$), and future relevance ($w_5 = 0.10$).
@@ -336,8 +354,8 @@ This is the architectural principle that everything else is built on. Every subs
 The contradiction ledger is append-only. When a contradiction is detected, the old memory stays alive, the new memory is stored alongside it, and a ledger entry records: what changed, how much drift was measured, when it happened, and what the resolution status is.
 
 Resolution happens in only two ways:
-1. **The user explicitly resolves it** â€” *"Google is correct, I switched jobs."* Detected via natural language pattern matching.
-2. **The reflection system identifies a clear answer** â€” during autonomous background contemplation, if evidence overwhelmingly supports one version.
+1. **The user explicitly resolves it** — *"Google is correct, I switched jobs."* Detected via natural language pattern matching.
+2. **The reflection system identifies a clear answer** — during autonomous background contemplation, if evidence overwhelmingly supports one version.
 
 The system will never, on its own initiative, delete a contradiction or silently pick a winner.
 
@@ -355,14 +373,14 @@ IntentRouter â”€â”€ classifies intent (fact, question, correction, tas
 Fact Extraction â”€â”€ Tier A: regex hard slots (name, employer, location, age)
    â”‚                Tier B: LLM open-world tuples (hobbies, preferences, anything)
    â–¼
-CRT Memory Retrieval â”€â”€ scores by: similarity Ã— recency Ã— (Î±Â·trust + (1-Î±)Â·confidence)
+CRT Memory Retrieval â”€â”€ scores by: similarity × recency × (α·trust + (1-α)·confidence)
    â”‚
    â–¼
 Contradiction Detection â”€â”€ drift: D_mean = 1 - sim(z_new, z_prior)
    â”‚                       ML classifier (XGBoost) + LLM drift assessor
    â”‚                       types: conflict | evolution | refinement | temporal | correction
    â–¼
-Reconstruction Gates â”€â”€ unresolved contradictions in queried slots â†’ block
+Reconstruction Gates â”€â”€ unresolved contradictions in queried slots → block
    â”‚                    ask for clarification instead of confabulating
    â–¼
 LLM Response â”€â”€ grounded in trust-weighted context
@@ -376,15 +394,15 @@ Trust Evolution â”€â”€ aligned memories gain trust, contradicted ones 
 
 ### Additional Systems
 
-**Disclosure Policy** â€” Facts with medium confidence (0.4â€“0.9) get routed to clarification instead of binary accept/reject. A budget system prevents overwhelming the user with questions.
+**Disclosure Policy** — Facts with medium confidence (0.4—0.9) get routed to clarification instead of binary accept/reject. A budget system prevents overwhelming the user with questions.
 
-**Reflection System** â€” Post-response assessment: did the answer make sense? Should something be revisited? Feeds into the thinking loop.
+**Reflection System** — Post-response assessment: did the answer make sense? Should something be revisited? Feeds into the thinking loop.
 
-**Thinking Loop** â€” Autonomous background contemplation. The system periodically reviews its own memories, identifies tensions, and evolves its understanding.
+**Thinking Loop** — Autonomous background contemplation. The system periodically reviews its own memories, identifies tensions, and evolves its understanding.
 
-**Heartbeat System** â€” Proactive engagement. Instead of only responding when spoken to, the system can initiate check-ins based on learned patterns.
+**Heartbeat System** — Proactive engagement. Instead of only responding when spoken to, the system can initiate check-ins based on learned patterns.
 
-**Episodic Memory** â€” Session summaries, preference tracking, concept linking. Builds a longitudinal understanding of the user.
+**Episodic Memory** — Session summaries, preference tracking, concept linking. Builds a longitudinal understanding of the user.
 
 ---
 
@@ -492,18 +510,18 @@ from personal_agent.fact_store import FactStore
 store = FactStore(db_path="my_facts.db")
 store.process_input("My name is Nick")
 store.process_input("My favorite color is blue")
-print(store.answer("What is my name?"))  # â†’ "Nick"
+print(store.answer("What is my name?"))  # → "Nick"
 
 # CRT memory with contradiction tracking
 rag = CRTEnhancedRAG()
 rag.query("I work at Microsoft", thread_id="demo")
 rag.query("I work at Amazon", thread_id="demo")
 result = rag.query("Where do I work?", thread_id="demo")
-# â†’ Discloses conflict instead of silently picking one
+# → Discloses conflict instead of silently picking one
 ```
 
 ```python
-# GroundCheck â€” verify LLM claims against memory
+# GroundCheck — verify LLM claims against memory
 from groundcheck import GroundCheck, Memory
 
 verifier = GroundCheck()
@@ -517,7 +535,7 @@ print(result.hallucinations)  # ["Amazon"]
 
 ## API Endpoints
 
-Start the server: `python crt_api.py` â†’ `http://127.0.0.1:8123`
+Start the server: `python crt_api.py` → `http://127.0.0.1:8123`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -580,21 +598,21 @@ The system includes a dedicated 50-turn adversarial stress test (`tools/agent_ad
 
 | Phase | Turns | What It Tests |
 |-------|-------|---------------|
-| 1. Baseline Setup | T1â€“T10 | Establish 10 personal facts (name, employer, age, location, school, graduation year, pet, spouse, language, coffee) |
-| 2. Verify Baseline | T11â€“T15 | Query each fact to confirm storage and retrieval |
-| 3. Direct Contradictions | T16â€“T24 | Contradict 9 of 10 facts with correction language |
-| 4. Post-Contradiction | T25â€“T33 | Query each fact again â€” system should express uncertainty |
-| 5. Gaslighting | T34â€“T38 | Deny ever stating original facts ("I never said I worked at Google") |
-| 6. Blindside | T39â€“T43 | Identity wipes, persona changes, dual-identity claims |
-| 7. Meta Probes | T44â€“T49 | Ask the system about its own contradictions and confidence |
+| 1. Baseline Setup | T1—T10 | Establish 10 personal facts (name, employer, age, location, school, graduation year, pet, spouse, language, coffee) |
+| 2. Verify Baseline | T11—T15 | Query each fact to confirm storage and retrieval |
+| 3. Direct Contradictions | T16—T24 | Contradict 9 of 10 facts with correction language |
+| 4. Post-Contradiction | T25—T33 | Query each fact again — system should express uncertainty |
+| 5. Gaslighting | T34—T38 | Deny ever stating original facts ("I never said I worked at Google") |
+| 6. Blindside | T39—T43 | Identity wipes, persona changes, dual-identity claims |
+| 7. Meta Probes | T44—T49 | Ask the system about its own contradictions and confidence |
 | 8. Rapid Fire | T50 | Quick identity reassertion under pressure |
 
-### Results (Round 5 â€” Feb 2026)
+### Results (Round 5 — Feb 2026)
 
 ```
-Direct contradictions:  9/9  detected (100%)  â€” name, employer, age, location, school, pet, spouse, language, coffee
-Gaslighting resistance: 4/5  handled          â€” system cites original records
-Blindsides handled:     2/5  graceful          â€” identity wipes still challenging
+Direct contradictions:  9/9  detected (100%)  — name, employer, age, location, school, pet, spouse, language, coffee
+Gaslighting resistance: 4/5  handled          — system cites original records
+Blindsides handled:     2/5  graceful          — identity wipes still challenging
 False positives:        0
 Overall:                15/19 (79%)
 ```
@@ -603,14 +621,14 @@ Progress over 5 rounds of fixes:
 
 | Round | Pass Rate | Direct Contradictions | Key Fix |
 |-------|-----------|-----------------------|---------|
-| 0 (baseline) | 42% (8/19) | 2/9 | â€” |
+| 0 (baseline) | 42% (8/19) | 2/9 | — |
 | 1 | 47% (9/19) | 4/9 | Slot inference rewrite, correction fall-through |
 | 2 | 53% (10/19) | 4/9 | HARD_IDENTITY_SLOTS, correction-aware extraction |
 | 3 | 63% (12/19) | 6/9 | `contradiction_detected` reset bug, NL resolution fix |
 | 4 | ~68% (est.) | 7/9 | NL resolution pathway sets contradiction flag |
 | **5** | **79% (15/19)** | **9/9** | ML availability check, assertion early return |
 
-Remaining 4 failures are advanced blindside attacks (identity wipes like "Everything I told you was a lie") and a gaslighting edge case â€” these are targets for Phase 3 adversarial hardening.
+Remaining 4 failures are advanced blindside attacks (identity wipes like "Everything I told you was a lie") and a gaslighting edge case — these are targets for Phase 3 adversarial hardening.
 
 ### Running the Adversarial Test
 
@@ -618,7 +636,7 @@ Remaining 4 failures are advanced blindside attacks (identity wipes like "Everyt
 # Start the API server
 python crt_api.py
 
-# In another terminal â€” full 50-turn automated run
+# In another terminal — full 50-turn automated run
 python tools/agent_adversarial_driver.py --url http://127.0.0.1:8123 --mode auto --turns 50
 
 # Results saved to artifacts/agent_adversarial_<session>_<timestamp>.json
@@ -682,7 +700,7 @@ Calibrated thresholds: `artifacts/calibrated_thresholds.json` - auto-loaded for 
 
 ## License
 
-MIT â€” see [LICENSE](LICENSE)
+MIT — see [LICENSE](LICENSE)
 
 
 
