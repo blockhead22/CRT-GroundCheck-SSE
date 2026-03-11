@@ -8,7 +8,11 @@
       "Bash(xargs head:*)",
       "Bash(python -m pytest --collect-only tests/)",
       "Bash(python -m pytest tests/ --collect-only -q)",
-      "Bash(python -:*)"
+      "Bash(python -:*)",
+      "Bash(*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)"
     ]
   }
 }
