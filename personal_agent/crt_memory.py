@@ -812,6 +812,22 @@ class CRTMemorySystem:
             # Table doesn't exist yet - no contradictions
             return False
     
+    def deprecate_memory(self, memory_id: str, reason: str = ""):
+        """Mark a memory as deprecated (soft-delete).
+
+        Uses the same connection management as other memory operations
+        to avoid visibility issues from raw sqlite3.connect() calls.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE memories SET deprecated = 1, deprecation_reason = ? WHERE memory_id = ?",
+            (reason, memory_id),
+        )
+        conn.commit()
+        conn.close()
+        logger.info(f"[MEMORY] Deprecated memory {memory_id}: {reason[:80]}")
+
     def update_trust(
         self,
         memory_id: str,

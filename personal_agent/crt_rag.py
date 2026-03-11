@@ -3123,34 +3123,27 @@ class CRTEnhancedRAG:
                     chosen_memory_id=chosen_memory_id
                 )
                 
-                # Then deprecate the non-chosen memory
-                # Using context manager to ensure connection is properly closed
-                mem_db = str(self.memory.db_path)
+                # Deprecate the non-chosen memory via the memory object's API
+                # (avoids raw sqlite3.connect which can bypass connection management).
                 try:
-                    with sqlite3.connect(mem_db) as mem_conn:
-                        mem_cursor = mem_conn.cursor()
-                        
-                        mem_cursor.execute("""
-                            UPDATE memories 
-                            SET deprecated = 1, deprecation_reason = ?
-                            WHERE memory_id = ?
-                        """, (f"User resolved via natural language: '{user_text[:100]}'", deprecated_memory_id))
-                        
-                        # Optionally boost trust of chosen memory slightly
-                        mem_cursor.execute("""
-                            UPDATE memories 
-                            SET trust = MIN(trust + 0.1, 1.0)
-                            WHERE memory_id = ?
-                        """, (chosen_memory_id,))
-                        
-                        mem_conn.commit()
+                    self.memory.deprecate_memory(
+                        deprecated_memory_id,
+                        reason=f"User resolved via natural language: '{user_text[:100]}'"
+                    )
+                    # Boost trust of chosen memory slightly
+                    chosen_mem = self._get_memory_by_id(chosen_memory_id)
+                    if chosen_mem:
+                        self.memory.update_trust(
+                            chosen_memory_id,
+                            min(chosen_mem.trust + 0.1, 1.0),
+                            reason="nl_resolution_boost",
+                            drift=0.0,
+                        )
                 except Exception as e:
                     logger.error(
                         f"[NL_RESOLUTION] Failed to update memories after resolving contradiction {contra.ledger_id}: {e}",
                         exc_info=True
                     )
-                    # Continue anyway - the contradiction is already resolved in the ledger
-                    # The memory deprecation is a nice-to-have optimization
                 
                 logger.info(
                     f"[NL_RESOLUTION] Resolved contradiction {contra.ledger_id} via natural language. "
@@ -3728,16 +3721,32 @@ class CRTEnhancedRAG:
         # Parse any explicit first-person fact assertions (used for relevance checks).
         # For most questions this will be empty, which is fine.
         asserted_facts = extract_fact_slots(user_text) or {}
-        
+
         # Compute relevant slots for contradiction filtering
         relevant_slots_set = set(inferred_slots or []) | set((asserted_facts or {}).keys())
-        
+
+        # Detect provenance / meta-questions — these should BYPASS contradiction gates
+        # because the user is asking HOW we know, not WHAT we know.
+        _provenance_meta_cues = ("how do you know", "why do you think", "where did you learn",
+                                 "when did i tell", "how are you sure", "what makes you think",
+                                 "how did you learn", "how do you remember", "how does your",
+                                 "how do you work", "who are you", "what are you",
+                                 "how does that work", "explain your process", "explain how")
+        _is_provenance_or_meta = any(cue in user_text.lower() for cue in _provenance_meta_cues)
+
         # BUG 2 FIX: Check for unresolved contradictions (gate blocking)
-        gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
-            user_text,
-            inferred_slots,
-            user_input_kind=user_input_kind,
-        )
+        if _is_provenance_or_meta:
+            # Provenance / meta queries should never be blocked by contradiction gates.
+            gates_passed = True
+            clarification_message = None
+            blocking_contradictions = []
+            logger.info("[GATE_BYPASS] Provenance/meta query -- skipping contradiction gates")
+        else:
+            gates_passed, clarification_message, blocking_contradictions = self._check_contradiction_gates(
+                user_text,
+                inferred_slots,
+                user_input_kind=user_input_kind,
+            )
         
         # Handle resolved contradictions — inject context so model responds naturally
         if gates_passed and clarification_message:
@@ -3850,6 +3859,21 @@ class CRTEnhancedRAG:
                 include_system=_is_self_referential,
             )
         
+        # Turn-awareness: inject retrieval metadata so the LLM can explain
+        # what it did when asked about its process.
+        if retrieved:
+            _top_mem = retrieved[0][0]
+            try:
+                _mem_count = len(self.memory._load_all_memories())
+            except Exception:
+                _mem_count = -1
+            extra_context["turn_awareness"] = (
+                f"\n[TURN CONTEXT]\n"
+                f"You searched {_mem_count} stored memories for this query.\n"
+                f"Top match: \"{_top_mem.text[:100]}\" (trust={_top_mem.trust:.2f})\n"
+                f"Retrieved {len(retrieved)} relevant memories total.\n"
+            )
+
         # Check for sentiment contradictions in retrieved memories
         sentiment_contradiction = self._detect_sentiment_contradiction(user_query, retrieved)
         if sentiment_contradiction:
@@ -4234,168 +4258,18 @@ class CRTEnhancedRAG:
             "why are you sure",
             "why do you think",
         ))
-        if user_input_kind in ("question", "instruction") and inferred_slots and not _is_meta_question and not _is_search_query:
+        if user_input_kind in ("question", "instruction") and inferred_slots and not _is_meta_question and not _is_search_query and not _is_provenance_or_meta:
             slot_answer = self._answer_from_fact_slots(inferred_slots, user_query=user_query, thread_id=thread_id)
             if slot_answer is not None:
-                    # Ensure we still have retrieval context for metadata/alignment.
-                    if not retrieved:
-                        retrieved = self.retrieve(user_query, k=5)
-                    prompt_docs = self._build_resolved_memory_docs(retrieved, max_fallback_lines=0)
-                    # Keep prompt observability aligned with this turn even when we
-                    # short-circuit to deterministic slot answers (no LLM call).
-                    try:
-                        llm_obj = getattr(self.reasoning, "llm", None)
-                        if llm_obj is not None and hasattr(llm_obj, "last_prompt"):
-                            llm_obj.last_prompt = self.reasoning._build_quick_prompt(
-                                user_query,
-                                {
-                                    "retrieved_docs": [doc for doc in prompt_docs],
-                                    "contradictions": [],
-                                    "memory_context": [],
-                                    "style_profile": None,
-                                    "personality_profile": None,
-                                    "reflection_scorecard": None,
-                                    "episodic_preferences": None,
-                                    "copilot_context": [],
-                                    "web_search_results": [],
-                                    "web_evidence_packet": None,
-                                },
-                            )
-                    except Exception:
-                        pass
-
-                    reasoning_result = {
-                        'answer': slot_answer,
-                        'thinking': None,
-                        'mode': 'quick',
-                        'confidence': 0.95,
-                    }
-
-                    # â"€â"€ F4: Uncertainty expression â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-                    # Check for open contradictions affecting the queried slots.
-                    # If found, inject hedging language and lower confidence.
-                    slot_contradictions = []
-                    try:
-                        open_contradictions = self.ledger.get_open_contradictions()
-                        for c in open_contradictions:
-                            c_summary = getattr(c, 'summary', '') or ''
-                            for s in inferred_slots:
-                                if s in c_summary.lower() or s.replace('_', ' ') in c_summary.lower():
-                                    slot_contradictions.append(c)
-                                    break
-                        
-                        if slot_contradictions:
-                            # We have unresolved contradictions for these slots
-                            hedge_prefix = ("Note: I have conflicting information on record for this. "
-                                          "Based on the most recent update, ")
-                            reasoning_result['answer'] = hedge_prefix + slot_answer
-                            reasoning_result['confidence'] = 0.65
-                            logger.info(f"[UNCERTAINTY] {len(slot_contradictions)} open contradiction(s) "
-                                      f"affecting slots {inferred_slots} - injecting hedge")
-                    except Exception as e:
-                        log_swallowed_exception("crt_rag.query.uncertainty_check", e)
-                    # â"€â"€ End F4 â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
-
-                    candidate_output = reasoning_result['answer']
-                    candidate_vector = encode_vector(candidate_output)
-
-                    intent_align = reasoning_result['confidence']
-                    memory_align = self.crt_math.memory_alignment(output_vector=candidate_vector, retrieved_memories=[{'vector': mem.vector, 'text': mem.text} for mem, _ in retrieved], retrieval_scores=[score for _, score in retrieved], output_text=candidate_output)
-
-                    # Predict response type using heuristics (89.5% - beats all ML attempts)
-                    response_type_pred = self._classify_query_type_heuristic(user_query) or "unknown"
-                    
-                    # Compute grounding score
-                    grounding_score = self._compute_grounding_score(candidate_output, retrieved)
-                    
-                    # Use gradient gates v2
-                    slot_contradiction_severity = "high" if slot_contradictions else "none"
-                    gates_passed, gate_reason = self.crt_math.check_reconstruction_gates_v2(
-                        intent_align=intent_align,
-                        memory_align=memory_align,
-                        response_type=response_type_pred,
-                        grounding_score=grounding_score,
-                        contradiction_severity=slot_contradiction_severity,
-                    )
-                    
-                    # Log gate event for active learning
-                    if self.active_learning:
-                        try:
-                            self.active_learning.record_gate_event(
-                                question=user_query,
-                                response_type_predicted=response_type_pred,
-                                intent_align=intent_align,
-                                memory_align=memory_align,
-                                grounding_score=grounding_score,
-                                gates_passed=gates_passed,
-                                gate_reason=gate_reason,
-                                thread_id=thread_id or "default",
-                                session_id=self.session_id,
-                            )
-                        except Exception as e:
-                            log_swallowed_exception("crt_rag.query.active_learning.slot_path", e)
-
-                    # Do not append provenance footers into the answer text.
-                    final_answer = slot_answer
-
-                    response_type = "belief" if gates_passed else "speech"
-                    source = MemorySource.SYSTEM if gates_passed else MemorySource.FALLBACK
-                    confidence = reasoning_result['confidence'] if gates_passed else (reasoning_result['confidence'] * 0.7)
-
-                    best_prior = retrieved[0][0] if retrieved else None
-
-                    # Store system response memory
-                    self.memory.store_memory(
-                        text=candidate_output,
-                        confidence=confidence,
-                        source=source,
-                        context={'query': user_query, 'type': response_type, 'kind': 'slot_answer'},
-                        user_marked_important=False,
-                        thread_id=thread_id,
-                    )
-
-                    learned = self._get_learned_suggestions_for_slots(inferred_slots)
-
-                    return self._add_reintroduction_flags({
-                        'answer': final_answer,
-                        'thinking': None,
-                        'mode': 'quick',
-                        'confidence': reasoning_result['confidence'],
-                        'response_type': response_type,
-                        'gates_passed': gates_passed,
-                        'gate_reason': gate_reason,
-                        'intent_alignment': intent_align,
-                        'memory_alignment': memory_align,
-                        'contradiction_detected': False,
-                        'contradiction_entry': None,
-                        'retrieved_memories': [
-                            {
-                                'memory_id': mem.memory_id,
-                                'text': mem.text,
-                                'timestamp': getattr(mem, 'timestamp', None),
-                                'trust': mem.trust,
-                                'confidence': mem.confidence,
-                                'source': mem.source.value,
-                                'sse_mode': mem.sse_mode.value,
-                                'score': score,
-                            }
-                            for mem, score in retrieved
-                        ],
-                        'prompt_memories': [
-                            {
-                                'text': d.get('text'),
-                                'memory_id': d.get('memory_id'),
-                                'trust': d.get('trust'),
-                                'confidence': d.get('confidence'),
-                                'source': d.get('source'),
-                            }
-                            for d in prompt_docs
-                        ],
-                        'learned_suggestions': learned,
-                        'heuristic_suggestions': self._get_heuristic_suggestions_for_slots(inferred_slots),
-                        'best_prior_trust': best_prior.trust if best_prior else None,
-                        'session_id': self.session_id,
-                    })
+                # Inject slot data as context so the LLM renders it naturally
+                # instead of returning raw "slot: value" strings directly.
+                extra_context["fact_slot_data"] = (
+                    f"\n[RESOLVED FACT DATA]\n"
+                    f"You looked up the user's stored facts and found:\n{slot_answer}\n"
+                    f"Answer the user's question naturally using this data. "
+                    f"Do NOT repeat the raw slot format -- just state the answer conversationally.\n"
+                )
+                logger.info(f"[SLOT_INJECT] Injected slot data as context: {slot_answer[:80]}")
 
             # Summary-style instructions: answer from canonical resolved USER facts.
             if user_input_kind == "instruction":
@@ -6085,7 +5959,7 @@ class CRTEnhancedRAG:
                     distinct_norm.append(vn)
 
             if len(distinct_norm) > 1:
-                resolved_parts.append(f"{slot.replace('_', ' ')}: {best_val} (most recent update)")
+                resolved_parts.append(f"{slot.replace('_', ' ')}: {best_val} (note: multiple values on record)")
             else:
                 resolved_parts.append(f"{slot.replace('_', ' ')}: {best_val}")
 

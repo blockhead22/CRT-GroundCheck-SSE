@@ -8,7 +8,23 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 
 
 class FakeLLM:
+    _SKIP_PREFIXES = ("You", "Do ", "Answer", "Search", "Top match", "Retrieved")
+
     def generate(self, prompt: str, max_tokens: int = 1000, stream: bool = False):
+        # Context-aware: extract fact data from [RESOLVED FACT DATA] block
+        if "[RESOLVED FACT DATA]" in prompt:
+            block = prompt.split("[RESOLVED FACT DATA]")[1]
+            for end in ("[", "===", "User:"):
+                if end in block:
+                    block = block[:block.index(end)]
+            past_header = False
+            for line in block.split("\n"):
+                s = line.strip()
+                if "found:" in s.lower():
+                    past_header = True
+                    continue
+                if past_header and s and not any(s.startswith(p) for p in self._SKIP_PREFIXES):
+                    return s
         return "OK"
 
 

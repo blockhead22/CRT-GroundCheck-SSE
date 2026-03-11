@@ -7,9 +7,35 @@ import pytest
 from personal_agent.crt_rag import CRTEnhancedRAG
 
 
+_SKIP_PREFIXES = ("You", "Do ", "Answer", "Search", "Top match", "Retrieved")
+
+
+def _extract_fact_from_prompt(prompt: str) -> str | None:
+    """Extract the first fact line from a [RESOLVED FACT DATA] block in the prompt."""
+    if "[RESOLVED FACT DATA]" not in prompt:
+        return None
+    block = prompt.split("[RESOLVED FACT DATA]")[1]
+    for end in ("[", "===", "User:"):
+        if end in block:
+            block = block[:block.index(end)]
+    past_header = False
+    for line in block.split("\n"):
+        s = line.strip()
+        if "found:" in s.lower():
+            past_header = True
+            continue
+        if past_header and s and not any(s.startswith(p) for p in _SKIP_PREFIXES):
+            return s
+    return None
+
+
 class FakeLLM:
     def generate(self, prompt: str, max_tokens: int = 1000, stream: bool = False):
-        # Deterministic, fast, and good enough for CRT pipeline tests.
+        fact = _extract_fact_from_prompt(prompt)
+        if fact:
+            return fact
+        if "[UNRESOLVED CONFLICT" in prompt:
+            return "I have conflicting information about that."
         return "OK"
 
 
@@ -19,6 +45,9 @@ class CapturingLLM:
 
     def generate(self, prompt: str, max_tokens: int = 1000, stream: bool = False):
         self.last_prompt = prompt
+        fact = _extract_fact_from_prompt(prompt)
+        if fact:
+            return fact
         return "OK"
 
 

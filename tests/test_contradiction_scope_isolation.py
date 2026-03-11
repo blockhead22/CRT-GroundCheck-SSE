@@ -9,17 +9,39 @@ import pytest
 from personal_agent import CRTEnhancedRAG
 
 
+class FakeLLM:
+    _SKIP = ("You", "Do ", "Answer", "Search", "Top match", "Retrieved")
+
+    def generate(self, prompt: str, max_tokens: int = 1000, stream: bool = False):
+        if "[RESOLVED FACT DATA]" in prompt:
+            block = prompt.split("[RESOLVED FACT DATA]")[1]
+            for end in ("[", "===", "User:"):
+                if end in block:
+                    block = block[:block.index(end)]
+            past_header = False
+            for line in block.split("\n"):
+                s = line.strip()
+                if "found:" in s.lower():
+                    past_header = True
+                    continue
+                if past_header and s and not any(s.startswith(p) for p in self._SKIP):
+                    return s
+        if "[UNRESOLVED CONFLICT" in prompt:
+            return "I have conflicting information about that."
+        return "OK"
+
+
 @pytest.fixture
 def rag():
     """Create test RAG instance with temp databases."""
     import tempfile
     import os
-    
+
     tmpdir = tempfile.mkdtemp()
     mem_db = os.path.join(tmpdir, "test_scope_mem.db")
     ledger_db = os.path.join(tmpdir, "test_scope_ledger.db")
-    
-    return CRTEnhancedRAG(memory_db=mem_db, ledger_db=ledger_db)
+
+    return CRTEnhancedRAG(memory_db=mem_db, ledger_db=ledger_db, llm_client=FakeLLM())
 
 
 def test_scope_isolation_remote_preference_does_not_block_employer(rag: CRTEnhancedRAG):

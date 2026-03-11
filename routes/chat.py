@@ -2310,27 +2310,15 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if tasking_enabled:
         control_state.mark("validate", "tasking_checked", detail=str((tasking_meta or {}).get("mode") or "tasking"))
 
-    # Reintroduction invariant: if this answer used contradicted memories, enforce
-    # a visible caveat even for deterministic/early-return paths that bypass core assembly.
+    # Caveat injection is now handled by the LLM via extra_context in crt_rag.py.
+    # Blindly appending "(most recent update)" was too broad -- it fired on greetings,
+    # meta-questions, and answers unrelated to the conflicted slot.
     caveat_injected = False
     if reintro_count > 0:
-        has_caveat = False
-        try:
-            checker = getattr(engine, "_answer_has_caveat", None)
-            if callable(checker):
-                has_caveat = bool(checker(final_answer))
-            else:
-                has_caveat = _answer_has_contradiction_caveat(final_answer)
-        except Exception:
-            has_caveat = _answer_has_contradiction_caveat(final_answer)
-
-        if not has_caveat and str(final_answer or "").strip():
-            final_answer = f"{final_answer.rstrip()} (most recent update)"
-            caveat_injected = True
-            logger.info(
-                "[CAVEAT_ENFORCED] Injected contradiction caveat for reintroduced_claims_count=%d",
-                reintro_count,
-            )
+        logger.info(
+            "[CAVEAT_NOTE] reintro_count=%d -- contradiction awareness handled by LLM via extra_context",
+            reintro_count,
+        )
 
     metadata: Dict[str, Any] = {
         "mode": result.get("mode"),
