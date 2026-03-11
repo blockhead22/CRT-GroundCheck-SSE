@@ -280,8 +280,13 @@ if (-not $PortalManagesApi) {
     }
 }
 
-# Start Telegram
-Start-Service-Telegram
+# Start Telegram only in standalone monitor mode.
+# In portal mode, let tools/runtime_portal.py own the Telegram lifecycle.
+if ($NoPortal) {
+    Start-Service-Telegram
+} elseif (-not $SkipTelegram) {
+    Write-Info "Portal mode: runtime portal will start/manage Telegram bot."
+}
 
 Write-Ok "All services started"
 

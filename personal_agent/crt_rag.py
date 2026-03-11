@@ -3679,8 +3679,9 @@ class CRTEnhancedRAG:
                     'mode': 'quick',
                     'confidence': 0.9,
                     'response_type': 'belief',
-                    'gates_passed': True,
-                    'gate_reason': 'assertion_contradiction_detected',
+                    # Surface assertion conflicts as an explicit disclosure gate, not a pass.
+                    'gates_passed': False,
+                    'gate_reason': 'contradiction_disclosure',
                     'intent_alignment': 0.9,
                     'memory_alignment': 0.9,
                     'contradiction_detected': True,
@@ -4861,7 +4862,12 @@ class CRTEnhancedRAG:
         candidate_output = self._sanitize_memory_denial(answer=candidate_output, has_memory_context=bool(prompt_docs))
         # Honesty guard: if the model claims it "remembers" a personal fact that is not
         # present in our resolved FACT prompt docs, strip that unsupported claim.
-        candidate_output = self._sanitize_unsupported_memory_claims(answer=candidate_output, prompt_docs=prompt_docs)
+        candidate_output = self._sanitize_unsupported_memory_claims(
+            answer=candidate_output,
+            prompt_docs=prompt_docs,
+            user_query=user_query,
+            inferred_slots=inferred_slots,
+        )
         # UI cleanliness: the assistant should not leak internal scoring/metrics in the user-visible answer.
         # (These are available in metadata panels instead.)
         candidate_output = re.sub(r"\(\s*trust score[^)]*\)", "", candidate_output, flags=re.IGNORECASE).strip()
@@ -6444,12 +6450,27 @@ class CRTEnhancedRAG:
         if not t:
             return "other"
 
+        lower = t.lower()
+
+        # Hypothetical/roleplay prompts should not be stored as durable user facts,
+        # even if they contain declarative fragments like "my name is ...".
+        hypothetical_markers = (
+            "pretend ",
+            "roleplay ",
+            "act as ",
+            "if someone else",
+            "someone else asked",
+            "imagine ",
+            "for example ",
+            "example: ",
+        )
+        if any(m in lower for m in hypothetical_markers):
+            return "instruction"
+
         # PRIORITY CHECK: Name declarations trump question classification.
-        # Common pattern: "Hi, I'm <name>. Who are you?" should be stored as a fact.
+        # Common pattern: "Hi, I'm Nick Block. Who are you?" should be stored as a fact.
         if self._is_user_name_declaration(t):
             return "assertion"
-
-        lower = t.lower()
         if t.endswith("?"):
             return "question"
 
@@ -7709,6 +7730,20 @@ class CRTEnhancedRAG:
         if "contradictions" in t and any(k in t for k in ("list", "show", "any", "open", "unresolved", "do you have", "are there")):
             return True
 
+        # Singular contradiction phrasing used as a follow-up question:
+        # "what was the contradiction you detected?"
+        if "contradiction" in t and any(
+            k in t for k in (
+                "what was",
+                "which contradiction",
+                "what contradiction",
+                "you detected",
+                "did you detect",
+                "that contradiction",
+            )
+        ):
+            return True
+
         # User phrasing about self
         if "contradictions" in t and any(k in t for k in ("about me", "about myself", "about my", "about my self")):
             return True
@@ -7883,7 +7918,14 @@ class CRTEnhancedRAG:
 
         return out
 
-    def _sanitize_unsupported_memory_claims(self, *, answer: str, prompt_docs: List[Dict[str, Any]]) -> str:
+    def _sanitize_unsupported_memory_claims(
+        self,
+        *,
+        answer: str,
+        prompt_docs: List[Dict[str, Any]],
+        user_query: str = "",
+        inferred_slots: Optional[List[str]] = None,
+    ) -> str:
         """Remove unsupported personal-fact claims framed as memory.
 
         Goal: avoid outputs like "I remember ... I work at X" when X is not actually
@@ -7893,6 +7935,10 @@ class CRTEnhancedRAG:
         a strong memory-claim phrase.
         """
         if not answer or not answer.strip():
+            return answer
+
+        # Keep deterministic contradiction-status answers intact.
+        if user_query and self._is_contradiction_status_request(user_query):
             return answer
 
         t = answer.lower()
@@ -7968,10 +8014,28 @@ class CRTEnhancedRAG:
 
         cleaned = "\n".join(kept_lines).strip()
         first_slot = next(iter(unsupported.keys()))
+        first_slot_label = first_slot.replace("_", " ")
         if cleaned:
-            return cleaned + f"\n\nI don't have a reliable stored memory for your {first_slot} yet  -  if you tell me, I can remember it going forward."
+            return cleaned
 
-        return f"I don't have a reliable stored memory for your {first_slot} yet  -  if you tell me, I can remember it going forward."
+        inferred = {str(s).strip().lower() for s in (inferred_slots or []) if str(s).strip()}
+        ql = (user_query or "").strip().lower()
+        slot_aliases: Dict[str, List[str]] = {
+            "employer": ["employer", "work", "job", "company"],
+            "name": ["name", "called"],
+            "location": ["location", "live", "city", "state", "country"],
+            "title": ["title", "role", "position"],
+        }
+        aliases = slot_aliases.get(first_slot, [first_slot_label, first_slot])
+        explicit_slot_request = (first_slot in inferred) or any(a in ql for a in aliases)
+
+        if explicit_slot_request:
+            return (
+                f"I don't have a reliable stored memory for your {first_slot_label} yet  -  "
+                "if you tell me, I can remember it going forward."
+            )
+
+        return "I can't verify that detail from stored memory yet."
     
     # ========================================================================
     # CRT Analytics
