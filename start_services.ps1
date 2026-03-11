@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Aether Service Manager — starts, validates, monitors, and auto-restarts all services.
+    Aether Service Manager -- starts, validates, monitors, and auto-restarts all services.
 
 .DESCRIPTION
     Single entrypoint for the full Aether stack:
@@ -86,7 +86,7 @@ function Test-Preflight {
     } elseif (Get-Command python -ErrorAction SilentlyContinue) {
         $python = "python"
         $pyVer = & $python --version 2>&1
-        Write-Warn "Python: $pyVer (system — no venv found)"
+        Write-Warn "Python: $pyVer (system -- no venv found)"
     } else {
         Write-Err "Python not found"
         $ok = $false
@@ -150,7 +150,7 @@ else:
         Write-Ok "Telegram token: set"
     } else {
         if (-not $SkipTelegram) {
-            Write-Warn "TELEGRAM_BOT_TOKEN not set — Telegram bot will not start"
+            Write-Warn "TELEGRAM_BOT_TOKEN not set -- Telegram bot will not start"
             $script:SkipTelegram = $true
         }
     }
@@ -301,7 +301,7 @@ function Show-Status {
         $uptime = if (-not $proc.HasExited) {
             $ts = (Get-Date) - $svc.StartTime
             "{0}h {1}m" -f [int]$ts.TotalHours, $ts.Minutes
-        } else { "—" }
+        } else { "--" }
         $restarts = $svc.Restarts
         $color = if ($proc.HasExited) { "Red" } else { "Green" }
         Write-Host "  $($svc.Name): $status | uptime: $uptime | restarts: $restarts | PID: $($proc.Id)" -ForegroundColor $color
@@ -321,7 +321,7 @@ if ($NoMonitor -or $NoPortal -eq $false) {
         }
         Write-Info "Handing off to runtime portal..."
         & $python @portalArgs
-        # Portal exited — clean up
+        # Portal exited -- clean up
         Write-Info "Portal exited. Stopping services..."
         foreach ($key in $services.Keys) {
             $proc = $services[$key].Process
@@ -378,7 +378,7 @@ try {
                     Write-Err "API exceeded max restarts ($maxRestarts). Giving up."
                 }
             } else {
-                # Process alive — verify health endpoint
+                # Process alive -- verify health endpoint
                 try {
                     $resp = Invoke-WebRequest -Uri "$($env:CRT_API_URL)/health" -UseBasicParsing -TimeoutSec 5
                     if ($resp.StatusCode -ne 200) {
