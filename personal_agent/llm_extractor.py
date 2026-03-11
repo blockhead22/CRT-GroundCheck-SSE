@@ -26,21 +26,24 @@ from .fact_tuples import FactTuple, FactTupleSet, FactAction
 logger = logging.getLogger(__name__)
 
 # Default extraction prompt template
-DEFAULT_EXTRACTION_PROMPT = """Extract PERMANENT IDENTITY FACTS from this text as JSON tuples.
+DEFAULT_EXTRACTION_PROMPT = """Extract facts about the user from this text as JSON tuples.
 
 Text: "{text}"
 
-🎯 ONLY extract facts that are:
-✅ PERMANENT aspects of the user's identity (name, employer, location, hobbies, pets)
-✅ Durable relationships or possessions (family, pets, belongings)
-✅ Long-term preferences or characteristics (favorite color, dietary restrictions)
+Extract any of the following:
+- Identity facts: name, employer, location, occupation, age
+- Relationships: family members, pets, friends
+- Preferences and opinions: favorite things, things they dislike, how they prefer to work
+- Current projects or focus areas: what they are working on, what matters to them now
+- Emotional or mental state: stress, excitement, how they are feeling about something
+- Goals or intentions: what they want to accomplish
+- Background: education, experience, history
 
-❌ DO NOT extract:
-❌ Temporary activities ("working on a project tonight", "debugging code")
-❌ Technical discussions (code snippets, function names, variable values)
-❌ Current tasks or to-do items ("need to fix the API", "planning to refactor")
-❌ Questions or requests ("can you help me with X?")
-❌ Opinions about technical topics unless expressing a strong personal preference
+DO NOT extract:
+- Questions or requests directed at the assistant
+- Code snippets, variable names, or technical implementation details
+- Generic statements not about the user specifically
+- Facts about the AI system itself
 
 Return a JSON object with a "facts" array. Each fact should have:
 - entity: who/what the fact is about (use "User" for first-person statements)

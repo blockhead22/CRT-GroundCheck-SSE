@@ -2196,30 +2196,34 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     base_answer = str(result.get("answer") or "")
 
     # ========================================
-    # DIRECTED REFLECTION PASS (non-stream)
+    # DIRECTED REFLECTION PASS — fired async
     # ========================================
+    # Reflection is expensive (~8-9s) and not needed to deliver the answer.
+    # Fire it in a background thread; metadata fields will be None for this response.
     reflection_trace_id = None
     reflection_result = None
     if llm_client is not None:
-        try:
-            grounding_facts = [
-                m.get("text", "")[:300]
-                for m in (result.get("retrieved_memories") or [])
-                if isinstance(m, dict) and m.get("text")
-            ][:5]
-            reflection_result, _requery_response, _requery_thinking = run_reflection_pass(
-                question=effective_message,
-                response=base_answer,
-                thinking=thinking_content,
-                thread_id=req.thread_id,
-                db_path=engine.memory.db_path,
-                facts=grounding_facts,
-                auto_requery=False,
-                collect_training_data=True,
-            )
-            reflection_trace_id = reflection_result.trace_id
-        except Exception as e:
-            logger.debug(f"[REFLECTION] Reflection failed (non-stream): {e}")
+        _bg_grounding_facts = [
+            m.get("text", "")[:300]
+            for m in (result.get("retrieved_memories") or [])
+            if isinstance(m, dict) and m.get("text")
+        ][:5]
+        _bg_reflection_kwargs = dict(
+            question=effective_message,
+            response=base_answer,
+            thinking=thinking_content,
+            thread_id=req.thread_id,
+            db_path=engine.memory.db_path,
+            facts=_bg_grounding_facts,
+            auto_requery=False,
+            collect_training_data=True,
+        )
+        def _run_reflection_bg(**kwargs):
+            try:
+                run_reflection_pass(**kwargs)
+            except Exception as _e:
+                logger.debug(f"[REFLECTION_BG] Reflection failed: {_e}")
+        threading.Thread(target=_run_reflection_bg, kwargs=_bg_reflection_kwargs, daemon=True).start()
     _mark("reflection_done")
     control_state.mark(
         "validate",
@@ -2421,77 +2425,76 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     except Exception:
         pass
 
-    # PHASE 1: Log complete interaction for active learning
+    # PHASE 1: Active learning, session record, episodic — all fired async.
+    # These don't affect the answer; no reason to block the response on them.
     interaction_id = None
-    try:
-        coordinator = get_active_learning_coordinator()
-
-        slots_inferred = result.get("slots_extracted") or result.get("facts") or {}
-
-        facts_injected = [
-            {
-                "memory_id": m.get("memory_id"),
-                "text": m.get("text"),
-                "confidence": m.get("confidence"),
-            }
-            for m in prompt_mems
-            if isinstance(m, dict) and m.get("memory_id")
-        ]
-
-        interaction_id = coordinator.record_interaction(
-            thread_id=req.thread_id,
-            query=req.message,
-            response=final_answer,
-            response_type=str(result.get("response_type") or "speech"),
-            confidence=float(result.get("confidence") or 0.0),
-            gates_passed=bool(result.get("gates_passed")),
-            slots_inferred=slots_inferred if isinstance(slots_inferred, dict) else None,
-            facts_injected=facts_injected if facts_injected else None,
-            session_id=str(result.get("session_id") or "default"),
-        )
-    except Exception as e:
-        logging.warning(f"[Phase1] Failed to log interaction: {e}")
-
-    if interaction_id:
-        metadata["interaction_id"] = interaction_id
     _mark("active_learning_done")
+    _mark("session_record_done")
+    _mark("episodic_done")
+
+    def _run_post_response_bookkeeping(
+        _thread_id, _message, _final_answer, _result, _prompt_mems, _session_db, _engine_memory
+    ):
+        # Active learning
+        try:
+            coordinator = get_active_learning_coordinator()
+            slots_inferred = _result.get("slots_extracted") or _result.get("facts") or {}
+            facts_injected = [
+                {"memory_id": m.get("memory_id"), "text": m.get("text"), "confidence": m.get("confidence")}
+                for m in _prompt_mems
+                if isinstance(m, dict) and m.get("memory_id")
+            ]
+            coordinator.record_interaction(
+                thread_id=_thread_id,
+                query=_message,
+                response=_final_answer,
+                response_type=str(_result.get("response_type") or "speech"),
+                confidence=float(_result.get("confidence") or 0.0),
+                gates_passed=bool(_result.get("gates_passed")),
+                slots_inferred=slots_inferred if isinstance(slots_inferred, dict) else None,
+                facts_injected=facts_injected if facts_injected else None,
+                session_id=str(_result.get("session_id") or "default"),
+            )
+        except Exception as _e:
+            logging.warning(f"[Phase1_BG] Failed to log interaction: {_e}")
+
+        # Session record
+        try:
+            detected_slot = None
+            slots = _result.get("slots_extracted")
+            if isinstance(slots, dict) and slots:
+                detected_slot = list(slots.keys())[0]
+            _session_db.record_query(
+                thread_id=_thread_id,
+                query_text=_message,
+                response_text=_final_answer,
+                detected_slot=detected_slot,
+            )
+        except Exception as _e:
+            logger.debug(f"[SESSION_BG] Error recording query: {_e}")
+
+        # Episodic memory
+        try:
+            episodic_mgr = get_episodic_manager(memory_system=_engine_memory)
+            episodic_mgr.process_interaction(
+                thread_id=_thread_id,
+                query=_message,
+                response=_final_answer,
+                response_time_ms=0,
+            )
+        except Exception as _e:
+            logger.debug(f"[EPISODIC_BG] Error processing interaction: {_e}")
+
+    threading.Thread(
+        target=_run_post_response_bookkeeping,
+        args=(req.thread_id, req.message, final_answer, result, prompt_mems, session_db, engine.memory),
+        daemon=True,
+    ).start()
 
     if greeting_text:
         metadata["greeting_shown"] = True
     if query_with_continuity != query_with_context:
         metadata["continuity_context_applied"] = True
-
-    # Record query in session DB for response variation tracking
-    try:
-        detected_slot = None
-        if result.get("slots_extracted"):
-            slots = result.get("slots_extracted")
-            if isinstance(slots, dict) and slots:
-                detected_slot = list(slots.keys())[0]
-
-        session_db.record_query(
-            thread_id=req.thread_id,
-            query_text=req.message,
-            response_text=final_answer,
-            detected_slot=detected_slot,
-        )
-    except Exception as e:
-        logger.debug(f"[SESSION] Error recording query: {e}")
-    _mark("session_record_done")
-
-    # ====== Episodic Memory: Process interaction for patterns/preferences ======
-    try:
-        episodic_mgr = get_episodic_manager(memory_system=engine.memory)
-        start_time = time.time()
-        episodic_mgr.process_interaction(
-            thread_id=req.thread_id,
-            query=req.message,
-            response=final_answer,
-            response_time_ms=int((time.time() - start_time) * 1000),
-        )
-    except Exception as e:
-        logger.debug(f"[EPISODIC] Error processing interaction: {e}")
-    _mark("episodic_done")
 
     # ====== Auto Fact-Check: verify response against memories (background) ======
     try:

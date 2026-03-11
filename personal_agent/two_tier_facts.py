@@ -357,7 +357,7 @@ def get_two_tier_system() -> TwoTierFactSystem:
     """
     global _default_system
     if _default_system is None:
-        _default_system = TwoTierFactSystem(enable_llm=False)  # Local-only: no external API
+        _default_system = TwoTierFactSystem(enable_llm=True, use_local_llm=True)  # Local Ollama extraction
     return _default_system
 
 
