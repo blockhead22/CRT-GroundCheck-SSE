@@ -941,6 +941,18 @@ class CRTMemorySystem:
             result.setdefault(slot, []).append((mem_id, value))
         return result
 
+    def count_memories(self, include_deprecated: bool = False) -> int:
+        """Return the number of stored memories (fast SQL count, no data loaded)."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if include_deprecated:
+            cursor.execute("SELECT COUNT(*) FROM memories")
+        else:
+            cursor.execute("SELECT COUNT(*) FROM memories WHERE deprecated = 0")
+        count = cursor.fetchone()[0]
+        conn.close()
+        return count
+
     def update_trust(
         self,
         memory_id: str,

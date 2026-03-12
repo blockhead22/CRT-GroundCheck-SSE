@@ -3864,7 +3864,7 @@ class CRTEnhancedRAG:
         if retrieved:
             _top_mem = retrieved[0][0]
             try:
-                _mem_count = len(self.memory._load_all_memories())
+                _mem_count = self.memory.count_memories()
             except Exception:
                 _mem_count = -1
             extra_context["turn_awareness"] = (

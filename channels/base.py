@@ -89,7 +89,7 @@ class CRTBridge:
             resp = requests.post(
                 f"{self.api_url}/api/chat/send",
                 json=payload,
-                timeout=120,
+                timeout=300,
             )
             resp.raise_for_status()
             data = resp.json()

@@ -41,9 +41,9 @@ class OllamaClient:
         timeout_s = None
         try:
             env = os.getenv("OLLAMA_TIMEOUT_SECONDS", "")
-            timeout_s = float(env) if env else 120.0
+            timeout_s = float(env) if env else 300.0
         except Exception:
-            timeout_s = 120.0
+            timeout_s = 300.0
 
         # Use a dedicated client instance so we can pass timeout/settings.
         # The underlying ollama Python client forwards kwargs to httpx.Client.
