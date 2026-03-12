@@ -283,9 +283,30 @@ class CRTMemorySystem:
             ON trust_log(memory_id, timestamp)
         """)
         
+        # Cached fact slots extracted from memories (avoids re-running regex on every query)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS memory_facts (
+                memory_id TEXT NOT NULL,
+                slot TEXT NOT NULL,
+                value TEXT NOT NULL,
+                normalized TEXT,
+                UNIQUE(memory_id, slot)
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memory_facts_slot
+            ON memory_facts(slot)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memory_facts_memory
+            ON memory_facts(memory_id)
+        """)
+
         conn.commit()
         conn.close()
-        
+
         # Migrate existing databases to add deprecated columns if needed
         # This must run BEFORE creating deprecated column indexes
         self._migrate_schema()
@@ -643,7 +664,18 @@ class CRTMemorySystem:
         
         conn.commit()
         conn.close()
-        
+
+        # Cache extracted hard facts in memory_facts table for fast slot lookups.
+        # This avoids re-running regex on all memories at query time.
+        if extraction_method in ('regex', 'hybrid'):
+            try:
+                from .fact_slots import extract_fact_slots
+                hard_facts = extract_fact_slots(text)
+                if hard_facts:
+                    self.store_memory_facts(memory.memory_id, hard_facts)
+            except Exception as e:
+                logger.debug(f"[MEMORY_FACTS] Failed to cache facts for {memory.memory_id}: {e}")
+
         # SPRINT 1: After storing, if correction was detected, decay contradicted memories
         if is_correction:
             contradicting = self._find_contradicting_memories(text)
@@ -827,6 +859,87 @@ class CRTMemorySystem:
         conn.commit()
         conn.close()
         logger.info(f"[MEMORY] Deprecated memory {memory_id}: {reason[:80]}")
+
+    def store_memory_facts(self, memory_id: str, facts: Dict[str, Any]) -> None:
+        """Cache extracted fact slots for a memory (avoids re-running regex at query time).
+
+        Args:
+            memory_id: The memory this fact belongs to.
+            facts: Dict mapping slot name -> ExtractedFact (or value).
+        """
+        if not facts:
+            return
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        for slot, fact in facts.items():
+            value = getattr(fact, "value", fact) if not isinstance(fact, str) else fact
+            normalized = getattr(fact, "normalized", str(value).lower())
+            try:
+                cursor.execute(
+                    "INSERT OR REPLACE INTO memory_facts (memory_id, slot, value, normalized) VALUES (?, ?, ?, ?)",
+                    (memory_id, slot, str(value), str(normalized)),
+                )
+            except Exception as e:
+                logger.debug(f"[MEMORY_FACTS] Failed to store fact {slot}={value}: {e}")
+        conn.commit()
+        conn.close()
+
+    def get_facts_for_slot(self, slot: str, include_deprecated: bool = False) -> List[Tuple[str, str, str]]:
+        """Look up all stored values for a given fact slot.
+
+        Returns list of (memory_id, value, normalized) tuples, ordered by
+        the memory's timestamp descending (newest first).
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if include_deprecated:
+            cursor.execute("""
+                SELECT mf.memory_id, mf.value, mf.normalized
+                FROM memory_facts mf
+                JOIN memories m ON mf.memory_id = m.memory_id
+                WHERE mf.slot = ?
+                ORDER BY m.timestamp DESC
+            """, (slot,))
+        else:
+            cursor.execute("""
+                SELECT mf.memory_id, mf.value, mf.normalized
+                FROM memory_facts mf
+                JOIN memories m ON mf.memory_id = m.memory_id
+                WHERE mf.slot = ? AND m.deprecated = 0
+                ORDER BY m.timestamp DESC
+            """, (slot,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+
+    def get_all_facts(self, include_deprecated: bool = False) -> Dict[str, List[Tuple[str, str]]]:
+        """Return all cached facts grouped by slot.
+
+        Returns dict: slot -> [(memory_id, value), ...] ordered newest first.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if include_deprecated:
+            cursor.execute("""
+                SELECT mf.slot, mf.memory_id, mf.value
+                FROM memory_facts mf
+                JOIN memories m ON mf.memory_id = m.memory_id
+                ORDER BY m.timestamp DESC
+            """)
+        else:
+            cursor.execute("""
+                SELECT mf.slot, mf.memory_id, mf.value
+                FROM memory_facts mf
+                JOIN memories m ON mf.memory_id = m.memory_id
+                WHERE m.deprecated = 0
+                ORDER BY m.timestamp DESC
+            """)
+        rows = cursor.fetchall()
+        conn.close()
+        result: Dict[str, List[Tuple[str, str]]] = {}
+        for slot, mem_id, value in rows:
+            result.setdefault(slot, []).append((mem_id, value))
+        return result
 
     def update_trust(
         self,

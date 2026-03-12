@@ -5914,14 +5914,6 @@ class CRTEnhancedRAG:
         if not slots:
             return None
 
-        all_memories = self.memory._load_all_memories()
-        user_memories = [
-            m for m in all_memories
-            if m.source == MemorySource.USER and not bool(getattr(m, "deprecated", False))
-        ]
-        if not user_memories:
-            return None
-
         def _source_priority(mem: MemoryItem) -> int:
             if mem.source == MemorySource.USER:
                 return 3
@@ -5933,13 +5925,44 @@ class CRTEnhancedRAG:
 
         # Collect candidate values per slot.
         slot_values: Dict[str, List[Tuple[MemoryItem, Any]]] = {s: [] for s in slots}
-        for mem in user_memories:
-            facts = extract_fact_slots(mem.text)
-            if not facts:
-                continue
-            for slot in slots:
-                if slot in facts:
-                    slot_values[slot].append((mem, facts[slot].value))
+
+        # Fast path: use cached memory_facts table (indexed SQL lookup).
+        _used_fast_path = False
+        user_memories: List[MemoryItem] = []  # needed for name-history below
+        try:
+            cached_facts = self.memory.get_all_facts()
+            if cached_facts and any(s in cached_facts for s in slots):
+                _mem_cache: Dict[str, Optional[MemoryItem]] = {}
+                for slot in slots:
+                    for mem_id, value in cached_facts.get(slot, []):
+                        if mem_id not in _mem_cache:
+                            _mem_cache[mem_id] = self._get_memory_by_id(mem_id)
+                        mem = _mem_cache[mem_id]
+                        if mem and mem.source == MemorySource.USER and not bool(getattr(mem, "deprecated", False)):
+                            slot_values[slot].append((mem, value))
+                # Populate user_memories from cache for name-history fallback
+                user_memories = [m for m in _mem_cache.values() if m and m.source == MemorySource.USER and not bool(getattr(m, "deprecated", False))]
+                _used_fast_path = True
+                logger.debug("[SLOT_LOOKUP] Used memory_facts fast path for %s", slots)
+        except Exception as e:
+            logger.debug("[SLOT_LOOKUP] memory_facts fast path failed, falling back: %s", e)
+
+        # Fallback: full memory scan with regex (for legacy memories without cached facts).
+        if not _used_fast_path:
+            all_memories = self.memory._load_all_memories()
+            user_memories = [
+                m for m in all_memories
+                if m.source == MemorySource.USER and not bool(getattr(m, "deprecated", False))
+            ]
+            if not user_memories:
+                return None
+            for mem in user_memories:
+                facts = extract_fact_slots(mem.text)
+                if not facts:
+                    continue
+                for slot in slots:
+                    if slot in facts:
+                        slot_values[slot].append((mem, facts[slot].value))
 
         resolved_parts: List[str] = []
         q = (user_query or "").strip().lower()
