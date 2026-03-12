@@ -1241,13 +1241,23 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "I have a golden retriever named Murphy"
     # - "My dog is a labrador"
     # - "Murphy is a labrador, not a golden retriever"
-    _PET_NAME_STOPWORDS = {"my", "job", "role", "work", "name", "pet", "title", "career"}
+    _PET_NAME_STOPWORDS = {"my", "job", "role", "work", "name", "pet", "title", "career",
+                           "it", "this", "that", "he", "she", "there", "here", "what",
+                           "nick", "the", "his", "her", "our", "their"}
+    # Words that should NOT be pet types (job/occupation/description words)
+    _PET_TYPE_STOPWORDS = {"freelance", "freelancer", "developer", "engineer", "manager",
+                           "designer", "analyst", "consultant", "teacher", "professor",
+                           "doctor", "lawyer", "student", "intern", "director", "writer",
+                           "artist", "musician", "chef", "nurse", "pilot", "driver",
+                           "great", "good", "nice", "cool", "interesting", "really",
+                           "very", "pretty", "big", "small", "new", "old"}
     m = re.search(r"\bi have a\s+([a-z]+(?:\s+[a-z]+)?)\s+named\s+([A-Z][a-z]+)", text, flags=re.IGNORECASE)
     if m:
         pet_type = m.group(1).strip()
         pet_name = m.group(2).strip()
-        facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
-        facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
+        if pet_type.lower().split()[0] not in _PET_TYPE_STOPWORDS:
+            facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+            facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
     else:
         # Try just pet type
         m = re.search(r"\bmy (?:dog|cat|pet) is a\s+([a-z]+(?:\s+[a-z]+)?)", text, flags=re.IGNORECASE)
@@ -1257,15 +1267,18 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             m = re.search(r"\b([A-Z][a-z]+)\s+is a\s+([a-z]+(?:\s+[a-z]+)?)", text)
             if m:
                 pet_name = m.group(1).strip()
+                pet_type = m.group(2).strip()
                 if pet_name.lower() in _PET_NAME_STOPWORDS:
                     m = None
+                elif pet_type.split()[0].lower() in _PET_TYPE_STOPWORDS:
+                    m = None  # "Nick is a freelance developer" is NOT a pet
                 else:
-                    pet_type = m.group(2).strip()
                     facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
                     facts["pet_name"] = ExtractedFact("pet_name", pet_name, _norm_text(pet_name))
         if m and not facts.get("pet"):
             pet_type = m.group(1).strip()
-            facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
+            if pet_type.split()[0].lower() not in _PET_TYPE_STOPWORDS:
+                facts["pet"] = ExtractedFact("pet", pet_type, _norm_text(pet_type))
     
     # Coffee preference
     # Examples:

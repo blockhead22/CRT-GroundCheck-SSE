@@ -3868,10 +3868,12 @@ class CRTEnhancedRAG:
             except Exception:
                 _mem_count = -1
             extra_context["turn_awareness"] = (
-                f"\n[TURN CONTEXT]\n"
+                f"\n[TURN CONTEXT -- INTERNAL, do NOT share these details unless the user asks about your process]\n"
                 f"You searched {_mem_count} stored memories for this query.\n"
                 f"Top match: \"{_top_mem.text[:100]}\" (trust={_top_mem.trust:.2f})\n"
                 f"Retrieved {len(retrieved)} relevant memories total.\n"
+                f"DO NOT mention trust scores, similarity scores, or memory counts in your response "
+                f"unless the user specifically asks how you know something or about your process.\n"
             )
 
         # Check for sentiment contradictions in retrieved memories
@@ -4265,9 +4267,11 @@ class CRTEnhancedRAG:
                 # instead of returning raw "slot: value" strings directly.
                 extra_context["fact_slot_data"] = (
                     f"\n[RESOLVED FACT DATA]\n"
-                    f"You looked up the user's stored facts and found:\n{slot_answer}\n"
+                    f"You looked up the USER's stored facts and found:\n{slot_answer}\n"
                     f"Answer the user's question naturally using this data. "
-                    f"Do NOT repeat the raw slot format -- just state the answer conversationally.\n"
+                    f"Do NOT repeat the raw slot format -- just state the answer conversationally. "
+                    f"Use SECOND PERSON: say 'Your name is X', NOT 'My name is X' or 'I'm X'. "
+                    f"These are facts ABOUT THE USER, not about you.\n"
                 )
                 logger.info(f"[SLOT_INJECT] Injected slot data as context: {slot_answer[:80]}")
 
