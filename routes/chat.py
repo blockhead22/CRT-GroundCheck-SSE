@@ -2077,6 +2077,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             result["answer"] = _critic_result.final_answer
             if _critic_result.was_revised:
                 logger.info(f"[CRT-CRITIC] Answer revised (verdict={_critic_result.verdict.value})")
+                try:
+                    from personal_agent.judgment_audit_log import log_judgment, GATE_BLOCKED
+                    log_judgment(
+                        GATE_BLOCKED,
+                        f"CRT-Critic revised answer (verdict={_critic_result.verdict.value})",
+                        thread_id=req.thread_id,
+                        extra={"verdict": _critic_result.verdict.value, "query": effective_message[:120]},
+                    )
+                except Exception:
+                    pass
             if _critic_result.verdict == VerifyVerdict.HARD_FAIL:
                 # Override gates to signal contradiction disclosure
                 result["gates_passed"] = False
@@ -2084,6 +2094,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 # Keep metadata consistent with disclosure path for channels/telemetry.
                 result["contradiction_detected"] = True
                 logger.info("[CRT-CRITIC] Hard fail — surfacing contradiction to user")
+                try:
+                    from personal_agent.judgment_audit_log import log_judgment, GATE_BLOCKED
+                    log_judgment(
+                        GATE_BLOCKED,
+                        "CRT-Critic HARD_FAIL — contradiction disclosure forced",
+                        thread_id=req.thread_id,
+                        extra={"verdict": "HARD_FAIL", "query": effective_message[:120]},
+                    )
+                except Exception:
+                    pass
     except ImportError:
         logger.debug("[CRT-CRITIC] crt_critic not available")
     except Exception as e:

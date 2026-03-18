@@ -37,6 +37,15 @@ from typing import Dict, List, Optional, Set
 
 logger = logging.getLogger(__name__)
 
+# Lazy import to avoid circular deps — called only when action != ACCEPT
+def _audit(action: str, slot: str, p_valid: float, reason: str, **kw) -> None:
+    try:
+        from personal_agent.judgment_audit_log import log_judgment, DISCLOSURE_CLARIFY, DISCLOSURE_REJECT
+        etype = DISCLOSURE_CLARIFY if action == "clarify" else DISCLOSURE_REJECT
+        log_judgment(etype, reason, slot=slot, p_valid=p_valid, **kw)
+    except Exception:
+        pass
+
 
 class DisclosureAction(str, Enum):
     """Actions for handling uncertain facts."""
@@ -207,9 +216,11 @@ class DisclosurePolicy:
         # Red zone: Low confidence - reject as noise
         # ============================================================
         if p_valid < self.yellow_threshold:
+            _reason = f"Low confidence (P={p_valid:.2f} < {self.yellow_threshold})"
+            _audit("reject", slot, p_valid, _reason, old_value=old_value, new_value=new_value)
             return DisclosureDecision(
                 action=DisclosureAction.REJECT,
-                reason=f"Low confidence (P={p_valid:.2f} < {self.yellow_threshold})",
+                reason=_reason,
                 p_valid=p_valid,
                 metadata={"zone": "red"}
             )
@@ -246,10 +257,12 @@ class DisclosurePolicy:
         # Record disclosure if budget is enabled
         if self.enable_budget:
             self.budget.record_disclosure(slot)
-        
+
+        _clarify_reason = f"Yellow zone - needs clarification (P={p_valid:.2f})"
+        _audit("clarify", slot, p_valid, _clarify_reason, old_value=old_value, new_value=new_value)
         return DisclosureDecision(
             action=DisclosureAction.CLARIFY,
-            reason=f"Yellow zone - needs clarification (P={p_valid:.2f})",
+            reason=_clarify_reason,
             p_valid=p_valid,
             clarification_prompt=prompt,
             metadata={"zone": "yellow", "high_stakes": is_high_stakes}

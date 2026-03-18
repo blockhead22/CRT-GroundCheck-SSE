@@ -525,7 +525,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "📋 Commands:\n\n"
         "👋 /start — Welcome message\n"
         "❓ /help — This list\n"
-        "🔍 /search <query> — Web search\n"
+        "🔍 /search <query> — Web search (local)\n"
+        "🦞 /task <command> — Delegate to OpenClaw (research, GitHub, web tasks)\n"
         "⚠️ /conflicts — Show open contradictions\n"
         "🧠 /facts — Show stored facts about you\n"
         "📊 /trust — Trust stats for this thread\n"
@@ -672,6 +673,100 @@ async def cmd_search(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
     reply_text = "🔍 " + resp.text
     await update.message.reply_text(_truncate(reply_text))
+
+
+async def cmd_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /task <command> — delegate a task to OpenClaw and return the result."""
+    if not _is_allowed(update):
+        return
+
+    command = " ".join(context.args) if context.args else ""
+    if not command.strip():
+        await update.message.reply_text(
+            "Usage: /task <command>\n\n"
+            "Examples:\n"
+            "• /task search for open source Rust memory systems\n"
+            "• /task summarize my GitHub issues for CRT-GroundCheck-SSE\n"
+            "• /task what's the weather tomorrow in my city\n\n"
+            "OpenClaw handles research, web tasks, and long-running work."
+        )
+        return
+
+    await update.effective_chat.send_action(ChatAction.TYPING)
+    await _react_to_message(update, "🦞")
+
+    try:
+        import subprocess
+
+        openclaw_token = os.getenv("OPENCLAW_GATEWAY_TOKEN", "")
+        openclaw_url = os.getenv("OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789")
+
+        # Inject personal context from CRT memory into the command
+        context_note = ""
+        try:
+            resp_mem = requests.get(
+                f"{CRT_API_URL}/api/facts/structured",
+                timeout=3,
+            )
+            if resp_mem.status_code == 200:
+                facts = resp_mem.json()
+                if facts:
+                    # Only include a compact subset to avoid overwhelming the prompt
+                    compact = {k: v for k, v in list(facts.items())[:8] if v}
+                    if compact:
+                        context_note = f" [User context: {compact}]"
+        except Exception:
+            pass
+
+        full_command = command + context_note
+
+        # Use openclaw CLI to run an agent turn
+        result = subprocess.run(
+            ["openclaw", "agent", "--message", full_command, "--json"],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+
+        if result.returncode == 0 and result.stdout.strip():
+            try:
+                data = json.loads(result.stdout.strip())
+                # openclaw agent --json returns {output: str, ...}
+                answer = (
+                    data.get("output")
+                    or data.get("response")
+                    or data.get("text")
+                    or data.get("content")
+                    or str(data)
+                )
+            except (json.JSONDecodeError, KeyError):
+                answer = result.stdout.strip()
+        elif result.stderr.strip():
+            # Some versions stream to stderr even on success
+            answer = result.stderr.strip()
+        else:
+            answer = "OpenClaw returned an empty response."
+
+        _emit_live_event(
+            event_type="command",
+            text=f"/task {command} -> {answer[:200]}",
+            update=update,
+            response=ChannelResponse(text=answer),
+            thread_id=_thread_id_for(update),
+        )
+
+        reply = f"🦞 OpenClaw: {answer}"
+        await update.message.reply_text(_truncate(reply))
+
+    except subprocess.TimeoutExpired:
+        await update.message.reply_text("OpenClaw task timed out (>2 min). Try a simpler query.")
+    except FileNotFoundError:
+        await update.message.reply_text(
+            "openclaw CLI not found. Is it installed? (npm install -g openclaw)"
+        )
+    except Exception as e:
+        logger.error(f"[/task] Error: {e}")
+        await update.message.reply_text(f"Task failed: {e}")
 
 
 async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -937,6 +1032,7 @@ def main() -> None:
             app.add_handler(CommandHandler("trust", cmd_trust))
             app.add_handler(CommandHandler("important", cmd_important))
             app.add_handler(CommandHandler("search", cmd_search))
+            app.add_handler(CommandHandler("task", cmd_task))
             app.add_handler(CommandHandler("reset", cmd_reset))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 

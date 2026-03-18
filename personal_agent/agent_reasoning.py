@@ -125,6 +125,134 @@ Questions:
 
 REFLECTION:"""
 
+# ---------------------------------------------------------------------------
+# Native tool schemas for Ollama function calling (OpenAI-compatible format)
+# ---------------------------------------------------------------------------
+
+AGENT_TOOL_SCHEMAS = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_memory",
+            "description": "Search CRT memory for facts and preferences the user has shared",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "top_k": {"type": "integer", "description": "Max results to return", "default": 5},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "Search the web for current information and news",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "max_results": {"type": "integer", "description": "Max results", "default": 5},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_research",
+            "description": "Search local CRT documentation and project files only",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "top_k": {"type": "integer", "description": "Max results", "default": 3},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "store_memory",
+            "description": "Store a new fact or piece of information in CRT memory",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to store"},
+                    "source": {"type": "string", "description": "Source label (e.g. AGENT, USER)", "default": "AGENT"},
+                    "trust": {"type": "number", "description": "Trust score 0.0-1.0", "default": 0.6},
+                },
+                "required": ["text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "check_contradiction",
+            "description": "Check whether a statement contradicts existing high-trust memories",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "statement": {"type": "string", "description": "Statement to check"},
+                },
+                "required": ["statement"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "calculate",
+            "description": "Safely evaluate a mathematical expression",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string", "description": "Math expression, e.g. '2 * (3 + 4)'"},
+                },
+                "required": ["expression"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "execute_code",
+            "description": "Execute Python code and return stdout/stderr results",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "Python code to execute"},
+                    "timeout": {"type": "integer", "description": "Timeout in seconds", "default": 30},
+                },
+                "required": ["code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "finish",
+            "description": "Provide the final answer to the user and end the agent loop",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "answer": {"type": "string", "description": "Final answer to return to the user"},
+                },
+                "required": ["answer"],
+            },
+        },
+    },
+]
+
+# Map tool name strings → AgentAction enum (used when parsing native tool calls)
+_TOOL_NAME_TO_ACTION: dict[str, str] = {schema["function"]["name"]: schema["function"]["name"] for schema in AGENT_TOOL_SCHEMAS}
+
 SYNTHESIS_PROMPT = """You have gathered information from multiple sources. Synthesize a final answer.
 
 ORIGINAL QUERY: {query}
@@ -144,7 +272,7 @@ FINAL ANSWER:"""
 class AgentReasoning:
     """LLM-powered reasoning for agent decisions."""
 
-    def __init__(self, llm_client: Optional[Any] = None, model: str = "llama3.2:latest"):
+    def __init__(self, llm_client: Optional[Any] = None, model: str = "qwen2.5-coder:14b"):
         """
         Initialize reasoning engine.
         
@@ -204,32 +332,87 @@ class AgentReasoning:
     ) -> Optional[ToolCall]:
         """
         Select which tool to use based on thought.
-        
+
+        Tries native Ollama tool calling first (qwen2.5-coder:14b supports this);
+        falls back to text-parsed JSON if the model responds without tool_calls.
+
         Args:
             thought: Agent's current thought
             available_tools: List of available tools
-            
+
         Returns:
             ToolCall or None
         """
         if not self.llm:
             return self._default_action(thought)
 
-        # Format tools as JSON
-        tools_json = json.dumps([tool.value for tool in available_tools], indent=2)
+        # --- Attempt native tool calling ---
+        if hasattr(self.llm, "chat_with_tools"):
+            result = self._select_action_native(thought, available_tools)
+            if result is not None:
+                return result
 
-        prompt = ACTION_SELECTION_PROMPT.format(
-            thought=thought,
-            tools_json=tools_json,
-        )
+        # --- Fallback: text-parsed JSON ---
+        return self._select_action_text(thought, available_tools)
+
+    def _select_action_native(
+        self,
+        thought: str,
+        available_tools: list[AgentAction],
+    ) -> Optional[ToolCall]:
+        """Use native Ollama tool calling to pick the next action."""
+        # Only include schemas for tools in available_tools
+        available_names = {t.value for t in available_tools}
+        schemas = [s for s in AGENT_TOOL_SCHEMAS if s["function"]["name"] in available_names]
+        if not schemas:
+            return None
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an AI assistant in an agent loop. "
+                    "Based on the thought provided, call exactly ONE tool to advance the task. "
+                    "For general knowledge questions, call finish() directly with your answer."
+                ),
+            },
+            {"role": "user", "content": thought},
+        ]
+
+        try:
+            result = self.llm.chat_with_tools(messages=messages, tools=schemas, temperature=0.2)
+            if not result.get("used_tools") or not result["tool_calls"]:
+                # Model responded with text — fall through to text parser
+                return None
+
+            tc = result["tool_calls"][0]
+            tool_name = tc.get("name", "")
+            tool_args = tc.get("arguments", {})
+
+            return ToolCall(
+                tool=AgentAction(tool_name),
+                args=tool_args,
+                reasoning=f"[native tool call] {thought[:120]}",
+            )
+        except Exception as e:
+            # Any parse/enum error → fall through
+            import logging
+            logging.getLogger(__name__).debug(f"[NATIVE_TOOLS] Failed: {e}")
+            return None
+
+    def _select_action_text(
+        self,
+        thought: str,
+        available_tools: list[AgentAction],
+    ) -> Optional[ToolCall]:
+        """Legacy text-parsed JSON action selection (fallback)."""
+        tools_json = json.dumps([tool.value for tool in available_tools], indent=2)
+        prompt = ACTION_SELECTION_PROMPT.format(thought=thought, tools_json=tools_json)
 
         try:
             response = self.llm.generate(prompt=prompt)
             response_text = _extract_text(response)
-
-            # Parse JSON response
             action_data = json.loads(response_text)
-
             return ToolCall(
                 tool=AgentAction(action_data["tool"]),
                 args=action_data.get("args", {}),

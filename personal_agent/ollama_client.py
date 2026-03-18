@@ -29,7 +29,7 @@ class OllamaClient:
         - codellama: Good for code
         """
         # Prefer explicit model, then CRT_OLLAMA_MODEL, else fallback.
-        self.model = model or os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest"
+        self.model = model or os.getenv("CRT_OLLAMA_MODEL") or "qwen2.5-coder:14b"
 
         if ollama is None:
             raise ModuleNotFoundError(
@@ -202,6 +202,96 @@ class OllamaClient:
         # Do not leak internal reasoning when no visible answer exists.
         return "[Model returned internal reasoning without a final answer. Please retry.]"
     
+    def chat_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        max_tokens: int = 1000,
+        temperature: float = 0.3,
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Chat with native Ollama function/tool calling.
+
+        Args:
+            messages: Conversation messages
+            tools: Ollama tool schema list (OpenAI-compatible type/function format)
+            max_tokens: Max tokens to generate
+            temperature: Sampling temperature (lower = more precise tool selection)
+            model: Override model
+
+        Returns:
+            {
+                "tool_calls": list of {"name": str, "arguments": dict},
+                "content": str,
+                "used_tools": bool,
+            }
+        """
+        try:
+            selected_model = model or self.model
+            chat_fn = (
+                self._client.chat
+                if (self._client is not None and hasattr(self._client, "chat"))
+                else ollama.chat  # type: ignore[union-attr]
+            )
+            response = chat_fn(
+                model=selected_model,
+                messages=messages,
+                tools=tools,
+                options={
+                    "num_predict": max_tokens,
+                    "temperature": temperature,
+                },
+            )
+
+            msg = (
+                response.message
+                if hasattr(response, "message")
+                else response.get("message", {})
+            )
+
+            # Extract tool calls (pydantic or dict)
+            raw_tool_calls = []
+            if hasattr(msg, "tool_calls") and msg.tool_calls:
+                raw_tool_calls = msg.tool_calls
+            elif isinstance(msg, dict) and msg.get("tool_calls"):
+                raw_tool_calls = msg["tool_calls"]
+
+            parsed_calls = []
+            for tc in raw_tool_calls:
+                if hasattr(tc, "function"):
+                    args = tc.function.arguments
+                    parsed_calls.append({
+                        "name": tc.function.name,
+                        "arguments": args if isinstance(args, dict) else {},
+                    })
+                elif isinstance(tc, dict) and "function" in tc:
+                    fn = tc["function"]
+                    parsed_calls.append({
+                        "name": fn.get("name", ""),
+                        "arguments": fn.get("arguments", {}),
+                    })
+
+            content = ""
+            if hasattr(msg, "content"):
+                content = msg.content or ""
+            elif isinstance(msg, dict):
+                content = msg.get("content", "") or ""
+
+            return {
+                "tool_calls": parsed_calls,
+                "content": content,
+                "used_tools": len(parsed_calls) > 0,
+            }
+
+        except Exception as e:
+            return {
+                "tool_calls": [],
+                "content": f"[tool_calling_error: {e}]",
+                "used_tools": False,
+                "error": str(e),
+            }
+
     def extract_intent(self, query: str) -> Dict[str, Any]:
         """
         Extract user intent from query.
@@ -257,7 +347,7 @@ Importance: <0.0-1.0>"""
 _global_client: Optional[OllamaClient] = None
 
 
-def get_ollama_client(model: str = "llama3.2:latest") -> OllamaClient:
+def get_ollama_client(model: str = "qwen2.5-coder:14b") -> OllamaClient:
     """Get or create global Ollama client."""
     global _global_client
     if ollama is None:
