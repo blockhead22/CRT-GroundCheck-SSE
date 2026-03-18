@@ -64,6 +64,7 @@ _NON_USER_FACT_KINDS = {
     "identity_constant",
     "evolution_observation",
     "evolution_proposal",
+    "narrative_note",
 }
 
 _ALLOWED_MEMORY_KINDS = {
@@ -75,7 +76,29 @@ _ALLOWED_MEMORY_KINDS = {
     "evolution_proposal",
     "hypothesis",
     "observation",
+    "narrative_note",
 }
+
+# Provenance source kinds for model output governance
+_VALID_SOURCE_KINDS = {"principal", "tool_receipt", "model_output", "social", "external", "system"}
+
+# review_after defaults in seconds from storage time, keyed by memory kind.
+# None means no scheduled review (never expires by staleness).
+_REVIEW_AFTER_DEFAULTS: Dict[str, Optional[float]] = {
+    "identity_constant":    None,
+    "user_fact":            None,
+    "preference":           90  * 86_400,   # 90 days
+    "permission":           14  * 86_400,   # 14 days
+    "ops":                  30  * 86_400,   # 30 days
+    "evolution_observation": None,
+    "evolution_proposal":   None,
+    "hypothesis":           30  * 86_400,   # 30 days
+    "observation":          60  * 86_400,   # 60 days
+    "narrative_note":       None,           # non-authoritative, no scheduled review
+}
+
+# Kinds eligible for quiet model_output→confirmed promotion (no principal needed)
+_QUIET_PROMOTION_KINDS = {"ops"}
 
 _USAGE_EVENT_TYPES = (
     "retrieved",
@@ -133,6 +156,12 @@ class MemoryItem:
     channel: str = "unknown"                    # webchat | telegram | moltbook | system | unknown | api | ...
     origin: Optional[str] = None                # URL, message ID, etc.
     kind: str = "observation"                   # user_fact | ops | preference | ...
+
+    # Phase B/C: Model provenance + staleness
+    review_after: Optional[float] = None        # Unix ts — if set and passed, memory is stale
+    source_kind: str = "principal"              # principal | tool_receipt | model_output | social | external | system
+    model_id: Optional[str] = None             # generating model identifier
+    run_id: Optional[str] = None               # run/request identifier for traceability
     
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
@@ -156,6 +185,10 @@ class MemoryItem:
             'channel': self.channel,
             'origin': self.origin,
             'kind': self.kind,
+            'review_after': self.review_after,
+            'source_kind': self.source_kind,
+            'model_id': self.model_id,
+            'run_id': self.run_id,
         }
     
     @staticmethod
@@ -181,6 +214,10 @@ class MemoryItem:
             channel=data.get('channel', 'unknown'),
             origin=data.get('origin'),
             kind=data.get('kind', 'observation'),
+            review_after=data.get('review_after'),
+            source_kind=data.get('source_kind', 'principal'),
+            model_id=data.get('model_id'),
+            run_id=data.get('run_id'),
         )
     
     def get_domains(self) -> List[str]:
@@ -192,6 +229,12 @@ class MemoryItem:
     def is_active(self) -> bool:
         """Check if this memory is currently active (not past/deprecated)."""
         return self.temporal_status == "active" and not self.deprecated
+
+    def is_stale(self, now: Optional[float] = None) -> bool:
+        """True if review_after is set and has passed (soft staleness — still retrievable)."""
+        if self.review_after is None:
+            return False
+        return (now if now is not None else time.time()) > self.review_after
 
 
 class CRTMemorySystem:
@@ -489,6 +532,23 @@ class CRTMemorySystem:
             cursor.execute("ALTER TABLE memories ADD COLUMN kind TEXT DEFAULT 'observation'")
             cursor.execute("UPDATE memories SET kind = 'observation' WHERE kind IS NULL OR TRIM(kind) = ''")
 
+        if "review_after" not in columns:
+            logger.info(f"[MIGRATION] Adding review_after column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN review_after REAL")
+
+        if "source_kind" not in columns:
+            logger.info(f"[MIGRATION] Adding source_kind column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN source_kind TEXT DEFAULT 'principal'")
+            cursor.execute("UPDATE memories SET source_kind = 'principal' WHERE source_kind IS NULL OR TRIM(source_kind) = ''")
+
+        if "model_id" not in columns:
+            logger.info(f"[MIGRATION] Adding model_id column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN model_id TEXT")
+
+        if "run_id" not in columns:
+            logger.info(f"[MIGRATION] Adding run_id column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN run_id TEXT")
+
         conn.commit()
         conn.close()
 
@@ -526,6 +586,17 @@ class CRTMemorySystem:
                     return "user_fact"
             return "observation"
         return value
+
+    def _normalize_source_kind(self, source_kind: Optional[str]) -> str:
+        value = str(source_kind or "").strip().lower()
+        return value if value in _VALID_SOURCE_KINDS else "principal"
+
+    def _compute_review_after(self, kind: str, now: Optional[float] = None) -> Optional[float]:
+        """Return a review_after timestamp for the given kind, or None if no review is scheduled."""
+        delta = _REVIEW_AFTER_DEFAULTS.get(kind)
+        if delta is None:
+            return None
+        return (now if now is not None else time.time()) + delta
 
     def _resolve_origin(
         self,
@@ -598,6 +669,10 @@ class CRTMemorySystem:
             resolved_authority = "provisional"
             if resolved_kind not in {"evolution_observation"}:
                 resolved_kind = "observation"
+
+        # Narrative notes are always provisional — they are introspective, not authoritative.
+        if resolved_kind == "narrative_note":
+            resolved_authority = "provisional"
 
         return resolved_authority, resolved_channel, resolved_origin, resolved_kind
 
@@ -789,10 +864,13 @@ class CRTMemorySystem:
         channel: Optional[str] = None,
         origin: Optional[str] = None,
         kind: Optional[str] = None,
+        source_kind: Optional[str] = None,
+        model_id: Optional[str] = None,
+        run_id: Optional[str] = None,
     ) -> MemoryItem:
         """
         Store new memory with CRT principles.
-        
+
         Process:
         1. Encode to vector
         2. Compute significance → select SSE mode
@@ -826,6 +904,16 @@ class CRTMemorySystem:
             source=source,
             context=context,
         )
+
+        # Normalize provenance fields.
+        resolved_source_kind = self._normalize_source_kind(source_kind)
+
+        # model_output provenance → always provisional (except quiet ops promotion handled separately)
+        if resolved_source_kind == "model_output" and authority not in {"locked"}:
+            authority = "provisional"
+
+        # Compute soft staleness marker from kind defaults.
+        review_after = self._compute_review_after(kind)
 
         # Policy boundary: external/tool memories must be auditable.
         if source == MemorySource.EXTERNAL:
@@ -976,17 +1064,21 @@ class CRTMemorySystem:
             channel=channel,
             origin=origin,
             kind=kind,
+            review_after=review_after,
+            source_kind=resolved_source_kind,
+            model_id=model_id,
+            run_id=run_id,
         )
-        
+
         # Store in database
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+
         try:
             cursor.execute("""
-                INSERT INTO memories 
-                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO memories
+                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind, review_after, source_kind, model_id, run_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 memory.memory_id,
                 json.dumps(vector.tolist()),
@@ -1006,13 +1098,17 @@ class CRTMemorySystem:
                 channel,
                 origin,
                 kind,
+                review_after,
+                resolved_source_kind,
+                model_id,
+                run_id,
             ))
         except sqlite3.OperationalError as e:
             # Backward compatibility for old ad-hoc tables that may not include thread_id.
             if "thread_id" not in str(e).lower():
                 raise
             cursor.execute("""
-                INSERT INTO memories 
+                INSERT INTO memories
                 (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -1030,7 +1126,7 @@ class CRTMemorySystem:
                 temporal_status,
                 json.dumps(domain_tags) if domain_tags else None,
             ))
-        
+
         conn.commit()
         conn.close()
 
@@ -1045,17 +1141,27 @@ class CRTMemorySystem:
             except Exception as e:
                 logger.debug(f"[MEMORY_FACTS] Failed to cache facts for {memory.memory_id}: {e}")
 
-        # SPRINT 1: After storing, if correction was detected, decay contradicted memories
-        if is_correction and memory.authority != "provisional":
+        # SPRINT 1: After storing, if correction was detected, decay contradicted memories.
+        # Narrative notes are non-authoritative — they cannot trigger contradiction decay.
+        if is_correction and memory.authority != "provisional" and kind != "narrative_note":
             contradicting = self._find_contradicting_memories(text)
-            
+
             for old_mem in contradicting:
+                # Narrative notes must never be decayed by other memories either.
+                if getattr(old_mem, "kind", "observation") == "narrative_note":
+                    continue
                 # Significantly reduce trust of contradicted memory
                 old_trust = old_mem.trust
                 new_trust = old_trust * 0.4
                 self._update_memory_trust(old_mem.memory_id, new_trust)
                 logger.info(f"[TRUST_DECAY] Reduced trust for contradicted memory: {old_mem.text[:60]} (trust: {old_trust:.2f} -> {new_trust:.2f})")
-        
+
+        # B: Model disagreement detection — when model_output writes slot values that
+        # conflict with existing confirmed user_facts, log a disagreement event.
+        # _detect_model_disagreement returns early when no facts are extractable.
+        if resolved_source_kind == "model_output":
+            self._detect_model_disagreement(memory)
+
         return memory
     
     # ========================================================================
@@ -1506,7 +1612,115 @@ class CRTMemorySystem:
                     contradicting.append(old_mem)
         
         return contradicting
-    
+
+    def _detect_model_disagreement(self, new_memory: MemoryItem) -> None:
+        """
+        Log a model_disagreement_detected event when a model_output memory's slot values
+        conflict with existing confirmed user_facts for the same slot.
+
+        Does NOT auto-promote or override — only logs the event for governance.
+        """
+        try:
+            from .fact_slots import extract_fact_slots
+            new_facts = extract_fact_slots(new_memory.text)
+            if not new_facts:
+                return
+
+            confirmed_memories = [
+                m for m in self._load_all_memories()
+                if self._normalize_authority(getattr(m, "authority", None)) in {"confirmed", "locked"}
+                and getattr(m, "kind", "observation") == "user_fact"
+                and not getattr(m, "deprecated", False)
+                and m.memory_id != new_memory.memory_id
+            ]
+
+            for slot in new_facts:
+                for conf_mem in confirmed_memories:
+                    conf_facts = extract_fact_slots(conf_mem.text)
+                    if slot not in conf_facts:
+                        continue
+                    new_val = str(new_facts[slot].value).strip().lower()
+                    conf_val = str(conf_facts[slot].value).strip().lower()
+                    if new_val and conf_val and new_val != conf_val:
+                        self._append_memory_event(
+                            memory_id=new_memory.memory_id,
+                            event_type="model_disagreement_detected",
+                            actor=getattr(new_memory, "model_id", None) or "model",
+                            reason=f"slot={slot} model={new_val!r} confirmed={conf_val!r}",
+                            metadata={
+                                "slot": slot,
+                                "model_value": new_val,
+                                "confirmed_value": conf_val,
+                                "confirmed_memory_id": conf_mem.memory_id,
+                                "model_id": getattr(new_memory, "model_id", None),
+                                "run_id": getattr(new_memory, "run_id", None),
+                            },
+                        )
+                        logger.info(
+                            "[MODEL_DISAGREEMENT] slot=%s model=%r confirmed=%r new_id=%s conf_id=%s",
+                            slot, new_val, conf_val, new_memory.memory_id, conf_mem.memory_id,
+                        )
+        except Exception as e:
+            logger.debug("[MODEL_DISAGREEMENT] Detection failed: %s", e)
+
+    def try_quiet_promote_ops(
+        self,
+        memory_id: str,
+        *,
+        reason: str,
+        evidence: Optional[Dict[str, Any]] = None,
+        model_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> bool:
+        """
+        Promote an ops memory from provisional → confirmed without requiring a principal.
+
+        This is the ONLY quiet-promotion path. Restricted to kind=ops.
+        Caller must supply a non-empty reason and ideally tool-receipt evidence.
+
+        Returns True if promotion happened, False if it was blocked.
+        """
+        memory = self.get_memory_by_id(memory_id)
+        if memory is None:
+            logger.warning("[QUIET_OPS] memory not found: %s", memory_id)
+            return False
+
+        if getattr(memory, "kind", "observation") not in _QUIET_PROMOTION_KINDS:
+            logger.warning("[QUIET_OPS] blocked: kind=%s not in quiet-promotion allowlist", memory.kind)
+            return False
+
+        current = self._normalize_authority(getattr(memory, "authority", None))
+        if current != "provisional":
+            logger.debug("[QUIET_OPS] skipped: already %s", current)
+            return False
+
+        if not str(reason or "").strip():
+            logger.warning("[QUIET_OPS] blocked: reason is required")
+            return False
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE memories SET authority = 'confirmed' WHERE memory_id = ?", (memory_id,))
+        conn.commit()
+        conn.close()
+
+        self._append_memory_event(
+            memory_id=memory_id,
+            event_type="authority_promotion",
+            old_authority="provisional",
+            new_authority="confirmed",
+            actor=model_id or "model_auto",
+            reason=reason,
+            metadata={
+                "promotion_path": "quiet_ops",
+                "model_id": model_id,
+                "run_id": run_id,
+                "evidence": evidence or {},
+            },
+        )
+        logger.info("[QUIET_OPS] promoted ops memory %s: %s", memory_id, reason)
+        return True
+
     def evolve_trust_for_alignment(
         self,
         memory: MemoryItem,
@@ -1813,6 +2027,14 @@ class CRTMemorySystem:
             memory.origin = row[21]
         if len(row) > 22:
             memory.kind = self._normalize_kind(row[22], source=memory.source, context=memory.context)
+        if len(row) > 23:
+            memory.review_after = row[23]
+        if len(row) > 24:
+            memory.source_kind = self._normalize_source_kind(row[24])
+        if len(row) > 25:
+            memory.model_id = row[25]
+        if len(row) > 26:
+            memory.run_id = row[26]
         return memory
     
     def _load_all_memories(self) -> List[MemoryItem]:

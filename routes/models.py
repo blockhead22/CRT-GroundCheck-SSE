@@ -97,6 +97,10 @@ class MemoryListItem(BaseModel):
     channel: str = Field(default="unknown")
     origin: Optional[str] = None
     kind: str = Field(default="observation")
+    review_after: Optional[float] = None
+    source_kind: str = Field(default="principal")
+    model_id: Optional[str] = None
+    run_id: Optional[str] = None
 
 
 class MemoryStoreRequest(BaseModel):
@@ -111,6 +115,9 @@ class MemoryStoreRequest(BaseModel):
     channel: Optional[str] = Field(default=None)
     origin: Optional[str] = Field(default=None)
     kind: Optional[str] = Field(default=None)
+    source_kind: Optional[str] = Field(default=None)
+    model_id: Optional[str] = Field(default=None)
+    run_id: Optional[str] = Field(default=None)
 
 
 class MemoryStoreResponse(BaseModel):

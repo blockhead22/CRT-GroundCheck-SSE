@@ -62,6 +62,10 @@ def _memory_item_to_dict(mem) -> Dict[str, Any]:
         "channel": str(getattr(mem, "channel", "unknown") or "unknown"),
         "origin": getattr(mem, "origin", None),
         "kind": str(getattr(mem, "kind", "observation") or "observation"),
+        "review_after": getattr(mem, "review_after", None),
+        "source_kind": str(getattr(mem, "source_kind", "principal") or "principal"),
+        "model_id": getattr(mem, "model_id", None),
+        "run_id": getattr(mem, "run_id", None),
     }
 
 
@@ -389,6 +393,9 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
         channel=req.channel,
         origin=req.origin,
         kind=req.kind,
+        source_kind=req.source_kind,
+        model_id=req.model_id,
+        run_id=req.run_id,
     )
 
     fact_store_updated = False
@@ -413,13 +420,23 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
 
 @router.get("/api/memory/recent", response_model=list[MemoryListItem])
 def memory_recent(request: Request, thread_id: str = Query(default="default"), limit: int = Query(default=30, ge=1, le=200)) -> list[MemoryListItem]:
-    engine = _get_engine(request, thread_id)
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
     try:
-        items = engine.memory._load_all_memories()
+        if tid == "default":
+            # Default thread: include memories with NULL thread_id or explicit "default"
+            all_items = engine.memory._load_all_memories()
+            items: list = [
+                m for m in all_items
+                if not getattr(m, "thread_id", None)
+                or str(m.thread_id).lower() in ("default", "")
+            ]
+        else:
+            items = engine.memory._load_memories_filtered(thread_id=tid)
+        items.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
     except Exception:
         items = []
 
-    items.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
     out: list[MemoryListItem] = []
     for mem in items[:limit]:
         out.append(MemoryListItem(**_memory_item_to_dict(mem)))
@@ -447,8 +464,17 @@ def memory_search(
         )
     except Exception:
         retrieved = []
+
+    def _matches_thread(mem) -> bool:
+        mt = str(getattr(mem, "thread_id", "") or "")
+        if tid == "default":
+            return not mt or mt.lower() in ("default", "")
+        return mt == tid
+
     out: list[MemoryListItem] = []
     for mem, _score in retrieved:
+        if not _matches_thread(mem):
+            continue
         out.append(MemoryListItem(**_memory_item_to_dict(mem)))
     return out
 
