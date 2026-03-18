@@ -186,7 +186,13 @@ class OllamaClient:
         """Return safe user-visible text, never raw chain-of-thought."""
         visible = str(content or "").strip()
         if visible:
-            return visible
+            # qwen2.5-coder sometimes puts a </think> closing tag at the start of
+            # content when the opening <think> was in the separate thinking field.
+            # Strip any dangling think tags before returning.
+            _, visible = extract_think_content(visible)
+            visible = str(visible or "").strip()
+            if visible:
+                return visible
 
         thinking_text = str(thinking or "").strip()
         if not thinking_text:

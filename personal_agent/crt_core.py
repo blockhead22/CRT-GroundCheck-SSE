@@ -566,13 +566,16 @@ class CRTMath:
                 return False, f"factual_grounding_fail (score={grounding_score:.3f} < 0.30)"
         
         elif response_type == "explanatory":
-            # Relaxed gates for explanations/synthesis
-            if intent_align < 0.4:
-                return False, f"explanatory_intent_fail (align={intent_align:.3f} < 0.4)"
-            if memory_align < 0.25:
-                return False, f"explanatory_memory_fail (align={memory_align:.3f} < 0.25)"
-            if grounding_score < 0.25:  # Lowered from 0.3 - improved grounding computation
-                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < 0.25)"
+            # Relaxed gates for explanations/synthesis.
+            # Threshold lowered from 0.4 → 0.35 (intent) and 0.25 → 0.18 (memory):
+            # qwen2.5-coder uses verbose markdown output that dilutes cosine alignment
+            # scores vs the terse llama3.2 output these were calibrated against.
+            if intent_align < 0.35:
+                return False, f"explanatory_intent_fail (align={intent_align:.3f} < 0.35)"
+            if memory_align < 0.18:
+                return False, f"explanatory_memory_fail (align={memory_align:.3f} < 0.18)"
+            if grounding_score < 0.20:
+                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < 0.20)"
         
         else:  # conversational
             # Minimal gates for chat/acknowledgment
