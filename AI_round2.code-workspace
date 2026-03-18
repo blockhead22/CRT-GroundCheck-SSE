@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "C:/filecompression"
+		},
+		{
+			"path": "C:/Users/block/AppData/Roaming/npm/node_modules/openclaw"
+		},
+		{
+			"path": "C:/Users/block/.openclaw"
 		}
 	],
 	"settings": {

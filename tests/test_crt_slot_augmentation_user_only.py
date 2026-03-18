@@ -26,6 +26,7 @@ def test_slot_augmentation_only_injects_user_sources(monkeypatch, tmp_path) -> N
         context=None,
         tags=None,
         thread_id=None,
+        kind="user_fact",
     )
 
     system_name = MemoryItem(

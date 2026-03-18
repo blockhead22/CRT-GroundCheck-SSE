@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from personal_agent.crt_core import MemorySource
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
 
@@ -25,7 +26,11 @@ from routes.models import (
     FactExtractionRequest,
     FactExtractionResponse,
     FactHistoryResponse,
+    MemoryEventItem,
     MemoryListItem,
+    MemoryStoreRequest,
+    MemoryStoreResponse,
+    MemoryUsageSummaryItem,
     ProfileResponse,
     StructuredFactsResponse,
 )
@@ -53,6 +58,10 @@ def _memory_item_to_dict(mem) -> Dict[str, Any]:
         "source": getattr(getattr(mem, "source", None), "value", None) or str(getattr(mem, "source", "")),
         "sse_mode": getattr(getattr(mem, "sse_mode", None), "value", None) or str(getattr(mem, "sse_mode", "")),
         "thread_id": getattr(mem, "thread_id", None),
+        "authority": str(getattr(mem, "authority", "confirmed") or "confirmed"),
+        "channel": str(getattr(mem, "channel", "unknown") or "unknown"),
+        "origin": getattr(mem, "origin", None),
+        "kind": str(getattr(mem, "kind", "observation") or "observation"),
     }
 
 
@@ -71,6 +80,8 @@ def _extract_latest_profile_slots(engine: CRTEnhancedRAG) -> Dict[str, str]:
     for mem in items:
         src = getattr(getattr(mem, "source", None), "value", None) or str(getattr(mem, "source", ""))
         if str(src).lower() != "user":
+            continue
+        if hasattr(engine, "memory") and not engine.memory.can_answer_user_fact(mem):
             continue
         text = str(getattr(mem, "text", "") or "")
 
@@ -353,6 +364,53 @@ def dashboard_overview(request: Request, thread_id: str = Query(default="default
 # Memory
 # ========================================================================
 
+@router.post("/api/memory/store", response_model=MemoryStoreResponse)
+def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreResponse:
+    tid = sanitize_thread_id(req.thread_id)
+    engine = _get_engine(request, tid)
+
+    try:
+        source = MemorySource(str(req.source or "user").strip().lower())
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid memory source: {req.source}") from e
+
+    context = dict(req.context or {})
+    context.setdefault("thread_id", tid)
+
+    mem = engine.memory.store_memory(
+        text=req.text,
+        confidence=float(req.confidence),
+        source=source,
+        context=context,
+        user_marked_important=bool(req.user_marked_important),
+        contradiction_signal=float(req.contradiction_signal or 0.0),
+        thread_id=tid,
+        authority=req.authority,
+        channel=req.channel,
+        origin=req.origin,
+        kind=req.kind,
+    )
+
+    fact_store_updated = False
+    try:
+        if hasattr(engine, "memory") and engine.memory.can_update_user_profile(mem):
+            fact_store = getattr(engine, "fact_store", None)
+            if fact_store is not None:
+                fact_result = fact_store.process_input(req.text)
+                fact_store_updated = bool(
+                    (fact_result or {}).get("extracted") or (fact_result or {}).get("updated")
+                )
+    except Exception as e:
+        logger.debug(f"[MEMORY_STORE] FactStore update failed for thread {tid}: {e}")
+
+    return MemoryStoreResponse(
+        stored=True,
+        memory=MemoryListItem(**_memory_item_to_dict(mem)),
+        fact_store_updated=fact_store_updated,
+        contradiction_detected=False,
+        contradiction_info=None,
+    )
+
 @router.get("/api/memory/recent", response_model=list[MemoryListItem])
 def memory_recent(request: Request, thread_id: str = Query(default="default"), limit: int = Query(default=30, ge=1, le=200)) -> list[MemoryListItem]:
     engine = _get_engine(request, thread_id)
@@ -376,15 +434,59 @@ def memory_search(
     k: int = Query(default=10, ge=1, le=50),
     min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
 ) -> list[MemoryListItem]:
-    engine = _get_engine(request, thread_id)
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
     try:
-        retrieved = engine.retrieve(q, k=k, min_trust=min_trust)
+        retrieved = engine.retrieve(
+            q,
+            k=k,
+            min_trust=min_trust,
+            thread_id=tid,
+            usage_reason="api_memory_search",
+            usage_metadata={"endpoint": "/api/memory/search"},
+        )
     except Exception:
         retrieved = []
     out: list[MemoryListItem] = []
     for mem, _score in retrieved:
         out.append(MemoryListItem(**_memory_item_to_dict(mem)))
     return out
+
+
+@router.get("/api/memory/usage/summary", response_model=list[MemoryUsageSummaryItem])
+def memory_usage_summary(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    limit: int = Query(default=25, ge=1, le=200),
+    since_timestamp: Optional[float] = Query(default=None),
+) -> list[MemoryUsageSummaryItem]:
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+    try:
+        summary = engine.memory.get_memory_usage_summary(
+            thread_id=tid,
+            since_timestamp=since_timestamp,
+            limit=limit,
+        )
+    except Exception:
+        summary = []
+    return [MemoryUsageSummaryItem(**item) for item in summary]
+
+
+@router.get("/api/memory/{memory_id}/events", response_model=list[MemoryEventItem])
+def memory_events(
+    memory_id: str,
+    request: Request,
+    thread_id: str = Query(default="default"),
+    event_type: Optional[str] = Query(default=None),
+) -> list[MemoryEventItem]:
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+    try:
+        events = engine.memory.get_memory_events(memory_id, event_type=event_type)
+    except Exception:
+        events = []
+    return [MemoryEventItem(**event) for event in events]
 
 
 @router.get("/api/memory/{memory_id}", response_model=MemoryListItem)

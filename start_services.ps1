@@ -35,7 +35,8 @@
 
 param(
     [switch]$NoClean,
-    [switch]$SkipTelegram,
+    [switch]$SkipTelegram,  # kept for compat; Telegram is disabled by default (OpenClaw owns it)
+    [switch]$Telegram,      # opt-in: explicitly start CRT's Telegram bot alongside OpenClaw
     [switch]$NoMonitor,
     [switch]$NoPortal,
     [switch]$PortalManagesApi
@@ -72,6 +73,12 @@ function Write-Err($msg)  { Write-Log "ERROR" $msg }
 Write-Info "═══════════════════════════════════════════════════════════════"
 Write-Info "Aether Service Manager starting"
 Write-Info "═══════════════════════════════════════════════════════════════"
+
+# Telegram is now managed by OpenClaw. Disable it here unless explicitly requested.
+if (-not $Telegram) {
+    $SkipTelegram = $true
+    Write-Info "Telegram: managed by OpenClaw (pass -Telegram to override)"
+}
 
 # ── Pre-flight Checks ────────────────────────────────────────────────────────
 
@@ -145,11 +152,11 @@ else:
         Write-Ok "Disk space: ${freeGB}GB free"
     }
 
-    # Telegram token
-    if ($env:TELEGRAM_BOT_TOKEN) {
-        Write-Ok "Telegram token: set"
-    } else {
-        if (-not $SkipTelegram) {
+    # Telegram token (only relevant if -Telegram flag was passed)
+    if (-not $SkipTelegram) {
+        if ($env:TELEGRAM_BOT_TOKEN) {
+            Write-Ok "Telegram token: set"
+        } else {
             Write-Warn "TELEGRAM_BOT_TOKEN not set -- Telegram bot will not start"
             $script:SkipTelegram = $true
         }

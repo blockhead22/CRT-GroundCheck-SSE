@@ -251,12 +251,22 @@ def get_contradictions(
 ) -> Dict[str, Any]:
     """Get all contradictions for a thread (for stress testing)"""
     tid = sanitize_thread_id(thread_id)
-    ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+    engine = _get_engine(request, tid)
+    ledger_db = str(getattr(getattr(engine, "ledger", None), "db_path", "") or "")
+    if not ledger_db:
+        thread_db_paths = getattr(request.app.state, "thread_db_paths", None)
+        if callable(thread_db_paths):
+            try:
+                _, ledger_db = thread_db_paths(tid)
+            except Exception:
+                ledger_db = ""
+    if not ledger_db:
+        return {"contradictions": [], "count": 0, "error": "ledger db unavailable"}
 
     try:
         with get_db_connection(ledger_db) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM contradictions")
+            cursor.execute("SELECT * FROM contradictions ORDER BY timestamp DESC")
             rows = cursor.fetchall()
 
             # Get column names

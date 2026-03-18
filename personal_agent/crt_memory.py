@@ -45,6 +45,46 @@ _TRANSCRIPT_GUARD_MARKERS = (
 
 _TRANSCRIPT_LINE_RE = re.compile(r"(?im)^\s*(user|assistant)\s*:")
 
+_AUTHORITY_RANK = {
+    "provisional": 0,
+    "confirmed": 1,
+    "locked": 2,
+}
+
+_SOCIAL_CHANNELS = {"moltbook"}
+_INTERNAL_PROVISIONAL_SOURCES = {
+    MemorySource.SYSTEM,
+    MemorySource.FALLBACK,
+    MemorySource.REFLECTION,
+    MemorySource.LLM_OUTPUT,
+}
+
+_NON_USER_FACT_KINDS = {
+    "ops",
+    "identity_constant",
+    "evolution_observation",
+    "evolution_proposal",
+}
+
+_ALLOWED_MEMORY_KINDS = {
+    "user_fact",
+    "ops",
+    "preference",
+    "identity_constant",
+    "evolution_observation",
+    "evolution_proposal",
+    "hypothesis",
+    "observation",
+}
+
+_USAGE_EVENT_TYPES = (
+    "retrieved",
+    "prompt_included",
+    "slot_selected",
+    "guard_blocked",
+    "answer_support",
+)
+
 
 @dataclass
 class MemoryItem:
@@ -89,6 +129,10 @@ class MemoryItem:
     valid_from: Optional[float] = None          # Unix timestamp (None = beginning of time)
     valid_until: Optional[float] = None         # Unix timestamp (None = ongoing)
     domain_tags: Optional[List[str]] = None     # e.g., ["print_shop", "freelance"]
+    authority: str = "confirmed"                # provisional | confirmed | locked
+    channel: str = "unknown"                    # webchat | telegram | moltbook | system | unknown | api | ...
+    origin: Optional[str] = None                # URL, message ID, etc.
+    kind: str = "observation"                   # user_fact | ops | preference | ...
     
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
@@ -108,6 +152,10 @@ class MemoryItem:
             'valid_from': self.valid_from,
             'valid_until': self.valid_until,
             'domain_tags': self.domain_tags,
+            'authority': self.authority,
+            'channel': self.channel,
+            'origin': self.origin,
+            'kind': self.kind,
         }
     
     @staticmethod
@@ -129,6 +177,10 @@ class MemoryItem:
             valid_from=data.get('valid_from'),
             valid_until=data.get('valid_until'),
             domain_tags=data.get('domain_tags'),
+            authority=data.get('authority', 'confirmed'),
+            channel=data.get('channel', 'unknown'),
+            origin=data.get('origin'),
+            kind=data.get('kind', 'observation'),
         )
     
     def get_domains(self) -> List[str]:
@@ -222,6 +274,21 @@ class CRTMemorySystem:
                 FOREIGN KEY (memory_id) REFERENCES memories(memory_id)
             )
         """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS memory_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                memory_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                event_type TEXT NOT NULL,
+                old_authority TEXT,
+                new_authority TEXT,
+                actor TEXT,
+                reason TEXT,
+                metadata_json TEXT,
+                FOREIGN KEY (memory_id) REFERENCES memories(memory_id)
+            )
+        """)
         
         # Belief vs speech tracking
         cursor.execute("""
@@ -282,7 +349,17 @@ class CRTMemorySystem:
             CREATE INDEX IF NOT EXISTS idx_trust_log_memory 
             ON trust_log(memory_id, timestamp)
         """)
-        
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memory_events_memory
+            ON memory_events(memory_id, timestamp DESC)
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_memory_events_type_timestamp
+            ON memory_events(event_type, timestamp DESC)
+        """)
+
         # Cached fact slots extracted from memories (avoids re-running regex on every query)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS memory_facts (
@@ -327,6 +404,18 @@ class CRTMemorySystem:
             """)
         except Exception as e:
             logger.debug(f"[MEMORY] Could not create deprecated index: {e}")
+
+        for index_name, column_name in (
+            ("idx_memories_authority", "authority"),
+            ("idx_memories_channel", "channel"),
+            ("idx_memories_kind", "kind"),
+        ):
+            try:
+                cursor.execute(
+                    f"CREATE INDEX IF NOT EXISTS {index_name} ON memories({column_name})"
+                )
+            except Exception as e:
+                logger.debug(f"[MEMORY] Could not create {index_name}: {e}")
         
         conn.commit()
         conn.close()
@@ -380,9 +469,268 @@ class CRTMemorySystem:
             logger.info(f"[MIGRATION] Adding domain_tags column to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN domain_tags TEXT")  # JSON array
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_domain_tags ON memories(domain_tags)")
-        
+
+        if "authority" not in columns:
+            logger.info(f"[MIGRATION] Adding authority column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN authority TEXT DEFAULT 'confirmed'")
+            cursor.execute("UPDATE memories SET authority = 'confirmed' WHERE authority IS NULL OR TRIM(authority) = ''")
+
+        if "channel" not in columns:
+            logger.info(f"[MIGRATION] Adding channel column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN channel TEXT DEFAULT 'unknown'")
+            cursor.execute("UPDATE memories SET channel = 'unknown' WHERE channel IS NULL OR TRIM(channel) = ''")
+
+        if "origin" not in columns:
+            logger.info(f"[MIGRATION] Adding origin column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN origin TEXT")
+
+        if "kind" not in columns:
+            logger.info(f"[MIGRATION] Adding kind column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN kind TEXT DEFAULT 'observation'")
+            cursor.execute("UPDATE memories SET kind = 'observation' WHERE kind IS NULL OR TRIM(kind) = ''")
+
         conn.commit()
         conn.close()
+
+    def _normalize_authority(self, authority: Optional[str]) -> str:
+        value = str(authority or "").strip().lower()
+        return value if value in _AUTHORITY_RANK else "confirmed"
+
+    def _normalize_channel(self, channel: Optional[str]) -> str:
+        value = str(channel or "").strip().lower()
+        return value or "unknown"
+
+    def _normalize_kind(
+        self,
+        kind: Optional[str],
+        *,
+        source: MemorySource,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        value = str(kind or "").strip().lower()
+        if value not in _ALLOWED_MEMORY_KINDS:
+            ctx_kind = ""
+            if isinstance(context, dict):
+                ctx_kind = str(context.get("memory_kind") or "").strip().lower()
+                if not ctx_kind:
+                    raw_kind = str(context.get("kind") or "").strip().lower()
+                    if raw_kind in _ALLOWED_MEMORY_KINDS:
+                        ctx_kind = raw_kind
+            if ctx_kind in _ALLOWED_MEMORY_KINDS:
+                value = ctx_kind
+        if value not in _ALLOWED_MEMORY_KINDS:
+            if source == MemorySource.USER and isinstance(context, dict):
+                ctx_type = str(context.get("type") or "").strip().lower()
+                ctx_kind = str(context.get("kind") or "").strip().lower()
+                if ctx_type == "llm_extracted_fact" or (ctx_type == "user_input" and ctx_kind == "assertion"):
+                    return "user_fact"
+            return "observation"
+        return value
+
+    def _resolve_origin(
+        self,
+        origin: Optional[str],
+        context: Optional[Dict[str, Any]] = None,
+        *,
+        source: Optional[MemorySource] = None,
+        channel: Optional[str] = None,
+        kind: Optional[str] = None,
+    ) -> Optional[str]:
+        value = str(origin or "").strip()
+        if value:
+            return value
+        if not isinstance(context, dict):
+            context = {}
+        for key in ("origin", "message_id", "url"):
+            candidate = str(context.get(key) or "").strip()
+            if candidate:
+                return candidate
+        provenance = context.get("provenance")
+        if isinstance(provenance, dict):
+            for key in ("source", "url", "message_id"):
+                candidate = str(provenance.get(key) or "").strip()
+                if candidate:
+                    return candidate
+        if source in _INTERNAL_PROVISIONAL_SOURCES or str(channel or "").strip().lower() == "system":
+            detail = (
+                str(context.get("kind") or "").strip().lower()
+                or str(context.get("type") or "").strip().lower()
+                or str(kind or "").strip().lower()
+                or (source.value if source is not None else "system")
+            )
+            detail = re.sub(r"[^a-z0-9._:-]+", "_", detail).strip("_") or "memory"
+            return f"system:{detail}"
+        return None
+
+    def _resolve_memory_metadata(
+        self,
+        *,
+        authority: Optional[str],
+        channel: Optional[str],
+        origin: Optional[str],
+        kind: Optional[str],
+        source: MemorySource,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[str, str, Optional[str], str]:
+        raw_channel = channel if channel is not None else (context or {}).get("channel")
+        raw_authority = authority if authority is not None else (context or {}).get("authority")
+
+        explicit_channel = bool(str(raw_channel or "").strip())
+        explicit_authority = bool(str(raw_authority or "").strip())
+
+        resolved_channel = self._normalize_channel(raw_channel)
+        if not explicit_channel and source in _INTERNAL_PROVISIONAL_SOURCES:
+            resolved_channel = "system"
+
+        resolved_kind = self._normalize_kind(kind, source=source, context=context)
+        resolved_authority = self._normalize_authority(raw_authority)
+        if not explicit_authority and source in _INTERNAL_PROVISIONAL_SOURCES:
+            resolved_authority = "provisional"
+        resolved_origin = self._resolve_origin(
+            origin,
+            context,
+            source=source,
+            channel=resolved_channel,
+            kind=resolved_kind,
+        )
+
+        if resolved_channel in _SOCIAL_CHANNELS:
+            resolved_authority = "provisional"
+            if resolved_kind not in {"evolution_observation"}:
+                resolved_kind = "observation"
+
+        return resolved_authority, resolved_channel, resolved_origin, resolved_kind
+
+    def is_social_channel(self, channel: Optional[str]) -> bool:
+        return self._normalize_channel(channel) in _SOCIAL_CHANNELS
+
+    def is_authoritative_memory(self, memory: Optional[MemoryItem]) -> bool:
+        if memory is None:
+            return False
+        return self._normalize_authority(getattr(memory, "authority", None)) in {"confirmed", "locked"}
+
+    def can_answer_user_fact(self, memory: Optional[MemoryItem]) -> bool:
+        if not self.is_authoritative_memory(memory):
+            return False
+        kind = str(getattr(memory, "kind", "observation") or "observation").strip().lower()
+        return kind == "user_fact"
+
+    def can_update_user_profile(self, memory: Optional[MemoryItem]) -> bool:
+        return self.can_answer_user_fact(memory)
+
+    def can_affect_contradiction_resolution(self, memory: Optional[MemoryItem]) -> bool:
+        return self.is_authoritative_memory(memory)
+
+    def _append_memory_event(
+        self,
+        *,
+        memory_id: str,
+        event_type: str,
+        old_authority: Optional[str] = None,
+        new_authority: Optional[str] = None,
+        actor: Optional[str] = None,
+        reason: Optional[str] = None,
+        timestamp: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO memory_events
+            (memory_id, timestamp, event_type, old_authority, new_authority, actor, reason, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                memory_id,
+                float(timestamp if timestamp is not None else time.time()),
+                str(event_type or "").strip() or "event",
+                old_authority,
+                new_authority,
+                str(actor or "").strip() or None,
+                str(reason or "").strip() or None,
+                json.dumps(metadata) if metadata else None,
+            ),
+        )
+        conn.commit()
+        conn.close()
+
+    def record_memory_event(
+        self,
+        *,
+        memory_id: str,
+        event_type: str,
+        actor: Optional[str] = None,
+        reason: Optional[str] = None,
+        timestamp: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        old_authority: Optional[str] = None,
+        new_authority: Optional[str] = None,
+    ) -> None:
+        """Public append-only event writer."""
+        self._append_memory_event(
+            memory_id=memory_id,
+            event_type=event_type,
+            old_authority=old_authority,
+            new_authority=new_authority,
+            actor=actor,
+            reason=reason,
+            timestamp=timestamp,
+            metadata=metadata,
+        )
+
+    def record_memory_usage(
+        self,
+        memory_ids: List[str],
+        *,
+        event_type: str,
+        actor: Optional[str] = "system",
+        reason: Optional[str] = None,
+        timestamp: Optional[float] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> int:
+        """Append usage events for one or more memories in a single transaction."""
+        unique_ids: List[str] = []
+        seen: Set[str] = set()
+        for raw_memory_id in memory_ids:
+            memory_id = str(raw_memory_id or "").strip()
+            if not memory_id or memory_id in seen:
+                continue
+            unique_ids.append(memory_id)
+            seen.add(memory_id)
+
+        if not unique_ids:
+            return 0
+
+        when = float(timestamp if timestamp is not None else time.time())
+        normalized_event_type = str(event_type or "").strip() or "event"
+        base_metadata = dict(metadata or {})
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.executemany(
+            """
+            INSERT INTO memory_events
+            (memory_id, timestamp, event_type, old_authority, new_authority, actor, reason, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    memory_id,
+                    when,
+                    normalized_event_type,
+                    None,
+                    None,
+                    str(actor or "").strip() or None,
+                    str(reason or "").strip() or None,
+                    json.dumps({**base_metadata, "memory_id": memory_id}) if base_metadata else None,
+                )
+                for memory_id in unique_ids
+            ],
+        )
+        conn.commit()
+        conn.close()
+        return len(unique_ids)
     
     # ========================================================================
     # Memory Storage
@@ -437,6 +785,10 @@ class CRTMemorySystem:
         user_marked_important: bool = False,
         contradiction_signal: float = 0.0,
         thread_id: Optional[str] = None,
+        authority: Optional[str] = None,
+        channel: Optional[str] = None,
+        origin: Optional[str] = None,
+        kind: Optional[str] = None,
     ) -> MemoryItem:
         """
         Store new memory with CRT principles.
@@ -465,6 +817,15 @@ class CRTMemorySystem:
                 ctx_tid_str = str(ctx_tid).strip()
                 if ctx_tid_str:
                     resolved_thread_id = ctx_tid_str
+
+        authority, channel, origin, kind = self._resolve_memory_metadata(
+            authority=authority,
+            channel=channel,
+            origin=origin,
+            kind=kind,
+            source=source,
+            context=context,
+        )
 
         # Policy boundary: external/tool memories must be auditable.
         if source == MemorySource.EXTERNAL:
@@ -610,7 +971,11 @@ class CRTMemorySystem:
             fact_tuples=fact_tuples_json,
             extraction_method=extraction_method,
             temporal_status=temporal_status,
-            domain_tags=domain_tags
+            domain_tags=domain_tags,
+            authority=authority,
+            channel=channel,
+            origin=origin,
+            kind=kind,
         )
         
         # Store in database
@@ -620,8 +985,8 @@ class CRTMemorySystem:
         try:
             cursor.execute("""
                 INSERT INTO memories 
-                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 memory.memory_id,
                 json.dumps(vector.tolist()),
@@ -637,6 +1002,10 @@ class CRTMemorySystem:
                 temporal_status,
                 json.dumps(domain_tags) if domain_tags else None,
                 resolved_thread_id,
+                authority,
+                channel,
+                origin,
+                kind,
             ))
         except sqlite3.OperationalError as e:
             # Backward compatibility for old ad-hoc tables that may not include thread_id.
@@ -677,7 +1046,7 @@ class CRTMemorySystem:
                 logger.debug(f"[MEMORY_FACTS] Failed to cache facts for {memory.memory_id}: {e}")
 
         # SPRINT 1: After storing, if correction was detected, decay contradicted memories
-        if is_correction:
+        if is_correction and memory.authority != "provisional":
             contradicting = self._find_contradicting_memories(text)
             
             for old_mem in contradicting:
@@ -700,7 +1069,11 @@ class CRTMemorySystem:
         min_trust: float = 0.0,
         exclude_deprecated: bool = True,
         ledger = None,
-        excluded_ids: Optional[Set[str]] = None
+        excluded_ids: Optional[Set[str]] = None,
+        authorities: Optional[Set[str]] = None,
+        exclude_authorities: Optional[Set[str]] = None,
+        kinds: Optional[Set[str]] = None,
+        exclude_kinds: Optional[Set[str]] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using trust-weighted scoring.
@@ -755,6 +1128,22 @@ class CRTMemorySystem:
         
         # Filter by minimum trust
         memories = [m for m in memories if m.trust >= min_trust]
+
+        if authorities:
+            normalized = {self._normalize_authority(a) for a in authorities}
+            memories = [m for m in memories if self._normalize_authority(getattr(m, "authority", None)) in normalized]
+
+        if exclude_authorities:
+            normalized = {self._normalize_authority(a) for a in exclude_authorities}
+            memories = [m for m in memories if self._normalize_authority(getattr(m, "authority", None)) not in normalized]
+
+        if kinds:
+            normalized = {str(k or "").strip().lower() for k in kinds if str(k or "").strip()}
+            memories = [m for m in memories if str(getattr(m, "kind", "") or "").strip().lower() in normalized]
+
+        if exclude_kinds:
+            normalized = {str(k or "").strip().lower() for k in exclude_kinds if str(k or "").strip()}
+            memories = [m for m in memories if str(getattr(m, "kind", "") or "").strip().lower() not in normalized]
         
         if not memories:
             return []
@@ -1384,6 +1773,47 @@ class CRTMemorySystem:
     # ========================================================================
     # Helpers
     # ========================================================================
+
+    def _row_to_memory(self, row: Tuple[Any, ...]) -> MemoryItem:
+        """Convert a ``SELECT * FROM memories`` row into ``MemoryItem``."""
+        memory = MemoryItem(
+            memory_id=row[0],
+            vector=np.array(json.loads(row[1])),
+            text=row[2],
+            timestamp=row[3],
+            confidence=row[4],
+            trust=row[5],
+            source=MemorySource(row[6]),
+            sse_mode=SSEMode(row[7]),
+            context=json.loads(row[8]) if len(row) > 8 and row[8] else None,
+            tags=json.loads(row[9]) if len(row) > 9 and row[9] else None,
+            thread_id=row[10] if len(row) > 10 else None,
+        )
+        if len(row) > 11:
+            memory.deprecated = row[11] if row[11] is not None else False
+        if len(row) > 12:
+            memory.deprecation_reason = row[12]
+        if len(row) > 13:
+            memory.fact_tuples = row[13]
+        if len(row) > 14:
+            memory.extraction_method = row[14] if row[14] else 'regex'
+        if len(row) > 15:
+            memory.temporal_status = row[15] if row[15] else 'active'
+        if len(row) > 16:
+            memory.valid_from = row[16]
+        if len(row) > 17:
+            memory.valid_until = row[17]
+        if len(row) > 18:
+            memory.domain_tags = json.loads(row[18]) if row[18] else None
+        if len(row) > 19:
+            memory.authority = self._normalize_authority(row[19])
+        if len(row) > 20:
+            memory.channel = self._normalize_channel(row[20])
+        if len(row) > 21:
+            memory.origin = row[21]
+        if len(row) > 22:
+            memory.kind = self._normalize_kind(row[22], source=memory.source, context=memory.context)
+        return memory
     
     def _load_all_memories(self) -> List[MemoryItem]:
         """Load all memories from database."""
@@ -1394,45 +1824,7 @@ class CRTMemorySystem:
         rows = cursor.fetchall()
         conn.close()
         
-        memories = []
-        for row in rows:
-            # Handle both old and new schema (with/without deprecated columns)
-            memory = MemoryItem(
-                memory_id=row[0],
-                vector=np.array(json.loads(row[1])),
-                text=row[2],
-                timestamp=row[3],
-                confidence=row[4],
-                trust=row[5],
-                source=MemorySource(row[6]),
-                sse_mode=SSEMode(row[7]),
-                context=json.loads(row[8]) if row[8] else None,
-                tags=json.loads(row[9]) if row[9] else None,
-                thread_id=row[10]
-            )
-            # Add deprecated fields if they exist
-            if len(row) > 11:
-                memory.deprecated = row[11] if row[11] is not None else False
-            if len(row) > 12:
-                memory.deprecation_reason = row[12]
-            # Add two-tier extraction fields if they exist (Sprint 1)
-            if len(row) > 13:
-                memory.fact_tuples = row[13]
-            if len(row) > 14:
-                memory.extraction_method = row[14] if row[14] else 'regex'
-            # Add Phase 2.0 temporal/domain fields if they exist
-            if len(row) > 15:
-                memory.temporal_status = row[15] if row[15] else 'active'
-            if len(row) > 16:
-                memory.valid_from = row[16]
-            if len(row) > 17:
-                memory.valid_until = row[17]
-            if len(row) > 18:
-                memory.domain_tags = json.loads(row[18]) if row[18] else None
-            
-            memories.append(memory)
-        
-        return memories
+        return [self._row_to_memory(row) for row in rows]
     
     def _load_memories_filtered(
         self,
@@ -1480,34 +1872,7 @@ class CRTMemorySystem:
         rows = cursor.fetchall()
         conn.close()
         
-        memories = []
-        for row in rows:
-            memory = MemoryItem(
-                memory_id=row[0],
-                vector=np.array(json.loads(row[1])),
-                text=row[2],
-                timestamp=row[3],
-                confidence=row[4],
-                trust=row[5],
-                source=MemorySource(row[6]),
-                sse_mode=SSEMode(row[7]),
-                context=json.loads(row[8]) if row[8] else None,
-                tags=json.loads(row[9]) if row[9] else None,
-                thread_id=row[10]
-            )
-            # Add additional fields if they exist
-            if len(row) > 11:
-                memory.deprecated = row[11] if row[11] is not None else False
-            if len(row) > 12:
-                memory.deprecation_reason = row[12]
-            if len(row) > 13:
-                memory.fact_tuples = row[13]
-            if len(row) > 14:
-                memory.extraction_method = row[14] if row[14] else 'regex'
-            
-            memories.append(memory)
-        
-        return memories
+        return [self._row_to_memory(row) for row in rows]
     
     def _get_all_vectors(self) -> List[np.ndarray]:
         """
@@ -1552,19 +1917,7 @@ class CRTMemorySystem:
         if not row:
             return None
 
-        return MemoryItem(
-            memory_id=row[0],
-            vector=np.array(json.loads(row[1])),
-            text=row[2],
-            timestamp=row[3],
-            confidence=row[4],
-            trust=row[5],
-            source=MemorySource(row[6]),
-            sse_mode=SSEMode(row[7]),
-            context=json.loads(row[8]) if row[8] else None,
-            tags=json.loads(row[9]) if row[9] else None,
-            thread_id=row[10]
-        )
+        return self._row_to_memory(row)
     
     def get_trust_history(self, memory_id: str) -> List[Dict]:
         """Get trust evolution history for a memory."""
@@ -1695,7 +2048,57 @@ class CRTMemorySystem:
         
         conn.commit()
         conn.close()
-    
+
+    def promote_memory(
+        self,
+        memory_id: str,
+        new_authority: str,
+        promoted_by: str = "user",
+        reason: Optional[str] = None,
+        timestamp: Optional[float] = None,
+    ) -> MemoryItem:
+        """Promote a memory authority level via explicit approval only."""
+        target = self._normalize_authority(new_authority)
+        if target not in {"confirmed", "locked"}:
+            raise ValueError("new_authority must be 'confirmed' or 'locked'")
+
+        memory = self.get_memory_by_id(memory_id)
+        if memory is None:
+            raise ValueError(f"memory not found: {memory_id}")
+
+        current = self._normalize_authority(getattr(memory, "authority", None))
+        if _AUTHORITY_RANK[target] <= _AUTHORITY_RANK[current]:
+            raise ValueError(f"cannot promote authority from {current} to {target}")
+
+        when = float(timestamp if timestamp is not None else time.time())
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE memories SET authority = ? WHERE memory_id = ?",
+            (target, memory_id),
+        )
+        conn.commit()
+        conn.close()
+
+        self._append_memory_event(
+            memory_id=memory_id,
+            event_type="authority_promotion",
+            old_authority=current,
+            new_authority=target,
+            actor=promoted_by,
+            reason=reason,
+            timestamp=when,
+            metadata={
+                "memory_id": memory_id,
+                "promoted_by": promoted_by,
+            },
+        )
+
+        updated = self.get_memory_by_id(memory_id)
+        if updated is None:
+            raise ValueError(f"memory disappeared after promotion: {memory_id}")
+        return updated
+
     def promote_to_belief(self, memory_id: str, user_confirmed: bool = True) -> bool:
         """
         Promote a research note to belief lane.
@@ -1712,8 +2115,151 @@ class CRTMemorySystem:
         
         # Increase trust to belief threshold (0.7+)
         self._update_memory_trust(memory_id, 0.8)
+        try:
+            self.promote_memory(
+                memory_id,
+                "confirmed",
+                promoted_by="user",
+                reason="promote_to_belief",
+            )
+        except Exception:
+            pass
         
         return True
+
+    def get_memory_events(self, memory_id: str, event_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Return append-only event records for a memory."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if event_type:
+            cursor.execute(
+                """
+                SELECT timestamp, event_type, old_authority, new_authority, actor, reason, metadata_json
+                FROM memory_events
+                WHERE memory_id = ? AND event_type = ?
+                ORDER BY timestamp DESC, event_id DESC
+                """,
+                (memory_id, event_type),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT timestamp, event_type, old_authority, new_authority, actor, reason, metadata_json
+                FROM memory_events
+                WHERE memory_id = ?
+                ORDER BY timestamp DESC, event_id DESC
+                """,
+                (memory_id,),
+            )
+        rows = cursor.fetchall()
+        conn.close()
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "timestamp": row[0],
+                    "event_type": row[1],
+                    "old_authority": row[2],
+                    "new_authority": row[3],
+                    "actor": row[4],
+                    "reason": row[5],
+                    "metadata": json.loads(row[6]) if row[6] else None,
+                }
+            )
+        return out
+
+    def get_memory_usage_summary(
+        self,
+        *,
+        thread_id: Optional[str] = None,
+        since_timestamp: Optional[float] = None,
+        event_types: Optional[List[str]] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Aggregate append-only usage events into per-memory hit counts."""
+        normalized_event_types = [
+            str(event_type or "").strip()
+            for event_type in (event_types or list(_USAGE_EVENT_TYPES))
+            if str(event_type or "").strip()
+        ]
+        if not normalized_event_types:
+            return []
+
+        placeholders = ", ".join("?" for _ in normalized_event_types)
+        sql = f"""
+            SELECT
+                me.memory_id,
+                m.text,
+                m.thread_id,
+                m.authority,
+                m.channel,
+                m.origin,
+                m.kind,
+                m.trust,
+                SUM(CASE WHEN me.event_type = 'retrieved' THEN 1 ELSE 0 END) AS retrieved_hits,
+                SUM(CASE WHEN me.event_type = 'prompt_included' THEN 1 ELSE 0 END) AS prompt_included_hits,
+                SUM(CASE WHEN me.event_type = 'slot_selected' THEN 1 ELSE 0 END) AS slot_selected_hits,
+                SUM(CASE WHEN me.event_type = 'guard_blocked' THEN 1 ELSE 0 END) AS guard_blocked_hits,
+                SUM(CASE WHEN me.event_type = 'answer_support' THEN 1 ELSE 0 END) AS answer_support_hits,
+                COUNT(*) AS total_hits,
+                MAX(me.timestamp) AS last_hit_timestamp
+            FROM memory_events me
+            JOIN memories m ON m.memory_id = me.memory_id
+            WHERE me.event_type IN ({placeholders})
+        """
+        params: List[Any] = list(normalized_event_types)
+
+        if thread_id is not None:
+            sql += " AND COALESCE(m.thread_id, '') = ?"
+            params.append(str(thread_id))
+
+        if since_timestamp is not None:
+            sql += " AND me.timestamp >= ?"
+            params.append(float(since_timestamp))
+
+        sql += """
+            GROUP BY
+                me.memory_id,
+                m.text,
+                m.thread_id,
+                m.authority,
+                m.channel,
+                m.origin,
+                m.kind,
+                m.trust
+            ORDER BY total_hits DESC, last_hit_timestamp DESC
+            LIMIT ?
+        """
+        params.append(int(limit))
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(sql, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        out: List[Dict[str, Any]] = []
+        for row in rows:
+            out.append(
+                {
+                    "memory_id": row[0],
+                    "text": row[1],
+                    "thread_id": row[2],
+                    "authority": row[3] or "confirmed",
+                    "channel": row[4] or "unknown",
+                    "origin": row[5],
+                    "kind": row[6] or "observation",
+                    "trust": float(row[7] or 0.0),
+                    "retrieved_hits": int(row[8] or 0),
+                    "prompt_included_hits": int(row[9] or 0),
+                    "slot_selected_hits": int(row[10] or 0),
+                    "guard_blocked_hits": int(row[11] or 0),
+                    "answer_support_hits": int(row[12] or 0),
+                    "total_hits": int(row[13] or 0),
+                    "last_hit_timestamp": float(row[14] or 0.0),
+                }
+            )
+        return out
     
     def get_research_citations(self, memory_id: str) -> List[Dict]:
         """
@@ -1739,7 +2285,7 @@ class CRTMemorySystem:
         cursor = conn.cursor()
         
         cursor.execute("""
-            SELECT memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json
+            SELECT *
             FROM memories
             WHERE memory_id = ?
         """, (memory_id,))
@@ -1749,15 +2295,5 @@ class CRTMemorySystem:
         
         if not row:
             return None
-        
-        return MemoryItem(
-            memory_id=row[0],
-            vector=np.array(json.loads(row[1])),
-            text=row[2],
-            timestamp=row[3],
-            confidence=row[4],
-            trust=row[5],
-            source=MemorySource(row[6]),
-            sse_mode=SSEMode(row[7]),
-            context=json.loads(row[8]) if row[8] else None
-        )
+
+        return self._row_to_memory(row)

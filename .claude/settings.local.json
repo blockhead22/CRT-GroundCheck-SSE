@@ -12,7 +12,8 @@
       "Bash(*)",
       "Read(*)",
       "Edit(*)",
-      "Write(*)"
+      "Write(*)",
+      "WebFetch(domain:docs.openclaw.ai)"
     ]
   }
 }

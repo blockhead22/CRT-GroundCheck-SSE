@@ -30,6 +30,9 @@ class ChatSendRequest(BaseModel):
     mode: Optional[str] = Field(default=None, description="Optional reasoning mode")
     phase_mode: bool = Field(default=False, description="Emit phase events (analyze/plan/answer) in stream")
     channel: Optional[str] = Field(default=None, description="Inbound channel (telegram/web/api/etc)")
+    origin: Optional[str] = Field(default=None, description="Provenance for the inbound message (URL, post id, message id)")
+    authority: Optional[str] = Field(default=None, description="Optional authority override for governed memory writes")
+    kind: Optional[str] = Field(default=None, description="Optional governed memory kind for inbound fact writes")
     actor_id: Optional[str] = Field(default=None, description="Channel actor/user identifier")
     channel_destination_id: Optional[str] = Field(default=None, description="Channel destination/chat identifier")
     meta_scope: Optional[str] = Field(default=None, description="Optional scope tag for channel/meta routing")
@@ -90,6 +93,60 @@ class MemoryListItem(BaseModel):
     source: str
     sse_mode: str
     thread_id: Optional[str] = None
+    authority: str = Field(default="confirmed")
+    channel: str = Field(default="unknown")
+    origin: Optional[str] = None
+    kind: str = Field(default="observation")
+
+
+class MemoryStoreRequest(BaseModel):
+    thread_id: str = Field(default="default", description="Client thread identifier")
+    text: str = Field(min_length=1, description="Memory text to persist")
+    confidence: float = Field(default=0.95, ge=0.0, le=1.0)
+    source: str = Field(default="user", description="Memory source enum value")
+    context: Dict[str, Any] = Field(default_factory=dict)
+    user_marked_important: bool = Field(default=False)
+    contradiction_signal: float = Field(default=0.0, ge=0.0, le=1.0)
+    authority: Optional[str] = Field(default=None)
+    channel: Optional[str] = Field(default=None)
+    origin: Optional[str] = Field(default=None)
+    kind: Optional[str] = Field(default=None)
+
+
+class MemoryStoreResponse(BaseModel):
+    stored: bool
+    memory: MemoryListItem
+    fact_store_updated: bool = False
+    contradiction_detected: bool = False
+    contradiction_info: Optional[str] = None
+
+
+class MemoryEventItem(BaseModel):
+    timestamp: float
+    event_type: str
+    old_authority: Optional[str] = None
+    new_authority: Optional[str] = None
+    actor: Optional[str] = None
+    reason: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class MemoryUsageSummaryItem(BaseModel):
+    memory_id: str
+    text: str
+    thread_id: Optional[str] = None
+    authority: str = Field(default="confirmed")
+    channel: str = Field(default="unknown")
+    origin: Optional[str] = None
+    kind: str = Field(default="observation")
+    trust: float = 0.0
+    retrieved_hits: int = 0
+    prompt_included_hits: int = 0
+    slot_selected_hits: int = 0
+    guard_blocked_hits: int = 0
+    answer_support_hits: int = 0
+    total_hits: int = 0
+    last_hit_timestamp: float = 0.0
 
 
 # ---------------------------------------------------------------------------

@@ -13,7 +13,24 @@ from typing import Any, Dict, Optional
 
 import requests
 
+from personal_agent.text_utils import strip_think_blocks
+
 logger = logging.getLogger(__name__)
+
+
+def _derive_origin(msg: "ChannelMessage", destination_id: Optional[str]) -> Optional[str]:
+    if not isinstance(msg.raw, dict):
+        return None
+    explicit = str(msg.raw.get("origin") or "").strip()
+    if explicit:
+        return explicit
+    message_id = msg.raw.get("message_id")
+    if message_id is None:
+        return None
+    destination = str(destination_id or msg.raw.get("chat_id") or "").strip()
+    if destination:
+        return f"{msg.channel}:{destination}:{message_id}"
+    return f"{msg.channel}:message:{message_id}"
 
 
 @dataclass
@@ -76,11 +93,13 @@ class CRTBridge:
             raw_scope = msg.raw.get("meta_scope")
             if raw_scope is not None:
                 meta_scope = str(raw_scope)
+        origin = _derive_origin(msg, destination_id)
         payload = {
             "thread_id": msg.thread_id,
             "message": msg.text,
             "user_marked_important": msg.important,
             "channel": msg.channel,
+            "origin": origin,
             "actor_id": msg.sender_id,
             "channel_destination_id": destination_id,
             "meta_scope": meta_scope,
@@ -94,7 +113,7 @@ class CRTBridge:
             resp.raise_for_status()
             data = resp.json()
             return ChannelResponse(
-                text=data.get("answer", "Sorry, I couldn't process that."),
+                text=strip_think_blocks(data.get("answer", "Sorry, I couldn't process that.")),
                 gates_passed=data.get("gates_passed", True),
                 gate_reason=data.get("gate_reason"),
                 confidence=data.get("metadata", {}).get("confidence", 0.7),
@@ -126,8 +145,10 @@ class CRTBridge:
                 user_query=msg.text,
                 user_marked_important=msg.important,
                 thread_id=msg.thread_id,
+                channel=msg.channel,
+                origin=_derive_origin(msg, None),
             )
-            answer = result.get("answer", "I don't have an answer for that.")
+            answer = strip_think_blocks(result.get("answer", "I don't have an answer for that."))
             return ChannelResponse(
                 text=answer,
                 gates_passed=result.get("gates_passed", True),

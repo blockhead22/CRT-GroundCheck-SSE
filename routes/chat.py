@@ -92,6 +92,21 @@ _CONTINUITY_FOLLOWUP_HINTS = (
     "highlights",
     "summarize",
     "summary",
+    "give me details",
+    "details about that",
+    "more about that",
+    "elaborate",
+    "expand on",
+    "about that",
+    "about this",
+    "about it",
+    "go on",
+    "keep going",
+    "go deeper",
+    "explain that",
+    "explain it",
+    "why is that",
+    "interesting fact",
 )
 
 _GROUNDCHECK_BRIDGE_LOCK = threading.Lock()
@@ -1998,6 +2013,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         query_with_context = effective_message + fact_check_preamble
 
     recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
+    # Pass structured history for proper multi-turn chat; keep text
+    # augmentation as fallback context in the query itself.
     query_with_continuity = _augment_query_with_continuity(
         message=query_with_context,
         history_messages=recent_history,
@@ -2025,6 +2042,11 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         mode=mode_arg,
         thread_id=req.thread_id,
         model_override=model_override,
+        conversation_history=recent_history or None,
+        channel=req.channel,
+        origin=req.origin,
+        authority=req.authority,
+        kind=req.kind,
     )
     _mark("engine_query_done")
     control_state.mark(
@@ -2193,7 +2215,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     except Exception as e:
         logger.debug(f"[TRUST_DECAY] Error reinforcing memories: {e}")
 
-    base_answer = str(result.get("answer") or "")
+    base_answer = strip_think_blocks(str(result.get("answer") or ""))
 
     # ========================================
     # DIRECTED REFLECTION PASS — fired async
@@ -2637,6 +2659,10 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
         result = engine.query_with_intent(
             user_query=req.message,
             user_marked_important=req.user_marked_important,
+            channel=req.channel,
+            origin=req.origin,
+            authority=req.authority,
+            kind=req.kind,
         )
     else:
         session_db = get_thread_session_db()
@@ -2657,6 +2683,11 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
             user_query=query_with_continuity,
             user_marked_important=req.user_marked_important,
             model_override=model_override,
+            conversation_history=history_messages or None,
+            channel=req.channel,
+            origin=req.origin,
+            authority=req.authority,
+            kind=req.kind,
         )
         result["intent"] = "unknown"
         result["trace"] = None
