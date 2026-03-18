@@ -431,6 +431,31 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
               </div>
             </div>
 
+            {overview?.model_routing && (
+              <div className="mt-4 rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4">
+                <div className="mb-3 text-sm font-semibold text-sky-200">Model Routing</div>
+                <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
+                  {(
+                    [
+                      { label: 'Default', key: 'default' },
+                      { label: 'Fast', key: 'fast' },
+                      { label: 'Reasoning', key: 'reasoning' },
+                      { label: 'Code', key: 'code' },
+                      { label: 'Research', key: 'research' },
+                    ] as const
+                  ).map(({ label, key }) => {
+                    const val = overview.model_routing![key]
+                    return val ? (
+                      <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-2">
+                        <div className="text-white/50">{label}</div>
+                        <div className="mt-1 truncate font-mono font-medium text-white/90" title={val}>{val}</div>
+                      </div>
+                    ) : null
+                  })}
+                </div>
+              </div>
+            )}
+
             {learningStats && (
               <div className="mt-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
                 <div className="flex items-center gap-2">

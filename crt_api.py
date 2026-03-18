@@ -1087,8 +1087,8 @@ def create_app() -> FastAPI:
     _default_router_model = str(
         os.getenv("CRT_OLLAMA_MODEL")
         or ((runtime_cfg.get("generation_stack") or {}).get("local") or {}).get("default_model")
-        or "llama3.2:latest"
-    ).strip() or "llama3.2:latest"
+        or "qwen2.5-coder:14b"
+    ).strip() or "qwen2.5-coder:14b"
     model_router = ModelRouter(default_model=_default_router_model, runtime_config=runtime_cfg)
 
     def _llm_feature_enabled() -> bool:

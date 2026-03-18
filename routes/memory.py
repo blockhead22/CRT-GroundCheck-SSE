@@ -34,6 +34,7 @@ from routes.models import (
     MemoryStoreRequest,
     MemoryStoreResponse,
     MemoryUsageSummaryItem,
+    ModelRoutingInfo,
     ProfileResponse,
     StructuredFactsResponse,
 )
@@ -355,6 +356,21 @@ def dashboard_overview(request: Request, thread_id: str = Query(default="default
     except Exception:
         ratio = {"belief_ratio": 0.0, "speech_ratio": 0.0, "belief_count": 0, "speech_count": 0}
 
+    model_routing: Optional[ModelRoutingInfo] = None
+    try:
+        router_obj = getattr(request.app.state, "model_router", None)
+        if router_obj is not None and hasattr(router_obj, "models"):
+            m = router_obj.models
+            model_routing = ModelRoutingInfo(
+                default=m.get("default"),
+                fast=m.get("fast"),
+                reasoning=m.get("reasoning"),
+                code=m.get("code"),
+                research=m.get("research"),
+            )
+    except Exception:
+        pass
+
     return DashboardOverviewResponse(
         thread_id=tid,
         session_id=getattr(engine, "session_id", None),
@@ -364,6 +380,7 @@ def dashboard_overview(request: Request, thread_id: str = Query(default="default
         speech_ratio=float(ratio.get("speech_ratio") or 0.0),
         belief_count=int(ratio.get("belief_count") or 0),
         speech_count=int(ratio.get("speech_count") or 0),
+        model_routing=model_routing,
     )
 
 

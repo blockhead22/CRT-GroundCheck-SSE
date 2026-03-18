@@ -578,6 +578,14 @@ export async function getDoc(docId: string): Promise<DocGetResponse> {
   return fetchJson<DocGetResponse>(`/api/docs/${encodeURIComponent(docId)}`)
 }
 
+export type ModelRoutingInfo = {
+  default?: string | null
+  fast?: string | null
+  reasoning?: string | null
+  code?: string | null
+  research?: string | null
+}
+
 export type DashboardOverview = {
   thread_id: string
   session_id?: string | null
@@ -587,6 +595,7 @@ export type DashboardOverview = {
   speech_ratio: number
   belief_count: number
   speech_count: number
+  model_routing?: ModelRoutingInfo | null
 }
 
 export async function getDashboardOverview(threadId: string): Promise<DashboardOverview> {

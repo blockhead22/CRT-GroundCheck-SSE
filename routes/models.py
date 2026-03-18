@@ -69,6 +69,14 @@ class DocGetResponse(BaseModel):
 # Dashboard
 # ---------------------------------------------------------------------------
 
+class ModelRoutingInfo(BaseModel):
+    default: Optional[str] = None
+    fast: Optional[str] = None
+    reasoning: Optional[str] = None
+    code: Optional[str] = None
+    research: Optional[str] = None
+
+
 class DashboardOverviewResponse(BaseModel):
     thread_id: str
     session_id: Optional[str] = None
@@ -78,6 +86,7 @@ class DashboardOverviewResponse(BaseModel):
     speech_ratio: float
     belief_count: int
     speech_count: int
+    model_routing: Optional[ModelRoutingInfo] = None
 
 
 # ---------------------------------------------------------------------------

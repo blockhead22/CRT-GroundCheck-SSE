@@ -527,6 +527,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "❓ /help — This list\n"
         "🔍 /search <query> — Web search (local)\n"
         "🦞 /task <command> — Delegate to OpenClaw (research, GitHub, web tasks)\n"
+        "📬 /moltbook — Show unread Moltbook notifications\n"
         "⚠️ /conflicts — Show open contradictions\n"
         "🧠 /facts — Show stored facts about you\n"
         "📊 /trust — Trust stats for this thread\n"
@@ -767,6 +768,71 @@ async def cmd_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     except Exception as e:
         logger.error(f"[/task] Error: {e}")
         await update.message.reply_text(f"Task failed: {e}")
+
+
+async def cmd_moltbook(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /moltbook — fetch unread Moltbook notifications."""
+    if not _is_allowed(update):
+        return
+
+    await update.effective_chat.send_action(ChatAction.TYPING)
+
+    cred_path = os.path.expanduser("~/.config/moltbook/credentials.json")
+    try:
+        with open(cred_path, "r", encoding="utf-8") as f:
+            api_key = json.load(f).get("api_key", "")
+    except Exception as e:
+        await update.message.reply_text(f"Moltbook: credentials not found ({e})")
+        return
+
+    if not api_key:
+        await update.message.reply_text("Moltbook: api_key is empty in credentials.json")
+        return
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Accept": "application/json",
+    }
+
+    try:
+        resp = requests.get(
+            "https://www.moltbook.com/api/v1/notifications",
+            params={"limit": 30},
+            headers=headers,
+            timeout=20,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+    except Exception as e:
+        await update.message.reply_text(f"Moltbook error: {e}")
+        return
+
+    notifications = data.get("notifications", [])
+    unread = [n for n in notifications if not n.get("isRead")]
+
+    if not unread:
+        await update.message.reply_text("📬 No unread Moltbook notifications.")
+        return
+
+    lines = [f"📬 {len(unread)} unread Moltbook notification(s):\n"]
+    for i, n in enumerate(unread[:10], 1):
+        n_type = n.get("type", "?")
+        post = n.get("post") or {}
+        comment = n.get("comment") or {}
+        title = (post.get("title") or "")[:60]
+        txt = (comment.get("content") or "").replace("\n", " ")[:120]
+        created = (n.get("createdAt") or "")[:10]
+        line = f"[{i}] {n_type} ({created})"
+        if title:
+            line += f"\n  {title}"
+        if txt:
+            line += f"\n  {txt}"
+        lines.append(line)
+
+    if len(unread) > 10:
+        lines.append(f"…and {len(unread) - 10} more.")
+
+    await update.message.reply_text(_truncate("\n".join(lines)))
 
 
 async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1033,6 +1099,7 @@ def main() -> None:
             app.add_handler(CommandHandler("important", cmd_important))
             app.add_handler(CommandHandler("search", cmd_search))
             app.add_handler(CommandHandler("task", cmd_task))
+            app.add_handler(CommandHandler("moltbook", cmd_moltbook))
             app.add_handler(CommandHandler("reset", cmd_reset))
             app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
