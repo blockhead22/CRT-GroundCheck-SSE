@@ -57,11 +57,11 @@ export function Composer(props: {
         <motion.div
           animate={{
             boxShadow: focused
-              ? '0 0 0 1px rgba(139,92,246,0.4), 0 8px 32px rgba(0,0,0,0.4), 0 0 48px rgba(139,92,246,0.08)'
-              : '0 4px 24px rgba(0,0,0,0.3)',
+              ? '0 0 0 1px rgba(100,87,249,0.45), 0 8px 32px rgba(0,0,0,0.4)'
+              : '0 2px 16px rgba(0,0,0,0.3)',
           }}
           transition={{ duration: 0.18 }}
-          className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#111116]/90 backdrop-blur-xl"
+          className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--composer-bg)]"
         >
           <textarea
             ref={textareaRef}
@@ -113,7 +113,7 @@ export function Composer(props: {
                 aria-label="Send"
                 className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
                   canSend && !isDisabled
-                    ? 'bg-violet-600 text-white hover:bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.4)]'
+                    ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_12px_rgba(100,87,249,0.4)]'
                     : 'bg-white/5 text-white/20 cursor-not-allowed'
                 }`}
               >

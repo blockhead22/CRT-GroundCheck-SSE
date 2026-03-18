@@ -1,13 +1,106 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import type { ChatThread, QuickAction } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { Composer } from './Composer'
 import { QuickCards } from '../QuickCards'
-import {
-  listOpenContradictions,
-  type ContradictionListItem,
-} from '../../lib/api'
+import { listOpenContradictions, type ContradictionListItem } from '../../lib/api'
+
+// Blinking cursor for streaming
+function StreamCursor() {
+  return (
+    <span
+      className="inline-block w-[2px] h-[1em] align-middle ml-0.5 animate-[blink_1s_step-end_infinite]"
+      style={{ verticalAlign: '-0.1em', background: 'var(--accent-2)' }}
+    />
+  )
+}
+
+// Streaming message — same editorial style as an assistant message
+function StreamingMessage({
+  content,
+  isThinking,
+  phase,
+  statusLog,
+  thinkingContent,
+}: {
+  content: string
+  isThinking: boolean
+  phase: string | null
+  statusLog: string[]
+  thinkingContent: string
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {/* Phase / thinking indicator */}
+      {(isThinking || phase || statusLog.length > 0) && (
+        <div className="mb-3 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: 'var(--accent-2)' }} />
+          <span className="text-[12px] font-medium tracking-wide" style={{ color: 'var(--text-muted)' }}>
+            {isThinking ? 'Thinking…' : phase ? `${phase}` : 'Processing…'}
+          </span>
+          {statusLog.length > 0 && (
+            <span className="text-[11px] text-white/25">
+              {statusLog[statusLog.length - 1]}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Thinking content (collapsed preview) */}
+      {isThinking && thinkingContent && (
+        <div className="mb-3 max-h-[80px] overflow-hidden rounded-xl border border-white/8 bg-white/3 px-3 py-2 text-[12px] text-white/35 italic leading-relaxed">
+          <div
+            className="line-clamp-3"
+            style={{
+              maskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
+            }}
+          >
+            {thinkingContent}
+          </div>
+        </div>
+      )}
+
+      {/* Streaming text */}
+      {content ? (
+        <div className="text-[15px] text-white/90 leading-[1.8]">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p({ children }: any) { return <p className="mb-3 last:mb-0">{children}</p> },
+              ul({ children }: any) { return <ul className="mb-3 space-y-1.5 pl-5">{children}</ul> },
+              ol({ children }: any) { return <ol className="mb-3 list-decimal space-y-1.5 pl-5">{children}</ol> },
+              li({ children }: any) { return <li className="text-white/80 leading-relaxed">{children}</li> },
+              code({ children, className }: any) {
+                const codeText = String(children ?? '').replace(/\n$/, '')
+                const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '')
+                if (!match && !codeText.includes('\n')) {
+                  return <code className="rounded-md bg-white/8 px-1.5 py-0.5 font-mono text-[0.88em] text-violet-200">{children}</code>
+                }
+                return <pre className="my-2 overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-white/80 font-mono">{codeText}</pre>
+              },
+            } as any}
+          >
+            {content}
+          </ReactMarkdown>
+          <StreamCursor />
+        </div>
+      ) : !isThinking ? (
+        <div className="flex items-center gap-2">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: 'var(--accent-2)' }} />
+          <span className="text-[13px]" style={{ color: 'var(--text-muted)' }}>Drafting response…</span>
+        </div>
+      ) : null}
+    </motion.div>
+  )
+}
 
 export function ChatThreadView(props: {
   thread: ChatThread
@@ -25,7 +118,6 @@ export function ChatThreadView(props: {
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
   xrayMode?: boolean
-  // Streaming props
   streamingThinking?: string
   streamingResponse?: string
   isThinking?: boolean
@@ -33,50 +125,39 @@ export function ChatThreadView(props: {
   streamPhase?: string | null
 }) {
   const bottomRef = useRef<HTMLDivElement | null>(null)
-  const draftScrollRef = useRef<HTMLDivElement | null>(null)
-  const [queuedContradiction, setQueuedContradiction] = useState<{
-    messageId: string
-    total: number | null
-    createdAt: number
-  } | null>(null)
+  const scrollRef = useRef<HTMLDivElement | null>(null)
   const [trayOpen, setTrayOpen] = useState(false)
   const [contradictions, setContradictions] = useState<ContradictionListItem[]>([])
   const [contradictionsLoading, setContradictionsLoading] = useState(false)
   const [contradictionsError, setContradictionsError] = useState<string | null>(null)
   const [contradictionsLoaded, setContradictionsLoaded] = useState(false)
+  const [queuedContradiction, setQueuedContradiction] = useState<{
+    messageId: string
+    total: number | null
+    createdAt: number
+  } | null>(null)
 
+  // Scroll to bottom on new content
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [props.thread.messages.length, props.typing, props.streamingThinking, props.streamingResponse])
+  }, [props.thread.messages.length, props.streamingResponse, props.isThinking])
 
-  useEffect(() => {
-    if (!props.streamingResponse) return
-    const el = draftScrollRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [props.streamingResponse])
-
+  // Reset on thread change
   useEffect(() => {
     setQueuedContradiction(null)
     setTrayOpen(false)
     setContradictions([])
-    setContradictionsLoading(false)
-    setContradictionsError(null)
     setContradictionsLoaded(false)
+    setContradictionsError(null)
   }, [props.thread.id])
 
   const assistantSnapshot = useMemo(() => {
     let last: (typeof props.thread.messages)[number] | null = null
     let prev: (typeof props.thread.messages)[number] | null = null
-    for (let i = props.thread.messages.length - 1; i >= 0; i -= 1) {
+    for (let i = props.thread.messages.length - 1; i >= 0; i--) {
       const m = props.thread.messages[i]
       if (m.role !== 'assistant') continue
-      if (!last) {
-        last = m
-      } else {
-        prev = m
-        break
-      }
+      if (!last) { last = m } else { prev = m; break }
     }
     return { last, prev }
   }, [props.thread.messages])
@@ -103,67 +184,24 @@ export function ChatThreadView(props: {
     if (!trayOpen) return
     let mounted = true
     setContradictionsLoading(true)
-    setContradictionsError(null)
     listOpenContradictions(props.thread.id, 200)
-      .then((items) => {
-        if (!mounted) return
-        setContradictions(items)
-        setContradictionsLoaded(true)
-      })
-      .catch((err) => {
-        if (!mounted) return
-        setContradictionsError(err instanceof Error ? err.message : String(err))
-      })
-      .finally(() => {
-        if (!mounted) return
-        setContradictionsLoading(false)
-      })
-    return () => {
-      mounted = false
-    }
+      .then((items) => { if (mounted) { setContradictions(items); setContradictionsLoaded(true) } })
+      .catch((err) => { if (mounted) setContradictionsError(err instanceof Error ? err.message : String(err)) })
+      .finally(() => { if (mounted) setContradictionsLoading(false) })
+    return () => { mounted = false }
   }, [trayOpen, props.thread.id, lastAssistant?.id])
 
   useEffect(() => {
-    if (trayOpen) return
-    if (typeof lastTotal === 'number') return
+    if (trayOpen || typeof lastTotal === 'number') return
     let mounted = true
     listOpenContradictions(props.thread.id, 200)
-      .then((items) => {
-        if (!mounted) return
-        setContradictions(items)
-        setContradictionsLoaded(true)
-      })
-      .catch((err) => {
-        if (!mounted) return
-        setContradictionsError(err instanceof Error ? err.message : String(err))
-      })
-    return () => {
-      mounted = false
-    }
+      .then((items) => { if (mounted) { setContradictions(items); setContradictionsLoaded(true) } })
+      .catch((err) => { if (mounted) setContradictionsError(err instanceof Error ? err.message : String(err)) })
+    return () => { mounted = false }
   }, [trayOpen, props.thread.id, lastAssistant?.id, lastTotal])
 
-  const empty = props.thread.messages.length === 0
-  const openCount =
-    typeof lastTotal === 'number'
-      ? lastTotal
-      : contradictions.length
-  const queuedCount = queuedContradiction
-    ? (typeof queuedContradiction.total === 'number' ? queuedContradiction.total : openCount || 1)
-    : openCount
-  const hasOpenContradictions = queuedCount > 0
-  const showBanner = hasOpenContradictions || Boolean(queuedContradiction)
-  const bannerTitle = queuedContradiction ? 'Contradiction queued' : 'Contradictions'
-  const bannerAccentClass = hasOpenContradictions ? 'text-rose-200/60' : 'text-white/40'
-  useEffect(() => {
-    if (!contradictionsLoaded) return
-    if (openCount === 0) {
-      setQueuedContradiction(null)
-    }
-  }, [openCount, contradictionsLoaded])
-
-  async function refreshContradictions(silent = false) {
-    if (!silent) setContradictionsLoading(true)
-    setContradictionsError(null)
+  async function refreshContradictions() {
+    setContradictionsLoading(true)
     try {
       const items = await listOpenContradictions(props.thread.id, 200)
       setContradictions(items)
@@ -171,294 +209,205 @@ export function ChatThreadView(props: {
     } catch (err) {
       setContradictionsError(err instanceof Error ? err.message : String(err))
     } finally {
-      if (!silent) setContradictionsLoading(false)
+      setContradictionsLoading(false)
     }
   }
 
-  const hint = useMemo(() => {
-    if (!empty) return null
+  useEffect(() => {
+    if (contradictionsLoaded && (typeof lastTotal === 'number' ? lastTotal : contradictions.length) === 0) {
+      setQueuedContradiction(null)
+    }
+  }, [contradictions.length, contradictionsLoaded, lastTotal])
 
-    const displayName = (props.userName || '').trim() || 'there'
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="w-full max-w-[760px]"
-      >
-        <div className="text-center">
-          <div className="font-display bg-gradient-to-r from-cyan-200 via-sky-200 to-white bg-clip-text text-4xl font-semibold text-transparent md:text-5xl">
-            Hello {displayName}
-          </div>
-          <div className="mt-2 text-xl font-medium text-white/60 md:text-2xl">How can I help you today?</div>
+  const openCount = typeof lastTotal === 'number' ? lastTotal : contradictions.length
+  const queuedCount = queuedContradiction
+    ? (typeof queuedContradiction.total === 'number' ? queuedContradiction.total : openCount || 1)
+    : openCount
+  const hasOpenContradictions = queuedCount > 0
+  const showBanner = hasOpenContradictions || Boolean(queuedContradiction)
 
-          {props.showSetNameCta ? (
-            <div className="mt-5 flex justify-center">
-              <button
-                onClick={props.onRequestSetName}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
-              >
-                Set your name
-              </button>
-            </div>
-          ) : null}
-        </div>
-        <div className="mt-10">
-          <QuickCards actions={props.quickActions} onPick={props.onPickQuickAction} />
-        </div>
-      </motion.div>
-    )
-  }, [empty, props.onPickQuickAction, props.quickActions, props.userName])
+  const empty = props.thread.messages.length === 0
+  const isStreaming = Boolean(props.isThinking || props.streamingResponse || (props.streamStatusLog ?? []).length > 0)
+  const showTyping = props.typing && !isStreaming
 
-  const selectedMessageId = props.selectedMessageId
-  const liveStatuses = props.streamStatusLog ?? []
-  const showLoopLive = Boolean(
-    props.isThinking ||
-      props.streamingResponse ||
-      liveStatuses.length > 0 ||
-      props.streamPhase
-  )
+  const displayName = (props.userName || '').trim() || 'there'
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-hidden px-2 py-4 md:px-6">
-        <div className="mx-auto flex h-full w-full max-w-[1180px] gap-4">
-          <div className="min-w-0 flex-1 overflow-auto">
-            <div className="flex w-full flex-col gap-3">
-              {hint}
+      {/* Scrollable messages area */}
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.1)_transparent]">
+        <div className="mx-auto w-full px-4 py-8 md:px-8" style={{ maxWidth: '1000px' }}>
 
+          {/* Empty state */}
+          {empty && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="flex min-h-[40vh] flex-col items-center justify-center text-center"
+            >
+              <div
+                className="font-display mb-2 text-5xl text-white md:text-7xl"
+                style={{ lineHeight: 1.05 }}
+              >
+                Hey {displayName}
+              </div>
+              <div className="mb-8 text-base tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                What's on your mind?
+              </div>
+
+              {props.showSetNameCta && (
+                <button
+                  onClick={props.onRequestSetName}
+                  className="mb-8 rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/60 transition hover:bg-white/8 hover:text-white/80"
+                >
+                  Set your name
+                </button>
+              )}
+
+              <QuickCards actions={props.quickActions} onPick={props.onPickQuickAction} />
+            </motion.div>
+          )}
+
+          {/* Messages */}
+          {!empty && (
+            <div className="flex flex-col gap-8">
               <AnimatePresence initial={false}>
                 {props.thread.messages.map((m) => (
-                  <div key={m.id}>
-                    <MessageBubble
-                      msg={m}
-                      threadId={props.thread.id}
-                      selected={m.id === selectedMessageId}
-                      onInspect={(messageId) => props.onSelectAssistantMessage(messageId)}
-                      onOpenSourceInspector={props.onOpenSourceInspector}
-                      onOpenAgentPanel={props.onOpenAgentPanel}
-                      xrayMode={props.xrayMode}
-                    />
-                  </div>
+                  <MessageBubble
+                    key={m.id}
+                    msg={m}
+                    threadId={props.thread.id}
+                    selected={m.id === props.selectedMessageId}
+                    onInspect={m.role === 'assistant' ? (id) => props.onSelectAssistantMessage(id) : undefined}
+                    onOpenSourceInspector={props.onOpenSourceInspector}
+                    onOpenAgentPanel={props.onOpenAgentPanel}
+                    xrayMode={props.xrayMode}
+                  />
                 ))}
               </AnimatePresence>
 
-              {showLoopLive ? (
+              {/* Streaming response */}
+              {isStreaming && (
+                <StreamingMessage
+                  content={props.streamingResponse ?? ''}
+                  isThinking={Boolean(props.isThinking)}
+                  phase={props.streamPhase ?? null}
+                  statusLog={props.streamStatusLog ?? []}
+                  thinkingContent={props.streamingThinking ?? ''}
+                />
+              )}
+
+              {/* Simple typing indicator (non-streaming) */}
+              {showTyping && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex justify-start"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2"
                 >
-                  <div className="max-w-[85%] rounded-2xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm shadow-card">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-sky-200">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-sky-400" />
-                        <span className="font-medium">CRT Loop Live</span>
-                      </div>
-                      {props.streamPhase ? (
-                        <div className="text-[11px] text-sky-200/70">
-                          Phase: {props.streamPhase}
-                        </div>
-                      ) : null}
-                    </div>
-                    {liveStatuses.length ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {liveStatuses.map((status, idx) => (
-                          <span
-                            key={`${status}-${idx}`}
-                            className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70"
-                          >
-                            {status}
-                          </span>
-                        ))}
-                      </div>
-                    ) : null}
-                    <div className="mt-2 text-[11px] text-white/60">
-                      {props.isThinking ? 'Thinking...' : 'Drafting response...'}
-                    </div>
-                    {props.streamingThinking ? (
-                      <div className="mt-2 max-h-[180px] overflow-y-auto whitespace-pre-wrap text-white/70">
-                        {props.streamingThinking}
-                      </div>
-                    ) : null}
+                  <div className="flex gap-1">
+                    {[0, 0.15, 0.3].map((delay, i) => (
+                      <span
+                        key={i}
+                        className="h-1.5 w-1.5 rounded-full animate-bounce"
+                      style={{ background: 'var(--accent-6)', animationDelay: `${delay}s`, animationDuration: '0.9s' }}
+                      />
+                    ))}
                   </div>
                 </motion.div>
-              ) : null}
-
-              {/* Streaming response display */}
-              {props.streamingResponse && !props.isThinking ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex justify-start"
-                >
-                  <div className="max-w-[85%] rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/90 shadow-card">
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
-                      Draft
-                    </div>
-                    <div
-                      ref={draftScrollRef}
-                      className="max-h-[260px] overflow-y-auto whitespace-pre-wrap pr-2 text-white/80 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                      style={{
-                        WebkitMaskImage:
-                          'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
-                        maskImage:
-                          'linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 20%, rgba(0,0,0,1) 80%, rgba(0,0,0,0) 100%)',
-                      }}
-                    >
-                      {props.streamingResponse}
-                    </div>
-                    <span className="ml-1 inline-block h-4 w-1 animate-pulse bg-cyan-400" />
-                  </div>
-                </motion.div>
-              ) : null}
-
-              {/* Simple typing indicator (when not streaming) */}
-              {props.typing && !props.streamingThinking && !props.streamingResponse ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18 }}
-                  className="flex justify-start"
-                >
-                  <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 shadow-card">
-                    <span className="inline-flex items-center gap-2">
-                      <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
-                      CRT is thinking…
-                    </span>
-                  </div>
-                </motion.div>
-              ) : null}
-
-              <div ref={bottomRef} />
+              )}
             </div>
-          </div>
+          )}
+
+          {/* Scroll anchor */}
+          <div ref={bottomRef} className="h-4" />
         </div>
       </div>
 
-      <div className="border-t border-white/10 bg-white/5 px-4 py-4 backdrop-blur-xl">
-        <div className="mx-auto w-full max-w-[1180px]">
-          <AnimatePresence initial={false}>
-            {showBanner ? (
-              <motion.div
-                key="contradiction-queued"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.2 }}
-                className="mb-3"
-              >
-                <AnimatePresence initial={false}>
-                  {trayOpen ? (
-                    <motion.div
-                      key="contradiction-tray"
-                      initial={{ opacity: 0, height: 0, y: 6 }}
-                      animate={{ opacity: 1, height: 'auto', y: 0 }}
-                      exit={{ opacity: 0, height: 0, y: 6 }}
-                      transition={{ duration: 0.2 }}
-                      className="mb-2 overflow-hidden"
-                    >
-                      <div className="max-h-[440px] overflow-y-auto rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-xs text-white/70 shadow-card">
-                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="text-xs font-semibold text-white/70">Open contradictions</div>
-                            <button
-                              type="button"
-                              onClick={() => void refreshContradictions()}
-                              className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-white/70 hover:bg-white/10"
-                            >
-                              Refresh
-                            </button>
-                          </div>
-                          <div className="mt-2">
-                            {contradictionsLoading ? (
-                              <div className="text-white/60">Loading contradictions...</div>
-                            ) : contradictionsError ? (
-                              <div className="text-rose-300">Failed to load contradictions: {contradictionsError}</div>
-                            ) : contradictions.length === 0 ? (
-                              <div className="text-white/60">No open contradictions.</div>
-                            ) : (
-                              <div className="space-y-2">
-                                {contradictions.map((c) => {
-                                  const title = (c.slot || c.contradiction_type || 'Contradiction').toUpperCase()
-                                  const summary = c.summary || c.query || ''
-                                  const oldValue = (c.old_value || c.old_memory_id || 'N/A').trim()
-                                  const newValue = (c.new_value || c.new_memory_id || 'N/A').trim()
-                                  return (
-                                    <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="text-xs font-semibold text-rose-100">{title}</div>
-                                        <div className="text-[10px] text-white/40">{(c.status || 'pending').toUpperCase()}</div>
-                                      </div>
-                                      {summary ? (
-                                        <div className="mt-1 line-clamp-2 text-[11px] text-white/70">{summary}</div>
-                                      ) : null}
-                                      <div className="mt-2 grid gap-1 text-[11px] text-white/60">
-                                        <div className="flex gap-2">
-                                          <span className="text-white/40">Old:</span>
-                                          <span className="line-clamp-2">{oldValue}</span>
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <span className="text-white/40">New:</span>
-                                          <span className="line-clamp-2">{newValue}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+      {/* Contradiction banner */}
+      <AnimatePresence>
+        {showBanner && (
+          <motion.div
+            key="contradiction-banner"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.2 }}
+            className="flex-shrink-0 px-4"
+          >
+            <div className="mx-auto w-full" style={{ maxWidth: '760px' }}>
+              <AnimatePresence>
+                {trayOpen && (
+                  <motion.div
+                    key="tray"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.18 }}
+                    className="mb-2 overflow-hidden"
+                  >
+                    <div className="max-h-[360px] overflow-y-auto rounded-xl border border-white/10 bg-black/40 p-3 text-xs">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white/50 font-medium">Open contradictions</span>
+                        <button onClick={() => void refreshContradictions()} className="text-white/30 hover:text-white/60 transition-colors">refresh</button>
                       </div>
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
-                <button
-                  type="button"
-                  onClick={() => setTrayOpen((v) => !v)}
-                  className={
-                    'flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs shadow-card transition ' +
-                    (hasOpenContradictions
-                      ? 'border-rose-500/30 bg-rose-500/10 text-rose-100 hover:bg-rose-500/15'
-                      : 'border-white/10 bg-white/5 text-white/60 hover:bg-white/10')
-                  }
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={
-                        'h-2 w-2 rounded-full ' +
-                        (hasOpenContradictions ? 'animate-pulse bg-rose-400' : 'bg-white/30')
-                      }
-                    />
-                    <span
-                      className={
-                        'inline-flex min-w-[20px] items-center justify-center rounded-full border px-1.5 text-[11px] font-semibold ' +
-                        (hasOpenContradictions
-                          ? 'border-rose-400/40 bg-rose-500/20 text-rose-100'
-                          : 'border-white/10 bg-white/5 text-white/60')
-                      }
-                    >
-                      {queuedCount}
-                    </span>
-                    <span className="font-semibold">{bannerTitle}</span>
-                  </div>
-                  <div className={`flex items-center gap-2 ${bannerAccentClass}`}>
-                    <span className="text-[11px]">{trayOpen ? 'Hide list' : 'View list'}</span>
-                    <span className="text-[11px]">{trayOpen ? '^' : 'v'}</span>
-                  </div>
-                </button>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
-          <Composer
-            onSend={props.onSend}
-            onResearch={props.onResearch}
-            researching={props.researching}
-          />
-        </div>
+                      {contradictionsLoading ? (
+                        <div className="text-white/40">Loading…</div>
+                      ) : contradictionsError ? (
+                        <div className="text-rose-300">{contradictionsError}</div>
+                      ) : contradictions.length === 0 ? (
+                        <div className="text-white/40">No open contradictions.</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {contradictions.map((c) => (
+                            <div key={c.ledger_id} className="rounded-lg border border-white/8 bg-white/3 p-3">
+                              <div className="font-semibold text-rose-200/80 text-[11px] mb-1">
+                                {(c.slot || c.contradiction_type || 'Contradiction').toUpperCase()}
+                              </div>
+                              {(c.summary || c.query) && (
+                                <div className="text-white/50 line-clamp-2 mb-1">{c.summary || c.query}</div>
+                              )}
+                              <div className="text-white/35 space-y-0.5">
+                                <div>Old: <span className="text-white/50">{(c.old_value || c.old_memory_id || '—').trim()}</span></div>
+                                <div>New: <span className="text-white/50">{(c.new_value || c.new_memory_id || '—').trim()}</span></div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <button
+                onClick={() => setTrayOpen((v) => !v)}
+                className={`mb-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs transition ${
+                  hasOpenContradictions
+                    ? 'border-rose-500/25 bg-rose-500/8 text-rose-200/80 hover:bg-rose-500/12'
+                    : 'border-white/8 bg-white/3 text-white/40 hover:bg-white/5'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`h-1.5 w-1.5 rounded-full ${hasOpenContradictions ? 'animate-pulse bg-rose-400' : 'bg-white/30'}`} />
+                  <span className="font-medium">{queuedCount} {queuedContradiction ? 'queued' : 'open'} contradiction{queuedCount !== 1 ? 's' : ''}</span>
+                </div>
+                <span className="text-white/30">{trayOpen ? '↑' : '↓'}</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Composer */}
+      <div className="flex-shrink-0">
+        <Composer
+          onSend={props.onSend}
+          onResearch={props.onResearch}
+          researching={props.researching}
+          disabled={props.typing}
+        />
       </div>
     </div>
   )

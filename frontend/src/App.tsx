@@ -740,7 +740,7 @@ export default function App() {
             />
 
             <div className="relative min-h-0 flex-1">
-              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden rounded-[20px] sm:rounded-[24px] lg:rounded-[28px] glass-panel">
+              <main className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
                 {navActive === 'chat' ? (
                   selectedThread ? (
                     <ChatThreadView
