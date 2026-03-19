@@ -397,7 +397,9 @@ _EXCLUSIVE_SLOTS = {
     "age", "birthday", "birth_year", "height", "weight", "diet",
     "relationship", "salary", "budget", "database", "os", "editor",
     "framework", "cloud", "api_url", "programming_language",
-    "programming_years", "assistant_name",
+    "programming_years",
+    # assistant_name intentionally excluded — it's a system config, not a user fact,
+    # and LLMs hallucinate it from sentences like "I'm happy that you are starting to work"
 }
 
 # Patterns that catch "My X is Y" and similar natural-language slot declarations

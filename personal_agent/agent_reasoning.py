@@ -237,6 +237,43 @@ AGENT_TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "moltbook",
+            "description": "Interact with MoltBook — a social platform. Actions: notifications (unread alerts), feed (recent posts), search (find posts by query), post (get a specific post by ID).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "enum": ["notifications", "feed", "search", "post"],
+                        "description": "What to do: notifications=unread alerts, feed=recent posts, search=find posts, post=get single post",
+                        "default": "notifications",
+                    },
+                    "query": {"type": "string", "description": "Search query (required for search action)"},
+                    "post_id": {"type": "string", "description": "Post ID (required for post action)"},
+                    "limit": {"type": "integer", "description": "Max results to return", "default": 20},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "fetch_url",
+            "description": "Fetch and read the content of a URL (web page, markdown file, API endpoint, etc.)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "The full URL to fetch"},
+                    "max_chars": {"type": "integer", "description": "Max characters to return", "default": 8000},
+                },
+                "required": ["url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "finish",
             "description": "Provide the final answer to the user and end the agent loop",
             "parameters": {

@@ -1,11 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { ChatThread, QuickAction } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { Composer } from './Composer'
 import { listOpenContradictions, type ContradictionListItem } from '../../lib/api'
+import { PipelineTrace } from './PipelineTrace'
 
 // Adaptive font size for theater mode — shrinks as text grows
 function theaterFontSize(charCount: number): string {
@@ -26,18 +27,11 @@ function StreamCursor() {
   )
 }
 
-// Phase label map
-const PHASE_LABELS: Record<string, string> = {
-  analyze: 'READING',
-  plan: 'PLANNING',
-  answer: 'WRITING',
-}
 
-// Streaming message — editorial style with rich phase/status display
+// Streaming message — rich activity timeline + streaming text
 function StreamingMessage({
   content,
   isThinking,
-  phase,
   statusLog,
   thinkingContent,
 }: {
@@ -48,15 +42,6 @@ function StreamingMessage({
   thinkingContent: string
 }) {
   const hasContent = Boolean(content)
-  const currentPhaseLabel = isThinking
-    ? 'THINKING'
-    : phase ? (PHASE_LABELS[phase] ?? phase.toUpperCase()) : 'PROCESSING'
-
-  // Latest human-readable status (filter out raw ctrl: lines)
-  const lastStatus = statusLog
-    .slice()
-    .reverse()
-    .find((s) => !s.startsWith('ctrl:') && s !== 'Processing message...')
 
   return (
     <motion.div
@@ -64,87 +49,24 @@ function StreamingMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Pre-content pipeline activity */}
-      {!hasContent && (
-        <div className="mb-4">
-          {/* Big phase label — Syne display font */}
-          <div className="flex items-baseline gap-3 mb-2">
-            <span
-              className="font-display text-2xl tracking-tight"
-              style={{ color: 'var(--accent-2)', opacity: 0.9 }}
-            >
-              {currentPhaseLabel}
-            </span>
-            <span className="flex gap-1 items-center">
-              {[0, 0.2, 0.4].map((d, i) => (
-                <span
-                  key={i}
-                  className="h-1 w-1 rounded-full animate-bounce"
-                  style={{ background: 'var(--accent-2)', opacity: 0.6, animationDelay: `${d}s`, animationDuration: '0.8s' }}
-                />
-              ))}
-            </span>
-          </div>
+      {/* Pipeline trace — shown during and after streaming */}
+      <PipelineTrace statuses={statusLog} streaming={!hasContent} />
 
-          {/* Thinking preview */}
-          {isThinking && thinkingContent && (
-            <div
-              className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[12px] italic leading-relaxed"
-              style={{ borderColor: 'var(--border-soft)', background: 'var(--surface)', color: 'var(--text-muted)' }}
-            >
-              <div
-                className="line-clamp-3"
-                style={{
-                  maskImage: 'linear-gradient(to bottom, white 30%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, white 30%, transparent 100%)',
-                }}
-              >
-                {thinkingContent}
-              </div>
-            </div>
-          )}
-
-          {/* Pipeline status tags */}
-          {statusLog.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {statusLog
-                .filter((s) => !s.startsWith('ctrl:') && s !== 'Processing message...')
-                .slice(-4)
-                .map((s, i) => (
-                  <AnimatePresence key={s} mode="wait">
-                    <motion.span
-                      initial={{ opacity: 0, scale: 0.85, x: -4 }}
-                      animate={{ opacity: 1, scale: 1, x: 0 }}
-                      transition={{ duration: 0.15, delay: i * 0.04 }}
-                      className="rounded-full px-2 py-0.5 text-[10px] font-mono"
-                      style={{ background: 'var(--surface-3)', color: 'var(--text-muted)', border: '1px solid var(--border-soft)' }}
-                    >
-                      {s}
-                    </motion.span>
-                  </AnimatePresence>
-                ))}
-              {/* Show raw last status if nothing human-readable */}
-              {!lastStatus && statusLog.length > 0 && (
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-mono"
-                  style={{ background: 'var(--surface-3)', color: 'var(--text-faint)', border: '1px solid var(--border-soft)' }}
-                >
-                  {statusLog[statusLog.length - 1].replace(/^ctrl:/, '')}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Thinking preview when content IS streaming */}
-      {hasContent && isThinking && thinkingContent && (
-        <div
-          className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[12px] italic leading-relaxed"
+      {/* Thinking preview */}
+      {isThinking && thinkingContent && (
+        <motion.div
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[11px] italic leading-relaxed"
           style={{ borderColor: 'var(--border-soft)', background: 'var(--surface)', color: 'var(--text-muted)' }}
         >
-          <div className="line-clamp-2">{thinkingContent}</div>
-        </div>
+          <div className="line-clamp-3" style={{
+            maskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
+          }}>
+            {thinkingContent}
+          </div>
+        </motion.div>
       )}
 
       {/* Streaming text */}
@@ -202,7 +124,6 @@ export function ChatThreadView(props: {
 
   const bottomRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
-  const theaterLockRef = useRef(false)  // prevents immediate re-entry after exiting theater
   const [theaterMode, setTheaterMode] = useState(false)
   const [trayOpen, setTrayOpen] = useState(false)
   const [contradictions, setContradictions] = useState<ContradictionListItem[]>([])
@@ -215,25 +136,19 @@ export function ChatThreadView(props: {
     createdAt: number
   } | null>(null)
 
-  // Detect scroll-to-bottom in history mode → snap back to theater
-  const handleScroll = useCallback(() => {
-    if (theaterLockRef.current) return
+  // Scroll to bottom in history mode when new content arrives
+  useEffect(() => {
+    if (theaterMode) return
     const el = scrollRef.current
     if (!el) return
-    const dist = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (dist < 80) setTheaterMode(true)
-  }, [])
-
-  // Scroll to bottom when entering history mode or when new content arrives
-  useEffect(() => {
-    if (theaterMode) return
-    bottomRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' })
-  }, [theaterMode])
-
-  useEffect(() => {
-    if (theaterMode) return
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-  }, [props.thread.messages.length, props.streamingResponse, props.isThinking])
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+    // Always scroll on new messages; only smooth-scroll during streaming if near bottom
+    if (props.thread.messages.length > 0) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    } else if (atBottom) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    }
+  }, [props.thread.messages.length, props.streamingResponse, props.isThinking, theaterMode])
 
   // Enter theater mode when first message arrives
   useEffect(() => {
@@ -337,7 +252,7 @@ export function ChatThreadView(props: {
 
   const displayName = (props.userName || '').trim() || 'there'
 
-  const activeTheaterMode = false
+  const activeTheaterMode = theaterMode && !empty
 
   // Content shown in theater mode bottom-left panel
   const theaterText = isStreaming
@@ -348,18 +263,49 @@ export function ChatThreadView(props: {
   return (
     <div className="flex h-full min-h-0 flex-col">
 
+      {/* ── Mode toggle bar ── */}
+      {!empty && (
+        <motion.div
+          className="flex-shrink-0 flex justify-center py-2"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <div
+            className="inline-flex rounded-full p-[3px] gap-[2px]"
+            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+          >
+            {(['history', 'theater'] as const).map((mode) => {
+              const active = mode === 'theater' ? activeTheaterMode : !activeTheaterMode
+              return (
+                <motion.button
+                  key={mode}
+                  onClick={() => setTheaterMode(mode === 'theater')}
+                  className="rounded-full px-3.5 py-0.5 text-[10px] font-mono uppercase tracking-widest"
+                  animate={{
+                    background: active ? '#c95f28' : 'transparent',
+                    color: active ? '#F0EBE1' : '#5a5445',
+                  }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {mode}
+                </motion.button>
+              )
+            })}
+          </div>
+        </motion.div>
+      )}
+
       {/* ── THEATER MODE ─────────────────────────────────────── */}
-      {activeTheaterMode && (
-        <div
+      <AnimatePresence mode="wait">
+        {activeTheaterMode && (
+        <motion.div
+          key="theater"
           className="relative min-h-0 flex-1 overflow-hidden"
-          onWheel={(e) => {
-            if (e.deltaY < 0) {
-              theaterLockRef.current = true
-              setTheaterMode(false)
-              setTimeout(() => { theaterLockRef.current = false }, 800)
-            }
-          }}
-          onTouchMove={(e) => { /* handled by history scroll detection */ }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
         >
 
           {/* User message — top right */}
@@ -426,22 +372,28 @@ export function ChatThreadView(props: {
                     </div>
                   )}
 
-                  {/* The actual text — adaptive font size */}
+                  {/* The actual text — adaptive font size, cinematic entrance */}
                   {theaterText && (
-                    <div
-                      className="text-white leading-[1.4] font-light"
+                    <motion.div
+                      key={isStreaming ? 'streaming-text' : lastAssistant?.id}
+                      initial={{ opacity: 0, y: 20, filter: 'blur(8px)' }}
+                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                       style={{
                         fontSize: theaterFontPx,
                         transition: 'font-size 0.4s ease',
                         maxHeight: '70vh',
                         overflow: 'hidden',
-                        maskImage: 'linear-gradient(to bottom, transparent 0%, white 12%)',
-                        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, white 12%)',
+                        lineHeight: 1.35,
+                        fontWeight: 300,
+                        color: '#F0EBE1',
+                        maskImage: 'linear-gradient(to bottom, transparent 0%, white 10%)',
+                        WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, white 10%)',
                       }}
                     >
                       {theaterText}
                       {isStreaming && <StreamCursor />}
-                    </div>
+                    </motion.div>
                   )}
 
                   {/* Meta row — visible on finished response */}
@@ -456,17 +408,6 @@ export function ChatThreadView(props: {
                       {lastAssistant.crt.response_type && lastAssistant.crt.response_type !== 'speech' && (
                         <span className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--text-faint)' }}>{lastAssistant.crt.response_type}</span>
                       )}
-                      <button
-                        onClick={() => {
-                          theaterLockRef.current = true
-                          setTheaterMode(false)
-                          setTimeout(() => { theaterLockRef.current = false }, 800)
-                        }}
-                        className="ml-auto text-[11px] font-mono uppercase tracking-widest transition hover:opacity-80"
-                        style={{ color: 'var(--text-faint)' }}
-                      >
-                        ↑ history
-                      </button>
                     </div>
                   )}
                 </motion.div>
@@ -474,98 +415,134 @@ export function ChatThreadView(props: {
             </AnimatePresence>
           </div>
 
-        </div>
-      )}
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── HISTORY MODE ─────────────────────────────────────── */}
-      {!activeTheaterMode && (
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(255,255,255,0.1)_transparent]"
-        >
-          <div className="mx-auto w-full px-4 py-8 md:px-8" style={{ maxWidth: '1000px' }}>
+      <AnimatePresence mode="wait">
+        {!activeTheaterMode && (
+          <motion.div
+            key="history"
+            ref={scrollRef}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(201,95,40,0.35)_transparent]"
+          >
+            <div className="mx-auto w-full px-4 py-8 md:px-10" style={{ maxWidth: '860px' }}>
 
-            {/* Empty state */}
-            {empty && (
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="flex min-h-[60vh] flex-col items-center justify-center text-center"
-              >
-                <div className="font-display text-7xl text-white md:text-8xl lg:text-9xl" style={{ lineHeight: 1 }}>
-                  Hey {displayName}
-                </div>
-                <div className="mt-4 text-sm tracking-widest uppercase" style={{ color: 'var(--text-faint)' }}>
-                  What's on your mind?
-                </div>
-                {props.showSetNameCta && (
-                  <button onClick={props.onRequestSetName} className="mt-8 rounded-full border border-white/10 bg-white/5 px-5 py-2 text-sm text-white/60 transition hover:bg-white/8 hover:text-white/80">
-                    Set your name
-                  </button>
-                )}
-              </motion.div>
-            )}
-
-            {/* Message history */}
-            {!empty && (
-              <div className="flex flex-col gap-8">
-                <AnimatePresence initial={false}>
-                  {props.thread.messages.map((m) => (
-                    <MessageBubble
-                      key={m.id}
-                      msg={m}
-                      threadId={props.thread.id}
-                      selected={m.id === props.selectedMessageId}
-                      onInspect={m.role === 'assistant' ? (id) => props.onSelectAssistantMessage(id) : undefined}
-                      onOpenSourceInspector={props.onOpenSourceInspector}
-                      onOpenAgentPanel={props.onOpenAgentPanel}
-                      xrayMode={props.xrayMode}
-                    />
-                  ))}
-                </AnimatePresence>
-
-                {/* Streaming in history mode — compact */}
-                {isStreaming && (
-                  <StreamingMessage
-                    content={props.streamingResponse ?? ''}
-                    isThinking={Boolean(props.isThinking)}
-                    phase={props.streamPhase ?? null}
-                    statusLog={props.streamStatusLog ?? []}
-                    thinkingContent={props.streamingThinking ?? ''}
-                  />
-                )}
-
-                {showTyping && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {[0, 0.15, 0.3].map((delay, i) => (
-                        <span key={i} className="h-1.5 w-1.5 rounded-full animate-bounce" style={{ background: 'var(--accent-6)', animationDelay: `${delay}s`, animationDuration: '0.9s' }} />
-                      ))}
-                    </div>
+              {/* Empty state */}
+              {empty && (
+                <motion.div
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex min-h-[60vh] flex-col items-center justify-center text-center"
+                >
+                  <motion.div
+                    className="font-display md:text-8xl lg:text-9xl"
+                    style={{ fontSize: 'clamp(4rem, 12vw, 9rem)', lineHeight: 1, color: '#F0EBE1' }}
+                    initial={{ opacity: 0, y: 32, letterSpacing: '0.1em' }}
+                    animate={{ opacity: 1, y: 0, letterSpacing: '0.04em' }}
+                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    Hey {displayName}
                   </motion.div>
-                )}
-              </div>
-            )}
+                  <motion.div
+                    className="mt-4 text-sm tracking-widest uppercase"
+                    style={{ color: 'var(--text-faint)' }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
+                  >
+                    What's on your mind?
+                  </motion.div>
+                  {props.showSetNameCta && (
+                    <motion.button
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      onClick={props.onRequestSetName}
+                      className="mt-8 rounded-full border px-5 py-2 text-sm transition"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                    >
+                      Set your name
+                    </motion.button>
+                  )}
+                </motion.div>
+              )}
 
-            <div ref={bottomRef} className="h-4" />
-          </div>
+              {/* Message history — staggered entrance */}
+              {!empty && (
+                <div className="flex flex-col gap-6">
+                  {props.thread.messages.map((m, idx) => (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, y: 18, filter: 'blur(4px)' }}
+                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                      transition={{
+                        duration: 0.38,
+                        ease: [0.16, 1, 0.3, 1],
+                        delay: Math.min(idx * 0.04, 0.3),
+                      }}
+                    >
+                      <MessageBubble
+                        msg={m}
+                        threadId={props.thread.id}
+                        selected={m.id === props.selectedMessageId}
+                        onInspect={m.role === 'assistant' ? (id) => props.onSelectAssistantMessage(id) : undefined}
+                        onOpenSourceInspector={props.onOpenSourceInspector}
+                        onOpenAgentPanel={props.onOpenAgentPanel}
+                        xrayMode={props.xrayMode}
+                      />
+                    </motion.div>
+                  ))}
 
-          {/* Snap back to theater */}
-          <div className="sticky bottom-4 flex justify-center pointer-events-none">
-            <motion.button
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => setTheaterMode(true)}
-              className="pointer-events-auto rounded-full px-4 py-1.5 text-[11px] font-mono uppercase tracking-widest transition hover:opacity-80"
-              style={{ background: 'var(--surface-3)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-            >
-              ↓ theater
-            </motion.button>
-          </div>
-        </div>
-      )}
+                  {/* Streaming in history mode */}
+                  <AnimatePresence>
+                    {isStreaming && (
+                      <motion.div
+                        key="streaming"
+                        initial={{ opacity: 0, y: 12, filter: 'blur(4px)' }}
+                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, y: -4 }}
+                        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                      >
+                        <StreamingMessage
+                          content={props.streamingResponse ?? ''}
+                          isThinking={Boolean(props.isThinking)}
+                          phase={props.streamPhase ?? null}
+                          statusLog={props.streamStatusLog ?? []}
+                          thinkingContent={props.streamingThinking ?? ''}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {showTyping && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-2"
+                    >
+                      {[0, 0.15, 0.3].map((delay, i) => (
+                        <span key={i} className="h-1.5 w-1.5 rounded-full animate-bounce"
+                          style={{ background: 'var(--accent-3)', animationDelay: `${delay}s`, animationDuration: '0.9s' }} />
+                      ))}
+                    </motion.div>
+                  )}
+                </div>
+              )}
+
+              <div ref={bottomRef} className="h-8" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Contradiction banner */}
       <AnimatePresence>

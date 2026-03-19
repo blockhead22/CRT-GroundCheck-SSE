@@ -19,9 +19,8 @@ html, body {
 body {
   margin: 0;
   font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  color: #e2e2ee;
-  /* flat matte — no gradient */
-  background: #0c0c0f;
+  color: #F0EBE1;
+  background: #0e0d0b;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 15px;
@@ -32,45 +31,45 @@ body {
 
 /* ─── Design Tokens ──────────────────────────────────── */
 .aetheris-dark {
-  /* Surfaces — flat matte, no transparency */
-  --bg:          #0c0c0f;
-  --surface:     #15151a;
-  --surface-2:   #1c1c23;
-  --surface-3:   #24242d;
-  --surface-4:   #2c2c38;
+  /* Surfaces — near-black warm scale */
+  --bg:          #0e0d0b;   /* near-black warm — page bg */
+  --surface:     #161410;   /* slightly lighter */
+  --surface-2:   #1d1b16;   /* card bg */
+  --surface-3:   #252219;   /* elevated surface */
+  --surface-4:   #2e2a1f;   /* hover/active */
 
-  /* Borders */
-  --border:      #2a2a36;
-  --border-soft: #1e1e28;
+  /* Borders — warm charcoal */
+  --border:      #332e22;
+  --border-soft: #252219;
 
-  /* Text */
-  --text:        #e2e2ee;
-  --text-muted:  #6e6e90;
-  --text-faint:  #38384e;
+  /* Text — warm cream */
+  --text:        #F0EBE1;   /* cream — primary */
+  --text-muted:  #a09880;   /* cream 60% */
+  --text-faint:  #5a5445;   /* cream 35% */
 
-  /* Vivid flat palette — inspired by CA Academy bold color pops */
-  --accent:      #6457f9;   /* indigo — primary interactive */
-  --accent-2:    #38bdf8;   /* sky blue */
-  --accent-3:    #4ade80;   /* mint green */
-  --accent-4:    #fb7185;   /* coral */
-  --accent-5:    #fb923c;   /* orange */
-  --accent-6:    #a78bfa;   /* lavender */
+  /* Accent palette — orange + cream */
+  --accent:      #c95f28;   /* burnt orange — primary interactive */
+  --accent-2:    #F0EBE1;   /* cream — highlight */
+  --accent-3:    #e8843a;   /* bright orange */
+  --accent-4:    #e05c20;   /* deep orange — error/alert */
+  --accent-5:    #d4a84b;   /* amber gold — warning */
+  --accent-6:    #b07040;   /* dark terracotta */
 
   /* Semantic */
-  --ok:          #4ade80;
-  --warn:        #fb923c;
-  --err:         #fb7185;
-  --info:        #38bdf8;
+  --ok:          #8aaa6e;
+  --warn:        #d4a84b;
+  --err:         #e05c20;
+  --info:        #e8843a;
 
-  /* User bubble: vivid sky blue with dark text — pops hard */
-  --user-bubble:    #38bdf8;
-  --user-bubble-fg: #ffffff;
+  /* User bubble: orange with cream text */
+  --user-bubble:    #c95f28;
+  --user-bubble-fg: #F0EBE1;
 
   /* Composer */
-  --composer-bg:    #15151a;
-  --composer-border:#2a2a36;
+  --composer-bg:    #161410;
+  --composer-border:#332e22;
 
-  --panel-border: #2a2a36;
+  --panel-border: #332e22;
 }
 
 /* ─── Typography ─────────────────────────────────────── */

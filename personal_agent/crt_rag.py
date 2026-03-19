@@ -90,6 +90,37 @@ LONGFORM_SUMMARY_MIN_CHARS = 420
 LONGFORM_SUMMARY_MAX_CHARS = 1800
 
 
+def _build_gate_explanation(
+    gate_reason: Optional[str],
+    intent_align: float,
+    memory_align: float,
+    grounding_score: Optional[float],
+    hard_conflicts: int,
+) -> str:
+    """Build a human-readable explanation of why a gate passed or failed."""
+    reason = str(gate_reason or "")
+    parts = []
+    if "contradiction_disclosure" in reason:
+        parts.append("A stored fact conflicts with what you just said.")
+    elif "unresolved_contradictions" in reason or "hard_conflict_pending" in reason:
+        parts.append(f"{hard_conflicts} unresolved conflict(s) related to this query block a confident answer.")
+    elif "grounding_fail" in reason:
+        parts.append(f"Response isn't grounded in memory (grounding={grounding_score:.2f}).")
+    elif "contradiction_fail" in reason:
+        parts.append("Contradiction check failed — retrieved memories conflict.")
+    elif "narration_fail" in reason:
+        parts.append("Response quality check failed.")
+    elif "degraded_output" in reason:
+        parts.append("Generated response was flagged as degraded quality.")
+    elif "general_knowledge_bypass" in reason:
+        parts.append("General knowledge query — memory alignment not required.")
+    if intent_align < 0.5 and "bypass" not in reason:
+        parts.append(f"Low reasoning confidence ({intent_align:.2f}).")
+    if memory_align < 0.4 and "bypass" not in reason:
+        parts.append(f"Weak memory alignment ({memory_align:.2f}).")
+    return " ".join(parts) if parts else reason
+
+
 # ── Identity pronoun sanitizer ──────────────────────────────────
 # Catches common first-person adoptions of user facts and rewrites
 # them to second-person so Aether doesn't claim "My name is Nick".
@@ -3893,6 +3924,7 @@ class CRTEnhancedRAG:
                         "ledger_id": disclosure_entry.get("ledger_id"),
                     },
                 )
+                _dbg_slot = str(disclosure_entry.get('affects_slots') or '?')
                 return {
                     'answer': answer,
                     'thinking': None,
@@ -3914,6 +3946,14 @@ class CRTEnhancedRAG:
                     'heuristic_suggestions': [],
                     'best_prior_trust': None,
                     'session_id': self.session_id,
+                    'gate_debug': {
+                        'trigger': 'contradiction_disclosure',
+                        'slot': _dbg_slot,
+                        'stored': (old_text[:300] if old_text else None),
+                        'incoming': (new_text[:300] if new_text else None),
+                        'ledger_id': disclosure_entry.get('ledger_id'),
+                        'explanation': f"A stored fact about '{_dbg_slot}' conflicts with what you just said.",
+                    },
                 }
 
         # NOTE: Assistant-profile questions ("who are you?", "what are you?") are
@@ -5007,8 +5047,19 @@ class CRTEnhancedRAG:
                 'heuristic_suggestions': [],
                 'best_prior_trust': None,
                 'session_id': self.session_id,
+                'gate_debug': {
+                    'trigger': 'unresolved_contradictions',
+                    'slot': ', '.join(inferred_slots) if inferred_slots else '?',
+                    'hard_conflicts': related_hard_conflicts,
+                    'open_total': related_open_total,
+                    'explanation': f"{related_hard_conflicts} hard conflict(s) and {related_open_total} open contradiction(s) related to your query prevent a confident answer.",
+                    'conflicting_memories': [
+                        {'text': m.text[:120], 'trust': m.trust}
+                        for m, _ in retrieved[:3]
+                    ],
+                },
             }
-        
+
         # Extract best prior belief
         best_prior = retrieved[0][0] if retrieved else None
 
@@ -5608,7 +5659,25 @@ class CRTEnhancedRAG:
             'best_prior_trust': best_prior.trust if best_prior else None,
             
             # Session
-            'session_id': self.session_id
+            'session_id': self.session_id,
+
+            # Gate debug — structured explanation of why gates passed or failed
+            'gate_debug': ({
+                'trigger': gate_reason or 'unknown',
+                'slot': ', '.join(inferred_slots) if inferred_slots else None,
+                'intent_align': round(intent_align, 3),
+                'memory_align': round(memory_align, 3),
+                'grounding': round(grounding_score, 3) if grounding_score is not None else None,
+                'hard_conflicts': int(related_hard_conflicts),
+                'open_total': int(related_open_total),
+                'response_type_pred': response_type_pred,
+                'explanation': _build_gate_explanation(gate_reason, intent_align, memory_align, grounding_score, related_hard_conflicts),
+                'conflicting_memories': [
+                    {'text': m.text[:120], 'trust': round(m.trust, 3)}
+                    for m, _ in retrieved[:3]
+                    if contradiction_detected or not gates_passed
+                ] if (contradiction_detected or not gates_passed) else [],
+            } if not gates_passed else None),
         })
 
     # ====================================================================
@@ -6899,8 +6968,37 @@ class CRTEnhancedRAG:
         if lower.startswith(instruction_starters) or any(m in lower for m in instruction_markers):
             return "instruction"
 
-        # Default: treat as assertion/statement.
-        return "assertion"
+        # Only treat as assertion if the text actually declares a personal fact.
+        # Reactions, sentiments, and activity comments should NOT be stored even if they
+        # have first-person pronouns (e.g. "I'm happy that X", "I'm working on this").
+        sentiment_starters = (
+            "i'm happy", "im happy", "i'm glad", "im glad", "i'm excited", "im excited",
+            "i'm sad", "im sad", "i'm tired", "im tired", "i'm okay", "im okay",
+            "i'm good", "im good", "i'm fine", "im fine", "i'm not sure", "im not sure",
+            "i'm working on", "im working on", "i'm doing", "im doing",
+            "i'm just", "im just", "i'm only", "im only",
+            "i'm going", "im going", "i'm trying", "im trying",
+            "i think", "i believe", "i guess", "i hope", "i wish", "i feel",
+            "i know", "i understand", "i see", "i agree", "i disagree",
+            "i can", "i can't", "i cannot", "i won't", "i don't",
+            "i had", "i have", "i want", "i need", "i like", "i love",
+        )
+        if lower.startswith(sentiment_starters):
+            return "other"
+
+        has_first_person = any(
+            p in lower.split()
+            for p in ("i", "my", "i'm", "im", "i've", "ive", "i'll", "ill", "mine", "myself")
+        )
+        if has_first_person:
+            return "assertion"
+        # Fallback: check if structured fact slots can be extracted
+        try:
+            if extract_fact_slots(t):
+                return "assertion"
+        except Exception:
+            pass
+        return "other"
     
     # ====== PRODUCTION: Orchestration Tracing Methods ======
     

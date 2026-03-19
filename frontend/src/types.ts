@@ -147,6 +147,22 @@ export type CtrMessageMeta = {
   reflection_label?: string | null  // "high" | "medium" | "low"
   personality_profile?: Record<string, unknown> | null
   reflection_scorecard?: Record<string, unknown> | null
+  // Gate debug — structured explanation of why a gate failed
+  gate_debug?: {
+    trigger?: string | null
+    slot?: string | null
+    stored?: string | null
+    incoming?: string | null
+    explanation?: string | null
+    intent_align?: number | null
+    memory_align?: number | null
+    grounding?: number | null
+    hard_conflicts?: number | null
+    open_total?: number | null
+    response_type_pred?: string | null
+    conflicting_memories?: Array<{ text: string; trust: number }>
+    ledger_id?: string | null
+  } | null
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {

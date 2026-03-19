@@ -71,6 +71,8 @@ class AgentAction(str, Enum):
     READ_FILE = "read_file"
     LIST_FILES = "list_files"
     EXECUTE_CODE = "execute_code"  # Run Python code
+    FETCH_URL = "fetch_url"        # Fetch and read a URL
+    MOLTBOOK = "moltbook"          # Interact with MoltBook API
     SYNTHESIZE = "synthesize"
     REFLECT = "reflect"
     PLAN = "plan"
@@ -182,6 +184,8 @@ class ToolRegistry:
             AgentAction.READ_FILE: self._read_file,
             AgentAction.LIST_FILES: self._list_files,
             AgentAction.EXECUTE_CODE: self._execute_code,
+            AgentAction.FETCH_URL: self._fetch_url,
+            AgentAction.MOLTBOOK: self._moltbook,
             AgentAction.SYNTHESIZE: self._synthesize,
             AgentAction.REFLECT: self._reflect,
             AgentAction.PLAN: self._plan,
@@ -465,6 +469,97 @@ class ToolRegistry:
             }
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def _fetch_url(self, url: str, max_chars: int = 8000) -> dict:
+        """Fetch and return the text content of a URL."""
+        import urllib.request, urllib.error, html, re as _re
+        try:
+            req = urllib.request.Request(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; Aether/1.0)"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw = resp.read()
+                content_type = resp.headers.get("Content-Type", "")
+                charset = "utf-8"
+                if "charset=" in content_type:
+                    charset = content_type.split("charset=")[-1].split(";")[0].strip()
+                text = raw.decode(charset, errors="replace")
+            # Strip HTML tags if not plain text / markdown
+            if "<html" in text.lower() or "</div>" in text.lower():
+                text = _re.sub(r"<[^>]+>", " ", text)
+                text = html.unescape(text)
+                text = _re.sub(r"\s{3,}", "\n\n", text)
+            text = text.strip()[:max_chars]
+            return {"url": url, "length": len(text), "content": text}
+        except urllib.error.HTTPError as e:
+            return {"error": f"HTTP {e.code}: {e.reason}", "url": url}
+        except Exception as e:
+            return {"error": str(e), "url": url}
+
+    def _moltbook(self, action: str = "notifications", post_id: str = "", query: str = "", limit: int = 20) -> dict:
+        """Interact with the MoltBook API.
+
+        Actions:
+          notifications — list unread notifications
+          feed          — list recent feed posts
+          search        — search posts by query
+          post          — get a specific post by post_id
+        """
+        import json as _json, os as _os, urllib.request as _req, urllib.error as _err, urllib.parse as _up
+        cred_path = _os.path.expanduser("~/.config/moltbook/credentials.json")
+        try:
+            with open(cred_path, "r", encoding="utf-8") as f:
+                api_key = _json.load(f).get("api_key", "")
+        except Exception as e:
+            return {"error": f"MoltBook credentials not found: {e}. Expected at {cred_path}"}
+        if not api_key:
+            return {"error": "MoltBook api_key is empty in credentials.json"}
+
+        base = "https://www.moltbook.com/api/v1"
+        headers_bytes = {
+            "Authorization": f"Bearer {api_key}",
+            "Accept": "application/json",
+        }
+
+        def _get(path: str, params: dict = {}) -> dict:
+            url = f"{base}{path}"
+            if params:
+                url += "?" + _up.urlencode(params)
+            r = _req.Request(url, headers=headers_bytes)
+            with _req.urlopen(r, timeout=20) as resp:
+                return _json.loads(resp.read().decode("utf-8"))
+
+        try:
+            if action == "notifications":
+                data = _get("/notifications", {"limit": limit})
+                items = data.get("notifications", [])
+                unread = [n for n in items if not n.get("isRead")]
+                return {"total": len(items), "unread": len(unread), "notifications": unread[:limit]}
+
+            elif action == "feed":
+                data = _get("/feed", {"limit": limit})
+                return {"posts": data.get("posts", data.get("items", []))[:limit]}
+
+            elif action == "search":
+                if not query:
+                    return {"error": "search requires a query"}
+                data = _get("/search", {"q": query, "limit": limit})
+                return {"query": query, "results": data.get("posts", data.get("results", []))[:limit]}
+
+            elif action == "post":
+                if not post_id:
+                    return {"error": "post action requires post_id"}
+                data = _get(f"/posts/{post_id}")
+                return {"post": data}
+
+            else:
+                return {"error": f"Unknown action '{action}'. Use: notifications, feed, search, post"}
+
+        except _err.HTTPError as e:
+            return {"error": f"HTTP {e.code}: {e.reason}"}
+        except Exception as e:
+            return {"error": str(e)}
 
     def _synthesize(self, pieces: list[str]) -> dict:
         """Combine multiple pieces of information."""

@@ -789,8 +789,6 @@ def _should_expand_response(
         return True, f"reflection_{reflection_result.suggested_action}"
     if verbosity_pref == "verbose" and len(response) < 1400:
         return True, "preference_verbose"
-    if len(response) < 360 and len(question or "") > 80:
-        return True, "short_answer"
     return False, None
 
 
@@ -850,6 +848,21 @@ def _generate_expansion(
         return None
     expansion = _strip_thinking_tags(expansion).strip()
     if not expansion or expansion.startswith("[Ollama error") or expansion.startswith("[Ollama connection error"):
+        return None
+    # Strip model meta-preamble that leaks from instruction-following models
+    expansion = re.sub(
+        r"^(Okay[,.]?\s+)?(here'?s?\s+)?(an?\s+)?(expanded|expanded version|expansion)[^:\n]*[:\n]+\s*",
+        "",
+        expansion,
+        flags=re.IGNORECASE,
+    ).lstrip()
+    expansion = re.sub(
+        r"^(Okay[,.]?\s+)(I'?ll|let me|the user|based on)[^\n]*\n+",
+        "",
+        expansion,
+        flags=re.IGNORECASE,
+    ).lstrip()
+    if not expansion:
         return None
     return expansion
 
@@ -1557,6 +1570,47 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         request_kind=control_state.request_kind,
         follow_up=_looks_like_follow_up(effective_message),
     )
+
+    # ── Agentic URL/tool routing ──────────────────────────────────────────────
+    # If the message contains a URL with an action verb (read, fetch, visit, check,
+    # open, go to, follow), route straight to the agent so it can FETCH_URL and act.
+    _url_action_re = re.compile(
+        r"\b(read|fetch|visit|check|open|go to|follow|access|look at|get|load)\b.{0,60}https?://\S+",
+        re.IGNORECASE,
+    )
+    _bare_url_re = re.compile(r"^https?://\S+$")
+    _tool_keyword_re = re.compile(
+        r"\b(moltbook|openclaw)\b",
+        re.IGNORECASE,
+    )
+    if _url_action_re.search(effective_message) or _bare_url_re.match(effective_message.strip()) or _tool_keyword_re.search(effective_message):
+        try:
+            from personal_agent.agent_loop import create_agent
+            _ag = create_agent(
+                memory_engine=engine.memory,
+                workspace_root=Path.cwd(),
+                max_steps=12,
+            )
+            control_state.mark("decide", "agent_url", detail="url_action_detected")
+            _trace = _ag.run(effective_message)
+            _url_answer = (_trace.final_answer or "").strip()
+            if _url_answer:
+                return _chat_response(
+                    answer=_url_answer,
+                    response_type="speech",
+                    gates_passed=True,
+                    gate_reason="agent_url_fetch",
+                    metadata={
+                        "mode": "agent",
+                        "confidence": 0.85,
+                        "agent_activated": True,
+                        "agent_trace": _trace.to_dict(),
+                        "pipeline_statuses": ["accessing tools", "running agent", f"agent activated"],
+                    },
+                )
+        except Exception as _e:
+            logger.warning("[AGENT_URL] Failed to route URL fetch to agent: %s", _e)
+    # ── End agentic URL routing ───────────────────────────────────────────────
 
     if _is_meta_provenance_followup(effective_message):
         control_state.mark("bind", "recent_slot", detail="provenance_followup")
@@ -2310,13 +2364,42 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         if expansion_text:
             expanded = True
             base_answer = base_answer.rstrip()
-            base_answer = f"{base_answer}\n\nMore detail:\n{expansion_text}"
+            base_answer = f"{base_answer}\n\n{expansion_text}"
         else:
             expansion_reason = None
 
     final_answer = base_answer
     if greeting_text:
         final_answer = f"{greeting_text}\n\n{final_answer}"
+
+    # Strip LLM error strings that leak from Ollama client
+    if final_answer.startswith("[Ollama error:") or final_answer.startswith("[LLM error:") or final_answer.startswith("[Model '"):
+        logger.warning("[CHAT] LLM error string leaked into response: %s", final_answer[:120])
+        final_answer = "I ran into a problem generating a response. The model may not be available — try again in a moment."
+
+    # Strip generic AI assistant intros / boilerplate (model ignoring FORMAT RULES)
+    import re as _re
+    _intro_patterns = [
+        r"^(Hello!?\s+)?I'?m\s+(your\s+)?AI\s+assistant[^.!]*[.!]\s*",
+        r"^I'?m here to help you with questions and tasks\.?\s*",
+        r"^I'?m here to help[^.!]*[.!]\s*",
+        r"^As an AI(?: assistant)?[^.!]*[.!]\s*",
+    ]
+    for _pat in _intro_patterns:
+        final_answer = _re.sub(_pat, "", final_answer, flags=_re.IGNORECASE).lstrip()
+
+    # Strip emojis — local models often add them despite instructions
+    import unicodedata as _ud
+    def _strip_emojis(text: str) -> str:
+        return "".join(
+            ch for ch in text
+            if not (_ud.category(ch) in ("So", "Sm") or
+                    0x1F300 <= ord(ch) <= 0x1FAFF or
+                    0x2600 <= ord(ch) <= 0x27BF or
+                    0xFE00 <= ord(ch) <= 0xFE0F or
+                    0x1F1E0 <= ord(ch) <= 0x1F1FF)
+        ).strip()
+    final_answer = _strip_emojis(final_answer)
 
     # Gate-fail fallback — never return a blank bubble
     if not final_answer.strip() and not bool(result.get("gates_passed", True)):
@@ -2412,6 +2495,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         "product_mode": ((runtime_config.get("product_mode") or {}).get("mode") if isinstance(runtime_config, dict) else None),
         "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
         "groundcheck_bridge": groundcheck_bridge_meta,
+        "gate_debug": result.get("gate_debug") or None,
     }
 
     collapse_trail_id = _log_collapse_trail(
@@ -2604,43 +2688,94 @@ def chat_stream(req: ChatSendRequest, request: Request):
     logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
 
     def generate_stream():
+        import threading, queue as _queue, time as _time
+
+        def _status(s: str) -> str:
+            return f"data: {json.dumps({'type': 'status', 'content': s})}\n\n"
+
+        def _phase(phase: str, content: str = '', end: bool = False) -> str:
+            t = 'phase_end' if end else 'phase_start'
+            return f"data: {json.dumps({'type': t, 'phase': phase, 'content': content})}\n\n"
+
         try:
-            phase_enabled = bool(req.phase_mode)
+            # ── Upfront activity signals ──────────────────────────────────
+            q_lower = req.message.lower()
+            yield _phase('analyze', 'Reading request')
+            yield _status('reading context')
+            yield _phase('analyze', end=True)
 
-            # Emit phase signals upfront so UI shows pipeline activity immediately
-            if phase_enabled:
-                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'analyze', 'content': 'Reading request'})}\n\n"
-                yield f"data: {json.dumps({'type': 'status', 'content': 'reading context'})}\n\n"
-                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'analyze', 'content': ''})}\n\n"
-                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'plan', 'content': 'Retrieving memory'})}\n\n"
-                yield f"data: {json.dumps({'type': 'status', 'content': 'searching memory'})}\n\n"
+            yield _phase('plan', 'Retrieving memory')
+            yield _status('searching memory')
+
+            # Hint at what type of processing will happen
+            if any(w in q_lower for w in ('contradict', 'conflict', 'remember', 'told you', 'said')):
+                yield _status('checking contradictions')
+            elif any(w in q_lower for w in ('code', 'python', 'function', 'script', 'write', 'build')):
+                yield _status('accessing tools')
+            elif any(w in q_lower for w in ('research', 'search', 'find', 'look up')):
+                yield _status('running agent')
             else:
-                yield f"data: {json.dumps({'type': 'status', 'content': 'thinking'})}\n\n"
+                yield _status('analyzing query')
 
-            shared_response = _run_shared_chat_pipeline(req, request)
+            # ── Run pipeline in background, emit heartbeats while waiting ─
+            result_q: _queue.Queue = _queue.Queue()
+            err_q: _queue.Queue = _queue.Queue()
+
+            def _run():
+                try:
+                    result_q.put(_run_shared_chat_pipeline(req, request))
+                except Exception as exc:
+                    err_q.put(exc)
+
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+
+            _heartbeats = ['reasoning', 'planning response', 'verifying', 'drafting']
+            _hb_idx = 0
+            _last_hb = _time.monotonic()
+            _hb_max = len(_heartbeats) * 2  # cap at 2 full cycles
+            while t.is_alive():
+                _time.sleep(0.05)
+                if _time.monotonic() - _last_hb > 1.4 and _hb_idx < _hb_max:
+                    yield _status(_heartbeats[_hb_idx % len(_heartbeats)])
+                    _hb_idx += 1
+                    _last_hb = _time.monotonic()
+
+            t.join()
+
+            if not err_q.empty():
+                raise err_q.get()
+
+            shared_response = result_q.get()
+            yield _phase('plan', end=True)
+
+            # ── Post-pipeline status insights ─────────────────────────────
             metadata: Dict[str, Any] = dict(shared_response.metadata or {})
             metadata.setdefault("response_type", shared_response.response_type)
             metadata.setdefault("gates_passed", shared_response.gates_passed)
             metadata.setdefault("gate_reason", shared_response.gate_reason)
             metadata.setdefault("session_id", shared_response.session_id)
 
-            # Surface pipeline insights as status tags after pipeline completes
             _gates_passed = shared_response.gates_passed
             _response_type = shared_response.response_type or "speech"
             _gate_reason = shared_response.gate_reason or ""
             _retrieved = metadata.get("retrieved_memories") or []
             _prompt_mems = metadata.get("prompt_memories") or []
             _mem_count = len(_retrieved) + len(_prompt_mems)
-            if _mem_count > 0:
-                yield f"data: {json.dumps({'type': 'status', 'content': f'{_mem_count} memories'})}\n\n"
-            if not _gates_passed:
-                _gate_label = f"gate: {_gate_reason or 'blocked'}"
-                yield f"data: {json.dumps({'type': 'status', 'content': _gate_label})}\n\n"
-            if _response_type not in ("speech", ""):
-                yield f"data: {json.dumps({'type': 'status', 'content': _response_type})}\n\n"
-            if phase_enabled:
-                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'plan', 'content': ''})}\n\n"
 
+            if _mem_count > 0:
+                yield _status(f'{_mem_count} memories read')
+            if metadata.get("contradiction_detected"):
+                _open = metadata.get("unresolved_contradictions_total", 0)
+                yield _status(f'contradiction detected ({_open} open)')
+            if metadata.get("agent_activated"):
+                yield _status('agent activated')
+            if not _gates_passed:
+                yield _status(f'gate: {_gate_reason or "blocked"}')
+            if _response_type not in ("speech", ""):
+                yield _status(_response_type)
+
+            # ── Thinking content ──────────────────────────────────────────
             thinking_content = _strip_thinking_tags(str(metadata.get("thinking") or "")).strip()
             if thinking_content:
                 yield f"data: {json.dumps({'type': 'thinking_start', 'content': ''})}\n\n"
@@ -2648,15 +2783,15 @@ def chat_stream(req: ChatSendRequest, request: Request):
                     yield f"data: {json.dumps({'type': 'thinking_token', 'content': thought_chunk})}\n\n"
                 yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
 
+            # ── Stream answer tokens ──────────────────────────────────────
             answer = str(shared_response.answer or "")
-            if phase_enabled:
-                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'answer', 'content': 'Drafting response'})}\n\n"
+            yield _phase('answer', 'Writing response')
             for text_chunk in _chunk_text(answer):
                 yield f"data: {json.dumps({'type': 'token', 'content': text_chunk})}\n\n"
-            if phase_enabled:
-                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'answer', 'content': ''})}\n\n"
+            yield _phase('answer', end=True)
 
             yield f"data: {json.dumps({'type': 'done', 'content': answer, 'metadata': metadata})}\n\n"
+
         except Exception as e:
             logger.error(f"[STREAM] Stream error: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
