@@ -337,7 +337,7 @@ export function ChatThreadView(props: {
 
   const displayName = (props.userName || '').trim() || 'there'
 
-  const activeTheaterMode = theaterMode && !empty
+  const activeTheaterMode = false
 
   // Content shown in theater mode bottom-left panel
   const theaterText = isStreaming
@@ -457,7 +457,11 @@ export function ChatThreadView(props: {
                         <span className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--text-faint)' }}>{lastAssistant.crt.response_type}</span>
                       )}
                       <button
-                        onClick={() => setTheaterMode(false)}
+                        onClick={() => {
+                          theaterLockRef.current = true
+                          setTheaterMode(false)
+                          setTimeout(() => { theaterLockRef.current = false }, 800)
+                        }}
                         className="ml-auto text-[11px] font-mono uppercase tracking-widest transition hover:opacity-80"
                         style={{ color: 'var(--text-faint)' }}
                       >
