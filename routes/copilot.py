@@ -1027,7 +1027,7 @@ def get_scheduler_status() -> Dict[str, Any]:
         from pathlib import Path as _Path
         config_path = _Path("crt_runtime_config.json")
         if config_path.exists():
-            with open(config_path) as f:
+            with open(config_path, encoding='utf-8') as f:
                 config = _json.load(f)
             bg = config.get("background_jobs", {})
             return {

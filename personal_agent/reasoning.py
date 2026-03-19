@@ -1503,7 +1503,6 @@ When asked "how do you know?", cite the specific memory and its trust score.
             prompt += f"ADAPTIVE CONTEXT:\n{adaptive_hint}\n\n"
 
         prompt += f"Question: {query}\n\n"
-        prompt += f"Analysis: {analysis}\n"
         prompt += f"Plan: {plan}\n\n"
         
         if docs:

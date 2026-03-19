@@ -183,7 +183,7 @@ export function MessageBubble(props: {
         )}
 
         {/* Main message text */}
-        <div className="text-[15px] text-white/90">
+        <div className="text-[15px] text-white/90 leading-[1.75]">
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents as any}>
             {props.msg.text}
           </ReactMarkdown>
@@ -263,6 +263,19 @@ export function MessageBubble(props: {
               {responseType && responseType !== 'speech' && (
                 <span className="text-[10px] text-white/20 uppercase tracking-wide">{responseType}</span>
               )}
+            </div>
+          )}
+
+          {/* Pipeline trace — persistent step breadcrumb */}
+          {meta && (meta.pipeline_statuses ?? []).filter(s => !s.startsWith('ctrl:')).length > 0 && (
+            <div className="flex flex-wrap gap-1 ml-1">
+              {(meta.pipeline_statuses ?? [])
+                .filter(s => !s.startsWith('ctrl:'))
+                .map((s, i) => (
+                  <span key={i} className="rounded px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wide" style={{ background: 'var(--surface-3)', color: 'var(--text-faint)' }}>
+                    {s}
+                  </span>
+                ))}
             </div>
           )}
 

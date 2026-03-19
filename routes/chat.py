@@ -2318,6 +2318,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if greeting_text:
         final_answer = f"{greeting_text}\n\n{final_answer}"
 
+    # Gate-fail fallback — never return a blank bubble
+    if not final_answer.strip() and not bool(result.get("gates_passed", True)):
+        _gate_reason = str(result.get("gate_reason") or "")
+        if "contradiction" in _gate_reason or "disclosure" in _gate_reason:
+            final_answer = "I have conflicting information about this and can't give you a confident answer right now. Let's clear up the contradiction first."
+        elif "uncertainty" in _gate_reason:
+            final_answer = "I'm not confident enough in my answer to share it. Could you give me more context?"
+        else:
+            final_answer = "I wasn't able to generate a reliable response to that. Try rephrasing, or ask me to explain why."
+
     tasking_meta = None
     if tasking_enabled:
         allow_tasking = True
@@ -2596,13 +2606,16 @@ def chat_stream(req: ChatSendRequest, request: Request):
     def generate_stream():
         try:
             phase_enabled = bool(req.phase_mode)
-            if phase_enabled:
-                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'analyze', 'content': 'Analyzing request'})}\n\n"
-                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'analyze', 'content': ''})}\n\n"
-                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'plan', 'content': 'Planning response'})}\n\n"
-                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'plan', 'content': ''})}\n\n"
 
-            yield f"data: {json.dumps({'type': 'status', 'content': 'Processing message...'})}\n\n"
+            # Emit phase signals upfront so UI shows pipeline activity immediately
+            if phase_enabled:
+                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'analyze', 'content': 'Reading request'})}\n\n"
+                yield f"data: {json.dumps({'type': 'status', 'content': 'reading context'})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'analyze', 'content': ''})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'plan', 'content': 'Retrieving memory'})}\n\n"
+                yield f"data: {json.dumps({'type': 'status', 'content': 'searching memory'})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'status', 'content': 'thinking'})}\n\n"
 
             shared_response = _run_shared_chat_pipeline(req, request)
             metadata: Dict[str, Any] = dict(shared_response.metadata or {})
@@ -2610,6 +2623,23 @@ def chat_stream(req: ChatSendRequest, request: Request):
             metadata.setdefault("gates_passed", shared_response.gates_passed)
             metadata.setdefault("gate_reason", shared_response.gate_reason)
             metadata.setdefault("session_id", shared_response.session_id)
+
+            # Surface pipeline insights as status tags after pipeline completes
+            _gates_passed = shared_response.gates_passed
+            _response_type = shared_response.response_type or "speech"
+            _gate_reason = shared_response.gate_reason or ""
+            _retrieved = metadata.get("retrieved_memories") or []
+            _prompt_mems = metadata.get("prompt_memories") or []
+            _mem_count = len(_retrieved) + len(_prompt_mems)
+            if _mem_count > 0:
+                yield f"data: {json.dumps({'type': 'status', 'content': f'{_mem_count} memories'})}\n\n"
+            if not _gates_passed:
+                _gate_label = f"gate: {_gate_reason or 'blocked'}"
+                yield f"data: {json.dumps({'type': 'status', 'content': _gate_label})}\n\n"
+            if _response_type not in ("speech", ""):
+                yield f"data: {json.dumps({'type': 'status', 'content': _response_type})}\n\n"
+            if phase_enabled:
+                yield f"data: {json.dumps({'type': 'phase_end', 'phase': 'plan', 'content': ''})}\n\n"
 
             thinking_content = _strip_thinking_tags(str(metadata.get("thinking") or "")).strip()
             if thinking_content:

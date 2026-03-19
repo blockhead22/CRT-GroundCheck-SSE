@@ -175,9 +175,11 @@ def ledger_open(
     def _get_memory_details(memory_id: str) -> tuple[str, float]:
         """Helper to fetch memory text and trust score."""
         try:
-            mem = engine.memory.get_memory(memory_id)
+            mem = engine.memory.get_memory_by_id(memory_id)
             if mem:
-                return mem.get('text', memory_id), mem.get('trust', 0.0)
+                text = mem.text if hasattr(mem, 'text') else mem.get('text', memory_id)
+                trust = mem.trust if hasattr(mem, 'trust') else mem.get('trust', 0.0)
+                return text, trust
         except (KeyError, AttributeError, ValueError) as e:
             logging.warning(f"Failed to fetch memory {memory_id}: {e}")
         return memory_id, 0.0
