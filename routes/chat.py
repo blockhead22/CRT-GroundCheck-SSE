@@ -41,6 +41,7 @@ from personal_agent.db_utils import get_thread_session_db
 from personal_agent.greeting_system import get_time_based_greeting
 from personal_agent.active_learning import get_active_learning_coordinator
 from personal_agent.episodic_memory import get_episodic_manager
+from personal_agent.openclaw_bridge import run_openclaw_agent, should_delegate_to_openclaw
 from .meta_awareness import (
     build_meta_awareness_snapshot,
     is_meta_awareness_prompt,
@@ -1570,6 +1571,84 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         request_kind=control_state.request_kind,
         follow_up=_looks_like_follow_up(effective_message),
     )
+
+    openclaw_delegate, openclaw_reason = should_delegate_to_openclaw(
+        message=effective_message,
+        channel=req.channel,
+        meta_scope=req.meta_scope,
+        mode=req.mode,
+        runtime_config=runtime_config,
+    )
+    if openclaw_delegate:
+        structured_facts: Dict[str, Any] = {}
+        try:
+            fact_store = getattr(engine, "fact_store", None)
+            if fact_store is not None and hasattr(fact_store, "get_all_facts"):
+                maybe_facts = fact_store.get_all_facts()
+                if isinstance(maybe_facts, dict):
+                    structured_facts = maybe_facts
+        except Exception as e:
+            logger.debug("[OPENCLAW] Failed to build structured fact context: %s", e)
+
+        try:
+            openclaw_result = run_openclaw_agent(
+                user_command=effective_message,
+                thread_id=req.thread_id,
+                crt_api_url=os.getenv("CRT_API_URL", "http://127.0.0.1:8123"),
+                channel=req.channel,
+                origin=req.origin,
+                actor_id=req.actor_id,
+                structured_facts=structured_facts,
+                runtime_config=runtime_config,
+                workdir=Path.cwd(),
+            )
+            if openclaw_result.get("ok"):
+                control_state.request_kind = "openclaw_handoff"
+                control_state.mark(
+                    "decide",
+                    "openclaw",
+                    detail=str(openclaw_reason or "delegated"),
+                    session_id=str(openclaw_result.get("session_id") or ""),
+                )
+                delegated_answer = str(openclaw_result.get("answer") or "").strip()
+                if greeting_text:
+                    delegated_answer = f"{greeting_text}\n\n{delegated_answer}"
+                return _chat_response(
+                    answer=delegated_answer,
+                    response_type="speech",
+                    gates_passed=True,
+                    gate_reason="openclaw_handoff",
+                    metadata={
+                        "mode": "openclaw",
+                        "confidence": 0.88,
+                        "agent_activated": True,
+                        "openclaw_delegated": True,
+                        "openclaw_handoff_reason": openclaw_reason,
+                        "openclaw_session_id": openclaw_result.get("session_id"),
+                        "openclaw_agent_id": openclaw_result.get("agent_id"),
+                        "structured_facts": structured_facts,
+                        "pipeline_statuses": [
+                            "delegating to openclaw",
+                            f"openclaw session {openclaw_result.get('session_id')}",
+                        ],
+                    },
+                )
+            logger.warning(
+                "[OPENCLAW] Handoff failed for thread=%s reason=%s rc=%s stderr=%s",
+                req.thread_id,
+                openclaw_reason,
+                openclaw_result.get("returncode"),
+                str(openclaw_result.get("stderr") or "")[:300],
+            )
+            control_state.mark(
+                "decide",
+                "openclaw_fallback",
+                detail=str(openclaw_reason or "delegated"),
+                returncode=int(openclaw_result.get("returncode") or 0),
+            )
+        except Exception as e:
+            logger.warning("[OPENCLAW] Handoff exception for thread=%s: %s", req.thread_id, e)
+            control_state.mark("decide", "openclaw_fallback", detail="exception")
 
     # ── Agentic URL/tool routing ──────────────────────────────────────────────
     # If the message contains a URL with an action verb (read, fetch, visit, check,

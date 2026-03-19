@@ -15,7 +15,7 @@ import re as _re
 
 from personal_agent.crt_core import MemorySource
 from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
+from personal_agent.fact_slots import extract_fact_slots, create_simple_fact, names_look_equivalent
 from personal_agent.judgment_audit_log import get_judgment_log, CONTRADICTION_STORE
 
 from routes.deps import sanitize_thread_id
@@ -521,6 +521,8 @@ def _check_inline_contradiction(
                     continue
                 old_val = existing_slots[slot]
                 if not old_val or new_val.lower() == old_val.lower():
+                    continue
+                if slot == "name" and names_look_equivalent(old_val, new_val):
                     continue
                 # For exclusive slots: different value = contradiction, no NLP needed
                 is_exclusive = slot in _EXCLUSIVE_SLOTS or slot.startswith("favorite_")

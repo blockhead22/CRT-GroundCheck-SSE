@@ -21,7 +21,7 @@ from typing import Dict, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass
 
-from .fact_slots import extract_fact_slots, ExtractedFact
+from .fact_slots import extract_fact_slots, ExtractedFact, names_look_equivalent
 
 # Conditional import for LLM extraction (optional feature)
 try:
@@ -365,6 +365,21 @@ class GlobalUserProfile:
                 existing = cursor.fetchall()
                 
                 if existing:
+                    if slot == "name" and any(
+                        names_look_equivalent(str(row[1] or ""), str(fact.value or ""))
+                        for row in existing
+                    ):
+                        for row in existing:
+                            cursor.execute("""
+                                UPDATE user_profile_multi
+                                SET timestamp = ?, source_thread = ?
+                                WHERE id = ?
+                            """, (time.time(), thread_id, row[0]))
+                        logger.info(
+                            "[REGEX_PROFILE_UPDATE] Name refinement detected; refreshed existing profile value(s) for %s",
+                            fact.value,
+                        )
+                        continue
                     for row in existing:
                         cursor.execute("""
                             UPDATE user_profile_multi 

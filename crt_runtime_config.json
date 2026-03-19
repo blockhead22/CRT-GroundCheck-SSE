@@ -123,8 +123,7 @@
     "generation_stack":  {
                              "local":  {
                                            "enabled":  true,
-                                           "default_model":  "qwen2.5-coder:14b",
-                                           "native_tool_calling":  true
+                                           "default_model":  "qwen2.5-coder:14b"
                                        },
                              "cloud":  {
                                            "enabled":  false,
@@ -164,5 +163,47 @@
                                                               ],
                                              "min_tokens_for_cloud":  16
                                          }
+                         },
+    "openclaw_handoff":  {
+                             "enabled":  true,
+                             "agent_id":  "main",
+                             "session_prefix":  "crt",
+                             "timeout_seconds":  120,
+                             "allowed_channels":  [
+                                                      "telegram",
+                                                      "webchat"
+                                                  ],
+                             "denied_channels":  [
+
+                                                 ],
+                             "inject_crt_context":  true,
+                             "include_api_guide":  true,
+                             "max_fact_items":  8,
+                             "auto_keywords":  [
+                                                   "moltbook",
+                                                   "join moltbook",
+                                                   "openclaw",
+                                                   "research",
+                                                   "investigate",
+                                                   "look up",
+                                                   "search for",
+                                                   "find latest",
+                                                   "browse",
+                                                   "compare",
+                                                   "summarize",
+                                                   "github",
+                                                   "git hub",
+                                                   "repo",
+                                                   "repository",
+                                                   "pull request",
+                                                   "issue",
+                                                   "documentation",
+                                                   "docs for",
+                                                   "check website",
+                                                   "visit",
+                                                   "weather",
+                                                   "price of",
+                                                   "what changed"
+                                               ]
                          }
 }

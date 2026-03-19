@@ -580,6 +580,42 @@ def _norm_text(value: str) -> str:
     return value.lower()
 
 
+def names_look_equivalent(left: str, right: str) -> bool:
+    """Return True when two name strings look like the same identity.
+
+    This is intentionally conservative and covers common refinement cases like:
+    - "Nick" vs "Nick Block"
+    - "Nick Block" vs "Nick B"
+    - repeated exact matches with different spacing/case
+    """
+    left_norm = _norm_text(str(left or ""))
+    right_norm = _norm_text(str(right or ""))
+    if not left_norm or not right_norm:
+        return False
+    if left_norm == right_norm:
+        return True
+    if left_norm.startswith(right_norm) or right_norm.startswith(left_norm):
+        return True
+
+    left_parts = [p for p in re.split(r"\s+", left_norm) if p]
+    right_parts = [p for p in re.split(r"\s+", right_norm) if p]
+    if not left_parts or not right_parts:
+        return False
+
+    if left_parts[0] == right_parts[0]:
+        return True
+
+    if len(left_parts) >= 2 and len(right_parts) >= 2:
+        left_first, left_last = left_parts[0], left_parts[-1]
+        right_first, right_last = right_parts[0], right_parts[-1]
+        if left_last == right_last and (
+            left_first.startswith(right_first) or right_first.startswith(left_first)
+        ):
+            return True
+
+    return False
+
+
 def is_question(text: str) -> bool:
     text = text.strip()
     if not text:

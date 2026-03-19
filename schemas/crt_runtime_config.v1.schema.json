@@ -220,6 +220,43 @@
         }
       }
     },
+    "openclaw_handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "agent_id",
+        "session_prefix",
+        "timeout_seconds",
+        "allowed_channels",
+        "denied_channels",
+        "inject_crt_context",
+        "include_api_guide",
+        "max_fact_items",
+        "auto_keywords"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "agent_id": { "type": "string", "minLength": 1 },
+        "session_prefix": { "type": "string", "minLength": 1 },
+        "timeout_seconds": { "type": "integer", "minimum": 10 },
+        "allowed_channels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "denied_channels": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "inject_crt_context": { "type": "boolean" },
+        "include_api_guide": { "type": "boolean" },
+        "max_fact_items": { "type": "integer", "minimum": 1 },
+        "auto_keywords": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "learned_suggestions": {
       "type": "object",
       "additionalProperties": false,

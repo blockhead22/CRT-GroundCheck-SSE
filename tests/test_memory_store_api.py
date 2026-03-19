@@ -89,3 +89,43 @@ def test_memory_store_endpoint_keeps_social_claims_provisional_and_out_of_fact_s
     assert memory.get("kind") == "observation"
 
     assert rag.fact_store.get_fact("user.favorite_color") is None
+
+
+def test_memory_store_endpoint_does_not_flag_name_refinement_as_contradiction(tmp_path: Path):
+    rag = _build_rag(tmp_path)
+
+    app = FastAPI()
+    app.include_router(memory_routes.router)
+    app.state.get_engine = lambda thread_id: rag
+
+    client = TestClient(app)
+    first = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "My name is Nick Block",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:first-name",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "My name is Nick",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:refined-name",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+
+    assert second.status_code == 200
+    body = second.json() or {}
+    assert body.get("contradiction_detected") is False

@@ -43,6 +43,7 @@ from .fact_slots import (
     detect_correction_type,
     extract_direct_correction,
     extract_hedged_correction,
+    names_look_equivalent,
 )
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .learned_suggestions import LearnedSuggestionEngine
@@ -2433,6 +2434,17 @@ class CRTEnhancedRAG:
                 # Check if values are similar enough to skip (avoid nickname issues)
                 if prev_value_str == new_value_str:
                     continue
+                if slot == "name":
+                    user_query_lower = (user_query or "").lower()
+                    if names_look_equivalent(prev_value_str, new_value_str) or any(
+                        cue in user_query_lower for cue in ("nickname", "full name", "just my nickname")
+                    ):
+                        logger.info(
+                            "[ML_CONTRADICTION] Name refinement detected (%s vs %s); skipping contradiction",
+                            prev_value_str,
+                            new_value_str,
+                        )
+                        continue
                 
                 # Calculate drift for all checks
                 drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
@@ -2560,28 +2572,11 @@ class CRTEnhancedRAG:
                 # ==============================================================
                 if not ml_available:
                     if slot == "name":
-                        p = prev_value_str
-                        n = new_value_str
-                        p_parts = [x for x in re.split(r"\s+", p) if x]
-                        n_parts = [x for x in re.split(r"\s+", n) if x]
-                        token_name_match = False
-                        if len(p_parts) >= 2 and len(n_parts) >= 2:
-                            p_first, p_last = p_parts[0], p_parts[-1]
-                            n_first, n_last = n_parts[0], n_parts[-1]
-                            token_name_match = (
-                                p_last == n_last
-                                and (p_first.startswith(n_first) or n_first.startswith(p_first))
-                            )
-                        same_or_prefix = (
-                            p == n
-                            or (p and n and (p.startswith(n) or n.startswith(p)))
-                            or token_name_match
-                        )
                         nickname_expansion_cue = any(
                             cue in user_query_lower
                             for cue in ("nickname", "full name", "just my nickname")
                         )
-                        if same_or_prefix or nickname_expansion_cue:
+                        if names_look_equivalent(prev_value_str, new_value_str) or nickname_expansion_cue:
                             logger.info(
                                 "[NO_ML_FALLBACK] Name refinement detected (%s vs %s); skipping contradiction",
                                 prev_value_str,
@@ -5382,6 +5377,16 @@ class CRTEnhancedRAG:
                     new_norm = getattr(new_fact, "normalized", None)
                     logger.debug("Fact comparison: slot=%s, latest='%s', new='%s', match=%s", slot, latest_norm, new_norm, latest_norm == new_norm)
                     if latest_norm == new_norm:
+                        continue
+                    if slot == "name" and names_look_equivalent(
+                        str(getattr(latest_fact, "value", latest_norm) or ""),
+                        str(getattr(new_fact, "value", new_norm) or ""),
+                    ):
+                        logger.debug(
+                            "Skipping generic name contradiction for refinement: latest=%s new=%s",
+                            latest_norm,
+                            new_norm,
+                        )
                         continue
 
                     # Values differ - but before flagging as contradiction, check ML detector

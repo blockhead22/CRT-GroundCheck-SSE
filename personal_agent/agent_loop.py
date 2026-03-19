@@ -189,6 +189,7 @@ class ToolRegistry:
             AgentAction.SYNTHESIZE: self._synthesize,
             AgentAction.REFLECT: self._reflect,
             AgentAction.PLAN: self._plan,
+            AgentAction.FINISH: self._finish,
         }
 
     def execute(self, tool_call: ToolCall) -> ToolResult:
@@ -568,6 +569,10 @@ class ToolRegistry:
             "piece_count": len(pieces),
         }
 
+    def _finish(self, answer: str) -> dict:
+        """Return a final answer payload for the agent loop."""
+        return {"answer": str(answer or "").strip()}
+
     def _reflect(self, action: str, result: Any) -> dict:
         """Reflect on action outcome."""
         # Simple reflection heuristic
@@ -739,6 +744,26 @@ class AgentLoop:
 
     def _choose_action(self, thought: str, context: Optional[dict]) -> Optional[ToolCall]:
         """Choose which tool to use based on thought."""
+        query_text = str(getattr(self.trace, "query", "") or "").strip()
+        query_lower = query_text.lower()
+        if len(self.trace.steps) == 0:
+            url_match = re.search(r"https?://\S+", query_text, flags=re.IGNORECASE)
+            if url_match:
+                return ToolCall(
+                    tool=AgentAction.FETCH_URL,
+                    args={"url": url_match.group(0), "max_chars": 8000},
+                    reasoning="URL detected in the request - fetch the target directly before answering",
+                )
+            if "moltbook" in query_lower:
+                action = "search" if any(tok in query_lower for tok in ("search", "find", "lookup", "look up")) else "feed"
+                if any(tok in query_lower for tok in ("notification", "notifications", "alerts", "mentions")):
+                    action = "notifications"
+                return ToolCall(
+                    tool=AgentAction.MOLTBOOK,
+                    args={"action": action, "query": query_text if action == "search" else "", "limit": 10},
+                    reasoning="Moltbook request detected - use the Moltbook API tool instead of generic fallback",
+                )
+
         if self.reasoning:
             # Use LLM reasoning for tool selection
             available_tools = list(AgentAction)

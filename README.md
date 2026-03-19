@@ -545,10 +545,57 @@ Start the server: `python crt_api.py` → `http://127.0.0.1:8123`
 | `/api/contradictions/next` | GET | Get next contradiction needing resolution |
 | `/api/contradictions/resolve` | POST | Resolve a contradiction (OVERRIDE/PRESERVE) |
 | `/api/memory` | GET | List memories for a thread |
+| `/api/memory/store` | POST | Deterministic direct memory write with governed metadata |
+| `/api/memory/recent` | GET | Recent memories with authority, channel, origin, and kind |
+| `/api/memory/usage/summary` | GET | Aggregated memory hit / usage counts |
+| `/api/memory/{memory_id}/events` | GET | Append-only event log for a memory item |
 | `/api/facts` | GET | List structured facts |
 | `/api/episodic/context` | GET | Get user context (preferences, patterns) |
 | `/api/thread/reset` | POST | Reset a thread's memory and ledger |
 | `/api/heartbeat/config` | GET/PUT | Configure proactive engagement |
+
+---
+
+## Governed Memory + Channel Routing
+
+CRT now uses governed memory instead of treating all stored text as equivalent fact.
+
+Each memory item can persist:
+
+- `authority`: `provisional`, `confirmed`, or `locked`
+- `channel`: `webchat`, `telegram`, `moltbook`, `system`, or `unknown`
+- `origin`: message id, URL, post id, or other provenance marker
+- `kind`: `user_fact`, `ops`, `preference`, `identity_constant`, `evolution_observation`, `evolution_proposal`, `hypothesis`, or `observation`
+
+Hard rules now enforced in code:
+
+- social/Moltbook writes are always quarantined as `authority="provisional"`
+- system/model-output narration defaults to provisional instead of becoming confirmed memory
+- only authoritative `kind="user_fact"` memories can answer user-fact slots
+- promotion is explicit and append-only; memories are deprecated, not deleted
+
+Useful governed-memory APIs:
+
+- `POST /api/memory/store` for deterministic writes from system tools or sync scripts
+- `GET /api/memory/recent` to inspect stored provenance and authority
+- `GET /api/memory/usage/summary` and `GET /api/memory/{memory_id}/events` to inspect retrieval hits, guards, promotions, and other memory events
+
+### Telegram and OpenClaw
+
+There are now two Telegram paths plus an optional auto-handoff layer:
+
+- **Normal Telegram chat**: Telegram bot -> `CRTBridge` -> `POST /api/chat/send` -> CRT response
+- **Explicit OpenClaw delegation**: Telegram `/task ...` command -> OpenClaw via the shared bridge
+- **Config-driven CRT -> OpenClaw handoff**: `POST /api/chat/send` can delegate Telegram or webchat turns into OpenClaw when `openclaw_handoff.enabled=true` and the request matches configured triggers
+
+That means:
+
+- A normal Telegram or webchat message can now auto-escalate from CRT into OpenClaw, but only if the runtime handoff policy allows that channel and the message matches the configured trigger set.
+- OpenClaw delegation is still available explicitly via the Telegram `/task` command.
+- Both the explicit `/task` path and the CRT auto-handoff path use the same OpenClaw bridge and inject CRT context.
+- Current default triggers include research-style prompts, `moltbook`, and URL-action requests like `Read https://...`.
+- Delegated OpenClaw sessions receive direct CRT access through `CRT_API_URL` and `CRT_THREAD_ID`, and the installed `crt_client.py` helper can query facts, recent memory, contradictions, usage, events, direct memory writes, and chat.
+- CRT can proactively send outbound Telegram notifications through the notification claim/ack APIs, but that is separate from OpenClaw delegation.
 
 ---
 

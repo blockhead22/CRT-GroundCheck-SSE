@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import socket
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -40,6 +41,8 @@ if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
 from channels.base import CRTBridge, ChannelMessage, ChannelResponse
+from personal_agent.openclaw_bridge import run_openclaw_agent
+from personal_agent.runtime_config import get_runtime_config
 
 logger = logging.getLogger(__name__)
 
@@ -697,56 +700,33 @@ async def cmd_task(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await _react_to_message(update, "🦞")
 
     try:
-        import subprocess
-
-        openclaw_token = os.getenv("OPENCLAW_GATEWAY_TOKEN", "")
-        openclaw_url = os.getenv("OPENCLAW_GATEWAY_URL", "http://127.0.0.1:18789")
-
-        # Inject personal context from CRT memory into the command
-        context_note = ""
+        structured_facts = {}
         try:
             resp_mem = requests.get(
                 f"{CRT_API_URL}/api/facts/structured",
+                params={"thread_id": _thread_id_for(update)},
                 timeout=3,
             )
             if resp_mem.status_code == 200:
-                facts = resp_mem.json()
-                if facts:
-                    # Only include a compact subset to avoid overwhelming the prompt
-                    compact = {k: v for k, v in list(facts.items())[:8] if v}
-                    if compact:
-                        context_note = f" [User context: {compact}]"
+                payload = resp_mem.json() or {}
+                maybe_facts = payload.get("facts") if isinstance(payload, dict) else {}
+                if isinstance(maybe_facts, dict):
+                    structured_facts = maybe_facts
         except Exception:
             pass
 
-        full_command = command + context_note
-
-        # Use openclaw CLI to run an agent turn
-        result = subprocess.run(
-            ["openclaw", "agent", "--message", full_command, "--json"],
-            capture_output=True,
-            text=True,
-            timeout=120,
+        result = run_openclaw_agent(
+            user_command=command,
+            thread_id=_thread_id_for(update),
+            crt_api_url=CRT_API_URL,
+            channel="telegram",
+            origin=f"telegram:{update.effective_chat.id}:{update.message.message_id}",
+            actor_id=_sender_id(update),
+            structured_facts=structured_facts,
+            runtime_config=get_runtime_config(),
+            workdir=Path(_project_root),
         )
-
-        if result.returncode == 0 and result.stdout.strip():
-            try:
-                data = json.loads(result.stdout.strip())
-                # openclaw agent --json returns {output: str, ...}
-                answer = (
-                    data.get("output")
-                    or data.get("response")
-                    or data.get("text")
-                    or data.get("content")
-                    or str(data)
-                )
-            except (json.JSONDecodeError, KeyError):
-                answer = result.stdout.strip()
-        elif result.stderr.strip():
-            # Some versions stream to stderr even on success
-            answer = result.stderr.strip()
-        else:
-            answer = "OpenClaw returned an empty response."
+        answer = str(result.get("answer") or "").strip() or "OpenClaw returned an empty response."
 
         _emit_live_event(
             event_type="command",
