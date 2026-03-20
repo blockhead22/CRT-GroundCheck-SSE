@@ -1369,12 +1369,12 @@ export type AccuracyStats = {
   }>
 }
 
-export async function teachCopilot(text: string, namespace?: string): Promise<{ ok: boolean; memory_id: string; text: string; trust: number }> {
+export async function teachCopilot(text: string, namespace?: string, threadId?: string): Promise<{ ok: boolean; memory_id: string; text: string; trust: number }> {
   const base = getApiBaseUrlInternal()
   const res = await fetch(`${base}/api/copilot/teach`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, namespace: namespace || 'default', source: 'user' }),
+    body: JSON.stringify({ text, namespace: namespace || 'default', source: 'user', thread_id: threadId || 'default' }),
   })
   if (!res.ok) throw new Error(`Failed to teach: ${res.status}`)
   return res.json()

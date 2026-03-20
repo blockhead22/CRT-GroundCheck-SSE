@@ -69,30 +69,50 @@ router = APIRouter(prefix="/api/copilot", tags=["copilot"])
 # DB path resolution
 # ---------------------------------------------------------------------------
 
-# Try CRT native memory DB first, then GroundCheck MCP DB as fallback
+# Mirror the engine's shared-memory logic: when CRT_SHARED_MEMORY=true all
+# threads use crt_memory_shared.db; otherwise fall back to crt_memory.db.
 _ENV_DB = os.environ.get("GROUNDCHECK_DB", "")
-_CANDIDATE_PATHS = [
-    *([] if not _ENV_DB else [Path(_ENV_DB)]),
-    # CRT memory DB — the system Aether actually uses (primary)
-    Path("personal_agent/crt_memory.db"),
-    Path("data/crt_memory.db"),
-    Path("../personal_agent/crt_memory.db"),
-    # GroundCheck MCP DB (fallback)
-    Path("D:/groundcheck/.groundcheck/memory.db"),
-    Path("../.groundcheck/memory.db"),
-    Path(".groundcheck/memory.db"),
-]
+_SHARED_MEMORY = os.environ.get("CRT_SHARED_MEMORY", "false").lower() == "true"
+
+
+def _candidate_paths() -> list:
+    """Return ordered DB candidates, respecting CRT_SHARED_MEMORY."""
+    candidates = []
+    if _ENV_DB:
+        candidates.append(Path(_ENV_DB))
+    if _SHARED_MEMORY:
+        candidates.append(Path("personal_agent/crt_memory_shared.db"))
+    candidates += [
+        Path("personal_agent/crt_memory_shared.db"),  # prefer shared if it has data
+        Path("personal_agent/crt_memory.db"),
+        Path("data/crt_memory.db"),
+        Path("../personal_agent/crt_memory.db"),
+        # GroundCheck MCP DB (fallback)
+        Path("D:/groundcheck/.groundcheck/memory.db"),
+        Path("../.groundcheck/memory.db"),
+        Path(".groundcheck/memory.db"),
+    ]
+    return candidates
 
 
 def _find_db() -> Optional[Path]:
     """Return the first existing memory DB path."""
-    for p in _CANDIDATE_PATHS:
+    for p in _candidate_paths():
         try:
             if p.is_file() and p.stat().st_size > 0:
                 return p
         except (OSError, TypeError):
             continue
     return None
+
+
+def _engine_db_path(thread_id: str = "default") -> str:
+    """Return the DB path the engine would use for this thread_id."""
+    if _SHARED_MEMORY:
+        return "personal_agent/crt_memory_shared.db"
+    from personal_agent.text_utils import sanitize_thread_id
+    tid = sanitize_thread_id(thread_id)
+    return f"personal_agent/crt_memory_{tid}.db"
 
 
 def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
@@ -372,7 +392,8 @@ def teach_copilot(req: TeachRequest) -> Dict[str, Any]:
         from personal_agent.crt_memory import CRTMemorySystem, MemorySource
         from personal_agent.crt_core import encode_vector
 
-        crt = CRTMemorySystem()
+        db_path = _engine_db_path(req.thread_id)
+        crt = CRTMemorySystem(db_path)
         source_map = {
             "user": MemorySource.USER,
             "inferred": MemorySource.INFERENCE,

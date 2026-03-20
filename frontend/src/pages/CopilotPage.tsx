@@ -213,7 +213,7 @@ function ProfileCard({ profile }: { profile: CopilotProfile | null }) {
 // Teach Form
 // ---------------------------------------------------------------------------
 
-function TeachForm({ onTaught }: { onTaught: () => void }) {
+function TeachForm({ onTaught, threadId = 'default' }: { onTaught: () => void; threadId?: string }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [success, setSuccess] = useState('')
@@ -231,7 +231,7 @@ function TeachForm({ onTaught }: { onTaught: () => void }) {
     if (!text.trim()) return
     setBusy(true)
     try {
-      await teachCopilot(text.trim())
+      await teachCopilot(text.trim(), undefined, threadId)
       setSuccess(text.trim())
       setText('')
       onTaught()
@@ -1998,7 +1998,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
             </div>
 
             <div className="px-4 py-3 sm:px-6">
-              <TeachForm onTaught={() => { fetchData(); fetchSideData() }} />
+              <TeachForm onTaught={() => { fetchData(); fetchSideData() }} threadId={threadId} />
             </div>
 
             <div className="px-4 py-2 sm:px-6">
