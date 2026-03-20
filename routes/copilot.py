@@ -75,6 +75,7 @@ _CANDIDATE_PATHS = [
     *([] if not _ENV_DB else [Path(_ENV_DB)]),
     # CRT memory DB — the system Aether actually uses (primary)
     Path("personal_agent/crt_memory.db"),
+    Path("data/crt_memory.db"),
     Path("../personal_agent/crt_memory.db"),
     # GroundCheck MCP DB (fallback)
     Path("D:/groundcheck/.groundcheck/memory.db"),
@@ -361,51 +362,105 @@ def get_copilot_namespaces() -> List[str]:
 
 @router.post("/teach")
 def teach_copilot(req: TeachRequest) -> Dict[str, Any]:
-    """Store a new fact directly from the UI — 'Teach Copilot' feature."""
+    """Store a new fact directly from the UI — 'Teach Copilot' feature.
+
+    For the CRT native DB, delegates to CRTMemorySystem so embeddings and
+    metadata are stored correctly.  Falls back to raw SQL for the GroundCheck DB.
+    """
+    # Try CRT system first (preferred path)
+    try:
+        from personal_agent.crt_memory import CRTMemorySystem, MemorySource
+        from personal_agent.crt_core import encode_vector
+
+        crt = CRTMemorySystem()
+        source_map = {
+            "user": MemorySource.USER,
+            "inferred": MemorySource.INFERENCE,
+            "document": MemorySource.DOCUMENT,
+        }
+        src = source_map.get(req.source, MemorySource.USER)
+        vector = encode_vector(req.text)
+        mem_id = crt.store_memory(
+            text=req.text,
+            vector=vector,
+            source=src,
+            confidence=0.85,
+            trust=0.70,
+            thread_id=req.thread_id,
+            kind="user_fact",
+            authority="confirmed",
+            channel="webchat",
+        )
+        logger.info("[COPILOT] Stored fact via CRTMemorySystem: %s", mem_id)
+        return {"ok": True, "memory_id": mem_id, "text": req.text, "trust": 0.70, "via": "crt"}
+    except Exception as crt_exc:
+        logger.debug("[COPILOT] CRTMemorySystem teach failed (%s) — falling back to raw SQL", crt_exc)
+
+    # Raw SQL fallback (GroundCheck schema)
     conn = _open_readwrite()
     try:
-        has_ns = _has_column(conn, "memories", "namespace")
-        now = int(time.time())
-        mem_id = f"mem_{req.thread_id}_{now}_{hash(req.text) % 10000:04d}"
+        db = _DBAdapter(conn)
+        now_ts = time.time()
+        now_int = int(now_ts)
+        mem_id = f"mem_{req.thread_id}_{now_int}_{hash(req.text) % 10000:04d}"
         created = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        if has_ns:
+        if db.crt:
             conn.execute(
-                """INSERT INTO memories (id, thread_id, text, trust, source, timestamp, metadata, namespace, created_at)
+                """INSERT INTO memories
+                   (memory_id, thread_id, text, trust, confidence, source, timestamp,
+                    vector_json, sse_mode, kind, authority)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (mem_id, req.thread_id, req.text, 0.70, 0.85, req.source, now_ts,
+                 "[]", "hybrid", req.namespace or "user_fact", "confirmed"),
+            )
+        elif db.has_ns:
+            conn.execute(
+                """INSERT INTO memories
+                   (id, thread_id, text, trust, source, timestamp, metadata, namespace, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (mem_id, req.thread_id, req.text, 0.70, req.source, now, "{}", req.namespace, created),
+                (mem_id, req.thread_id, req.text, 0.70, req.source, now_int, "{}", req.namespace, created),
             )
         else:
             conn.execute(
-                """INSERT INTO memories (id, thread_id, text, trust, source, timestamp, metadata, created_at)
+                """INSERT INTO memories
+                   (id, thread_id, text, trust, source, timestamp, metadata, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (mem_id, req.thread_id, req.text, 0.70, req.source, now, "{}", created),
+                (mem_id, req.thread_id, req.text, 0.70, req.source, now_int, "{}", created),
             )
         conn.commit()
-        return {"ok": True, "memory_id": mem_id, "text": req.text, "trust": 0.70}
+        return {"ok": True, "memory_id": mem_id, "text": req.text, "trust": 0.70, "via": "raw_sql"}
     finally:
         conn.close()
 
 
 @router.delete("/memory/{memory_id}")
 def delete_copilot_memory(memory_id: str) -> Dict[str, Any]:
-    """Delete a specific memory by ID."""
+    """Delete (or soft-deprecate) a specific memory by ID."""
     conn = _open_readwrite()
     try:
-        # Fetch text before deletion for active learning
-        row = conn.execute("SELECT text FROM memories WHERE id = ?", (memory_id,)).fetchone()
+        db = _DBAdapter(conn)
+        row = conn.execute(
+            f"SELECT text FROM memories WHERE {db.id_col} = ?", (memory_id,)
+        ).fetchone()
         deleted_text = row["text"] if row else ""
 
-        # Track deletion for accuracy stats
         _track_event(conn, "deletion", memory_id)
-        cur = conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+
+        if db.crt:
+            # CRT is append-only — soft-delete via deprecated flag
+            cur = conn.execute(
+                "UPDATE memories SET deprecated = 1, deprecation_reason = 'user_deleted' WHERE memory_id = ?",
+                (memory_id,),
+            )
+        else:
+            cur = conn.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
+
         conn.commit()
         if cur.rowcount == 0:
             raise HTTPException(status_code=404, detail="Memory not found")
 
-        # Forward to active learning (non-blocking)
         _notify_active_learning_deletion(memory_id, deleted_text)
-
         return {"ok": True, "deleted": memory_id}
     finally:
         conn.close()
@@ -416,13 +471,16 @@ def correct_copilot_memory(req: CorrectRequest) -> Dict[str, Any]:
     """Correct an existing memory — CRT drift-aware trust evolution + fact classification."""
     conn = _open_readwrite()
     try:
-        row = conn.execute("SELECT * FROM memories WHERE id = ?", (req.memory_id,)).fetchone()
+        db = _DBAdapter(conn)
+        row = conn.execute(
+            f"SELECT * FROM memories WHERE {db.id_col} = ?", (req.memory_id,)
+        ).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Memory not found")
 
         old_text = row["text"]
         conn.execute(
-            "UPDATE memories SET text = ?, source = 'user' WHERE id = ?",
+            f"UPDATE memories SET text = ?, source = 'user' WHERE {db.id_col} = ?",
             (req.corrected_text, req.memory_id),
         )
         _track_event(conn, "correction", req.memory_id, old_text=old_text, new_text=req.corrected_text)
@@ -490,7 +548,11 @@ def get_copilot_profile() -> CopilotProfile:
     """Synthesize a user profile from all stored memories."""
     conn = _open_readonly()
     try:
-        rows = conn.execute("SELECT text, trust FROM memories ORDER BY trust DESC, timestamp DESC").fetchall()
+        db = _DBAdapter(conn)
+        alive = db.alive
+        rows = conn.execute(
+            f"SELECT text, trust FROM memories WHERE 1=1 {alive} ORDER BY trust DESC, timestamp DESC"
+        ).fetchall()
         texts = [r["text"] for r in rows]
 
         profile = CopilotProfile(all_facts=texts)
@@ -551,13 +613,15 @@ def get_accuracy_stats() -> AccuracyStats:
     """Return accuracy and learning velocity stats."""
     conn = _open_readonly()
     try:
-        total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+        db = _DBAdapter(conn)
+        alive = db.alive
+        total = conn.execute(f"SELECT COUNT(*) FROM memories WHERE 1=1 {alive}").fetchone()[0]
         if total == 0:
             return AccuracyStats()
 
         # Source counts
         src_rows = conn.execute(
-            "SELECT COALESCE(source, 'unknown') as src, COUNT(*) as cnt FROM memories GROUP BY src"
+            f"SELECT COALESCE(source, 'unknown') as src, COUNT(*) as cnt FROM memories WHERE 1=1 {alive} GROUP BY src"
         ).fetchall()
         source_counts = {r["src"]: r["cnt"] for r in src_rows}
         auto = source_counts.get("inferred", 0)
@@ -586,18 +650,22 @@ def get_accuracy_stats() -> AccuracyStats:
         accuracy = round(1.0 - ((corrections + deletions) / max(total_ever, 1)), 3)
 
         # Time range and velocity
-        time_row = conn.execute("SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM memories").fetchone()
-        oldest = time_row["oldest"] or int(time.time())
-        newest = time_row["newest"] or int(time.time())
+        time_row = conn.execute(
+            f"SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM memories WHERE 1=1 {alive}"
+        ).fetchone()
+        oldest = float(time_row["oldest"] or time.time())
+        newest = float(time_row["newest"] or time.time())
         days_span = max((newest - oldest) / 86400, 1)
         memories_per_day = round(total / days_span, 2)
 
         # Learning velocity — memories per hour bucketed
         velocity: List[Dict[str, Any]] = []
         hour_rows = conn.execute(
-            """SELECT (timestamp / 3600) * 3600 as hour_bucket, COUNT(*) as cnt,
+            f"""SELECT (CAST(timestamp AS INTEGER) / 3600) * 3600 as hour_bucket,
+                      COUNT(*) as cnt,
                       SUM(CASE WHEN source = 'inferred' THEN 1 ELSE 0 END) as auto_cnt
                FROM memories
+               WHERE 1=1 {alive}
                GROUP BY hour_bucket
                ORDER BY hour_bucket"""
         ).fetchall()
@@ -666,35 +734,39 @@ def resolve_fact_check_endpoint(check_id: str) -> Dict[str, Any]:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _compute_stats(conn: sqlite3.Connection, has_ns: Optional[bool] = None) -> CopilotStats:
-    """Compute aggregate stats from the full memories table."""
-    if has_ns is None:
-        has_ns = _has_column(conn, "memories", "namespace")
+def _compute_stats(conn: sqlite3.Connection, db: Optional["_DBAdapter"] = None) -> CopilotStats:
+    """Compute aggregate stats from the memories table."""
+    if db is None:
+        db = _DBAdapter(conn)
+    alive = db.alive
 
-    total = conn.execute("SELECT COUNT(*) FROM memories").fetchone()[0]
+    total = conn.execute(f"SELECT COUNT(*) FROM memories WHERE 1=1 {alive}").fetchone()[0]
 
-    # Namespaces
-    if has_ns:
-        ns_rows = conn.execute("SELECT DISTINCT namespace FROM memories ORDER BY namespace").fetchall()
+    # Namespaces / kinds
+    if db.has_ns:
+        ns_rows = conn.execute(f"SELECT DISTINCT namespace FROM memories WHERE 1=1 {alive} ORDER BY namespace").fetchall()
         namespaces = [r["namespace"] or "default" for r in ns_rows]
+    elif db.has_kind:
+        ns_rows = conn.execute(f"SELECT DISTINCT kind FROM memories WHERE 1=1 {alive} ORDER BY kind").fetchall()
+        namespaces = [r["kind"] or "default" for r in ns_rows]
     else:
         namespaces = ["default"]
 
     # Source counts
     src_rows = conn.execute(
-        "SELECT COALESCE(source, 'unknown') as src, COUNT(*) as cnt FROM memories GROUP BY src"
+        f"SELECT COALESCE(source, 'unknown') as src, COUNT(*) as cnt FROM memories WHERE 1=1 {alive} GROUP BY src"
     ).fetchall()
     source_counts = {r["src"]: r["cnt"] for r in src_rows}
 
     # Trust distribution buckets
     trust_buckets = {"low (0-0.3)": 0, "medium (0.3-0.6)": 0, "high (0.6-0.8)": 0, "very_high (0.8-1.0)": 0}
     trust_rows = conn.execute(
-        """SELECT
+        f"""SELECT
              SUM(CASE WHEN trust < 0.3 THEN 1 ELSE 0 END) as low,
              SUM(CASE WHEN trust >= 0.3 AND trust < 0.6 THEN 1 ELSE 0 END) as med,
              SUM(CASE WHEN trust >= 0.6 AND trust < 0.8 THEN 1 ELSE 0 END) as high,
              SUM(CASE WHEN trust >= 0.8 THEN 1 ELSE 0 END) as vhigh
-           FROM memories"""
+           FROM memories WHERE 1=1 {alive}"""
     ).fetchone()
     trust_buckets["low (0-0.3)"] = trust_rows["low"] or 0
     trust_buckets["medium (0.3-0.6)"] = trust_rows["med"] or 0
@@ -706,7 +778,9 @@ def _compute_stats(conn: sqlite3.Connection, has_ns: Optional[bool] = None) -> C
     explicit = total - auto
 
     # Time range
-    time_row = conn.execute("SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM memories").fetchone()
+    time_row = conn.execute(
+        f"SELECT MIN(timestamp) as oldest, MAX(timestamp) as newest FROM memories WHERE 1=1 {alive}"
+    ).fetchone()
 
     return CopilotStats(
         total_memories=total,
@@ -715,8 +789,8 @@ def _compute_stats(conn: sqlite3.Connection, has_ns: Optional[bool] = None) -> C
         trust_distribution=trust_buckets,
         auto_learned_count=auto,
         explicit_count=explicit,
-        newest_timestamp=time_row["newest"],
-        oldest_timestamp=time_row["oldest"],
+        newest_timestamp=int(time_row["newest"]) if time_row["newest"] else None,
+        oldest_timestamp=int(time_row["oldest"]) if time_row["oldest"] else None,
     )
 
 
@@ -1074,6 +1148,7 @@ def reinforce_memory_endpoint(memory_id: str) -> Dict[str, Any]:
     """Manually boost a memory's trust score (reinforcement)."""
     try:
         from personal_agent.trust_decay import reinforce_memory, REINFORCE_BOOST
+        # trust_decay.reinforce_memory now auto-detects CRT vs GroundCheck schema
         ok = reinforce_memory(memory_id, boost=REINFORCE_BOOST)
         if not ok:
             raise HTTPException(status_code=404, detail="Memory not found")

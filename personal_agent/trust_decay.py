@@ -159,6 +159,7 @@ def _find_groundcheck_db() -> Optional[Path]:
     candidates = [
         # CRT native memory DB (primary — this is what Aether actually uses)
         Path("personal_agent/crt_memory.db"),
+        Path("data/crt_memory.db"),
         Path("../personal_agent/crt_memory.db"),
         # GroundCheck MCP DB (fallback)
         Path("D:/groundcheck/.groundcheck/memory.db"),

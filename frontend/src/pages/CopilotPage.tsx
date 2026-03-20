@@ -1678,10 +1678,6 @@ export function CopilotPage() {
           </div>
         </div>
 
-        <div className="mb-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100">
-          Copilot uses a separate GroundCheck memory database. This page is not the same surface as CRT effective facts on the main dashboard/chat.
-        </div>
-
         {stats && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
             <StatCard label="Total" value={stats.total_memories} accent="text-white" />
