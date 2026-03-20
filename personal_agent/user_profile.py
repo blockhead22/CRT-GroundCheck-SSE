@@ -254,6 +254,22 @@ class GlobalUserProfile:
         if slot_norm == "assistant_name" or slot_norm.startswith("assistant_"):
             return False
         return True
+
+    @staticmethod
+    def _looks_like_multi_color_value(raw_value: str) -> bool:
+        raw = str(raw_value or "").strip().lower()
+        if not raw:
+            return False
+        if re.search(r"\b(and|or)\b", raw) or "," in raw or "/" in raw:
+            return True
+        known_colors = {
+            "red", "blue", "green", "yellow", "orange", "purple", "pink", "black",
+            "white", "brown", "gray", "grey", "gold", "silver", "teal", "cyan",
+            "magenta", "violet", "indigo", "turquoise", "maroon", "navy", "olive",
+            "coral", "salmon", "crimson",
+        }
+        tokens = [tok for tok in re.findall(r"[a-z]+", raw) if tok in known_colors]
+        return len(tokens) > 1
     
     def _update_from_llm_tuples(self, text: str, thread_id: str) -> Dict[str, Any]:
         """
@@ -287,6 +303,9 @@ class GlobalUserProfile:
             value = tuple_obj.value
             if not self._is_profile_slot(slot):
                 logger.info(f"[LLM_PROFILE_UPDATE] Skipping non-user slot: {slot}")
+                continue
+            if str(slot).strip().lower() == "favorite_color" and self._looks_like_multi_color_value(value):
+                logger.info(f"[LLM_PROFILE_UPDATE] Skipping composite favorite_color value: {value}")
                 continue
             normalized = value.lower().strip()
             action = tuple_obj.action
@@ -370,6 +389,9 @@ class GlobalUserProfile:
         for slot, fact in facts.items():
             if not self._is_profile_slot(slot):
                 logger.info(f"[REGEX_PROFILE_UPDATE] Skipping non-user slot: {slot}")
+                continue
+            if str(slot).strip().lower() == "favorite_color" and self._looks_like_multi_color_value(fact.value):
+                logger.info(f"[REGEX_PROFILE_UPDATE] Skipping composite favorite_color value: {fact.value}")
                 continue
             logger.info(f"[REGEX_PROFILE_UPDATE] Processing slot='{slot}', value='{fact.value}'")
             new_norm = fact.normalized if hasattr(fact, 'normalized') else fact.value.lower()

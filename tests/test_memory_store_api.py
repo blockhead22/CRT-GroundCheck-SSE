@@ -129,3 +129,112 @@ def test_memory_store_endpoint_does_not_flag_name_refinement_as_contradiction(tm
     assert second.status_code == 200
     body = second.json() or {}
     assert body.get("contradiction_detected") is False
+
+
+def test_memory_store_endpoint_reports_real_slot_conflict(tmp_path: Path):
+    rag = _build_rag(tmp_path)
+
+    app = FastAPI()
+    app.include_router(memory_routes.router)
+    app.state.get_engine = lambda thread_id: rag
+
+    client = TestClient(app)
+    first = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "My favorite color is orange",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:favorite-color:first",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "My favorite color is blue",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:favorite-color:second",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+
+    assert second.status_code == 200
+    body = second.json() or {}
+    assert body.get("contradiction_detected") is True
+    assert "favorite_color" in str(body.get("contradiction_info") or "")
+
+
+def test_memory_store_endpoint_keeps_heuristic_only_conflicts_internal(tmp_path: Path):
+    rag = _build_rag(tmp_path)
+
+    app = FastAPI()
+    app.include_router(memory_routes.router)
+    app.state.get_engine = lambda thread_id: rag
+
+    client = TestClient(app)
+    first = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "I am happy",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:heuristic:first",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+    assert first.status_code == 200
+
+    second = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "I am not happy",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:heuristic:second",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+
+    assert second.status_code == 200
+    body = second.json() or {}
+    assert body.get("contradiction_detected") is False
+    events = rag.memory.get_memory_events((body.get("memory") or {}).get("memory_id"))
+    assert any(event.get("event_type") == "heuristic_conflict_observed" for event in events)
+
+
+def test_memory_store_endpoint_rejects_multi_color_phrase_as_single_favorite_color(tmp_path: Path):
+    rag = _build_rag(tmp_path)
+
+    app = FastAPI()
+    app.include_router(memory_routes.router)
+    app.state.get_engine = lambda thread_id: rag
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/memory/store",
+        json={
+            "thread_id": "openclaw",
+            "text": "My favorite color is red white and blue",
+            "source": "user",
+            "channel": "webchat",
+            "origin": "test:favorite-color:composite",
+            "authority": "confirmed",
+            "kind": "user_fact",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert rag.fact_store.get_fact("user.favorite_color", thread_id="openclaw") is None
+    assert "favorite_color" not in rag.user_profile.get_all_facts()
