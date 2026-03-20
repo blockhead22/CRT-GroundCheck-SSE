@@ -2538,6 +2538,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         if len(sentences) < 4:
             return value
         normalized = [_re.sub(r"\s+", " ", s).strip().lower() for s in sentences]
+        # Identical-prefix run of 4+
         first = normalized[0]
         repeated_prefix = 1
         for item in normalized[1:]:
@@ -2546,14 +2547,31 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             repeated_prefix += 1
         if repeated_prefix >= 4:
             return sentences[0]
+        # Whole-answer 2- or 3-sentence cyclic pattern
         for pattern_len in (2, 3):
             if len(normalized) < pattern_len * 3:
                 continue
             pattern = normalized[:pattern_len]
             if all(normalized[idx] == pattern[idx % pattern_len] for idx in range(len(normalized))):
                 return " ".join(sentences[:pattern_len])
+        # All sentences identical
         if len(set(normalized)) == 1 and len(normalized) >= 3:
             return sentences[0]
+        # Any run of 6+ consecutive identical sentences in the middle or tail → truncate there
+        run_start = None
+        run_val = None
+        run_len = 0
+        for i, s in enumerate(normalized):
+            if s == run_val:
+                run_len += 1
+                if run_len >= 6 and run_start is not None:
+                    # Keep everything before the run plus the first sentence of the run
+                    keep = sentences[:run_start + 1]
+                    return " ".join(keep)
+            else:
+                run_start = i
+                run_val = s
+                run_len = 1
         return value
 
     final_answer = _collapse_repetitive_answer(final_answer)

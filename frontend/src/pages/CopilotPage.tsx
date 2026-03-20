@@ -27,6 +27,7 @@ import {
   getPersonalityTimeline,
   getSelfModelState,
   getEpistemicTimeline,
+  runLoops,
   type CopilotMemory,
   type CopilotMemoriesResponse,
   type CopilotProfile,
@@ -1490,6 +1491,7 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
   const [checkpoints, setCheckpoints] = useState<PersonalityCheckpoint[]>([])
   const [traits, setTraits] = useState<Record<string, unknown>>({})
   const [loading, setLoading] = useState(true)
+  const [reflecting, setReflecting] = useState(false)
   const [subTab, setSubTab] = useState<'current' | 'timeline' | 'traits'>('current')
 
   const load = useCallback(async () => {
@@ -1506,6 +1508,15 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }, [threadId])
+
+  const runReflection = useCallback(async () => {
+    setReflecting(true)
+    try {
+      await runLoops({ thread_id: threadId, mode: 'all' })
+      await load()
+    } catch { /* ignore */ }
+    finally { setReflecting(false) }
+  }, [threadId, load])
 
   useEffect(() => { load() }, [load])
 
@@ -1538,7 +1549,17 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
             </button>
           ))}
         </div>
-        <button onClick={load} className="text-xs text-white/30 hover:text-white/60 transition-colors">↻ refresh</button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={runReflection}
+            disabled={reflecting}
+            className="flex items-center gap-1 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2.5 py-1 text-xs text-violet-400 hover:bg-violet-500/10 disabled:opacity-40 transition-all"
+          >
+            {reflecting ? <span className="h-3 w-3 animate-spin rounded-full border border-violet-400/40 border-t-violet-400 inline-block" /> : '◈'}
+            {reflecting ? 'reflecting…' : 'reflect now'}
+          </button>
+          <button onClick={load} className="text-xs text-white/30 hover:text-white/60 transition-colors">↻</button>
+        </div>
       </div>
 
       {subTab === 'current' && (

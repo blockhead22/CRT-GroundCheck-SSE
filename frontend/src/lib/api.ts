@@ -133,7 +133,7 @@ export type ChatSendResponse = {
 
 export type LoopRunRequest = {
   thread_id: string
-  mode?: 'reflection' | 'personality' | 'both'
+  mode?: 'reflection' | 'personality' | 'both' | 'heartbeat' | 'all'
   prompt?: string | null
 }
 
@@ -143,6 +143,7 @@ export type LoopRunResponse = {
   ran: string[]
   reflection_scorecard?: Record<string, unknown> | null
   personality_profile?: Record<string, unknown> | null
+  self_model?: Record<string, string | null> | null
   open_contradictions?: number | null
 }
 

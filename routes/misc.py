@@ -1279,14 +1279,16 @@ def loops_run(request: Request, req: LoopRunRequest) -> LoopRunResponse:
     mode = (req.mode or "both").strip().lower()
     prompt = (req.prompt or "").strip() or None
 
-    run_reflection = mode in ("reflection", "reflect", "both", "")
-    run_personality = mode in ("personality", "person", "both", "")
-    if not run_reflection and not run_personality:
+    run_reflection = mode in ("reflection", "reflect", "both", "all", "")
+    run_personality = mode in ("personality", "person", "both", "all", "")
+    run_heartbeat = mode in ("heartbeat", "self", "all")
+    if not run_reflection and not run_personality and not run_heartbeat:
         run_reflection = True
         run_personality = True
 
     reflection_scorecard = None
     personality_profile = None
+    self_model_result = None
     ran: List[str] = []
 
     try:
@@ -1303,6 +1305,14 @@ def loops_run(request: Request, req: LoopRunRequest) -> LoopRunResponse:
     except Exception as e:
         logger.warning(f"[LOOPS] Personality run failed: {e}")
 
+    try:
+        if run_heartbeat:
+            from personal_agent.heartbeat_system import run_self_reflection_now
+            self_model_result = run_self_reflection_now(thread_id)
+            ran.append("heartbeat")
+    except Exception as e:
+        logger.warning(f"[LOOPS] Heartbeat/self-reflection run failed: {e}")
+
     open_contradictions = None
     try:
         engine = _get_engine(request, thread_id)
@@ -1316,6 +1326,7 @@ def loops_run(request: Request, req: LoopRunRequest) -> LoopRunResponse:
         ran=ran,
         reflection_scorecard=reflection_scorecard,
         personality_profile=personality_profile,
+        self_model=self_model_result,
         open_contradictions=open_contradictions,
     )
 

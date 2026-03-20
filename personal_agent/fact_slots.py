@@ -886,13 +886,22 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Match name pattern with title case (1-3 tokens)
     asst_name_pat = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
     
+    def _is_valid_asst_name(name: str) -> bool:
+        """Name must start with an actual uppercase letter (guards against re.IGNORECASE
+        causing the [A-Z] anchor in asst_name_pat to match lowercase words like 'starting')."""
+        return (
+            bool(name)
+            and name[0].isupper()
+            and name.lower() not in _NAME_STOPWORDS
+        )
+
     # Pattern 1: "call you X" or "I'll call you X"
     m = re.search(r"\b(?:I'll|I will|let's|lets)\s+call you\s+" + asst_name_pat, text, flags=re.IGNORECASE)
     if m:
         asst_name = m.group(1).strip()
-        if asst_name and asst_name.lower() not in _NAME_STOPWORDS:
+        if _is_valid_asst_name(asst_name):
             facts["assistant_name"] = ExtractedFact("assistant_name", asst_name, _norm_text(asst_name))
-    
+
     # Pattern 2: "your name is X" or "you're X" or "you are X"
     if "assistant_name" not in facts:
         m = re.search(r"\byour name is\s+" + asst_name_pat, text, flags=re.IGNORECASE)
@@ -900,10 +909,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             m = re.search(r"\byou(?:'re| are)\s+" + asst_name_pat + r"(?:\s|[,\.!?]|$)", text, flags=re.IGNORECASE)
         if m:
             asst_name = m.group(1).strip()
-            # Exclude common verbs/adjectives: "you're working", "you're awesome"
-            if asst_name and asst_name.lower() not in _NAME_STOPWORDS and asst_name.lower() not in {"working", "great", "awesome", "helpful", "right", "correct", "wrong"}:
+            if _is_valid_asst_name(asst_name) and asst_name.lower() not in {"working", "great", "awesome", "helpful", "right", "correct", "wrong"}:
                 facts["assistant_name"] = ExtractedFact("assistant_name", asst_name, _norm_text(asst_name))
-    
+
     # Pattern 3: "call yourself X" or "you should be called X"
     if "assistant_name" not in facts:
         m = re.search(r"\bcall yourself\s+" + asst_name_pat, text, flags=re.IGNORECASE)
@@ -911,7 +919,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             m = re.search(r"\byou should be called\s+" + asst_name_pat, text, flags=re.IGNORECASE)
         if m:
             asst_name = m.group(1).strip()
-            if asst_name and asst_name.lower() not in _NAME_STOPWORDS:
+            if _is_valid_asst_name(asst_name):
                 facts["assistant_name"] = ExtractedFact("assistant_name", asst_name, _norm_text(asst_name))
 
     # Employer

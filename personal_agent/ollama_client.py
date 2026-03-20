@@ -110,7 +110,8 @@ class OllamaClient:
                 messages=messages,
                 options={
                     'num_predict': max_tokens,
-                    'temperature': temperature
+                    'temperature': temperature,
+                    'repeat_penalty': 1.15,
                 },
                 stream=stream
             )
@@ -167,10 +168,11 @@ class OllamaClient:
                 messages=messages,
                 options={
                     'num_predict': max_tokens,
-                    'temperature': temperature
+                    'temperature': temperature,
+                    'repeat_penalty': 1.15,
                 }
             )
-            
+
             # Handle both dict-style and pydantic responses
             if hasattr(response, 'message'):
                 msg = response.message
@@ -247,6 +249,7 @@ class OllamaClient:
                 options={
                     "num_predict": max_tokens,
                     "temperature": temperature,
+                    "repeat_penalty": 1.15,
                 },
             )
 

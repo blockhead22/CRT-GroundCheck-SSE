@@ -272,7 +272,7 @@ class ResolveContradictionPolicyResponse(BaseModel):
 
 class LoopRunRequest(BaseModel):
     thread_id: str = Field(default="default")
-    mode: Optional[str] = Field(default="both", description="reflection | personality | both")
+    mode: Optional[str] = Field(default="both", description="reflection | personality | heartbeat | all | both")
     prompt: Optional[str] = Field(default=None, description="Optional manual prompt for the loop run")
 
 
@@ -282,6 +282,7 @@ class LoopRunResponse(BaseModel):
     ran: List[str] = Field(default_factory=list)
     reflection_scorecard: Optional[Dict[str, Any]] = None
     personality_profile: Optional[Dict[str, Any]] = None
+    self_model: Optional[Dict[str, Any]] = None
     open_contradictions: Optional[int] = None
 
 
