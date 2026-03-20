@@ -267,6 +267,10 @@ class CRTMemorySystem:
 
         # Initialize database
         self._init_db()
+        try:
+            self._consolidate_sync_origin_duplicates()
+        except Exception as e:
+            logger.debug(f"[MEMORY] Sync duplicate consolidation skipped: {e}")
     
     def _get_connection(self, timeout: float = 30.0) -> sqlite3.Connection:
         """
@@ -459,6 +463,16 @@ class CRTMemorySystem:
                 )
             except Exception as e:
                 logger.debug(f"[MEMORY] Could not create {index_name}: {e}")
+
+        try:
+            cursor.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_memories_thread_origin_active
+                ON memories(thread_id, origin, deprecated, timestamp DESC)
+                """
+            )
+        except Exception as e:
+            logger.debug(f"[MEMORY] Could not create idx_memories_thread_origin_active: {e}")
         
         conn.commit()
         conn.close()
@@ -597,6 +611,93 @@ class CRTMemorySystem:
         if delta is None:
             return None
         return (now if now is not None else time.time()) + delta
+
+    @staticmethod
+    def _normalize_dedupe_text(text: Optional[str]) -> str:
+        return re.sub(r"\s+", " ", str(text or "").strip()).lower()
+
+    def _is_sync_style_write(
+        self,
+        *,
+        origin: Optional[str],
+        context: Optional[Dict[str, Any]] = None,
+    ) -> bool:
+        origin_value = str(origin or "").strip().lower()
+        if origin_value.startswith("user.md:"):
+            return True
+        if not isinstance(context, dict):
+            return False
+        ctx_type = str(context.get("type") or "").strip().lower()
+        return ctx_type in {"sync_user_md", "user_md_sync"}
+
+    def _get_active_origin_memories(
+        self,
+        *,
+        origin: Optional[str],
+        thread_id: Optional[str],
+    ) -> List[MemoryItem]:
+        origin_value = str(origin or "").strip()
+        if not origin_value:
+            return []
+        thread_key = str(thread_id or "").strip()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT *
+            FROM memories
+            WHERE origin = ?
+              AND COALESCE(thread_id, '') = ?
+              AND COALESCE(deprecated, 0) = 0
+            ORDER BY timestamp DESC
+            """,
+            (origin_value, thread_key),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [self._row_to_memory(row) for row in rows]
+
+    def _consolidate_sync_origin_duplicates(self) -> int:
+        """Keep only the newest active sync-import memory per thread+origin."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT COALESCE(thread_id, '') AS thread_key, origin
+            FROM memories
+            WHERE origin LIKE 'USER.md:%'
+              AND COALESCE(deprecated, 0) = 0
+            GROUP BY thread_key, origin
+            HAVING COUNT(*) > 1
+            """
+        )
+        groups = cursor.fetchall()
+        conn.close()
+
+        deprecated_count = 0
+        for thread_key, origin in groups:
+            active = self._get_active_origin_memories(origin=origin, thread_id=thread_key)
+            if len(active) <= 1:
+                continue
+            keep = active[0]
+            for older in active[1:]:
+                self.deprecate_memory(
+                    older.memory_id,
+                    reason=f"sync_replaced:{origin}",
+                )
+                self.record_memory_event(
+                    memory_id=older.memory_id,
+                    event_type="sync_replaced",
+                    actor="system",
+                    reason="historical_sync_consolidation",
+                    metadata={
+                        "origin": origin,
+                        "thread_id": thread_key or None,
+                        "replacement_memory_id": keep.memory_id,
+                    },
+                )
+                deprecated_count += 1
+        return deprecated_count
 
     def _resolve_origin(
         self,
@@ -915,6 +1016,28 @@ class CRTMemorySystem:
         # Compute soft staleness marker from kind defaults.
         review_after = self._compute_review_after(kind)
 
+        active_origin_memories: List[MemoryItem] = []
+        if self._is_sync_style_write(origin=origin, context=context):
+            active_origin_memories = self._get_active_origin_memories(
+                origin=origin,
+                thread_id=resolved_thread_id,
+            )
+            normalized_new_text = self._normalize_dedupe_text(text)
+            for existing in active_origin_memories:
+                if self._normalize_dedupe_text(getattr(existing, "text", "")) != normalized_new_text:
+                    continue
+                self.record_memory_event(
+                    memory_id=existing.memory_id,
+                    event_type="sync_duplicate_skipped",
+                    actor="system",
+                    reason="idempotent_origin_match",
+                    metadata={
+                        "origin": origin,
+                        "thread_id": resolved_thread_id,
+                    },
+                )
+                return existing
+
         # Policy boundary: external/tool memories must be auditable.
         if source == MemorySource.EXTERNAL:
             validate_external_memory_context(context)
@@ -1161,6 +1284,37 @@ class CRTMemorySystem:
         # _detect_model_disagreement returns early when no facts are extractable.
         if resolved_source_kind == "model_output":
             self._detect_model_disagreement(memory)
+
+        if active_origin_memories:
+            for older in active_origin_memories:
+                if older.memory_id == memory.memory_id:
+                    continue
+                self.deprecate_memory(
+                    older.memory_id,
+                    reason=f"sync_replaced:{origin}",
+                )
+                self.record_memory_event(
+                    memory_id=older.memory_id,
+                    event_type="sync_replaced",
+                    actor="system",
+                    reason="superseded_by_new_sync_value",
+                    metadata={
+                        "origin": origin,
+                        "thread_id": resolved_thread_id,
+                        "replacement_memory_id": memory.memory_id,
+                    },
+                )
+            self.record_memory_event(
+                memory_id=memory.memory_id,
+                event_type="sync_replaced",
+                actor="system",
+                reason="activated_latest_sync_value",
+                metadata={
+                    "origin": origin,
+                    "thread_id": resolved_thread_id,
+                    "replaced_memory_ids": [m.memory_id for m in active_origin_memories if m.memory_id != memory.memory_id],
+                },
+            )
 
         return memory
     
@@ -2397,6 +2551,7 @@ class CRTMemorySystem:
         since_timestamp: Optional[float] = None,
         event_types: Optional[List[str]] = None,
         limit: int = 50,
+        exclude_deprecated: bool = True,
     ) -> List[Dict[str, Any]]:
         """Aggregate append-only usage events into per-memory hit counts."""
         normalized_event_types = [
@@ -2430,6 +2585,9 @@ class CRTMemorySystem:
             WHERE me.event_type IN ({placeholders})
         """
         params: List[Any] = list(normalized_event_types)
+
+        if exclude_deprecated:
+            sql += " AND COALESCE(m.deprecated, 0) = 0"
 
         if thread_id is not None:
             sql += " AND COALESCE(m.thread_id, '') = ?"

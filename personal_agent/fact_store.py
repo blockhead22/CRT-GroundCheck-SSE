@@ -127,6 +127,15 @@ class FactExtractor:
         text_lower = text_clean.lower()
         facts = []
         is_correction = self._is_correction(text_lower)
+        favorite_color_phrase = None
+
+        color_phrase_match = re.search(
+            r"(?:my )?(?:fav(?:ou?rite)?|preferred)\s+colou?r\s+(?:is\s+)?([^\n\r;,!\?]{1,60})",
+            text_clean,
+            re.IGNORECASE,
+        )
+        if color_phrase_match:
+            favorite_color_phrase = color_phrase_match.group(1).strip()
         
         # Skip emotional/casual statements
         if self._is_casual_statement(text_lower):
@@ -144,6 +153,11 @@ class FactExtractor:
                         value = orig_match.group(1).strip()
                     else:
                         value = match.group(1).strip()
+
+                    if slot == "user.favorite_color" and self._looks_like_multi_color_value(
+                        favorite_color_phrase or value
+                    ):
+                        continue
                     
                     # Validate based on slot type
                     if not self._validate_value(slot, value):
@@ -190,6 +204,17 @@ class FactExtractor:
             return True
         
         return True
+
+    def _looks_like_multi_color_value(self, raw_value: str) -> bool:
+        """Reject composite favorite-color phrases like 'red white and blue'."""
+        cleaned = str(raw_value or "").strip().lower()
+        if not cleaned:
+            return False
+        if " and " in cleaned or "," in cleaned or "/" in cleaned:
+            return True
+        tokens = re.findall(r"[a-z]+", cleaned)
+        color_tokens = [tok for tok in tokens if tok in self.COLORS]
+        return len(color_tokens) >= 2
     
     def _is_casual_statement(self, text: str) -> bool:
         """Detect casual/emotional statements that shouldn't be parsed for facts."""
@@ -726,6 +751,19 @@ class FactStore:
         def _clear(conn):
             conn.execute("DELETE FROM facts")
         self._execute_db(_clear)
+
+    def clear_thread_data(self, thread_id: Optional[str]) -> int:
+        """Clear all facts for a specific thread."""
+        thread_key = self._normalize_thread_id(thread_id)
+
+        def _clear(conn):
+            cursor = conn.execute(
+                "DELETE FROM facts WHERE COALESCE(thread_id, 'default') = ?",
+                (thread_key,),
+            )
+            return int(cursor.rowcount or 0)
+
+        return self._execute_db(_clear)
     
     # =========================================================================
     # Phase 2.2: LLM Claim Tracking

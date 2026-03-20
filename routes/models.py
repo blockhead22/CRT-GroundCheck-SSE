@@ -340,6 +340,19 @@ class StructuredFactsResponse(BaseModel):
     count: int
 
 
+class EffectiveFactItem(BaseModel):
+    slot: str
+    value: str
+    source_surface: str
+    source_thread: Optional[str] = None
+    authority: str = Field(default="confirmed")
+    origin: Optional[str] = None
+    confidence: Optional[float] = None
+    trust: Optional[float] = None
+    timestamp: Optional[float] = None
+    memory_id: Optional[str] = None
+
+
 class FactHistoryResponse(BaseModel):
     thread_id: str
     slot: str

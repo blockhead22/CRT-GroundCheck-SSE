@@ -1599,9 +1599,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if openclaw_delegate:
         structured_facts: Dict[str, Any] = {}
         try:
-            fact_store = getattr(engine, "fact_store", None)
-            if fact_store is not None and hasattr(fact_store, "get_all_facts"):
-                maybe_facts = fact_store.get_all_facts(thread_id=req.thread_id)
+            if hasattr(engine, "get_effective_user_facts"):
+                maybe_facts = engine.get_effective_user_facts(thread_id=req.thread_id)
                 if isinstance(maybe_facts, dict):
                     structured_facts = maybe_facts
         except Exception as e:

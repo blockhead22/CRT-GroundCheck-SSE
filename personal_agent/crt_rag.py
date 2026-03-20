@@ -1532,6 +1532,265 @@ class CRTEnhancedRAG:
             memories = [m for m in memories if m.memory_id != exclude_memory_id]
         return memories
 
+    @staticmethod
+    def _canonical_user_slot_name(slot: Optional[str]) -> str:
+        slot_name = str(slot or "").strip()
+        if slot_name.lower().startswith("user."):
+            slot_name = slot_name[5:]
+        return slot_name.strip()
+
+    def _record_profile_replacements(
+        self,
+        *,
+        profile_result: Optional[Dict[str, Any]],
+        thread_id: Optional[str],
+    ) -> List[Dict[str, str]]:
+        profile_updates: List[Dict[str, str]] = []
+        if not profile_result or not profile_result.get("replaced"):
+            return profile_updates
+
+        for slot, replacement in (profile_result.get("replaced") or {}).items():
+            update = {
+                "slot": str(slot),
+                "old": str(replacement.get("old") or ""),
+                "new": str(replacement.get("new") or ""),
+            }
+            profile_updates.append(update)
+            try:
+                profile_contra = self.ledger.record_contradiction(
+                    old_memory_id=f"profile_{slot}_old",
+                    new_memory_id=f"profile_{slot}_new",
+                    drift_mean=0.8,
+                    confidence_delta=0.0,
+                    old_text=f"FACT: {slot} = {replacement['old']}",
+                    new_text=f"FACT: {slot} = {replacement['new']}",
+                    contradiction_type="profile_update",
+                    summary=f"Profile update: {slot} changed from '{replacement['old']}' to '{replacement['new']}'",
+                    thread_id=thread_id,
+                )
+                self.ledger.resolve_contradiction(
+                    profile_contra.ledger_id,
+                    method="profile_sync_audit",
+                    new_status=ContradictionStatus.RESOLVED,
+                )
+            except Exception as ledger_err:
+                logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
+        return profile_updates
+
+    def ingest_memory_write(
+        self,
+        *,
+        text: str,
+        confidence: float,
+        source: MemorySource,
+        context: Optional[Dict[str, Any]] = None,
+        user_marked_important: bool = False,
+        contradiction_signal: float = 0.0,
+        thread_id: Optional[str] = None,
+        channel: Optional[str] = None,
+        origin: Optional[str] = None,
+        authority: Optional[str] = None,
+        kind: Optional[str] = None,
+        source_kind: Optional[str] = None,
+        model_id: Optional[str] = None,
+        run_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Shared write path for governed memory plus canonical fact surfaces."""
+        memory = self.memory.store_memory(
+            text=text,
+            confidence=confidence,
+            source=source,
+            context=context,
+            user_marked_important=user_marked_important,
+            contradiction_signal=contradiction_signal,
+            thread_id=thread_id,
+            channel=channel,
+            origin=origin,
+            authority=authority,
+            kind=kind,
+            source_kind=source_kind,
+            model_id=model_id,
+            run_id=run_id,
+        )
+
+        fact_result: Dict[str, Any] = {}
+        fact_store_updated = False
+        profile_result: Dict[str, Any] = {}
+        profile_updates: List[Dict[str, str]] = []
+
+        if self.memory.can_update_user_profile(memory):
+            if self.fact_store is not None:
+                fact_result = self.fact_store.process_input(
+                    text,
+                    thread_id=str(thread_id or "default"),
+                ) or {}
+                fact_store_updated = bool(
+                    fact_result.get("extracted") or fact_result.get("updated")
+                )
+            try:
+                profile_result = self.user_profile.update_from_text(
+                    text,
+                    thread_id=str(thread_id or "default"),
+                ) or {}
+                profile_updates = self._record_profile_replacements(
+                    profile_result=profile_result,
+                    thread_id=thread_id,
+                )
+            except Exception as e:
+                logger.error(f"[PROFILE_DEBUG] Failed to update user profile: {e}", exc_info=True)
+
+        return {
+            "memory": memory,
+            "fact_result": fact_result,
+            "fact_store_updated": fact_store_updated,
+            "profile_result": profile_result,
+            "profile_updates": profile_updates,
+        }
+
+    def get_effective_user_facts(
+        self,
+        thread_id: Optional[str] = None,
+        *,
+        include_memory_fallback: bool = True,
+    ) -> Dict[str, Dict[str, Any]]:
+        """Build a canonical user-fact view across thread-local and global surfaces."""
+        thread_key = str(thread_id or "default").strip() or "default"
+        effective: Dict[str, Dict[str, Any]] = {}
+
+        def _put(slot: str, payload: Dict[str, Any], priority: int) -> None:
+            slot_name = self._canonical_user_slot_name(slot)
+            if not slot_name:
+                return
+            current = effective.get(slot_name)
+            current_priority = int((current or {}).get("_priority") or -1)
+            current_timestamp = float((current or {}).get("timestamp") or 0.0)
+            new_timestamp = float(payload.get("timestamp") or 0.0)
+            if current is not None and (current_priority > priority):
+                return
+            if current is not None and current_priority == priority and current_timestamp > new_timestamp:
+                return
+            effective[slot_name] = {**payload, "_priority": priority}
+
+        if self.fact_store is not None:
+            try:
+                thread_facts = self.fact_store.get_all_facts(thread_id=thread_key) or {}
+            except Exception:
+                thread_facts = {}
+            for slot, fact in thread_facts.items():
+                value = str((fact or {}).get("value") or "").strip()
+                if not value:
+                    continue
+                _put(
+                    slot,
+                    {
+                        "slot": self._canonical_user_slot_name(slot),
+                        "value": value,
+                        "source_surface": "thread_fact_store",
+                        "source_thread": str((fact or {}).get("thread_id") or thread_key),
+                        "authority": "confirmed",
+                        "origin": None,
+                        "confidence": float((fact or {}).get("trust") or 0.95),
+                        "trust": float((fact or {}).get("trust") or 0.95),
+                        "timestamp": None,
+                        "memory_id": None,
+                    },
+                    3,
+                )
+
+        try:
+            profile_facts = self.user_profile.get_all_facts() or {}
+        except Exception:
+            profile_facts = {}
+        for slot, fact in profile_facts.items():
+            value = str(getattr(fact, "value", "") or "").strip()
+            if not value:
+                continue
+            _put(
+                slot,
+                {
+                    "slot": self._canonical_user_slot_name(slot),
+                    "value": value,
+                    "source_surface": "global_profile",
+                    "source_thread": getattr(fact, "source_thread", None),
+                    "authority": "confirmed",
+                    "origin": None,
+                    "confidence": float(getattr(fact, "confidence", 0.9) or 0.9),
+                    "trust": float(getattr(fact, "confidence", 0.9) or 0.9),
+                    "timestamp": float(getattr(fact, "timestamp", 0.0) or 0.0),
+                    "memory_id": None,
+                },
+                2,
+            )
+
+        if include_memory_fallback:
+            for mem in self._load_thread_user_memories(thread_id=thread_key):
+                if bool(getattr(mem, "deprecated", False)):
+                    continue
+                if not self.memory.can_answer_user_fact(mem):
+                    continue
+                facts = extract_fact_slots(getattr(mem, "text", "") or "") or {}
+                for slot, fact in facts.items():
+                    value = str(getattr(fact, "value", "") or "").strip()
+                    if not value:
+                        continue
+                    _put(
+                        slot,
+                        {
+                            "slot": self._canonical_user_slot_name(slot),
+                            "value": value,
+                            "source_surface": "thread_memory",
+                            "source_thread": getattr(mem, "thread_id", thread_key),
+                            "authority": str(getattr(mem, "authority", "confirmed") or "confirmed"),
+                            "origin": getattr(mem, "origin", None),
+                            "confidence": float(getattr(mem, "confidence", 0.0) or 0.0),
+                            "trust": float(getattr(mem, "trust", 0.0) or 0.0),
+                            "timestamp": float(getattr(mem, "timestamp", 0.0) or 0.0),
+                            "memory_id": getattr(mem, "memory_id", None),
+                        },
+                        1,
+                    )
+
+        for slot, payload in list(effective.items()):
+            payload.pop("_priority", None)
+            payload["slot"] = slot
+        return effective
+
+    def search_effective_user_facts(
+        self,
+        query: str,
+        *,
+        thread_id: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        query_text = str(query or "").strip().lower()
+        if not query_text:
+            return []
+
+        inferred_slots = set(self._infer_slots_from_query(query_text))
+        tokens = [tok for tok in re.findall(r"[a-z0-9_]+", query_text) if tok]
+        matches: List[Tuple[int, Dict[str, Any]]] = []
+        for slot, fact in self.get_effective_user_facts(thread_id=thread_id).items():
+            haystack = f"{slot.replace('_', ' ')} {fact.get('value', '')}".lower()
+            slot_score = 0
+            if slot in inferred_slots:
+                slot_score += 4
+            if slot.replace("_", " ") in query_text:
+                slot_score += 2
+            token_hits = sum(1 for tok in tokens if tok in haystack)
+            if slot_score <= 0 and token_hits <= 0:
+                continue
+            matches.append((slot_score + token_hits, fact))
+
+        matches.sort(
+            key=lambda item: (
+                item[0],
+                float((item[1] or {}).get("timestamp") or 0.0),
+                float((item[1] or {}).get("trust") or 0.0),
+            ),
+            reverse=True,
+        )
+        return [fact for _, fact in matches[: max(1, int(limit))]]
+
     def _add_reintroduction_flags(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Add reintroduced_claim flags to all memories in a query result.
         
@@ -3649,9 +3908,9 @@ class CRTEnhancedRAG:
             }
         if user_input_kind == "assertion":
             logger.info(f"[PROFILE_DEBUG] Processing assertion - about to store memory and update profile")
-            user_memory = self.memory.store_memory(
+            ingest_result = self.ingest_memory_write(
                 text=user_text,
-                confidence=0.95,  # User assertions are high confidence
+                confidence=0.95,
                 source=MemorySource.USER,
                 context={"type": "user_input", "kind": user_input_kind},
                 user_marked_important=user_marked_important,
@@ -3661,7 +3920,9 @@ class CRTEnhancedRAG:
                 authority=authority,
                 kind=(kind or "user_fact"),
             )
+            user_memory = ingest_result["memory"]
             can_update_profile = self.memory.can_update_user_profile(user_memory)
+            profile_updates.extend(ingest_result.get("profile_updates") or [])
             logger.info(f"[PROFILE_DEBUG] Memory stored, now updating user profile...")
             if not can_update_profile:
                 logger.info(
@@ -3674,15 +3935,8 @@ class CRTEnhancedRAG:
             # Also update global user profile with extracted facts
             # This enables cross-thread memory (e.g., name persists across chats)
             try:
-                logger.info(f"[PROFILE_DEBUG] Calling user_profile.update_from_text with: {user_text[:100]}")
-                profile_result = (
-                    self.user_profile.update_from_text(
-                        user_text,
-                        thread_id=str(thread_id or "default"),
-                    )
-                    if can_update_profile
-                    else {}
-                )
+                logger.info("[PROFILE_DEBUG] Shared ingestion path already updated user profile")
+                profile_result = {}
                 
                 # Log any profile fact contradictions to the ledger
                 if profile_result and profile_result.get('replaced'):
@@ -6449,6 +6703,58 @@ class CRTEnhancedRAG:
         """
         if not slots:
             return None
+        q = (user_query or "").strip().lower()
+        wants_another = bool(re.search(r"\b(another|other|second|additional)\b", q))
+
+        if not wants_another and not self._is_name_history_request(user_query or ""):
+            effective_facts = self.get_effective_user_facts(thread_id=thread_id)
+            resolved_parts: List[str] = []
+            selected_memory_ids: List[str] = []
+            selected_slot_values: Dict[str, Any] = {}
+            resolved_slot_order: List[str] = []
+
+            for raw_slot in slots:
+                slot = self._canonical_user_slot_name(raw_slot)
+                fact = effective_facts.get(slot)
+                if not fact:
+                    continue
+                value = str(fact.get("value") or "").strip()
+                if not value:
+                    continue
+                resolved_parts.append(f"{slot.replace('_', ' ')}: {value}")
+                selected_slot_values[slot] = value
+                resolved_slot_order.append(slot)
+                memory_id = str(fact.get("memory_id") or "").strip()
+                if memory_id:
+                    selected_memory_ids.append(memory_id)
+
+            if resolved_parts:
+                if selected_memory_ids:
+                    self._record_memory_usage(
+                        selected_memory_ids,
+                        event_type="slot_selected",
+                        reason=usage_reason or "fact_slot_resolution",
+                        usage_trace_id=usage_trace_id,
+                        query=user_query,
+                        thread_id=thread_id,
+                        metadata={
+                            "slots": list(selected_slot_values.keys()),
+                            "values": selected_slot_values,
+                            "source_surface": "effective_profile",
+                        },
+                    )
+                if len(resolved_parts) == 1:
+                    slot = resolved_slot_order[0]
+                    value = str(selected_slot_values.get(slot) or "")
+                    if thread_id and slot in ("name", "employer", "location", "title"):
+                        return self._generate_varied_slot_answer(
+                            slot=slot,
+                            value=value,
+                            thread_id=thread_id,
+                            base_answer=value,
+                        )
+                    return value
+                return "\n".join(resolved_parts)
 
         def _source_priority(mem: MemoryItem) -> int:
             if mem.source == MemorySource.USER:
@@ -6520,8 +6826,6 @@ class CRTEnhancedRAG:
         resolved_parts: List[str] = []
         selected_memory_ids: List[str] = []
         selected_slot_values: Dict[str, Any] = {}
-        q = (user_query or "").strip().lower()
-        wants_another = bool(re.search(r"\b(another|other|second|additional)\b", q))
         for slot in slots:
             candidates = slot_values.get(slot) or []
             if not candidates:
@@ -7157,7 +7461,7 @@ class CRTEnhancedRAG:
         )
         is_meta_fact_question = any(cue in (user_query or "").lower() for cue in meta_question_cues)
         
-        # Handle FACT intents with FactStore
+        # Handle FACT intents with shared governed-memory write path
         explicit_non_user_fact_kind = bool(kind and str(kind).strip().lower() != "user_fact")
         if (
             intent in [Intent.FACT_STATEMENT, Intent.FACT_CORRECTION]
@@ -7165,9 +7469,14 @@ class CRTEnhancedRAG:
             and not self.memory.is_social_channel(channel)
             and not explicit_non_user_fact_kind
         ):
-            self._trace_step("FACTSTORE", "Processing fact...")
-            fact_result = self.fact_store.process_input(user_query, thread_id=thread_id)
-            self._trace_step("FACTSTORE", f"Extracted: {len(fact_result.get('extracted', []))}, Updated: {len(fact_result.get('updated', []))}", fact_result)
+            self._trace_step("FACTSTORE", "Preparing fact write...")
+            extracted_facts = self.fact_store.extractor.extract(user_query) if self.fact_store else []
+            fact_result = {"extracted": [fact.to_dict() for fact in extracted_facts], "updated": []}
+            self._trace_step(
+                "FACTSTORE",
+                f"Detected {len(extracted_facts)} fact candidate(s)",
+                fact_result,
+            )
             
             # Also run through CRT for contradiction detection
             self._trace_step("CRT", "Checking contradictions...")
@@ -7195,7 +7504,12 @@ class CRTEnhancedRAG:
         
         elif intent == Intent.FACT_QUESTION and self.fact_store and not is_meta_fact_question:
             self._trace_step("FACTSTORE", "Looking up fact...")
-            fact_answer = self.fact_store.answer(user_query, thread_id=thread_id)
+            fact_answer = self._answer_from_fact_slots(
+                self._infer_slots_from_query(user_query),
+                user_query=user_query,
+                thread_id=thread_id,
+                usage_reason="effective_fact_surface",
+            )
             self._trace_step("FACTSTORE", f"Answer: {fact_answer or 'None'}")
             
             if fact_answer:
@@ -7206,7 +7520,7 @@ class CRTEnhancedRAG:
                     'confidence': 0.95,
                     'response_type': 'belief',
                     'gates_passed': True,
-                    'gate_reason': 'fact_store_hit',
+                    'gate_reason': 'effective_fact_surface',
                     'retrieved_memories': [],
                     'fact_store_hit': True,
                 }
@@ -7227,13 +7541,13 @@ class CRTEnhancedRAG:
         
         elif intent == Intent.META_MEMORY and self.fact_store:
             self._trace_step("FACTSTORE", "Gathering all facts...")
-            facts = self.fact_store.get_all_facts(thread_id=thread_id)
+            facts = self.get_effective_user_facts(thread_id=thread_id)
             self._trace_step("FACTSTORE", f"Found {len(facts)} facts")
             
             if facts:
                 lines = ["Here's what I know about you:"]
                 for slot, f in facts.items():
-                    slot_name = slot.split('.')[-1].replace('_', ' ')
+                    slot_name = self._canonical_user_slot_name(slot).replace('_', ' ')
                     lines.append(f"  - {slot_name}: {f['value']}")
                 result = {
                     'answer': "\n".join(lines),
@@ -7281,12 +7595,44 @@ class CRTEnhancedRAG:
         
         return result
     
-    def get_structured_facts(self, thread_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_structured_facts(
+        self,
+        thread_id: Optional[str] = None,
+        *,
+        scope: str = "thread",
+    ) -> Dict[str, Any]:
         """
-        Get all structured facts from FactStore.
+        Get structured facts from the requested surface.
         
         Returns dict of slot -> {value, trust, source, ...}
         """
+        scope_key = str(scope or "thread").strip().lower()
+        if scope_key == "effective":
+            return self.get_effective_user_facts(thread_id=thread_id)
+        if scope_key == "global":
+            try:
+                global_facts = self.user_profile.get_all_facts() or {}
+            except Exception:
+                global_facts = {}
+            out: Dict[str, Any] = {}
+            for slot, fact in global_facts.items():
+                value = str(getattr(fact, "value", "") or "").strip()
+                if not value:
+                    continue
+                slot_name = self._canonical_user_slot_name(slot)
+                out[slot_name] = {
+                    "slot": slot_name,
+                    "value": value,
+                    "source_surface": "global_profile",
+                    "source_thread": getattr(fact, "source_thread", None),
+                    "authority": "confirmed",
+                    "origin": None,
+                    "confidence": float(getattr(fact, "confidence", 0.9) or 0.9),
+                    "trust": float(getattr(fact, "confidence", 0.9) or 0.9),
+                    "timestamp": float(getattr(fact, "timestamp", 0.0) or 0.0),
+                    "memory_id": None,
+                }
+            return out
         if self.fact_store:
             return self.fact_store.get_all_facts(thread_id=thread_id)
         return {}

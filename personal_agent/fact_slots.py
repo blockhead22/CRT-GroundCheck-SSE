@@ -1142,7 +1142,14 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         color_raw = m.group(1).strip().rstrip(" .")
         # Trim at common continuations.
         color_raw = re.split(r"\b(?:and|but|though|however)\b", color_raw, maxsplit=1, flags=re.IGNORECASE)[0].strip()
-        if color_raw:
+        _known_color_words = {
+            "red", "blue", "green", "yellow", "orange", "purple", "pink", "black",
+            "white", "brown", "gray", "grey", "gold", "silver", "teal", "cyan",
+            "magenta", "violet", "indigo", "turquoise", "maroon", "navy", "olive",
+            "coral", "salmon", "crimson",
+        }
+        color_tokens = [tok for tok in re.findall(r"[a-z]+", color_raw.lower()) if tok in _known_color_words]
+        if color_raw and len(color_tokens) <= 1:
             facts["favorite_color"] = ExtractedFact("favorite_color", color_raw, _norm_text(color_raw))
     
     # Skip if category is too generic or already handled

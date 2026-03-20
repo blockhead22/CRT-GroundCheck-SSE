@@ -550,6 +550,9 @@ Start the server: `python crt_api.py` → `http://127.0.0.1:8123`
 | `/api/memory/usage/summary` | GET | Aggregated memory hit / usage counts |
 | `/api/memory/{memory_id}/events` | GET | Append-only event log for a memory item |
 | `/api/facts` | GET | List structured facts |
+| `/api/facts/structured` | GET | Structured facts for `thread`, `global`, or canonical `effective` scope |
+| `/api/facts/search` | GET | Search structured facts, typically against `scope=effective` |
+| `/api/profile` | GET | Canonical effective personal profile surface |
 | `/api/episodic/context` | GET | Get user context (preferences, patterns) |
 | `/api/thread/reset` | POST | Reset a thread's memory and ledger |
 | `/api/heartbeat/config` | GET/PUT | Configure proactive engagement |
@@ -579,6 +582,19 @@ Useful governed-memory APIs:
 - `POST /api/memory/store` for deterministic writes from system tools or sync scripts
 - `GET /api/memory/recent` to inspect stored provenance and authority
 - `GET /api/memory/usage/summary` and `GET /api/memory/{memory_id}/events` to inspect retrieval hits, guards, promotions, and other memory events
+- `GET /api/facts/structured?scope=effective` for the canonical personal-fact surface across thread-local facts plus global profile overlay
+- `GET /api/facts/search?scope=effective&q=...` for concept/slot lookup without falling back to raw memory search
+- `GET /api/profile` for a simplified effective profile view suitable for OpenClaw and UI reads
+
+### Fact Surfaces
+
+CRT now distinguishes three fact surfaces instead of treating them as interchangeable:
+
+- `thread` structured facts: thread-local `FactStore` rows only
+- `global` structured facts: cross-thread `GlobalUserProfile` overlay
+- `effective` structured facts: canonical read surface with precedence `thread FactStore -> global profile -> authoritative thread memory fallback`
+
+Use `effective` for user-facing personal fact answers. Raw memory search remains available, but it is not the canonical personal-profile surface.
 
 ### Telegram and OpenClaw
 
@@ -594,7 +610,7 @@ That means:
 - OpenClaw delegation is still available explicitly via the Telegram `/task` command.
 - Both the explicit `/task` path and the CRT auto-handoff path use the same OpenClaw bridge and inject CRT context.
 - Current default triggers include research-style prompts, `moltbook`, and URL-action requests like `Read https://...`.
-- Delegated OpenClaw sessions receive direct CRT access through `CRT_API_URL` and `CRT_THREAD_ID`, and the installed `crt_client.py` helper can query facts, recent memory, contradictions, usage, events, direct memory writes, and chat.
+- Delegated OpenClaw sessions receive direct CRT access through `CRT_API_URL` and `CRT_THREAD_ID`, and the installed `crt_client.py` helper can query the effective profile/fact surface, recent memory, contradictions, usage, events, direct memory writes, and chat.
 - CRT can proactively send outbound Telegram notifications through the notification claim/ack APIs, but that is separate from OpenClaw delegation.
 
 ---

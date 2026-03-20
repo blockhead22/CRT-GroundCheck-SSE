@@ -120,10 +120,12 @@ def _thread_db_paths_map(tid: str) -> Dict[str, Path]:
         return {
             "memory": (root / "personal_agent/crt_memory_shared.db"),
             "ledger": (root / "personal_agent/crt_ledger_shared.db"),
+            "facts": (root / "personal_agent/crt_facts.db"),
         }
     return {
         "memory": (root / f"personal_agent/crt_memory_{tid}.db"),
         "ledger": (root / f"personal_agent/crt_ledger_{tid}.db"),
+        "facts": (root / "personal_agent/crt_facts.db"),
     }
 
 
@@ -158,6 +160,24 @@ def _clear_thread_from_shared_db(db_path: Path, tid: str) -> int:
             conn.commit()
     except Exception as e:
         logger.warning(f"[SHARED_RESET] Error clearing thread {tid}: {e}")
+    return deleted
+
+
+def _clear_thread_from_facts_db(db_path: Path, tid: str) -> int:
+    if not db_path.exists():
+        return 0
+    deleted = 0
+    try:
+        with get_db_connection(str(db_path)) as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "DELETE FROM facts WHERE COALESCE(thread_id, 'default') = ?",
+                (tid,),
+            )
+            deleted = cur.rowcount or 0
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"[THREAD_RESET] Failed clearing facts for {tid}: {e}")
     return deleted
 
 
@@ -302,6 +322,7 @@ def thread_reset(request: Request, req: ThreadResetRequest) -> ThreadResetRespon
 
     if target in {"memory", "all"}:
         _delete_path("memory")
+        deleted["fact_rows"] = _clear_thread_from_facts_db(paths["facts"], tid) > 0
         # Also purge this thread's entries from the GLOBAL user profile
         # to prevent phantom data from bleeding into new sessions.
         try:

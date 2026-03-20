@@ -30,6 +30,7 @@ from routes.models import (
     DashboardOverviewResponse,
     DocGetResponse,
     DocListItem,
+    EffectiveFactItem,
     ExtractedFactItem,
     FactExtractionRequest,
     FactExtractionResponse,
@@ -175,7 +176,11 @@ def get_doc(doc_id: str, request: Request) -> DocGetResponse:
 def get_profile(request: Request, thread_id: str = Query(default="default")) -> ProfileResponse:
     engine = _get_engine(request, thread_id)
     tid = sanitize_thread_id(thread_id)
-    slots = _extract_latest_profile_slots(engine)
+    slots = {
+        str(slot): str((fact or {}).get("value") or "")
+        for slot, fact in (engine.get_effective_user_facts(thread_id=tid) or {}).items()
+        if str((fact or {}).get("value") or "").strip()
+    }
     name = slots.get("name")
     return ProfileResponse(thread_id=tid, name=name, slots=slots)
 
@@ -297,20 +302,64 @@ def extract_facts_endpoint(req: FactExtractionRequest, request: Request) -> Fact
 
 
 @router.get("/api/facts/structured")
-def get_structured_facts(request: Request, thread_id: str = Query(default="default")) -> StructuredFactsResponse:
-    """Get all structured facts from FactStore."""
+def get_structured_facts(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    scope: str = Query(default="thread"),
+) -> StructuredFactsResponse:
+    """Get structured facts from the requested fact surface."""
     tid = sanitize_thread_id(thread_id)
     engine = _get_engine(request, tid)
 
-    facts: Dict[str, Any] = {}
-    if hasattr(engine, 'fact_store') and engine.fact_store:
-        facts = engine.fact_store.get_all_facts(thread_id=tid)
+    facts = engine.get_structured_facts(thread_id=tid, scope=scope)
 
     return StructuredFactsResponse(
         thread_id=tid,
         facts=facts,
         count=len(facts)
     )
+
+
+@router.get("/api/facts/search", response_model=list[EffectiveFactItem])
+def search_structured_facts(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    q: str = Query(min_length=1),
+    scope: str = Query(default="effective"),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> list[EffectiveFactItem]:
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+
+    scope_key = str(scope or "effective").strip().lower()
+    if scope_key == "effective":
+        results = engine.search_effective_user_facts(q, thread_id=tid, limit=limit)
+    else:
+        facts = engine.get_structured_facts(thread_id=tid, scope=scope_key)
+        query_lower = str(q or "").strip().lower()
+        results = []
+        for slot, fact in (facts or {}).items():
+            value = str((fact or {}).get("value") or "")
+            haystack = f"{slot} {value}".lower()
+            if query_lower and query_lower not in haystack:
+                continue
+            results.append(
+                {
+                    "slot": str(slot),
+                    "value": value,
+                    "source_surface": scope_key,
+                    "source_thread": (fact or {}).get("thread_id") or (fact or {}).get("source_thread") or tid,
+                    "authority": str((fact or {}).get("authority") or "confirmed"),
+                    "origin": (fact or {}).get("origin"),
+                    "confidence": (fact or {}).get("confidence"),
+                    "trust": (fact or {}).get("trust"),
+                    "timestamp": (fact or {}).get("timestamp"),
+                    "memory_id": (fact or {}).get("memory_id"),
+                }
+            )
+        results = results[:limit]
+
+    return [EffectiveFactItem(**item) for item in results]
 
 
 @router.get("/api/facts/history/{slot}")
@@ -484,7 +533,12 @@ def _extract_slots_broad(text: str, engine) -> Dict[str, str]:
 
 
 def _check_inline_contradiction(
-    engine, new_text: str, new_memory_id: str, thread_id: str
+    engine,
+    new_text: str,
+    new_memory_id: str,
+    thread_id: str,
+    *,
+    new_origin: Optional[str] = None,
 ) -> tuple:
     """
     Returns (contradiction_detected: bool, contradiction_info: str | None).
@@ -500,14 +554,18 @@ def _check_inline_contradiction(
     new_slots = _extract_slots_broad(new_text, engine)
 
     try:
-        existing_memories = engine.memory._load_all_memories()
+        existing_memories = engine._load_thread_user_memories(
+            thread_id=thread_id,
+            exclude_memory_id=new_memory_id,
+        )
     except Exception:
         return False, None
 
     # Only check user-sourced memories; cap scan to avoid O(n²) on large stores
     user_mems = [
-        m for m in existing_memories
-        if str(getattr(getattr(m, "source", None), "value", "") or "").lower() == "user"
+        m
+        for m in existing_memories
+        if engine.memory.can_update_user_profile(m) and not bool(getattr(m, "deprecated", False))
     ][:200]
 
     for existing_mem in user_mems:
@@ -516,6 +574,8 @@ def _check_inline_contradiction(
             continue
         existing_text = str(getattr(existing_mem, "text", "") or "").strip()
         if not existing_text:
+            continue
+        if new_origin and str(getattr(existing_mem, "origin", "") or "").strip() == str(new_origin).strip():
             continue
 
         # Slot-based comparison (fast path for exclusive slots)
@@ -549,7 +609,7 @@ def _check_inline_contradiction(
                     )
                     return True, info
 
-    # Heuristic fallback: only when slot extraction found nothing at all
+    # Heuristic fallback is audit-only; do not expose it as a public contradiction flag.
     if not new_slots:
         for existing_mem in user_mems:
             eid = str(getattr(existing_mem, "memory_id", "") or "")
@@ -561,7 +621,6 @@ def _check_inline_contradiction(
             try:
                 label = heuristic_contradiction(new_text, existing_text)
                 if label == "contradiction":
-                    info = f"heuristic conflict with memory {eid}"
                     get_judgment_log().log(
                         CONTRADICTION_STORE,
                         "Heuristic contradiction detected on store",
@@ -570,7 +629,18 @@ def _check_inline_contradiction(
                         memory_id=new_memory_id,
                         thread_id=thread_id,
                     )
-                    return True, info
+                    if hasattr(engine, "memory"):
+                        engine.memory.record_memory_event(
+                            memory_id=new_memory_id,
+                            event_type="heuristic_conflict_observed",
+                            actor="system",
+                            reason="inline_store_heuristic_conflict",
+                            metadata={
+                                "thread_id": thread_id,
+                                "conflicting_memory_id": eid,
+                            },
+                        )
+                    return False, None
             except Exception:
                 pass
 
@@ -590,7 +660,7 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
     context = dict(req.context or {})
     context.setdefault("thread_id", tid)
 
-    mem = engine.memory.store_memory(
+    ingest_result = engine.ingest_memory_write(
         text=req.text,
         confidence=float(req.confidence),
         source=source,
@@ -606,29 +676,21 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
         model_id=req.model_id,
         run_id=req.run_id,
     )
-
-    fact_store_updated = False
-    try:
-        if hasattr(engine, "memory") and engine.memory.can_update_user_profile(mem):
-            fact_store = getattr(engine, "fact_store", None)
-            if fact_store is not None:
-                fact_result = fact_store.process_input(req.text, thread_id=tid)
-                fact_store_updated = bool(
-                    (fact_result or {}).get("extracted") or (fact_result or {}).get("updated")
-                )
-    except Exception as e:
-        logger.debug(f"[MEMORY_STORE] FactStore update failed for thread {tid}: {e}")
+    mem = ingest_result["memory"]
+    fact_store_updated = bool(ingest_result.get("fact_store_updated"))
 
     # --- Inline synchronous contradiction check ---
     contradiction_detected = False
     contradiction_info: Optional[str] = None
     try:
-        contradiction_detected, contradiction_info = _check_inline_contradiction(
-            engine=engine,
-            new_text=req.text,
-            new_memory_id=str(getattr(mem, "memory_id", "") or ""),
-            thread_id=tid,
-        )
+        if hasattr(engine, "memory") and engine.memory.can_update_user_profile(mem):
+            contradiction_detected, contradiction_info = _check_inline_contradiction(
+                engine=engine,
+                new_text=req.text,
+                new_memory_id=str(getattr(mem, "memory_id", "") or ""),
+                thread_id=tid,
+                new_origin=getattr(mem, "origin", None),
+            )
     except Exception as e:
         logger.warning(f"[MEMORY_STORE] Inline contradiction check failed for thread {tid}: {e}")
 
@@ -693,9 +755,27 @@ def memory_search(
             return not mt or mt.lower() in ("default", "")
         return mt == tid
 
+    inferred_slots = []
+    try:
+        inferred_slots = list(engine._infer_slots_from_query(q))
+    except Exception:
+        inferred_slots = []
+
+    def _supports_inferred_slot(mem) -> bool:
+        if not inferred_slots:
+            return True
+        try:
+            facts = extract_fact_slots(str(getattr(mem, "text", "") or "")) or {}
+        except Exception:
+            facts = {}
+        fact_slots = {str(slot or "").strip().lower() for slot in facts.keys()}
+        return any(str(slot or "").strip().lower() in fact_slots for slot in inferred_slots)
+
     out: list[MemoryListItem] = []
     for mem, _score in retrieved:
         if not _matches_thread(mem):
+            continue
+        if not _supports_inferred_slot(mem):
             continue
         out.append(MemoryListItem(**_memory_item_to_dict(mem)))
     return out
