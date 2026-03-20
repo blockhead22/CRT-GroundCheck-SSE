@@ -1145,6 +1145,11 @@ def create_app() -> FastAPI:
         # Initialize engine and inject LLM client for hybrid extraction
         llm_client = get_llm_client()
         engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=llm_client)
+        setattr(engine, "thread_id", tid)
+        try:
+            engine.ledger.default_thread_id = tid
+        except Exception:
+            pass
         
         # Enable LLM extraction in FactStore if client is available
         if llm_client is not None and hasattr(engine, 'memory') and hasattr(engine.memory, 'set_llm_client'):

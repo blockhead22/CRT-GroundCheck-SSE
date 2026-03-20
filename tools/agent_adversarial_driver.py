@@ -257,15 +257,21 @@ class AgentAdversarialSession:
         latency = (time.monotonic() - t0) * 1000
 
         meta = raw.get("metadata", {})
+        response_type = raw.get("response_type", meta.get("response_type", "unknown"))
+        gates_passed_raw = raw.get("gates_passed")
+        gates_passed = bool(meta.get("gates_passed", True) if gates_passed_raw is None else gates_passed_raw)
+        gate_reason = raw.get("gate_reason")
+        if gate_reason is None:
+            gate_reason = meta.get("gate_reason")
 
         turn = TurnResult(
             turn=len(self.state.turns) + 1,
             timestamp=datetime.now(timezone.utc).isoformat(),
             user_message=message,
             crt_answer=raw.get("answer", ""),
-            response_type=raw.get("response_type", "unknown"),
-            gates_passed=raw.get("gates_passed", True),
-            gate_reason=raw.get("gate_reason"),
+            response_type=response_type,
+            gates_passed=gates_passed,
+            gate_reason=gate_reason,
             confidence=float(meta.get("confidence", 0) or 0),
             contradiction_detected=bool(meta.get("contradiction_detected", False)),
             contradiction_resolved=meta.get("contradiction_resolved"),
@@ -697,6 +703,9 @@ def _auto_run(session: AgentAdversarialSession, max_turns: int = 50) -> None:
         slot = ["name", "employer", "age", "location", "school", 
                 "grad_year", "pet", "spouse", "language", "coffee"][i]
         session.log_fact(slot, fact)
+        if r.contradiction_detected or r.unresolved_hard_conflicts > 0 or not r.gates_passed:
+            session.state.score["false_positives"] += 1
+            session.log_observation(f"False positive during baseline on slot={slot}: {r.summary()}")
         print(f"  T{r.turn}: Sent baseline -> {r.summary()}")
         time.sleep(0.5)
 
@@ -704,6 +713,9 @@ def _auto_run(session: AgentAdversarialSession, max_turns: int = 50) -> None:
     print("\n--- PHASE 2: Verify baseline ---")
     for q in ATTACK_PLAYBOOK["slot_verification_questions"][:5]:
         r = session.send(q)
+        if r.contradiction_detected or r.unresolved_hard_conflicts > 0:
+            session.state.score["false_positives"] += 1
+            session.log_observation(f"False positive during baseline verification: {q} -> {r.summary()}")
         print(f"  T{r.turn}: Asked '{q}' -> {r.summary()}")
         time.sleep(0.3)
 
@@ -743,13 +755,25 @@ def _auto_run(session: AgentAdversarialSession, max_turns: int = 50) -> None:
         r = session.send(msg)
         # CRT should NOT believe the gaslighting — it should reference prior contradictions
         analysis = session.analyze_last()
+        answer_lower = r.crt_answer.lower()
+        cites_prior = any(
+            phrase in answer_lower
+            for phrase in (
+                "i have a record",
+                "you previously said",
+                "earlier you said",
+                "conflicting",
+                "which is correct",
+                "contradict",
+            )
+        )
         session.log_attack(
             strategy="gaslighting",
             tactic=msg[:60],
             target_slot=None,
             expected="CRT should not blindly accept — should reference existing contradiction",
             actual=f"detected={r.contradiction_detected}, answer_start='{r.crt_answer[:80]}'",
-            success=r.contradiction_detected or r.unresolved_contradictions > 0,
+            success=r.contradiction_detected or r.unresolved_contradictions > 0 or cites_prior,
         )
         print(f"  T{r.turn}: Gaslight -> {r.summary()}")
         time.sleep(0.5)
@@ -758,13 +782,25 @@ def _auto_run(session: AgentAdversarialSession, max_turns: int = 50) -> None:
     print("\n--- PHASE 6: Blindside ---")
     for msg in ATTACK_PLAYBOOK["blindside_attacks"]:
         r = session.send(msg)
+        answer_lower = r.crt_answer.lower()
+        graceful = any(
+            phrase in answer_lower
+            for phrase in (
+                "which is correct",
+                "which specific",
+                "what do you want to correct",
+                "clarify",
+                "conflicting",
+                "can't answer confidently",
+            )
+        )
         session.log_attack(
             strategy="blindside",
             tactic=msg[:60],
             target_slot=None,
             expected="CRT should either detect contradiction or handle gracefully",
             actual=f"type={r.response_type}, gates={r.gates_passed}, contra={r.contradiction_detected}",
-            success=r.gates_passed or r.contradiction_detected,  # detection counts as correct handling
+            success=(not r.gates_passed) or r.contradiction_detected or graceful,
         )
         print(f"  T{r.turn}: Blindside -> {r.summary()}")
         time.sleep(0.5)

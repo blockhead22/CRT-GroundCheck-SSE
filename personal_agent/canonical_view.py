@@ -43,23 +43,42 @@ def _parse_slots_csv(csv: str) -> List[str]:
     return [p for p in parts if p]
 
 
-def _fetch_contradictions(db_path: str, limit: int = 2000) -> List[ContradictionRow]:
+def _fetch_contradictions(
+    db_path: str,
+    limit: int = 2000,
+    thread_id: Optional[str] = None,
+) -> List[ContradictionRow]:
     if not db_path:
         return []
 
     try:
         with sqlite3.connect(db_path) as conn:
             cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT ledger_id, timestamp, status, contradiction_type, affects_slots,
-                       old_memory_id, new_memory_id, resolution_timestamp, resolution_method, merged_memory_id
-                FROM contradictions
-                ORDER BY timestamp DESC
-                LIMIT ?
-                """,
-                (int(limit),),
-            )
+            cur.execute("PRAGMA table_info(contradictions)")
+            has_thread_id = any(str(r[1] or "") == "thread_id" for r in cur.fetchall())
+            if thread_id is not None and has_thread_id:
+                cur.execute(
+                    """
+                    SELECT ledger_id, timestamp, status, contradiction_type, affects_slots,
+                           old_memory_id, new_memory_id, resolution_timestamp, resolution_method, merged_memory_id
+                    FROM contradictions
+                    WHERE COALESCE(thread_id, 'default') = ?
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    """,
+                    (str(thread_id), int(limit)),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT ledger_id, timestamp, status, contradiction_type, affects_slots,
+                           old_memory_id, new_memory_id, resolution_timestamp, resolution_method, merged_memory_id
+                    FROM contradictions
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                    """,
+                    (int(limit),),
+                )
             rows = cur.fetchall()
     except Exception as e:
         logger.warning(f"Failed to fetch contradictions from {db_path}: {e}") if 'logger' in dir() else None
@@ -84,14 +103,23 @@ def _fetch_contradictions(db_path: str, limit: int = 2000) -> List[Contradiction
     return out
 
 
-def get_contradiction_counts(db_path: str) -> Dict[str, int]:
+def get_contradiction_counts(db_path: str, thread_id: Optional[str] = None) -> Dict[str, int]:
     """Return ledger counts by status (open/resolved/accepted/etc)."""
     if not db_path:
         return {}
     try:
         with sqlite3.connect(db_path) as conn:
             cur = conn.cursor()
-            cur.execute("SELECT lower(status), COUNT(*) FROM contradictions GROUP BY lower(status)")
+            cur.execute("PRAGMA table_info(contradictions)")
+            has_thread_id = any(str(r[1] or "") == "thread_id" for r in cur.fetchall())
+            if thread_id is not None and has_thread_id:
+                cur.execute(
+                    "SELECT lower(status), COUNT(*) FROM contradictions "
+                    "WHERE COALESCE(thread_id, 'default') = ? GROUP BY lower(status)",
+                    (str(thread_id),),
+                )
+            else:
+                cur.execute("SELECT lower(status), COUNT(*) FROM contradictions GROUP BY lower(status)")
             rows = cur.fetchall()
     except Exception as e:
         logger.warning(f"Failed to get contradiction counts from {db_path}: {e}") if 'logger' in dir() else None
@@ -111,6 +139,7 @@ def build_canonical_slot_view(
     user_memories: Iterable[Any],
     memory_get_by_id: Callable[[str], Any],
     ledger_db_path: str,
+    thread_id: Optional[str] = None,
     scope_slots: Optional[Sequence[str]] = None,
 ) -> Dict[str, Dict[str, Any]]:
     """Build a canonical per-slot view.
@@ -157,7 +186,7 @@ def build_canonical_slot_view(
                 latest[s] = {"value": v, "normalized": str(norm or ""), "timestamp": ts}
 
     # Read contradictions.
-    contras = _fetch_contradictions(ledger_db_path, limit=2500)
+    contras = _fetch_contradictions(ledger_db_path, limit=2500, thread_id=thread_id)
 
     # Group per slot.
     per_slot: Dict[str, List[Dict[str, Any]]] = {}

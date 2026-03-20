@@ -38,6 +38,7 @@ class Fact:
     trust: float
     source: FactSource
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+    thread_id: str = "default"
     
     def to_dict(self) -> dict:
         return {
@@ -45,7 +46,8 @@ class Fact:
             "value": self.value,
             "trust": self.trust,
             "source": self.source.value,
-            "timestamp": self.timestamp
+            "timestamp": self.timestamp,
+            "thread_id": self.thread_id,
         }
 
 
@@ -504,6 +506,11 @@ class FactStore:
         if self._persistent_conn:
             return self._persistent_conn
         return sqlite3.connect(self.db_path)
+
+    @staticmethod
+    def _normalize_thread_id(thread_id: Optional[str]) -> str:
+        tid = str(thread_id or "default").strip()
+        return tid or "default"
     
     def _execute_db(self, func):
         """Execute a database function with proper connection handling."""
@@ -528,21 +535,28 @@ class FactStore:
                     trust REAL NOT NULL,
                     source TEXT NOT NULL,
                     timestamp TEXT NOT NULL,
+                    thread_id TEXT DEFAULT 'default',
                     is_current INTEGER DEFAULT 1,
                     superseded_by INTEGER,
                     FOREIGN KEY (superseded_by) REFERENCES facts(id)
                 )
             """)
+            cols = [row[1] for row in conn.execute("PRAGMA table_info(facts)").fetchall()]
+            if "thread_id" not in cols:
+                conn.execute("ALTER TABLE facts ADD COLUMN thread_id TEXT DEFAULT 'default'")
+            conn.execute("UPDATE facts SET thread_id = 'default' WHERE thread_id IS NULL OR TRIM(thread_id) = ''")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_slot_current ON facts(slot, is_current)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_facts_slot_thread_current ON facts(slot, thread_id, is_current)")
             conn.commit()
         finally:
             if not self._persistent_conn:
                 conn.close()
     
-    def process_input(self, user_input: str) -> Dict[str, Any]:
+    def process_input(self, user_input: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Process user input: extract facts, detect contradictions, update store.
         """
+        thread_key = self._normalize_thread_id(thread_id)
         facts = self.extractor.extract(user_input)
         result = {
             "extracted": [],
@@ -551,7 +565,8 @@ class FactStore:
         }
         
         for fact in facts:
-            current = self.get_fact(fact.slot)
+            fact.thread_id = thread_key
+            current = self.get_fact(fact.slot, thread_id=thread_key)
             
             if current:
                 # Compare values (case-insensitive)
@@ -562,7 +577,7 @@ class FactStore:
                         "old": current["value"],
                         "new": fact.value
                     })
-                    self._update_fact(current["id"], fact)
+                    self._update_fact(current["id"], fact, thread_id=thread_key)
                     result["updated"].append({
                         "slot": fact.slot,
                         "from": current["value"],
@@ -571,31 +586,49 @@ class FactStore:
                 # else: same value, no action needed
             else:
                 # New fact
-                self._store_fact(fact)
+                self._store_fact(fact, thread_id=thread_key)
                 result["extracted"].append(fact.to_dict())
         
         return result
     
-    def get_fact(self, slot: str) -> Optional[Dict]:
+    def get_fact(self, slot: str, thread_id: Optional[str] = None) -> Optional[Dict]:
         """Get current fact for a slot."""
         def _query(conn):
-            row = conn.execute(
-                "SELECT * FROM facts WHERE slot = ? AND is_current = 1",
-                (slot,)
-            ).fetchone()
+            if thread_id is None:
+                row = conn.execute(
+                    "SELECT * FROM facts WHERE slot = ? AND is_current = 1 ORDER BY id DESC LIMIT 1",
+                    (slot,)
+                ).fetchone()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                row = conn.execute(
+                    "SELECT * FROM facts WHERE slot = ? AND is_current = 1 AND COALESCE(thread_id, 'default') = ? ORDER BY id DESC LIMIT 1",
+                    (slot, thread_key)
+                ).fetchone()
             return dict(row) if row else None
         return self._execute_db(_query)
     
-    def get_all_facts(self) -> Dict[str, Dict]:
+    def get_all_facts(self, thread_id: Optional[str] = None) -> Dict[str, Dict]:
         """Get all current facts."""
         def _query(conn):
-            rows = conn.execute(
-                "SELECT * FROM facts WHERE is_current = 1 ORDER BY slot"
-            ).fetchall()
-            return {row["slot"]: dict(row) for row in rows}
+            if thread_id is None:
+                rows = conn.execute(
+                    "SELECT * FROM facts WHERE is_current = 1 ORDER BY slot, id DESC"
+                ).fetchall()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                rows = conn.execute(
+                    "SELECT * FROM facts WHERE is_current = 1 AND COALESCE(thread_id, 'default') = ? ORDER BY slot, id DESC",
+                    (thread_key,)
+                ).fetchall()
+            facts: Dict[str, Dict] = {}
+            for row in rows:
+                if row["slot"] not in facts:
+                    facts[row["slot"]] = dict(row)
+            return facts
         return self._execute_db(_query)
     
-    def answer(self, question: str) -> Optional[str]:
+    def answer(self, question: str, thread_id: Optional[str] = None) -> Optional[str]:
         """
         Answer a question from stored facts.
         
@@ -617,12 +650,12 @@ class FactStore:
         
         for slot, keywords in slot_map.items():
             if any(kw in q for kw in keywords):
-                fact = self.get_fact(slot)
+                fact = self.get_fact(slot, thread_id=thread_id)
                 if fact:
                     # For "why" questions, also check for reason slot
                     if is_why:
                         reason_slot = f"{slot}_reason"
-                        reason_fact = self.get_fact(reason_slot)
+                        reason_fact = self.get_fact(reason_slot, thread_id=thread_id)
                         if reason_fact:
                             return f"Your {slot.split('.')[-1].replace('_', ' ')} is {fact['value']} because {reason_fact['value']}"
                         else:
@@ -631,43 +664,54 @@ class FactStore:
         
         return None
     
-    def get_history(self, slot: str) -> List[Dict]:
+    def get_history(self, slot: str, thread_id: Optional[str] = None) -> List[Dict]:
         """Get value history for a slot (for debugging/transparency)."""
         def _query(conn):
-            rows = conn.execute(
-                "SELECT value, trust, source, timestamp, is_current FROM facts WHERE slot = ? ORDER BY timestamp DESC",
-                (slot,)
-            ).fetchall()
+            if thread_id is None:
+                rows = conn.execute(
+                    "SELECT value, trust, source, timestamp, is_current, thread_id FROM facts WHERE slot = ? ORDER BY timestamp DESC",
+                    (slot,)
+                ).fetchall()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                rows = conn.execute(
+                    "SELECT value, trust, source, timestamp, is_current, thread_id FROM facts WHERE slot = ? AND COALESCE(thread_id, 'default') = ? ORDER BY timestamp DESC",
+                    (slot, thread_key)
+                ).fetchall()
             return [dict(row) for row in rows]
         return self._execute_db(_query)
     
     # Reject values that are clearly garbage or placeholders
     _GARBAGE_VALUES = {"none", "null", "n/a", "unknown", "undefined", ""}
 
-    def _store_fact(self, fact: Fact) -> int:
+    def _store_fact(self, fact: Fact, thread_id: Optional[str] = None) -> int:
         # Guard: reject None-like or empty values
         if not fact.value or fact.value.strip().lower() in self._GARBAGE_VALUES:
             logger.debug(f"[FACT_STORE] Rejected garbage value for slot {fact.slot}: {fact.value!r}")
             return -1
+        thread_key = self._normalize_thread_id(thread_id or getattr(fact, "thread_id", None))
+        fact.thread_id = thread_key
         def _insert(conn):
             cur = conn.execute(
-                "INSERT INTO facts (slot, value, trust, source, timestamp) VALUES (?, ?, ?, ?, ?)",
-                (fact.slot, fact.value, fact.trust, fact.source.value, fact.timestamp)
+                "INSERT INTO facts (slot, value, trust, source, timestamp, thread_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (fact.slot, fact.value, fact.trust, fact.source.value, fact.timestamp, thread_key)
             )
             return cur.lastrowid
         return self._execute_db(_insert)
     
-    def _update_fact(self, old_id: int, new_fact: Fact):
+    def _update_fact(self, old_id: int, new_fact: Fact, thread_id: Optional[str] = None):
         """Supersede old fact with new one."""
         # Guard: reject None-like or empty values
         if not new_fact.value or new_fact.value.strip().lower() in self._GARBAGE_VALUES:
             logger.debug(f"[FACT_STORE] Rejected garbage update for slot {new_fact.slot}: {new_fact.value!r}")
             return
+        thread_key = self._normalize_thread_id(thread_id or getattr(new_fact, "thread_id", None))
+        new_fact.thread_id = thread_key
         def _update(conn):
             # Insert new fact
             cur = conn.execute(
-                "INSERT INTO facts (slot, value, trust, source, timestamp) VALUES (?, ?, ?, ?, ?)",
-                (new_fact.slot, new_fact.value, new_fact.trust, new_fact.source.value, new_fact.timestamp)
+                "INSERT INTO facts (slot, value, trust, source, timestamp, thread_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (new_fact.slot, new_fact.value, new_fact.trust, new_fact.source.value, new_fact.timestamp, thread_key)
             )
             new_id = cur.lastrowid
             # Mark old as superseded
@@ -687,7 +731,7 @@ class FactStore:
     # Phase 2.2: LLM Claim Tracking
     # =========================================================================
     
-    def process_llm_response(self, llm_response: str) -> Dict[str, Any]:
+    def process_llm_response(self, llm_response: str, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Phase 2.2: Process LLM response to extract and track claims.
         
@@ -704,9 +748,11 @@ class FactStore:
             "contradictions": [],
             "disclosures": []
         }
+        thread_key = self._normalize_thread_id(thread_id)
         
         for claim in claims:
-            contradiction = self._check_llm_claim(claim)
+            claim.thread_id = thread_key
+            contradiction = self._check_llm_claim(claim, thread_id=thread_key)
             
             if contradiction:
                 result["contradictions"].append({
@@ -721,12 +767,12 @@ class FactStore:
                 result["disclosures"].append(contradiction.disclosure)
             
             # Store the LLM claim (even if contradictory - keep audit trail)
-            self._store_llm_claim(claim)
+            self._store_llm_claim(claim, thread_id=thread_key)
             result["claims"].append(claim.to_dict())
         
         return result
     
-    def _check_llm_claim(self, claim: Fact) -> Optional[LLMContradiction]:
+    def _check_llm_claim(self, claim: Fact, thread_id: Optional[str] = None) -> Optional[LLMContradiction]:
         """
         Check if an LLM claim contradicts:
         1. A previous LLM claim (LLM→LLM contradiction)
@@ -734,8 +780,9 @@ class FactStore:
         
         User facts take priority - LLM should not contradict what user said.
         """
+        thread_key = self._normalize_thread_id(thread_id or getattr(claim, "thread_id", None))
         # First check against user-stated facts (higher priority)
-        user_fact = self._get_user_fact(claim.slot)
+        user_fact = self._get_user_fact(claim.slot, thread_id=thread_key)
         if user_fact and user_fact["value"].lower() != claim.value.lower():
             return LLMContradiction(
                 contradiction_type="llm_vs_user",
@@ -753,7 +800,7 @@ class FactStore:
             )
         
         # Then check against previous LLM claims
-        llm_fact = self._get_llm_fact(claim.slot)
+        llm_fact = self._get_llm_fact(claim.slot, thread_id=thread_key)
         if llm_fact and llm_fact["value"].lower() != claim.value.lower():
             return LLMContradiction(
                 contradiction_type="llm_vs_llm",
@@ -772,38 +819,64 @@ class FactStore:
         
         return None
     
-    def _get_user_fact(self, slot: str) -> Optional[Dict]:
+    def _get_user_fact(self, slot: str, thread_id: Optional[str] = None) -> Optional[Dict]:
         """Get the current user-stated fact for a slot."""
         def _query(conn):
-            row = conn.execute(
-                """SELECT * FROM facts 
-                   WHERE slot = ? AND is_current = 1 
-                   AND source IN ('user_stated', 'user_corrected')""",
-                (slot,)
-            ).fetchone()
+            if thread_id is None:
+                row = conn.execute(
+                    """SELECT * FROM facts 
+                       WHERE slot = ? AND is_current = 1 
+                       AND source IN ('user_stated', 'user_corrected')
+                       ORDER BY id DESC LIMIT 1""",
+                    (slot,)
+                ).fetchone()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                row = conn.execute(
+                    """SELECT * FROM facts 
+                       WHERE slot = ? AND is_current = 1 
+                       AND source IN ('user_stated', 'user_corrected')
+                       AND COALESCE(thread_id, 'default') = ?
+                       ORDER BY id DESC LIMIT 1""",
+                    (slot, thread_key)
+                ).fetchone()
             return dict(row) if row else None
         return self._execute_db(_query)
     
-    def _get_llm_fact(self, slot: str) -> Optional[Dict]:
+    def _get_llm_fact(self, slot: str, thread_id: Optional[str] = None) -> Optional[Dict]:
         """Get the most recent LLM claim for a slot."""
         def _query(conn):
-            row = conn.execute(
-                """SELECT * FROM facts 
-                   WHERE slot = ? AND is_current = 1 
-                   AND source IN ('llm_stated', 'llm_corrected')""",
-                (slot,)
-            ).fetchone()
+            if thread_id is None:
+                row = conn.execute(
+                    """SELECT * FROM facts 
+                       WHERE slot = ? AND is_current = 1 
+                       AND source IN ('llm_stated', 'llm_corrected')
+                       ORDER BY id DESC LIMIT 1""",
+                    (slot,)
+                ).fetchone()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                row = conn.execute(
+                    """SELECT * FROM facts 
+                       WHERE slot = ? AND is_current = 1 
+                       AND source IN ('llm_stated', 'llm_corrected')
+                       AND COALESCE(thread_id, 'default') = ?
+                       ORDER BY id DESC LIMIT 1""",
+                    (slot, thread_key)
+                ).fetchone()
             return dict(row) if row else None
         return self._execute_db(_query)
     
-    def _store_llm_claim(self, claim: Fact):
+    def _store_llm_claim(self, claim: Fact, thread_id: Optional[str] = None):
         """Store an LLM claim, superseding any previous LLM claim for same slot."""
-        existing = self._get_llm_fact(claim.slot)
+        thread_key = self._normalize_thread_id(thread_id or getattr(claim, "thread_id", None))
+        claim.thread_id = thread_key
+        existing = self._get_llm_fact(claim.slot, thread_id=thread_key)
         if existing:
             # Supersede old LLM claim
-            self._update_fact(existing["id"], claim)
+            self._update_fact(existing["id"], claim, thread_id=thread_key)
         else:
-            self._store_fact(claim)
+            self._store_fact(claim, thread_id=thread_key)
     
     def _generate_disclosure(
         self, 
@@ -828,27 +901,49 @@ class FactStore:
         else:
             return f"⚠️ Inconsistency detected for {slot_name}: {old_value} vs {new_value}"
     
-    def get_all_llm_claims(self) -> Dict[str, Dict]:
+    def get_all_llm_claims(self, thread_id: Optional[str] = None) -> Dict[str, Dict]:
         """Get all current LLM claims."""
         def _query(conn):
-            rows = conn.execute(
-                """SELECT * FROM facts 
-                   WHERE is_current = 1 
-                   AND source IN ('llm_stated', 'llm_corrected')
-                   ORDER BY slot"""
-            ).fetchall()
-            return {row["slot"]: dict(row) for row in rows}
+            if thread_id is None:
+                rows = conn.execute(
+                    """SELECT * FROM facts 
+                       WHERE is_current = 1 
+                       AND source IN ('llm_stated', 'llm_corrected')
+                       ORDER BY slot, id DESC"""
+                ).fetchall()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                rows = conn.execute(
+                    """SELECT * FROM facts 
+                       WHERE is_current = 1 
+                       AND source IN ('llm_stated', 'llm_corrected')
+                       AND COALESCE(thread_id, 'default') = ?
+                       ORDER BY slot, id DESC""",
+                    (thread_key,)
+                ).fetchall()
+            claims: Dict[str, Dict] = {}
+            for row in rows:
+                if row["slot"] not in claims:
+                    claims[row["slot"]] = dict(row)
+            return claims
         return self._execute_db(_query)
     
-    def get_contradiction_summary(self) -> Dict[str, Any]:
+    def get_contradiction_summary(self, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get summary of all contradictions between user facts and LLM claims.
         Useful for debugging and transparency.
         """
         def _query(conn):
-            rows = conn.execute(
-                "SELECT * FROM facts WHERE is_current = 1"
-            ).fetchall()
+            if thread_id is None:
+                rows = conn.execute(
+                    "SELECT * FROM facts WHERE is_current = 1"
+                ).fetchall()
+            else:
+                thread_key = self._normalize_thread_id(thread_id)
+                rows = conn.execute(
+                    "SELECT * FROM facts WHERE is_current = 1 AND COALESCE(thread_id, 'default') = ?",
+                    (thread_key,)
+                ).fetchall()
             
             user_facts = {}
             llm_facts = {}
@@ -881,7 +976,7 @@ class FactStore:
             "conflicts": conflicts
         }
     
-    def validate_response(self, llm_response: str) -> Tuple[str, List[str]]:
+    def validate_response(self, llm_response: str, thread_id: Optional[str] = None) -> Tuple[str, List[str]]:
         """
         Phase 2.2: Validate an LLM response before sending to user.
         
@@ -890,7 +985,7 @@ class FactStore:
         
         If contradictions are found, disclosures are prepended to response.
         """
-        result = self.process_llm_response(llm_response)
+        result = self.process_llm_response(llm_response, thread_id=thread_id)
         
         if result["disclosures"]:
             # Prepend disclosures to response

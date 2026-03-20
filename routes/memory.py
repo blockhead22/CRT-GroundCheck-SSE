@@ -15,7 +15,12 @@ import re as _re
 
 from personal_agent.crt_core import MemorySource
 from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.fact_slots import extract_fact_slots, create_simple_fact, names_look_equivalent
+from personal_agent.fact_slots import (
+    create_simple_fact,
+    extract_fact_slots,
+    is_explicit_name_declaration_text,
+    names_look_equivalent,
+)
 from personal_agent.judgment_audit_log import get_judgment_log, CONTRADICTION_STORE
 
 from routes.deps import sanitize_thread_id
@@ -299,7 +304,7 @@ def get_structured_facts(request: Request, thread_id: str = Query(default="defau
 
     facts: Dict[str, Any] = {}
     if hasattr(engine, 'fact_store') and engine.fact_store:
-        facts = engine.fact_store.get_all_facts()
+        facts = engine.fact_store.get_all_facts(thread_id=tid)
 
     return StructuredFactsResponse(
         thread_id=tid,
@@ -323,7 +328,7 @@ def get_fact_history(
         # Normalize slot name
         if not slot.startswith("user."):
             slot = f"user.{slot}"
-        history = engine.fact_store.get_history(slot)
+        history = engine.fact_store.get_history(slot, thread_id=tid)
 
     return FactHistoryResponse(
         thread_id=tid,
@@ -519,6 +524,8 @@ def _check_inline_contradiction(
             for slot, new_val in new_slots.items():
                 if not new_val or slot not in existing_slots:
                     continue
+                if slot == "name" and not is_explicit_name_declaration_text(existing_text):
+                    continue
                 old_val = existing_slots[slot]
                 if not old_val or new_val.lower() == old_val.lower():
                     continue
@@ -605,7 +612,7 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
         if hasattr(engine, "memory") and engine.memory.can_update_user_profile(mem):
             fact_store = getattr(engine, "fact_store", None)
             if fact_store is not None:
-                fact_result = fact_store.process_input(req.text)
+                fact_result = fact_store.process_input(req.text, thread_id=tid)
                 fact_store_updated = bool(
                     (fact_result or {}).get("extracted") or (fact_result or {}).get("updated")
                 )

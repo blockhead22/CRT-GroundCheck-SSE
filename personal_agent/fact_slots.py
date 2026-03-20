@@ -574,10 +574,33 @@ _NAME_STOPWORDS = {
     "able",
 }
 
+_NAME_LEADING_FILLERS = {
+    "actually",
+    "definitely",
+    "indeed",
+    "just",
+    "literally",
+    "okay",
+    "ok",
+    "really",
+    "still",
+    "well",
+    "yeah",
+    "yep",
+    "yes",
+}
+
 
 def _norm_text(value: str) -> str:
     value = _WS_RE.sub(" ", value.strip())
     return value.lower()
+
+
+def _normalize_name_parts(value: str) -> List[str]:
+    parts = [p for p in re.split(r"\s+", _norm_text(str(value or ""))) if p]
+    while parts and parts[0] in _NAME_LEADING_FILLERS:
+        parts.pop(0)
+    return parts
 
 
 def names_look_equivalent(left: str, right: str) -> bool:
@@ -588,8 +611,10 @@ def names_look_equivalent(left: str, right: str) -> bool:
     - "Nick Block" vs "Nick B"
     - repeated exact matches with different spacing/case
     """
-    left_norm = _norm_text(str(left or ""))
-    right_norm = _norm_text(str(right or ""))
+    left_parts = _normalize_name_parts(left)
+    right_parts = _normalize_name_parts(right)
+    left_norm = " ".join(left_parts)
+    right_norm = " ".join(right_parts)
     if not left_norm or not right_norm:
         return False
     if left_norm == right_norm:
@@ -597,8 +622,6 @@ def names_look_equivalent(left: str, right: str) -> bool:
     if left_norm.startswith(right_norm) or right_norm.startswith(left_norm):
         return True
 
-    left_parts = [p for p in re.split(r"\s+", left_norm) if p]
-    right_parts = [p for p in re.split(r"\s+", right_norm) if p]
     if not left_parts or not right_parts:
         return False
 
@@ -613,6 +636,24 @@ def names_look_equivalent(left: str, right: str) -> bool:
         ):
             return True
 
+    return False
+
+
+def is_explicit_name_declaration_text(text: str) -> bool:
+    """Return True for texts that are clearly intended to declare a user's name."""
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    lowered = raw.lower()
+    if re.search(r"^\s*(?:fact|pref):\s*name\s*=", raw, flags=re.IGNORECASE):
+        return True
+    if "my name is" in lowered or "call me" in lowered:
+        return True
+    if re.search(
+        r"\bi(?:'m| am)\s+[A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2}(?:[,.!?]|$)",
+        raw,
+    ):
+        return True
     return False
 
 
@@ -707,6 +748,8 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     def _clean_name_value(raw_name: str) -> str:
         """Remove trailing conjunctions and pronouns from name matches."""
         tokens = raw_name.split()
+        while tokens and tokens[0].lower() in _NAME_LEADING_FILLERS:
+            tokens.pop(0)
         # Walk backwards and remove boundary words
         while len(tokens) > 1 and tokens[-1].lower() in _NAME_BOUNDARY_WORDS:
             tokens.pop()

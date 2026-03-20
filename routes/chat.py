@@ -415,7 +415,13 @@ def _is_meta_provenance_followup(message: str) -> bool:
             "how do you know",
             "how are you sure",
             "how did you know",
+            "how do you remember",
+            "how did you learn",
+            "where did you learn",
             "where did you learn that",
+            "how does your memory",
+            "how does that work",
+            "explain your process",
             "why are you sure",
         )
     )
@@ -478,6 +484,14 @@ def _answer_recent_slot_provenance(*, engine: Any, session_db: Any, thread_id: s
     return (
         f"I know that because you told me your {slot_label} is {fact_value}. "
         f"I have that stored from: \"{fact_text}\" (trust: {trust:.2f})."
+    )
+
+
+def _generic_meta_provenance_answer() -> str:
+    return (
+        "I remember this by storing your confirmed facts in memory and retrieving them when they're relevant. "
+        "Facts about you come from what you've told me, while my assistant identity comes from my configured system role. "
+        "If those records conflict, I disclose the conflict instead of silently picking a winner."
     )
 
 
@@ -1465,6 +1479,9 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         gate_reason: Optional[str],
     ) -> Dict[str, Any]:
         meta = dict(metadata or {})
+        meta["response_type"] = response_type
+        meta["gates_passed"] = bool(gates_passed)
+        meta["gate_reason"] = gate_reason
         control_state.final_action = _response_action(gates_passed, gate_reason, response_type)
         meta["response_control"] = {
             "request_kind": control_state.request_kind,
@@ -1584,7 +1601,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         try:
             fact_store = getattr(engine, "fact_store", None)
             if fact_store is not None and hasattr(fact_store, "get_all_facts"):
-                maybe_facts = fact_store.get_all_facts()
+                maybe_facts = fact_store.get_all_facts(thread_id=req.thread_id)
                 if isinstance(maybe_facts, dict):
                     structured_facts = maybe_facts
         except Exception as e:
@@ -1698,23 +1715,33 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             session_db=session_db,
             thread_id=req.thread_id,
         )
-        if provenance_answer:
-            if greeting_text:
-                provenance_answer = f"{greeting_text}\n\n{provenance_answer}"
-            _record_fast_query(provenance_answer, "provenance")
-            control_state.mark("decide", "ready", detail="recent_slot_provenance")
-            control_state.mark("learn", "recorded", detail="fast_query")
-            return _chat_response(
-                answer=provenance_answer,
-                response_type="explanation",
-                gates_passed=True,
-                gate_reason="recent_slot_provenance",
-                metadata={
-                    "mode": "deterministic_provenance",
-                    "confidence": 0.98,
-                    "continuity_context_applied": True,
-                },
+        provenance_gate_reason = "recent_slot_provenance" if provenance_answer else "generic_meta_provenance"
+        if not provenance_answer:
+            provenance_answer = _generic_meta_provenance_answer()
+        if greeting_text:
+            provenance_answer = f"{greeting_text}\n\n{provenance_answer}"
+        try:
+            session_db.record_query(
+                thread_id=req.thread_id,
+                query_text=req.message,
+                response_text=provenance_answer,
+                detected_slot="provenance",
             )
+        except Exception as e:
+            logger.debug(f"[SESSION] Error recording deterministic provenance query: {e}")
+        control_state.mark("decide", "ready", detail=provenance_gate_reason)
+        control_state.mark("learn", "recorded", detail="fast_query")
+        return _chat_response(
+            answer=provenance_answer,
+            response_type="explanation",
+            gates_passed=True,
+            gate_reason=provenance_gate_reason,
+            metadata={
+                "mode": "deterministic_provenance",
+                "confidence": 0.98,
+                "continuity_context_applied": True,
+            },
+        )
 
     def _record_fast_query(answer_text: str, detected_slot: Optional[str]) -> None:
         try:
@@ -2480,18 +2507,87 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         ).strip()
     final_answer = _strip_emojis(final_answer)
 
-    # Gate-fail fallback — never return a blank bubble
-    if not final_answer.strip() and not bool(result.get("gates_passed", True)):
-        _gate_reason = str(result.get("gate_reason") or "")
-        if "contradiction" in _gate_reason or "disclosure" in _gate_reason:
-            final_answer = "I have conflicting information about this and can't give you a confident answer right now. Let's clear up the contradiction first."
-        elif "uncertainty" in _gate_reason:
-            final_answer = "I'm not confident enough in my answer to share it. Could you give me more context?"
-        else:
-            final_answer = "I wasn't able to generate a reliable response to that. Try rephrasing, or ask me to explain why."
+    def _collapse_repetitive_answer(text: str) -> str:
+        value = str(text or "").strip()
+        if not value:
+            return value
+        sentences = [s.strip() for s in _re.split(r"(?<=[.!?])\s+", value) if s.strip()]
+        if len(sentences) < 4:
+            return value
+        normalized = [_re.sub(r"\s+", " ", s).strip().lower() for s in sentences]
+        first = normalized[0]
+        repeated_prefix = 1
+        for item in normalized[1:]:
+            if item != first:
+                break
+            repeated_prefix += 1
+        if repeated_prefix >= 4:
+            return sentences[0]
+        for pattern_len in (2, 3):
+            if len(normalized) < pattern_len * 3:
+                continue
+            pattern = normalized[:pattern_len]
+            if all(normalized[idx] == pattern[idx % pattern_len] for idx in range(len(normalized))):
+                return " ".join(sentences[:pattern_len])
+        if len(set(normalized)) == 1 and len(normalized) >= 3:
+            return sentences[0]
+        return value
+
+    final_answer = _collapse_repetitive_answer(final_answer)
+
+    def _blocked_answer(reason: str, existing_answer: str) -> str:
+        answer_text = str(existing_answer or "").strip()
+        lower_answer = answer_text.lower()
+        gate_debug = result.get("gate_debug") or {}
+        slot_label = str(gate_debug.get("slot") or "").strip(" ?")
+        meta_provenance = _is_meta_provenance_followup(effective_message)
+        suspicious_markers = (
+            "corrections from stored memory",
+            "revise your answer",
+            "original question:",
+            "your draft answer:",
+        )
+        uncertainty_markers = (
+            "conflicting information",
+            "conflicting memories",
+            "which is correct",
+            "can't answer confidently",
+            "i'm not confident",
+            "i found a conflict",
+        )
+        suspicious = any(marker in lower_answer for marker in suspicious_markers)
+        already_safe = any(marker in lower_answer for marker in uncertainty_markers)
+
+        if "contradiction" in reason or "disclosure" in reason or "unresolved" in reason or "hard_conflict" in reason:
+            if answer_text and already_safe and not suspicious:
+                return answer_text
+            if slot_label:
+                return f"I have conflicting information about your {slot_label} and can't answer confidently yet. Which version is correct right now?"
+            return "I have conflicting information about this and can't answer confidently yet. Which version is correct right now?"
+        if "system_prompt" in reason:
+            return (
+                "I can't share my hidden instructions verbatim. "
+                "If you tell me what you're trying to do, I can summarize the behavior instead."
+            )
+        if meta_provenance and ("explanatory_memory_fail" in reason or "degraded_output" in reason):
+            return (
+                "I remember this by storing your confirmed facts in memory and retrieving them when they're relevant. "
+                "Facts about you come from what you've told me, while my assistant identity comes from my configured system role. "
+                "If those records conflict, I disclose the conflict instead of silently picking a winner."
+            )
+        if "uncertainty" in reason or "grounding_fail" in reason:
+            if answer_text and not suspicious:
+                return answer_text
+            return "I'm not confident enough in my answer to share it. Could you give me more context?"
+        if answer_text and not suspicious:
+            return answer_text
+        return "I wasn't able to generate a reliable response to that. Try rephrasing, or ask me to explain why."
+
+    if not bool(result.get("gates_passed", True)):
+        final_answer = _blocked_answer(str(result.get("gate_reason") or ""), final_answer)
 
     tasking_meta = None
-    if tasking_enabled:
+    if tasking_enabled and bool(result.get("gates_passed", True)):
         allow_tasking = True
         if _TASKING_INTERVAL_SECONDS > 0:
             now_ts = time.time()
@@ -2923,6 +3019,7 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
         result = engine.query_with_intent(
             user_query=req.message,
             user_marked_important=req.user_marked_important,
+            thread_id=req.thread_id,
             channel=req.channel,
             origin=req.origin,
             authority=req.authority,

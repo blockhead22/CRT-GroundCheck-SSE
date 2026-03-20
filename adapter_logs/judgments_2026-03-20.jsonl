@@ -1,0 +1,1 @@
+{"event_type": "contradiction_store", "timestamp": 1773967634.07041, "slot": "name", "reason": "Exclusive slot conflict on store: 'name' 'Alex Chen' \u2192 'Nick'", "old_value": "Alex Chen", "new_value": "Nick", "p_valid": null, "memory_id": "mem_1773967633545_5986", "thread_id": "openclaw", "extra": null, "timestamp_iso": "2026-03-20T00:47:14.070410+00:00"}

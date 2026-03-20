@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 from .crt_core import CRTMath, CRTConfig, MemorySource, SSEMode, encode_vector
 from .crt_memory import CRTMemorySystem, MemoryItem
-from .crt_ledger import ContradictionLedger, ContradictionEntry, ContradictionType
+from .crt_ledger import ContradictionLedger, ContradictionEntry, ContradictionStatus, ContradictionType
 from .reasoning import ReasoningEngine, ReasoningMode
 from .fact_slots import (
     extract_fact_slots, 
@@ -43,6 +43,7 @@ from .fact_slots import (
     detect_correction_type,
     extract_direct_correction,
     extract_hedged_correction,
+    is_explicit_name_declaration_text,
     names_look_equivalent,
 )
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
@@ -1419,12 +1420,23 @@ class CRTEnhancedRAG:
         t = (text or "").strip()
         if not t:
             return False
-        # Use fact-slot extraction so we catch common forms like:
-        # - "My name is Nick"
-        # - "I'm Nick"
-        # while avoiding false positives like "I'm trying to ...".
-        facts = extract_fact_slots(t) or {}
-        return "name" in facts
+        lower = t.lower()
+        question_starters = (
+            "who ", "what ", "when ", "where ", "why ", "how ",
+            "do ", "does ", "did ", "can ", "could ", "would ", "will ", "should ",
+            "is ", "are ", "am ", "was ", "were ", "tell me ", "remind me ",
+        )
+        if lower.startswith(question_starters):
+            return False
+
+        # Check sentence-by-sentence so "Hi, I'm Nick. Who are you?" still counts,
+        # while questions that merely mention "I am Nick" do not.
+        segments = [seg.strip() for seg in re.split(r"[.!?]+", t) if seg.strip()]
+        for seg in segments:
+            cleaned = re.sub(r"^(?:hi|hello|hey|yo)[,\s]+", "", seg, flags=re.IGNORECASE).strip()
+            if cleaned and is_explicit_name_declaration_text(cleaned):
+                return True
+        return False
 
     def _is_user_named_reference_question(self, user_query: str) -> bool:
         """Detect third-person questions that refer to the user by (their) name.
@@ -1494,6 +1506,31 @@ class CRTEnhancedRAG:
         except Exception as e:
             log_swallowed_exception("crt_rag._get_memory_conflicts", e)
             return []
+
+    def _load_thread_user_memories(
+        self,
+        *,
+        thread_id: Optional[str] = None,
+        exclude_memory_id: Optional[str] = None,
+    ) -> List[MemoryItem]:
+        """Load USER memories scoped to the active thread when available."""
+        try:
+            if thread_id is not None:
+                memories = self.memory._load_memories_filtered(
+                    source=MemorySource.USER,
+                    thread_id=str(thread_id),
+                )
+            else:
+                memories = self.memory._load_memories_filtered(source=MemorySource.USER)
+        except Exception:
+            memories = [
+                m for m in self.memory._load_all_memories()
+                if m.source == MemorySource.USER
+            ]
+
+        if exclude_memory_id:
+            memories = [m for m in memories if m.memory_id != exclude_memory_id]
+        return memories
 
     def _add_reintroduction_flags(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Add reintroduced_claim flags to all memories in a query result.
@@ -2387,12 +2424,10 @@ class CRTEnhancedRAG:
         if not new_facts:
             return False, None
         
-        # Get all previous user memories
-        all_memories = self.memory._load_all_memories()
-        previous_user_memories = [
-            m for m in all_memories 
-            if m.source == MemorySource.USER and m.memory_id != new_memory.memory_id
-        ]
+        previous_user_memories = self._load_thread_user_memories(
+            thread_id=thread_id,
+            exclude_memory_id=new_memory.memory_id,
+        )
         
         # Check each new fact against previous memories
         for slot, new_fact in new_facts.items():
@@ -2406,6 +2441,8 @@ class CRTEnhancedRAG:
             
             # Find previous memories with the same slot
             for prev_mem in previous_user_memories:
+                if slot == "name" and not is_explicit_name_declaration_text(prev_mem.text):
+                    continue
                 # Phase 2.0: Extract contextual facts from prior memory
                 prev_facts = self._extract_facts_contextual(prev_mem.text) or extract_fact_slots(prev_mem.text) or {}
                 prev_fact = prev_facts.get(slot)
@@ -2503,7 +2540,8 @@ class CRTEnhancedRAG:
                             old_vector=prev_mem.vector,
                             new_vector=new_memory.vector,
                             contradiction_type=ContradictionType.REVISION,
-                            suggested_policy="accept_new"
+                            suggested_policy="accept_new",
+                            thread_id=thread_id,
                         )
                         return True, contradiction_entry
                     else:
@@ -2537,7 +2575,8 @@ class CRTEnhancedRAG:
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=ContradictionType.CONFLICT,
-                        suggested_policy="ask_user"
+                        suggested_policy="ask_user",
+                        thread_id=thread_id,
                     )
                     return True, contradiction_entry
                 
@@ -2599,7 +2638,8 @@ class CRTEnhancedRAG:
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=fallback_type,
-                        suggested_policy=fallback_policy
+                        suggested_policy=fallback_policy,
+                        thread_id=thread_id,
                     )
                     return True, contradiction_entry
                 
@@ -2632,7 +2672,8 @@ class CRTEnhancedRAG:
                                 old_vector=prev_mem_search.vector,
                                 new_vector=new_memory.vector,
                                 contradiction_type=ContradictionType.DENIAL,
-                                suggested_policy="ask_user"
+                                suggested_policy="ask_user",
+                                thread_id=thread_id,
                             )
                             logger.info(f"[DENIAL] Turn {new_memory.memory_id}: Denial of '{denied_value}' detected")
                             return True, contradiction_entry
@@ -2661,7 +2702,8 @@ class CRTEnhancedRAG:
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=ContradictionType.REVISION,
-                        suggested_policy="accept_new"
+                        suggested_policy="accept_new",
+                        thread_id=thread_id,
                     )
                     return True, contradiction_entry
                 
@@ -2699,7 +2741,8 @@ class CRTEnhancedRAG:
                         new_text=user_query,
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
-                        contradiction_type=ContradictionType.REVISION
+                        contradiction_type=ContradictionType.REVISION,
+                        thread_id=thread_id,
                     )
                     return True, contradiction_entry
                 
@@ -2794,6 +2837,7 @@ class CRTEnhancedRAG:
                         old_vector=prev_mem.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=result["category"],
+                        thread_id=thread_id,
                         suggested_policy=suggested_policy_final
                     )
                     
@@ -3458,10 +3502,7 @@ class CRTEnhancedRAG:
         # NOTE: Import at block level to avoid scope issues with later local imports
         from .crt_ledger import ContradictionType as GaslightingContradictionType
         try:
-            previous_user_memories = [
-                m for m in self.memory._load_all_memories()
-                if m.source == MemorySource.USER
-            ]
+            previous_user_memories = self._load_thread_user_memories(thread_id=thread_id)
             is_gaslighting, denied_value, original_memory, slot = self._detect_gaslighting_attempt(
                 user_text, previous_user_memories
             )
@@ -3496,7 +3537,8 @@ class CRTEnhancedRAG:
                         old_vector=original_memory.vector,
                         new_vector=new_memory.vector,
                         contradiction_type=GaslightingContradictionType.DENIAL,
-                        suggested_policy="cite_original"
+                        suggested_policy="cite_original",
+                        thread_id=thread_id,
                     )
                 except Exception as e:
                     logger.warning(f"[GASLIGHTING] Failed to record contradiction: {e}")
@@ -3653,7 +3695,7 @@ class CRTEnhancedRAG:
                         })
                         try:
                             # Record in the contradiction ledger for transparency
-                            self.ledger.record_contradiction(
+                            profile_contra = self.ledger.record_contradiction(
                                 old_memory_id=f"profile_{slot}_old",
                                 new_memory_id=f"profile_{slot}_new",
                                 drift_mean=0.8,  # High drift for profile changes
@@ -3661,7 +3703,13 @@ class CRTEnhancedRAG:
                                 old_text=f"FACT: {slot} = {replacement['old']}",
                                 new_text=f"FACT: {slot} = {replacement['new']}",
                                 contradiction_type="profile_update",
-                                summary=f"Profile update: {slot} changed from '{replacement['old']}' to '{replacement['new']}'"
+                                summary=f"Profile update: {slot} changed from '{replacement['old']}' to '{replacement['new']}'",
+                                thread_id=thread_id,
+                            )
+                            self.ledger.resolve_contradiction(
+                                profile_contra.ledger_id,
+                                method="profile_sync_audit",
+                                new_status=ContradictionStatus.RESOLVED,
                             )
                         except Exception as ledger_err:
                             logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
@@ -3764,12 +3812,10 @@ class CRTEnhancedRAG:
                         new_name = new_facts.get("name")
                         logger.debug("Extracted name from query: %s", new_name)
                         if new_name is not None:
-                            all_memories = self.memory._load_all_memories()
-                            previous_user_memories = [
-                                m
-                                for m in all_memories
-                                if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
-                            ]
+                            previous_user_memories = self._load_thread_user_memories(
+                                thread_id=thread_id,
+                                exclude_memory_id=user_memory.memory_id,
+                            )
                             # Only record a new contradiction if the user asserts a NEW name
                             # (i.e., it does not match any prior user-stated name value).
                             # If the user re-asserts a previously-known name, treat it as
@@ -3777,6 +3823,8 @@ class CRTEnhancedRAG:
                             prior_same_exists = False
                             prior_names: List[MemoryItem] = []
                             for prev_mem in previous_user_memories:
+                                if not is_explicit_name_declaration_text(prev_mem.text):
+                                    continue
                                 prev_facts = extract_fact_slots(prev_mem.text) or {}
                                 prev_name = prev_facts.get("name")
                                 if prev_name is None:
@@ -3847,6 +3895,7 @@ class CRTEnhancedRAG:
                                         new_text=user_text,
                                         old_vector=selected_prev.vector,
                                         new_vector=user_vector,
+                                        thread_id=thread_id,
                                     )
                                     logger.debug("Ledger recorded contradiction entry: %s", contradiction_entry)
                                     contradiction_detected = True
@@ -5175,7 +5224,7 @@ class CRTEnhancedRAG:
         llm_disclosures = []
         try:
             if hasattr(self, 'fact_store') and self.fact_store:
-                llm_claim_result = self.fact_store.process_llm_response(candidate_output)
+                llm_claim_result = self.fact_store.process_llm_response(candidate_output, thread_id=thread_id)
                 if llm_claim_result.get("disclosures"):
                     llm_disclosures = llm_claim_result["disclosures"]
                     # Prepend disclosures to the output
@@ -5337,13 +5386,10 @@ class CRTEnhancedRAG:
             logger.debug("Extracted fact slots: %s", list(new_facts.keys()) if new_facts else None)
             if new_facts:
                 user_vector = encode_vector(user_query)
-
-                all_memories = self.memory._load_all_memories()
-                previous_user_memories = [
-                    m
-                    for m in all_memories
-                    if m.source == MemorySource.USER and m.memory_id != user_memory.memory_id
-                ]
+                previous_user_memories = self._load_thread_user_memories(
+                    thread_id=thread_id,
+                    exclude_memory_id=user_memory.memory_id,
+                )
 
                 from .crt_ledger import ContradictionType
 
@@ -5354,6 +5400,8 @@ class CRTEnhancedRAG:
                     if not prev_facts:
                         continue
                     for slot, fact in prev_facts.items():
+                        if slot == "name" and not is_explicit_name_declaration_text(prev_mem.text):
+                            continue
                         candidates_by_slot.setdefault(slot, []).append((prev_mem, fact))
 
                 # Only create a contradiction if the asserted value is NEW for that slot.
@@ -5440,7 +5488,8 @@ class CRTEnhancedRAG:
                             old_text=selected_prev.text,
                             new_text=user_query,
                             old_vector=selected_prev.vector,
-                            new_vector=user_vector
+                            new_vector=user_vector,
+                            thread_id=thread_id,
                         )
 
                         contradiction_detected = True
@@ -7045,6 +7094,7 @@ class CRTEnhancedRAG:
         user_query: str,
         user_marked_important: bool = False,
         mode: Optional[ReasoningMode] = None,
+        thread_id: Optional[str] = None,
         channel: Optional[str] = None,
         origin: Optional[str] = None,
         authority: Optional[str] = None,
@@ -7086,6 +7136,26 @@ class CRTEnhancedRAG:
         # Route based on intent
         result = None
         fact_result = None
+        meta_question_cues = (
+            "how do you know",
+            "how are you sure",
+            "how can you be sure",
+            "how did you know",
+            "how do you remember",
+            "where did you learn",
+            "how did you learn",
+            "explain your process",
+            "explain the technical",
+            "how does your memory",
+            "how does that work",
+            "how do you have that",
+            "what makes you sure",
+            "why are you sure",
+            "why do you think",
+            "who are you",
+            "what are you",
+        )
+        is_meta_fact_question = any(cue in (user_query or "").lower() for cue in meta_question_cues)
         
         # Handle FACT intents with FactStore
         explicit_non_user_fact_kind = bool(kind and str(kind).strip().lower() != "user_fact")
@@ -7096,7 +7166,7 @@ class CRTEnhancedRAG:
             and not explicit_non_user_fact_kind
         ):
             self._trace_step("FACTSTORE", "Processing fact...")
-            fact_result = self.fact_store.process_input(user_query)
+            fact_result = self.fact_store.process_input(user_query, thread_id=thread_id)
             self._trace_step("FACTSTORE", f"Extracted: {len(fact_result.get('extracted', []))}, Updated: {len(fact_result.get('updated', []))}", fact_result)
             
             # Also run through CRT for contradiction detection
@@ -7105,6 +7175,7 @@ class CRTEnhancedRAG:
                 user_query,
                 user_marked_important,
                 mode,
+                thread_id=thread_id,
                 channel=channel,
                 origin=origin,
                 authority=authority,
@@ -7122,9 +7193,9 @@ class CRTEnhancedRAG:
                 slot_name = u['slot'].split('.')[-1].replace('_', ' ')
                 result['answer'] = f"Updated. Your {slot_name} is now {u['to']} (was {u['from']})."
         
-        elif intent == Intent.FACT_QUESTION and self.fact_store:
+        elif intent == Intent.FACT_QUESTION and self.fact_store and not is_meta_fact_question:
             self._trace_step("FACTSTORE", "Looking up fact...")
-            fact_answer = self.fact_store.answer(user_query)
+            fact_answer = self.fact_store.answer(user_query, thread_id=thread_id)
             self._trace_step("FACTSTORE", f"Answer: {fact_answer or 'None'}")
             
             if fact_answer:
@@ -7146,6 +7217,7 @@ class CRTEnhancedRAG:
                     user_query,
                     user_marked_important,
                     mode,
+                    thread_id=thread_id,
                     channel=channel,
                     origin=origin,
                     authority=authority,
@@ -7155,7 +7227,7 @@ class CRTEnhancedRAG:
         
         elif intent == Intent.META_MEMORY and self.fact_store:
             self._trace_step("FACTSTORE", "Gathering all facts...")
-            facts = self.fact_store.get_all_facts()
+            facts = self.fact_store.get_all_facts(thread_id=thread_id)
             self._trace_step("FACTSTORE", f"Found {len(facts)} facts")
             
             if facts:
@@ -7192,6 +7264,7 @@ class CRTEnhancedRAG:
                 user_query,
                 user_marked_important,
                 mode,
+                thread_id=thread_id,
                 channel=channel,
                 origin=origin,
                 authority=authority,
@@ -7208,17 +7281,17 @@ class CRTEnhancedRAG:
         
         return result
     
-    def get_structured_facts(self) -> Dict[str, Any]:
+    def get_structured_facts(self, thread_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Get all structured facts from FactStore.
         
         Returns dict of slot -> {value, trust, source, ...}
         """
         if self.fact_store:
-            return self.fact_store.get_all_facts()
+            return self.fact_store.get_all_facts(thread_id=thread_id)
         return {}
     
-    def get_fact_history(self, slot: str) -> List[Dict[str, Any]]:
+    def get_fact_history(self, slot: str, thread_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get history for a specific fact slot.
         
@@ -7231,7 +7304,7 @@ class CRTEnhancedRAG:
         if self.fact_store:
             if not slot.startswith("user."):
                 slot = f"user.{slot}"
-            return self.fact_store.get_history(slot)
+            return self.fact_store.get_history(slot, thread_id=thread_id)
         return []
     
     # ====== END Orchestration Methods ======
@@ -7892,6 +7965,7 @@ class CRTEnhancedRAG:
                 user_memories=all_mems,
                 memory_get_by_id=self.memory.get_memory_by_id,
                 ledger_db_path=str(getattr(self.ledger, "db_path", "") or ""),
+                thread_id=str(thread_id or getattr(self, "thread_id", "default") or "default"),
                 scope_slots=[
                     "name",
                     "location",

@@ -168,7 +168,7 @@ def ledger_open(
 ) -> list[ContradictionListItem]:
     engine = _get_engine(request, thread_id)
     try:
-        entries = engine.ledger.get_open_contradictions(limit=limit)
+        entries = engine.ledger.get_open_contradictions(limit=limit, thread_id=sanitize_thread_id(thread_id))
     except Exception:
         entries = []
 
@@ -219,7 +219,7 @@ def contradiction_work_items(
 ) -> list[ContradictionWorkItem]:
     engine = _get_engine(request, thread_id)
     try:
-        entries = engine.ledger.get_open_contradictions(limit=500)
+        entries = engine.ledger.get_open_contradictions(limit=500, thread_id=sanitize_thread_id(thread_id))
     except Exception:
         entries = []
 
@@ -235,7 +235,7 @@ def contradiction_next(
 ) -> ContradictionNextResponse:
     engine = _get_engine(request, thread_id)
     try:
-        entries = engine.ledger.get_open_contradictions(limit=500)
+        entries = engine.ledger.get_open_contradictions(limit=500, thread_id=sanitize_thread_id(thread_id))
     except Exception:
         entries = []
     if not entries:
@@ -268,7 +268,16 @@ def get_contradictions(
     try:
         with get_db_connection(ledger_db) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM contradictions ORDER BY timestamp DESC")
+            cursor.execute("PRAGMA table_info(contradictions)")
+            columns_info = cursor.fetchall()
+            has_thread_id = any(str(col[1] or "") == "thread_id" for col in columns_info)
+            if has_thread_id:
+                cursor.execute(
+                    "SELECT * FROM contradictions WHERE COALESCE(thread_id, 'default') = ? ORDER BY timestamp DESC",
+                    (tid,),
+                )
+            else:
+                cursor.execute("SELECT * FROM contradictions ORDER BY timestamp DESC")
             rows = cursor.fetchall()
 
             # Get column names
@@ -325,7 +334,7 @@ def contradiction_respond(
         # Try to use semantic anchor for intelligent parsing
         try:
             # Get the contradiction entry to build anchor
-            entries = [e for e in engine.ledger.get_all_contradictions(limit=1000)
+            entries = [e for e in engine.ledger.get_all_contradictions(limit=1000, thread_id=sanitize_thread_id(req.thread_id))
                       if getattr(e, 'ledger_id', '') == req.ledger_id]
 
             if entries:

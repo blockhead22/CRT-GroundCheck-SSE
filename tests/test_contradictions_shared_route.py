@@ -56,6 +56,7 @@ def test_contradictions_endpoint_uses_shared_ledger_db(client: tuple[TestClient,
         confidence_delta=0.1,
         query="shared contradiction check",
         summary="Shared route test contradiction",
+        thread_id="openclaw",
     )
 
     resp = http.get("/api/contradictions", params={"thread_id": "openclaw"})

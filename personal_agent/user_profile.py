@@ -21,7 +21,7 @@ from typing import Dict, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass
 
-from .fact_slots import extract_fact_slots, ExtractedFact, names_look_equivalent
+from .fact_slots import extract_fact_slots, ExtractedFact, is_question, names_look_equivalent
 
 # Conditional import for LLM extraction (optional feature)
 try:
@@ -207,17 +207,53 @@ class GlobalUserProfile:
             - 'replaced': {slot: {'old': old_value, 'new': new_value}} for contradictions
         """
         logger.debug(f"GlobalUserProfile.update_from_text called: text='{text[:50]}'")
+
+        raw_text = str(text or "").strip()
+        if not raw_text:
+            return {'updated': {}, 'replaced': {}}
+
+        # Questions and meta/self-reference probes are not durable profile facts.
+        if self._should_skip_profile_update(raw_text):
+            logger.debug(f"Skipping non-profile text: {raw_text[:80]}")
+            return {'updated': {}, 'replaced': {}}
         
         # Guard rail: Skip temporal/temporary statements
-        if self.is_temporal_statement(text):
-            logger.debug(f"Skipping temporal statement: {text[:50]}")
+        if self.is_temporal_statement(raw_text):
+            logger.debug(f"Skipping temporal statement: {raw_text[:50]}")
             return {'updated': {}, 'replaced': {}}
         
         # Try LLM extraction first, fall back to regex
         if self.llm_extractor:
-            return self._update_from_llm_tuples(text, thread_id)
+            return self._update_from_llm_tuples(raw_text, thread_id)
         else:
-            return self._update_from_regex_facts(text, thread_id)
+            return self._update_from_regex_facts(raw_text, thread_id)
+
+    def _should_skip_profile_update(self, text: str) -> bool:
+        """Reject interrogatives and meta/self-reference probes."""
+        raw = str(text or "").strip()
+        if not raw:
+            return True
+        lowered = raw.lower()
+        if is_question(raw):
+            return True
+        meta_markers = (
+            "how do you remember",
+            "what contradictions do you have",
+            "show me your contradiction",
+            "what memories do you have",
+            "who are you",
+            "what are you",
+        )
+        return any(marker in lowered for marker in meta_markers)
+
+    @staticmethod
+    def _is_profile_slot(slot: str) -> bool:
+        slot_norm = str(slot or "").strip().lower()
+        if not slot_norm:
+            return False
+        if slot_norm == "assistant_name" or slot_norm.startswith("assistant_"):
+            return False
+        return True
     
     def _update_from_llm_tuples(self, text: str, thread_id: str) -> Dict[str, Any]:
         """
@@ -249,6 +285,9 @@ class GlobalUserProfile:
         for tuple_obj in tuples:
             slot = tuple_obj.attribute
             value = tuple_obj.value
+            if not self._is_profile_slot(slot):
+                logger.info(f"[LLM_PROFILE_UPDATE] Skipping non-user slot: {slot}")
+                continue
             normalized = value.lower().strip()
             action = tuple_obj.action
             evidence = tuple_obj.evidence_span or text[:100]
@@ -329,6 +368,9 @@ class GlobalUserProfile:
         cursor = conn.cursor()
         
         for slot, fact in facts.items():
+            if not self._is_profile_slot(slot):
+                logger.info(f"[REGEX_PROFILE_UPDATE] Skipping non-user slot: {slot}")
+                continue
             logger.info(f"[REGEX_PROFILE_UPDATE] Processing slot='{slot}', value='{fact.value}'")
             new_norm = fact.normalized if hasattr(fact, 'normalized') else fact.value.lower()
             
