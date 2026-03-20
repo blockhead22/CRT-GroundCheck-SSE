@@ -463,3 +463,102 @@ def delete_thread(request: Request, thread_id: str) -> dict:
         pass
 
     return {"ok": True, "thread_id": tid, "deleted": True}
+
+
+# ---------------------------------------------------------------------------
+# Epistemic Timeline — turn-by-turn event log for a thread
+# ---------------------------------------------------------------------------
+
+_EVENT_TYPE_LABELS: Dict[str, str] = {
+    "gate_fail": "Gate blocked",
+    "gate_pass": "Gate passed",
+    "feedback_up": "Thumbs up",
+    "feedback_down": "Thumbs down",
+    "trust_delta_batch": "Trust updated",
+    "contradiction_open": "Contradiction opened",
+    "contradiction_resolved": "Contradiction resolved",
+    "memory_stored": "Memory stored",
+    "reflection_run": "Reflection ran",
+    "learning_applied": "Learning applied",
+}
+
+
+@router.get("/api/thread/{thread_id}/epistemic-timeline")
+def epistemic_timeline(
+    thread_id: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    event_type: Optional[str] = Query(default=None),
+) -> Dict[str, Any]:
+    """Chronological epistemic event log for a thread.
+
+    Reads turn_telemetry in active_learning.db filtered by thread_id.
+    Returns events newest-first with parsed payload and human-readable labels.
+    """
+    import json as _json
+    from pathlib import Path as _Path
+
+    al_db = _Path("personal_agent/active_learning.db")
+    if not al_db.exists():
+        return {"thread_id": thread_id, "total": 0, "events": []}
+
+    tid = sanitize_thread_id(thread_id)
+
+    try:
+        with get_db_connection(str(al_db)) as conn:
+            where = ["thread_id = ?"]
+            params: List[Any] = [tid]
+            if event_type:
+                where.append("event_type = ?")
+                params.append(event_type)
+
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM turn_telemetry WHERE {' AND '.join(where)}",
+                params,
+            ).fetchone()[0]
+
+            rows = conn.execute(
+                f"""SELECT id, ts, interaction_id, event_type, severity,
+                           memory_ids_json, payload_json
+                    FROM turn_telemetry
+                    WHERE {' AND '.join(where)}
+                    ORDER BY ts DESC
+                    LIMIT ? OFFSET ?""",
+                [*params, limit, offset],
+            ).fetchall()
+
+        events = []
+        for r in rows:
+            try:
+                payload = _json.loads(r[6] or "{}")
+            except Exception:
+                payload = {}
+            try:
+                memory_ids = _json.loads(r[5] or "[]")
+            except Exception:
+                memory_ids = []
+
+            et = r[3] or "unknown"
+            events.append({
+                "id": r[0],
+                "ts": r[1],
+                "interaction_id": r[2],
+                "event_type": et,
+                "label": _EVENT_TYPE_LABELS.get(et, et.replace("_", " ").title()),
+                "severity": r[4],
+                "memory_ids": memory_ids,
+                "payload": payload,
+            })
+
+        return {
+            "thread_id": tid,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "events": events,
+        }
+
+    except Exception as exc:
+        logger.warning("[epistemic-timeline] query failed for %s: %s", tid, exc)
+        return {"thread_id": tid, "total": 0, "events": []}
+

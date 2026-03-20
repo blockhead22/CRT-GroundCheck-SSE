@@ -35,6 +35,8 @@ RETEST_*.json
 contradiction_stress_test_output/
 integration_test_output/
 output_index/
+eval_results_smoke/
+eval_results*/
 
 # Artifacts - ignore generated stress test files
 artifacts/*.jsonl

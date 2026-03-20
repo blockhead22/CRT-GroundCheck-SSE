@@ -433,7 +433,7 @@ def teach_copilot(req: TeachRequest) -> Dict[str, Any]:
                     vector_json, sse_mode, kind, authority)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (mem_id, req.thread_id, req.text, 0.70, 0.85, req.source, now_ts,
-                 "[]", "hybrid", req.namespace or "user_fact", "confirmed"),
+                 "[]", "H", req.namespace or "user_fact", "confirmed"),
             )
         elif db.has_ns:
             conn.execute(

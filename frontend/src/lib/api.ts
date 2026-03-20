@@ -1763,3 +1763,36 @@ export async function getSelfModelState(threadId: string): Promise<{
 }> {
   return fetchJson(`/api/self-model/${encodeURIComponent(threadId)}`)
 }
+
+export type EpistemicEvent = {
+  id: number
+  ts: number
+  interaction_id: string | null
+  event_type: string
+  label: string
+  severity: number
+  memory_ids: string[]
+  payload: Record<string, unknown>
+}
+
+export type EpistemicTimeline = {
+  thread_id: string
+  total: number
+  offset: number
+  limit: number
+  events: EpistemicEvent[]
+}
+
+export async function getEpistemicTimeline(
+  threadId: string,
+  opts?: { limit?: number; offset?: number; eventType?: string }
+): Promise<EpistemicTimeline> {
+  const params = new URLSearchParams()
+  if (opts?.limit != null) params.set('limit', String(opts.limit))
+  if (opts?.offset != null) params.set('offset', String(opts.offset))
+  if (opts?.eventType) params.set('event_type', opts.eventType)
+  const qs = params.toString()
+  return fetchJson<EpistemicTimeline>(
+    `/api/thread/${encodeURIComponent(threadId)}/epistemic-timeline${qs ? '?' + qs : ''}`
+  )
+}

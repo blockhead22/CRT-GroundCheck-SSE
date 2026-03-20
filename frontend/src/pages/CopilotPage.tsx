@@ -26,6 +26,7 @@ import {
   getTrainingDataStats,
   getPersonalityTimeline,
   getSelfModelState,
+  getEpistemicTimeline,
   type CopilotMemory,
   type CopilotMemoriesResponse,
   type CopilotProfile,
@@ -34,6 +35,7 @@ import {
   type TrustDecayConfig,
   type PersonalityCheckpoint,
   type SelfModelAwareness,
+  type EpistemicEvent,
 } from '../lib/api'
 
 // ---------------------------------------------------------------------------
@@ -1592,6 +1594,210 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Epistemic Timeline Panel
+// ---------------------------------------------------------------------------
+
+const EVENT_STYLES: Record<string, { dot: string; badge: string }> = {
+  gate_fail:             { dot: 'bg-red-500',     badge: 'bg-red-500/15 text-red-400 border-red-500/30' },
+  gate_pass:             { dot: 'bg-emerald-500', badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' },
+  feedback_up:           { dot: 'bg-emerald-400', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  feedback_down:         { dot: 'bg-amber-500',   badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30' },
+  trust_delta_batch:     { dot: 'bg-violet-500',  badge: 'bg-violet-500/15 text-violet-400 border-violet-500/30' },
+  contradiction_open:    { dot: 'bg-orange-500',  badge: 'bg-orange-500/15 text-orange-400 border-orange-500/30' },
+  contradiction_resolved:{ dot: 'bg-sky-500',     badge: 'bg-sky-500/15 text-sky-400 border-sky-500/30' },
+  memory_stored:         { dot: 'bg-teal-500',    badge: 'bg-teal-500/15 text-teal-400 border-teal-500/30' },
+  reflection_run:        { dot: 'bg-purple-500',  badge: 'bg-purple-500/15 text-purple-400 border-purple-500/30' },
+}
+
+function eventStyle(type: string) {
+  return EVENT_STYLES[type] || { dot: 'bg-white/30', badge: 'bg-white/10 text-white/50 border-white/20' }
+}
+
+function EpistemicEventCard({ ev, expanded, onToggle }: {
+  ev: EpistemicEvent
+  expanded: boolean
+  onToggle: () => void
+}) {
+  const style = eventStyle(ev.event_type)
+  const ts = new Date(ev.ts * 1000)
+  const timeStr = ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  const dateStr = ts.toLocaleDateString([], { month: 'short', day: 'numeric' })
+
+  // Extract human-readable detail from payload
+  const detail = ev.payload.gate_reason as string
+    || ev.payload.category as string
+    || ev.payload.reason as string
+    || ev.payload.summary as string
+    || (ev.payload.mean_delta != null ? `Δ ${(ev.payload.mean_delta as number).toFixed(3)} across ${ev.payload.count} memories` : null)
+    || null
+
+  return (
+    <div
+      className="group cursor-pointer rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 hover:border-white/15 hover:bg-white/[0.04] transition-all"
+      onClick={onToggle}
+    >
+      <div className="flex items-center gap-3">
+        <div className={`h-2 w-2 flex-shrink-0 rounded-full ${style.dot}`} />
+        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${style.badge}`}>
+          {ev.label}
+        </span>
+        {detail && (
+          <span className="text-xs text-white/40 truncate flex-1">{detail}</span>
+        )}
+        <span className="ml-auto text-[10px] text-white/20 flex-shrink-0">
+          {dateStr} {timeStr}
+        </span>
+        <span className="text-[10px] text-white/20 group-hover:text-white/40 transition-colors">
+          {expanded ? '▲' : '▼'}
+        </span>
+      </div>
+      {expanded && (
+        <div className="mt-3 pl-5 space-y-2">
+          {ev.memory_ids.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Memory IDs</div>
+              <div className="flex flex-wrap gap-1">
+                {ev.memory_ids.map(id => (
+                  <span key={id} className="font-mono text-[9px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-white/40">
+                    {id}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {Object.keys(ev.payload).length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Payload</div>
+              <pre className="text-[10px] text-white/40 bg-white/[0.03] rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">
+                {JSON.stringify(ev.payload, null, 2)}
+              </pre>
+            </div>
+          )}
+          {ev.interaction_id && (
+            <div className="text-[10px] text-white/20 font-mono">interaction: {ev.interaction_id}</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const EVENT_FILTER_OPTIONS = [
+  { value: '', label: 'All events' },
+  { value: 'gate_fail', label: 'Gate failures' },
+  { value: 'gate_pass', label: 'Gate passes' },
+  { value: 'feedback_up', label: 'Positive feedback' },
+  { value: 'feedback_down', label: 'Negative feedback' },
+  { value: 'trust_delta_batch', label: 'Trust updates' },
+  { value: 'contradiction_open', label: 'Contradictions' },
+  { value: 'memory_stored', label: 'Memory stored' },
+]
+
+function EpistemicTimelinePanel({ threadId }: { threadId: string }) {
+  const [events, setEvents] = useState<EpistemicEvent[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('')
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [offset, setOffset] = useState(0)
+  const limit = 50
+
+  const load = useCallback(async (off = 0, ev = filter) => {
+    setLoading(true)
+    try {
+      const res = await getEpistemicTimeline(threadId, {
+        limit,
+        offset: off,
+        eventType: ev || undefined,
+      })
+      setEvents(res.events)
+      setTotal(res.total)
+      setOffset(off)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [threadId, filter])
+
+  useEffect(() => { load(0, filter) }, [threadId, filter])
+
+  const handleFilter = (v: string) => {
+    setFilter(v)
+    setExpandedId(null)
+  }
+
+  if (loading && !events.length) {
+    return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" /></div>
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="text-[10px] uppercase tracking-wider text-white/30">
+          {total} event{total !== 1 ? 's' : ''} · thread {threadId.slice(0, 16)}{threadId.length > 16 ? '…' : ''}
+        </div>
+        <select
+          value={filter}
+          onChange={e => handleFilter(e.target.value)}
+          className="ml-auto rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white outline-none cursor-pointer"
+        >
+          {EVENT_FILTER_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => load(offset, filter)}
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:text-white hover:bg-white/10 transition-all"
+        >
+          ↻
+        </button>
+      </div>
+
+      {events.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <span className="text-5xl opacity-30">◎</span>
+          <div className="mt-3 text-sm text-white/40">No events recorded yet</div>
+          <div className="text-xs text-white/20 mt-1">Events appear as interactions happen in this thread</div>
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1.5">
+            {events.map(ev => (
+              <EpistemicEventCard
+                key={ev.id}
+                ev={ev}
+                expanded={expandedId === ev.id}
+                onToggle={() => setExpandedId(expandedId === ev.id ? null : ev.id)}
+              />
+            ))}
+          </div>
+
+          {(offset > 0 || total > offset + limit) && (
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <button
+                onClick={() => load(Math.max(0, offset - limit))}
+                disabled={offset === 0}
+                className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-30 transition-all"
+              >
+                ← Newer
+              </button>
+              <span className="text-[10px] text-white/30">
+                {offset + 1}–{Math.min(offset + limit, total)} of {total}
+              </span>
+              <button
+                onClick={() => load(offset + limit)}
+                disabled={offset + limit >= total}
+                className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-30 transition-all"
+              >
+                Older →
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Stat Card + Trust Bar
 // ---------------------------------------------------------------------------
 
@@ -1763,7 +1969,7 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect }: {
 // ---------------------------------------------------------------------------
 
 type SortOrder = 'newest' | 'oldest' | 'trust_high' | 'trust_low'
-type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights' | 'personality'
+type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights' | 'personality' | 'activity'
 
 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
 
@@ -1895,6 +2101,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
     { id: 'trust', label: 'Trust & Decay', icon: '⚖️' },
     { id: 'sessions', label: 'Sessions', icon: '📂' },
     { id: 'personality' as const, label: 'Personality', icon: '◈' },
+    { id: 'activity' as const, label: 'Activity', icon: '⟳' },
     { id: 'insights' as const, label: 'CRT Insights', icon: '💡' },
   ]
 
@@ -2085,6 +2292,12 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
         {tab === 'personality' && (
           <div className="p-4 sm:p-6">
             <PersonalityPanel threadId={threadId} />
+          </div>
+        )}
+
+        {tab === 'activity' && (
+          <div className="p-4 sm:p-6">
+            <EpistemicTimelinePanel threadId={threadId} />
           </div>
         )}
 
