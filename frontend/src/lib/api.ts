@@ -1634,6 +1634,33 @@ export async function getReflections(threadId: string, limit?: number): Promise<
   return res.json()
 }
 
+// ---------------------------------------------------------------------------
+// Trust Delta — post-turn trust movements for TrustDeltaStrip
+// ---------------------------------------------------------------------------
+
+export type TrustDeltaItem = {
+  memory_id: string
+  old_trust: number
+  new_trust: number
+  delta: number
+  timestamp: number
+  reason: string
+  text_preview: string
+}
+
+export async function getTrustDelta(args: {
+  threadId: string
+  sinceTs: number
+  limit?: number
+}): Promise<TrustDeltaItem[]> {
+  const params = new URLSearchParams({
+    thread_id: args.threadId,
+    since_ts: String(args.sinceTs),
+    limit: String(args.limit ?? 30),
+  })
+  return fetchJson<TrustDeltaItem[]>(`/api/memory/trust-delta?${params.toString()}`)
+}
+
 export async function submitChatFeedback(req: ChatFeedbackRequest): Promise<ChatFeedbackResponse> {
   const base = getApiBaseUrlInternal()
   const res = await fetch(`${base}/api/chat/feedback`, {

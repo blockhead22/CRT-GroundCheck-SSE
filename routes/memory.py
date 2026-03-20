@@ -22,6 +22,7 @@ from personal_agent.fact_slots import (
     names_look_equivalent,
 )
 from personal_agent.judgment_audit_log import get_judgment_log, CONTRADICTION_STORE
+from personal_agent.db_utils import get_db_connection
 
 from routes.deps import sanitize_thread_id
 from routes.models import (
@@ -817,6 +818,59 @@ def memory_usage_summary(
     except Exception:
         summary = []
     return [MemoryUsageSummaryItem(**item) for item in summary]
+
+
+@router.get("/api/memory/trust-delta")
+def memory_trust_delta(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    since_ts: float = Query(default=0.0, description="Unix timestamp; return trust movements after this point"),
+    limit: int = Query(default=30, ge=1, le=200),
+) -> list[dict]:
+    """Return recent trust movements for the TrustDeltaStrip UI component.
+
+    Joins trust_log against memories to include a text preview so the UI can
+    display which claim shifted without a second round-trip.
+    """
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+    try:
+        db_path = str(getattr(engine.memory, "db_path", ""))
+        if not db_path:
+            return []
+        with get_db_connection(db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    tl.memory_id,
+                    COALESCE(tl.old_trust, 0.5) AS old_trust,
+                    COALESCE(tl.new_trust, 0.5) AS new_trust,
+                    tl.timestamp,
+                    tl.reason,
+                    COALESCE(substr(m.text, 1, 100), '') AS text_preview
+                FROM trust_log tl
+                LEFT JOIN memories m ON m.memory_id = tl.memory_id
+                WHERE tl.timestamp > ?
+                ORDER BY tl.timestamp DESC
+                LIMIT ?
+                """,
+                (since_ts, limit),
+            ).fetchall()
+        return [
+            {
+                "memory_id": r[0],
+                "old_trust": round(float(r[1]), 3),
+                "new_trust": round(float(r[2]), 3),
+                "delta": round(float(r[2]) - float(r[1]), 3),
+                "timestamp": float(r[3]),
+                "reason": r[4] or "",
+                "text_preview": r[5] or "",
+            }
+            for r in rows
+        ]
+    except Exception as exc:
+        logger.warning("[trust-delta] query failed: %s", exc)
+        return []
 
 
 @router.get("/api/memory/{memory_id}/events", response_model=list[MemoryEventItem])

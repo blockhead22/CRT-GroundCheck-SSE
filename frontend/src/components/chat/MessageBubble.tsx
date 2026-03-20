@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -8,6 +8,9 @@ import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
 import { PipelineTrace } from './PipelineTrace'
 import { MessageRatingBar } from './MessageRatingBar'
+import { ContradictionResolutionCard } from './ContradictionResolutionCard'
+import { TrustDeltaStrip } from './TrustDeltaStrip'
+import { ContradictionDrawer } from './ContradictionDrawer'
 
 function MonacoBlock({ code, language }: { code: string; language?: string }) {
   const lines = code.split('\n').length
@@ -125,14 +128,22 @@ export function MessageBubble(props: {
   const contradictionDetected = meta?.contradiction_detected
 
   const [metaExpanded, setMetaExpanded] = useState(false)
+  const [gateDebugOpen, setGateDebugOpen] = useState(false)
+  const [contradictionDrawerOpen, setContradictionDrawerOpen] = useState(false)
+  const [contraResolved, setContraResolved] = useState(false)
   const [localRating, setLocalRating] = useState<MessageRating | null>(props.msg.rating ?? null)
   const [localRatingCat, setLocalRatingCat] = useState<string | undefined>(props.msg.ratingCategory ?? undefined)
+  const [ratedAt, setRatedAt] = useState<number | null>(null)
 
   function handleRated(rating: MessageRating, category?: string) {
     setLocalRating(rating)
     setLocalRatingCat(category)
+    setRatedAt(Date.now() / 1000)
     props.onRated?.(props.msg.id, rating, category)
   }
+
+  // ledger_id from gate_debug (contradiction that triggered the gate) or from llm_contradictions
+  const ledgerId = meta?.gate_debug?.ledger_id ?? null
 
   const profileUpdates = meta?.profile_updates ?? []
 
