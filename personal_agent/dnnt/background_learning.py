@@ -328,13 +328,18 @@ class DNNTBackgroundLearner:
                     out.append(ex)
 
             if self.config.include_thumbs_up_interactions:
+                # Order: high feedback_priority first (thumbs-down corrections),
+                # then thumbs_up positive examples. NULLS LAST so unrated rows
+                # don't crowd out explicit feedback.
                 thumbs_rows = conn.execute(
                     """
-                    SELECT timestamp, thread_id, query, response, facts_injected
+                    SELECT timestamp, thread_id, query, response, facts_injected,
+                           COALESCE(feedback_priority, 0.0) AS feedback_priority,
+                           user_reaction
                     FROM interaction_logs
                     WHERE timestamp > ?
-                      AND user_reaction = 'thumbs_up'
-                    ORDER BY timestamp ASC
+                      AND user_reaction IN ('thumbs_up', 'thumbs_down')
+                    ORDER BY COALESCE(feedback_priority, 0.0) DESC, timestamp ASC
                     LIMIT ?
                     """,
                     (float(self.state.interactions_last_ts), int(limit)),
@@ -351,12 +356,22 @@ class DNNTBackgroundLearner:
                                 txt = _truncate(item.get("text"), 220)
                                 if txt:
                                     facts.append(txt)
+                    is_negative = str(row["user_reaction"] or "") == "thumbs_down"
+                    fp = float(row["feedback_priority"] or 0.0)
+                    if is_negative:
+                        # Thumbs-down: high-priority negative example. confidence
+                        # scales with severity so hallucinations train harder.
+                        thinking = f"User marked this response incorrect (priority={fp:.2f})."
+                        confidence = 0.5 + fp * 0.45  # 0.5–0.95 range
+                    else:
+                        thinking = "User gave explicit positive feedback."
+                        confidence = 0.9
                     ex = self._as_example(
                         query=row["query"],
                         response=row["response"],
                         facts=facts,
-                        thinking="User gave explicit positive feedback.",
-                        confidence=0.9,
+                        thinking=thinking,
+                        confidence=confidence,
                         thread_id=row["thread_id"],
                     )
                     if ex is not None:

@@ -800,6 +800,24 @@ def get_self_model(
 
 
 # ============================================================================
+# Personality Timeline (SelfModel checkpoints)
+# ============================================================================
+
+
+@router.get("/api/reflection/personality-timeline")
+def personality_timeline(
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list:
+    """Return ordered SelfModel personality checkpoints with diffs."""
+    try:
+        from personal_agent.self_model import get_self_model
+        return get_self_model().get_timeline(limit=limit)
+    except Exception as exc:
+        logger.warning("[personality-timeline] failed: %s", exc)
+        return []
+
+
+# ============================================================================
 # Loops – Streaming & Manual Trigger
 # ============================================================================
 

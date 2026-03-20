@@ -515,7 +515,213 @@ class HeartbeatScheduler:
             self._last_heartbeat_by_thread[thread_id] = result.timestamp
             self._record_heartbeat_run(thread_id, result)
             self._notify_callbacks(result)
-    
+
+        # Self-reflection pass — runs after the main action regardless of its success.
+        # Failures here are fully isolated from the main heartbeat result.
+        try:
+            self._run_self_reflection(thread_id)
+        except Exception as sr_exc:
+            logger.debug("[HEARTBEAT] self-reflection pass failed: %s", sr_exc)
+
+    # ------------------------------------------------------------------
+    # Self-reflection pass (personality / self-awareness)
+    # ------------------------------------------------------------------
+
+    _SELF_REFLECTION_PROMPT = """You are Aether performing a private self-assessment.
+
+Evidence from recent interactions:
+
+Gate failures (things you tried to say but were blocked): {gate_fails}
+Negative feedback from user (what you got wrong): {negative_feedback}
+Open unresolved contradictions: {open_contradictions}
+Recent trust movements (memories that changed): {trust_deltas}
+Current self-model:
+{current_self_model}
+
+Based on this evidence, produce a JSON object with ONLY these keys:
+{{
+  "uncertainty_domains": "<topics where you frequently make errors>",
+  "correction_pattern": "<pattern in your mistakes — e.g. over-stating recency, confusing similar names>",
+  "trust_trajectory": "<one sentence on whether trust is rising, stable, or eroding and why>",
+  "known_blindspots": "<structural weaknesses you've noticed — be specific>",
+  "growing_confidence": "<areas where you've been consistently accurate and reinforced>",
+  "user_relationship": "<one sentence on the interaction style and what the user values>",
+  "response_style": "<current calibration — verbosity, tone, hedging level>",
+  "summary": "<2-sentence honest self-assessment>",
+  "notable_events": ["<event1>", "<event2>"]
+}}
+
+Be honest and specific. If you have no evidence for a field, say so briefly.
+Output ONLY valid JSON, nothing else."""
+
+    def _run_self_reflection(self, thread_id: str) -> None:
+        """Run a self-reflection LLM pass and update the self-model."""
+        from personal_agent.self_model import get_self_model
+        from personal_agent.db_utils import get_db_connection
+
+        self_model = get_self_model()
+
+        # ── gather evidence signals ──────────────────────────────────────────
+        gate_fails_lines: List[str] = []
+        negative_feedback_lines: List[str] = []
+        trust_delta_lines: List[str] = []
+        open_contradictions = 0
+
+        al_db = Path("personal_agent/active_learning.db")
+        if al_db.exists():
+            try:
+                with get_db_connection(str(al_db)) as conn:
+                    since = time.time() - 86400  # last 24h
+
+                    rows = conn.execute(
+                        """SELECT payload_json FROM turn_telemetry
+                           WHERE event_type = 'gate_fail' AND ts > ?
+                           ORDER BY ts DESC LIMIT 5""",
+                        (since,),
+                    ).fetchall()
+                    for r in rows:
+                        try:
+                            p = json.loads(r[0] or "{}")
+                            gate_fails_lines.append(
+                                f"- {p.get('gate_reason', 'unknown')}"
+                            )
+                        except Exception:
+                            pass
+
+                    rows = conn.execute(
+                        """SELECT payload_json, severity FROM turn_telemetry
+                           WHERE event_type = 'feedback_down' AND ts > ?
+                           ORDER BY severity DESC, ts DESC LIMIT 8""",
+                        (since,),
+                    ).fetchall()
+                    for r in rows:
+                        try:
+                            p = json.loads(r[0] or "{}")
+                            cat = p.get("category", "general")
+                            negative_feedback_lines.append(
+                                f"- {cat} (severity {float(r[1] or 0):.2f})"
+                            )
+                        except Exception:
+                            pass
+
+                    rows = conn.execute(
+                        """SELECT memory_ids_json, payload_json FROM turn_telemetry
+                           WHERE event_type = 'trust_delta_batch' AND ts > ?
+                           ORDER BY ts DESC LIMIT 3""",
+                        (since,),
+                    ).fetchall()
+                    for r in rows:
+                        try:
+                            p = json.loads(r[1] or "{}")
+                            trust_delta_lines.append(
+                                f"- delta {p.get('mean_delta', '?'):.3f} across {p.get('count', '?')} memories"
+                            )
+                        except Exception:
+                            pass
+            except Exception as exc:
+                logger.debug("[SELF_REFLECTION] signal read failed: %s", exc)
+
+        # open contradictions from ledger
+        for ledger_cand in [
+            Path("personal_agent/crt_ledger_shared.db"),
+            Path("data/crt_memory.db"),
+        ]:
+            if ledger_cand.exists():
+                try:
+                    with get_db_connection(str(ledger_cand)) as conn:
+                        row = conn.execute(
+                            "SELECT COUNT(*) FROM contradictions "
+                            "WHERE status IN ('OPEN','REFLECTING')"
+                        ).fetchone()
+                        open_contradictions = int(row[0]) if row else 0
+                    break
+                except Exception:
+                    pass
+
+        # ── call LLM ─────────────────────────────────────────────────────────
+        current_model = self_model.read_model()
+        current_model_text = "\n".join(
+            f"  {k}: {v or '(not yet set)'}"
+            for k, v in current_model.items()
+        )
+
+        prompt = self._SELF_REFLECTION_PROMPT.format(
+            gate_fails="\n".join(gate_fails_lines) or "(none in last 24h)",
+            negative_feedback="\n".join(negative_feedback_lines) or "(none in last 24h)",
+            open_contradictions=str(open_contradictions),
+            trust_deltas="\n".join(trust_delta_lines) or "(none recorded)",
+            current_self_model=current_model_text,
+        )
+
+        llm_response = self._call_llm(
+            prompt=prompt,
+            max_tokens=600,
+            temperature=0.4,
+        )
+
+        if not llm_response:
+            logger.debug("[SELF_REFLECTION] no LLM response, skipping")
+            return
+
+        # ── parse JSON ───────────────────────────────────────────────────────
+        import re as _re
+        raw = llm_response.strip()
+        # Extract JSON block if wrapped in markdown fences
+        m = _re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, _re.DOTALL)
+        if m:
+            raw = m.group(1)
+        elif raw.startswith("{"):
+            pass
+        else:
+            brace = raw.find("{")
+            if brace >= 0:
+                raw = raw[brace:]
+
+        try:
+            data = json.loads(raw)
+        except Exception as parse_exc:
+            logger.debug("[SELF_REFLECTION] JSON parse failed: %s | raw=%s", parse_exc, raw[:200])
+            return
+
+        # ── update self-model slots ──────────────────────────────────────────
+        last_snapshot = self_model.get_last_snapshot()
+        new_snapshot: Dict[str, Any] = {}
+        delta: Dict[str, str] = {}
+
+        from personal_agent.self_model import SELF_MODEL_SLOTS
+        for slot in SELF_MODEL_SLOTS:
+            value = str(data.get(slot) or "").strip()
+            if not value or value == "(not yet set)":
+                continue
+            # Compute delta from last snapshot
+            old_val = last_snapshot.get(slot, "")
+            if old_val and old_val != value:
+                delta[slot] = f"{old_val[:60]} → {value[:60]}"
+            new_snapshot[slot] = value
+            # Severity-weighted trust: use negative feedback density as evidence quality
+            trust = max(0.35, min(0.80, 0.55 + len(negative_feedback_lines) * 0.03))
+            self_model.update_slot(slot, value, trust=trust, thread_id=thread_id)
+
+        # ── write checkpoint ─────────────────────────────────────────────────
+        notable = data.get("notable_events") or []
+        if isinstance(notable, str):
+            notable = [notable]
+        new_snapshot["summary"] = data.get("summary", "")
+
+        self_model.checkpoint(
+            snapshot=new_snapshot,
+            delta=delta or None,
+            notable_events=[str(e) for e in notable[:5]],
+            period_days=1.0,
+        )
+
+        logger.info(
+            "[SELF_REFLECTION] updated %d slots, %d deltas, %d notable events",
+            len(new_snapshot),
+            len(delta),
+            len(notable),
+        )
+
     def _record_heartbeat_run(self, thread_id: str, result: HeartbeatResult) -> None:
         """Record heartbeat run result in thread_sessions DB."""
         try:

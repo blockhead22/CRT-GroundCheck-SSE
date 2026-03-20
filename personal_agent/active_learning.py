@@ -326,7 +326,55 @@ class ActiveLearningCoordinator:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_retrieval_audit_request ON retrieval_audit(request_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_retrieval_audit_timestamp ON retrieval_audit(timestamp)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_resolution_action ON conflict_resolutions(user_action)")
-        
+
+        # PHASE 2: Turn telemetry — one row per meaningful pipeline event
+        # event_type: gate_pass | gate_fail | feedback_down | feedback_up |
+        #             contradiction_resolved | reflection_queued | trust_delta_batch
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS turn_telemetry (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts REAL NOT NULL,
+                thread_id TEXT,
+                interaction_id TEXT,
+                event_type TEXT NOT NULL,
+                severity REAL DEFAULT 0.0,
+                memory_ids_json TEXT,
+                payload_json TEXT
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_turn_telemetry_ts ON turn_telemetry(ts)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_turn_telemetry_type ON turn_telemetry(event_type)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_turn_telemetry_thread ON turn_telemetry(thread_id)")
+
+        # PHASE 2: Thread-level metrics log — rolling snapshot after each turn
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS thread_metrics_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts REAL NOT NULL,
+                thread_id TEXT NOT NULL,
+                turn_number INTEGER,
+                contradiction_rate REAL,
+                gate_fail_rate REAL,
+                trust_mean REAL,
+                correction_recovery REAL,
+                hallucination_leakage REAL,
+                open_contradictions INTEGER
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_thread_metrics_ts ON thread_metrics_log(ts)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_thread_metrics_thread ON thread_metrics_log(thread_id)")
+
+        # PHASE 2: feedback_priority column on interaction_logs (migration-safe)
+        try:
+            cursor.execute("ALTER TABLE interaction_logs ADD COLUMN feedback_priority REAL DEFAULT 0.0")
+        except Exception:
+            pass  # column already exists
+
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_interaction_feedback_priority "
+            "ON interaction_logs(feedback_priority DESC)"
+        )
+
         conn.commit()
         conn.close()
     
@@ -855,20 +903,62 @@ class ActiveLearningCoordinator:
         
         return interaction_id
     
+    def emit_turn_event(
+        self,
+        event_type: str,
+        thread_id: Optional[str] = None,
+        interaction_id: Optional[str] = None,
+        severity: float = 0.0,
+        memory_ids: Optional[List[str]] = None,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Append a single telemetry event to turn_telemetry.
+
+        Non-blocking: failures are silently logged so the caller is never
+        affected by telemetry write errors.
+        """
+        try:
+            with self._lock:
+                conn = self._get_connection()
+                conn.execute(
+                    """
+                    INSERT INTO turn_telemetry
+                        (ts, thread_id, interaction_id, event_type,
+                         severity, memory_ids_json, payload_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        time.time(),
+                        thread_id,
+                        interaction_id,
+                        event_type,
+                        severity,
+                        json.dumps(memory_ids) if memory_ids else None,
+                        json.dumps(payload) if payload else None,
+                    ),
+                )
+                conn.commit()
+                conn.close()
+        except Exception as exc:
+            import logging as _logging
+            _logging.getLogger(__name__).debug("[TELEMETRY] emit failed: %s", exc)
+
     def record_feedback_thumbs(
         self,
         interaction_id: str,
         thumbs_up: bool,
         comment: Optional[str] = None,
+        feedback_priority: float = 0.0,
     ) -> bool:
         """
         Record thumbs up/down feedback for an interaction.
-        
+
+        feedback_priority controls DNNT training priority (0.0–1.0).
         Returns True if successful.
         """
         reaction = "thumbs_up" if thumbs_up else "thumbs_down"
         reaction_details = json.dumps({"comment": comment}) if comment else None
-        
+
         with self._lock:
             conn = self._get_connection()
             cursor = conn.cursor()
@@ -876,14 +966,15 @@ class ActiveLearningCoordinator:
                 UPDATE interaction_logs
                 SET user_reaction = ?,
                     reaction_timestamp = ?,
-                    reaction_details = ?
+                    reaction_details = ?,
+                    feedback_priority = ?
                 WHERE interaction_id = ?
-            """, (reaction, time.time(), reaction_details, interaction_id))
-            
+            """, (reaction, time.time(), reaction_details, feedback_priority, interaction_id))
+
             success = cursor.rowcount > 0
             conn.commit()
             conn.close()
-            
+
         return success
     
     def record_feedback_correction(

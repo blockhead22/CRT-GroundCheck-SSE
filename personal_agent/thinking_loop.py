@@ -88,6 +88,23 @@ Based on recent work with these topics: {topics}
 What's your honest take or emerging opinion on something related?
 You can have preferences, hunches, and perspectives. Share one briefly.
 Be genuine - this is your private thought, not advice to the user.""",
+
+    "self_history": """You are CRT reflecting on your own recent history and evolution.
+
+Here are your recent private thoughts:
+{past_thoughts}
+
+Recent corrections from the user (what you got wrong):
+{recent_corrections}
+
+Open contradictions you haven't resolved: {open_contradictions}
+
+Write a brief, honest self-assessment (2-4 sentences):
+- What patterns do you notice in your own mistakes?
+- Are you improving, drifting, or staying the same?
+- What should you pay more attention to next?
+
+Be direct and honest. This is how you grow.""",
 }
 
 
@@ -183,9 +200,13 @@ class ThinkingLoop:
         prompt_template = THINKING_PROMPTS.get(mode, THINKING_PROMPTS["reflect"])
         prompt = prompt_template.format(
             interactions=context.get("interactions_text", "No recent interactions"),
-            topics=", ".join(context.get("topics", ["general assistance"])),
-            rising=", ".join(context.get("rising", ["(none)"])),
-            fading=", ".join(context.get("fading", ["(none)"])),
+            topics=", ".join(context.get("topics", ["general assistance"])) or "various topics",
+            rising=", ".join(context.get("rising", [])) or "(none)",
+            fading=", ".join(context.get("fading", [])) or "(none)",
+            # self_history mode fields (no-op for other modes since they don't use these keys)
+            past_thoughts=context.get("past_thoughts") or "(no recorded thoughts yet)",
+            recent_corrections=context.get("recent_corrections") or "(no corrections recorded)",
+            open_contradictions=str(context.get("open_contradictions", 0)),
         )
         
         # Generate thought
@@ -229,6 +250,11 @@ class ThinkingLoop:
             "rising": [],
             "fading": [],
             "interactions_text": "",
+            # Phase 2 additions — self-awareness signals
+            "past_thoughts": "",
+            "recent_corrections": "",
+            "open_contradictions": 0,
+            "pending_reflections": 0,
         }
         
         try:
@@ -284,10 +310,89 @@ class ThinkingLoop:
             context["topics"] = [t[0] for t in sorted_topics[:5]]
             context["rising"] = list(set(all_rising))[:3]
             context["fading"] = list(set(all_fading))[:3]
-            
+
         except Exception as e:
             logger.warning(f"[THINKING] Context gathering failed: {e}")
-        
+
+        # ── Phase 2: self-awareness signals ──────────────────────────────────
+        # 1. Read own recent thoughts from the session DB's reasoning_traces table
+        try:
+            al_db = Path("personal_agent/active_learning.db")
+            if al_db.exists():
+                with get_db_connection(str(al_db)) as conn:
+                    # Recent reflection_queued events = things we got wrong
+                    corr_rows = conn.execute(
+                        """
+                        SELECT payload_json, ts FROM turn_telemetry
+                        WHERE event_type = 'reflection_queued'
+                        ORDER BY ts DESC LIMIT 5
+                        """,
+                    ).fetchall()
+                    correction_lines = []
+                    for r in corr_rows:
+                        try:
+                            p = json.loads(r[0] or "{}")
+                            cat = p.get("category", "unknown")
+                            correction_lines.append(f"- {cat} error flagged")
+                        except Exception:
+                            pass
+                    if correction_lines:
+                        context["recent_corrections"] = "\n".join(correction_lines)
+                        context["has_content"] = True
+
+                    # Count pending reflection signals
+                    row = conn.execute(
+                        "SELECT COUNT(*) FROM turn_telemetry WHERE event_type = 'reflection_queued'"
+                    ).fetchone()
+                    context["pending_reflections"] = int(row[0]) if row else 0
+        except Exception as exc:
+            logger.debug("[THINKING] self-awareness signals failed: %s", exc)
+
+        # 2. Read own past thoughts from reasoning_traces (shared session DB)
+        try:
+            mem_db_candidates = [
+                Path("personal_agent/crt_memory.db"),
+                Path("data/crt_memory.db"),
+            ]
+            for mem_db in mem_db_candidates:
+                if mem_db.exists():
+                    with get_db_connection(str(mem_db)) as conn:
+                        thought_rows = conn.execute(
+                            """
+                            SELECT query, response_summary FROM reasoning_traces
+                            ORDER BY timestamp DESC LIMIT 5
+                            """
+                        ).fetchall()
+                        if thought_rows:
+                            lines = []
+                            for r in thought_rows:
+                                summary = (r[1] or r[0] or "").strip()[:120]
+                                if summary:
+                                    lines.append(f"- {summary}")
+                            if lines:
+                                context["past_thoughts"] = "\n".join(lines)
+                                context["has_content"] = True
+                    break
+        except Exception as exc:
+            logger.debug("[THINKING] past thoughts read failed: %s", exc)
+
+        # 3. Open contradiction count from ledger DB
+        try:
+            ledger_candidates = [
+                Path("personal_agent/crt_ledger_shared.db"),
+                Path("data/crt_memory.db"),
+            ]
+            for ledger_db in ledger_candidates:
+                if ledger_db.exists():
+                    with get_db_connection(str(ledger_db)) as conn:
+                        row = conn.execute(
+                            "SELECT COUNT(*) FROM contradictions WHERE status IN ('OPEN','REFLECTING')"
+                        ).fetchone()
+                        context["open_contradictions"] = int(row[0]) if row else 0
+                    break
+        except Exception as exc:
+            logger.debug("[THINKING] open contradictions count failed: %s", exc)
+
         return context
     
     def _clean_thought(self, text: str) -> str:

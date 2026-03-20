@@ -2182,6 +2182,19 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if fact_check_preamble:
         query_with_context = effective_message + fact_check_preamble
 
+    # ====== Self-awareness: inject top self-model facts into context ======
+    try:
+        from personal_agent.self_model import get_self_model
+        _top_facts = get_self_model().get_top_facts(3)
+        if _top_facts:
+            _self_note = (
+                "\n\n[Self-awareness — internal calibration only, do not repeat to user verbatim]\n"
+                + "\n".join(f"- {f}" for f in _top_facts)
+            )
+            query_with_context = query_with_context + _self_note
+    except Exception:
+        pass
+
     recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
     # Pass structured history for proper multi-turn chat; keep text
     # augmentation as fallback context in the query itself.
@@ -3133,25 +3146,43 @@ def chat_feedback(req: ChatFeedbackRequest) -> dict:
     affected: list[dict] = []
 
     # ── 1. Record in active-learning DB ──────────────────────────────────────
+    severity = _FEEDBACK_SEVERITY.get(req.category or "", 0.33)
+    feedback_priority = severity if not req.thumbs_up else 0.0
+
     try:
         coordinator = get_active_learning_coordinator()
         coordinator.record_feedback_thumbs(
             interaction_id=req.interaction_id,
             thumbs_up=req.thumbs_up,
             comment=req.comment or req.category,
+            feedback_priority=feedback_priority,
         )
         logger.info(
-            "[FEEDBACK] %s on interaction=%s category=%s",
+            "[FEEDBACK] %s on interaction=%s category=%s priority=%.2f",
             "👍" if req.thumbs_up else "👎",
             req.interaction_id,
             req.category,
+            feedback_priority,
         )
     except Exception as exc:
         logger.warning("[FEEDBACK] active-learning record failed: %s", exc)
 
+    # ── 1b. Emit turn telemetry ───────────────────────────────────────────────
+    try:
+        coordinator = get_active_learning_coordinator()
+        coordinator.emit_turn_event(
+            event_type="feedback_down" if not req.thumbs_up else "feedback_up",
+            thread_id=req.thread_id,
+            interaction_id=req.interaction_id,
+            severity=feedback_priority,
+            memory_ids=req.memory_ids_cited or [],
+            payload={"category": req.category, "comment": req.comment},
+        )
+    except Exception as exc:
+        logger.debug("[FEEDBACK] telemetry emit failed: %s", exc)
+
     # ── 2. Trust updates on cited memories ───────────────────────────────────
     if req.memory_ids_cited:
-        severity = _FEEDBACK_SEVERITY.get(req.category or "", 0.33)
 
         try:
             from personal_agent.crt_memory import CRTMemorySystem
@@ -3225,6 +3256,30 @@ def chat_feedback(req: ChatFeedbackRequest) -> dict:
             )
         except Exception as exc:
             logger.debug("[FEEDBACK] correction queue failed: %s", exc)
+
+    # ── 4. Reflection trigger — high-severity thumbs-down queues self-assessment
+    if not req.thumbs_up and req.category in ("hallucination", "wrong_fact"):
+        try:
+            coordinator = get_active_learning_coordinator()
+            coordinator.emit_turn_event(
+                event_type="reflection_queued",
+                thread_id=req.thread_id,
+                interaction_id=req.interaction_id,
+                severity=severity,
+                memory_ids=req.memory_ids_cited or [],
+                payload={
+                    "category": req.category,
+                    "trigger": "user_thumbs_down",
+                    "priority": "high",
+                },
+            )
+            logger.info(
+                "[FEEDBACK] reflection queued for interaction=%s category=%s",
+                req.interaction_id,
+                req.category,
+            )
+        except Exception as exc:
+            logger.debug("[FEEDBACK] reflection queue emit failed: %s", exc)
 
     return {
         "ok": True,
