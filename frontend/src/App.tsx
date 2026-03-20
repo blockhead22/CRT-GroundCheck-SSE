@@ -514,6 +514,7 @@ export default function App() {
             gates_passed: res.gates_passed,
             gate_reason: res.gate_reason ?? null,
             session_id: res.session_id ?? null,
+            interaction_id: (res.metadata as any)?.interaction_id ?? null,
             confidence: res.metadata?.confidence ?? null,
             intent_alignment: res.metadata?.intent_alignment ?? null,
             memory_alignment: res.metadata?.memory_alignment ?? null,
