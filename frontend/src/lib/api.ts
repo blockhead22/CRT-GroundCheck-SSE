@@ -1739,3 +1739,27 @@ export async function getTelemetrySummary(args?: {
   const qs = params.toString()
   return fetchJson<TelemetrySummary>(`/api/telemetry/summary${qs ? '?' + qs : ''}`)
 }
+
+export type PersonalityCheckpoint = {
+  id: number
+  ts: number
+  period_days: number
+  snapshot: Record<string, string | null>
+  delta: Record<string, string> | null
+  notable_events: string[]
+}
+
+export async function getPersonalityTimeline(limit = 20): Promise<PersonalityCheckpoint[]> {
+  return fetchJson<PersonalityCheckpoint[]>(`/api/reflection/personality-timeline?limit=${limit}`)
+}
+
+export type SelfModelAwareness = Record<string, string | null>  // slot -> value
+
+export async function getSelfModelState(threadId: string): Promise<{
+  self_model_awareness: SelfModelAwareness
+  traits: Record<string, unknown>
+  mood: Record<string, unknown>
+  adaptation: Record<string, unknown>
+}> {
+  return fetchJson(`/api/self-model/${encodeURIComponent(threadId)}`)
+}

@@ -748,6 +748,13 @@ def get_self_model(
         key = str(entry.get("entry_type") or "unknown")
         journal_counts[key] = journal_counts.get(key, 0) + 1
 
+    self_model_awareness = {}
+    try:
+        from personal_agent.self_model import get_self_model as _get_sm
+        self_model_awareness = _get_sm().read_model()
+    except Exception:
+        pass
+
     mood = _derive_self_model_mood(personality, reflection)
     traits = {
         "verbosity": personality.get("verbosity"),
@@ -767,6 +774,7 @@ def get_self_model(
     return {
         "thread_id": tid,
         "generated_at": time.time(),
+        "self_model_awareness": self_model_awareness,
         "mood": mood,
         "traits": traits,
         "reflection": reflection,

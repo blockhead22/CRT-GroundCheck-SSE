@@ -782,7 +782,7 @@ export default function App() {
                 ) : navActive === 'showcase' ? (
                   <ShowcasePage />
                 ) : navActive === 'copilot' ? (
-                  <CopilotPage />
+                  <CopilotPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'live' ? (
                   <LiveFeedPage />
                 ) : navActive === 'telemetry' ? (

@@ -24,12 +24,16 @@ import {
   getCopilotPatterns,
   getCopilotPreferences,
   getTrainingDataStats,
+  getPersonalityTimeline,
+  getSelfModelState,
   type CopilotMemory,
   type CopilotMemoriesResponse,
   type CopilotProfile,
   type AccuracyStats,
   type FactCheck,
   type TrustDecayConfig,
+  type PersonalityCheckpoint,
+  type SelfModelAwareness,
 } from '../lib/api'
 
 // ---------------------------------------------------------------------------
@@ -1338,6 +1342,256 @@ function CrtInsightsPanel() {
 }
 
 // ---------------------------------------------------------------------------
+// Self-Model Slots display
+// ---------------------------------------------------------------------------
+
+const SLOT_META: Record<string, { label: string; icon: string; description: string }> = {
+  uncertainty_domains: { label: 'Uncertainty Domains', icon: '❓', description: 'Topics where mistakes are frequent' },
+  correction_pattern:  { label: 'Correction Pattern',  icon: '↩', description: 'Pattern observed in user corrections' },
+  trust_trajectory:    { label: 'Trust Trajectory',    icon: '📈', description: 'How trust has moved recently' },
+  known_blindspots:    { label: 'Known Blindspots',    icon: '🕶', description: 'Structural weaknesses' },
+  growing_confidence:  { label: 'Growing Confidence',  icon: '✦', description: 'Areas of consistent reinforcement' },
+  user_relationship:   { label: 'User Relationship',   icon: '🤝', description: 'Character of the interaction style' },
+  response_style:      { label: 'Response Style',      icon: '✏', description: 'Current response calibration' },
+}
+
+function SelfModelSlots({ slots }: { slots: SelfModelAwareness }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {Object.entries(SLOT_META).map(([key, meta]) => {
+        const value = slots[key]
+        return (
+          <div key={key} className={`rounded-xl border p-4 transition-all ${value ? 'border-white/12 bg-white/[0.04]' : 'border-white/5 bg-white/[0.01] opacity-50'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-base">{meta.icon}</span>
+              <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">{meta.label}</span>
+            </div>
+            {value ? (
+              <p className="text-sm text-white/80 leading-relaxed">{value}</p>
+            ) : (
+              <p className="text-xs text-white/25 italic">Not yet assessed</p>
+            )}
+            <p className="mt-2 text-[10px] text-white/25">{meta.description}</p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PersonalityTimeline({ checkpoints }: { checkpoints: PersonalityCheckpoint[] }) {
+  const [expanded, setExpanded] = useState<number | null>(null)
+
+  if (!checkpoints.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <span className="text-5xl opacity-30">◈</span>
+        <div className="mt-3 text-sm text-white/40">No personality checkpoints yet</div>
+        <div className="text-xs text-white/20 mt-1">Checkpoints are written by the heartbeat self-reflection loop</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">
+        {checkpoints.length} checkpoint{checkpoints.length !== 1 ? 's' : ''} — newest first
+      </div>
+      {checkpoints.map((cp, i) => {
+        const date = new Date(cp.ts * 1000)
+        const hasSlots = cp.snapshot && Object.values(cp.snapshot).some(v => v)
+        const deltaKeys = cp.delta ? Object.keys(cp.delta) : []
+        const isExpanded = expanded === i
+
+        return (
+          <div key={cp.id} className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+            <div
+              className="flex items-start gap-3 p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
+              onClick={() => setExpanded(isExpanded ? null : i)}
+            >
+              <div className="flex-shrink-0 flex flex-col items-center gap-1 pt-0.5">
+                <div className={`h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-violet-400' : 'bg-white/20'}`} />
+                {i < checkpoints.length - 1 && <div className="w-px flex-1 bg-white/10 min-h-[16px]" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-medium text-white/60">{date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  {i === 0 && <span className="rounded-full bg-violet-500/20 border border-violet-500/30 px-2 py-0 text-[9px] text-violet-300">latest</span>}
+                  {deltaKeys.length > 0 && (
+                    <span className="text-[10px] text-amber-400/70">{deltaKeys.length} change{deltaKeys.length !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
+                {cp.notable_events.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {cp.notable_events.slice(0, 3).map((ev, ei) => (
+                      <span key={ei} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/40">{ev}</span>
+                    ))}
+                    {cp.notable_events.length > 3 && <span className="text-[10px] text-white/20">+{cp.notable_events.length - 3} more</span>}
+                  </div>
+                )}
+                {!cp.notable_events.length && hasSlots && (
+                  <div className="text-xs text-white/30 truncate">
+                    {Object.entries(cp.snapshot).filter(([,v]) => v).slice(0, 2).map(([k,v]) => `${k}: ${String(v).slice(0, 40)}`).join(' · ')}
+                  </div>
+                )}
+              </div>
+              <span className="text-white/20 text-xs flex-shrink-0">{isExpanded ? '▲' : '▼'}</span>
+            </div>
+
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden border-t border-white/5"
+                >
+                  <div className="p-4 space-y-4">
+                    {deltaKeys.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-amber-400/60 mb-2">Changes from previous</div>
+                        <div className="space-y-1.5">
+                          {deltaKeys.map(k => (
+                            <div key={k} className="rounded-lg bg-amber-500/5 border border-amber-500/15 px-3 py-2">
+                              <div className="text-[10px] text-amber-400/70 mb-0.5">{SLOT_META[k]?.label || k}</div>
+                              <div className="text-xs text-white/60">{String((cp.delta as any)[k])}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider text-white/25 mb-2">Snapshot</div>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {Object.entries(cp.snapshot).filter(([,v]) => v).map(([k, v]) => (
+                          <div key={k} className="rounded-lg bg-white/3 border border-white/5 px-3 py-2">
+                            <div className="text-[10px] text-white/30 mb-0.5">{SLOT_META[k]?.label || k}</div>
+                            <div className="text-xs text-white/60 line-clamp-3">{String(v)}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PersonalityPanel({ threadId }: { threadId: string }) {
+  const [slots, setSlots] = useState<SelfModelAwareness>({})
+  const [checkpoints, setCheckpoints] = useState<PersonalityCheckpoint[]>([])
+  const [traits, setTraits] = useState<Record<string, unknown>>({})
+  const [loading, setLoading] = useState(true)
+  const [subTab, setSubTab] = useState<'current' | 'timeline' | 'traits'>('current')
+
+  const load = useCallback(async () => {
+    try {
+      const [state, timeline] = await Promise.all([
+        getSelfModelState(threadId).catch(() => null),
+        getPersonalityTimeline(30).catch(() => [] as PersonalityCheckpoint[]),
+      ])
+      if (state) {
+        setSlots(state.self_model_awareness || {})
+        setTraits(state.traits || {})
+      }
+      setCheckpoints(timeline)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [threadId])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading) return <div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500/30 border-t-violet-500" /></div>
+
+  const subTabs = [
+    { id: 'current' as const, label: 'Self-Awareness', icon: '◈' },
+    { id: 'timeline' as const, label: 'Timeline', icon: '◷' },
+    { id: 'traits' as const, label: 'Adaptive Traits', icon: '⟳' },
+  ]
+
+  const filledSlots = Object.values(slots).filter(Boolean).length
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Sub-tab header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          {subTabs.map(st => (
+            <button
+              key={st.id}
+              onClick={() => setSubTab(st.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                subTab === st.id
+                  ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
+                  : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              {st.icon} {st.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={load} className="text-xs text-white/30 hover:text-white/60 transition-colors">↻ refresh</button>
+      </div>
+
+      {subTab === 'current' && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3">
+            <span className="text-2xl">◈</span>
+            <div>
+              <div className="text-sm font-medium text-violet-300">Self-Awareness Model</div>
+              <div className="text-xs text-white/40">
+                {filledSlots}/7 slots populated · updated by heartbeat reflection loop
+              </div>
+            </div>
+            {filledSlots > 0 && (
+              <div className="ml-auto flex items-center gap-1">
+                {[...Array(7)].map((_, i) => (
+                  <div key={i} className={`h-2 w-2 rounded-full ${i < filledSlots ? 'bg-violet-400' : 'bg-white/10'}`} />
+                ))}
+              </div>
+            )}
+          </div>
+          <SelfModelSlots slots={slots} />
+        </div>
+      )}
+
+      {subTab === 'timeline' && (
+        <PersonalityTimeline checkpoints={checkpoints} />
+      )}
+
+      {subTab === 'traits' && (
+        <div className="space-y-4">
+          <div className="text-xs text-white/30">Adaptive traits inferred from conversation style — updated per-thread automatically.</div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(traits).filter(([,v]) => v != null).map(([key, value]) => (
+              <div key={key} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">{key.replace(/_/g, ' ')}</div>
+                <div className="text-sm font-medium text-white/80">
+                  {typeof value === 'number' ? value.toFixed(3) : String(value)}
+                </div>
+              </div>
+            ))}
+            {Object.keys(traits).filter(k => traits[k] != null).length === 0 && (
+              <div className="col-span-3 flex flex-col items-center justify-center py-12 text-center">
+                <span className="text-4xl opacity-30">⟳</span>
+                <div className="mt-3 text-sm text-white/40">No traits calibrated yet</div>
+                <div className="text-xs text-white/20 mt-1">Traits adapt from conversation patterns over time</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Stat Card + Trust Bar
 // ---------------------------------------------------------------------------
 
@@ -1509,11 +1763,11 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect }: {
 // ---------------------------------------------------------------------------
 
 type SortOrder = 'newest' | 'oldest' | 'trust_high' | 'trust_low'
-type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights'
+type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights' | 'personality'
 
 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
 
-export function CopilotPage() {
+export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
   const [data, setData] = useState<CopilotMemoriesResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1640,7 +1894,8 @@ export function CopilotPage() {
     { id: 'factchecks', label: 'Fact Checks', icon: '🔍' },
     { id: 'trust', label: 'Trust & Decay', icon: '⚖️' },
     { id: 'sessions', label: 'Sessions', icon: '📂' },
-    ...(isLocalhost ? [{ id: 'insights' as const, label: 'CRT Insights', icon: '💡' }] : []),
+    { id: 'personality' as const, label: 'Personality', icon: '◈' },
+    { id: 'insights' as const, label: 'CRT Insights', icon: '💡' },
   ]
 
   return (
@@ -1650,9 +1905,9 @@ export function CopilotPage() {
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white font-display">System Intelligence</h1>
+            <h1 className="text-xl font-bold text-white font-display">Aether</h1>
             <p className="mt-0.5 text-xs text-white/40">
-              Live view — what the system knows, learns, and gets wrong
+              Epistemic state — memory, trust, personality, and what the system knows about itself
             </p>
           </div>
 
@@ -1827,7 +2082,13 @@ export function CopilotPage() {
           </div>
         )}
 
-        {tab === 'insights' && isLocalhost && (
+        {tab === 'personality' && (
+          <div className="p-4 sm:p-6">
+            <PersonalityPanel threadId={threadId} />
+          </div>
+        )}
+
+        {tab === 'insights' && (
           <div className="p-4 sm:p-6">
             <CrtInsightsPanel />
           </div>
