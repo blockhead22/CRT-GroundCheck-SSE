@@ -10,6 +10,7 @@ const nav: Array<{ id: NavId; label: string; icon: string }> = [
   { id: 'loops', label: 'Loops', icon: 'L' },
   { id: 'journal', label: 'Journal', icon: 'J' },
   { id: 'showcase', label: 'Showcase', icon: '✨' },
+  { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
   { id: 'jobs', label: 'Jobs', icon: '☷' },
   { id: 'docs', label: 'Docs', icon: '≣' },
 ]

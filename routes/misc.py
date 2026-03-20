@@ -818,6 +818,239 @@ def personality_timeline(
 
 
 # ============================================================================
+# Telemetry Dashboard Summary
+# ============================================================================
+
+
+@router.get("/api/telemetry/summary")
+def telemetry_summary(
+    hours: float = Query(default=24.0, ge=0.1, le=720.0),
+    thread_id: Optional[str] = Query(default=None),
+) -> dict:
+    """Aggregate telemetry from turn_telemetry + thread_metrics_log.
+
+    Returns event counts, gate performance, feedback signals, learning queue
+    depth, and recent thread metric snapshots — everything the dashboard needs
+    in one call.
+    """
+    import time
+    import json
+
+    since_ts = time.time() - hours * 3600.0
+    result: dict = {
+        "hours": hours,
+        "generated_at": time.time(),
+        "event_counts": {},
+        "event_rate_per_hour": {},
+        "severity_distribution": {"low": 0, "medium": 0, "high": 0},
+        "gate_performance": {
+            "pass_count": 0,
+            "fail_count": 0,
+            "pass_rate": None,
+            "fail_reasons": {},
+        },
+        "feedback": {
+            "thumbs_up": 0,
+            "thumbs_down": 0,
+            "thumbs_up_rate": None,
+            "high_priority_count": 0,
+        },
+        "learning_queue": {
+            "pending_reflections": 0,
+            "high_priority_feedback": 0,
+        },
+        "thread_metrics_trend": [],
+        "recent_events": [],
+    }
+
+    try:
+        from personal_agent.active_learning import get_active_learning_coordinator
+        from personal_agent.db_utils import get_db_connection
+
+        coord = get_active_learning_coordinator()
+        db_path = str(coord.db_path)
+
+        with get_db_connection(db_path) as conn:
+            # ── Event counts from turn_telemetry ──────────────────────────
+            thread_filter = " AND thread_id = ?" if thread_id else ""
+            params_base = [since_ts] + ([thread_id] if thread_id else [])
+
+            rows = conn.execute(
+                f"""
+                SELECT event_type, COUNT(*) as cnt,
+                       AVG(severity) as avg_sev, MAX(severity) as max_sev
+                FROM turn_telemetry
+                WHERE ts > ?{thread_filter}
+                GROUP BY event_type
+                """,
+                params_base,
+            ).fetchall()
+
+            total_events = 0
+            for r in rows:
+                et = r[0] or "unknown"
+                cnt = int(r[1] or 0)
+                result["event_counts"][et] = cnt
+                result["event_rate_per_hour"][et] = round(cnt / hours, 2)
+                total_events += cnt
+
+            # ── Severity distribution ──────────────────────────────────────
+            sev_rows = conn.execute(
+                f"""
+                SELECT
+                    SUM(CASE WHEN severity < 0.33 THEN 1 ELSE 0 END) as low,
+                    SUM(CASE WHEN severity >= 0.33 AND severity < 0.67 THEN 1 ELSE 0 END) as med,
+                    SUM(CASE WHEN severity >= 0.67 THEN 1 ELSE 0 END) as high
+                FROM turn_telemetry
+                WHERE ts > ?{thread_filter}
+                """,
+                params_base,
+            ).fetchone()
+            if sev_rows:
+                result["severity_distribution"] = {
+                    "low": int(sev_rows[0] or 0),
+                    "medium": int(sev_rows[1] or 0),
+                    "high": int(sev_rows[2] or 0),
+                }
+
+            # ── Gate performance ──────────────────────────────────────────
+            gate_pass = int(result["event_counts"].get("gate_pass", 0))
+            gate_fail = int(result["event_counts"].get("gate_fail", 0))
+            total_gate = gate_pass + gate_fail
+            result["gate_performance"]["pass_count"] = gate_pass
+            result["gate_performance"]["fail_count"] = gate_fail
+            result["gate_performance"]["pass_rate"] = (
+                round(gate_pass / total_gate, 3) if total_gate > 0 else None
+            )
+
+            # Gate fail reasons from payload_json
+            fail_reason_rows = conn.execute(
+                f"""
+                SELECT payload_json FROM turn_telemetry
+                WHERE ts > ? AND event_type = 'gate_fail'{thread_filter.replace('AND thread_id', 'AND thread_id')}
+                LIMIT 500
+                """,
+                params_base,
+            ).fetchall()
+            fail_reasons: dict = {}
+            for fr in fail_reason_rows:
+                try:
+                    payload = json.loads(fr[0] or "{}")
+                    reason = str(payload.get("gate_reason") or payload.get("reason") or "unknown")
+                    fail_reasons[reason] = fail_reasons.get(reason, 0) + 1
+                except Exception:
+                    pass
+            result["gate_performance"]["fail_reasons"] = fail_reasons
+
+            # ── Feedback signal ───────────────────────────────────────────
+            try:
+                fb_row = conn.execute(
+                    f"""
+                    SELECT
+                        SUM(CASE WHEN user_reaction = 'thumbs_up' THEN 1 ELSE 0 END) as ups,
+                        SUM(CASE WHEN user_reaction = 'thumbs_down' THEN 1 ELSE 0 END) as downs,
+                        SUM(CASE WHEN COALESCE(feedback_priority,0) >= 0.67 THEN 1 ELSE 0 END) as high_prio
+                    FROM interaction_logs
+                    WHERE timestamp > ?{' AND thread_id = ?' if thread_id else ''}
+                      AND user_reaction IN ('thumbs_up', 'thumbs_down')
+                    """,
+                    params_base,
+                ).fetchone()
+                if fb_row:
+                    ups = int(fb_row[0] or 0)
+                    downs = int(fb_row[1] or 0)
+                    total_fb = ups + downs
+                    result["feedback"] = {
+                        "thumbs_up": ups,
+                        "thumbs_down": downs,
+                        "thumbs_up_rate": round(ups / total_fb, 3) if total_fb > 0 else None,
+                        "high_priority_count": int(fb_row[2] or 0),
+                    }
+            except Exception:
+                pass
+
+            # ── Learning queue ────────────────────────────────────────────
+            pending_reflections = int(
+                result["event_counts"].get("reflection_queued", 0)
+            )
+            high_prio_fb = result["feedback"]["high_priority_count"]
+            result["learning_queue"] = {
+                "pending_reflections": pending_reflections,
+                "high_priority_feedback": high_prio_fb,
+            }
+
+            # ── Thread metrics trend ──────────────────────────────────────
+            try:
+                tm_params = [since_ts] + ([thread_id] if thread_id else [])
+                tm_rows = conn.execute(
+                    f"""
+                    SELECT ts, thread_id, turn_number, contradiction_rate,
+                           gate_fail_rate, trust_mean, correction_recovery,
+                           hallucination_leakage, open_contradictions
+                    FROM thread_metrics_log
+                    WHERE ts > ?{' AND thread_id = ?' if thread_id else ''}
+                    ORDER BY ts DESC
+                    LIMIT 50
+                    """,
+                    tm_params,
+                ).fetchall()
+                result["thread_metrics_trend"] = [
+                    {
+                        "ts": float(r[0] or 0),
+                        "thread_id": r[1] or "",
+                        "turn_number": int(r[2] or 0),
+                        "contradiction_rate": r[3],
+                        "gate_fail_rate": r[4],
+                        "trust_mean": r[5],
+                        "correction_recovery": r[6],
+                        "hallucination_leakage": r[7],
+                        "open_contradictions": int(r[8] or 0),
+                    }
+                    for r in tm_rows
+                ]
+            except Exception:
+                pass
+
+            # ── Recent events ─────────────────────────────────────────────
+            re_rows = conn.execute(
+                f"""
+                SELECT ts, thread_id, event_type, severity, payload_json
+                FROM turn_telemetry
+                WHERE ts > ?{thread_filter}
+                ORDER BY ts DESC
+                LIMIT 20
+                """,
+                params_base,
+            ).fetchall()
+            result["recent_events"] = [
+                {
+                    "ts": float(r[0] or 0),
+                    "thread_id": r[1] or "",
+                    "event_type": r[2] or "",
+                    "severity": float(r[3] or 0),
+                    "payload": _safe_json(r[4]),
+                }
+                for r in re_rows
+            ]
+
+    except Exception as exc:
+        logger.warning("[telemetry/summary] query failed: %s", exc)
+        result["error"] = str(exc)
+
+    return result
+
+
+def _safe_json(s: Optional[str]) -> Any:
+    if not s:
+        return {}
+    try:
+        import json
+        return json.loads(s)
+    except Exception:
+        return {}
+
+
+# ============================================================================
 # Loops – Streaming & Manual Trigger
 # ============================================================================
 

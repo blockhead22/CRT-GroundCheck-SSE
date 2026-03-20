@@ -1671,3 +1671,71 @@ export async function submitChatFeedback(req: ChatFeedbackRequest): Promise<Chat
   if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`)
   return res.json()
 }
+
+// ── Telemetry Dashboard ───────────────────────────────────────────────────
+
+export type TelemetryEventCounts = Record<string, number>
+
+export type TelemetryGatePerformance = {
+  pass_count: number
+  fail_count: number
+  pass_rate: number | null
+  fail_reasons: Record<string, number>
+}
+
+export type TelemetryFeedback = {
+  thumbs_up: number
+  thumbs_down: number
+  thumbs_up_rate: number | null
+  high_priority_count: number
+}
+
+export type TelemetryLearningQueue = {
+  pending_reflections: number
+  high_priority_feedback: number
+}
+
+export type TelemetryThreadMetricRow = {
+  ts: number
+  thread_id: string
+  turn_number: number
+  contradiction_rate: number | null
+  gate_fail_rate: number | null
+  trust_mean: number | null
+  correction_recovery: number | null
+  hallucination_leakage: number | null
+  open_contradictions: number
+}
+
+export type TelemetryRecentEvent = {
+  ts: number
+  thread_id: string
+  event_type: string
+  severity: number
+  payload: Record<string, unknown>
+}
+
+export type TelemetrySummary = {
+  hours: number
+  generated_at: number
+  event_counts: TelemetryEventCounts
+  event_rate_per_hour: TelemetryEventCounts
+  severity_distribution: { low: number; medium: number; high: number }
+  gate_performance: TelemetryGatePerformance
+  feedback: TelemetryFeedback
+  learning_queue: TelemetryLearningQueue
+  thread_metrics_trend: TelemetryThreadMetricRow[]
+  recent_events: TelemetryRecentEvent[]
+  error?: string
+}
+
+export async function getTelemetrySummary(args?: {
+  hours?: number
+  threadId?: string
+}): Promise<TelemetrySummary> {
+  const params = new URLSearchParams()
+  if (args?.hours != null) params.set('hours', String(args.hours))
+  if (args?.threadId) params.set('thread_id', args.threadId)
+  const qs = params.toString()
+  return fetchJson<TelemetrySummary>(`/api/telemetry/summary${qs ? '?' + qs : ''}`)
+}

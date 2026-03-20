@@ -22,6 +22,7 @@ import { JournalPage } from './pages/JournalPage'
 import { ShowcasePage } from './pages/ShowcasePage'
 import { CopilotPage } from './pages/CopilotPage'
 import { LiveFeedPage } from './pages/LiveFeedPage'
+import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, type AuthUser } from './lib/api'
 import { quickActions, seedThreads } from './lib/seed'
@@ -36,7 +37,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live', 'telemetry']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -434,6 +435,7 @@ export default function App() {
                   gates_passed: (metadata?.gates_passed as boolean) ?? true,
                   gate_reason: (metadata?.gate_reason as string) || null,
                   session_id: (metadata?.session_id as string) || null,
+                  interaction_id: (metadata?.interaction_id as string) || null,
                   confidence: (metadata?.confidence as number) ?? null,
                   intent_alignment: (metadata?.intent_alignment as number) ?? null,
                   memory_alignment: (metadata?.memory_alignment as number) ?? null,
@@ -782,6 +784,8 @@ export default function App() {
                   <CopilotPage />
                 ) : navActive === 'live' ? (
                   <LiveFeedPage />
+                ) : navActive === 'telemetry' ? (
+                  <TelemetryPage threadId={selectedThread?.id} />
                 ) : (
                   <DocsPage />
                 )}
