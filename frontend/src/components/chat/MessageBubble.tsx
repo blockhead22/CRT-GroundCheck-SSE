@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Editor from '@monaco-editor/react'
@@ -11,6 +11,7 @@ import { MessageRatingBar } from './MessageRatingBar'
 import { ContradictionResolutionCard } from './ContradictionResolutionCard'
 import { TrustDeltaStrip } from './TrustDeltaStrip'
 import { ContradictionDrawer } from './ContradictionDrawer'
+import { resolveContradiction } from '../../lib/api'
 
 function MonacoBlock({ code, language }: { code: string; language?: string }) {
   const lines = code.split('\n').length
@@ -129,8 +130,28 @@ export function MessageBubble(props: {
 
   const [metaExpanded, setMetaExpanded] = useState(false)
   const [gateDebugOpen, setGateDebugOpen] = useState(false)
+  const [gateAccepting, setGateAccepting] = useState(false)
+  const [gateAccepted, setGateAccepted] = useState(false)
   const [contradictionDrawerOpen, setContradictionDrawerOpen] = useState(false)
   const [contraResolved, setContraResolved] = useState(false)
+
+  // ledger_id from gate_debug — declared early so handleAcceptGateClaim can close over it
+  const ledgerId = meta?.gate_debug?.ledger_id ?? null
+
+  const handleAcceptGateClaim = useCallback(async () => {
+    if (!ledgerId || gateAccepting || gateAccepted) return
+    setGateAccepting(true)
+    try {
+      await resolveContradiction({
+        threadId: props.threadId ?? 'default',
+        ledgerId,
+        method: 'accept_new',
+        newStatus: 'resolved',
+      })
+      setGateAccepted(true)
+    } catch { /* non-critical */ }
+    finally { setGateAccepting(false) }
+  }, [ledgerId, props.threadId, gateAccepting, gateAccepted])
   const [localRating, setLocalRating] = useState<MessageRating | null>(props.msg.rating ?? null)
   const [localRatingCat, setLocalRatingCat] = useState<string | undefined>(props.msg.ratingCategory ?? undefined)
   const [ratedAt, setRatedAt] = useState<number | null>(null)
@@ -141,9 +162,6 @@ export function MessageBubble(props: {
     setRatedAt(Date.now() / 1000)
     props.onRated?.(props.msg.id, rating, category)
   }
-
-  // ledger_id from gate_debug (contradiction that triggered the gate) or from llm_contradictions
-  const ledgerId = meta?.gate_debug?.ledger_id ?? null
 
   const profileUpdates = meta?.profile_updates ?? []
 
@@ -288,6 +306,25 @@ export function MessageBubble(props: {
                   <span style={{ color: '#e05c20' }}>{meta.gate_debug.hard_conflicts} hard conflict(s)</span>
                 )}
               </div>
+              {/* Action row — accept claim if a ledger entry exists */}
+              <div className="mt-2.5 flex items-center gap-2 pt-2" style={{ borderTop: '1px solid rgba(240,235,225,0.06)' }}>
+                {ledgerId ? (
+                  gateAccepted ? (
+                    <span className="text-[10px] font-medium" style={{ color: '#34d399' }}>✓ Accepted — memory updated</span>
+                  ) : (
+                    <button
+                      onClick={handleAcceptGateClaim}
+                      disabled={gateAccepting}
+                      className="rounded-full px-2.5 py-1 text-[10px] font-medium transition-all hover:opacity-90 disabled:opacity-40"
+                      style={{ border: '1px solid rgba(52,211,153,0.35)', background: 'rgba(52,211,153,0.08)', color: '#34d399' }}
+                    >
+                      {gateAccepting ? 'Accepting…' : 'My claim is correct — accept it'}
+                    </button>
+                  )
+                ) : (
+                  <span className="text-[10px]" style={{ color: '#5a5445' }}>Confidence threshold block — use the thumbs-down to flag a correction</span>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -361,11 +398,11 @@ export function MessageBubble(props: {
           />
         )}
 
-        {/* Trust delta strip — shows trust movements since this turn */}
-        {isAssistant && props.threadId && ratedAt != null && (
+        {/* Trust delta strip — shows trust movements since this turn (or last rating) */}
+        {isAssistant && props.threadId && (
           <TrustDeltaStrip
             threadId={props.threadId}
-            sinceTs={ratedAt - 5}
+            sinceTs={ratedAt != null ? ratedAt - 5 : props.msg.createdAt / 1000 - 2}
           />
         )}
 
