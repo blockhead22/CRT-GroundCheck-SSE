@@ -149,7 +149,7 @@ def _compute_drift_aware_boost(
 
 
 def _find_groundcheck_db() -> Optional[Path]:
-    """Locate the GroundCheck memory database."""
+    """Locate the memory database — CRT memory DB preferred, GroundCheck DB fallback."""
     env = os.environ.get("GROUNDCHECK_DB", "").strip()
     if env:
         p = Path(env)
@@ -157,6 +157,10 @@ def _find_groundcheck_db() -> Optional[Path]:
             return p
 
     candidates = [
+        # CRT native memory DB (primary — this is what Aether actually uses)
+        Path("personal_agent/crt_memory.db"),
+        Path("../personal_agent/crt_memory.db"),
+        # GroundCheck MCP DB (fallback)
         Path("D:/groundcheck/.groundcheck/memory.db"),
         Path.home() / ".groundcheck" / "memory.db",
     ]
@@ -164,6 +168,15 @@ def _find_groundcheck_db() -> Optional[Path]:
         if c.is_file():
             return c
     return None
+
+
+def _is_crt_schema(conn: sqlite3.Connection) -> bool:
+    """Return True if the connected DB uses CRT memory schema (memory_id PK)."""
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(memories)").fetchall()]
+        return "memory_id" in cols
+    except Exception:
+        return False
 
 
 def run_trust_decay_pass() -> dict:
@@ -192,14 +205,18 @@ def run_trust_decay_pass() -> dict:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
 
+        crt_schema = _is_crt_schema(conn)
+        id_col = "memory_id" if crt_schema else "id"
+        alive_clause = "AND (deprecated IS NULL OR deprecated = 0)" if crt_schema else ""
+
         # ------------------------------------------------------------------
         # 1. Decay: memories older than grace period
         #    CRT: exponential curve based on age instead of flat -0.02
         # ------------------------------------------------------------------
         stale_rows = conn.execute(
-            """SELECT id, trust, timestamp, text FROM memories
-               WHERE timestamp < ? AND trust > ?""",
-            (int(grace_cutoff), TRUST_FLOOR),
+            f"""SELECT {id_col} AS mem_id, trust, timestamp, text FROM memories
+               WHERE timestamp < ? AND trust > ? {alive_clause}""",
+            (grace_cutoff, TRUST_FLOOR),
         ).fetchall()
 
         decayed = 0
@@ -208,8 +225,8 @@ def run_trust_decay_pass() -> dict:
             new_trust = _compute_exponential_decay(age_seconds, row["trust"])
             if new_trust < row["trust"]:
                 conn.execute(
-                    "UPDATE memories SET trust = ? WHERE id = ?",
-                    (round(new_trust, 4), row["id"]),
+                    f"UPDATE memories SET trust = ? WHERE {id_col} = ?",
+                    (round(new_trust, 4), row["mem_id"]),
                 )
                 decayed += 1
 
@@ -231,7 +248,7 @@ def run_trust_decay_pass() -> dict:
 
             for evt in recent_events:
                 mem = conn.execute(
-                    "SELECT trust, text FROM memories WHERE id = ?", (evt["memory_id"],)
+                    f"SELECT trust, text FROM memories WHERE {id_col} = ?", (evt["memory_id"],)
                 ).fetchone()
                 if not mem:
                     continue
@@ -258,7 +275,7 @@ def run_trust_decay_pass() -> dict:
 
                 if new_trust > mem["trust"]:
                     conn.execute(
-                        "UPDATE memories SET trust = ? WHERE id = ?",
+                        f"UPDATE memories SET trust = ? WHERE {id_col} = ?",
                         (round(new_trust, 4), evt["memory_id"]),
                     )
                     reinforced += 1
@@ -308,7 +325,8 @@ def reinforce_memory(
     try:
         conn = sqlite3.connect(str(db_path))
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT trust, text FROM memories WHERE id = ?", (memory_id,)).fetchone()
+        id_col = "memory_id" if _is_crt_schema(conn) else "id"
+        row = conn.execute(f"SELECT trust, text FROM memories WHERE {id_col} = ?", (memory_id,)).fetchone()
         if not row:
             conn.close()
             return False
@@ -327,7 +345,7 @@ def reinforce_memory(
 
         if new_trust > row["trust"]:
             conn.execute(
-                "UPDATE memories SET trust = ? WHERE id = ?",
+                f"UPDATE memories SET trust = ? WHERE {id_col} = ?",
                 (round(new_trust, 4), memory_id),
             )
             conn.commit()

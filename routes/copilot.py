@@ -69,10 +69,14 @@ router = APIRouter(prefix="/api/copilot", tags=["copilot"])
 # DB path resolution
 # ---------------------------------------------------------------------------
 
-# Try common locations for the GroundCheck memory DB
+# Try CRT native memory DB first, then GroundCheck MCP DB as fallback
 _ENV_DB = os.environ.get("GROUNDCHECK_DB", "")
 _CANDIDATE_PATHS = [
     *([] if not _ENV_DB else [Path(_ENV_DB)]),
+    # CRT memory DB — the system Aether actually uses (primary)
+    Path("personal_agent/crt_memory.db"),
+    Path("../personal_agent/crt_memory.db"),
+    # GroundCheck MCP DB (fallback)
     Path("D:/groundcheck/.groundcheck/memory.db"),
     Path("../.groundcheck/memory.db"),
     Path(".groundcheck/memory.db"),
@@ -80,7 +84,7 @@ _CANDIDATE_PATHS = [
 
 
 def _find_db() -> Optional[Path]:
-    """Return the first existing GroundCheck DB path."""
+    """Return the first existing memory DB path."""
     for p in _CANDIDATE_PATHS:
         try:
             if p.is_file() and p.stat().st_size > 0:
@@ -90,33 +94,81 @@ def _find_db() -> Optional[Path]:
     return None
 
 
-def _open_readonly() -> sqlite3.Connection:
-    """Open a read-only connection to the GroundCheck DB."""
-    db_path = _find_db()
-    if not db_path:
-        raise HTTPException(
-            status_code=503,
-            detail="GroundCheck memory database not found. Ensure groundcheck-mcp is configured.",
-        )
-    uri = f"file:{db_path}?mode=ro"
-    conn = sqlite3.connect(uri, uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
 def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
     """Check if a column exists in a table (handles schema differences)."""
     cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
     return column in cols
 
 
-def _open_readwrite() -> sqlite3.Connection:
-    """Open a read-write connection to the GroundCheck DB."""
+def _is_crt_schema(conn: sqlite3.Connection) -> bool:
+    """Return True if the DB uses CRT memory schema (memory_id PK instead of id)."""
+    return _has_column(conn, "memories", "memory_id")
+
+
+class _DBAdapter:
+    """Thin schema-normalisation wrapper so query code stays readable."""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self.conn = conn
+        self.crt = _is_crt_schema(conn)
+        # Primary key column name
+        self.id_col = "memory_id" if self.crt else "id"
+        # Namespace substitute: CRT uses 'kind', GroundCheck has 'namespace'
+        self.has_ns = _has_column(conn, "memories", "namespace")
+        self.has_kind = _has_column(conn, "memories", "kind")
+        # Alive-rows clause (CRT has deprecated flag)
+        self.alive = "AND (deprecated IS NULL OR deprecated = 0)" if self.crt else ""
+
+    def ns_select_expr(self) -> str:
+        """SQL expression that returns a namespace-like value."""
+        if self.has_ns:
+            return "namespace"
+        if self.has_kind:
+            return "COALESCE(kind, 'default') AS namespace"
+        return "'default' AS namespace"
+
+    def ts_expr(self) -> str:
+        """SQL expression for timestamp as integer seconds."""
+        if self.crt:
+            return "CAST(timestamp AS INTEGER) AS timestamp"
+        return "timestamp"
+
+    def created_at_expr(self) -> str:
+        if _has_column(self.conn, "memories", "created_at"):
+            return "created_at"
+        if self.crt:
+            return "datetime(timestamp, 'unixepoch') AS created_at"
+        return "NULL AS created_at"
+
+
+def _open_readonly() -> sqlite3.Connection:
+    """Open a read-only connection to the memory DB."""
     db_path = _find_db()
     if not db_path:
         raise HTTPException(
             status_code=503,
-            detail="GroundCheck memory database not found.",
+            detail="Memory database not found. Start the CRT backend or configure GROUNDCHECK_DB.",
+        )
+    # CRT DB needs write access for WAL; open read-only only for GroundCheck DB
+    try:
+        uri = f"file:{db_path}?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
+        conn.row_factory = sqlite3.Row
+        return conn
+    except sqlite3.OperationalError:
+        # Fall back to read-write if read-only mode fails (e.g. WAL without -shm)
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        return conn
+
+
+def _open_readwrite() -> sqlite3.Connection:
+    """Open a read-write connection to the memory DB."""
+    db_path = _find_db()
+    if not db_path:
+        raise HTTPException(
+            status_code=503,
+            detail="Memory database not found.",
         )
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -203,19 +255,24 @@ def get_copilot_memories(
     offset: int = Query(0, ge=0),
     sort: str = Query("newest", description="Sort order: newest, oldest, trust_high, trust_low"),
 ) -> CopilotMemoriesResponse:
-    """Return all GroundCheck memories with optional filtering."""
+    """Return all CRT/GroundCheck memories with optional filtering."""
     conn = _open_readonly()
     try:
-        has_ns = _has_column(conn, "memories", "namespace")
-        ns_col = "namespace" if has_ns else "'default' as namespace"
+        db = _DBAdapter(conn)
 
-        # Build query
-        where_clauses = ["trust >= ?"]
+        # Build WHERE clauses
+        where_clauses = [f"trust >= ?"]
         params: list = [min_trust]
+        if db.alive:
+            where_clauses.append(db.alive.lstrip("AND ").strip())
 
-        if namespace and has_ns:
-            where_clauses.append("namespace = ?")
-            params.append(namespace)
+        if namespace:
+            if db.has_ns:
+                where_clauses.append("namespace = ?")
+                params.append(namespace)
+            elif db.has_kind:
+                where_clauses.append("kind = ?")
+                params.append(namespace)
         if source:
             where_clauses.append("source = ?")
             params.append(source)
@@ -234,12 +291,17 @@ def get_copilot_memories(
         order_sql = order_map.get(sort, "timestamp DESC")
 
         # Count total matching
-        count_sql = f"SELECT COUNT(*) FROM memories WHERE {where_sql}"
-        total = conn.execute(count_sql, params).fetchone()[0]
+        total = conn.execute(f"SELECT COUNT(*) FROM memories WHERE {where_sql}", params).fetchone()[0]
 
         # Fetch page
+        ns_expr = db.ns_select_expr()
+        ts_expr = db.ts_expr()
+        ca_expr = db.created_at_expr()
+        id_col = db.id_col
         data_sql = f"""
-            SELECT id, thread_id, text, trust, source, {ns_col}, timestamp, created_at
+            SELECT {id_col} AS id, COALESCE(thread_id, 'default') AS thread_id,
+                   text, trust, COALESCE(source, 'unknown') AS source,
+                   {ns_expr}, {ts_expr}, {ca_expr}
             FROM memories
             WHERE {where_sql}
             ORDER BY {order_sql}
@@ -250,18 +312,18 @@ def get_copilot_memories(
         memories = [
             CopilotMemory(
                 id=r["id"],
-                thread_id=r["thread_id"],
+                thread_id=r["thread_id"] or "default",
                 text=r["text"],
-                trust=r["trust"],
+                trust=float(r["trust"]),
                 source=r["source"] or "unknown",
-                namespace=r["namespace"] if has_ns else "default",
-                timestamp=r["timestamp"],
+                namespace=r["namespace"] if "namespace" in r.keys() else "default",
+                timestamp=int(r["timestamp"]),
                 created_at=r["created_at"],
             )
             for r in rows
         ]
 
-        stats = _compute_stats(conn, has_ns)
+        stats = _compute_stats(conn, db)
 
         return CopilotMemoriesResponse(memories=memories, total=total, stats=stats)
 
@@ -271,23 +333,28 @@ def get_copilot_memories(
 
 @router.get("/stats", response_model=CopilotStats)
 def get_copilot_stats() -> CopilotStats:
-    """Return aggregate statistics about GroundCheck memories."""
+    """Return aggregate statistics about CRT memories."""
     conn = _open_readonly()
     try:
-        return _compute_stats(conn)
+        return _compute_stats(conn, _DBAdapter(conn))
     finally:
         conn.close()
 
 
 @router.get("/namespaces")
 def get_copilot_namespaces() -> List[str]:
-    """Return all distinct namespaces in the GroundCheck DB."""
+    """Return all distinct namespaces / kinds in the memory DB."""
     conn = _open_readonly()
     try:
-        if not _has_column(conn, "memories", "namespace"):
-            return ["default"]
-        rows = conn.execute("SELECT DISTINCT namespace FROM memories ORDER BY namespace").fetchall()
-        return [r["namespace"] or "default" for r in rows]
+        db = _DBAdapter(conn)
+        alive = db.alive
+        if db.has_ns:
+            rows = conn.execute(f"SELECT DISTINCT namespace FROM memories WHERE 1=1 {alive} ORDER BY namespace").fetchall()
+            return [r["namespace"] or "default" for r in rows]
+        if db.has_kind:
+            rows = conn.execute(f"SELECT DISTINCT kind FROM memories WHERE 1=1 {alive} ORDER BY kind").fetchall()
+            return [r["kind"] or "default" for r in rows]
+        return ["default"]
     finally:
         conn.close()
 
