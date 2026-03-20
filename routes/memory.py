@@ -79,6 +79,21 @@ def _memory_item_to_dict(mem) -> Dict[str, Any]:
     }
 
 
+def _recent_scope_items(engine: CRTEnhancedRAG, tid: str) -> list:
+    """Return the same raw memory scope used by /api/memory/recent."""
+    try:
+        if tid == "default":
+            all_items = engine.memory._load_all_memories()
+            return [
+                m for m in all_items
+                if not getattr(m, "thread_id", None)
+                or str(m.thread_id).lower() in ("default", "")
+            ]
+        return list(engine.memory._load_memories_filtered(thread_id=tid))
+    except Exception:
+        return []
+
+
 def _extract_latest_profile_slots(engine: CRTEnhancedRAG) -> Dict[str, str]:
     """Best-effort extraction of latest fact slots from user memories.
 
@@ -396,14 +411,24 @@ def dashboard_overview(request: Request, thread_id: str = Query(default="default
     tid = sanitize_thread_id(thread_id)
 
     try:
-        memories_total = len(engine.memory._load_all_memories())
+        global_memories_total = len(engine.memory._load_all_memories())
     except Exception:
-        memories_total = 0
+        global_memories_total = 0
+
+    memories_total = len(_recent_scope_items(engine, tid))
 
     try:
-        open_contradictions = len(engine.ledger.get_open_contradictions(limit=10_000))
+        effective_facts_total = len(engine.get_structured_facts(thread_id=tid, scope="effective"))
     except Exception:
-        open_contradictions = 0
+        effective_facts_total = 0
+
+    try:
+        open_contradictions = len(engine.ledger.get_open_contradictions(limit=10_000, thread_id=tid))
+    except Exception:
+        try:
+            open_contradictions = len(engine.ledger.get_open_contradictions(limit=10_000))
+        except Exception:
+            open_contradictions = 0
 
     try:
         ratio = engine.memory.get_belief_speech_ratio(limit=100)
@@ -429,11 +454,16 @@ def dashboard_overview(request: Request, thread_id: str = Query(default="default
         thread_id=tid,
         session_id=getattr(engine, "session_id", None),
         memories_total=memories_total,
+        global_memories_total=global_memories_total,
+        effective_facts_total=effective_facts_total,
         open_contradictions=open_contradictions,
         belief_ratio=float(ratio.get("belief_ratio") or 0.0),
         speech_ratio=float(ratio.get("speech_ratio") or 0.0),
         belief_count=int(ratio.get("belief_count") or 0),
         speech_count=int(ratio.get("speech_count") or 0),
+        memory_scope="thread",
+        contradiction_scope="thread",
+        belief_speech_scope="global_7d",
         model_routing=model_routing,
     )
 
@@ -706,20 +736,8 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
 def memory_recent(request: Request, thread_id: str = Query(default="default"), limit: int = Query(default=30, ge=1, le=200)) -> list[MemoryListItem]:
     tid = sanitize_thread_id(thread_id)
     engine = _get_engine(request, tid)
-    try:
-        if tid == "default":
-            # Default thread: include memories with NULL thread_id or explicit "default"
-            all_items = engine.memory._load_all_memories()
-            items: list = [
-                m for m in all_items
-                if not getattr(m, "thread_id", None)
-                or str(m.thread_id).lower() in ("default", "")
-            ]
-        else:
-            items = engine.memory._load_memories_filtered(thread_id=tid)
-        items.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
-    except Exception:
-        items = []
+    items = _recent_scope_items(engine, tid)
+    items.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
 
     out: list[MemoryListItem] = []
     for mem in items[:limit]:

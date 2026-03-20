@@ -4,7 +4,6 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from personal_agent.crt_rag import CRTEnhancedRAG
-from personal_agent.crt_core import MemorySource
 from personal_agent.fact_store import FactStore
 from personal_agent.user_profile import GlobalUserProfile
 from routes import threads as thread_routes
@@ -26,18 +25,10 @@ def _build_rag(tmp_path: Path) -> CRTEnhancedRAG:
 
 def test_thread_reset_clears_shared_fact_rows_for_target_thread(tmp_path: Path, monkeypatch):
     rag = _build_rag(tmp_path)
-    rag.ingest_memory_write(
-        text="My name is Nick",
-        confidence=0.95,
-        source=MemorySource.USER,
-        thread_id="openclaw",
-    )
-    rag.ingest_memory_write(
-        text="My name is Mike",
-        confidence=0.95,
-        source=MemorySource.USER,
-        thread_id="other-thread",
-    )
+    rag.fact_store.process_input("My name is Nick", thread_id="openclaw")
+    rag.fact_store.process_input("My name is Mike", thread_id="other-thread")
+    rag.user_profile.update_from_text("My name is Nick", thread_id="openclaw")
+    rag.user_profile.update_from_text("My name is Mike", thread_id="other-thread")
 
     profile_path = tmp_path / "profile.db"
 

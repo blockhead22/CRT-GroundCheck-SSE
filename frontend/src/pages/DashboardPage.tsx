@@ -412,12 +412,31 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
           <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="text-xs font-semibold tracking-wide text-white/60">Memories</div>
+                <div className="text-xs font-semibold tracking-wide text-white/60">Thread memories</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{overview?.memories_total ?? '—'}</div>
+                <div className="mt-1 text-xs text-white/50">
+                  Raw CRT {overview?.memory_scope ?? 'thread'} memory surface
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-semibold tracking-wide text-white/60">Effective facts</div>
+                <div className="mt-2 text-3xl font-semibold text-white">{overview?.effective_facts_total ?? '—'}</div>
+                <div className="mt-1 text-xs text-white/50">Canonical effective fact surface</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Open contradictions</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{overview?.open_contradictions ?? '—'}</div>
+                <div className="mt-1 text-xs text-white/50">
+                  {overview?.contradiction_scope ?? 'thread'} scope
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="text-xs font-semibold tracking-wide text-white/60">Global shared memories</div>
+                <div className="mt-2 text-3xl font-semibold text-white">{overview?.global_memories_total ?? '—'}</div>
+                <div className="mt-1 text-xs text-white/50">All raw rows in shared CRT memory DB</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Belief vs Speech (7d)</div>
@@ -427,6 +446,9 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 </div>
                 <div className="mt-1 text-xs text-white/50">
                   {overview?.belief_count ?? 0} belief · {overview?.speech_count ?? 0} speech
+                </div>
+                <div className="mt-1 text-xs text-white/40">
+                  Scope: {overview?.belief_speech_scope ?? 'global_7d'}
                 </div>
               </div>
             </div>
@@ -663,6 +685,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   <div className="text-sm font-semibold text-white">Open contradictions</div>
                   <div className="text-xs text-white/50">{contras.length} shown</div>
                 </div>
+                <div className="mt-1 text-xs text-white/50">Scope: current thread only</div>
                 <div className="mt-3 space-y-2">
                   {contras.slice(0, 10).map((c) => (
                     <div key={c.ledger_id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
@@ -702,6 +725,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   <div className="text-sm font-semibold text-white">Recent memories</div>
                   <div className="text-xs text-white/50">{memories.length} shown</div>
                 </div>
+                <div className="mt-1 text-xs text-white/50">Surface: raw CRT thread memory, not effective facts</div>
                 <div className="mt-3 space-y-2">
                   {memories.slice(0, 12).map((m) => (
                     <div key={m.memory_id} className="rounded-2xl border border-white/10 bg-black/20 p-3">

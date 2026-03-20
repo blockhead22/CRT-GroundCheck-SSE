@@ -590,11 +590,16 @@ export type DashboardOverview = {
   thread_id: string
   session_id?: string | null
   memories_total: number
+  global_memories_total: number
+  effective_facts_total: number
   open_contradictions: number
   belief_ratio: number
   speech_ratio: number
   belief_count: number
   speech_count: number
+  memory_scope: string
+  contradiction_scope: string
+  belief_speech_scope: string
   model_routing?: ModelRoutingInfo | null
 }
 

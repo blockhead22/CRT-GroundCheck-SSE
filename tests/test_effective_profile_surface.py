@@ -66,5 +66,5 @@ def test_effective_profile_surfaces_cross_thread_authoritative_facts(tmp_path: P
     assert items[0]["slot"] == "favorite_color"
     assert items[0]["value"] == "orange"
 
-    answer = rag.query("What is my favorite color?", thread_id="openclaw")
+    answer = rag.query_with_intent("What is my favorite color?", thread_id="openclaw")
     assert "orange" in str(answer.get("answer") or "").lower()

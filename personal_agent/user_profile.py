@@ -17,6 +17,7 @@ import sqlite3
 import json
 import time
 import logging
+import re
 from typing import Dict, Optional, Any, List
 from pathlib import Path
 from dataclasses import dataclass

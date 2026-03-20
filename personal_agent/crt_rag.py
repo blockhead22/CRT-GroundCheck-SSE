@@ -1702,6 +1702,8 @@ class CRTEnhancedRAG:
         except Exception:
             profile_facts = {}
         for slot, fact in profile_facts.items():
+            if hasattr(self.user_profile, "_is_profile_slot") and not self.user_profile._is_profile_slot(slot):
+                continue
             value = str(getattr(fact, "value", "") or "").strip()
             if not value:
                 continue
@@ -7616,6 +7618,8 @@ class CRTEnhancedRAG:
                 global_facts = {}
             out: Dict[str, Any] = {}
             for slot, fact in global_facts.items():
+                if hasattr(self.user_profile, "_is_profile_slot") and not self.user_profile._is_profile_slot(slot):
+                    continue
                 value = str(getattr(fact, "value", "") or "").strip()
                 if not value:
                     continue

@@ -81,11 +81,16 @@ class DashboardOverviewResponse(BaseModel):
     thread_id: str
     session_id: Optional[str] = None
     memories_total: int
+    global_memories_total: int = 0
+    effective_facts_total: int = 0
     open_contradictions: int
     belief_ratio: float
     speech_ratio: float
     belief_count: int
     speech_count: int
+    memory_scope: str = "thread"
+    contradiction_scope: str = "thread"
+    belief_speech_scope: str = "global_7d"
     model_routing: Optional[ModelRoutingInfo] = None
 
 
