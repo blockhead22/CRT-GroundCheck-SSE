@@ -3,10 +3,11 @@ import { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import Editor from '@monaco-editor/react'
-import type { ChatMessage } from '../../types'
+import type { ChatMessage, MessageRating } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
 import { PipelineTrace } from './PipelineTrace'
+import { MessageRatingBar } from './MessageRatingBar'
 
 function MonacoBlock({ code, language }: { code: string; language?: string }) {
   const lines = code.split('\n').length
@@ -110,6 +111,7 @@ export function MessageBubble(props: {
   onOpenSourceInspector?: (memoryId: string) => void
   onOpenAgentPanel?: (messageId: string) => void
   xrayMode?: boolean
+  onRated?: (msgId: string, rating: MessageRating, category?: string) => void
 }) {
   const isUser = props.msg.role === 'user'
   const meta = props.msg.crt
@@ -123,6 +125,14 @@ export function MessageBubble(props: {
   const contradictionDetected = meta?.contradiction_detected
 
   const [metaExpanded, setMetaExpanded] = useState(false)
+  const [localRating, setLocalRating] = useState<MessageRating | null>(props.msg.rating ?? null)
+  const [localRatingCat, setLocalRatingCat] = useState<string | undefined>(props.msg.ratingCategory ?? undefined)
+
+  function handleRated(rating: MessageRating, category?: string) {
+    setLocalRating(rating)
+    setLocalRatingCat(category)
+    props.onRated?.(props.msg.id, rating, category)
+  }
 
   const profileUpdates = meta?.profile_updates ?? []
 
@@ -169,7 +179,18 @@ export function MessageBubble(props: {
       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
       className="group"
     >
-      <div className={props.selected ? 'rounded-2xl px-4 py-3 -mx-4' : ''} style={props.selected ? { boxShadow: '0 0 0 1px rgba(201,95,40,0.3)', background: 'rgba(201,95,40,0.05)' } : {}}>
+      <div
+        className={[
+          props.selected ? 'rounded-2xl px-4 py-3 -mx-4' : '',
+          localRating === 'down' ? 'border-l-2 pl-3 -ml-3' : '',
+          localRating === 'up' ? 'border-l-2 pl-3 -ml-3' : '',
+        ].join(' ')}
+        style={{
+          ...(props.selected ? { boxShadow: '0 0 0 1px rgba(201,95,40,0.3)', background: 'rgba(201,95,40,0.05)' } : {}),
+          ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
+          ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
+        }}
+      >
         {/* Profile updates */}
         {profileUpdates.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -287,6 +308,15 @@ export function MessageBubble(props: {
               </div>
             )}
           </div>
+        )}
+
+        {/* Rating bar — thumbs up/down with memory citation panel */}
+        {isAssistant && meta?.interaction_id && (
+          <MessageRatingBar
+            msg={{ ...props.msg, rating: localRating ?? undefined, ratingCategory: localRatingCat }}
+            threadId={props.threadId}
+            onRated={handleRated}
+          />
         )}
 
         {/* Footer row — always visible timestamp + optional meta */}

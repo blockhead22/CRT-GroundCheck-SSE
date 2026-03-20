@@ -77,6 +77,7 @@ export type CtrMessageMeta = {
   gates_passed?: boolean
   gate_reason?: string | null
   session_id?: string | null
+  interaction_id?: string | null
   confidence?: number | null
   intent_alignment?: number | null
   memory_alignment?: number | null
@@ -181,12 +182,16 @@ export type CtrMessageMeta = {
   } | null
 }
 
+export type MessageRating = 'up' | 'down'
+
 export type ChatMessage = {
   id: string
   role: ChatRole
   text: string
   createdAt: number
   crt?: CtrMessageMeta
+  rating?: MessageRating | null
+  ratingCategory?: string | null
 }
 
 export type ChatThread = {

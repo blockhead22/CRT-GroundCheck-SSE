@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import type { ChatThread, QuickAction } from '../../types'
+import type { ChatThread, QuickAction, MessageRating } from '../../types'
 import { MessageBubble } from './MessageBubble'
 import { Composer } from './Composer'
 import { listOpenContradictions, type ContradictionListItem } from '../../lib/api'
@@ -119,6 +119,7 @@ export function ChatThreadView(props: {
   isThinking?: boolean
   streamStatusLog?: string[]
   streamPhase?: string | null
+  onRated?: (msgId: string, rating: MessageRating, category?: string) => void
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -128,6 +129,13 @@ export function ChatThreadView(props: {
   const [trayOpen, setTrayOpen] = useState(false)
   const [contradictions, setContradictions] = useState<ContradictionListItem[]>([])
   const [contradictionsLoading, setContradictionsLoading] = useState(false)
+  // Local overlay for ratings so UI updates immediately without a full re-render cycle
+  const [localRatings, setLocalRatings] = useState<Record<string, { rating: MessageRating; category?: string }>>({})
+
+  function handleMessageRated(msgId: string, rating: MessageRating, category?: string) {
+    setLocalRatings((prev) => ({ ...prev, [msgId]: { rating, category } }))
+    props.onRated?.(msgId, rating, category)
+  }
   const [contradictionsError, setContradictionsError] = useState<string | null>(null)
   const [contradictionsLoaded, setContradictionsLoaded] = useState(false)
   const [queuedContradiction, setQueuedContradiction] = useState<{
@@ -489,13 +497,18 @@ export function ChatThreadView(props: {
                       }}
                     >
                       <MessageBubble
-                        msg={m}
+                        msg={{
+                          ...m,
+                          rating: localRatings[m.id]?.rating ?? m.rating,
+                          ratingCategory: localRatings[m.id]?.category ?? m.ratingCategory,
+                        }}
                         threadId={props.thread.id}
                         selected={m.id === props.selectedMessageId}
                         onInspect={m.role === 'assistant' ? (id) => props.onSelectAssistantMessage(id) : undefined}
                         onOpenSourceInspector={props.onOpenSourceInspector}
                         onOpenAgentPanel={props.onOpenAgentPanel}
                         xrayMode={props.xrayMode}
+                        onRated={handleMessageRated}
                       />
                     </motion.div>
                   ))}

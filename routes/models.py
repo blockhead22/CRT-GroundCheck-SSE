@@ -846,3 +846,22 @@ class NotificationEnqueueRequest(BaseModel):
     source_kind: Optional[str] = Field(default=None)
     source_id: Optional[str] = Field(default=None)
     max_attempts: int = Field(default=5, ge=1, le=20)
+
+
+# ---------------------------------------------------------------------------
+# Chat Feedback
+# ---------------------------------------------------------------------------
+
+class ChatFeedbackRequest(BaseModel):
+    interaction_id: str = Field(description="Interaction ID returned in chat response metadata")
+    thread_id: str = Field(default="default")
+    thumbs_up: bool
+    category: Optional[str] = Field(
+        default=None,
+        description="hallucination | wrong_fact | tone | other",
+    )
+    comment: Optional[str] = Field(default=None)
+    memory_ids_cited: List[str] = Field(
+        default_factory=list,
+        description="Memory IDs from xray.memories_used or prompt_memories in the response",
+    )

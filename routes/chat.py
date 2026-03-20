@@ -15,6 +15,7 @@ import re
 import sqlite3
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -1477,11 +1478,14 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         response_type: str,
         gates_passed: bool,
         gate_reason: Optional[str],
+        interaction_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         meta = dict(metadata or {})
         meta["response_type"] = response_type
         meta["gates_passed"] = bool(gates_passed)
         meta["gate_reason"] = gate_reason
+        if interaction_id:
+            meta["interaction_id"] = interaction_id
         control_state.final_action = _response_action(gates_passed, gate_reason, response_type)
         meta["response_control"] = {
             "request_kind": control_state.request_kind,
@@ -1502,6 +1506,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         metadata: Optional[Dict[str, Any]] = None,
         xray: Optional[Dict[str, Any]] = None,
     ) -> ChatSendResponse:
+        # _interaction_id captured from enclosing scope — generated before any
+        # branch executes so every response path carries the same stable ID.
         return ChatSendResponse(
             answer=answer,
             response_type=response_type,
@@ -1513,11 +1519,16 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 response_type=response_type,
                 gates_passed=gates_passed,
                 gate_reason=gate_reason,
+                interaction_id=_interaction_id,
             ),
             xray=xray,
         )
 
     _mark("chat_send_start")
+
+    # Generate interaction_id upfront so it can be returned to the client
+    # before the background bookkeeping thread runs.
+    _interaction_id = str(uuid.uuid4())
 
     # Session tracking: update activity and check for greeting
     session_db = get_thread_session_db()
@@ -2731,7 +2742,8 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     _mark("episodic_done")
 
     def _run_post_response_bookkeeping(
-        _thread_id, _message, _final_answer, _result, _prompt_mems, _session_db, _engine_memory
+        _thread_id, _message, _final_answer, _result, _prompt_mems, _session_db, _engine_memory,
+        _iid: str = "",
     ):
         # Active learning
         try:
@@ -2752,6 +2764,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 slots_inferred=slots_inferred if isinstance(slots_inferred, dict) else None,
                 facts_injected=facts_injected if facts_injected else None,
                 session_id=str(_result.get("session_id") or "default"),
+                interaction_id=_iid or None,
             )
         except Exception as _e:
             logging.warning(f"[Phase1_BG] Failed to log interaction: {_e}")
@@ -2786,6 +2799,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     threading.Thread(
         target=_run_post_response_bookkeeping,
         args=(req.thread_id, req.message, final_answer, result, prompt_mems, session_db, engine.memory),
+        kwargs={"_iid": _interaction_id},
         daemon=True,
     ).start()
 
@@ -3083,3 +3097,138 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
         trace=result.get("trace") if req.include_trace else None,
         metadata=metadata,
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/chat/feedback
+# ---------------------------------------------------------------------------
+
+from .models import ChatFeedbackRequest  # noqa: E402 — appended section
+
+# Severity weights by category — hallucination hits trust hardest, tone barely at all
+_FEEDBACK_SEVERITY: dict[str, float] = {
+    "hallucination": 1.0,
+    "wrong_fact":    0.67,
+    "other":         0.33,
+    "tone":          0.13,
+}
+
+
+@router.post("/feedback")
+def chat_feedback(req: ChatFeedbackRequest) -> dict:
+    """Submit thumbs-up/down feedback for a past chat response.
+
+    On thumbs-down:
+      • records the rating in the active-learning DB via record_feedback_thumbs()
+      • degrades trust on every cited memory by (severity × η_neg)
+      • appends a 'user_flagged' event to each memory's event log (append-only)
+      • queues the interaction as a high-priority correction example
+
+    On thumbs-up:
+      • records the rating
+      • lightly reinforces trust on cited memories
+
+    Returns which memories were affected and their old/new trust values.
+    """
+    affected: list[dict] = []
+
+    # ── 1. Record in active-learning DB ──────────────────────────────────────
+    try:
+        coordinator = get_active_learning_coordinator()
+        coordinator.record_feedback_thumbs(
+            interaction_id=req.interaction_id,
+            thumbs_up=req.thumbs_up,
+            comment=req.comment or req.category,
+        )
+        logger.info(
+            "[FEEDBACK] %s on interaction=%s category=%s",
+            "👍" if req.thumbs_up else "👎",
+            req.interaction_id,
+            req.category,
+        )
+    except Exception as exc:
+        logger.warning("[FEEDBACK] active-learning record failed: %s", exc)
+
+    # ── 2. Trust updates on cited memories ───────────────────────────────────
+    if req.memory_ids_cited:
+        severity = _FEEDBACK_SEVERITY.get(req.category or "", 0.33)
+
+        try:
+            from personal_agent.crt_memory import CRTMemorySystem
+            from personal_agent.crt_core import CRTMath, CRTConfig
+
+            crt_mem = CRTMemorySystem()
+            crt_math = CRTMath(CRTConfig())
+
+            with crt_mem._get_connection() as conn:
+                conn.row_factory = sqlite3.Row
+                for mid in req.memory_ids_cited:
+                    row = conn.execute(
+                        "SELECT trust, text FROM memories WHERE memory_id = ? AND (deprecated IS NULL OR deprecated = 0)",
+                        (mid,),
+                    ).fetchone()
+                    if not row:
+                        continue
+
+                    old_trust = float(row["trust"])
+
+                    if req.thumbs_up:
+                        # Positive signal — light reinforcement
+                        new_trust = min(0.95, old_trust + crt_math.config.eta_pos * (1.0 - severity * 0.3))
+                    else:
+                        # Negative signal — drift-aware degradation scaled by severity
+                        delta = crt_math.config.eta_neg * severity
+                        new_trust = max(0.20, old_trust - delta)
+
+                    conn.execute(
+                        "UPDATE memories SET trust = ? WHERE memory_id = ?",
+                        (round(new_trust, 4), mid),
+                    )
+
+                    # Append audit event (append-only — never deletes)
+                    try:
+                        crt_mem.record_memory_event(
+                            memory_id=mid,
+                            event_type="user_flagged" if not req.thumbs_up else "user_reinforced",
+                            details={
+                                "interaction_id": req.interaction_id,
+                                "thumbs_up": req.thumbs_up,
+                                "category": req.category,
+                                "old_trust": old_trust,
+                                "new_trust": round(new_trust, 4),
+                                "severity": severity,
+                            },
+                        )
+                    except Exception as ev_exc:
+                        logger.debug("[FEEDBACK] memory event log failed: %s", ev_exc)
+
+                    affected.append(
+                        {"memory_id": mid, "old_trust": old_trust, "new_trust": round(new_trust, 4)}
+                    )
+
+                conn.commit()
+
+        except Exception as exc:
+            logger.warning("[FEEDBACK] trust update failed: %s", exc)
+
+    # ── 3. Queue as high-priority correction if thumbs-down ──────────────────
+    if not req.thumbs_up:
+        try:
+            coordinator = get_active_learning_coordinator()
+            coordinator.record_feedback_correction(
+                interaction_id=req.interaction_id,
+                correction_type=req.category or "general_feedback",
+                user_comment=req.comment,
+            )
+            logger.info(
+                "[FEEDBACK] queued correction for interaction=%s", req.interaction_id
+            )
+        except Exception as exc:
+            logger.debug("[FEEDBACK] correction queue failed: %s", exc)
+
+    return {
+        "ok": True,
+        "interaction_id": req.interaction_id,
+        "thumbs_up": req.thumbs_up,
+        "memories_affected": affected,
+    }

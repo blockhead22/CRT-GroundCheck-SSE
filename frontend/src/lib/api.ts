@@ -27,6 +27,22 @@ export type PromptMemory = {
   confidence?: number | null
 }
 
+export type ChatFeedbackRequest = {
+  interaction_id: string
+  thread_id: string
+  thumbs_up: boolean
+  category?: 'hallucination' | 'wrong_fact' | 'tone' | 'other' | null
+  comment?: string | null
+  memory_ids_cited?: string[]
+}
+
+export type ChatFeedbackResponse = {
+  ok: boolean
+  interaction_id: string
+  thumbs_up: boolean
+  memories_affected: Array<{ memory_id: string; old_trust: number; new_trust: number }>
+}
+
 export type ChatSendResponse = {
   answer: string
   response_type: string
@@ -34,6 +50,7 @@ export type ChatSendResponse = {
   gate_reason?: string | null
   session_id?: string | null
   metadata?: {
+    interaction_id?: string | null
     confidence?: number | null
     intent_alignment?: number | null
     memory_alignment?: number | null
@@ -1614,5 +1631,16 @@ export async function getReflections(threadId: string, limit?: number): Promise<
   const qs = limit ? `?limit=${limit}` : ''
   const res = await fetch(`${base}/api/copilot/reflections/${encodeURIComponent(threadId)}${qs}`)
   if (!res.ok) throw new Error(`Failed to fetch reflections: ${res.status}`)
+  return res.json()
+}
+
+export async function submitChatFeedback(req: ChatFeedbackRequest): Promise<ChatFeedbackResponse> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/chat/feedback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  })
+  if (!res.ok) throw new Error(`Feedback submission failed: ${res.status}`)
   return res.json()
 }
