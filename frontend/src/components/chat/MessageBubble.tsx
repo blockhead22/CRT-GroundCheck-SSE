@@ -222,58 +222,89 @@ export function MessageBubble(props: {
           </ReactMarkdown>
         </div>
 
-        {/* Gate debug — inline when gate failed */}
-        {gatesFailed && meta?.gate_debug && (
-          <div className="mt-3 rounded-xl px-3 py-2.5 text-[11px]" style={{ border: '1px solid rgba(224,92,32,0.2)', background: 'rgba(224,92,32,0.06)' }}>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="font-mono font-semibold" style={{ color: '#e05c20' }}>WHY BLOCKED</span>
-              {meta.gate_debug.trigger && (
-                <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(224,92,32,0.12)', color: '#e8843a' }}>{meta.gate_debug.trigger}</span>
-              )}
-              {meta.gate_debug.slot && (
-                <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(240,235,225,0.06)', color: '#a09880' }}>slot: {meta.gate_debug.slot}</span>
-              )}
-            </div>
-            {meta.gate_debug.explanation && (
-              <div className="mb-1.5" style={{ color: 'rgba(240,235,225,0.7)' }}>{meta.gate_debug.explanation}</div>
-            )}
-            {(meta.gate_debug.stored || meta.gate_debug.incoming) && (
-              <div className="mt-1.5 space-y-1 font-mono">
-                {meta.gate_debug.stored && (
-                  <div className="flex items-start gap-2">
-                    <span style={{ color: '#5a5445' }}>stored</span>
-                    <span className="line-clamp-2" style={{ color: 'rgba(240,235,225,0.55)' }}>{meta.gate_debug.stored}</span>
-                  </div>
+        {/* Gate debug — collapsible, opened by clicking the gate fail badge */}
+        <AnimatePresence>
+          {gatesFailed && meta?.gate_debug && gateDebugOpen && (
+            <motion.div
+              key="gate-debug"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18 }}
+              className="mt-3 overflow-hidden rounded-xl px-3 py-2.5 text-[11px]"
+              style={{ border: '1px solid rgba(224,92,32,0.2)', background: 'rgba(224,92,32,0.06)' }}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="font-mono font-semibold" style={{ color: '#e05c20' }}>WHY BLOCKED</span>
+                {meta.gate_debug.trigger && (
+                  <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(224,92,32,0.12)', color: '#e8843a' }}>{meta.gate_debug.trigger}</span>
                 )}
-                {meta.gate_debug.incoming && (
-                  <div className="flex items-start gap-2">
-                    <span style={{ color: '#5a5445' }}>said&nbsp;&nbsp;</span>
-                    <span className="line-clamp-2" style={{ color: 'rgba(240,235,225,0.55)' }}>{meta.gate_debug.incoming}</span>
-                  </div>
+                {meta.gate_debug.slot && (
+                  <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(240,235,225,0.06)', color: '#a09880' }}>slot: {meta.gate_debug.slot}</span>
+                )}
+                <button
+                  onClick={() => setGateDebugOpen(false)}
+                  className="ml-auto text-[10px] transition-opacity hover:opacity-60"
+                  style={{ color: '#5a5445' }}
+                >
+                  close
+                </button>
+              </div>
+              {meta.gate_debug.explanation && (
+                <div className="mb-1.5" style={{ color: 'rgba(240,235,225,0.7)' }}>{meta.gate_debug.explanation}</div>
+              )}
+              {(meta.gate_debug.stored || meta.gate_debug.incoming) && (
+                <div className="mt-1.5 space-y-1 font-mono">
+                  {meta.gate_debug.stored && (
+                    <div className="flex items-start gap-2">
+                      <span style={{ color: '#5a5445' }}>stored</span>
+                      <span className="line-clamp-2" style={{ color: 'rgba(240,235,225,0.55)' }}>{meta.gate_debug.stored}</span>
+                    </div>
+                  )}
+                  {meta.gate_debug.incoming && (
+                    <div className="flex items-start gap-2">
+                      <span style={{ color: '#5a5445' }}>said&nbsp;&nbsp;</span>
+                      <span className="line-clamp-2" style={{ color: 'rgba(240,235,225,0.55)' }}>{meta.gate_debug.incoming}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {(meta.gate_debug.conflicting_memories ?? []).length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <div className="font-mono" style={{ color: '#5a5445' }}>conflicting memories</div>
+                  {(meta.gate_debug.conflicting_memories ?? []).map((m, i) => (
+                    <div key={i} className="flex items-start gap-2 font-mono">
+                      <span style={{ color: '#e8843a' }}>T:{m.trust.toFixed(2)}</span>
+                      <span className="line-clamp-1" style={{ color: 'rgba(240,235,225,0.45)' }}>{m.text}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="mt-2 flex items-center gap-3 font-mono" style={{ color: '#5a5445' }}>
+                {meta.gate_debug.intent_align != null && <span>intent {meta.gate_debug.intent_align.toFixed(2)}</span>}
+                {meta.gate_debug.memory_align != null && <span>memory {meta.gate_debug.memory_align.toFixed(2)}</span>}
+                {meta.gate_debug.grounding != null && <span>grounding {meta.gate_debug.grounding.toFixed(2)}</span>}
+                {meta.gate_debug.hard_conflicts != null && meta.gate_debug.hard_conflicts > 0 && (
+                  <span style={{ color: '#e05c20' }}>{meta.gate_debug.hard_conflicts} hard conflict(s)</span>
                 )}
               </div>
-            )}
-            {(meta.gate_debug.conflicting_memories ?? []).length > 0 && (
-              <div className="mt-2 space-y-1">
-                <div className="font-mono" style={{ color: '#5a5445' }}>conflicting memories</div>
-                {(meta.gate_debug.conflicting_memories ?? []).map((m, i) => (
-                  <div key={i} className="flex items-start gap-2 font-mono">
-                    <span style={{ color: '#e8843a' }}>T:{m.trust.toFixed(2)}</span>
-                    <span className="line-clamp-1" style={{ color: 'rgba(240,235,225,0.45)' }}>{m.text}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="mt-2 flex items-center gap-3 font-mono" style={{ color: '#5a5445' }}>
-              {meta.gate_debug.intent_align != null && <span>intent {meta.gate_debug.intent_align.toFixed(2)}</span>}
-              {meta.gate_debug.memory_align != null && <span>memory {meta.gate_debug.memory_align.toFixed(2)}</span>}
-              {meta.gate_debug.grounding != null && <span>grounding {meta.gate_debug.grounding.toFixed(2)}</span>}
-              {meta.gate_debug.hard_conflicts != null && meta.gate_debug.hard_conflicts > 0 && (
-                <span style={{ color: '#e05c20' }}>{meta.gate_debug.hard_conflicts} hard conflict(s)</span>
-              )}
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Contradiction resolution card — shown inline when contradiction detected */}
+        <AnimatePresence>
+          {contradictionDetected && ledgerId && !contraResolved && (
+            <ContradictionResolutionCard
+              key={ledgerId}
+              ledgerId={ledgerId}
+              threadId={props.threadId ?? 'default'}
+              contradictionType={(meta as any)?.contradiction_type ?? null}
+              summary={(meta as any)?.contradiction_summary ?? null}
+              onResolved={() => setContraResolved(true)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Pipeline trace — persisted from streaming, collapsible */}
         {(meta?.pipeline_statuses ?? []).length > 0 && (
@@ -330,6 +361,14 @@ export function MessageBubble(props: {
           />
         )}
 
+        {/* Trust delta strip — shows trust movements since this turn */}
+        {isAssistant && props.threadId && ratedAt != null && (
+          <TrustDeltaStrip
+            threadId={props.threadId}
+            sinceTs={ratedAt - 5}
+          />
+        )}
+
         {/* Footer row — always visible timestamp + optional meta */}
         <div className="mt-3 flex items-center gap-3">
           <span className="text-[11px] text-white/25 tabular-nums">{formatTime(props.msg.createdAt)}</span>
@@ -338,14 +377,24 @@ export function MessageBubble(props: {
           {meta && (
             <div className="flex items-center gap-1.5">
               {gatesFailed && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: 'rgba(251,113,133,0.15)', color: '#fb7185' }}>
-                  gate fail
-                </span>
+                <button
+                  onClick={() => setGateDebugOpen((v) => !v)}
+                  className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                  style={{ background: 'rgba(251,113,133,0.15)', color: '#fb7185' }}
+                  title="Click to see why this was blocked"
+                >
+                  gate fail {meta?.gate_debug ? (gateDebugOpen ? '▲' : '▼') : ''}
+                </button>
               )}
               {contradictionDetected && (
-                <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c' }}>
-                  contradiction
-                </span>
+                <button
+                  onClick={() => setContradictionDrawerOpen(true)}
+                  className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
+                  style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c' }}
+                  title="Open contradiction ledger"
+                >
+                  contradiction ›
+                </button>
               )}
               {(meta as any)?.gaslighting_detected && (
                 <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ background: 'rgba(251,113,133,0.12)', color: '#fb7185' }}>
@@ -420,6 +469,13 @@ export function MessageBubble(props: {
           </motion.div>
         )}
       </div>
+
+      {/* Contradiction ledger drawer — portal-style, triggered by badge */}
+      <ContradictionDrawer
+        threadId={props.threadId ?? 'default'}
+        open={contradictionDrawerOpen}
+        onClose={() => setContradictionDrawerOpen(false)}
+      />
     </motion.div>
   )
 }

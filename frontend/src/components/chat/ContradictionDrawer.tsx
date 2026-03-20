@@ -59,8 +59,8 @@ function ResolutionRow({ item, threadId, onResolved }: {
         <span className="text-[10px] font-mono" style={{ color: 'rgba(240,235,225,0.25)' }}>
           drift {item.drift_mean?.toFixed(2) ?? '—'}
         </span>
-        {item.affects_slots && (
-          <span className="text-[10px]" style={{ color: 'rgba(240,235,225,0.2)' }}>· {item.affects_slots}</span>
+        {item.slot && (
+          <span className="text-[10px]" style={{ color: 'rgba(240,235,225,0.2)' }}>· {item.slot}</span>
         )}
       </div>
 
