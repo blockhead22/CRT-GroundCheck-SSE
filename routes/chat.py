@@ -2980,12 +2980,8 @@ def chat_stream(req: ChatSendRequest, request: Request):
                             _task_answer = _event.get("content", "")
                             _task_meta = _event.get("metadata", {})
 
-                    # Stream final answer tokens
-                    yield _phase('answer', 'Writing response')
-                    for _chunk in _chunk_text(_task_answer):
-                        yield _sse({"type": "token", "content": _chunk})
-                    yield _phase('answer', end=True)
-
+                    # Task agent already streamed tokens via _stream_generate_answer;
+                    # just emit the done event with the captured answer and metadata.
                     _done_meta = {
                         **_task_meta,
                         "tool_calls": _task_steps,
