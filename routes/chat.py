@@ -1677,45 +1677,18 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             logger.warning("[OPENCLAW] Handoff exception for thread=%s: %s", req.thread_id, e)
             control_state.mark("decide", "openclaw_fallback", detail="exception")
 
-    # ── Agentic URL/tool routing ──────────────────────────────────────────────
-    # If the message contains a URL with an action verb (read, fetch, visit, check,
-    # open, go to, follow), route straight to the agent so it can FETCH_URL and act.
-    _url_action_re = re.compile(
-        r"\b(read|fetch|visit|check|open|go to|follow|access|look at|get|load)\b.{0,60}https?://\S+",
-        re.IGNORECASE,
-    )
-    _bare_url_re = re.compile(r"^https?://\S+$")
-    _tool_keyword_re = re.compile(
-        r"\b(moltbook|openclaw)\b",
-        re.IGNORECASE,
-    )
-    if _url_action_re.search(effective_message) or _bare_url_re.match(effective_message.strip()) or _tool_keyword_re.search(effective_message):
-        try:
-            from personal_agent.agent_loop import create_agent
-            _ag = create_agent(
-                memory_engine=engine.memory,
-                workspace_root=Path.cwd(),
-                max_steps=12,
-            )
-            control_state.mark("decide", "agent_url", detail="url_action_detected")
-            _trace = _ag.run(effective_message)
-            _url_answer = (_trace.final_answer or "").strip()
-            if _url_answer:
-                return _chat_response(
-                    answer=_url_answer,
-                    response_type="speech",
-                    gates_passed=True,
-                    gate_reason="agent_url_fetch",
-                    metadata={
-                        "mode": "agent",
-                        "confidence": 0.85,
-                        "agent_activated": True,
-                        "agent_trace": _trace.to_dict(),
-                        "pipeline_statuses": ["accessing tools", "running agent", f"agent activated"],
-                    },
-                )
-        except Exception as _e:
-            logger.warning("[AGENT_URL] Failed to route URL fetch to agent: %s", _e)
+    # ── Agentic URL/tool routing (DISABLED — Phase 1 checkpoint policy) ────────
+    # Previously this block auto-routed URL + action verb messages and
+    # service keywords (moltbook, openclaw) directly to agent_loop with
+    # NO checkpoint or user confirmation.  This was the root cause of the
+    # "hijack" behavior where the system jumped into tool spam without asking.
+    #
+    # All agentic routing now goes through the /stream endpoint's checkpoint
+    # system (task_agent.classify_intent → gate_task_intent → checkpoint →
+    # user confirms → execute).  The /send endpoint should NOT bypass that.
+    #
+    # If a caller needs agentic routing from /send, they should use /stream
+    # instead, which has the full pause-confirm-act flow.
     # ── End agentic URL routing ───────────────────────────────────────────────
 
     if _is_meta_provenance_followup(effective_message):
