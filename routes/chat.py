@@ -2299,6 +2299,23 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         gates_passed=bool(result.get("gates_passed")),
     )
 
+    # ── Gate telemetry emission ──────────────────────────────────────────────
+    try:
+        _gates_passed_final = bool(result.get("gates_passed", False))
+        _coordinator = get_active_learning_coordinator()
+        _coordinator.emit_turn_event(
+            event_type="gate_pass" if _gates_passed_final else "gate_fail",
+            thread_id=req.thread_id,
+            severity=0.0 if _gates_passed_final else 0.33,
+            payload={
+                "gate_reason": str(result.get("gate_reason") or ""),
+                "confidence": float(result.get("confidence") or 0.0),
+                "response_type": str(result.get("response_type") or ""),
+            },
+        )
+    except Exception as _gte:
+        logger.debug("[GATE_TELEMETRY] emit failed: %s", _gte)
+
     # Capture thinking trace (if available) for non-stream responses.
     llm_client = get_llm_client()
     thinking_content = _strip_thinking_tags(str(result.get("thinking") or ""))
@@ -2922,6 +2939,40 @@ def chat_stream(req: ChatSendRequest, request: Request):
             yield _phase('analyze', 'Reading request')
             yield _status('reading context')
             yield _phase('analyze', end=True)
+
+            # ── Intent pre-pass: fast synchronous analysis before pipeline ─
+            # Runs extract_fact_slots (pure regex, <1ms) and a keyword intent
+            # classifier to tell the user what Aether thinks they're asking.
+            try:
+                from personal_agent.fact_slots import extract_fact_slots as _efs
+
+                def _quick_intent(text: str) -> str:
+                    t = text.lower().strip()
+                    correction_starters = ('no,', 'no.', 'no!', "that's wrong", "that is wrong",
+                                           'actually,', 'actually.', 'wrong,', 'wrong.', 'not right',
+                                           'incorrect', 'you said', 'you told')
+                    name_starters = ('my name is', 'call me', "i'm ", "i am ")
+                    if any(t.startswith(s) for s in correction_starters):
+                        return 'correction'
+                    if any(t.startswith(s) for s in name_starters) and len(t.split()) <= 6:
+                        return 'learning'
+                    if '?' in text:
+                        return 'question'
+                    if any(w in t for w in ('contradict', 'conflict', 'remember', 'told you', 'lied')):
+                        return 'contradiction'
+                    return 'statement'
+
+                _intent = _quick_intent(req.message)
+                _slots = _efs(req.message)
+                _slot_keys = [k for k in _slots if k not in ('assistant_name',)]
+
+                _intent_parts = [f'intent: {_intent}']
+                if _slot_keys:
+                    _intent_parts.append('recalling: ' + ', '.join(_slot_keys[:3]))
+
+                yield f"data: {json.dumps({'type': 'intent_preview', 'content': ' · '.join(_intent_parts), 'metadata': {'intent': _intent, 'slots': _slot_keys}})}\n\n"
+            except Exception as _ipe:
+                logger.debug("[STREAM] intent pre-pass failed: %s", _ipe)
 
             yield _phase('plan', 'Retrieving memory')
             yield _status('searching memory')

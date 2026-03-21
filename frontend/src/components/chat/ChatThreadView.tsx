@@ -119,6 +119,7 @@ export function ChatThreadView(props: {
   isThinking?: boolean
   streamStatusLog?: string[]
   streamPhase?: string | null
+  intentPreview?: { intent: string; slots: string[]; label: string } | null
   onRated?: (msgId: string, rating: MessageRating, category?: string) => void
 }) {
   const empty = props.thread.messages.length === 0
@@ -360,6 +361,20 @@ export function ChatThreadView(props: {
                           <span key={i} className="h-1 w-1 rounded-full animate-bounce" style={{ background: 'var(--accent-2)', opacity: 0.5, animationDelay: `${d}s`, animationDuration: '0.8s' }} />
                         ))}
                       </span>
+                      {/* Intent preview chip — appears immediately before pipeline starts */}
+                      {props.intentPreview && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span
+                            className="rounded-full px-2.5 py-0.5 text-[10px] font-mono"
+                            style={{ background: 'color-mix(in srgb, var(--accent-2) 15%, transparent)', color: 'var(--accent-2)', border: '1px solid color-mix(in srgb, var(--accent-2) 30%, transparent)' }}
+                          >
+                            {props.intentPreview.intent}
+                            {props.intentPreview.slots.length > 0 && (
+                              <span style={{ opacity: 0.7 }}> · {props.intentPreview.slots.slice(0, 3).join(', ')}</span>
+                            )}
+                          </span>
+                        </div>
+                      )}
                       {/* Status tags */}
                       {(props.streamStatusLog ?? []).filter(s => !s.startsWith('ctrl:') && s !== 'Processing message...').length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">

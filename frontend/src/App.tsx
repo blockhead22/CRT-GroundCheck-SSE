@@ -99,6 +99,7 @@ export default function App() {
   const [streamPhase, setStreamPhase] = useState<string | null>(null)
   const [streamStatusLog, setStreamStatusLog] = useState<string[]>([])
   const streamStatusRef = useRef<string[]>([])
+  const [intentPreview, setIntentPreview] = useState<{ intent: string; slots: string[]; label: string } | null>(null)
   const finalBufferRef = useRef('')
   
   // Mood background state
@@ -365,6 +366,7 @@ export default function App() {
     setStreamStatusLog([])
     streamStatusRef.current = []
     finalBufferRef.current = ''
+    setIntentPreview(null)
 
     try {
       if (useStreaming) {
@@ -376,6 +378,9 @@ export default function App() {
           message: outgoingText,
           phaseMode,
           callbacks: {
+            onIntentPreview: (intent, slots, label) => {
+              setIntentPreview({ intent, slots, label })
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {
@@ -475,6 +480,7 @@ export default function App() {
               setStreamStatusLog([])
               streamStatusRef.current = []
               finalBufferRef.current = ''
+              setIntentPreview(null)
             },
             onError: (error) => {
               const at = Date.now()
@@ -497,6 +503,7 @@ export default function App() {
               setStreamStatusLog([])
               streamStatusRef.current = []
               finalBufferRef.current = ''
+              setIntentPreview(null)
             },
           },
         })
@@ -767,6 +774,7 @@ export default function App() {
                       isThinking={isThinking}
                       streamStatusLog={streamStatusLog}
                       streamPhase={streamPhase}
+                      intentPreview={intentPreview}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

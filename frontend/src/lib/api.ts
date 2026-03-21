@@ -382,6 +382,7 @@ export async function postJournalReply(args: {
 // Streaming event types from /api/chat/stream
 export type StreamEventType =
   | 'status'
+  | 'intent_preview'
   | 'thinking_start'
   | 'thinking_token'
   | 'thinking'
@@ -401,6 +402,7 @@ export type StreamEvent = {
 
 export type StreamCallbacks = {
   onStatus?: (content: string) => void
+  onIntentPreview?: (intent: string, slots: string[], label: string) => void
   onThinkingStart?: () => void
   onThinkingToken?: (token: string) => void
   onThinking?: (fullThinking: string) => void
@@ -487,6 +489,15 @@ export async function streamFromCrtApi(args: {
               case 'status':
                 args.callbacks.onStatus?.(event.content)
                 break
+              case 'intent_preview': {
+                const meta = event.metadata as { intent?: string; slots?: string[] } | undefined
+                args.callbacks.onIntentPreview?.(
+                  meta?.intent ?? '',
+                  meta?.slots ?? [],
+                  event.content,
+                )
+                break
+              }
               case 'thinking_start':
                 args.callbacks.onThinkingStart?.()
                 break
