@@ -109,8 +109,7 @@ belief_revision/models/bert_belief_classifier/
 # White paper (private)
 docs/CRT_WHITE_PAPER.md
 /artifacts
-/personal_agent/*
-!/personal_agent/skill_registry.py
+
 
 # DNNT training checkpoints (large files)
 models/*/checkpoint_*.pt

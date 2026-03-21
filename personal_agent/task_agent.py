@@ -291,20 +291,12 @@ class TaskIntent:
 # ---------------------------------------------------------------------------
 
 # Checkpoint messages shown to the user before entering agentic mode.
-#
-# Tier 1 (quick confirm): Clear intent, low risk.  One-line summary + yes/no.
-# Tier 2 (full review):   Destructive/write/unknown target.  Full action plan shown.
-# Tier 3 (blocked):       Contradiction detected — must resolve first.
-#
-# Legacy mapping: high → Tier 1, medium → Tier 2, low → Tier 2 (conservative).
+# Tiers: high = auto-proceed with notice, medium = ask, low = clarify ambiguity.
 _CHECKPOINT_MESSAGES: Dict[str, str] = {
-    "tier_1": "I'm about to {action}. Go ahead?",
-    "tier_2": "I detected a task: {action}. Should I proceed? ({reason})",
-    "tier_3": "I need to resolve something before I can {action}: {reason}",
+    "high": "I'm ready to handle this: {action}. Say 'yes' to proceed or 'stop' to cancel.",
+    "medium": "I detected a task intent: {action}. Should I proceed?",
+    "low": "This might be a task request ({reason}), but I'm not confident. Did you want me to {action}, or were you asking about it?",
 }
-
-# Legacy aliases for backwards-compat during transition
-_CHECKPOINT_TIER_MAP = {"high": "tier_1", "medium": "tier_2", "low": "tier_2"}
 
 # Phrases that confirm a checkpoint
 _CONFIRM_RE = re.compile(
@@ -343,6 +335,11 @@ def _describe_action(intent: "TaskIntent") -> str:
         elif act == "query":
             return f"query {svc} for data"
         return f"interact with {svc}"
+        return f"fetch and read {intent.slots.get('url', 'a URL')}"
+    elif intent.intent_type == "service_action":
+        svc = intent.slots.get("service", "a service")
+        act = intent.slots.get("action", "interact with")
+        return f"{act} the {svc} service"
     elif intent.intent_type == "imperative_task":
         return "store/update credentials"
     elif intent.intent_type == "task_continuation":
@@ -392,6 +389,21 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
         tier = "tier_1"
     else:
         tier = "tier_2"
+    # Determine tier based on confidence + intent type
+    if intent.confidence >= 0.93 and intent.intent_type == "url_fetch":
+        tier = "high"
+    elif intent.confidence >= 0.80:
+        tier = "medium"
+    else:
+        tier = "low"
+
+    # NOTE: Meta-question guard removed from gate_task_intent.
+    # classify_intent() at lines 424-460 already handles meta-question detection
+    # and routes knowledge questions ("what is moltbook") to conversational.
+    # If classify_intent determined it IS a service_action, that decision was
+    # already vetted — re-checking here with _KNOWLEDGE_QUESTION_RE was too
+    # broad (matched "what's" in "what's new on moltbook") and incorrectly
+    # downgraded legitimate service actions to low confidence.
 
     action_desc = _describe_action(intent)
     msg = _CHECKPOINT_MESSAGES[tier].format(action=action_desc, reason=intent.reason)
