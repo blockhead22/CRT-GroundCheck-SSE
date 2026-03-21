@@ -79,7 +79,8 @@ class EvalMatrix:
         for attr in [
             "contradiction_recurrence_rate", "correction_recovery_rate",
             "trust_calibration_error", "hallucination_leakage_rate",
-            "gate_precision", "epistemic_improvement_score",
+            "gate_precision", "gate_utilization_rate",
+            "epistemic_improvement_score",
             "open_contradiction_age", "fact_fidelity_over_time",
         ]:
             setattr(avg, attr, _mean(attr))

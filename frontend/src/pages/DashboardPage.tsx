@@ -972,7 +972,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                             <tr key={idx} className="border-b border-white/5 text-white/80">
                               {trustColumns.map((c) => (
                                 <td key={c} className="px-3 py-2 align-top">
-                                  {typeof r[c] === 'string' || typeof r[c] === 'number' ? String(r[c]) : JSON.stringify(r[c])}
+                                  {typeof (r as Record<string, unknown>)[c] === 'string' || typeof (r as Record<string, unknown>)[c] === 'number' ? String((r as Record<string, unknown>)[c]) : JSON.stringify((r as Record<string, unknown>)[c])}
                                 </td>
                               ))}
                             </tr>

@@ -21,12 +21,13 @@ from eval.metrics import MetricsBundle
 logger = logging.getLogger(__name__)
 
 _METRIC_LABELS = {
-    "contradiction_recurrence_rate": ("CRR", "↓ lower"),
+    "contradiction_recurrence_rate": ("CRR",  "↓ lower"),
     "correction_recovery_rate":      ("CRec", "↑ higher"),
-    "trust_calibration_error":       ("TCE", "↓ lower"),
-    "hallucination_leakage_rate":    ("HLR", "↓ lower"),
-    "gate_precision":                ("GP", "↑ higher"),
-    "epistemic_improvement_score":   ("EIS", "↑ higher"),
+    "trust_calibration_error":       ("TCE",  "↓ lower"),
+    "hallucination_leakage_rate":    ("HLR",  "↓ lower"),
+    "gate_precision":                ("GP",   "↑ higher"),
+    "gate_utilization_rate":         ("GUR",  "↑ higher"),
+    "epistemic_improvement_score":   ("EIS",  "↑ higher"),
     "open_contradiction_age":        ("OCA turns", "↓ lower"),
     "fact_fidelity_over_time":       ("FFoT", "↑ higher"),
 }
@@ -111,12 +112,12 @@ def _build_markdown(matrix: EvalMatrix, title: str) -> str:
     for scenario in scenarios:
         w(f"---\n\n## Scenario: {scenario}\n\n")
 
-        headers = ["System", "CRR↓", "CRec↑", "TCE↓", "HLR↓", "GP↑", "EIS↑", "OCA↓", "FFoT↑"]
+        headers = ["System", "CRR↓", "CRec↑", "TCE↓", "HLR↓", "GP↑", "GUR↑", "EIS↑", "OCA↓", "FFoT↑"]
         rows = []
         for system in systems:
             b = matrix.mean_bundle(scenario, system)
             if b is None:
-                rows.append([system] + ["—"] * 8)
+                rows.append([system] + ["—"] * 9)
                 continue
             rows.append([
                 system,
@@ -125,6 +126,7 @@ def _build_markdown(matrix: EvalMatrix, title: str) -> str:
                 _fmt(b.trust_calibration_error),
                 _fmt(b.hallucination_leakage_rate),
                 _fmt(b.gate_precision),
+                _fmt(b.gate_utilization_rate),
                 _fmt(b.epistemic_improvement_score),
                 _fmt(b.open_contradiction_age, 1),
                 _fmt(b.fact_fidelity_over_time),
@@ -183,7 +185,8 @@ def _build_markdown(matrix: EvalMatrix, title: str) -> str:
     w("| TCE | 1 − |mean_conf(gate-pass) − mean_conf(thumbs-down)| |\n")
     w("| HLR | thumbs-down / gate-pass belief turns |\n")
     w("| GP | thumbs-up / rated gate-pass turns |\n")
-    w("| EIS | 0.4·CRec + 0.3·(1-CRR) + 0.2·(1-TCE) + 0.1·GP |\n")
+    w("| GUR | min(gate-pass rate / 0.8, 1.0) — penalises refuse-everything systems |\n")
+    w("| EIS | 0.35·CRec + 0.25·(1-CRR) + 0.15·(1-TCE) + 0.10·GP + 0.15·GUR |\n")
     w("| OCA | mean turns between contradiction flag and resolution |\n")
     w("| FFoT | fraction of ground-truth turns answered correctly |\n")
     w("\n")

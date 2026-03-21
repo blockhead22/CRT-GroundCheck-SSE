@@ -43,6 +43,7 @@ class MetricsBundle:
     trust_calibration_error: float = float("nan")
     hallucination_leakage_rate: float = float("nan")
     gate_precision: float = float("nan")
+    gate_utilization_rate: float = float("nan")
     epistemic_improvement_score: float = float("nan")
 
     # Secondary
@@ -71,6 +72,7 @@ class MetricsBundle:
             "TCE": _fmt(self.trust_calibration_error),
             "HLR": _fmt(self.hallucination_leakage_rate),
             "GP": _fmt(self.gate_precision),
+            "GUR": _fmt(self.gate_utilization_rate),
             "EIS": _fmt(self.epistemic_improvement_score),
         }
 
@@ -218,25 +220,47 @@ def gate_precision(records: List[TurnRecord]) -> float:
     return n_positive / len(rated_gate_pass)
 
 
+def gate_utilization_rate(records: List[TurnRecord]) -> float:
+    """Fraction of turns where the gate passed, normalised to [0, 1].
+
+    Prevents floor-effect gaming: a system that always refuses (gates fail on
+    every turn) scores 0 here regardless of how well it "avoids mistakes."
+    Full credit (1.0) at ≥80% gate-pass rate; linear below that threshold.
+    """
+    if not records:
+        return float("nan")
+    rate = sum(1 for r in records if r.gates_passed) / len(records)
+    # Linear ramp: 0 → 0 at 0%, 1 → 1 at 80%+
+    FULL_CREDIT_THRESHOLD = 0.8
+    return min(rate / FULL_CREDIT_THRESHOLD, 1.0)
+
+
 def epistemic_improvement_score(bundle: MetricsBundle) -> float:
     """Composite score (higher is better) in [0, 1].
 
     Combines:
-      CRec  (weight 0.4)  — recovery is the most important signal
-      1-CRR (weight 0.3)  — contradiction suppression
-      1-TCE (weight 0.2)  — calibration quality
-      GP    (weight 0.1)  — gate reliability
+      CRec  (weight 0.35) — recovery is the most important signal
+      1-CRR (weight 0.25) — contradiction suppression
+      1-TCE (weight 0.15) — calibration quality
+      GP    (weight 0.10) — gate reliability among rated turns
+      GUR   (weight 0.15) — gate utilization (penalises refuse-everything)
+
+    The GUR term prevents degenerate systems that score high on all other
+    metrics by never answering anything.  Weights re-normalise automatically
+    for metrics that are unavailable (NaN).
     """
     scores: List[Tuple[float, float]] = []  # (value, weight)
 
     if not math.isnan(bundle.correction_recovery_rate):
-        scores.append((bundle.correction_recovery_rate, 0.4))
+        scores.append((bundle.correction_recovery_rate, 0.35))
     if not math.isnan(bundle.contradiction_recurrence_rate):
-        scores.append((1.0 - bundle.contradiction_recurrence_rate, 0.3))
+        scores.append((1.0 - bundle.contradiction_recurrence_rate, 0.25))
     if not math.isnan(bundle.trust_calibration_error):
-        scores.append((1.0 - bundle.trust_calibration_error, 0.2))
+        scores.append((1.0 - bundle.trust_calibration_error, 0.15))
     if not math.isnan(bundle.gate_precision):
-        scores.append((bundle.gate_precision, 0.1))
+        scores.append((bundle.gate_precision, 0.10))
+    if not math.isnan(bundle.gate_utilization_rate):
+        scores.append((bundle.gate_utilization_rate, 0.15))
 
     if not scores:
         return float("nan")
@@ -324,6 +348,7 @@ def compute_all(
     b.trust_calibration_error = trust_calibration_error(records)
     b.hallucination_leakage_rate = hallucination_leakage_rate(records)
     b.gate_precision = gate_precision(records)
+    b.gate_utilization_rate = gate_utilization_rate(records)
     b.open_contradiction_age = open_contradiction_age(records)
     b.fact_fidelity_over_time = fact_fidelity_over_time(records)
     b.epistemic_improvement_score = epistemic_improvement_score(b)

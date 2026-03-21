@@ -428,6 +428,11 @@ def names_are_related(name1: str, name2: str) -> bool:
     return False
 
 
+# Names that belong to the assistant, not the user. Never store these as user.name.
+_ASSISTANT_IDENTITY_NAMES = {
+    "aether", "groundcheck", "crt",
+}
+
 _NAME_STOPWORDS = {
     # Common non-name tokens that appear after "I'm ..." in normal sentences.
     # --- articles / pronouns / misc ---
@@ -489,6 +494,28 @@ _NAME_STOPWORDS = {
     "reading",
     "playing",
     "testing",
+    # --- informal activity words ---
+    "gonna",
+    "gotta",
+    "wanna",
+    "hafta",
+    "tryna",
+    "run",
+    "grab",
+    "quick",
+    "head",
+    "hop",
+    "pop",
+    "step",
+    "swing",
+    "jump",
+    "dash",
+    "rush",
+    "hurry",
+    "high",
+    "low",
+    "off",
+    "out",
     # --- emotional / sentiment adjectives (the big fix) ---
     "annoyed",
     "angry",
@@ -768,7 +795,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
         token_lowers = [t.lower() for t in tokens]
-        if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers):
+        if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers) and name.lower() not in _ASSISTANT_IDENTITY_NAMES:
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
 
     # Short correction pattern: "Nick not Ben".
@@ -779,7 +806,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         )
         if m:
             cand = m.group(1).strip()
-            if cand and cand.lower() not in _NAME_STOPWORDS:
+            if cand and cand.lower() not in _NAME_STOPWORDS and cand.lower() not in _ASSISTANT_IDENTITY_NAMES:
                 facts["name"] = ExtractedFact("name", cand, _norm_text(cand))
 
     # "my name is X" pattern - apply _clean_name_value to handle "my name is nick but you..."
@@ -799,9 +826,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         name = _clean_name_value(m.group(1).strip())
         tokens = [t for t in re.split(r"\s+", name) if t]
         token_lowers = [t.lower() for t in tokens]
-        if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers):
+        if tokens and not any(t in _NAME_STOPWORDS for t in token_lowers) and name.lower() not in _ASSISTANT_IDENTITY_NAMES:
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
-    
+
     if "name" not in facts:
         # Prefer TitleCase names for the generic "I'm X" pattern.
         # Match various apostrophe types: ' (straight), curly quotes (U+2018, U+2019)
@@ -850,6 +877,15 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         # Names are not normally followed by "a/an/the ..." in first-person declarations.
         looks_like_role_phrase = trailing.startswith("a ") or trailing.startswith("an ") or trailing.startswith("the ")
 
+        # For name_pat_title patterns: re.IGNORECASE makes [A-Z] match lowercase,
+        # so "gonna quick run" can match. Guard: first char must actually be uppercase
+        # (or the match came from the explicit lowercase single-token fallback pattern).
+        first_char_is_upper = bool(name) and name[0].isupper()
+        came_from_lowercase_pattern = (
+            m.re.pattern.startswith(r"^\s*i")  # the explicit lowercase-only fallback
+        )
+        looks_like_case_false_positive = not first_char_is_upper and not came_from_lowercase_pattern
+
         # Reject common non-name tokens, infinitive phrases, adjective+preposition, suffix patterns, and role phrases.
         if (
             tokens
@@ -858,6 +894,8 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
             and not looks_like_adjective
             and not looks_like_suffix
             and not looks_like_role_phrase
+            and not looks_like_case_false_positive
+            and name.lower() not in _ASSISTANT_IDENTITY_NAMES
         ):
             facts["name"] = ExtractedFact("name", name, _norm_text(name))
 

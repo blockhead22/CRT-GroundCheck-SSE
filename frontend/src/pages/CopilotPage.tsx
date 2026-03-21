@@ -28,6 +28,7 @@ import {
   getSelfModelState,
   getEpistemicTimeline,
   runLoops,
+  getMemoryTrustHistory,
   type CopilotMemory,
   type CopilotMemoriesResponse,
   type CopilotProfile,
@@ -1875,12 +1876,83 @@ function TrustBar({ distribution }: { distribution: Record<string, number> }) {
 // Memory Card
 // ---------------------------------------------------------------------------
 
-function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect }: {
+// ---------------------------------------------------------------------------
+// MemoryTrustSparkline
+// ---------------------------------------------------------------------------
+
+function MemoryTrustSparkline({ memoryId, threadId, currentTrust }: {
+  memoryId: string
+  threadId: string
+  currentTrust: number
+}) {
+  const [rows, setRows] = useState<import('../lib/api').TrustHistoryRow[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    getMemoryTrustHistory(threadId, memoryId).then(h => {
+      if (!cancelled) { setRows(h); setLoaded(true) }
+    }).catch(() => setLoaded(true))
+    return () => { cancelled = true }
+  }, [memoryId, threadId])
+
+  if (!loaded) return <div className="h-8 flex items-center"><span className="text-[10px] text-white/20">loading…</span></div>
+
+  // Always show at least the current trust as a single point
+  const points = rows.length > 0
+    ? rows.map(r => r.new_trust as number)
+    : [currentTrust]
+
+  const W = 120, H = 32, PAD = 2
+  const min = Math.min(...points, 0)
+  const max = Math.max(...points, 1)
+  const range = max - min || 1
+  const xs = points.map((_, i) => PAD + (i / Math.max(points.length - 1, 1)) * (W - PAD * 2))
+  const ys = points.map(v => H - PAD - ((v - min) / range) * (H - PAD * 2))
+  const polyline = xs.map((x, i) => `${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')
+  const last = points[points.length - 1]
+  const trend = points.length > 1 ? last - points[0] : 0
+  const lineColor = last >= 0.7 ? '#34d399' : last >= 0.4 ? '#fbbf24' : '#f87171'
+
+  return (
+    <div className="flex items-center gap-3">
+      <svg width={W} height={H} className="flex-shrink-0 rounded">
+        <polyline
+          points={polyline}
+          fill="none"
+          stroke={lineColor}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          opacity="0.8"
+        />
+        {/* Current value dot */}
+        <circle
+          cx={xs[xs.length - 1].toFixed(1)}
+          cy={ys[ys.length - 1].toFixed(1)}
+          r="2.5"
+          fill={lineColor}
+        />
+      </svg>
+      <div className="text-[10px] text-white/30 leading-tight">
+        {points.length > 1
+          ? <span className={trend > 0.01 ? 'text-emerald-400' : trend < -0.01 ? 'text-red-400' : 'text-white/30'}>
+              {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {Math.abs(trend * 100).toFixed(0)}% over {points.length} events
+            </span>
+          : <span>no history yet</span>
+        }
+      </div>
+    </div>
+  )
+}
+
+function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect, threadId }: {
   memory: CopilotMemory
   expanded: boolean
   onToggle: () => void
   onDelete: (id: string) => void
   onCorrect: (id: string, text: string) => void
+  threadId?: string
 }) {
   const src = sourceBadge(memory.source)
   const [editing, setEditing] = useState(false)
@@ -1943,6 +2015,16 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect }: {
                     {memory.created_at || new Date(memory.timestamp * 1000).toLocaleString()}
                   </div>
                 </div>
+              </div>
+
+              {/* Trust sparkline */}
+              <div className="mb-3">
+                <div className="text-[10px] text-white/30 uppercase tracking-wider mb-1.5">Trust trajectory</div>
+                <MemoryTrustSparkline
+                  memoryId={memory.id}
+                  threadId={threadId ?? memory.thread_id ?? 'default'}
+                  currentTrust={memory.trust}
+                />
               </div>
 
               {editing ? (
@@ -2264,6 +2346,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
                         onToggle={() => setExpandedId(expandedId === m.id ? null : m.id)}
                         onDelete={handleDelete}
                         onCorrect={handleCorrect}
+                        threadId={threadId}
                       />
                     ))}
                   </AnimatePresence>

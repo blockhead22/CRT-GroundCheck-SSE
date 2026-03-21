@@ -663,12 +663,19 @@ export async function getMemory(threadId: string, memoryId: string): Promise<Mem
   )
 }
 
-export type TrustHistoryRow = Record<string, unknown>
+export type TrustHistoryRow = {
+  timestamp: number
+  old_trust: number
+  new_trust: number
+  reason: string | null
+  drift: number | null
+}
 
-export async function getMemoryTrustHistory(threadId: string, memoryId: string): Promise<TrustHistoryRow[]> {
-  return fetchJson<TrustHistoryRow[]>(
-    `/api/memory/${encodeURIComponent(memoryId)}/trust?thread_id=${encodeURIComponent(threadId)}`,
+export async function getMemoryTrustHistory(_threadId: string, memoryId: string): Promise<TrustHistoryRow[]> {
+  const res = await fetchJson<{ memory_id: string; history: TrustHistoryRow[] }>(
+    `/api/copilot/memory/${encodeURIComponent(memoryId)}/trust-history`,
   )
+  return (res as any).history ?? []
 }
 
 export type ContradictionListItem = {

@@ -1182,6 +1182,19 @@ def reinforce_memory_endpoint(memory_id: str) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/memory/{memory_id}/trust-history")
+def get_memory_trust_history(memory_id: str, limit: int = 40) -> Dict[str, Any]:
+    """Return trust evolution history for a single memory (for sparkline rendering)."""
+    try:
+        crt = CRTMemorySystem(_engine_db_path())
+        rows = crt.get_trust_history(memory_id)
+        # Oldest-first for sparkline (ascending time)
+        rows = list(reversed(rows))[-limit:]
+        return {"memory_id": memory_id, "history": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/scheduler/status")
 def get_scheduler_status() -> Dict[str, Any]:
     """Return idle scheduler status and configuration."""
