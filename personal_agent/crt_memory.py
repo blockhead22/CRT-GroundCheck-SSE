@@ -45,6 +45,17 @@ _TRANSCRIPT_GUARD_MARKERS = (
 
 _TRANSCRIPT_LINE_RE = re.compile(r"(?im)^\s*(user|assistant)\s*:")
 
+# Patterns in system-source response text that would poison user-fact extraction.
+# These are Aether's own identity assertions that get stored as system memories and
+# then mistakenly re-extracted as "name = Aether" user facts.
+_AETHER_IDENTITY_LEAK_RE = re.compile(
+    r"\b(?:your|my)\s+name\s+is\s+(?:Aether|GroundCheck|CRT)\b"
+    r"|I(?:'m|\s+am)\s+\*{0,2}(?:Aether|the\s+Aether)\b"
+    r"|You\s+are\s+\*{0,2}(?:Aether|the\s+Aether)\b"
+    r"|\*{0,2}Name\*{0,2}\s*:\s*\*{0,2}Aether\b",
+    re.IGNORECASE,
+)
+
 _AUTHORITY_RANK = {
     "provisional": 0,
     "confirmed": 1,
@@ -946,6 +957,16 @@ class CRTMemorySystem:
         if _TRANSCRIPT_LINE_RE.match(cleaned):
             cleaned = _TRANSCRIPT_LINE_RE.sub("", cleaned, count=1).strip()
             reason = reason or "transcript_prefix_stripped"
+
+        # Strip Aether identity-leak sentences so they can't be re-extracted
+        # as user facts.  e.g. "Your name is Aether, a custom-built AI…" stored
+        # as a system memory would later yield name="Aether" via fact_slots.
+        if _AETHER_IDENTITY_LEAK_RE.search(cleaned):
+            # Remove only the offending sentence(s), not the whole memory.
+            sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+            filtered = [s for s in sentences if not _AETHER_IDENTITY_LEAK_RE.search(s)]
+            cleaned = " ".join(filtered).strip()
+            reason = reason or "aether_identity_leak_stripped"
 
         # Defensive: collapse excessive blank lines after trimming.
         cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()

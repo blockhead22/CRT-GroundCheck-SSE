@@ -693,6 +693,10 @@ class CRTEnhancedRAG:
             if re.search(gp, query_lower):
                 # Try to find a matching memory for the value being denied
                 for mem in previous_memories:
+                    # Skip system/fallback memories — fact extraction on Aether's
+                    # own responses produces spurious name="Aether" facts.
+                    if getattr(mem, 'source', None) in (MemorySource.SYSTEM, MemorySource.FALLBACK):
+                        continue
                     mem_lower = mem.text.lower()
                     # Check overlap between query tokens and memory text
                     # to identify which remembered fact is being denied
@@ -775,6 +779,8 @@ class CRTEnhancedRAG:
             if len(new_facts) >= 3:
                 contradicting = 0
                 for prev_mem in previous_memories:
+                    if getattr(prev_mem, 'source', None) in (MemorySource.SYSTEM, MemorySource.FALLBACK):
+                        continue
                     prev_facts = extract_fact_slots(prev_mem.text) or {}
                     for slot, new_fact in new_facts.items():
                         prev_fact = prev_facts.get(slot)
@@ -1268,6 +1274,8 @@ class CRTEnhancedRAG:
                 # Build best-effort retrieved slot values.
                 retrieved_slot_norms: Dict[str, set[str]] = {}
                 for mem, _s in retrieved_memories[:5]:
+                    if getattr(mem, 'source', None) in (MemorySource.SYSTEM, MemorySource.FALLBACK):
+                        continue
                     facts = extract_fact_slots(getattr(mem, "text", "") or "") or {}
                     for slot, f in facts.items():
                         s = str(slot).strip().lower()
