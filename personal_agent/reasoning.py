@@ -545,8 +545,11 @@ class ReasoningEngine:
                 source = "fallback"
                 confidence = 0.8
         
+        # Strip leaked internal notes before returning
+        answer = self._clean_llm_output(answer)
+
         duration_ms = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         # Internal trace (not shown to user)
         trace = ReasoningTrace(
             query=query,
@@ -1409,6 +1412,10 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
 - DO NOT use markdown headers (###, ##) in conversational replies. Plain prose or bullets only.
 - DO NOT wrap factual answers in bullet lists when a single sentence will do.
 - Keep the first sentence substantive — it is what gets evaluated for semantic alignment.
+- NEVER repeat yourself. Say it once, say it well. If you've stated a fact, don't restate it in different words.
+- NEVER end with "Would you like to...", "How can I assist...", "Let me know if..." — the user will ask if they want more.
+- Keep responses under 3 paragraphs for fact questions, under 5 for explanations. Brevity is respect.
+- If the user says something short or casual, respond in kind. Don't over-elaborate.
 
 """
 
@@ -1724,6 +1731,31 @@ Do NOT claim user's personal attributes (name, job, location) as your own.\n\n""
         except Exception as e:
             return f"[LLM error: {e}]"
     
+    # ------------------------------------------------------------------
+    # Output cleanup — strip leaked internal notes from LLM output
+    # ------------------------------------------------------------------
+
+    _INTERNAL_NOTE_RE = re.compile(
+        r"\(Note:.*?\)\s*"           # (Note: User seems to be...)
+        r"|Long-term preferences:.*?(?:\n|$)"  # Long-term preferences: concise...
+        r"|Tone:.*?(?:\n|$)"         # Tone: friendly and flexible.
+        r"|Critical:.*?(?:\n|$)"     # Critical: facts are about the user.
+        r"|\[Internal\b.*?\]\s*"     # [Internal reasoning] blocks
+        r"|^\s*Reasoning:.*?(?:\n|$)"  # Reasoning: ... lines at start
+        ,
+        re.DOTALL | re.MULTILINE,
+    )
+
+    @classmethod
+    def _clean_llm_output(cls, text: str) -> str:
+        """Strip internal reasoning notes that the model leaked into the response."""
+        if not text:
+            return text
+        cleaned = cls._INTERNAL_NOTE_RE.sub('', text).strip()
+        # Remove leading blank lines that result from stripping
+        cleaned = re.sub(r'^\s*\n+', '', cleaned)
+        return cleaned if cleaned else text  # never return empty
+
     def get_reasoning_traces(self, limit: int = 10) -> List[Dict]:
         """Get recent reasoning traces (for debugging/analysis)."""
         return [t.to_dict() for t in self.reasoning_traces[-limit:]]

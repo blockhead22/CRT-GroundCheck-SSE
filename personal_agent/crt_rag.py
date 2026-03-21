@@ -5433,6 +5433,12 @@ class CRTEnhancedRAG:
         # Inject extra_context blocks (from blindside, contradiction, name-history, etc.)
         # as synthetic retrieved docs so the reasoning prompt sees them.
         _injected_docs = list(prompt_docs)
+        # Tag docs with open contradictions so reasoning.py Layer 2.1/2.2
+        # can identify contested facts and hedge/revise accordingly.
+        for _doc in _injected_docs:
+            _mid = _doc.get('memory_id')
+            if _mid and hasattr(self.ledger, 'has_open_contradiction'):
+                _doc['reintroduced_claim'] = self.ledger.has_open_contradiction(_mid)
         if extra_context:
             for _ctx_key, _ctx_text in extra_context.items():
                 _injected_docs.append({
