@@ -463,11 +463,17 @@ export default function App() {
                 setCurrentMood(metadata.mood as MoodData)
               }
               
+              // Capture agent thinking state before clearing (so it persists on the message)
+              const _capturedThinking = agentThinkingState
+                ? { ...agentThinkingState, done: true, drafting: false }
+                : null
+
               const asstMsg = {
                 id: newId('m'),
                 role: 'assistant' as const,
                 text: content,
                 createdAt: at,
+                agentThinking: _capturedThinking,
                 crt: {
                   response_type: (metadata?.response_type as string) || 'speech',
                   gates_passed: (metadata?.gates_passed as boolean) ?? true,
@@ -515,9 +521,7 @@ export default function App() {
               streamStatusRef.current = []
               finalBufferRef.current = ''
               setIntentPreview(null)
-              setAgentThinkingState((prev) => prev ? { ...prev, done: true, drafting: false } : null)
-              // Clear agent state after a short delay so user sees the final ✓
-              setTimeout(() => setAgentThinkingState(null), 2200)
+              setAgentThinkingState(null)
             },
             onError: (error) => {
               const at = Date.now()

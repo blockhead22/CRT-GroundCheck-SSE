@@ -192,6 +192,8 @@ export type ChatMessage = {
   crt?: CtrMessageMeta
   rating?: MessageRating | null
   ratingCategory?: string | null
+  // Persisted agent thinking strip state for task-route messages
+  agentThinking?: import('./components/chat/AgentThinkingStrip').AgentThinkingState | null
 }
 
 export type ChatThread = {

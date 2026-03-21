@@ -513,6 +513,10 @@ export function ChatThreadView(props: {
                         delay: Math.min(idx * 0.04, 0.3),
                       }}
                     >
+                      {/* Persisted agent thinking strip for task-route messages */}
+                      {m.role === 'assistant' && m.agentThinking && (
+                        <AgentThinkingStrip state={m.agentThinking} />
+                      )}
                       <MessageBubble
                         msg={{
                           ...m,
