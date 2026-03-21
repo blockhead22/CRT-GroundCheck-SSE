@@ -383,6 +383,12 @@ export async function postJournalReply(args: {
 export type StreamEventType =
   | 'status'
   | 'intent_preview'
+  | 'intent_classified'
+  | 'plan_ready'
+  | 'tool_start'
+  | 'tool_result'
+  | 'validate_result'
+  | 'task_done'
   | 'thinking_start'
   | 'thinking_token'
   | 'thinking'
@@ -392,6 +398,17 @@ export type StreamEventType =
   | 'token'
   | 'done'
   | 'error'
+
+export type AgentStep = {
+  step_index: number
+  tool_name: string
+  input: Record<string, unknown>
+  output_preview?: string
+  byte_count?: number
+  duration_ms?: number
+  status: 'pending' | 'running' | 'ok' | 'error' | 'queued'
+  error?: string
+}
 
 export type StreamEvent = {
   type: StreamEventType
@@ -403,6 +420,14 @@ export type StreamEvent = {
 export type StreamCallbacks = {
   onStatus?: (content: string) => void
   onIntentPreview?: (intent: string, slots: string[], label: string) => void
+  // Agentic task route events
+  onIntentClassified?: (intent: string, route: string, slots: Record<string, unknown>, confidence: number) => void
+  onPlanReady?: (steps: Array<{ tool: string; input: Record<string, unknown> }>) => void
+  onToolStart?: (toolName: string, input: Record<string, unknown>, stepIndex: number) => void
+  onToolResult?: (step: AgentStep) => void
+  onValidateResult?: (conflicts: unknown[], gate: string) => void
+  onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
+  // Thinking
   onThinkingStart?: () => void
   onThinkingToken?: (token: string) => void
   onThinking?: (fullThinking: string) => void
@@ -496,6 +521,41 @@ export async function streamFromCrtApi(args: {
                   meta?.slots ?? [],
                   event.content,
                 )
+                break
+              }
+              case 'intent_classified': {
+                const meta = event.metadata as { intent?: string; route?: string; slots?: Record<string, unknown>; confidence?: number } | undefined
+                args.callbacks.onIntentClassified?.(
+                  meta?.intent ?? '',
+                  meta?.route ?? 'conversational',
+                  meta?.slots ?? {},
+                  meta?.confidence ?? 0,
+                )
+                break
+              }
+              case 'plan_ready': {
+                const meta = event.metadata as { steps?: Array<{ tool: string; input: Record<string, unknown> }> } | undefined
+                args.callbacks.onPlanReady?.(meta?.steps ?? [])
+                break
+              }
+              case 'tool_start': {
+                const meta = event.metadata as { tool_name?: string; input?: Record<string, unknown>; step_index?: number } | undefined
+                args.callbacks.onToolStart?.(meta?.tool_name ?? '', meta?.input ?? {}, meta?.step_index ?? 0)
+                break
+              }
+              case 'tool_result': {
+                const meta = event.metadata as AgentStep | undefined
+                if (meta) args.callbacks.onToolResult?.(meta)
+                break
+              }
+              case 'validate_result': {
+                const meta = event.metadata as { conflicts?: unknown[]; gate?: string } | undefined
+                args.callbacks.onValidateResult?.(meta?.conflicts ?? [], meta?.gate ?? '')
+                break
+              }
+              case 'task_done': {
+                const meta = event.metadata as { steps?: AgentStep[] } & Record<string, unknown> | undefined
+                args.callbacks.onTaskDone?.(event.content, meta?.steps ?? [], meta ?? {})
                 break
               }
               case 'thinking_start':

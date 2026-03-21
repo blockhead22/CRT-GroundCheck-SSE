@@ -7,6 +7,7 @@ import { MessageBubble } from './MessageBubble'
 import { Composer } from './Composer'
 import { listOpenContradictions, type ContradictionListItem } from '../../lib/api'
 import { PipelineTrace } from './PipelineTrace'
+import { AgentThinkingStrip, type AgentThinkingState } from './AgentThinkingStrip'
 
 // Adaptive font size for theater mode — shrinks as text grows
 function theaterFontSize(charCount: number): string {
@@ -120,6 +121,7 @@ export function ChatThreadView(props: {
   streamStatusLog?: string[]
   streamPhase?: string | null
   intentPreview?: { intent: string; slots: string[]; label: string } | null
+  agentThinkingState?: AgentThinkingState | null
   onRated?: (msgId: string, rating: MessageRating, category?: string) => void
 }) {
   const empty = props.thread.messages.length === 0
@@ -527,6 +529,21 @@ export function ChatThreadView(props: {
                       />
                     </motion.div>
                   ))}
+
+                  {/* Agent thinking strip — appears above streaming bubble for task routes */}
+                  <AnimatePresence>
+                    {props.agentThinkingState && (
+                      <motion.div
+                        key="agent-thinking"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        <AgentThinkingStrip state={props.agentThinkingState} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* Streaming in history mode */}
                   <AnimatePresence>

@@ -100,6 +100,7 @@ export default function App() {
   const [streamStatusLog, setStreamStatusLog] = useState<string[]>([])
   const streamStatusRef = useRef<string[]>([])
   const [intentPreview, setIntentPreview] = useState<{ intent: string; slots: string[]; label: string } | null>(null)
+  const [agentThinkingState, setAgentThinkingState] = useState<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
   const finalBufferRef = useRef('')
   
   // Mood background state
@@ -381,6 +382,38 @@ export default function App() {
             onIntentPreview: (intent, slots, label) => {
               setIntentPreview({ intent, slots, label })
             },
+            onIntentClassified: (intent, route, slots, confidence) => {
+              setAgentThinkingState({ intent, route, slots, confidence, toolSteps: [] })
+            },
+            onPlanReady: (steps) => {
+              setAgentThinkingState((prev) => prev ? { ...prev, plan: steps } : { toolSteps: [], plan: steps })
+            },
+            onToolStart: (toolName, input, stepIndex) => {
+              setAgentThinkingState((prev) => {
+                if (!prev) return prev
+                const existing = prev.toolSteps.find(s => s.step_index === stepIndex)
+                const updated = existing
+                  ? prev.toolSteps.map(s => s.step_index === stepIndex ? { ...s, status: 'running' as const } : s)
+                  : [...prev.toolSteps, { step_index: stepIndex, tool_name: toolName, input, status: 'running' as const }]
+                return { ...prev, toolSteps: updated, activeStepIndex: stepIndex }
+              })
+            },
+            onToolResult: (step) => {
+              setAgentThinkingState((prev) => {
+                if (!prev) return prev
+                const exists = prev.toolSteps.find(s => s.step_index === step.step_index)
+                const updated = exists
+                  ? prev.toolSteps.map(s => s.step_index === step.step_index ? { ...s, ...step } : s)
+                  : [...prev.toolSteps, step]
+                return { ...prev, toolSteps: updated, activeStepIndex: undefined }
+              })
+            },
+            onValidateResult: (_conflicts, _gate) => {
+              setAgentThinkingState((prev) => prev ? { ...prev, validated: true } : prev)
+            },
+            onTaskDone: (_answer, _steps, _meta) => {
+              setAgentThinkingState((prev) => prev ? { ...prev, drafting: true } : prev)
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {
@@ -455,6 +488,7 @@ export default function App() {
                   pipeline_statuses: pipelineStatuses,
                   draft_response: draftResponse,
                   tasking: (metadata as any)?.tasking ?? null,
+                  tool_calls: (metadata as any)?.tool_calls ?? null,
                   agent_activated: null,
                   agent_answer: null,
                   agent_trace: null,
@@ -481,6 +515,9 @@ export default function App() {
               streamStatusRef.current = []
               finalBufferRef.current = ''
               setIntentPreview(null)
+              setAgentThinkingState((prev) => prev ? { ...prev, done: true, drafting: false } : null)
+              // Clear agent state after a short delay so user sees the final ✓
+              setTimeout(() => setAgentThinkingState(null), 2200)
             },
             onError: (error) => {
               const at = Date.now()
@@ -775,6 +812,7 @@ export default function App() {
                       streamStatusLog={streamStatusLog}
                       streamPhase={streamPhase}
                       intentPreview={intentPreview}
+                      agentThinkingState={agentThinkingState}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

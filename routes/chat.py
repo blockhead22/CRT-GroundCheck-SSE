@@ -2933,6 +2933,9 @@ def chat_stream(req: ChatSendRequest, request: Request):
             t = 'phase_end' if end else 'phase_start'
             return f"data: {json.dumps({'type': t, 'phase': phase, 'content': content})}\n\n"
 
+        def _sse(event: dict) -> str:
+            return f"data: {json.dumps(event)}\n\n"
+
         try:
             # ── Upfront activity signals ──────────────────────────────────
             q_lower = req.message.lower()
@@ -2940,9 +2943,56 @@ def chat_stream(req: ChatSendRequest, request: Request):
             yield _status('reading context')
             yield _phase('analyze', end=True)
 
-            # ── Intent pre-pass: fast synchronous analysis before pipeline ─
-            # Runs extract_fact_slots (pure regex, <1ms) and a keyword intent
-            # classifier to tell the user what Aether thinks they're asking.
+            # ── Intent classification (fast, pattern-based) ───────────────
+            try:
+                from personal_agent.task_agent import classify_intent as _classify_intent, CRTTaskAgent
+                _task_intent = _classify_intent(req.message)
+            except Exception as _cie:
+                logger.debug("[STREAM] task intent classifier failed: %s", _cie)
+                _task_intent = None
+
+            # ── TASK ROUTE: URL fetch / instruction execution ─────────────
+            if _task_intent is not None and _task_intent.route == "task":
+                try:
+                    _get_engine = request.app.state.get_engine
+                    _get_llm = request.app.state.get_llm_client
+                    _engine = _get_engine(req.thread_id)
+                    _llm_client = _get_llm()
+
+                    _agent = CRTTaskAgent(
+                        memory_agent=_engine.memory,
+                        llm_client=_llm_client,
+                    )
+
+                    _task_steps: list = []
+                    _task_answer = ""
+                    _task_meta: dict = {}
+
+                    for _event in _agent.run_stream(req.message, req.thread_id, _task_intent):
+                        yield _sse(_event)
+                        if _event["type"] == "tool_result":
+                            _task_steps.append(_event.get("metadata", {}))
+                        elif _event["type"] == "task_done":
+                            _task_answer = _event.get("content", "")
+                            _task_meta = _event.get("metadata", {})
+
+                    # Stream final answer tokens
+                    yield _phase('answer', 'Writing response')
+                    for _chunk in _chunk_text(_task_answer):
+                        yield _sse({"type": "token", "content": _chunk})
+                    yield _phase('answer', end=True)
+
+                    _done_meta = {
+                        **_task_meta,
+                        "tool_calls": _task_steps,
+                    }
+                    yield _sse({"type": "done", "content": _task_answer, "metadata": _done_meta})
+                    return
+                except Exception as _te:
+                    logger.warning("[STREAM] TaskAgent failed, falling back to CRT pipeline: %s", _te)
+                    # Fall through to CRT pipeline
+
+            # ── Intent pre-pass for conversational route ──────────────────
             try:
                 from personal_agent.fact_slots import extract_fact_slots as _efs
 

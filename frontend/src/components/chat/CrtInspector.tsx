@@ -218,6 +218,92 @@ function PipelineSection({ statuses, draft }: { statuses: string[]; draft?: stri
   )
 }
 
+function ToolCallSection({ toolCalls }: { toolCalls?: Array<Record<string, unknown>> }) {
+  const [openIdx, setOpenIdx] = useState<number | null>(null)
+  if (!toolCalls || toolCalls.length === 0) return null
+
+  return (
+    <div className="mt-4">
+      <div className="text-xs font-semibold tracking-wide text-white/60 mb-2">Tool Calls</div>
+      <div className="space-y-1">
+        {toolCalls.map((tc, idx) => {
+          const toolName = String(tc.tool_name ?? tc.tool ?? 'tool')
+          const status = String(tc.status ?? 'ok')
+          const isOpen = openIdx === idx
+          const statusColor =
+            status === 'ok' ? 'text-green-400' :
+            status === 'error' ? 'text-red-400' :
+            status === 'queued' ? 'text-yellow-400' : 'text-white/50'
+
+          return (
+            <div key={idx} className="rounded-xl border border-white/8 overflow-hidden"
+              style={{ background: 'rgba(0,0,0,0.2)' }}>
+              <button
+                className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-mono text-left hover:bg-white/4 transition-colors"
+                onClick={() => setOpenIdx(isOpen ? null : idx)}
+              >
+                <span className={statusColor}>
+                  {status === 'ok' ? '✓' : status === 'error' ? '✗' : status === 'queued' ? '→' : '·'}
+                </span>
+                <span className="text-white/80">{toolName}</span>
+                {tc.byte_count ? (
+                  <span className="text-white/40 ml-1">{Number(tc.byte_count).toLocaleString()}b</span>
+                ) : null}
+                {tc.duration_ms ? (
+                  <span className="text-white/40">{Number(tc.duration_ms).toFixed(0)}ms</span>
+                ) : null}
+                <motion.span
+                  animate={{ rotate: isOpen ? 180 : 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="ml-auto text-white/30"
+                >▼</motion.span>
+              </button>
+
+              {isOpen && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="px-3 pb-3 space-y-2"
+                >
+                  {/* Input */}
+                  {tc.input && (
+                    <div>
+                      <div className="text-[10px] text-white/40 mb-1">INPUT</div>
+                      <pre className="text-[10px] text-white/60 bg-black/20 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
+                        {JSON.stringify(tc.input, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                  {/* Output preview */}
+                  {tc.output_preview && (
+                    <div>
+                      <div className="text-[10px] text-white/40 mb-1">
+                        OUTPUT PREVIEW
+                        {tc.byte_count ? ` (${Number(tc.byte_count).toLocaleString()} bytes total)` : ''}
+                      </div>
+                      <div className="text-[10px] text-white/70 bg-black/20 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono leading-relaxed">
+                        {String(tc.output_preview)}
+                      </div>
+                    </div>
+                  )}
+                  {/* Error */}
+                  {tc.error && (
+                    <div className="text-[10px] text-red-400 bg-red-500/10 rounded p-2">
+                      {String(tc.error)}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function ThinkingSection({ thinking, traceId, threadId }: { thinking?: string | null; traceId?: string | null; threadId?: string | null }) {
   const [isOpen, setIsOpen] = useState(false)
   const [lazyThinking, setLazyThinking] = useState<string | null>(null)
@@ -528,6 +614,7 @@ export function CrtInspector(props: {
 
           <PipelineSection statuses={meta?.pipeline_statuses ?? []} draft={meta?.draft_response ?? null} />
           <TaskingSection tasking={meta?.tasking as TaskingMeta} />
+          <ToolCallSection toolCalls={(meta as any)?.tool_calls as Array<Record<string, unknown>> | undefined} />
           <ThinkingSection thinking={meta?.thinking} traceId={meta?.thinking_trace_id} threadId={props.threadId} />
           <ReflectionSection
             traceId={meta?.reflection_trace_id}
