@@ -446,7 +446,22 @@ class ThreadSessionDB:
             CREATE INDEX IF NOT EXISTS idx_molt_votes_target
             ON molt_votes(target_type, target_id)
         """)
-        
+
+        # Pending tasks: one active task per thread (upserted, cleared on completion)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pending_tasks (
+                thread_id TEXT PRIMARY KEY,
+                intent_type TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'active',
+                steps_completed_json TEXT,
+                steps_pending_json TEXT,
+                context_json TEXT,
+                credential_keys_json TEXT,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL
+            )
+        """)
+
         conn.commit()
         conn.close()
 
@@ -2094,6 +2109,67 @@ class ThreadSessionDB:
         """
         recent = self.get_recent_slot_queries(thread_id, slot, window)
         return len(recent) > 0
+
+    # ── Pending Tasks ──────────────────────────────────────────────────────────
+
+    def set_pending_task(self, thread_id: str, task_data: dict) -> None:
+        """Upsert active task state for a thread."""
+        import json
+        now = time.time()
+        conn = self._get_connection()
+        conn.execute("""
+            INSERT INTO pending_tasks
+                (thread_id, intent_type, status, steps_completed_json, steps_pending_json,
+                 context_json, credential_keys_json, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(thread_id) DO UPDATE SET
+                intent_type          = excluded.intent_type,
+                status               = excluded.status,
+                steps_completed_json = excluded.steps_completed_json,
+                steps_pending_json   = excluded.steps_pending_json,
+                context_json         = excluded.context_json,
+                credential_keys_json = excluded.credential_keys_json,
+                updated_at           = excluded.updated_at
+        """, (
+            thread_id,
+            task_data.get("intent_type", "unknown"),
+            task_data.get("status", "active"),
+            json.dumps(task_data.get("steps_completed", [])),
+            json.dumps(task_data.get("steps_pending", [])),
+            json.dumps(task_data.get("context", {})),
+            json.dumps(task_data.get("credential_keys", [])),
+            task_data.get("created_at", now),
+            now,
+        ))
+        conn.commit()
+        conn.close()
+
+    def get_pending_task(self, thread_id: str) -> Optional[dict]:
+        """Return active task for thread, or None if none exists."""
+        import json
+        conn = self._get_connection()
+        row = conn.execute(
+            "SELECT * FROM pending_tasks WHERE thread_id = ?", (thread_id,)
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return None
+        d = dict(row)
+        for key in ("steps_completed_json", "steps_pending_json", "context_json", "credential_keys_json"):
+            raw = d.pop(key, None)
+            short = key.replace("_json", "")
+            try:
+                d[short] = json.loads(raw) if raw else ([] if "steps" in key or "keys" in key else {})
+            except Exception:
+                d[short] = [] if "steps" in key or "keys" in key else {}
+        return d
+
+    def clear_pending_task(self, thread_id: str) -> None:
+        """Remove active task for thread (called on task completion or cancellation)."""
+        conn = self._get_connection()
+        conn.execute("DELETE FROM pending_tasks WHERE thread_id = ?", (thread_id,))
+        conn.commit()
+        conn.close()
 
 
 # Global instance for easy access

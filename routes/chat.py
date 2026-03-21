@@ -2946,10 +2946,13 @@ def chat_stream(req: ChatSendRequest, request: Request):
             # ── Intent classification (fast, pattern-based) ───────────────
             try:
                 from personal_agent.task_agent import classify_intent as _classify_intent, CRTTaskAgent
-                _task_intent = _classify_intent(req.message)
+                _session_db = get_thread_session_db()
+                _active_task = _session_db.get_pending_task(req.thread_id)
+                _task_intent = _classify_intent(req.message, active_task=_active_task)
             except Exception as _cie:
                 logger.debug("[STREAM] task intent classifier failed: %s", _cie)
                 _task_intent = None
+                _active_task = None
 
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":
@@ -2962,13 +2965,14 @@ def chat_stream(req: ChatSendRequest, request: Request):
                     _agent = CRTTaskAgent(
                         memory_agent=_engine.memory,
                         llm_client=_llm_client,
+                        session_db=_session_db,
                     )
 
                     _task_steps: list = []
                     _task_answer = ""
                     _task_meta: dict = {}
 
-                    for _event in _agent.run_stream(req.message, req.thread_id, _task_intent):
+                    for _event in _agent.run_stream(req.message, req.thread_id, _task_intent, active_task=_active_task):
                         yield _sse(_event)
                         if _event["type"] == "tool_result":
                             _task_steps.append(_event.get("metadata", {}))
