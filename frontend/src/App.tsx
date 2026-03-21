@@ -447,6 +447,9 @@ export default function App() {
               // The user will respond with "yes"/"no" in their next message.
               setStreamingResponse(message)
             },
+            onTaskCancelled: (message) => {
+              setStreamingResponse(message)
+            },
             onAgentThinkingToken: (token, _step) => {
               setAgentThinkingState((prev) => {
                 if (!prev) return prev

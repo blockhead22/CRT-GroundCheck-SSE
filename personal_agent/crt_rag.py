@@ -4605,6 +4605,7 @@ class CRTEnhancedRAG:
                 "do you remember", "do you know my", "what's my",
                 "what is my", "who am i",
                 "what do you know about me",
+                "to you", "about you", "for you",
             ))
         )
         if _is_general_knowledge:
@@ -4623,6 +4624,15 @@ class CRTEnhancedRAG:
             "where do you work", "who do you work for",
             "how does that work", "your system", "your tools",
             "what is your name", "what's your name", "your name",
+            "important to you", "matter to you", "care about",
+            "what do you value", "what do you think", "your opinion",
+            "your favorite", "your preference", "do you like",
+            "do you feel", "how do you feel", "what do you want",
+            "your purpose", "your goal", "your mission",
+            "what makes you", "what drives you", "your personality",
+            "your identity", "what are you like", "describe yourself",
+            "your beliefs", "your values", "your principles",
+            "to you",
         ))
         
         try:
@@ -5619,9 +5629,32 @@ class CRTEnhancedRAG:
                     '_injected_context': 'no_conflict_surfacing',
                 })
 
+        if _is_general_knowledge:
+            # Soft approach: keep injected context + up to 3 supplementary memories
+            # (prevents gate_fail cascades while avoiding memory-first answers)
+            _gk_injected = [d for d in _injected_docs if d.get('_injected_context')]
+            _gk_supplementary = [d for d in _injected_docs if not d.get('_injected_context')][:3]
+            for _sd in _gk_supplementary:
+                _sd['_supplementary'] = True
+            _gk_docs = _gk_injected + _gk_supplementary
+            if _gk_supplementary:
+                _gk_docs.append({
+                    'text': (
+                        "[SUPPLEMENTARY CONTEXT]\n"
+                        "The memories above are supplementary context only. "
+                        "Use them ONLY if directly relevant to the user's question. "
+                        "Do NOT force personal facts into a general knowledge answer."
+                    ),
+                    'trust': 1.0,
+                    'confidence': 1.0,
+                    'source': 'system',
+                    '_injected_context': 'supplementary_guidance',
+                })
+        else:
+            _gk_docs = _injected_docs
+
         reasoning_context = {
-            'retrieved_docs': _injected_docs if not _is_general_knowledge else
-                              [d for d in _injected_docs if d.get('_injected_context') == 'no_conflict_surfacing'],
+            'retrieved_docs': _gk_docs,
             'contradictions': [],  # Will detect after generation
             'memory_context': [],
             'style_profile': style_profile,
