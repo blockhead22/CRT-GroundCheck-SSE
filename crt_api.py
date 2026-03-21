@@ -922,6 +922,14 @@ def create_app() -> FastAPI:
             source_roots=skill_source_roots,
         )
         app.state.skill_registry.discover_skills()
+        # Sync skill cache for services with stored credentials
+        try:
+            from personal_agent.task_agent import sync_skill_cache
+            synced = sync_skill_cache()
+            if synced:
+                logger.info("[STARTUP] Cached skill files for: %s", synced)
+        except Exception as e_sync:
+            logger.warning("[STARTUP] Skill cache sync: %s", e_sync)
     except Exception as e:
         logger.warning(f"[STARTUP] Failed to initialize skill registry: {e}")
         app.state.skill_registry = None
