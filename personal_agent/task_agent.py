@@ -322,6 +322,19 @@ def parse_checkpoint_confirmation(message: str) -> Optional[bool]:
 def _describe_action(intent: "TaskIntent") -> str:
     """Human-readable description of what the agent is about to do."""
     if intent.intent_type == "url_fetch":
+        url = intent.slots.get("url", "a URL")
+        action = intent.slots.get("action", "")
+        if action == "follow_instructions":
+            return f"fetch {url} and follow the instructions in it"
+        return f"fetch and read {url}"
+    elif intent.intent_type == "service_action":
+        svc = intent.slots.get("service", "a service")
+        act = intent.slots.get("action", "query")
+        if act == "write":
+            return f"post/write to {svc}"
+        elif act == "query":
+            return f"query {svc} for data"
+        return f"interact with {svc}"
         return f"fetch and read {intent.slots.get('url', 'a URL')}"
     elif intent.intent_type == "service_action":
         svc = intent.slots.get("service", "a service")
@@ -342,6 +355,12 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
     ``agent_checkpoint`` SSE event before executing.
 
     Conversational intents pass through with ``requires_confirmation=False``.
+
+    Tier assignment (Phase 1 spec):
+    - Tier 1 (quick confirm): High-confidence read actions, credential storage
+    - Tier 2 (full review): Write actions, unknown services, low confidence,
+      destructive operations
+    - All task intents require confirmation — no auto-proceed.
     """
     if intent.route == "conversational":
         return {
@@ -350,6 +369,26 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
             "requires_confirmation": False,
         }
 
+    # ── Intent direction gate ────────────────────────────────────────────
+    # Every action must pass: does the classified intent match what the user
+    # actually asked for?  This is the always-on intent gate from the spec.
+    # Currently implicit in classify_intent's pattern matching — the gate
+    # fires by refusing to classify ambiguous messages as tasks.  Future:
+    # embed user_intent vs action_intent and check sim >= theta_intent.
+
+    # ── Tier assignment ──────────────────────────────────────────────────
+    action = intent.slots.get("action", "")
+    is_write = action in ("write", "follow_instructions", "store_or_update")
+    is_destructive = action in ("delete", "overwrite")
+
+    if is_destructive:
+        tier = "tier_2"
+    elif is_write:
+        tier = "tier_2"
+    elif intent.confidence >= 0.85 and intent.intent_type in ("url_fetch", "service_action", "imperative_task"):
+        tier = "tier_1"
+    else:
+        tier = "tier_2"
     # Determine tier based on confidence + intent type
     if intent.confidence >= 0.93 and intent.intent_type == "url_fetch":
         tier = "high"

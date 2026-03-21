@@ -123,7 +123,7 @@
     "generation_stack":  {
                              "local":  {
                                            "enabled":  true,
-                                           "default_model":  "qwen3:14b"
+                                           "default_model":  "deepseek-r1:latest"
                                        },
                              "cloud":  {
                                            "enabled":  false,

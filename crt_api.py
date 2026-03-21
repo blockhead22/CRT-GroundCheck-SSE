@@ -1263,6 +1263,16 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"[STARTUP] Could not pre-load embedding model: {e}")
         
+        # Pre-warm the default Ollama model so first request doesn't cold-load.
+        try:
+            import ollama as _ollama_mod
+            _warm_model = _default_router_model or "deepseek-r1:latest"
+            logger.info("[STARTUP] Pre-warming Ollama model: %s", _warm_model)
+            _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
+            logger.info("[STARTUP] \u2714 Ollama model %s loaded into VRAM", _warm_model)
+        except Exception as e:
+            logger.warning("[STARTUP] Could not pre-warm Ollama model: %s", e)
+
         # Start the (optional) training loop.
         try:
             training_loop.start()
