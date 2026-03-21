@@ -5561,12 +5561,15 @@ class CRTEnhancedRAG:
             contradiction_severity=contradiction_severity,
         )
 
-        # General knowledge bypass: don't penalize for low memory alignment
-        # on questions that were never about personal facts.
-        if _is_general_knowledge and not gates_passed and "grounding_fail" in str(gate_reason):
+        # General knowledge bypass: don't penalize for low memory/intent/grounding
+        # alignment on questions that were never about personal facts.
+        # Previously only caught "grounding_fail", but general-knowledge queries can
+        # also fail on intent_fail, memory_fail, or extraction_fail because there are
+        # no relevant memories to align against — that's expected, not a failure.
+        if _is_general_knowledge and not gates_passed:
             gates_passed = True
             gate_reason = "general_knowledge_bypass"
-            logger.info("[GATE_BYPASS] General knowledge query — skipping memory alignment penalty")
+            logger.info("[GATE_BYPASS] General knowledge query — bypassing gates (was: %s)", gate_reason)
 
         # Hard guardrail: if this turn still has query-relevant unresolved hard conflicts,
         # never allow a high-confidence "gates passed" response.

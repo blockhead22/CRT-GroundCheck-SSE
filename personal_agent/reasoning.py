@@ -466,10 +466,15 @@ class ReasoningEngine:
         confidence = 0.8
 
         # DNNT-first path with confidence-gated fallback.
-        # Skip DNNT when copilot context or web search results are present — the DNNT callback loses them.
+        # Skip DNNT when copilot context, web search results, or general knowledge
+        # queries are present.  DNNT is trained on the memory-fact pattern and will
+        # produce "I don't have profile facts" when given an empty fact list — which
+        # is exactly what happens for general-knowledge questions.  Bypass it so the
+        # LLM path handles these with its properly-prompted general-knowledge block.
         has_copilot_ctx = bool(context.get('copilot_context'))
         has_web_search = bool(context.get('web_search_results'))
-        if self.dnnt is not None and not has_copilot_ctx and not has_web_search:
+        is_general_knowledge = bool(context.get('is_general_knowledge'))
+        if self.dnnt is not None and not has_copilot_ctx and not has_web_search and not is_general_knowledge:
             try:
                 facts = self._extract_facts_for_dnnt(context)
                 dnnt_result = self.dnnt.generate(
@@ -615,6 +620,14 @@ class ReasoningEngine:
         if any(pat in q for pat in wellbeing_patterns):
             return "I'm doing well, thank you for asking! How can I help you today?"
         
+        # General knowledge: no LLM available, but don't pretend it's a memory miss
+        if context.get('is_general_knowledge'):
+            return (
+                "That's a general knowledge question and I'd need my language model "
+                "to answer it properly. I don't have enough context in my memory system "
+                "for this one — try again when the LLM backend is available."
+            )
+
         # Check if there's memory context we can use
         retrieved_docs = context.get('retrieved_docs', [])
         if retrieved_docs:
@@ -622,7 +635,7 @@ class ReasoningEngine:
             memory_texts = [doc.get('text', '') for doc in retrieved_docs[:3] if doc.get('text')]
             if memory_texts:
                 return f"Based on what I remember: {memory_texts[0]}"
-        
+
         # Generic fallback for questions
         if '?' in query:
             return "I don't have enough information to answer that question. Could you tell me more, or ask about something I might know from our conversation?"
@@ -1380,13 +1393,14 @@ SELF-REFLECTION:
 
         prompt += """CONSTRAINTS:
 1. For questions about THE USER (their name, job, preferences, etc.), ONLY use facts from the RETRIEVED MEMORIES sections below. Never invent personal details about the user.
-2. For GENERAL KNOWLEDGE questions (geography, history, science, trivia, etc.), answer from your training knowledge. You are allowed to answer these -- do NOT say "I don't have that in memory" for general knowledge.
+2. For GENERAL KNOWLEDGE questions (geography, history, science, trivia, etc.), answer from your training knowledge. You are allowed to answer these -- do NOT say "I don't have that in memory" for general knowledge. A question about a band, a city, a historical event, science, etc. is NOT a memory question.
 3. If retrieved memories are IRRELEVANT to the user's question, ignore them -- do NOT list or dump unrelated personal facts.
 4. If a personal fact is missing from memory, say you don't have it stored -- do NOT guess.
 5. If memory shows conflicting values for a personal fact, disclose the conflict.
 6. NEVER claim user facts as your own identity. Use "your" not "my" for user facts.
 7. Be direct and conversational, not robotic.
 8. When explaining how you work, draw from the ARCHITECTURE memories -- don't recite templates.
+9. THREAD COHERENCE: Your response must be consistent with what you said earlier in this conversation. If you said X three turns ago, do not contradict X now unless you explicitly acknowledge the change. The conversation history IS your thread context — use it.
 
 RESPONSE RULES:
 - Respond naturally and conversationally. You are not a database -- you are an assistant with memory.
@@ -1625,6 +1639,10 @@ HOW YOU WORK:
 CRITICAL: Facts in memory are ABOUT THE USER, not about you. You are an AI system.
 When asked "how do you know?", cite the specific memory and its trust score.
 
+GENERAL KNOWLEDGE: If the user asks about a band, a city, a historical event, science, trivia, etc., answer from your training knowledge. Do NOT say "I don't have that in memory" — those are not memory questions.
+
+THREAD COHERENCE: Your response must be consistent with what you said earlier in this conversation. If you said X three turns ago, do not contradict X now unless you explicitly acknowledge the change.
+
 """
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
@@ -1638,15 +1656,22 @@ When asked "how do you know?", cite the specific memory and its trust score.
 
         prompt += f"Question: {query}\n\n"
         prompt += f"Plan: {plan}\n\n"
-        
-        if docs:
+
+        if context.get('is_general_knowledge'):
+            prompt += (
+                "=== GENERAL KNOWLEDGE MODE ===\n"
+                "This is a general knowledge question — no personal memory lookup needed.\n"
+                "Answer fully from your training knowledge. Be detailed, interesting, and conversational.\n"
+                "Do NOT say 'I don't have that in memory' — this isn't a memory question.\n\n"
+            )
+        elif docs:
             prompt += "Context from memory (facts ABOUT THE USER):\n" + "\n".join([d['text'] for d in docs[:5]]) + "\n\n"
-        
+
         if contradictions:
             prompt += f"Note: {len(contradictions)} contradictions found. Present multiple perspectives honestly.\n\n"
-        
+
         prompt += "Your response:"
-        
+
         return prompt
     
     def _build_deep_prompt(self, query: str, context: Dict, plan: str, execution: str) -> str:
