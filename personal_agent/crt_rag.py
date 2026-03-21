@@ -5598,8 +5598,30 @@ class CRTEnhancedRAG:
                     '_injected_context': _ctx_key,
                 })
 
+        # Guard against LLM hallucinating contradiction responses for queries
+        # that don't target any fact slots.  Even with retrieved_docs=[] for
+        # general knowledge, the conversation history may contain prior
+        # contradiction discussions and the model may carry them forward.
+        if _is_general_knowledge and not inferred_slots:
+            extra_context["no_conflict_surfacing"] = (
+                "\n[IMPORTANT: NO CONFLICT SURFACING]\n"
+                "The user is NOT asking about any of your stored facts or personal data.\n"
+                "Do NOT mention conflicting information, contradictions, or uncertainty.\n"
+                "Answer the user's question directly and conversationally.\n"
+            )
+            # Re-inject into docs
+            if extra_context.get("no_conflict_surfacing"):
+                _injected_docs.append({
+                    'text': extra_context["no_conflict_surfacing"],
+                    'trust': 1.0,
+                    'confidence': 1.0,
+                    'source': 'system',
+                    '_injected_context': 'no_conflict_surfacing',
+                })
+
         reasoning_context = {
-            'retrieved_docs': _injected_docs if not _is_general_knowledge else [],
+            'retrieved_docs': _injected_docs if not _is_general_knowledge else
+                              [d for d in _injected_docs if d.get('_injected_context') == 'no_conflict_surfacing'],
             'contradictions': [],  # Will detect after generation
             'memory_context': [],
             'style_profile': style_profile,
