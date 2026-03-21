@@ -244,38 +244,68 @@ def _load_cached_skill(service: str) -> Optional[str]:
     return None
 
 
-def _cache_skill_content(service: str, content: str) -> None:
+def _cache_skill_content(service: str, content: str, filename: str = "SKILL.md") -> None:
     """Write fetched skill content to local cache."""
-    path = _SKILL_CACHE_DIR / service / "SKILL.md"
+    path = _SKILL_CACHE_DIR / service / filename
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-    logger.info("[SKILL_CACHE] Cached SKILL.md for %s (%d bytes)", service, len(content))
+    logger.info("[SKILL_CACHE] Cached %s for %s (%d bytes)", filename, service, len(content))
+
+
+# Companion docs that skill.md references for full integration.
+# Keyed by filename → URL path relative to the service base.
+_SKILL_COMPANION_DOCS = [
+    ("SKILL.md", "skill.md"),
+    ("HEARTBEAT.md", "heartbeat.md"),
+    ("MESSAGING.md", "messaging.md"),
+    ("RULES.md", "rules.md"),
+    ("package.json", "skill.json"),
+]
+
+
+def _fetch_url_text(url: str, timeout: int = 15) -> Optional[str]:
+    """Fetch a URL and return text content, or None on failure."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)"})
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.read().decode("utf-8", errors="replace")
+    except Exception:
+        return None
 
 
 def sync_skill_cache() -> List[str]:
     """Fetch and cache skill files for services with credentials but no local cache.
 
     Called at server startup to ensure cached skill files are available
-    for services the agent already has credentials for.
+    for services the agent already has credentials for.  Fetches SKILL.md
+    plus companion docs (HEARTBEAT.md, MESSAGING.md, RULES.md, package.json).
     """
     cached: List[str] = []
     for svc_name in _get_known_services():
-        if _load_cached_skill(svc_name):
-            continue  # already cached
         known = _KNOWN_SERVICES.get(svc_name)
         if not known or not known.get("skill_url"):
             continue
-        try:
-            req = urllib.request.Request(
-                known["skill_url"],
-                headers={"User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)"},
-            )
-            with urllib.request.urlopen(req, timeout=15) as resp:
-                raw = resp.read().decode("utf-8", errors="replace")
-            _cache_skill_content(svc_name, raw)
+
+        skill_url = known["skill_url"]
+        # Derive base URL: https://example.com/skill.md → https://example.com/
+        base_url = skill_url.rsplit("/", 1)[0] + "/"
+        svc_dir = _SKILL_CACHE_DIR / svc_name
+        fetched_any = False
+
+        for filename, url_path in _SKILL_COMPANION_DOCS:
+            local_path = svc_dir / filename
+            if local_path.exists():
+                continue  # already cached
+            url = base_url + url_path
+            content = _fetch_url_text(url)
+            if content:
+                _cache_skill_content(svc_name, content, filename)
+                fetched_any = True
+            else:
+                logger.debug("[SKILL_CACHE] %s/%s not available", svc_name, filename)
+
+        if fetched_any:
             cached.append(svc_name)
-        except Exception as e:
-            logger.warning("[SKILL_CACHE] Failed to sync %s: %s", svc_name, e)
     return cached
 
 
