@@ -1223,14 +1223,6 @@ class ReasoningEngine:
         if not user_docs:
             return ''
 
-        # Memory IDs that are part of an open contradiction
-        contradiction_ids: set = set()
-        for c in context.get('contradictions') or []:
-            if isinstance(c, dict):
-                contradiction_ids.add(c.get('memory_id_a', ''))
-                contradiction_ids.add(c.get('memory_id_b', ''))
-                contradiction_ids.discard('')
-
         high: List[str] = []
         low: List[str] = []
         contested: List[str] = []
@@ -1238,14 +1230,14 @@ class ReasoningEngine:
         for doc in user_docs:
             trust = doc.get('trust') or doc.get('confidence') or 0.0
             raw = doc.get('text', '').strip()
-            mem_id = doc.get('memory_id', '')
 
             # Strip "FACT: " prefix for readability
             label = re.sub(r'^FACT:\s*', '', raw, flags=re.IGNORECASE).strip()
             if not label:
                 continue
 
-            if mem_id and mem_id in contradiction_ids:
+            # reintroduced_claim is set by crt_rag when ledger.has_open_contradiction() is True
+            if doc.get('reintroduced_claim'):
                 contested.append(label)
             elif trust >= 0.75:
                 high.append(label)
@@ -1284,25 +1276,12 @@ class ReasoningEngine:
         Returns a correction injection string if conflicts are found, '' otherwise.
         Only triggers on turns where retrieved memories have open contradictions.
         """
-        contradictions = context.get('contradictions') or []
-        if not contradictions:
-            return ''
-
-        contradiction_ids: set = set()
-        for c in contradictions:
-            if isinstance(c, dict):
-                contradiction_ids.add(c.get('memory_id_a', ''))
-                contradiction_ids.add(c.get('memory_id_b', ''))
-                contradiction_ids.discard('')
-
-        if not contradiction_ids:
-            return ''
-
         draft_lower = draft.lower()
         conflicts_found = []
 
         for doc in user_docs:
-            if doc.get('memory_id', '') not in contradiction_ids:
+            # Only check docs flagged as having an open contradiction in the ledger
+            if not doc.get('reintroduced_claim'):
                 continue
             trust = doc.get('trust') or doc.get('confidence') or 0.0
             if trust < 0.6:
