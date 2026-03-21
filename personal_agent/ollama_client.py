@@ -5,7 +5,7 @@ should remain usable even when the `ollama` Python package isn't installed.
 """
 
 import os
-from typing import Optional, Dict, List, Any
+from typing import Generator, Optional, Dict, List, Any, Tuple
 
 from .text_utils import extract_think_content
 
@@ -210,6 +210,95 @@ class OllamaClient:
         # Do not leak internal reasoning when no visible answer exists.
         return "[Model returned internal reasoning without a final answer. Please retry.]"
     
+    def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int = 500,
+        temperature: float = 0.7,
+        model: Optional[str] = None,
+    ) -> Generator[Tuple[str, str], None, None]:
+        """
+        Stream chat response as (token_type, text) tuples.
+        token_type: "thinking" | "content"
+
+        Handles two formats:
+          - Native thinking field: chunk.message.thinking (Ollama native)
+          - Inline <think> tags in content stream (Qwen3 default format)
+        """
+        selected_model = model or self.model
+        chat_fn = (
+            self._client.chat
+            if (self._client is not None and hasattr(self._client, "chat"))
+            else ollama.chat  # type: ignore[union-attr]
+        )
+        try:
+            stream = chat_fn(
+                model=selected_model,
+                messages=messages,
+                options={
+                    "num_predict": max_tokens,
+                    "temperature": temperature,
+                    "repeat_penalty": 1.15,
+                },
+                stream=True,
+            )
+
+            in_think = False
+            buf = ""
+
+            for chunk in stream:
+                msg = (
+                    chunk.message
+                    if hasattr(chunk, "message")
+                    else (chunk.get("message", {}) if isinstance(chunk, dict) else {})
+                )
+
+                # Native thinking field (some Ollama builds surface this separately)
+                thinking_tok = (
+                    (msg.thinking if hasattr(msg, "thinking") else None)
+                    or (msg.get("thinking") if isinstance(msg, dict) else None)
+                    or ""
+                )
+                content_tok = (
+                    (msg.content if hasattr(msg, "content") else None)
+                    or (msg.get("content") if isinstance(msg, dict) else None)
+                    or ""
+                )
+
+                if thinking_tok:
+                    yield ("thinking", thinking_tok)
+
+                # Parse inline <think>...</think> tags from content stream
+                if content_tok:
+                    buf += content_tok
+                    while buf:
+                        if not in_think:
+                            start = buf.find("<think>")
+                            if start == -1:
+                                yield ("content", buf)
+                                buf = ""
+                                break
+                            if start > 0:
+                                yield ("content", buf[:start])
+                            buf = buf[start + 7:]
+                            in_think = True
+                        else:
+                            end = buf.find("</think>")
+                            if end == -1:
+                                yield ("thinking", buf)
+                                buf = ""
+                                break
+                            if end > 0:
+                                yield ("thinking", buf[:end])
+                            buf = buf[end + 8:]
+                            in_think = False
+
+            if buf:
+                yield ("thinking" if in_think else "content", buf)
+
+        except Exception as e:
+            yield ("content", f"[stream error: {e}]")
+
     def chat_with_tools(
         self,
         messages: List[Dict[str, Any]],
