@@ -133,6 +133,7 @@ function ToolCallDetail({ step }: { step: AgentStep }) {
 
 export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
   const [expandedStep, setExpandedStep] = useState<number | null>(null)
+  const [thinkingExpanded, setThinkingExpanded] = useState(false)
 
   const rc = routeColor(state.route)
   const isActive = !state.done
@@ -293,14 +294,43 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
         )}
 
         {state.done && (
-          <div className="flex items-center gap-2 text-[11px] font-mono px-1 py-[2px]" style={{ color: '#5a5445' }}>
-            <span className="w-3 text-center" style={{ color: '#6abf7b' }}>✓</span>
-            <span>done</span>
-            {state.draftingThinking && (
-              <span className="ml-auto text-[9px]" style={{ color: '#3d3626' }}>
-                reasoned {Math.round(state.draftingThinking.length / 4)}t
-              </span>
-            )}
+          <div className="flex flex-col gap-[2px]">
+            <button
+              className="w-full flex items-center gap-2 text-[11px] font-mono px-1 py-[2px] text-left rounded hover:bg-white/4 transition-colors"
+              style={{ color: '#5a5445' }}
+              onClick={() => state.draftingThinking && setThinkingExpanded(e => !e)}
+            >
+              <span className="w-3 text-center" style={{ color: '#6abf7b' }}>✓</span>
+              <span>done</span>
+              {state.draftingThinking && (
+                <>
+                  <span className="text-[9px]" style={{ color: '#3d3626' }}>
+                    reasoned {Math.round(state.draftingThinking.length / 4)}t
+                  </span>
+                  <span className="ml-auto text-[9px]" style={{ color: '#3d3626' }}>
+                    {thinkingExpanded ? '▲' : '▼'}
+                  </span>
+                </>
+              )}
+            </button>
+            <AnimatePresence>
+              {thinkingExpanded && state.draftingThinking && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="overflow-hidden ml-5"
+                >
+                  <div
+                    className="rounded px-2 py-2 text-[10px] font-mono whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
+                    style={{ background: 'rgba(0,0,0,0.25)', color: '#5a5445', borderLeft: '2px solid rgba(232,132,58,0.2)' }}
+                  >
+                    {state.draftingThinking}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
