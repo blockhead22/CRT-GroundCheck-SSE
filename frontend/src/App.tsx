@@ -101,6 +101,8 @@ export default function App() {
   const streamStatusRef = useRef<string[]>([])
   const [intentPreview, setIntentPreview] = useState<{ intent: string; slots: string[]; label: string } | null>(null)
   const [agentThinkingState, setAgentThinkingState] = useState<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
+  // Ref mirrors state so onDone closure can read the latest value without stale capture
+  const agentThinkingRef = useRef<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
   const finalBufferRef = useRef('')
   
   // Mood background state
@@ -383,10 +385,16 @@ export default function App() {
               setIntentPreview({ intent, slots, label })
             },
             onIntentClassified: (intent, route, slots, confidence) => {
-              setAgentThinkingState({ intent, route, slots, confidence, toolSteps: [] })
+              const next = { intent, route, slots, confidence, toolSteps: [] }
+              agentThinkingRef.current = next
+              setAgentThinkingState(next)
             },
             onPlanReady: (steps) => {
-              setAgentThinkingState((prev) => prev ? { ...prev, plan: steps } : { toolSteps: [], plan: steps })
+              setAgentThinkingState((prev) => {
+                const next = prev ? { ...prev, plan: steps } : { toolSteps: [], plan: steps }
+                agentThinkingRef.current = next
+                return next
+              })
             },
             onToolStart: (toolName, input, stepIndex) => {
               setAgentThinkingState((prev) => {
@@ -395,7 +403,9 @@ export default function App() {
                 const updated = existing
                   ? prev.toolSteps.map(s => s.step_index === stepIndex ? { ...s, status: 'running' as const } : s)
                   : [...prev.toolSteps, { step_index: stepIndex, tool_name: toolName, input, status: 'running' as const }]
-                return { ...prev, toolSteps: updated, activeStepIndex: stepIndex }
+                const next = { ...prev, toolSteps: updated, activeStepIndex: stepIndex }
+                agentThinkingRef.current = next
+                return next
               })
             },
             onToolResult: (step) => {
@@ -405,14 +415,24 @@ export default function App() {
                 const updated = exists
                   ? prev.toolSteps.map(s => s.step_index === step.step_index ? { ...s, ...step } : s)
                   : [...prev.toolSteps, step]
-                return { ...prev, toolSteps: updated, activeStepIndex: undefined }
+                const next = { ...prev, toolSteps: updated, activeStepIndex: undefined }
+                agentThinkingRef.current = next
+                return next
               })
             },
             onValidateResult: (_conflicts, _gate) => {
-              setAgentThinkingState((prev) => prev ? { ...prev, validated: true } : prev)
+              setAgentThinkingState((prev) => {
+                const next = prev ? { ...prev, validated: true } : prev
+                agentThinkingRef.current = next
+                return next
+              })
             },
             onTaskDone: (_answer, _steps, _meta) => {
-              setAgentThinkingState((prev) => prev ? { ...prev, drafting: true } : prev)
+              setAgentThinkingState((prev) => {
+                const next = prev ? { ...prev, drafting: true } : prev
+                agentThinkingRef.current = next
+                return next
+              })
             },
             onStatus: (status) => {
               if (!status) return
@@ -463,9 +483,9 @@ export default function App() {
                 setCurrentMood(metadata.mood as MoodData)
               }
               
-              // Capture agent thinking state before clearing (so it persists on the message)
-              const _capturedThinking = agentThinkingState
-                ? { ...agentThinkingState, done: true, drafting: false }
+              // Capture agent thinking state from ref (avoids stale closure — ref is always current)
+              const _capturedThinking = agentThinkingRef.current
+                ? { ...agentThinkingRef.current, done: true, drafting: false }
                 : null
 
               const asstMsg = {
