@@ -137,9 +137,16 @@ _SERVICE_READ_RE = re.compile(
 _CREDENTIALS_PATH = Path("personal_agent/.aether_credentials.json")
 
 
-def _derive_key(thread_id: str) -> str:
-    """Simple deterministic key derived from thread_id + machine hostname."""
-    raw = f"{thread_id}:{os.uname().nodename if hasattr(os, 'uname') else 'windows'}"
+def _derive_key(thread_id: str = "") -> str:
+    """Deterministic obfuscation key derived from machine hostname.
+
+    NOTE: thread_id is accepted but IGNORED.  Credentials are global
+    (not per-thread) because frontend thread IDs are random UUIDs that
+    change across sessions — keying on them made stored credentials
+    undecipherable from any other thread.
+    """
+    hostname = os.uname().nodename if hasattr(os, "uname") else "windows"
+    raw = f"aether:{hostname}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -293,9 +300,9 @@ class TaskIntent:
 # Checkpoint messages shown to the user before entering agentic mode.
 # Tiers: high = auto-proceed with notice, medium = ask, low = clarify ambiguity.
 _CHECKPOINT_MESSAGES: Dict[str, str] = {
-    "high": "I'm ready to handle this: {action}. Say 'yes' to proceed or 'stop' to cancel.",
-    "medium": "I detected a task intent: {action}. Should I proceed?",
-    "low": "This might be a task request ({reason}), but I'm not confident. Did you want me to {action}, or were you asking about it?",
+    "tier_1": "I'm about to {action}. Go ahead?",
+    "tier_2": "I detected a task: {action}. Should I proceed? ({reason})",
+    "tier_3": "I need to resolve something before I can {action}: {reason}",
 }
 
 # Phrases that confirm a checkpoint
@@ -389,21 +396,6 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
         tier = "tier_1"
     else:
         tier = "tier_2"
-    # Determine tier based on confidence + intent type
-    if intent.confidence >= 0.93 and intent.intent_type == "url_fetch":
-        tier = "high"
-    elif intent.confidence >= 0.80:
-        tier = "medium"
-    else:
-        tier = "low"
-
-    # NOTE: Meta-question guard removed from gate_task_intent.
-    # classify_intent() at lines 424-460 already handles meta-question detection
-    # and routes knowledge questions ("what is moltbook") to conversational.
-    # If classify_intent determined it IS a service_action, that decision was
-    # already vetted — re-checking here with _KNOWLEDGE_QUESTION_RE was too
-    # broad (matched "what's" in "what's new on moltbook") and incorrectly
-    # downgraded legitimate service actions to low confidence.
 
     action_desc = _describe_action(intent)
     msg = _CHECKPOINT_MESSAGES[tier].format(action=action_desc, reason=intent.reason)
@@ -1213,6 +1205,21 @@ class CRTTaskAgent:
                 # Skip POST steps entirely for query actions
                 if query_only:
                     continue
+
+                # Skip registration endpoints if we already have a credential
+                # for this service — don't re-register when we already have a key.
+                _is_registration = bool(re.search(r"/register|/signup|/enroll", url, re.IGNORECASE))
+                if _is_registration:
+                    _svc = intent.slots.get("service", "")
+                    _cred_key = intent.slots.get("credential_key", "") or f"{_svc}_api_key"
+                    _existing = load_credential(_cred_key) if _cred_key else None
+                    if _existing:
+                        logger.info(
+                            "[TASK_AGENT] Curl parser: skipping registration %s — credential %s already exists",
+                            url[:80], _cred_key,
+                        )
+                        continue
+
                 # Cap POST steps — documentation examples add 5-6 extra
                 # endpoints that aren't part of the actual registration flow
                 if post_count >= _MAX_POST_STEPS:
@@ -1353,9 +1360,17 @@ class CRTTaskAgent:
         elif intent.intent_type == "imperative_task":
             api_key = intent.slots.get("api_key")
             if api_key:
+                # Infer the credential key name from the key value or message.
+                # Keys like "moltbook_sk_..." should store as "moltbook_api_key"
+                # so _get_known_services() can discover them.
+                cred_key = "api_key"
+                for svc_name in list(_KNOWN_SERVICES.keys()):
+                    if api_key.lower().startswith(f"{svc_name}_") or svc_name in message.lower():
+                        cred_key = f"{svc_name}_api_key"
+                        break
                 plan.append({
                     "tool": "store_credential",
-                    "input": {"key": "api_key", "value": api_key, "raw": message},
+                    "input": {"key": cred_key, "value": api_key, "raw": message},
                 })
             else:
                 plan.append({"tool": "llm_respond", "input": {"message": message}})
