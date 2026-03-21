@@ -89,6 +89,12 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('crt_selected_model', selectedModel)
   }, [selectedModel])
+
+  // Clear agent strip when switching threads — strip belongs to a specific turn, not the thread
+  useEffect(() => {
+    setAgentThinkingState(null)
+    agentThinkingRef.current = null
+  }, [selectedThreadId])
   
   // Streaming state
   const [streamingThinking, setStreamingThinking] = useState<string>('')
@@ -361,7 +367,7 @@ export default function App() {
     upsertThread(withUser)
     setTyping(true)
     
-    // Reset streaming state
+    // Reset streaming state (including agent strip — must clear ref before new stream)
     setStreamingThinking('')
     setStreamingResponse('')
     setIsThinking(false)
@@ -370,6 +376,8 @@ export default function App() {
     streamStatusRef.current = []
     finalBufferRef.current = ''
     setIntentPreview(null)
+    setAgentThinkingState(null)
+    agentThinkingRef.current = null
 
     try {
       if (useStreaming) {
@@ -550,6 +558,7 @@ export default function App() {
               finalBufferRef.current = ''
               setIntentPreview(null)
               setAgentThinkingState(null)
+              agentThinkingRef.current = null
             },
             onError: (error) => {
               const at = Date.now()
