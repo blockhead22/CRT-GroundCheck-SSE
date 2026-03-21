@@ -876,6 +876,7 @@ class CRTTaskAgent:
             task_context["_service"] = intent.slots.get("service", "")
             task_context["_credential_key"] = intent.slots.get("credential_key", "")
 
+        skill_content: Optional[str] = None  # skill docs — used for replanning only, NOT answer context
         for i, step_plan in enumerate(phase1_plan):
             tool = step_plan["tool"]
             inp = dict(step_plan["input"])
@@ -887,11 +888,14 @@ class CRTTaskAgent:
 
             result_event = yield from self._execute_step(
                 step, tool, inp, thread_id, i,
-                fetched_content=fetched_content, task_context=task_context,
+                fetched_content=fetched_content or skill_content, task_context=task_context,
             )
 
             if step.status == "ok":
-                if tool in ("fetch_url", "http_get", "load_cached_skill"):
+                if tool == "load_cached_skill":
+                    # Skill docs feed replanning but must NOT leak into answer context
+                    skill_content = step.output if isinstance(step.output, str) else skill_content
+                elif tool in ("fetch_url", "http_get"):
                     fetched_content = step.output if isinstance(step.output, str) else fetched_content
                     # Track source URL so store_credential can save service metadata
                     task_context["source_url"] = inp.get("url", "")
@@ -916,15 +920,17 @@ class CRTTaskAgent:
             yield result_event
 
         # ── 3b. Phase-2 re-plan (if we fetched content + action=follow) ───
+        # Use fetched_content if available, otherwise fall back to skill_content for replanning
+        replan_source = fetched_content or skill_content
         needs_replan = (
-            fetched_content
+            replan_source
             and intent.intent_type in ("url_fetch", "service_action")
             and intent.slots.get("action") in ("follow_instructions", "write", "query")
         )
         replan_attempted_but_failed = False
         if needs_replan:
             yield {"type": "status", "content": "analyzing fetched content"}
-            phase2_plan = self._replan_from_content(fetched_content, message, intent)
+            phase2_plan = self._replan_from_content(replan_source, message, intent)
 
             if not phase2_plan:
                 # Re-plan failed — flag it so we use a deterministic answer
@@ -1926,12 +1932,28 @@ class CRTTaskAgent:
                 "[Note: Instructions were fetched but could not be parsed into executable steps. "
                 "Do not claim the task was completed.]"
             )
+        # Include verified extracted fields
         verified_steps = [s for s in steps if s.verified and s.extracted_fields]
         if verified_steps:
             real_data: Dict[str, Any] = {}
             for s in verified_steps:
                 real_data.update(s.extracted_fields)
             context_parts.append(f"[Verified API response fields]\n{json.dumps(real_data, indent=2)}\n[End]")
+        # Include actual API response data from successful http_get_json / http_post steps
+        # even when extracted_fields is empty — the raw response IS the useful data
+        api_steps = [
+            s for s in steps
+            if s.tool_name in ("http_get_json", "http_post")
+            and s.status == "ok"
+            and s not in verified_steps  # avoid double-counting
+        ]
+        if api_steps:
+            for s in api_steps:
+                preview = s.output_preview or (s.output[:2000] if isinstance(s.output, str) else "")
+                if preview:
+                    context_parts.append(
+                        f"[API response from {s.input.get('url', 'unknown')}]\n{preview}\n[End]"
+                    )
         failed_steps = [s for s in steps if s.status == "error"]
         if failed_steps:
             failures = "\n".join(f"- {s.tool_name}: {s.error}" for s in failed_steps)
