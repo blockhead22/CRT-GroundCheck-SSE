@@ -235,6 +235,9 @@ function ToolCallSection({ toolCalls }: { toolCalls?: Array<Record<string, unkno
             status === 'error' ? 'text-red-400' :
             status === 'queued' ? 'text-yellow-400' : 'text-white/50'
 
+          const tcInput = tc.input as Record<string, unknown> | undefined
+          const tcOutputPreview = tc.output_preview as string | undefined
+          const tcError = tc.error as string | undefined
           return (
             <div key={idx} className="rounded-xl border border-white/8 overflow-hidden"
               style={{ background: 'rgba(0,0,0,0.2)' }}>
@@ -267,31 +270,28 @@ function ToolCallSection({ toolCalls }: { toolCalls?: Array<Record<string, unkno
                   transition={{ duration: 0.15 }}
                   className="px-3 pb-3 space-y-2"
                 >
-                  {/* Input */}
-                  {tc.input && (
+                  {tcInput && (
                     <div>
                       <div className="text-[10px] text-white/40 mb-1">INPUT</div>
                       <pre className="text-[10px] text-white/60 bg-black/20 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
-                        {JSON.stringify(tc.input, null, 2)}
+                        {JSON.stringify(tcInput, null, 2)}
                       </pre>
                     </div>
                   )}
-                  {/* Output preview */}
-                  {tc.output_preview && (
+                  {tcOutputPreview && (
                     <div>
                       <div className="text-[10px] text-white/40 mb-1">
                         OUTPUT PREVIEW
                         {tc.byte_count ? ` (${Number(tc.byte_count).toLocaleString()} bytes total)` : ''}
                       </div>
                       <div className="text-[10px] text-white/70 bg-black/20 rounded p-2 max-h-48 overflow-y-auto whitespace-pre-wrap break-words font-mono leading-relaxed">
-                        {String(tc.output_preview)}
+                        {tcOutputPreview}
                       </div>
                     </div>
                   )}
-                  {/* Error */}
-                  {tc.error && (
+                  {tcError && (
                     <div className="text-[10px] text-red-400 bg-red-500/10 rounded p-2">
-                      {String(tc.error)}
+                      {tcError}
                     </div>
                   )}
                 </motion.div>
