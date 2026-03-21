@@ -1,0 +1,1949 @@
+"""CRT TaskAgent — clean execution route for task/agentic queries.
+
+Layer 1 implementation (patch plan):
+  1.1  Real HTTP tools: http_post, http_get_json, store_credential
+  1.2  Execution verification + retry (2xx check, field presence, one retry)
+  1.3  Broader intent classification (imperatives, API key strings, continuation)
+  1.4  Task context threading (accepts active_task from session DB)
+
+Intent types
+------------
+url_fetch          — URL + action verb
+imperative_task    — store/save/update/use with no URL (API key follow-ups etc.)
+task_continuation  — follow-up on an active task session
+conversational     — everything else → full CRT pipeline
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import os
+import re
+import time
+import urllib.error
+import urllib.request
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Known services registry
+# ---------------------------------------------------------------------------
+
+# Maps service names (lowercase) to their skill doc URL and credential key.
+# When the user references a service by name without providing a URL, the
+# classifier resolves the skill URL and the task agent uses stored credentials.
+_KNOWN_SERVICES: Dict[str, Dict[str, str]] = {
+    "moltbook": {
+        "skill_url": "https://www.moltbook.com/skill.md",
+        "api_base": "https://www.moltbook.com/api/v1",
+        "credential_key": "moltbook_api_key",
+    },
+}
+
+# Matches any known service name as a word boundary
+_KNOWN_SERVICE_RE = re.compile(
+    r"\b(" + "|".join(re.escape(s) for s in _KNOWN_SERVICES) + r")\b",
+    re.IGNORECASE,
+)
+
+# Write-action verbs that imply mutating the service (post, update, delete, …)
+_WRITE_VERB_RE = re.compile(
+    r"\b(post|publish|send|submit|create|add|update|edit|change|delete|remove|"
+    r"register|sign\s+up|join|follow|unfollow|like|reply)\b",
+    re.IGNORECASE,
+)
+
+# Read-action verbs that imply querying the service
+_READ_VERB_RE = re.compile(
+    r"\b(check|see|get|fetch|read|look|find|show|list|any|are\s+there|what(?:'s|\s+are|\s+is))\b",
+    re.IGNORECASE,
+)
+
+# ---------------------------------------------------------------------------
+# Regex constants
+# ---------------------------------------------------------------------------
+
+_URL_RE = re.compile(r"https?://[^\s<>\"']+", re.IGNORECASE)
+
+_URL_ACTION_RE = re.compile(
+    r"\b(read|fetch|visit|check|open|go\s+to|follow|access|look\s+at|get|load|download)\b"
+    r".{0,80}https?://\S+",
+    re.IGNORECASE,
+)
+_BARE_URL_RE = re.compile(r"^\s*https?://\S+\s*$")
+
+_INSTRUCTION_VERB_RE = re.compile(
+    r"\b(follow|execute|run|do|complete|perform|carry\s+out|sign\s+up|join|install|setup)\b",
+    re.IGNORECASE,
+)
+
+_KNOWLEDGE_QUESTION_RE = re.compile(
+    r"\b(what\s+is|what's|whats|who\s+is|explain|tell\s+me\s+about|describe)\b",
+    re.IGNORECASE,
+)
+
+# 1.3 — imperative store/save/update patterns (no URL required)
+_IMPERATIVE_TASK_RE = re.compile(
+    r"\b(store\s+(this|the|my)|save\s+(this|the|my)|update\s+(your|my)\s+(credentials?|key|token|api)|"
+    r"use\s+(this|the)\s+(key|token|api\s*key|credential)|"
+    r"here(?:'s|\s+is)\s+(your|the|a|my)\s+(new\s+)?(key|token|api\s*key|credential|url)|"
+    r"please\s+update|keep\s+this|record\s+this|note\s+(this|the|that))\b",
+    re.IGNORECASE,
+)
+
+# 1.3 — API key / token string detection (long alphanumeric with separators)
+_API_KEY_RE = re.compile(
+    r"\b[a-zA-Z0-9_\-]{8,}[_\-][a-zA-Z0-9_\-]{4,}[_\-][a-zA-Z0-9_\-]{4,}\b"
+    r"|\b[a-zA-Z]{2,8}_[a-zA-Z0-9_\-]{16,}\b",
+)
+
+# 1.3 — continuation patterns
+_CONTINUATION_RE = re.compile(
+    r"\b(follow\s+up|continue\s+(the|this)|finish\s+(the|this)|"
+    r"next\s+step|what(?:'s|\s+is)\s+next|complete\s+(the|this)|"
+    r"pick\s+up\s+where|proceed\s+with|resume\s+(the|this))\b",
+    re.IGNORECASE,
+)
+
+# Fields that indicate a real API/registration response (not hallucinated)
+_RESPONSE_FIELD_INDICATORS = (
+    "api_key", "token", "claim_url", "access_token", "secret",
+    "key", "session_id", "auth", "bearer", "jwt",
+)
+
+# Service action verbs (for credential-store-based service detection)
+_SERVICE_WRITE_RE = re.compile(
+    r"\b(post|publish|send|submit|create|add|update|edit|change|delete|remove|"
+    r"register|sign\s+up|join|follow|unfollow|like|reply|write)\b",
+    re.IGNORECASE,
+)
+_SERVICE_READ_RE = re.compile(
+    r"\b(check|see|get|fetch|read|look|find|show|list|view|"
+    r"any\s+new|whats\s+new|what(?:'?s|\s+are|\s+is)\s+new|"
+    r"are\s+there|what(?:'?s|\s+are|\s+is)|updates?|notifications?)\b",
+    re.IGNORECASE,
+)
+
+
+# ---------------------------------------------------------------------------
+# Credentials store
+# ---------------------------------------------------------------------------
+
+_CREDENTIALS_PATH = Path("personal_agent/.aether_credentials.json")
+
+
+def _derive_key(thread_id: str) -> str:
+    """Simple deterministic key derived from thread_id + machine hostname."""
+    raw = f"{thread_id}:{os.uname().nodename if hasattr(os, 'uname') else 'windows'}"
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+
+def _xor_cipher(data: str, key: str) -> str:
+    """Trivial XOR obfuscation — not cryptographic, just avoids plaintext."""
+    key_chars = key * (len(data) // len(key) + 1)  # string repeat, not bytes
+    return "".join(chr(ord(c) ^ ord(k)) for c, k in zip(data, key_chars))
+
+
+def store_credential(key: str, value: str, thread_id: str = "default") -> str:
+    """Store a credential. Returns the file path written."""
+    _CREDENTIALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    store: Dict[str, Any] = {}
+    if _CREDENTIALS_PATH.exists():
+        try:
+            store = json.loads(_CREDENTIALS_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            store = {}
+    cipher_key = _derive_key(thread_id)
+    store[key] = _xor_cipher(value, cipher_key)
+    _CREDENTIALS_PATH.write_text(json.dumps(store, indent=2), encoding="utf-8")
+    logger.info("[CREDENTIALS] Stored key=%s to %s", key, _CREDENTIALS_PATH)
+    return str(_CREDENTIALS_PATH)
+
+
+def load_credential(key: str, thread_id: str = "default") -> Optional[str]:
+    """Load a stored credential. Returns None if not found."""
+    if not _CREDENTIALS_PATH.exists():
+        return None
+    try:
+        store = json.loads(_CREDENTIALS_PATH.read_text(encoding="utf-8"))
+        if key not in store:
+            return None
+        cipher_key = _derive_key(thread_id)
+        return _xor_cipher(store[key], cipher_key)
+    except Exception as e:
+        logger.warning("[CREDENTIALS] Load failed for key=%s: %s", key, e)
+        return None
+
+
+def _get_known_services() -> Dict[str, Dict[str, str]]:
+    """Discover known services from credential store keys.
+
+    Scans stored credential keys for patterns like ``{service}_api_key``,
+    ``{service}_skill_url``, ``{service}_api_base``.  Returns a dict of
+    ``{service_name: {credential_key, skill_url, api_base}}`` with whatever
+    metadata is available.
+    """
+    if not _CREDENTIALS_PATH.exists():
+        return {}
+    try:
+        store = json.loads(_CREDENTIALS_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+    services: Dict[str, Dict[str, str]] = {}
+    for key in store:
+        # e.g. moltbook_api_key → service=moltbook
+        for suffix in ("_api_key", "_token", "_secret"):
+            if key.endswith(suffix):
+                svc = key[: -len(suffix)]
+                if svc:
+                    services.setdefault(svc, {})["credential_key"] = key
+                break
+
+        # e.g. moltbook_skill_url → service=moltbook, skill_url=<value>
+        if key.endswith("_skill_url"):
+            svc = key[: -len("_skill_url")]
+            if svc:
+                services.setdefault(svc, {})["skill_url_key"] = key
+
+        if key.endswith("_api_base"):
+            svc = key[: -len("_api_base")]
+            if svc:
+                services.setdefault(svc, {})["api_base_key"] = key
+
+    return services
+
+
+# ---------------------------------------------------------------------------
+# Skill file cache (local storage of fetched SKILL.md files)
+# ---------------------------------------------------------------------------
+
+_SKILL_CACHE_DIR = Path("data/managed_skills")
+
+
+def _load_cached_skill(service: str) -> Optional[str]:
+    """Read a locally cached SKILL.md for the given service. Returns None if not cached."""
+    path = _SKILL_CACHE_DIR / service / "SKILL.md"
+    if path.exists():
+        try:
+            return path.read_text(encoding="utf-8")
+        except Exception:
+            return None
+    return None
+
+
+def _cache_skill_content(service: str, content: str) -> None:
+    """Write fetched skill content to local cache."""
+    path = _SKILL_CACHE_DIR / service / "SKILL.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    logger.info("[SKILL_CACHE] Cached SKILL.md for %s (%d bytes)", service, len(content))
+
+
+def sync_skill_cache() -> List[str]:
+    """Fetch and cache skill files for services with credentials but no local cache.
+
+    Called at server startup to ensure cached skill files are available
+    for services the agent already has credentials for.
+    """
+    cached: List[str] = []
+    for svc_name in _get_known_services():
+        if _load_cached_skill(svc_name):
+            continue  # already cached
+        known = _KNOWN_SERVICES.get(svc_name)
+        if not known or not known.get("skill_url"):
+            continue
+        try:
+            req = urllib.request.Request(
+                known["skill_url"],
+                headers={"User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw = resp.read().decode("utf-8", errors="replace")
+            _cache_skill_content(svc_name, raw)
+            cached.append(svc_name)
+        except Exception as e:
+            logger.warning("[SKILL_CACHE] Failed to sync %s: %s", svc_name, e)
+    return cached
+
+
+# ---------------------------------------------------------------------------
+# TaskIntent
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class TaskIntent:
+    route: Literal["task", "conversational"]
+    intent_type: str  # url_fetch | imperative_task | service_action | task_continuation | conversational
+    slots: Dict[str, Any] = field(default_factory=dict)
+    confidence: float = 0.9
+    reason: str = ""
+
+
+# ---------------------------------------------------------------------------
+# Agentic checkpoint gate
+# ---------------------------------------------------------------------------
+
+# Checkpoint messages shown to the user before entering agentic mode.
+# Tiers: high = auto-proceed with notice, medium = ask, low = clarify ambiguity.
+_CHECKPOINT_MESSAGES: Dict[str, str] = {
+    "high": "I'm ready to handle this: {action}. Say 'yes' to proceed or 'stop' to cancel.",
+    "medium": "I detected a task intent: {action}. Should I proceed?",
+    "low": "This might be a task request ({reason}), but I'm not confident. Did you want me to {action}, or were you asking about it?",
+}
+
+# Phrases that confirm a checkpoint
+_CONFIRM_RE = re.compile(
+    r"^\s*(yes|yeah|yep|yup|sure|go|go ahead|proceed|do it|ok|okay|confirm|y)\b",
+    re.IGNORECASE,
+)
+# Phrases that deny a checkpoint
+_DENY_RE = re.compile(
+    r"^\s*(no|nah|nope|stop|cancel|don't|do not|abort|never mind|nevermind|n)\b",
+    re.IGNORECASE,
+)
+
+
+def parse_checkpoint_confirmation(message: str) -> Optional[bool]:
+    """Parse user response to a checkpoint prompt. Returns True/False/None."""
+    if _CONFIRM_RE.search(message):
+        return True
+    if _DENY_RE.search(message):
+        return False
+    return None  # Ambiguous — treat as new message
+
+
+def _describe_action(intent: "TaskIntent") -> str:
+    """Human-readable description of what the agent is about to do."""
+    if intent.intent_type == "url_fetch":
+        return f"fetch and read {intent.slots.get('url', 'a URL')}"
+    elif intent.intent_type == "service_action":
+        svc = intent.slots.get("service", "a service")
+        act = intent.slots.get("action", "interact with")
+        return f"{act} the {svc} service"
+    elif intent.intent_type == "imperative_task":
+        return "store/update credentials"
+    elif intent.intent_type == "task_continuation":
+        return "continue the previous task"
+    return "execute a task"
+
+
+def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
+    """Wrap a TaskIntent with checkpoint metadata.
+
+    Returns a dict with ``checkpoint_tier``, ``checkpoint_message``,
+    and ``requires_confirmation`` so the caller can emit an
+    ``agent_checkpoint`` SSE event before executing.
+
+    Conversational intents pass through with ``requires_confirmation=False``.
+    """
+    if intent.route == "conversational":
+        return {
+            "checkpoint_tier": "none",
+            "checkpoint_message": "",
+            "requires_confirmation": False,
+        }
+
+    # Determine tier based on confidence + intent type
+    if intent.confidence >= 0.93 and intent.intent_type == "url_fetch":
+        tier = "high"
+    elif intent.confidence >= 0.80:
+        tier = "medium"
+    else:
+        tier = "low"
+
+    # NOTE: Meta-question guard removed from gate_task_intent.
+    # classify_intent() at lines 424-460 already handles meta-question detection
+    # and routes knowledge questions ("what is moltbook") to conversational.
+    # If classify_intent determined it IS a service_action, that decision was
+    # already vetted — re-checking here with _KNOWLEDGE_QUESTION_RE was too
+    # broad (matched "what's" in "what's new on moltbook") and incorrectly
+    # downgraded legitimate service actions to low confidence.
+
+    action_desc = _describe_action(intent)
+    msg = _CHECKPOINT_MESSAGES[tier].format(action=action_desc, reason=intent.reason)
+
+    return {
+        "checkpoint_tier": tier,
+        "checkpoint_message": msg,
+        "requires_confirmation": True,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Intent classifier (1.3)
+# ---------------------------------------------------------------------------
+
+
+def classify_intent(
+    message: str,
+    active_task: Optional[Dict[str, Any]] = None,
+) -> TaskIntent:
+    """Fast pattern-based classifier. Checks active task context first."""
+    msg_lower = message.lower().strip()
+    url_match = _URL_RE.search(message)
+
+    # ── 1. Active task continuation ──────────────────────────────────────
+    if active_task and active_task.get("status") == "active":
+        # Long messages (>200 chars) are unlikely to be simple continuations.
+        # Only check continuation patterns in the first 120 chars of long messages
+        # to avoid false-positives on pasted analysis/text containing "proceed with" etc.
+        _check_text = message if len(message) <= 200 else message[:120]
+        is_continuation = (
+            _CONTINUATION_RE.search(_check_text)
+            or _IMPERATIVE_TASK_RE.search(message)
+            or _API_KEY_RE.search(message)
+            or len(message.split()) <= 12  # short follow-ups ("here it is", "done", etc.)
+        )
+        if is_continuation:
+            return TaskIntent(
+                route="task",
+                intent_type="task_continuation",
+                slots={
+                    "active_task": active_task,
+                    "continuation_message": message,
+                    **({"api_key": _API_KEY_RE.search(message).group(0)} if _API_KEY_RE.search(message) else {}),
+                },
+                confidence=0.92,
+                reason="active_task_continuation",
+            )
+
+    # ── 2. URL with explicit action verb ─────────────────────────────────
+    if _URL_ACTION_RE.search(message) or _BARE_URL_RE.match(message):
+        slots: Dict[str, Any] = {}
+        if url_match:
+            slots["url"] = url_match.group(0)
+        if _INSTRUCTION_VERB_RE.search(message):
+            slots["action"] = "follow_instructions"
+        return TaskIntent(
+            route="task",
+            intent_type="url_fetch",
+            slots=slots,
+            confidence=0.95,
+            reason="url_action_pattern",
+        )
+
+    # ── 3. URL anywhere (not a knowledge question) ────────────────────────
+    if url_match and not _KNOWLEDGE_QUESTION_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="url_fetch",
+            slots={
+                "url": url_match.group(0),
+                **({"action": "follow_instructions"} if _INSTRUCTION_VERB_RE.search(message) else {}),
+            },
+            confidence=0.88,
+            reason="url_in_message",
+        )
+
+    # ── 4. Imperative store/save/update without URL ───────────────────────
+    # Check this BEFORE service_action — API key messages must always store,
+    # even if they mention a known service name.
+    if _IMPERATIVE_TASK_RE.search(message) or _API_KEY_RE.search(message):
+        key_match = _API_KEY_RE.search(message)
+        return TaskIntent(
+            route="task",
+            intent_type="imperative_task",
+            slots={
+                "action": "store_or_update",
+                **({"api_key": key_match.group(0)} if key_match else {}),
+                "raw_message": message,
+            },
+            confidence=0.85,
+            reason="imperative_or_api_key_detected",
+        )
+
+    # ── 4b. Known service reference (credential-store-based) ───────────
+    # If the message mentions a service we have credentials for + action verb,
+    # route to the task agent with the service name resolved.
+    # Placed AFTER imperative check so API key messages store correctly.
+    #
+    # GUARD: If the message is a meta-question ABOUT the service (e.g.
+    # "what is moltbook?", "tell me about moltbook"), route conversationally.
+    # Only route to task agent when there's a genuine action verb that
+    # survives after removing the service name from the message.
+    known_svcs = _get_known_services()
+    if known_svcs:
+        for svc_name, svc_meta in known_svcs.items():
+            if re.search(r"\b" + re.escape(svc_name) + r"\b", msg_lower):
+                # Meta-question guard: strip the service name and check
+                # if a real action verb remains.  Questions like
+                # "what is moltbook" or "how does moltbook work" should
+                # NOT trigger agentic mode.
+                if _KNOWLEDGE_QUESTION_RE.search(message):
+                    _stripped = re.sub(
+                        r"\b" + re.escape(svc_name) + r"\b", "", msg_lower
+                    ).strip()
+                    # Check if a *substantive* action verb remains after
+                    # removing the service name.  Bare question words like
+                    # "what is" alone don't count — they're knowledge Qs.
+                    # But "whats new on", "check my", "any updates" do.
+                    _has_substantive_action = (
+                        _SERVICE_WRITE_RE.search(_stripped)
+                        or _SERVICE_READ_RE.search(_stripped)
+                    )
+                    # Filter out bare question-word matches that have no
+                    # real action content (e.g., "what is " with nothing after)
+                    if _has_substantive_action:
+                        _action_stripped = re.sub(
+                            r"\b(what(?:'?s|\s+are|\s+is)|whats)\b", "", _stripped
+                        ).strip()
+                        # If removing question words leaves only whitespace/punct,
+                        # it's a meta-question, not an action
+                        _action_stripped = re.sub(r"[?\s.!]+", "", _action_stripped)
+                        if not _action_stripped:
+                            _has_substantive_action = False
+
+                    if not _has_substantive_action:
+                        # No action verb survives → knowledge question
+                        logger.info(
+                            "[INTENT] Meta-question about service '%s' — routing conversational",
+                            svc_name,
+                        )
+                        return TaskIntent(
+                            route="conversational",
+                            intent_type="conversational",
+                            slots={},
+                            confidence=0.85,
+                            reason="meta_question_about_service",
+                        )
+
+                has_action = _SERVICE_WRITE_RE.search(message) or _SERVICE_READ_RE.search(message)
+                if has_action:
+                    is_write = bool(_SERVICE_WRITE_RE.search(message))
+                    return TaskIntent(
+                        route="task",
+                        intent_type="service_action",
+                        slots={
+                            "service": svc_name,
+                            "action": "write" if is_write else "query",
+                            "credential_key": svc_meta.get("credential_key", ""),
+                            "skill_url_key": svc_meta.get("skill_url_key", ""),
+                            "api_base_key": svc_meta.get("api_base_key", ""),
+                            "raw_message": message,
+                        },
+                        confidence=0.85,
+                        reason="service_credential_match",
+                    )
+
+    # ── 5. Continuation keywords even without active task ─────────────────
+    # Only match if the continuation pattern is near the start (first 120 chars)
+    # to avoid hijacking long pasted content
+    _cont_check = message if len(message) <= 200 else message[:120]
+    if _CONTINUATION_RE.search(_cont_check):
+        return TaskIntent(
+            route="task",
+            intent_type="task_continuation",
+            slots={"continuation_message": message},
+            confidence=0.75,
+            reason="continuation_pattern_no_active_task",
+        )
+
+    return TaskIntent(
+        route="conversational",
+        intent_type="conversational",
+        slots={},
+        confidence=0.90,
+        reason="no_task_pattern",
+    )
+
+
+# ---------------------------------------------------------------------------
+# HTTP tools (1.1)
+# ---------------------------------------------------------------------------
+
+
+def _http_get(url: str, headers: Optional[Dict[str, str]] = None) -> Tuple[int, str, int, float]:
+    """GET request. Returns (status_code, body_text, byte_count, duration_ms)."""
+    t0 = time.monotonic()
+    req_headers = {"User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)"}
+    if headers:
+        req_headers.update(headers)
+    req = urllib.request.Request(url, headers=req_headers)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            status = resp.status
+            raw = resp.read()
+    except urllib.error.HTTPError as e:
+        duration_ms = (time.monotonic() - t0) * 1000
+        return e.code, e.read().decode("utf-8", errors="replace"), 0, duration_ms
+
+    duration_ms = (time.monotonic() - t0) * 1000
+    text = raw.decode("utf-8", errors="replace")
+    # Strip HTML for readability
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<script[^>]*>.*?</script>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return status, text[:12_000], len(raw), duration_ms
+
+
+def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None) -> Tuple[int, Any, float]:
+    """GET request with JSON parsing. Returns (status_code, parsed_body, duration_ms)."""
+    t0 = time.monotonic()
+    req_headers = {
+        "User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)",
+        "Accept": "application/json",
+    }
+    if headers:
+        req_headers.update(headers)
+    req = urllib.request.Request(url, headers=req_headers)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            status = resp.status
+            raw = resp.read()
+    except urllib.error.HTTPError as e:
+        duration_ms = (time.monotonic() - t0) * 1000
+        try:
+            body = json.loads(e.read().decode("utf-8", errors="replace"))
+        except Exception:
+            body = {"error": str(e)}
+        return e.code, body, duration_ms
+
+    duration_ms = (time.monotonic() - t0) * 1000
+    try:
+        body = json.loads(raw.decode("utf-8", errors="replace"))
+    except Exception:
+        body = {"raw": raw.decode("utf-8", errors="replace")[:2000]}
+    return status, body, duration_ms
+
+
+def _http_post(
+    url: str,
+    payload: Dict[str, Any],
+    headers: Optional[Dict[str, str]] = None,
+) -> Tuple[int, Any, float]:
+    """POST JSON payload. Returns (status_code, parsed_response_body, duration_ms)."""
+    t0 = time.monotonic()
+    body_bytes = json.dumps(payload).encode("utf-8")
+    req_headers = {
+        "User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    if headers:
+        req_headers.update(headers)
+    req = urllib.request.Request(url, data=body_bytes, headers=req_headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            status = resp.status
+            raw = resp.read()
+    except urllib.error.HTTPError as e:
+        duration_ms = (time.monotonic() - t0) * 1000
+        try:
+            resp_body = json.loads(e.read().decode("utf-8", errors="replace"))
+        except Exception:
+            resp_body = {"error": str(e), "status": e.code}
+        return e.code, resp_body, duration_ms
+
+    duration_ms = (time.monotonic() - t0) * 1000
+    try:
+        resp_body = json.loads(raw.decode("utf-8", errors="replace"))
+    except Exception:
+        resp_body = {"raw": raw.decode("utf-8", errors="replace")[:2000]}
+    return status, resp_body, duration_ms
+
+
+# ---------------------------------------------------------------------------
+# Execution verification (1.2)
+# ---------------------------------------------------------------------------
+
+
+def _verify_response(
+    status: int,
+    body: Any,
+    expected_fields: Optional[List[str]] = None,
+) -> Tuple[bool, str]:
+    """Check response is valid. Returns (ok, reason)."""
+    if status == 409:
+        return False, "HTTP 409 — already registered (resource exists)"
+    if status < 200 or status >= 300:
+        return False, f"HTTP {status} — not a success response"
+    if expected_fields:
+        body_str = json.dumps(body) if not isinstance(body, str) else body
+        missing = [f for f in expected_fields if f not in body_str.lower()]
+        if missing:
+            return False, f"Response missing expected fields: {missing}"
+    return True, "ok"
+
+
+def _extract_key_fields(body: Any) -> Dict[str, str]:
+    """Pull API keys, tokens, URLs from a response body."""
+    found: Dict[str, str] = {}
+    if isinstance(body, dict):
+        for indicator in _RESPONSE_FIELD_INDICATORS:
+            for k, v in body.items():
+                if indicator in k.lower() and isinstance(v, str) and len(v) > 4:
+                    found[k] = v
+    elif isinstance(body, str):
+        # Try to find key=value pairs
+        for m in re.finditer(r'"([^"]+)"\s*:\s*"([^"]{6,})"', body):
+            k, v = m.group(1), m.group(2)
+            if any(ind in k.lower() for ind in _RESPONSE_FIELD_INDICATORS):
+                found[k] = v
+    return found
+
+
+# ---------------------------------------------------------------------------
+# AgentStep
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class AgentStep:
+    step_index: int
+    tool_name: str
+    input: Dict[str, Any]
+    output: Optional[Any] = None
+    output_preview: Optional[str] = None
+    byte_count: int = 0
+    duration_ms: float = 0.0
+    status: Literal["pending", "running", "ok", "error", "queued", "retrying"] = "pending"
+    error: Optional[str] = None
+    verified: bool = False
+    extracted_fields: Dict[str, str] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "step_index": self.step_index,
+            "tool_name": self.tool_name,
+            "input": self.input,
+            "output_preview": self.output_preview,
+            "byte_count": self.byte_count,
+            "duration_ms": self.duration_ms,
+            "status": self.status,
+            "error": self.error,
+            "verified": self.verified,
+            "extracted_fields": self.extracted_fields,
+        }
+
+
+# ---------------------------------------------------------------------------
+# CRTTaskAgent
+# ---------------------------------------------------------------------------
+
+
+class CRTTaskAgent:
+    """Clean execution route for task/agentic queries.
+
+    Emits SSE-compatible event dicts via run_stream().
+    Verifies execution results — does not trust LLM narration of success.
+    Writes learned facts back through CRT memory after completion.
+    """
+
+    def __init__(self, memory_agent=None, llm_client=None, session_db=None):
+        self._memory = memory_agent
+        self._llm = llm_client
+        self._session_db = session_db  # for task context persistence
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def run_stream(
+        self,
+        message: str,
+        thread_id: str,
+        intent: Optional[TaskIntent] = None,
+        active_task: Optional[Dict[str, Any]] = None,
+        user_confirmed: bool = False,
+    ) -> Generator[Dict[str, Any], None, None]:
+        """Execute task; yield SSE event dicts throughout.
+
+        If ``user_confirmed`` is False (default), the method emits an
+        ``agent_checkpoint`` event and **returns immediately** for
+        medium/low-confidence intents.  The caller (``chat.py``) must
+        wait for the user's next message, parse confirmation, and
+        re-invoke ``run_stream`` with ``user_confirmed=True``.
+        """
+        if intent is None:
+            intent = classify_intent(message, active_task=active_task)
+
+        # ── 0. CHECKPOINT: Inform user before entering agentic mode ────────
+        if not user_confirmed:
+            gate = gate_task_intent(intent)
+            if gate["checkpoint_tier"] != "none":
+                yield {
+                    "type": "agent_checkpoint",
+                    "content": gate["checkpoint_message"],
+                    "metadata": {
+                        "intent": intent.intent_type,
+                        "checkpoint_tier": gate["checkpoint_tier"],
+                        "requires_confirmation": gate["requires_confirmation"],
+                        "auto_proceed_seconds": None,
+                        "slots": intent.slots,
+                        "confidence": intent.confidence,
+                    },
+                }
+                # Stop here — caller must re-invoke after user confirms.
+                return
+
+        # ── 1. Emit intent ────────────────────────────────────────────────
+        yield {
+            "type": "intent_classified",
+            "content": f"intent: {intent.intent_type}  route: {intent.route}",
+            "metadata": {
+                "intent": intent.intent_type,
+                "route": intent.route,
+                "slots": intent.slots,
+                "confidence": intent.confidence,
+                "reason": intent.reason,
+            },
+        }
+
+        # ── 2. Build phase-1 plan ─────────────────────────────────────────
+        phase1_plan = self._build_plan(intent, message, active_task)
+        yield {
+            "type": "plan_ready",
+            "content": f"{len(phase1_plan)} step{'s' if len(phase1_plan) != 1 else ''}",
+            "metadata": {"steps": phase1_plan},
+        }
+
+        # ── 3. Execute phase-1 (fetch / credential store / etc.) ──────────
+        steps: List[AgentStep] = []
+        fetched_content: Optional[str] = None
+        stored_credentials: Dict[str, str] = {}
+        task_context: Dict[str, Any] = dict(active_task or {})
+        # Track service info for credential injection during execution
+        if intent.intent_type == "service_action":
+            task_context["_service"] = intent.slots.get("service", "")
+            task_context["_credential_key"] = intent.slots.get("credential_key", "")
+
+        for i, step_plan in enumerate(phase1_plan):
+            tool = step_plan["tool"]
+            inp = dict(step_plan["input"])
+            step = AgentStep(step_index=i, tool_name=tool, input=inp, status="running")
+            steps.append(step)
+
+            yield {"type": "tool_start", "content": f"▷ {tool}",
+                   "metadata": {"tool_name": tool, "input": inp, "step_index": i}}
+
+            result_event = yield from self._execute_step(
+                step, tool, inp, thread_id, i,
+                fetched_content=fetched_content, task_context=task_context,
+            )
+
+            if step.status == "ok":
+                if tool in ("fetch_url", "http_get", "load_cached_skill"):
+                    fetched_content = step.output if isinstance(step.output, str) else fetched_content
+                    # Track source URL so store_credential can save service metadata
+                    task_context["source_url"] = inp.get("url", "")
+                    # Cache skill content after successful fetch for service actions
+                    if tool == "fetch_url" and intent.intent_type == "service_action":
+                        _svc = intent.slots.get("service", "")
+                        _url = inp.get("url", "")
+                        if _svc and _url:
+                            try:
+                                _req = urllib.request.Request(
+                                    _url, headers={"User-Agent": "Mozilla/5.0 (CRT-Aether/1.0)"}
+                                )
+                                with urllib.request.urlopen(_req, timeout=10) as _resp:
+                                    _raw = _resp.read().decode("utf-8", errors="replace")
+                                _cache_skill_content(_svc, _raw)
+                            except Exception:
+                                pass  # non-critical — cache miss next time just re-fetches
+                if step.extracted_fields:
+                    stored_credentials.update(step.extracted_fields)
+                    task_context.update(step.extracted_fields)
+
+            yield result_event
+
+        # ── 3b. Phase-2 re-plan (if we fetched content + action=follow) ───
+        needs_replan = (
+            fetched_content
+            and intent.intent_type in ("url_fetch", "service_action")
+            and intent.slots.get("action") in ("follow_instructions", "write", "query")
+        )
+        replan_attempted_but_failed = False
+        if needs_replan:
+            yield {"type": "status", "content": "analyzing fetched content"}
+            phase2_plan = self._replan_from_content(fetched_content, message, intent)
+
+            if not phase2_plan:
+                # Re-plan failed — flag it so we use a deterministic answer
+                # instead of letting the LLM narrate a fake execution
+                replan_attempted_but_failed = True
+                yield {
+                    "type": "status",
+                    "content": "could not determine execution steps from content",
+                }
+                needs_replan = False  # skip to honest answer below
+
+            if needs_replan and phase2_plan:
+                _MAX_STEPS = 8  # hard ceiling per task
+                phase2_plan = phase2_plan[:_MAX_STEPS]
+                step_budget = len(phase2_plan)
+
+                yield {
+                    "type": "plan_ready",
+                    "content": f"{step_budget} action step{'s' if step_budget != 1 else ''}",
+                    "metadata": {"steps": phase2_plan, "budget": step_budget, "phase": 2},
+                }
+
+                base_idx = len(steps)
+                for j, step_plan in enumerate(phase2_plan):
+                    tool = step_plan["tool"]
+                    inp = dict(step_plan["input"])
+                    step_idx = base_idx + j
+                    step = AgentStep(step_index=step_idx, tool_name=tool, input=inp, status="running")
+                    steps.append(step)
+
+                    yield {"type": "tool_start", "content": f"▷ {tool}",
+                           "metadata": {"tool_name": tool, "input": inp, "step_index": step_idx,
+                                        "step_num": j + 1, "step_total": step_budget}}
+
+                    result_event = yield from self._execute_step(
+                        step, tool, inp, thread_id, step_idx,
+                        fetched_content=fetched_content, task_context=task_context,
+                    )
+
+                    if step.status == "ok":
+                        if step.extracted_fields:
+                            stored_credentials.update(step.extracted_fields)
+                            task_context.update(step.extracted_fields)
+
+                    yield result_event
+
+        # ── 4. Persist task state to session DB ───────────────────────────
+        self._persist_task_state(thread_id, intent, steps, task_context, stored_credentials)
+
+        # ── 5. Validate ───────────────────────────────────────────────────
+        all_ok = all(s.status in ("ok", "queued") for s in steps)
+        yield {
+            "type": "validate_result",
+            "content": "all steps verified ✓" if all_ok else "some steps failed — see details",
+            "metadata": {
+                "conflicts": [],
+                "gate": "pass" if all_ok else "partial",
+                "route": "task",
+                "verified_steps": sum(1 for s in steps if s.verified),
+                "failed_steps": sum(1 for s in steps if s.status == "error"),
+            },
+        }
+
+        # ── 6. Generate answer (streaming with thinking tokens) ───────────
+        yield {"type": "status", "content": "drafting response"}
+        if intent.slots.get("_no_endpoint"):
+            # Service recognized from credentials but no API endpoint stored.
+            # Deterministic answer — never let the LLM hallucinate fake service data.
+            service = intent.slots.get("service", "the service")
+            answer = (
+                f"I have credentials for {service}, but I don't have the API endpoint stored yet. "
+                f"Give me the {service} URL or skill.md link and I can fetch it and interact with the service."
+            )
+        elif replan_attempted_but_failed:
+            # Never hand fetched content to the LLM when we couldn't build a plan —
+            # it will hallucinate a fake execution (narrate moltbook registration etc.)
+            url = intent.slots.get("url", "the URL")
+            answer = (
+                f"I fetched the content from {url} successfully, "
+                "but couldn't parse any executable API steps from it. "
+                "No actions were taken."
+            )
+            yield {"type": "token", "content": answer}
+        else:
+            answer = yield from self._stream_generate_answer(
+                message, fetched_content, intent, steps, stored_credentials, active_task
+            )
+
+        # ── 7. Write facts through CRT memory ────────────────────────────
+        facts_written = self._write_facts(
+            thread_id, intent, fetched_content, stored_credentials
+        )
+
+        # ── 8. Done ───────────────────────────────────────────────────────
+        yield {
+            "type": "task_done",
+            "content": answer,
+            "metadata": {
+                "answer": answer,
+                "steps": [s.to_dict() for s in steps],
+                "facts_written": facts_written,
+                "stored_credentials": list(stored_credentials.keys()),
+                "intent": {
+                    "route": intent.route,
+                    "intent_type": intent.intent_type,
+                    "slots": intent.slots,
+                    "confidence": intent.confidence,
+                },
+                "pipeline_statuses": [
+                    f"task: {intent.intent_type}",
+                    *(f"{s.tool_name}: {s.status}" for s in steps),
+                    "validate: pass" if all_ok else "validate: partial",
+                ],
+                "gates_passed": True,
+                "gate_reason": "task_route",
+                "response_type": "task",
+                "confidence": 0.88 if all_ok else 0.60,
+            },
+        }
+
+        # Clear pending task from session DB on full completion
+        if all_ok and self._session_db is not None:
+            try:
+                self._session_db.clear_pending_task(thread_id)
+            except Exception:
+                pass
+
+    # ------------------------------------------------------------------
+    # Phase-2 re-planner: content → concrete tool calls
+    # ------------------------------------------------------------------
+
+    _VALID_TOOLS = {"http_post", "http_get_json", "store_credential"}
+
+    # Tool schemas for native function-calling (Qwen3 / Ollama tool use)
+    _TOOL_SCHEMAS: List[Dict[str, Any]] = [
+        {
+            "type": "function",
+            "function": {
+                "name": "http_post",
+                "description": "Make an HTTP POST request to an API endpoint",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "Full URL to POST to"},
+                        "payload": {"type": "object", "description": "JSON body to send"},
+                        "headers": {"type": "object", "description": "Optional HTTP headers"},
+                        "expected_fields": {
+                            "type": "array", "items": {"type": "string"},
+                            "description": "Fields expected in the response to verify success",
+                        },
+                    },
+                    "required": ["url", "payload"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "http_get_json",
+                "description": "Make an HTTP GET request and return JSON response",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "Full URL to GET"},
+                        "headers": {"type": "object", "description": "Optional HTTP headers"},
+                    },
+                    "required": ["url"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "store_credential",
+                "description": "Store a credential value securely for later use",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "key": {"type": "string", "description": "Name to store the credential under"},
+                        "source_field": {
+                            "type": "string",
+                            "description": "Field name from previous step response to use as value",
+                        },
+                        "value": {"type": "string", "description": "Literal value to store (if not using source_field)"},
+                    },
+                    "required": ["key"],
+                },
+            },
+        },
+    ]
+
+    # ------------------------------------------------------------------
+    # Curl-command parser — deterministic Phase-2 plan extraction
+    # ------------------------------------------------------------------
+
+    # Regex: matches curl commands with optional line-continuation
+    _CURL_RE = re.compile(
+        r"curl\s+"
+        r"((?:(?:-[a-zA-Z]+|--\S+)\s+(?:\"[^\"]*\"|'[^']*'|\S+)\s+)*)"  # flags
+        r"(https?://[^\s'\"\\<>\]]+)",  # URL
+        re.IGNORECASE,
+    )
+    _DATA_RE = re.compile(
+        r"(?:-d|--data(?:-raw)?)\s+"
+        r"(?:'(\{[^']*\})'|\"(\{[^\"]*\})\")",  # single or double quoted JSON body
+        re.DOTALL,
+    )
+    _METHOD_RE = re.compile(r"-X\s+(\w+)", re.IGNORECASE)
+    _HEADER_RE = re.compile(r"-H\s+['\"]([^'\"]+)['\"]", re.IGNORECASE)
+    # Detects unfilled template placeholders — e.g. POST_ID, COMMENT_ID, YOUR_API_KEY
+    # Requires an underscore so abbreviations like CRT, API, URL don't false-positive
+    _UNFILLED_PLACEHOLDER_RE = re.compile(r"(?<![a-zA-Z])[A-Z][A-Z0-9]*_[A-Z0-9_]+(?![a-zA-Z])")
+
+    # Default values to substitute for stub placeholders in curl examples
+    _PLACEHOLDER_SUBS: List[Tuple[re.Pattern, str]] = []
+
+    @staticmethod
+    def _make_placeholder_subs() -> List[Tuple[re.Pattern, str]]:
+        return [
+            (re.compile(r"YourAgentName", re.IGNORECASE), "Aether"),
+            (re.compile(r"your[_-]?agent[_-]?name", re.IGNORECASE), "Aether"),
+            (re.compile(r"YourEmail", re.IGNORECASE), "aether@local"),
+            (re.compile(r"your[_-]?email", re.IGNORECASE), "aether@local"),
+            (re.compile(r"optional@example\.com", re.IGNORECASE), ""),
+            (re.compile(r"\"optional[^\"]{0,60}\"", re.IGNORECASE), '""'),
+            (re.compile(r"What you do", re.IGNORECASE), "CRT-verified AI assistant"),
+            (re.compile(r"Your description here", re.IGNORECASE), "CRT-verified AI assistant"),
+            (re.compile(r"<description>", re.IGNORECASE), "CRT-verified AI assistant"),
+        ]
+
+    def _fill_placeholders(self, payload_str: str) -> str:
+        """Replace stub placeholder values in JSON payload strings."""
+        if not hasattr(self, "_ph_subs"):
+            self._ph_subs = self._make_placeholder_subs()
+        for pattern, replacement in self._ph_subs:
+            payload_str = pattern.sub(replacement, payload_str)
+        return payload_str
+
+    def _infer_expected_fields(self, content: str, after_pos: int) -> List[str]:
+        """Scan the ~1500 chars after a curl block for response field names."""
+        window = content[after_pos: after_pos + 1500]
+        found = []
+        for indicator in _RESPONSE_FIELD_INDICATORS:
+            if f'"{indicator}"' in window or f"'{indicator}'" in window:
+                found.append(indicator)
+        return found[:5]
+
+    def _parse_curl_steps(
+        self, content: str, message: str, intent: TaskIntent
+    ) -> List[Dict[str, Any]]:
+        """
+        Deterministically extract API calls from curl examples in skill.md-style docs.
+        Returns [{tool, input}] or [] if nothing found.
+        """
+        # Normalise line continuations so flags/URL land on one logical line
+        normalised = re.sub(r"\\\s*\n", " ", content)
+
+        steps: List[Dict[str, Any]] = []
+        credential_step_queued = False
+        post_count = 0
+        get_count = 0
+        _MAX_POST_STEPS = 2  # Cap: registration + one follow-up max
+        _MAX_QUERY_GET_STEPS = 2  # Cap GET steps for query actions
+        query_only = intent.slots.get("action") == "query"
+
+        for m in self._CURL_RE.finditer(normalised):
+            flags_str = m.group(1)
+            url = m.group(2).rstrip(".,;)")
+
+            # Skip documentation-only examples: URLs with unfilled template placeholders
+            # like /POST_ID/, /COMMENT_ID/ — these are stubs, not executable endpoints
+            if self._UNFILLED_PLACEHOLDER_RE.search(url):
+                logger.debug("[TASK_AGENT] Curl parser: skipping stub URL %s", url)
+                continue
+
+            # Look for -X METHOD in flags before URL, or anywhere in the window
+            window_start = m.start()
+            window = normalised[window_start: window_start + 800]
+            method_m = self._METHOD_RE.search(flags_str) or self._METHOD_RE.search(window)
+            method = method_m.group(1).upper() if method_m else "GET"
+
+            headers: Dict[str, str] = {}
+
+            # Headers may appear before OR after the URL
+            for hm in self._HEADER_RE.finditer(window):
+                hdr = hm.group(1)
+                if ":" in hdr:
+                    k, v = hdr.split(":", 1)
+                    headers[k.strip()] = v.strip()
+
+            data_m = self._DATA_RE.search(window)
+            payload: Optional[Dict[str, Any]] = None
+            if data_m:
+                raw = data_m.group(1) or data_m.group(2)
+                raw = self._fill_placeholders(raw)
+                # Skip if payload still has unfilled placeholders after substitution
+                if self._UNFILLED_PLACEHOLDER_RE.search(raw):
+                    logger.debug("[TASK_AGENT] Curl parser: skipping block with stub payload: %.80s", raw)
+                    continue
+                try:
+                    payload = json.loads(raw)
+                except Exception:
+                    pass
+
+            expected_fields = self._infer_expected_fields(normalised, m.end())
+
+            if method == "POST":
+                # Skip POST steps entirely for query actions
+                if query_only:
+                    continue
+                # Cap POST steps — documentation examples add 5-6 extra
+                # endpoints that aren't part of the actual registration flow
+                if post_count >= _MAX_POST_STEPS:
+                    logger.debug("[TASK_AGENT] Curl parser: skipping POST #%d (cap=%d): %s",
+                                 post_count + 1, _MAX_POST_STEPS, url[:80])
+                    continue
+                if payload is None:
+                    payload = {}
+                step_input: Dict[str, Any] = {"url": url, "payload": payload}
+                if headers:
+                    step_input["headers"] = headers
+                if expected_fields:
+                    step_input["expected_fields"] = expected_fields
+                steps.append({"tool": "http_post", "input": step_input})
+                post_count += 1
+
+                # Auto-queue a store_credential step for any api_key field in response
+                if not credential_step_queued and any(
+                    f in expected_fields for f in ("api_key", "token", "access_token")
+                ):
+                    cred_field = next(
+                        (f for f in ("api_key", "token", "access_token") if f in expected_fields),
+                        "api_key",
+                    )
+                    steps.append({
+                        "tool": "store_credential",
+                        "input": {"key": cred_field, "source_field": cred_field},
+                    })
+                    credential_step_queued = True
+
+            elif method in ("GET", ""):
+                # Cap GET steps for query actions to avoid hammering the API
+                if query_only and get_count >= _MAX_QUERY_GET_STEPS:
+                    continue
+                step_input = {"url": url}
+                if headers:
+                    step_input["headers"] = headers
+                steps.append({"tool": "http_get_json", "input": step_input})
+                get_count += 1
+
+        logger.info("[TASK_AGENT] Curl parser found %d steps", len(steps))
+        return steps
+
+    def _replan_from_content(
+        self,
+        content: str,
+        message: str,
+        intent: TaskIntent,
+    ) -> List[Dict[str, Any]]:
+        """
+        Read fetched content + user goal → concrete list of tool calls.
+        Primary: deterministic curl-command parser (no LLM required).
+        Fallback: native tool-calling via chat_with_tools (LLM).
+        Returns [] so the caller can skip phase 2 gracefully.
+        """
+        # ── Primary: curl parser (deterministic, no hallucination risk) ───
+        curl_steps = self._parse_curl_steps(content, message, intent)
+        if curl_steps:
+            return curl_steps
+
+        # ── Fallback: LLM tool-calling ────────────────────────────────────
+        if self._llm is None:
+            return []
+        if not hasattr(self._llm, "chat_with_tools"):
+            return []
+
+        # 8000 chars — enough to capture API endpoint docs past the intro/TOC
+        snippet = content[:8000]
+        url = intent.slots.get("url", "")
+
+        system = (
+            "You are a planning agent. Read the document and determine what API calls "
+            "are needed to complete the user's goal. Call the appropriate tools in order. "
+            "Use store_credential with source_field to save any API keys or tokens returned "
+            "by a previous step's response."
+        )
+        user = (
+            f"Goal: {message}\n\n"
+            f"Document from {url}:\n{snippet}"
+        )
+
+        try:
+            result = self._llm.chat_with_tools(
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+                tools=self._TOOL_SCHEMAS,
+                max_tokens=800,
+                temperature=0.0,
+            )
+
+            tool_calls = result.get("tool_calls", [])
+            logger.debug("[TASK_AGENT] Re-plan tool_calls: %s", tool_calls)
+
+            if not tool_calls:
+                logger.warning("[TASK_AGENT] Re-plan: no tool calls returned (content: %.200s)", result.get("content", ""))
+                return []
+
+            # Convert tool_calls → plan format {tool, input}
+            validated: List[Dict[str, Any]] = []
+            for tc in tool_calls:
+                name = tc.get("name", "")
+                args = tc.get("arguments", {})
+                if name not in self._VALID_TOOLS:
+                    logger.debug("[TASK_AGENT] Re-plan: skipping unknown tool %r", name)
+                    continue
+                if not isinstance(args, dict):
+                    continue
+                validated.append({"tool": name, "input": args})
+
+            logger.info("[TASK_AGENT] Phase-2 plan via tool-calling: %d steps", len(validated))
+            return validated
+
+        except Exception as e:
+            logger.warning("[TASK_AGENT] Re-plan failed: %s", e)
+            return []
+
+    # ------------------------------------------------------------------
+    # Plan builder
+    # ------------------------------------------------------------------
+
+    def _build_plan(
+        self,
+        intent: TaskIntent,
+        message: str,
+        active_task: Optional[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        plan: List[Dict[str, Any]] = []
+
+        if intent.intent_type == "url_fetch":
+            url = intent.slots.get("url")
+            if url:
+                plan.append({"tool": "fetch_url", "input": {"url": url}})
+            # follow_instructions: phase 2 plan is built AFTER fetch, from content
+            # No execute_instructions placeholder — that was a phantom step
+
+        elif intent.intent_type == "imperative_task":
+            api_key = intent.slots.get("api_key")
+            if api_key:
+                plan.append({
+                    "tool": "store_credential",
+                    "input": {"key": "api_key", "value": api_key, "raw": message},
+                })
+            else:
+                plan.append({"tool": "llm_respond", "input": {"message": message}})
+
+        elif intent.intent_type == "service_action":
+            service = intent.slots.get("service", "")
+            action = intent.slots.get("action", "query")  # "write" or "query"
+
+            # Cascade: credential store → local cache → _KNOWN_SERVICES → _no_endpoint
+            # 1. Try credential store for skill URL
+            skill_url_key = intent.slots.get("skill_url_key", "")
+            skill_url = load_credential(skill_url_key) if skill_url_key else None
+            if not skill_url:
+                skill_url = load_credential(f"{service}_skill_url")
+
+            if skill_url:
+                # Stored skill URL — fetch it for re-planning
+                plan.append({"tool": "fetch_url", "input": {"url": skill_url}})
+                intent.slots["url"] = skill_url
+                if action == "write":
+                    intent.slots["action"] = "follow_instructions"
+            elif _load_cached_skill(service):
+                # 2. Local skill cache — read from disk, replan from cached content
+                plan.append({"tool": "load_cached_skill", "input": {"service": service}})
+            else:
+                # 3. Try _KNOWN_SERVICES for skill URL
+                known = _KNOWN_SERVICES.get(service)
+                if known and known.get("skill_url"):
+                    plan.append({"tool": "fetch_url", "input": {"url": known["skill_url"]}})
+                    intent.slots["url"] = known["skill_url"]
+                    if action == "write":
+                        intent.slots["action"] = "follow_instructions"
+                else:
+                    # 4. Try credential store or _KNOWN_SERVICES for API base
+                    api_base_key = intent.slots.get("api_base_key", "")
+                    api_base = load_credential(api_base_key) if api_base_key else None
+                    if not api_base:
+                        api_base = load_credential(f"{service}_api_base")
+                    if not api_base and known:
+                        api_base = known.get("api_base")
+
+                    if api_base:
+                        plan.append({"tool": "http_get_json", "input": {"url": api_base}})
+                    else:
+                        # No endpoint metadata — deterministic answer
+                        intent.slots["_no_endpoint"] = True
+
+        elif intent.intent_type == "task_continuation":
+            at = intent.slots.get("active_task") or active_task or {}
+            api_key = intent.slots.get("api_key")
+            if api_key:
+                plan.append({
+                    "tool": "store_credential",
+                    "input": {"key": at.get("credential_key", "api_key"), "value": api_key},
+                })
+            pending_steps = at.get("steps_pending", [])
+            if pending_steps:
+                plan.extend(pending_steps[:3])  # pick up where we left off
+            if not plan:
+                plan.append({"tool": "llm_respond", "input": {"message": message, "context": at}})
+
+        if not plan:
+            plan.append({"tool": "llm_respond", "input": {"message": message}})
+
+        return plan
+
+    # ------------------------------------------------------------------
+    # Credential injection for API calls
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _inject_credentials(
+        inp: Dict[str, Any],
+        task_context: Optional[Dict[str, Any]],
+        thread_id: str,
+    ) -> None:
+        """Replace YOUR_API_KEY placeholders in headers with stored credentials.
+
+        Also adds an Authorization header if the service has a stored credential
+        but the step has no auth header.
+        """
+        ctx = task_context or {}
+        service = ctx.get("_service", "")
+        cred_key = ctx.get("_credential_key", "") or f"{service}_api_key"
+        if not cred_key:
+            return
+
+        headers = inp.get("headers")
+        if not headers:
+            headers = {}
+            inp["headers"] = headers
+
+        # Replace placeholder values in existing headers
+        cred_value: Optional[str] = None
+        for k, v in list(headers.items()):
+            if "YOUR_API_KEY" in v or "YOUR_TOKEN" in v:
+                if cred_value is None:
+                    cred_value = load_credential(cred_key, thread_id)
+                if cred_value:
+                    headers[k] = v.replace("YOUR_API_KEY", cred_value).replace("YOUR_TOKEN", cred_value)
+
+        # Add Authorization header if none present
+        if "Authorization" not in headers:
+            if cred_value is None:
+                cred_value = load_credential(cred_key, thread_id)
+            if cred_value:
+                headers["Authorization"] = f"Bearer {cred_value}"
+
+    # ------------------------------------------------------------------
+    # Step executor with verification + retry (1.2)
+    # ------------------------------------------------------------------
+
+    def _execute_step(
+        self,
+        step: AgentStep,
+        tool: str,
+        inp: Dict[str, Any],
+        thread_id: str,
+        step_index: int,
+        fetched_content: Optional[str] = None,
+        task_context: Optional[Dict[str, Any]] = None,
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        """Execute one step, verify result, retry once on failure. Yields nothing, returns the result event."""
+
+        if tool == "fetch_url":
+            return (yield from self._run_fetch_url(step, inp, step_index))
+
+        elif tool == "http_post":
+            self._inject_credentials(inp, task_context, thread_id)
+            return (yield from self._run_http_post(step, inp, step_index))
+
+        elif tool == "http_get_json":
+            self._inject_credentials(inp, task_context, thread_id)
+            return (yield from self._run_http_get_json(step, inp, step_index))
+
+        elif tool == "load_cached_skill":
+            return self._run_load_cached_skill(step, inp, step_index)
+
+        elif tool == "store_credential":
+            # _run_store_credential is not a generator — call directly and return as generator value
+            return self._run_store_credential(step, inp, step_index, thread_id, task_context=task_context)
+
+        else:
+            # execute_instructions / llm_respond — resolved in LLM call
+            step.status = "queued"
+            return {
+                "type": "tool_result",
+                "content": "→ queued for LLM",
+                "metadata": {"tool_name": tool, "status": "queued", "step_index": step_index},
+            }
+
+    def _run_fetch_url(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        url = inp.get("url", "")
+        for attempt in range(2):  # one retry
+            try:
+                status, text, byte_count, duration_ms = _http_get(url)
+                ok, reason = _verify_response(status, text)
+                if ok:
+                    step.output = text
+                    step.output_preview = text[:500]
+                    step.byte_count = byte_count
+                    step.duration_ms = duration_ms
+                    step.status = "ok"
+                    step.verified = True
+                    return {
+                        "type": "tool_result",
+                        "content": f"✓ {byte_count:,} bytes  {duration_ms:.0f}ms",
+                        "metadata": {
+                            "tool_name": "fetch_url",
+                            "output_preview": step.output_preview,
+                            "byte_count": byte_count,
+                            "duration_ms": duration_ms,
+                            "status": "ok",
+                            "verified": True,
+                            "step_index": step_index,
+                        },
+                    }
+                else:
+                    if attempt == 0:
+                        yield {"type": "status", "content": f"retrying — {reason}"}
+                        continue
+                    step.status = "error"
+                    step.error = reason
+            except Exception as e:
+                if attempt == 0:
+                    yield {"type": "status", "content": f"retrying — {e}"}
+                    continue
+                step.status = "error"
+                step.error = str(e)
+
+        logger.warning("[TASK_AGENT] fetch_url failed after retry: %s", step.error)
+        return {
+            "type": "tool_result",
+            "content": f"✗ {step.error}",
+            "metadata": {"tool_name": "fetch_url", "status": "error", "error": step.error, "step_index": step_index},
+        }
+
+    def _run_http_post(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        url = inp.get("url", "")
+        payload = inp.get("payload", {})
+        headers = inp.get("headers")
+        expected = inp.get("expected_fields")
+
+        for attempt in range(2):
+            try:
+                status, body, duration_ms = _http_post(url, payload, headers)
+                ok, reason = _verify_response(status, body, expected)
+                if ok:
+                    extracted = _extract_key_fields(body)
+                    step.output = body
+                    step.output_preview = json.dumps(body)[:500]
+                    step.duration_ms = duration_ms
+                    step.status = "ok"
+                    step.verified = True
+                    step.extracted_fields = extracted
+                    return {
+                        "type": "tool_result",
+                        "content": f"✓ HTTP {status}  {duration_ms:.0f}ms" + (f"  keys: {list(extracted.keys())}" if extracted else ""),
+                        "metadata": {
+                            "tool_name": "http_post",
+                            "output_preview": step.output_preview,
+                            "extracted_fields": extracted,
+                            "duration_ms": duration_ms,
+                            "status_code": status,
+                            "status": "ok",
+                            "verified": True,
+                            "step_index": step_index,
+                        },
+                    }
+                else:
+                    # Don't retry on 4xx client errors — they won't resolve on retry
+                    if attempt == 0 and (status >= 500 or status == 0):
+                        yield {"type": "status", "content": f"retrying POST — {reason}"}
+                        continue
+                    step.status = "error"
+                    step.error = reason
+                    break
+            except Exception as e:
+                if attempt == 0:
+                    yield {"type": "status", "content": f"retrying POST — {e}"}
+                    continue
+                step.status = "error"
+                step.error = str(e)
+
+        return {
+            "type": "tool_result",
+            "content": f"✗ POST failed: {step.error}",
+            "metadata": {"tool_name": "http_post", "status": "error", "error": step.error, "step_index": step_index},
+        }
+
+    def _run_http_get_json(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        url = inp.get("url", "")
+        headers = inp.get("headers")
+        for attempt in range(2):
+            try:
+                status, body, duration_ms = _http_get_json(url, headers)
+                ok, reason = _verify_response(status, body)
+                if ok:
+                    extracted = _extract_key_fields(body)
+                    step.output = body
+                    step.output_preview = json.dumps(body)[:500]
+                    step.duration_ms = duration_ms
+                    step.status = "ok"
+                    step.verified = True
+                    step.extracted_fields = extracted
+                    return {
+                        "type": "tool_result",
+                        "content": f"✓ HTTP {status}  {duration_ms:.0f}ms",
+                        "metadata": {
+                            "tool_name": "http_get_json",
+                            "output_preview": step.output_preview,
+                            "extracted_fields": extracted,
+                            "status": "ok",
+                            "verified": True,
+                            "step_index": step_index,
+                        },
+                    }
+                else:
+                    if attempt == 0:
+                        yield {"type": "status", "content": f"retrying GET — {reason}"}
+                        continue
+                    step.status = "error"
+                    step.error = reason
+            except Exception as e:
+                if attempt == 0:
+                    yield {"type": "status", "content": f"retrying GET — {e}"}
+                    continue
+                step.status = "error"
+                step.error = str(e)
+
+        return {
+            "type": "tool_result",
+            "content": f"✗ GET failed: {step.error}",
+            "metadata": {"tool_name": "http_get_json", "status": "error", "error": step.error, "step_index": step_index},
+        }
+
+    def _run_load_cached_skill(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """Read a locally cached SKILL.md file."""
+        service = inp.get("service", "")
+        content = _load_cached_skill(service)
+        if content:
+            step.output = content
+            step.output_preview = content[:500]
+            step.status = "ok"
+            step.verified = True
+            return {
+                "type": "tool_result",
+                "content": f"✓ loaded cached skill for {service} ({len(content)} bytes)",
+                "metadata": {
+                    "tool_name": "load_cached_skill",
+                    "service": service,
+                    "byte_count": len(content),
+                    "status": "ok",
+                    "step_index": step_index,
+                },
+            }
+        step.status = "error"
+        step.error = f"no cached skill file for {service}"
+        return {
+            "type": "tool_result",
+            "content": f"✗ no cached skill for {service}",
+            "metadata": {"tool_name": "load_cached_skill", "status": "error", "step_index": step_index},
+        }
+
+    def _run_store_credential(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+        task_context: Optional[Dict[str, Any]] = None,
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        key = inp.get("key", "api_key")
+        value = inp.get("value", "")
+        # source_field: pull value from a previous step's extracted response field
+        source_field = inp.get("source_field")
+        if not value and source_field and task_context:
+            value = str(task_context.get(source_field, ""))
+        if not value:
+            step.status = "error"
+            step.error = "no value to store"
+            return {
+                "type": "tool_result",
+                "content": "✗ no value to store",
+                "metadata": {"tool_name": "store_credential", "status": "error", "step_index": step_index},
+            }
+        try:
+            path = store_credential(key, value, thread_id)
+            step.output = path
+            step.output_preview = f"stored {key} to {path}"
+            step.status = "ok"
+            step.verified = True
+            step.extracted_fields = {key: value}
+
+            # Auto-store service metadata alongside credentials.
+            # If key looks like {service}_api_key and we have task context with
+            # a source URL, store {service}_skill_url and {service}_api_base
+            # so future service_action intents can resolve endpoints.
+            for suffix in ("_api_key", "_token", "_secret"):
+                if key.endswith(suffix):
+                    svc = key[: -len(suffix)]
+                    if svc and task_context:
+                        source_url = task_context.get("source_url") or ""
+                        if source_url:
+                            try:
+                                store_credential(f"{svc}_skill_url", source_url, thread_id)
+                            except Exception:
+                                pass
+                            # Derive API base from skill URL (strip /skill.md → /api/v1)
+                            try:
+                                from urllib.parse import urlparse
+                                parsed = urlparse(source_url)
+                                api_base = f"{parsed.scheme}://{parsed.netloc}/api/v1"
+                                store_credential(f"{svc}_api_base", api_base, thread_id)
+                            except Exception:
+                                pass
+                    break
+
+            return {
+                "type": "tool_result",
+                "content": f"✓ stored {key}",
+                "metadata": {
+                    "tool_name": "store_credential",
+                    "key": key,
+                    "path": path,
+                    "status": "ok",
+                    "verified": True,
+                    "step_index": step_index,
+                },
+            }
+        except Exception as e:
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ store failed: {e}",
+                "metadata": {"tool_name": "store_credential", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # Task state persistence (1.4)
+    # ------------------------------------------------------------------
+
+    def _persist_task_state(
+        self,
+        thread_id: str,
+        intent: TaskIntent,
+        steps: List[AgentStep],
+        task_context: Dict[str, Any],
+        stored_credentials: Dict[str, str],
+    ) -> None:
+        if self._session_db is None:
+            return
+        try:
+            failed_steps = [s for s in steps if s.status == "error"]
+            pending = [s.to_dict() for s in failed_steps]
+            status = "completed" if not failed_steps else "partial"
+            self._session_db.set_pending_task(thread_id, {
+                "intent_type": intent.intent_type,
+                "status": status,
+                "steps_completed": [s.to_dict() for s in steps if s.status == "ok"],
+                "steps_pending": pending,
+                "context": task_context,
+                "credential_keys": list(stored_credentials.keys()),
+            })
+        except Exception as e:
+            logger.warning("[TASK_AGENT] Failed to persist task state: %s", e)
+
+    # ------------------------------------------------------------------
+    # Answer generation — streaming with <think> routing
+    # ------------------------------------------------------------------
+
+    def _stream_generate_answer(
+        self,
+        message: str,
+        fetched_content: Optional[str],
+        intent: TaskIntent,
+        steps: List[AgentStep],
+        stored_credentials: Dict[str, str],
+        active_task: Optional[Dict[str, Any]],
+    ) -> Generator[Dict[str, Any], None, str]:
+        """
+        Stream the answer, routing thinking tokens to agent_thinking_token events
+        and content tokens to token events. Returns the full answer string.
+        """
+        if self._llm is None or not hasattr(self._llm, "chat_stream"):
+            answer = self._generate_answer(
+                message, fetched_content, intent, steps, stored_credentials, active_task
+            )
+            yield {"type": "token", "content": answer}
+            return answer
+
+        context_block = self._build_answer_context(
+            fetched_content, intent, steps, stored_credentials, active_task
+        )
+        system_prompt = (
+            "You are Aether. Report what actually happened based on the tool results below. "
+            "Be concise and direct — 2-4 sentences max. "
+            "Only state outcomes that are in the verified results. "
+            "If something failed, say so. Do not plan, reason, or explain what you would do."
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{message}\n\n{context_block}".strip()},
+        ]
+
+        thinking_buf = ""
+        content_buf = ""
+        thinking_start = time.time()
+
+        try:
+            for tok_type, text in self._llm.chat_stream(messages, max_tokens=400, temperature=0.3):
+                if tok_type == "thinking":
+                    thinking_buf += text
+                    yield {"type": "agent_thinking_token", "content": text,
+                           "metadata": {"step": "generate_answer"}}
+                else:
+                    content_buf += text
+                    yield {"type": "token", "content": text}
+
+            if thinking_buf:
+                thinking_ms = int((time.time() - thinking_start) * 1000)
+                logger.debug("[TASK_AGENT] Answer thinking: %dms, %d chars", thinking_ms, len(thinking_buf))
+
+            return content_buf.strip() or "[No answer generated]"
+
+        except Exception as e:
+            logger.warning("[TASK_AGENT] Stream answer failed: %s", e)
+            fallback = self._generate_answer(
+                message, fetched_content, intent, steps, stored_credentials, active_task
+            )
+            yield {"type": "token", "content": fallback}
+            return fallback
+
+    def _build_answer_context(
+        self,
+        fetched_content: Optional[str],
+        intent: TaskIntent,
+        steps: List[AgentStep],
+        stored_credentials: Dict[str, str],
+        active_task: Optional[Dict[str, Any]],
+    ) -> str:
+        """Build the context block shared by both streaming and blocking answer generation."""
+        context_parts: List[str] = []
+        action = intent.slots.get("action", "")
+        has_execution_steps = any(
+            s.tool_name in ("http_post", "http_get_json", "store_credential") for s in steps
+        )
+        if fetched_content and action != "follow_instructions":
+            # Plain fetch (no instruction execution) — include content summary
+            url = intent.slots.get("url", "URL")
+            context_parts.append(f"[Content fetched from {url}]\n{fetched_content[:4000]}\n[End]")
+        elif fetched_content and action == "follow_instructions" and has_execution_steps:
+            # Instructions were fetched and executed — just note the source, not the full content
+            url = intent.slots.get("url", "URL")
+            context_parts.append(f"[Instructions fetched from {url} and executed — see step results below]")
+        elif fetched_content and action == "follow_instructions" and not has_execution_steps:
+            context_parts.append(
+                "[Note: Instructions were fetched but could not be parsed into executable steps. "
+                "Do not claim the task was completed.]"
+            )
+        verified_steps = [s for s in steps if s.verified and s.extracted_fields]
+        if verified_steps:
+            real_data: Dict[str, Any] = {}
+            for s in verified_steps:
+                real_data.update(s.extracted_fields)
+            context_parts.append(f"[Verified API response fields]\n{json.dumps(real_data, indent=2)}\n[End]")
+        failed_steps = [s for s in steps if s.status == "error"]
+        if failed_steps:
+            failures = "\n".join(f"- {s.tool_name}: {s.error}" for s in failed_steps)
+            context_parts.append(f"[Steps that failed — do not claim success for these]\n{failures}\n[End]")
+        if active_task:
+            context_parts.append(
+                f"[Continuing task: {active_task.get('intent_type', 'unknown')}]\n"
+                f"{json.dumps(active_task.get('context', {}), indent=2)}\n[End]"
+            )
+        return "\n\n".join(context_parts)
+
+    # ------------------------------------------------------------------
+
+    def _generate_answer(
+        self,
+        message: str,
+        fetched_content: Optional[str],
+        intent: TaskIntent,
+        steps: List[AgentStep],
+        stored_credentials: Dict[str, str],
+        active_task: Optional[Dict[str, Any]],
+    ) -> str:
+        context_block = self._build_answer_context(
+            fetched_content, intent, steps, stored_credentials, active_task
+        )
+
+        if self._llm is None:
+            return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)
+
+        system_prompt = (
+            "You are Aether. Report what actually happened based on the tool results below. "
+            "Be concise and direct — 2-4 sentences max. "
+            "Only state outcomes that are in the verified results. "
+            "If something failed, say so. Do not plan, reason, or explain what you would do."
+        )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{message}\n\n{context_block}".strip()},
+        ]
+        try:
+            return self._llm.chat(messages, max_tokens=400, temperature=0.3)
+        except Exception as e:
+            logger.warning("[TASK_AGENT] LLM call failed: %s", e)
+            return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)
+
+    def _no_llm_answer(
+        self,
+        fetched_content: Optional[str],
+        intent: TaskIntent,
+        steps: List[AgentStep],
+        stored_credentials: Dict[str, str],
+    ) -> str:
+        parts: List[str] = []
+        ok_steps = [s for s in steps if s.status == "ok"]
+        fail_steps = [s for s in steps if s.status == "error"]
+
+        if ok_steps:
+            parts.append(f"Completed {len(ok_steps)} step(s): {', '.join(s.tool_name for s in ok_steps)}")
+        if stored_credentials:
+            parts.append(f"Stored credentials: {', '.join(stored_credentials.keys())}")
+        if fail_steps:
+            parts.append(f"Failed: {', '.join(f'{s.tool_name} ({s.error})' for s in fail_steps)}")
+        if fetched_content and not parts:
+            url = intent.slots.get("url", "URL")
+            parts.append(f"Fetched {url}:\n\n{fetched_content[:2000]}")
+
+        return "\n".join(parts) if parts else "Task completed."
+
+    # ------------------------------------------------------------------
+    # CRT memory write-back
+    # ------------------------------------------------------------------
+
+    def _write_facts(
+        self,
+        thread_id: str,
+        intent: TaskIntent,
+        fetched_content: Optional[str],
+        stored_credentials: Dict[str, str],
+    ) -> List[str]:
+        facts: List[str] = []
+        if self._memory is None:
+            return facts
+        try:
+            from personal_agent.crt_memory import MemorySource
+            if fetched_content:
+                url = intent.slots.get("url", "URL")
+                text = f"Task: fetched {url} ({len(fetched_content)} chars)"
+                self._memory.store_memory(text=text, confidence=0.72,
+                    source=MemorySource.SYSTEM, thread_id=thread_id, kind="task_result")
+                facts.append(text[:120])
+            for k in stored_credentials:
+                text = f"Task: stored credential '{k}' via task agent"
+                self._memory.store_memory(text=text, confidence=0.85,
+                    source=MemorySource.SYSTEM, thread_id=thread_id, kind="task_result")
+                facts.append(text)
+        except Exception as e:
+            logger.warning("[TASK_AGENT] Memory write failed: %s", e)
+        return facts
