@@ -2945,14 +2945,51 @@ def chat_stream(req: ChatSendRequest, request: Request):
 
             # ── Intent classification (fast, pattern-based) ───────────────
             try:
-                from personal_agent.task_agent import classify_intent as _classify_intent, CRTTaskAgent
+                from personal_agent.task_agent import (
+                    classify_intent as _classify_intent,
+                    CRTTaskAgent,
+                    TaskIntent,
+                    parse_checkpoint_confirmation as _parse_confirm,
+                )
                 _session_db = get_thread_session_db()
                 _active_task = _session_db.get_pending_task(req.thread_id)
-                _task_intent = _classify_intent(req.message, active_task=_active_task)
+
+                # ── Check for pending agentic checkpoint confirmation ─────
+                _pending_cp = _session_db.get_pending_checkpoint(req.thread_id)
+                _user_confirmed = False
+                if _pending_cp:
+                    _confirmation = _parse_confirm(req.message)
+                    if _confirmation is True:
+                        # User confirmed — re-use stored intent, mark confirmed
+                        _cp_data = _pending_cp["intent"]
+                        _task_intent = TaskIntent(
+                            route=_cp_data["route"],
+                            intent_type=_cp_data["intent_type"],
+                            slots=_cp_data.get("slots", {}),
+                            confidence=_cp_data.get("confidence", 0.9),
+                            reason=_cp_data.get("reason", ""),
+                        )
+                        _user_confirmed = True
+                        _session_db.clear_pending_checkpoint(req.thread_id)
+                        logger.info("[STREAM] User confirmed agentic checkpoint")
+                    elif _confirmation is False:
+                        # User denied — clear checkpoint, fall through to CRT
+                        _session_db.clear_pending_checkpoint(req.thread_id)
+                        _task_intent = None
+                        logger.info("[STREAM] User denied agentic checkpoint")
+                    else:
+                        # Ambiguous — treat as new message, clear stale checkpoint
+                        _session_db.clear_pending_checkpoint(req.thread_id)
+                        _task_intent = _classify_intent(req.message, active_task=_active_task)
+                        logger.info("[STREAM] Ambiguous checkpoint response — reclassifying")
+                else:
+                    _task_intent = _classify_intent(req.message, active_task=_active_task)
+
             except Exception as _cie:
                 logger.debug("[STREAM] task intent classifier failed: %s", _cie)
                 _task_intent = None
                 _active_task = None
+                _user_confirmed = False
 
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":
@@ -2968,17 +3005,47 @@ def chat_stream(req: ChatSendRequest, request: Request):
                         session_db=_session_db,
                     )
 
+                    _checkpoint_hit = False
                     _task_steps: list = []
                     _task_answer = ""
                     _task_meta: dict = {}
 
-                    for _event in _agent.run_stream(req.message, req.thread_id, _task_intent, active_task=_active_task):
+                    for _event in _agent.run_stream(
+                        req.message, req.thread_id, _task_intent,
+                        active_task=_active_task, user_confirmed=_user_confirmed,
+                    ):
+                        if _event["type"] == "agent_checkpoint":
+                            # ── CHECKPOINT: Emit to user, pause execution ──
+                            yield _sse(_event)
+                            _checkpoint_hit = True
+                            _session_db.store_pending_checkpoint(
+                                thread_id=req.thread_id,
+                                intent_data={
+                                    "route": _task_intent.route,
+                                    "intent_type": _task_intent.intent_type,
+                                    "slots": _task_intent.slots,
+                                    "confidence": _task_intent.confidence,
+                                    "reason": _task_intent.reason,
+                                },
+                                checkpoint_tier=_event["metadata"]["checkpoint_tier"],
+                            )
+                            break  # Stop — wait for user's next message
+
                         yield _sse(_event)
                         if _event["type"] == "tool_result":
                             _task_steps.append(_event.get("metadata", {}))
                         elif _event["type"] == "task_done":
                             _task_answer = _event.get("content", "")
                             _task_meta = _event.get("metadata", {})
+
+                    if _checkpoint_hit:
+                        # Emit a done event so the frontend knows the turn is over
+                        yield _sse({
+                            "type": "done",
+                            "content": _event["content"],
+                            "metadata": {"checkpoint_pending": True},
+                        })
+                        return
 
                     # Task agent already streamed tokens via _stream_generate_answer;
                     # just emit the done event with the captured answer and metadata.
