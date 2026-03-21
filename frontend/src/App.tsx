@@ -434,6 +434,14 @@ export default function App() {
                 return next
               })
             },
+            onAgentThinkingToken: (token, _step) => {
+              setAgentThinkingState((prev) => {
+                if (!prev) return prev
+                const next = { ...prev, draftingThinking: (prev.draftingThinking ?? '') + token }
+                agentThinkingRef.current = next
+                return next
+              })
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {

@@ -389,6 +389,7 @@ export type StreamEventType =
   | 'tool_result'
   | 'validate_result'
   | 'task_done'
+  | 'agent_thinking_token'
   | 'thinking_start'
   | 'thinking_token'
   | 'thinking'
@@ -427,6 +428,7 @@ export type StreamCallbacks = {
   onToolResult?: (step: AgentStep) => void
   onValidateResult?: (conflicts: unknown[], gate: string) => void
   onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
+  onAgentThinkingToken?: (token: string, step: string) => void
   // Thinking
   onThinkingStart?: () => void
   onThinkingToken?: (token: string) => void
@@ -556,6 +558,11 @@ export async function streamFromCrtApi(args: {
               case 'task_done': {
                 const meta = event.metadata as { steps?: AgentStep[] } & Record<string, unknown> | undefined
                 args.callbacks.onTaskDone?.(event.content, meta?.steps ?? [], meta ?? {})
+                break
+              }
+              case 'agent_thinking_token': {
+                const meta = event.metadata as { step?: string } | undefined
+                args.callbacks.onAgentThinkingToken?.(event.content, meta?.step ?? 'generate_answer')
                 break
               }
               case 'thinking_start':

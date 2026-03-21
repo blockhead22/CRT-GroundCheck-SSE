@@ -37,6 +37,8 @@ export type AgentThinkingState = {
   validated?: boolean
   // Set once drafting starts
   drafting?: boolean
+  // Accumulates reasoning tokens during answer generation
+  draftingThinking?: string
   // Set once task_done fires
   done?: boolean
 }
@@ -254,13 +256,39 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
           </div>
         )}
 
-        {/* Drafting row */}
+        {/* Drafting row — with live thinking expansion */}
         {state.drafting && !state.done && (
-          <div className="flex items-center gap-2 text-[11px] font-mono px-1 py-[2px]">
-            <span className="w-3 text-center">
-              <StepIcon active={true} />
-            </span>
-            <span style={{ color: '#F0EBE1' }}>drafting</span>
+          <div className="flex flex-col gap-[2px]">
+            <div className="flex items-center gap-2 text-[11px] font-mono px-1 py-[2px]">
+              <span className="w-3 text-center">
+                <StepIcon active={true} />
+              </span>
+              <span style={{ color: '#F0EBE1' }}>drafting</span>
+              {state.draftingThinking && (
+                <span className="ml-auto text-[9px] flex-shrink-0" style={{ color: '#5a5445' }}>
+                  thinking…
+                </span>
+              )}
+            </div>
+            {/* Live thinking stream */}
+            <AnimatePresence>
+              {state.draftingThinking && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="overflow-hidden ml-5"
+                >
+                  <div
+                    className="rounded px-2 py-1 text-[10px] font-mono line-clamp-6 whitespace-pre-wrap break-words"
+                    style={{ background: 'rgba(0,0,0,0.2)', color: '#5a5445', borderLeft: '2px solid rgba(232,132,58,0.25)' }}
+                  >
+                    {state.draftingThinking}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -268,6 +296,11 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
           <div className="flex items-center gap-2 text-[11px] font-mono px-1 py-[2px]" style={{ color: '#5a5445' }}>
             <span className="w-3 text-center" style={{ color: '#6abf7b' }}>✓</span>
             <span>done</span>
+            {state.draftingThinking && (
+              <span className="ml-auto text-[9px]" style={{ color: '#3d3626' }}>
+                reasoned {Math.round(state.draftingThinking.length / 4)}t
+              </span>
+            )}
           </div>
         )}
       </div>
