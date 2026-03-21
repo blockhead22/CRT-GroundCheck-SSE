@@ -512,6 +512,26 @@ class ReasoningEngine:
                 )
                 source = "llm"
                 confidence = 0.8
+
+                # 2.2 — Two-pass revision: check draft against contested memories
+                _user_docs = [d for d in context.get('retrieved_docs', [])
+                              if d.get('source') != 'system' and d.get('text')]
+                _correction = self._check_draft_conflicts(answer, _user_docs, context)
+                if _correction:
+                    logger.info("[REASONING] Layer 2.2: draft conflicts detected — re-generating")
+                    revision_history = list(chat_history)
+                    revision_history.append({"role": "assistant", "content": answer})
+                    revision_history.append({"role": "user", "content": _correction.strip()})
+                    revised = self._call_llm(
+                        system_prompt,
+                        max_tokens=600,
+                        model_override=context.get("_model_override"),
+                        conversation_history=revision_history,
+                    )
+                    if revised and revised.strip():
+                        answer = revised
+                        confidence = 0.65  # Contested turn — lower confidence
+
             elif self.llm:
                 answer = self._call_llm(
                     prompt,
@@ -1187,6 +1207,129 @@ class ReasoningEngine:
             return ""
         return "\n".join(f"- {line}" for line in constraints)
     
+    # ------------------------------------------------------------------
+    # Layer 2.1 — Epistemic state block
+    # ------------------------------------------------------------------
+
+    def _build_epistemic_state(self, docs: List[Dict], context: Dict) -> str:
+        """
+        Build an [Epistemic State] block from retrieved memories.
+
+        Categorises facts into high/low confidence and contested so the LLM
+        hedges naturally without being told to.  Returns '' when nothing
+        meaningful is available (avoids cluttering the prompt).
+        """
+        user_docs = [d for d in (docs or []) if d.get('source') != 'system' and d.get('text')]
+        if not user_docs:
+            return ''
+
+        # Memory IDs that are part of an open contradiction
+        contradiction_ids: set = set()
+        for c in context.get('contradictions') or []:
+            if isinstance(c, dict):
+                contradiction_ids.add(c.get('memory_id_a', ''))
+                contradiction_ids.add(c.get('memory_id_b', ''))
+                contradiction_ids.discard('')
+
+        high: List[str] = []
+        low: List[str] = []
+        contested: List[str] = []
+
+        for doc in user_docs:
+            trust = doc.get('trust') or doc.get('confidence') or 0.0
+            raw = doc.get('text', '').strip()
+            mem_id = doc.get('memory_id', '')
+
+            # Strip "FACT: " prefix for readability
+            label = re.sub(r'^FACT:\s*', '', raw, flags=re.IGNORECASE).strip()
+            if not label:
+                continue
+
+            if mem_id and mem_id in contradiction_ids:
+                contested.append(label)
+            elif trust >= 0.75:
+                high.append(label)
+            elif trust >= 0.4:
+                low.append(f"{label} (one assertion, unconfirmed)")
+
+        if not any([high, low, contested]):
+            return ''
+
+        lines = ['[Epistemic State — calibrate certainty accordingly]']
+        if high:
+            lines.append('High confidence: ' + '; '.join(high))
+        if contested:
+            lines.append(
+                'Contested — both values stored, do not assert either as certain: '
+                + '; '.join(contested)
+            )
+        if low:
+            lines.append('Low confidence — hedge if relevant: ' + '; '.join(low))
+
+        return '\n'.join(lines) + '\n\n'
+
+    # ------------------------------------------------------------------
+    # Layer 2.2 — Draft contradiction check
+    # ------------------------------------------------------------------
+
+    def _check_draft_conflicts(
+        self,
+        draft: str,
+        user_docs: List[Dict],
+        context: Dict,
+    ) -> str:
+        """
+        Scan draft for assertions that contradict high-trust memories.
+
+        Returns a correction injection string if conflicts are found, '' otherwise.
+        Only triggers on turns where retrieved memories have open contradictions.
+        """
+        contradictions = context.get('contradictions') or []
+        if not contradictions:
+            return ''
+
+        contradiction_ids: set = set()
+        for c in contradictions:
+            if isinstance(c, dict):
+                contradiction_ids.add(c.get('memory_id_a', ''))
+                contradiction_ids.add(c.get('memory_id_b', ''))
+                contradiction_ids.discard('')
+
+        if not contradiction_ids:
+            return ''
+
+        draft_lower = draft.lower()
+        conflicts_found = []
+
+        for doc in user_docs:
+            if doc.get('memory_id', '') not in contradiction_ids:
+                continue
+            trust = doc.get('trust') or doc.get('confidence') or 0.0
+            if trust < 0.6:
+                continue
+            raw = doc.get('text', '').strip()
+            label = re.sub(r'^FACT:\s*', '', raw, flags=re.IGNORECASE).strip()
+            # Extract the value part (everything after " = " if present)
+            if ' = ' in label:
+                _slot, value = label.split(' = ', 1)
+                value = value.strip()
+            else:
+                value = label
+            # Check if the draft asserts this value confidently
+            if value.lower() in draft_lower:
+                conflicts_found.append(label)
+
+        if not conflicts_found:
+            return ''
+
+        conflict_str = '; '.join(conflicts_found)
+        return (
+            f'\n[REVISION NEEDED — your draft asserts a contested fact]\n'
+            f'You were about to state: {conflict_str}\n'
+            f'Your memory has conflicting records for this. Do NOT assert either as definite.\n'
+            f'Revise to acknowledge the uncertainty — e.g. "I have conflicting records about this."\n'
+        )
+
     def _build_quick_prompt(self, query: str, context: Dict) -> str:
         """Build prompt for quick mode."""
         docs = context.get('retrieved_docs', [])
@@ -1324,6 +1467,11 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
             # Separate user facts from system self-knowledge
             user_docs = [d for d in docs if d.get('text', '') and d.get('source') != 'system']
             system_docs = [d for d in docs if d.get('text', '') and d.get('source') == 'system']
+
+            # 2.1 — Epistemic state block: confidence tiers so the LLM hedges naturally
+            epistemic_block = self._build_epistemic_state(docs, context)
+            if epistemic_block:
+                prompt += epistemic_block
 
             if user_docs:
                 if _is_provenance_query:
