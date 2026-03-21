@@ -508,16 +508,35 @@ class ToolRegistry:
           post          — get a specific post by post_id
         """
         import json as _json, os as _os, urllib.request as _req, urllib.error as _err, urllib.parse as _up
-        cred_path = _os.path.expanduser("~/.config/moltbook/credentials.json")
-        try:
-            with open(cred_path, "r", encoding="utf-8") as f:
-                api_key = _json.load(f).get("api_key", "")
-        except Exception as e:
-            return {"error": f"MoltBook credentials not found: {e}. Expected at {cred_path}"}
-        if not api_key:
-            return {"error": "MoltBook api_key is empty in credentials.json"}
 
+        # Try the TaskAgent credential store first, then legacy path
+        api_key = ""
+        try:
+            from personal_agent.task_agent import load_credential
+            api_key = load_credential("moltbook_api_key") or ""
+        except Exception:
+            pass
+
+        if not api_key:
+            # Fallback: legacy credential path
+            cred_path = _os.path.expanduser("~/.config/moltbook/credentials.json")
+            try:
+                with open(cred_path, "r", encoding="utf-8") as f:
+                    api_key = _json.load(f).get("api_key", "")
+            except Exception:
+                pass
+
+        if not api_key:
+            return {"error": "MoltBook credentials not found. Store a moltbook_api_key first."}
+
+        # Try stored API base, default to moltbook.com
         base = "https://www.moltbook.com/api/v1"
+        try:
+            stored_base = load_credential("moltbook_api_base") or ""
+            if stored_base:
+                base = stored_base
+        except Exception:
+            pass
         headers_bytes = {
             "Authorization": f"Bearer {api_key}",
             "Accept": "application/json",
