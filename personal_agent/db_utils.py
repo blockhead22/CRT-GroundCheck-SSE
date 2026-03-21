@@ -3,7 +3,7 @@
 import sqlite3
 import time
 import logging
-from typing import Callable, TypeVar, Optional
+from typing import Callable, Dict, TypeVar, Optional
 from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
@@ -167,6 +167,7 @@ class ThreadSessionDB:
     
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or self.DEFAULT_PATH
+        self._pending_checkpoints: Dict[str, dict] = {}
         self._init_db()
     
     def _get_connection(self) -> sqlite3.Connection:
@@ -2170,6 +2171,23 @@ class ThreadSessionDB:
         conn.execute("DELETE FROM pending_tasks WHERE thread_id = ?", (thread_id,))
         conn.commit()
         conn.close()
+
+    # ── Agentic checkpoint storage (in-memory, ephemeral) ──────────────
+
+    def store_pending_checkpoint(self, thread_id: str, intent_data: dict, checkpoint_tier: str) -> None:
+        """Store a pending agentic checkpoint awaiting user confirmation."""
+        self._pending_checkpoints[thread_id] = {
+            "intent": intent_data,
+            "checkpoint_tier": checkpoint_tier,
+        }
+
+    def get_pending_checkpoint(self, thread_id: str) -> Optional[dict]:
+        """Return pending checkpoint for thread, or None."""
+        return self._pending_checkpoints.get(thread_id)
+
+    def clear_pending_checkpoint(self, thread_id: str) -> None:
+        """Remove pending checkpoint for thread."""
+        self._pending_checkpoints.pop(thread_id, None)
 
 
 # Global instance for easy access
