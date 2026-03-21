@@ -3319,7 +3319,25 @@ class CRTEnhancedRAG:
         
         # Get matched patterns for logging
         matched_patterns = get_matched_patterns(user_text)
-        
+
+        # Detect meta-correction override: strong patterns where the user is
+        # re-asserting a value to close a contradiction — they may be asserting
+        # a THIRD value that doesn't match either existing side.
+        _META_OVERRIDE_PATTERNS = {
+            r'\bignore\s+the\s+noise\b',
+            r'\balways\s+has\s+been\b',
+            r'\bmy\s+(real|actual|true)\s+(favorite|favourite)\b',
+            r'\bthe\s+(real|actual|true)\s+answer\b',
+            r'\bfor\s+the\s+(last|final)\s+time\b',
+            r'\bonce\s+and\s+for\s+all\b',
+            r'\blet\s+me\s+(settle|clear)\s+this\b',
+            r'\bno,?\s+seriously\b',
+            r'\bstill\s+(?:is|my)\b',
+        }
+        is_meta_override = any(
+            m['pattern'] in _META_OVERRIDE_PATTERNS for m in matched_patterns
+        )
+
         # Extract facts from the user's statement
         facts = extract_fact_slots(user_text) or {}
         
@@ -3549,8 +3567,55 @@ class CRTEnhancedRAG:
                             facts[_UNSTRUCTURED_SLOT_NAME] = new_mem.text
             
             if not shared:
+                # ── Meta-override fallback (affects_slots) ──────────────────
+                # When memory text is malformed, fact extraction fails and
+                # contra_slots is empty.  Fall back to the contradiction's
+                # affects_slots field to see if it covers the same slot the
+                # user is asserting about.  Only fire for meta-corrections.
+                if is_meta_override and facts:
+                    _affects = getattr(contra, "affects_slots", None) or ""
+                    _affects_set = set(s.strip() for s in _affects.split(",") if s.strip())
+                    _slot_overlap = _affects_set & set(facts.keys())
+                    if _slot_overlap:
+                        logger.info(
+                            "[NL_RESOLUTION] Meta-override fallback: affects_slots %s matches user facts %s",
+                            _affects_set, set(facts.keys()),
+                        )
+                        # Resolve by deprecating both memories and letting the
+                        # new assertion (stored downstream) be the winner.
+                        self.ledger.resolve_contradiction(
+                            contra.ledger_id,
+                            method="nl_resolution",
+                            new_status=ContradictionStatus.RESOLVED,
+                        )
+                        try:
+                            self.memory.deprecate_memory(
+                                contra.old_memory_id,
+                                reason=f"Meta-override resolution: '{user_text[:80]}'"
+                            )
+                            self.memory.deprecate_memory(
+                                contra.new_memory_id,
+                                reason=f"Meta-override resolution: '{user_text[:80]}'"
+                            )
+                        except Exception as _dep_err:
+                            logger.warning("[NL_RESOLUTION] Failed to deprecate memories: %s", _dep_err)
+                        # Update profile to the user's stated value
+                        for _slot in _slot_overlap:
+                            try:
+                                _val = facts[_slot]
+                                _val_str = _val if isinstance(_val, str) else str(_val)
+                                self.user_profile.set_fact(_slot, _val_str)
+                            except Exception:
+                                pass
+                        trace_logger.log_resolution_complete(
+                            ledger_id=contra.ledger_id,
+                            success=True,
+                            details=f"Meta-override: deprecated both sides, user asserts {dict((s, facts[s]) for s in _slot_overlap)}"
+                        )
+                        resolved_count += 1
+                        continue
                 continue
-            
+
             # Check if user's fact matches either old or new value
             for slot in shared:
                 user_fact = facts.get(slot)
@@ -3596,9 +3661,46 @@ class CRTEnhancedRAG:
                         deprecated_memory_id = contra.new_memory_id
                         resolution_method = "user_chose_old"
                     else:
-                        # User mentioned a value but it doesn't match either side
+                        # User's value doesn't match either side.
+                        # For meta-corrections this is expected — the user is
+                        # asserting a THIRD value (e.g. "orange" when the
+                        # contradiction is "blue" vs "purple").  Resolve by
+                        # deprecating both sides.
+                        if is_meta_override:
+                            logger.info(
+                                "[NL_RESOLUTION] Meta-override: user value '%s' != old '%s' or new '%s' — deprecating both",
+                                user_normalized, old_normalized, new_normalized,
+                            )
+                            self.ledger.resolve_contradiction(
+                                contra.ledger_id,
+                                method="nl_resolution",
+                                new_status=ContradictionStatus.RESOLVED,
+                            )
+                            try:
+                                self.memory.deprecate_memory(
+                                    contra.old_memory_id,
+                                    reason=f"Meta-override resolution: '{user_text[:80]}'"
+                                )
+                                self.memory.deprecate_memory(
+                                    contra.new_memory_id,
+                                    reason=f"Meta-override resolution: '{user_text[:80]}'"
+                                )
+                            except Exception as _dep_err:
+                                logger.warning("[NL_RESOLUTION] Failed to deprecate: %s", _dep_err)
+                            try:
+                                _val = user_fact if isinstance(user_fact, str) else str(user_fact)
+                                self.user_profile.set_fact(slot, _val)
+                            except Exception:
+                                pass
+                            trace_logger.log_resolution_complete(
+                                ledger_id=contra.ledger_id,
+                                success=True,
+                                details=f"Meta-override: {slot}={user_fact}, deprecated both sides"
+                            )
+                            resolved_count += 1
+                            break  # Done with this contradiction
                         continue
-                
+
                 # Log the matched resolution
                 trace_logger.log_resolution_matched(
                     ledger_id=contra.ledger_id,
