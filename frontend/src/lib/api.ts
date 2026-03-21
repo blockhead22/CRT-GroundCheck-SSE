@@ -390,6 +390,7 @@ export type StreamEventType =
   | 'validate_result'
   | 'task_done'
   | 'agent_checkpoint'
+  | 'task_cancelled'
   | 'agent_thinking_token'
   | 'thinking_start'
   | 'thinking_token'
@@ -430,6 +431,7 @@ export type StreamCallbacks = {
   onValidateResult?: (conflicts: unknown[], gate: string) => void
   onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
   onAgentCheckpoint?: (message: string, metadata: Record<string, unknown>) => void
+  onTaskCancelled?: (message: string) => void
   onAgentThinkingToken?: (token: string, step: string) => void
   // Thinking
   onThinkingStart?: () => void
@@ -571,6 +573,10 @@ export async function streamFromCrtApi(args: {
                   confidence?: number
                 } | undefined
                 args.callbacks.onAgentCheckpoint?.(event.content, meta ?? {})
+                break
+              }
+              case 'task_cancelled': {
+                args.callbacks.onTaskCancelled?.(event.content)
                 break
               }
               case 'agent_thinking_token': {

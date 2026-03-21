@@ -2971,10 +2971,27 @@ def chat_stream(req: ChatSendRequest, request: Request):
                         _session_db.clear_pending_checkpoint(req.thread_id)
                         logger.info("[STREAM] User confirmed agentic checkpoint")
                     elif _confirmation is False:
-                        # User denied — clear checkpoint, fall through to CRT
+                        # User denied — emit cancellation and return immediately.
+                        # Do NOT fall through to CRT (which would process "stop"
+                        # as a regular conversational query).
+                        _cancelled_intent = _pending_cp.get("intent", {})
                         _session_db.clear_pending_checkpoint(req.thread_id)
-                        _task_intent = None
-                        logger.info("[STREAM] User denied agentic checkpoint")
+                        _session_db.clear_pending_task(req.thread_id)
+                        logger.info("[STREAM] User denied agentic checkpoint — emitting cancellation")
+                        yield _sse({
+                            "type": "task_cancelled",
+                            "content": "Task cancelled. What would you like to do instead?",
+                            "metadata": {
+                                "cancelled_intent": _cancelled_intent.get("intent_type", ""),
+                                "cancelled_service": _cancelled_intent.get("slots", {}).get("service", ""),
+                            },
+                        })
+                        yield _sse({
+                            "type": "done",
+                            "content": "Task cancelled. What would you like to do instead?",
+                            "metadata": {"task_cancelled": True},
+                        })
+                        return
                     else:
                         # Ambiguous — treat as new message, clear stale checkpoint
                         _session_db.clear_pending_checkpoint(req.thread_id)
