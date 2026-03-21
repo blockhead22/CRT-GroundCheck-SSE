@@ -67,6 +67,17 @@ RESOLUTION_PATTERNS = [
     r'\bfor\s+the\s+record\b',  # "for the record"
     r'\bto\s+(be\s+)?clear\b',  # "to be clear" or "to clear"
     r'\bjust\s+to\s+(confirm|clarify)\b',  # "just to confirm/clarify"
+
+    # Meta-correction patterns (user is emphatically re-asserting to close a contradiction)
+    r'\bignore\s+the\s+noise\b',  # "ignore the noise"
+    r'\balways\s+has\s+been\b',  # "always has been"
+    r'\bmy\s+(real|actual|true)\s+(favorite|favourite)\b',  # "my real favorite"
+    r'\bthe\s+(real|actual|true)\s+answer\b',  # "the real answer"
+    r'\bfor\s+the\s+(last|final)\s+time\b',  # "for the last time"
+    r'\bonce\s+and\s+for\s+all\b',  # "once and for all"
+    r'\blet\s+me\s+(settle|clear)\s+this\b',  # "let me settle this"
+    r'\bno,?\s+seriously\b',  # "no, seriously"
+    r'\bstill\s+(?:is|my)\b',  # "still is X", "still my favorite"
 ]
 
 

@@ -59,6 +59,7 @@ from .active_learning import get_active_learning_coordinator
 from .user_profile import GlobalUserProfile
 from .ml_contradiction_detector import MLContradictionDetector
 from .resolution_patterns import has_resolution_intent, get_matched_patterns
+from .source_authority import classify_source_authority, SourceAuthority
 from .contradiction_trace_logger import get_trace_logger
 from .domain_detector import detect_domains, detect_query_domains
 from .engine.anchors import AnchorSystem
@@ -3918,11 +3919,57 @@ class CRTEnhancedRAG:
             }
         if user_input_kind == "assertion":
             logger.info(f"[PROFILE_DEBUG] Processing assertion - about to store memory and update profile")
+
+            # ── Source authority analysis ──────────────────────────────────
+            # Detect reported speech, journal entries, third-party claims,
+            # and meta-corrections.  Adjusts confidence + context tags so
+            # contradiction resolution can weight assertions properly.
+            _src_auth = classify_source_authority(user_text)
+            logger.info(
+                "[SOURCE_AUTH] kind=%s confidence=%.2f speaker=%s reason=%s",
+                _src_auth.kind, _src_auth.confidence,
+                _src_auth.speaker, _src_auth.reason,
+            )
+
+            # Meta-corrections should resolve contradictions, not create new ones.
+            # Reclassify as instruction so the assertion path doesn't fire, then
+            # route through NL resolution to actually resolve the conflict.
+            if _src_auth.kind == "meta_correction" and not nl_resolution_occurred:
+                logger.info("[SOURCE_AUTH] Meta-correction detected — routing to NL resolution")
+                user_input_kind = "instruction"
+                # Attempt NL resolution with the meta-correction text
+                try:
+                    nl_resolution_occurred = self._detect_and_resolve_nl_resolution(user_text)
+                    if nl_resolution_occurred:
+                        contradiction_detected = True
+                        logger.info("[SOURCE_AUTH] Meta-correction resolved via NL resolution")
+                    else:
+                        # NL resolution didn't match a specific contradiction.
+                        # Still store the assertion but at elevated confidence so it wins.
+                        user_input_kind = "assertion"
+                        logger.info("[SOURCE_AUTH] Meta-correction didn't match open contradictions — storing as high-confidence assertion")
+                except Exception as _e:
+                    logger.warning("[SOURCE_AUTH] Meta-correction NL resolution failed: %s", _e)
+                    user_input_kind = "assertion"
+
+            _assertion_confidence = _src_auth.confidence
+            _assertion_context = {
+                "type": "user_input",
+                "kind": user_input_kind,
+                "source_authority": _src_auth.kind,
+                "source_authority_reason": _src_auth.reason,
+            }
+            if _src_auth.speaker:
+                _assertion_context["reported_speaker"] = _src_auth.speaker
+            if _src_auth.is_historical:
+                _assertion_context["temporal_framing"] = "historical"
+
+        if user_input_kind == "assertion":
             ingest_result = self.ingest_memory_write(
                 text=user_text,
-                confidence=0.95,
+                confidence=_assertion_confidence,
                 source=MemorySource.USER,
-                context={"type": "user_input", "kind": user_input_kind},
+                context=_assertion_context,
                 user_marked_important=user_marked_important,
                 thread_id=thread_id,
                 channel=channel,

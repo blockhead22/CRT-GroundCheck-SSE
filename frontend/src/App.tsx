@@ -442,6 +442,11 @@ export default function App() {
                 return next
               })
             },
+            onAgentCheckpoint: (message, _metadata) => {
+              // Checkpoint message becomes the streamed response for this turn.
+              // The user will respond with "yes"/"no" in their next message.
+              setStreamingResponse(message)
+            },
             onAgentThinkingToken: (token, _step) => {
               setAgentThinkingState((prev) => {
                 if (!prev) return prev

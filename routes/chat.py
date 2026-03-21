@@ -2338,15 +2338,18 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     _mark("thinking_trace_done")
 
     # AGENT INTEGRATION: Check for proactive triggers
+    # CHECKPOINT GATE: Agent no longer auto-executes. Triggers are surfaced
+    # as metadata so the frontend can present them to the user as a suggestion.
+    # The user must explicitly confirm before the agent runs.
     _llm_enabled = os.getenv("CRT_ENABLE_LLM", "false").lower() == "true"
     agent_activated = False
     agent_trace_data = None
     agent_answer = None
+    agent_suggested_triggers: list = []
 
     if _llm_enabled:
         try:
             from personal_agent.proactive_triggers import ProactiveTriggers
-            from personal_agent.agent_loop import create_agent
 
             triggers_engine = ProactiveTriggers(
                 confidence_threshold=0.5,
@@ -2355,31 +2358,25 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             )
             detected_triggers = triggers_engine.analyze_response(result)
 
-            if triggers_engine.should_activate_agent(detected_triggers):
-                research_engine = None
-                try:
-                    from personal_agent.research_engine import ResearchEngine
-
-                    research_engine = ResearchEngine()
-                except Exception:
-                    pass
-
-                agent = create_agent(
-                    memory_engine=engine.memory,
-                    research_engine=research_engine,
-                    workspace_root=Path.cwd(),
-                    max_steps=8,
+            if detected_triggers:
+                # Surface triggers as suggestions — do NOT auto-execute.
+                agent_suggested_triggers = [
+                    {
+                        "type": t.trigger_type.value,
+                        "reason": t.reason,
+                        "suggested_action": t.suggested_action,
+                        "would_auto_execute": t.should_auto_execute,
+                    }
+                    for t in detected_triggers
+                ]
+                logger.info(
+                    "[AGENT] %d trigger(s) detected but NOT auto-executing (checkpoint gate). Triggers: %s",
+                    len(detected_triggers),
+                    [t.trigger_type.value for t in detected_triggers],
                 )
 
-                task = triggers_engine.get_agent_task(detected_triggers, effective_message)
-                trace = agent.run(task)
-
-                agent_activated = True
-                agent_answer = trace.final_answer
-                agent_trace_data = trace.to_dict()
-
         except Exception as e:
-            logger.warning(f"[AGENT] Execution error: {e}")
+            logger.warning(f"[AGENT] Trigger analysis error: {e}")
 
     # Build retrieved / prompt memory payloads
     retrieved_mems = [
@@ -2715,6 +2712,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         "agent_activated": agent_activated,
         "agent_answer": agent_answer,
         "agent_trace": agent_trace_data,
+        "agent_suggested_triggers": agent_suggested_triggers,
         "retrieved_memories": retrieved_mems,
         "prompt_memories": prompt_mems,
         "reintroduced_claims_count": reintro_count,
@@ -3157,6 +3155,9 @@ def chat_stream(req: ChatSendRequest, request: Request):
                 yield _status(f'contradiction detected ({_open} open)')
             if metadata.get("agent_activated"):
                 yield _status('agent activated')
+            _suggested = metadata.get("agent_suggested_triggers") or []
+            if _suggested:
+                yield _status(f'{len(_suggested)} agent trigger(s) suggested — awaiting confirmation')
             if not _gates_passed:
                 yield _status(f'gate: {_gate_reason or "blocked"}')
             if _response_type not in ("speech", ""):
