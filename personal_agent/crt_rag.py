@@ -4397,18 +4397,23 @@ class CRTEnhancedRAG:
         _web_search_query = ""
         _web_search_results: List[Dict[str, Any]] = []
         _web_evidence_packet: Optional[Dict[str, Any]] = None
+        _is_direct_url_fetch = False
         if _is_search_query:
             _web_search_query = self._extract_search_query(user_query)
+            _is_direct_url_fetch = bool(self._URL_RE.search(_web_search_query))
             _web_search_results = self._run_web_search(_web_search_query)
             _web_evidence_packet = self._build_web_evidence_packet(_web_search_query, _web_search_results)
             evidence_citations = (_web_evidence_packet or {}).get("citations") or []
             logger.info(
-                "[WEB_SEARCH] Detected search query, got %d results / %d citations for '%s'",
+                "[WEB_SEARCH] Detected search query, got %d results / %d citations for '%s' (direct_url=%s)",
                 len(_web_search_results),
                 len(evidence_citations),
                 _web_search_query,
+                _is_direct_url_fetch,
             )
-            if len(evidence_citations) == 0:
+            # Only gate on zero citations for DuckDuckGo searches, not direct URL fetches.
+            # For URL fetches the raw content is still passed to the LLM even without formal citations.
+            if len(evidence_citations) == 0 and not _is_direct_url_fetch:
                 return {
                     'answer': self._format_web_fetch_failed_answer(_web_search_query),
                     'thinking': None,
@@ -4432,6 +4437,12 @@ class CRTEnhancedRAG:
                 }
 
         # Intent routing: detect general-knowledge queries that don't need memory
+        _user_relationship_query = bool(re.search(
+            r"\bwho\s+is\s+\w[\w\s]{0,30}\bto\s+you\b"   # "who is Nick Block to you"
+            r"|who\s+is\s+(the\s+)?user\b"                # "who is the user"
+            r"|who\s+am\s+i\s+to\s+you\b",                # "who am i to you"
+            user_text, re.IGNORECASE,
+        ))
         _is_general_knowledge = (
             not inferred_slots
             and not asserted_facts
@@ -4439,10 +4450,12 @@ class CRTEnhancedRAG:
             and not _is_provenance_or_meta
             and not _is_copilot_query
             and not _is_search_query
+            and not _user_relationship_query
             and not any(p in user_text.lower() for p in (
                 "my ", "i am", "i'm", "i have", "i live", "i work",
                 "do you remember", "do you know my", "what's my",
                 "what is my", "who am i",
+                "what do you know about me",
             ))
         )
         if _is_general_knowledge:
@@ -7870,7 +7883,14 @@ class CRTEnhancedRAG:
         "search online", "web search", "can you search",
         "find me", "find information",
         "today's news", "news about", "news on",
+        # Direct URL fetch patterns
+        "http://", "https://",
+        "read http", "read https", "fetch http", "fetch https",
+        "open http", "open https", "visit http", "visit https",
+        "go to http", "go to https",
     )
+
+    _URL_RE = re.compile(r'https?://[^\s<>"\']+', re.IGNORECASE)
 
     def _is_web_search_query(self, text: str) -> bool:
         """True if the user is asking for a web search / real-time information."""
@@ -7918,12 +7938,33 @@ class CRTEnhancedRAG:
         # If no prefix matched, use the full text as the search query
         return t
 
-    def _run_web_search(self, query: str, max_results: int = 8) -> List[Dict[str, Any]]:
-        """Run a DuckDuckGo web search and return results.
+    def _fetch_url_content(self, url: str) -> List[Dict[str, Any]]:
+        """Fetch and return content from a direct URL."""
+        try:
+            import urllib.request
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                content = resp.read().decode("utf-8", errors="replace")
+            # Strip HTML tags for plain text
+            text = re.sub(r"<[^>]+>", "", content)
+            text = re.sub(r"\s+", " ", text).strip()[:8000]
+            logger.info("[URL_FETCH] %s -> %d chars", url, len(text))
+            return [{"title": url, "url": url, "snippet": text}]
+        except Exception as e:
+            logger.warning("[URL_FETCH] Failed to fetch %s: %s", url, e)
+            return []
 
+    def _run_web_search(self, query: str, max_results: int = 8) -> List[Dict[str, Any]]:
+        """Run a DuckDuckGo web search (or direct URL fetch) and return results.
+
+        If the query contains a URL, fetches that URL directly instead of searching.
         Uses multi-angle research mode for comprehensive, balanced results.
         Returns a list of dicts with keys: title, url, snippet.
         """
+        url_match = self._URL_RE.search(query)
+        if url_match:
+            return self._fetch_url_content(url_match.group(0))
+
         try:
             from personal_agent.web_search import WebSearchTool
             searcher = WebSearchTool(max_results=max_results)
