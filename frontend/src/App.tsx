@@ -487,6 +487,12 @@ export default function App() {
                 setStreamPhase(phase)
               }
             },
+            onCorrection: (content) => {
+              // Self-correction: append to the streamed response with visual separator
+              const correctionBlock = `\n\n---\n*${content}*`
+              finalBufferRef.current += correctionBlock
+              setStreamingResponse(finalBufferRef.current)
+            },
             onToken: (token) => {
               finalBufferRef.current += token
               setStreamingResponse(finalBufferRef.current)
@@ -553,6 +559,8 @@ export default function App() {
                   reflection_label: (metadata?.reflection_label as string) || null,
                   personality_profile: (metadata as any)?.personality_profile ?? null,
                   reflection_scorecard: (metadata as any)?.reflection_scorecard ?? null,
+                  correction_applied: (metadata as any)?.correction_applied ?? false,
+                  correction_text: (metadata as any)?.correction_text ?? null,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

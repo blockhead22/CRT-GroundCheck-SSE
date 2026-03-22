@@ -213,11 +213,13 @@ export function MessageBubble(props: {
           props.selected ? 'rounded-2xl px-4 py-3 -mx-4' : '',
           localRating === 'down' ? 'border-l-2 pl-3 -ml-3' : '',
           localRating === 'up' ? 'border-l-2 pl-3 -ml-3' : '',
+          gatesFailed && !localRating ? 'border-l-2 pl-3 -ml-3' : '',
         ].join(' ')}
         style={{
           ...(props.selected ? { boxShadow: '0 0 0 1px rgba(201,95,40,0.3)', background: 'rgba(201,95,40,0.05)' } : {}),
           ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
           ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
+          ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)', background: 'rgba(251,146,60,0.03)' } : {}),
         }}
       >
         {/* Profile updates */}
@@ -343,15 +345,55 @@ export function MessageBubble(props: {
           )}
         </AnimatePresence>
 
-        {/* Pipeline trace — persisted from streaming, collapsible */}
-        {(meta?.pipeline_statuses ?? []).length > 0 && (
-          <div className="mt-3">
-            <PipelineTrace
-              statuses={meta!.pipeline_statuses!}
-              streaming={false}
-              defaultOpen={false}
-            />
-          </div>
+        {/* Pipeline trace — persisted from streaming, enriched with metadata */}
+        {(meta?.pipeline_statuses ?? []).length > 0 && (() => {
+          const statuses = [...(meta!.pipeline_statuses ?? [])]
+          // Enrich with metadata-derived steps
+          const memCount = (meta?.retrieved_memories?.length ?? 0) + (meta?.prompt_memories?.length ?? 0)
+          if (memCount > 0 && !statuses.some(s => s.match(/\d+ mem/))) {
+            statuses.push(`${memCount} memories read`)
+          }
+          // Show top memory citation if available
+          const topMem = (meta?.retrieved_memories as any[])?.[0]
+          if (topMem?.text) {
+            const memPreview = String(topMem.text).slice(0, 80)
+            const trust = typeof topMem.trust === 'number' ? `T:${topMem.trust.toFixed(2)}` : ''
+            statuses.push(`${topMem.memory_id ?? ''} ·${trust ? trust + ' ' : ''}${memPreview}`)
+          }
+          // Show gate result
+          if (gatesFailed && meta?.gate_reason) {
+            statuses.push(`gate: ${meta.gate_reason}`)
+          }
+          return (
+            <div className="mt-3">
+              <PipelineTrace
+                statuses={statuses}
+                streaming={false}
+                defaultOpen={false}
+              />
+            </div>
+          )
+        })()}
+
+        {/* Cited memories — compact list of memories that grounded this response */}
+        {isAssistant && (meta?.retrieved_memories as any[])?.length > 0 && (
+          <details className="mt-2 text-[11px]" style={{ color: 'rgba(240,235,225,0.4)' }}>
+            <summary className="cursor-pointer hover:text-white/60 transition-colors font-mono">
+              ↑↓{(meta!.retrieved_memories as any[]).length} memories cited
+            </summary>
+            <div className="mt-1.5 pl-3 flex flex-col gap-1" style={{ borderLeft: '1px solid rgba(232,132,58,0.15)' }}>
+              {(meta!.retrieved_memories as any[]).slice(0, 5).map((mem: any, i: number) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="font-mono flex-shrink-0" style={{ color: '#e8843a' }}>
+                    T:{typeof mem.trust === 'number' ? mem.trust.toFixed(2) : '?'}
+                  </span>
+                  <span className="truncate" style={{ color: 'rgba(240,235,225,0.5)' }}>
+                    {String(mem.text || '').slice(0, 120)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </details>
         )}
 
         {/* Citations */}
@@ -418,9 +460,9 @@ export function MessageBubble(props: {
                   onClick={() => setGateDebugOpen((v) => !v)}
                   className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-opacity hover:opacity-80"
                   style={{ background: 'rgba(251,113,133,0.15)', color: '#fb7185' }}
-                  title="Click to see why this was blocked"
+                  title={meta?.gate_reason ? `Gate blocked: ${meta.gate_reason}` : 'Click to see why this was blocked'}
                 >
-                  gate fail {meta?.gate_debug ? (gateDebugOpen ? '▲' : '▼') : ''}
+                  gate fail{meta?.gate_reason ? ` · ${meta.gate_reason.replace(/_/g, ' ').slice(0, 30)}` : ''} {meta?.gate_debug ? (gateDebugOpen ? '▲' : '▼') : ''}
                 </button>
               )}
               {contradictionDetected && (

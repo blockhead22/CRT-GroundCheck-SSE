@@ -53,6 +53,16 @@ function domainOf(url: string): string {
   }
 }
 
+function shortUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    const path = u.pathname + (u.search ? u.search.split('&')[0] : '')
+    return u.hostname + (path.length > 1 ? path.slice(0, 40) : '')
+  } catch {
+    return url.slice(0, 50)
+  }
+}
+
 // ── Route chip colour ─────────────────────────────────────────────────────
 
 function routeColor(route?: string) {
@@ -219,8 +229,8 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
                   {step.tool_name}
                 </span>
                 {step.input.url ? (
-                  <span className="truncate max-w-[180px]" style={{ color: '#5a5445' }}>
-                    {domainOf(String(step.input.url))}
+                  <span className="truncate max-w-[240px]" style={{ color: '#5a5445' }}>
+                    {shortUrl(String(step.input.url))}
                   </span>
                 ) : null}
                 {step.status === 'ok' && step.byte_count ? (

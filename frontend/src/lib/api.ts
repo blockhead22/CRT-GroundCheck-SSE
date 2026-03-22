@@ -441,6 +441,7 @@ export type StreamCallbacks = {
   onPhaseStart?: (phase: string, content?: string) => void
   onPhaseEnd?: (phase: string) => void
   onToken?: (token: string) => void
+  onCorrection?: (content: string) => void
   onDone?: (content: string, metadata?: Record<string, unknown>) => void
   onError?: (error: string) => void
 }
@@ -604,6 +605,9 @@ export async function streamFromCrtApi(args: {
                 break
               case 'token':
                 args.callbacks.onToken?.(event.content)
+                break
+              case 'correction':
+                args.callbacks.onCorrection?.(event.content)
                 break
               case 'done':
                 args.callbacks.onDone?.(event.content, event.metadata)
