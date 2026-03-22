@@ -596,6 +596,39 @@ def classify_intent(
                         reason="service_credential_match",
                     )
 
+    # ── 4c. Service continuation — no service name but recent service task ──
+    # If the message has action verbs (check, find, search, post, etc.) but
+    # didn't mention a service name, check if the last completed task was a
+    # service_action and inherit that context.
+    if active_task and active_task.get("intent_type") == "service_action":
+        has_read_verb = _SERVICE_READ_RE.search(message)
+        has_write_verb = _SERVICE_WRITE_RE.search(message)
+        if has_read_verb or has_write_verb:
+            prev_ctx = active_task.get("context") or {}
+            prev_service = prev_ctx.get("_service", "")
+            prev_cred_key = prev_ctx.get("_credential_key", "")
+            if prev_service and known_svcs and prev_service in known_svcs:
+                svc_meta = known_svcs[prev_service]
+                is_write = bool(has_write_verb)
+                logger.info(
+                    "[INTENT] Service continuation: '%s' → inherited service '%s' from last task",
+                    message[:60], prev_service,
+                )
+                return TaskIntent(
+                    route="task",
+                    intent_type="service_action",
+                    slots={
+                        "service": prev_service,
+                        "action": "write" if is_write else "query",
+                        "credential_key": prev_cred_key or svc_meta.get("credential_key", ""),
+                        "skill_url_key": svc_meta.get("skill_url_key", ""),
+                        "api_base_key": svc_meta.get("api_base_key", ""),
+                        "raw_message": message,
+                    },
+                    confidence=0.80,
+                    reason="service_continuation_from_last_task",
+                )
+
     # ── 5. Continuation keywords even without active task ─────────────────
     # Only match if the continuation pattern is near the start (first 120 chars)
     # to avoid hijacking long pasted content
