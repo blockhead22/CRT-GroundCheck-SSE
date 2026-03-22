@@ -611,12 +611,6 @@ class CRTMemorySystem:
             logger.info(f"[MIGRATION] Adding run_id column to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN run_id TEXT")
 
-        # User-scoped retrieval (user_id replaces thread_id as primary filter)
-        if "user_id" not in columns:
-            logger.info(f"[MIGRATION] Adding user_id column to {self.db_path}")
-            cursor.execute("ALTER TABLE memories ADD COLUMN user_id TEXT")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id)")
-
         # Adaptive compression (Phase 1)
         if "compression_tier" not in columns:
             logger.info(f"[MIGRATION] Adding compression columns to {self.db_path}")
@@ -627,6 +621,14 @@ class CRTMemorySystem:
             cursor.execute("ALTER TABLE memories ADD COLUMN contradiction_count INTEGER DEFAULT 0")
             cursor.execute("ALTER TABLE memories ADD COLUMN access_count INTEGER DEFAULT 0")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_compression_tier ON memories(compression_tier)")
+
+        # User-scoped retrieval (user_id replaces thread_id as primary filter).
+        # IMPORTANT: this migration MUST run after the compression columns so that
+        # user_id is always the last column (index 33) in SELECT * results.
+        if "user_id" not in columns:
+            logger.info(f"[MIGRATION] Adding user_id column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN user_id TEXT")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id)")
 
         conn.commit()
         conn.close()
@@ -2407,28 +2409,28 @@ class CRTMemorySystem:
             memory.model_id = row[25]
         if len(row) > 26:
             memory.run_id = row[26]
-        # user_id (column 27 — added before compression columns in migration order)
+        # Adaptive compression fields (columns 27-32)
         if len(row) > 27:
-            memory.user_id = row[27]
-        # Adaptive compression fields (columns 28-33)
-        if len(row) > 28:
-            memory.compression_tier = int(row[28]) if row[28] is not None else 2
+            memory.compression_tier = int(row[27]) if row[27] is not None else 2
+        if len(row) > 28 and row[28]:
+            try:
+                memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.float32)
+            except Exception:
+                pass
         if len(row) > 29 and row[29]:
             try:
-                memory.compressed_vector = np.array(json.loads(row[29]), dtype=np.float32)
+                memory.cogni_seed = json.loads(row[29])
             except Exception:
                 pass
-        if len(row) > 30 and row[30]:
-            try:
-                memory.cogni_seed = json.loads(row[30])
-            except Exception:
-                pass
+        if len(row) > 30:
+            memory.stable_cycles = int(row[30]) if row[30] is not None else 0
         if len(row) > 31:
-            memory.stable_cycles = int(row[31]) if row[31] is not None else 0
+            memory.contradiction_count = int(row[31]) if row[31] is not None else 0
         if len(row) > 32:
-            memory.contradiction_count = int(row[32]) if row[32] is not None else 0
+            memory.access_count = int(row[32]) if row[32] is not None else 0
+        # user_id (column 33 — added AFTER compression columns in migration order)
         if len(row) > 33:
-            memory.access_count = int(row[33]) if row[33] is not None else 0
+            memory.user_id = row[33]
         return memory
     
     def _load_all_memories(self, user_id: Optional[str] = None) -> List[MemoryItem]:

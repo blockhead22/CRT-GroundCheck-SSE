@@ -113,15 +113,24 @@ export function Sidebar(props: {
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 className={
-                  'group flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-200 ' +
+                  'group relative flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-200 ' +
                   (isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/[0.07] hover:text-white/90')
                 }
               >
+                {/* Active accent bar */}
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-bar"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
+                    style={{ background: '#c95f28', boxShadow: '0 0 8px rgba(201,95,40,0.5)' }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                  />
+                )}
                 <span
                   className={
                     'grid h-8 w-8 place-items-center rounded-lg text-xs transition-all duration-200 ' +
                     (isActive
-                      ? 'bg-[var(--accent)]/15 text-[#e8843a] shadow-[0_0_12px_rgba(201,95,40,0.25)] border border-[#c95f28]/30'
+                      ? 'bg-[rgba(201,95,40,0.15)] text-[#e8843a] shadow-[0_0_12px_rgba(201,95,40,0.25)] border border-[rgba(201,95,40,0.3)]'
                       : 'border border-white/[0.06] bg-white/[0.03] text-white/40 group-hover:text-white/60 group-hover:border-white/10')
                   }
                 >

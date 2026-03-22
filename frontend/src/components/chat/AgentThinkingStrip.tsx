@@ -158,8 +158,14 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="mb-4 rounded-xl overflow-hidden"
-      style={{ border: '1px solid rgba(240,235,225,0.07)', background: 'rgba(0,0,0,0.18)' }}
+      className="mb-4 rounded-2xl overflow-hidden"
+      style={{
+        border: '1px solid rgba(240,235,225,0.06)',
+        background: 'rgba(14,13,11,0.6)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        boxShadow: '0 2px 12px rgba(0,0,0,0.2), 0 8px 24px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.02)',
+      }}
     >
       {/* Header ── intent + route chips */}
       <div className="px-3 py-2 flex items-center gap-2 flex-wrap"

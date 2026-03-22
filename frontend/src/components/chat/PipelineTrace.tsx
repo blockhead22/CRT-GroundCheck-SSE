@@ -42,8 +42,26 @@ export function PipelineTrace({
 
   const activeStep = deduped[deduped.length - 1]
 
+  const progressPct = streaming ? `${Math.min(((deduped.length) / Math.max(deduped.length + 2, 6)) * 100, 90)}%` : '100%'
+
   return (
     <div className="mb-3">
+      {/* Progress bar — thin accent line */}
+      <div className="mb-2 h-[2px] rounded-full overflow-hidden" style={{ background: 'rgba(240,235,225,0.04)' }}>
+        <motion.div
+          className="h-full rounded-full"
+          style={{
+            background: streaming
+              ? 'linear-gradient(90deg, #c95f28, #e8843a)'
+              : 'rgba(106,191,123,0.5)',
+            boxShadow: streaming ? '0 0 8px rgba(201,95,40,0.4)' : 'none',
+          }}
+          initial={{ width: '0%' }}
+          animate={{ width: progressPct }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        />
+      </div>
+
       {/* Header row */}
       <button
         onClick={() => setOpen(v => !v)}
