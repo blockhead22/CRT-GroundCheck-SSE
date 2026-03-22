@@ -1376,6 +1376,7 @@ def create_app() -> FastAPI:
                 _cloud_openai = OpenAICompatibleClient(
                     model="gpt-4o-mini",
                     api_key_env="OPENAI_API_KEY",
+                    timeout_seconds=15.0,
                 )
             _claude_cookie = os.getenv("CLAUDE_SESSION_COOKIE", "").strip()
             if _claude_cookie:

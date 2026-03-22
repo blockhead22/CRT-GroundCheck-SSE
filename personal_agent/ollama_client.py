@@ -76,7 +76,7 @@ class OllamaClient:
         a complete response.
         """
         if self._is_thinking_model(model_name):
-            return max(max_tokens * 4, min(max_tokens * 4, 8192))
+            return min(max_tokens * 2, 4096)
         return max_tokens
 
     def _verify_model(self):

@@ -2794,16 +2794,18 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     # If local fact extraction couldn't classify a slot, try cloud classification.
     try:
         _local_slots = result.get("slots_extracted") or result.get("facts") or {}
+        logger.info("[CLOUD_DEBUG] Local slots: %s, uid: %s", bool(_local_slots), uid)
         if not _local_slots or (isinstance(_local_slots, dict) and not _local_slots):
             import auth as _auth_mod
-            _uid_for_cloud = resolve_user_id(authorization) if 'authorization' in dir() else uid
-            _uid_int = int(_uid_for_cloud) if _uid_for_cloud else 1
+            _uid_int = int(uid) if uid else 1
             _cloud_slot_enabled = str(
                 _auth_mod.get_user_setting(_uid_int, "cloud_slot_classification", "false")
-            ).lower() in ("true", "1", "yes")
+            ).lower() in ("true", "1", "yes", "on")
+            logger.info("[CLOUD_DEBUG] Slot classification enabled: %s", _cloud_slot_enabled)
             if _cloud_slot_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc = get_cloud_feature_service()
+                logger.info("[CLOUD_DEBUG] Cloud service: %s", _cloud_svc is not None)
                 if _cloud_svc is not None:
                     # Gather existing slot names from memory for context
                     _existing_slots = []
@@ -2828,7 +2830,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                 _cloud_slot, str(_cloud_value)[:60],
                             )
     except Exception as _cloud_slot_err:
-        logger.debug("[CLOUD_SLOT] Cloud slot classification failed (non-fatal): %s", _cloud_slot_err)
+        logger.warning("[CLOUD_SLOT] Cloud slot classification failed (non-fatal): %s", _cloud_slot_err)
 
     # ====== CRT-AS-CRITIC: Post-generation verification ======
     # Verify the draft answer against stored memories using GroundCheck (~1ms).
@@ -2898,11 +2900,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _critic_verdict_str = str((critic_meta or {}).get("verdict") or "")
         if _critic_verdict_str == "soft_fail" and 0.4 <= _critic_confidence <= 0.7:
             import auth as _auth_mod_nli
-            _uid_for_nli = resolve_user_id(authorization) if 'authorization' in dir() else uid
-            _uid_int_nli = int(_uid_for_nli) if _uid_for_nli else 1
+            _uid_int_nli = int(uid) if uid else 1
             _cloud_nli_enabled = str(
                 _auth_mod_nli.get_user_setting(_uid_int_nli, "cloud_nli_contradiction", "false")
-            ).lower() in ("true", "1", "yes")
+            ).lower() in ("true", "1", "yes", "on")
             if _cloud_nli_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc_nli = get_cloud_feature_service()
@@ -2927,7 +2928,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             result["contradiction_detected"] = False
                             logger.info("[CLOUD_NLI] Cloud cleared contradiction — upgraded to pass")
     except Exception as _cloud_nli_err:
-        logger.debug("[CLOUD_NLI] Cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
+        logger.warning("[CLOUD_NLI] Cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
 
     # ── Gate telemetry emission ──────────────────────────────────────────────
     try:

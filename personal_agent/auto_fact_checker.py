@@ -290,7 +290,7 @@ def _run_verification(
     has_hallucination = False
 
     # Collect hallucinated facts
-    for slot, fact in (report.hallucinated_facts or {}).items():
+    for slot, fact in (getattr(report, 'hallucinations', None) or getattr(report, 'hallucinated_facts', None) or {}).items():
         value = fact.value if hasattr(fact, "value") else str(fact)
         has_hallucination = True
         findings.append({

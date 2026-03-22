@@ -690,7 +690,7 @@ Output ONLY valid JSON, nothing else."""
             # Use user_id=1 (single-user default) for heartbeat context
             _cloud_refl_enabled = str(
                 _auth_mod_refl.get_user_setting(1, "cloud_reflection_validation", "false")
-            ).lower() in ("true", "1", "yes")
+            ).lower() in ("true", "1", "yes", "on")
             if _cloud_refl_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc_refl = get_cloud_feature_service()
