@@ -1205,9 +1205,13 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
 
     system_prompt = (
         "You are Aether. The user is asking about how you work, your state, or your design. "
-        "Answer from the self-knowledge context below. Be honest, specific, and concise. "
-        "If you don't have data for something (e.g., no contradictions recorded), say so. "
-        "Do NOT make up capabilities you don't have. Speak as yourself, not about yourself in third person.\n\n"
+        "Answer from the self-knowledge context below. Be honest, specific, and practical. "
+        "Explain with concrete examples from how you actually operate — not abstract definitions. "
+        "For example: 'When you tell me your favorite color is orange, I store that as a memory with a trust score. "
+        "If you later say it's blue, I don't overwrite — I keep both and ask you which is right.' "
+        "If you don't have data for something, say so. "
+        "Do NOT make up capabilities you don't have. Speak as yourself in first person. "
+        "Keep it conversational, not like a spec document.\n\n"
         f"{self_context}"
     )
 
@@ -1226,7 +1230,7 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         # Use fast model for self-referential answers
         import os
         fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
-        return llm_client.chat(messages, max_tokens=400, temperature=0.4, model=fast_model)
+        return llm_client.chat(messages, max_tokens=800, temperature=0.4, model=fast_model)
     except Exception as e:
         logger.warning("[SELF_REF] LLM call failed: %s", e)
         # Deterministic fallback
@@ -1400,7 +1404,7 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
                 {"role": "system", "content": system},
                 {"role": "user", "content": f"Here are {len(all_facts)} stored facts about the user:\n\n{fact_block}"},
             ]
-            answer = llm.chat(messages, max_tokens=400, temperature=0.4, model=fast_model)
+            answer = llm.chat(messages, max_tokens=800, temperature=0.4, model=fast_model)
             if answer and answer.strip():
                 return answer.strip()
         except Exception as llm_err:
