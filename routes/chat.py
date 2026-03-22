@@ -1158,6 +1158,153 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         )
 
 
+def _is_broad_recall_request(text: str) -> bool:
+    """Detect requests for a broad dump of everything Aether knows about the user.
+
+    Examples: "what do you know about me", "tell me everything you remember",
+    "what have you learned about me", "tell me more about what you know about me"
+    """
+    t = (text or "").strip().lower()
+    if not t or len(t) > 500:
+        return False
+    patterns = (
+        "what do you know about me",
+        "what do you remember about me",
+        "tell me what you know about me",
+        "tell me more about what you know",
+        "tell me everything you know",
+        "tell me everything about me",
+        "what have you learned about me",
+        "what do you know about me so far",
+        "summarize what you know about me",
+        "list what you know about me",
+        "show me what you know",
+        "what facts do you have about me",
+        "what information do you have about me",
+        "tell me about me",
+        "describe me",
+        "who am i to you",
+        "what's my profile",
+        "my profile",
+    )
+    return any(p in t for p in patterns)
+
+
+def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
+    """Build a structured answer listing all high-trust facts about the user.
+
+    Reads directly from the memory database to get a broad view across all
+    stored facts, grouped by detected slot/category.
+    """
+    import json as _json
+    import sqlite3
+
+    # Find the memory DB — same candidates the copilot uses
+    db_candidates = [
+        Path("personal_agent/crt_memory_shared.db"),
+        Path("personal_agent/crt_memory.db"),
+        Path("data/crt_memory.db"),
+    ]
+    db_path = None
+    for cand in db_candidates:
+        if cand.exists():
+            db_path = str(cand)
+            break
+
+    if not db_path:
+        return "I don't have any stored facts about you yet. Tell me about yourself and I'll remember."
+
+    try:
+        conn = sqlite3.connect(db_path, timeout=5.0)
+        conn.row_factory = sqlite3.Row
+
+        # Check which columns exist (CRT vs GroundCheck schema)
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(memories)").fetchall()}
+        has_deprecated = "deprecated" in cols
+        has_kind = "kind" in cols
+        has_source = "source" in cols
+        has_context = "context" in cols
+
+        where_parts = ["trust >= 0.3"]
+        if has_deprecated:
+            where_parts.append("(deprecated IS NULL OR deprecated = 0)")
+        if has_source:
+            where_parts.append("source IN ('user', 'USER', 'inferred', 'INFERRED')")
+        where_sql = " AND ".join(where_parts)
+
+        rows = conn.execute(
+            f"SELECT text, trust, context FROM memories "
+            f"WHERE {where_sql} ORDER BY trust DESC LIMIT 100"
+        ).fetchall()
+        conn.close()
+
+        if not rows:
+            return "I don't have any stored facts about you yet. Tell me about yourself and I'll remember."
+
+        # Parse facts and group by slot
+        all_facts: list = []
+        for row in rows:
+            text = (row["text"] or "").strip()
+            trust = float(row["trust"] or 0)
+            if not text:
+                continue
+
+            # Skip FACT: prefix duplicates and very short entries
+            # Extract slot from context JSON
+            slot = "general"
+            if has_context and row["context"]:
+                try:
+                    ctx = _json.loads(row["context"]) if isinstance(row["context"], str) else {}
+                    slot = ctx.get("detected_slot") or ctx.get("slot") or "general"
+                except Exception:
+                    pass
+
+            # Clean up display text — strip "FACT: slot = " prefixes
+            display = text
+            if display.upper().startswith("FACT:"):
+                display = display[5:].strip()
+                if "=" in display[:40]:
+                    display = display.split("=", 1)[1].strip()
+
+            all_facts.append({"text": display, "trust": trust, "slot": slot})
+
+        # Deduplicate by text similarity (exact match)
+        seen: set = set()
+        deduped: list = []
+        for f in all_facts:
+            key = f["text"].lower()[:80]
+            if key not in seen:
+                seen.add(key)
+                deduped.append(f)
+        all_facts = deduped
+
+        # Group by slot
+        grouped: dict = {}
+        for fact in all_facts:
+            slot = fact["slot"]
+            if slot not in grouped:
+                grouped[slot] = []
+            grouped[slot].append(fact)
+
+        # Build readable output
+        lines = [f"Here's what I know about you ({len(all_facts)} facts):\n"]
+        for slot, facts in sorted(grouped.items()):
+            display_slot = slot.replace("_", " ").title() if slot == "general" else slot.replace("_", " ").title()
+            lines.append(f"**{display_slot}:**")
+            for f in facts[:8]:  # Cap per category
+                trust_pct = int(f["trust"] * 100)
+                lines.append(f"- {f['text']} ({trust_pct}% trust)")
+            if len(facts) > 8:
+                lines.append(f"  ...and {len(facts) - 8} more")
+            lines.append("")
+
+        return "\n".join(lines).strip()
+
+    except Exception as e:
+        logger.warning("[BROAD_RECALL] Failed to build recall: %s", e)
+        return "I had trouble retrieving my full memory set. Try asking about a specific topic."
+
+
 def _is_contradiction_inventory_request(text: str) -> bool:
     """Detect user requests asking about contradictions/conflicts."""
     t = (text or "").strip().lower()
@@ -2176,6 +2323,26 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
             gate_reason="self_referential",
             metadata={
                 "confidence": 0.80,
+                "retrieved_memories": [],
+                "prompt_memories": [],
+            },
+        )
+
+    # Broad recall: "what do you know about me?" — dump all high-trust facts.
+    if _is_broad_recall_request(effective_message):
+        control_state.request_kind = "broad_recall"
+        control_state.mark("bind", "memory_dump")
+        answer = _answer_broad_recall(engine, req.thread_id)
+        if greeting_text:
+            answer = f"{greeting_text}\n\n{answer}"
+        control_state.mark("decide", "ready", detail="broad_recall")
+        return _chat_response(
+            answer=answer,
+            response_type="belief",
+            gates_passed=True,
+            gate_reason="broad_recall",
+            metadata={
+                "confidence": 0.90,
                 "retrieved_memories": [],
                 "prompt_memories": [],
             },
