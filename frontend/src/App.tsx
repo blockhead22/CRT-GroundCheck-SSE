@@ -415,6 +415,12 @@ export default function App() {
                 agentThinkingRef.current = next
                 return next
               })
+              // Show tool call inline in streaming response
+              const url = (input as any)?.url
+              const domain = url ? (() => { try { return new URL(String(url)).hostname + new URL(String(url)).pathname.slice(0, 30) } catch { return '' } })() : ''
+              const toolLine = `\n\n> ▷ \`${toolName}\` ${domain}\n\n`
+              finalBufferRef.current += toolLine
+              setStreamingResponse(finalBufferRef.current)
             },
             onToolResult: (step) => {
               setAgentThinkingState((prev) => {
@@ -450,13 +456,19 @@ export default function App() {
             onTaskCancelled: (message) => {
               setStreamingResponse(message)
             },
-            onAgentThinkingToken: (token, _step) => {
+            onAgentThinkingToken: (token, step) => {
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 const next = { ...prev, draftingThinking: (prev.draftingThinking ?? '') + token }
                 agentThinkingRef.current = next
                 return next
               })
+              // Tool loop reasoning streams into the visible response area
+              // so the user sees Aether thinking out loud in real-time
+              if (step === 'tool_loop') {
+                finalBufferRef.current += token
+                setStreamingResponse(finalBufferRef.current)
+              }
             },
             onStatus: (status) => {
               if (!status) return
