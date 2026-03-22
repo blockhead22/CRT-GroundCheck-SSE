@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getDoc, listDocs } from '../lib/api'
 
-type DocTab = 'architecture' | 'faq' | 'functional_spec' | 'reference'
+type DocTab = 'architecture' | 'faq' | 'functional_spec' | 'reference' | 'guide'
 
 const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: string }> }> = [
   {
@@ -18,6 +18,12 @@ const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: strin
     heading: 'Specification',
     items: [
       { id: 'functional_spec', label: 'Functional Spec' },
+    ],
+  },
+  {
+    heading: 'Developer Guide',
+    items: [
+      { id: 'guide', label: 'Guides' },
     ],
   },
   {
@@ -238,12 +244,18 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
 
   const filtered = useMemo(() => {
     if (tab === 'reference') return docs.filter((d) => d.kind === 'reference')
+    if (tab === 'guide') return docs.filter((d) => d.kind === 'guide')
     return docs.filter((d) => d.id === tab)
   }, [docs, tab])
 
   useEffect(() => {
     if (tab === 'reference') {
       const first = docs.find((d) => d.kind === 'reference')
+      if (first) setActiveDocId(first.id)
+      return
+    }
+    if (tab === 'guide') {
+      const first = docs.find((d) => d.kind === 'guide')
       if (first) setActiveDocId(first.id)
       return
     }
@@ -331,15 +343,16 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
               </div>
               <div className="flex flex-col gap-px">
                 {section.items.map((item) => {
-                  const isActive = item.id === tab && item.id !== 'reference'
-                  // For reference, render sub-items
-                  if (item.id === 'reference') {
-                    const refDocs = docs.filter((d) => d.kind === 'reference')
-                    const isSectionActive = tab === 'reference'
+                  const isExpandableKind = item.id === 'reference' || item.id === 'guide'
+                  const isActive = item.id === tab && !isExpandableKind
+                  // For reference and guide, render expandable sub-items
+                  if (isExpandableKind) {
+                    const kindDocs = docs.filter((d) => d.kind === item.id)
+                    const isSectionActive = tab === item.id
                     return (
                       <div key={item.id}>
                         <button
-                          onClick={() => setTab('reference')}
+                          onClick={() => setTab(item.id)}
                           className={
                             'w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-[13px] text-left transition-all ' +
                             (isSectionActive ? 'text-white/90' : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]')
@@ -349,7 +362,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                           <span className="text-[10px]" style={{ color: '#5a5445' }}>{isSectionActive ? '▾' : '›'}</span>
                         </button>
                         <AnimatePresence>
-                          {isSectionActive && refDocs.length > 0 && (
+                          {isSectionActive && kindDocs.length > 0 && (
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
@@ -358,7 +371,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                               className="overflow-hidden ml-2"
                               style={{ borderLeft: '1px solid rgba(240,235,225,0.06)' }}
                             >
-                              {refDocs.map((d) => (
+                              {kindDocs.map((d) => (
                                 <button
                                   key={d.id}
                                   onClick={() => setActiveDocId(d.id)}

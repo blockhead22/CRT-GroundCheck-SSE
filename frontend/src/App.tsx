@@ -25,7 +25,7 @@ import { LiveFeedPage } from './pages/LiveFeedPage'
 import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
-import { SettingsModal } from './components/SettingsModal'
+import { SettingsPage } from './pages/SettingsPage'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -38,17 +38,13 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live', 'telemetry']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live', 'telemetry', 'settings']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
   }
   const [navActive, setNavActiveRaw] = useState<NavId>(navFromUrl)
   const setNavActive = useCallback((id: NavId) => {
-    if (id === 'settings') {
-      setSettingsOpen(true)
-      return
-    }
     setNavActiveRaw(id)
     navigate(id === 'chat' ? '/' : `/${id}`)
   }, [navigate])
@@ -84,7 +80,6 @@ export default function App() {
   const [xrayMode, setXrayMode] = useState(false)
   const [demoModeOpen, setDemoModeOpen] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
   
   // Model selection
   const [selectedModel, setSelectedModel] = useState<string>(() => {
@@ -865,7 +860,7 @@ export default function App() {
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
               onLogout={handleLogout}
-              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenSettings={() => setNavActive('settings')}
             />
 
             <div className="relative min-h-0 flex-1">
@@ -915,6 +910,23 @@ export default function App() {
                   <LiveFeedPage />
                 ) : navActive === 'telemetry' ? (
                   <TelemetryPage threadId={selectedThread?.id} />
+                ) : navActive === 'settings' ? (
+                  <SettingsPage
+                    authUser={authUser}
+                    threadId={selectedThread?.id ?? 'default'}
+                    onDisplayNameChanged={(name) => {
+                      setUserName(name)
+                      setAuthUser((prev) => prev ? { ...prev, display_name: name } : prev)
+                    }}
+                    onProfileUpdated={() => {
+                      const tid = selectedThread?.id ?? selectedThreadId
+                      getProfile(tid).then((p) => {
+                        const raw = (p?.name || p?.slots?.name || '').trim()
+                        setProfileHasName(Boolean(raw))
+                        if (raw) setUserName(raw)
+                      }).catch(() => {})
+                    }}
+                  />
                 ) : (
                   <div className="flex flex-1 items-center justify-center p-10 text-white/40 text-sm">Page not found</div>
                 )}
@@ -940,25 +952,6 @@ export default function App() {
         onSubmit={handleSetName}
       />
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        authUser={authUser}
-        threadId={selectedThread?.id ?? 'default'}
-        onDisplayNameChanged={(name) => {
-          setUserName(name)
-          setAuthUser((prev) => prev ? { ...prev, display_name: name } : prev)
-        }}
-        onProfileUpdated={() => {
-          // Reload profile to pick up new facts
-          const tid = selectedThread?.id ?? selectedThreadId
-          getProfile(tid).then((p) => {
-            const raw = (p?.name || p?.slots?.name || '').trim()
-            setProfileHasName(Boolean(raw))
-            if (raw) setUserName(raw)
-          }).catch(() => {})
-        }}
-      />
 
       <ThreadRenameLightbox
         open={renameOpen}

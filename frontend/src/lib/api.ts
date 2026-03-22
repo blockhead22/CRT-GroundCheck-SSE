@@ -1284,6 +1284,7 @@ const AUTH_TOKEN_KEY = 'crt_auth_token'
 export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null
   return window.localStorage.getItem(AUTH_TOKEN_KEY)
+    || window.localStorage.getItem('token')
     || window.localStorage.getItem('auth_token')
     || null
 }

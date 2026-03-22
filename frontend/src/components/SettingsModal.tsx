@@ -61,6 +61,11 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
     getProfile(threadId).then((p) => {
       setNickname(p.slots?.nickname || p.slots?.preferred_name || '')
       setSlots(p.slots || {})
+      // Populate display name from profile if authUser is not available
+      if (!authUser?.display_name) {
+        const profileName = p.slots?.name || p.slots?.display_name || p.slots?.preferred_name || ''
+        if (profileName) setDisplayName(profileName)
+      }
     }).catch(() => {})
 
     // Load cloud settings
