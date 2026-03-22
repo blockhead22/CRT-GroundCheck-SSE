@@ -73,6 +73,7 @@ class MemorySource(Enum):
     FALLBACK = "fallback"
     EXTERNAL = "external"
     REFLECTION = "reflection"
+    SELF_REFLECTION = "self_reflection"
     LLM_OUTPUT = "llm_output"
 
 
