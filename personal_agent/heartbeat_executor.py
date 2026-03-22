@@ -1156,6 +1156,21 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Mention check skipped: {e}")
 
+        # --- 7. Self-reflection pass (update self-model from evidence) ---
+        try:
+            from personal_agent.heartbeat_system import run_self_reflection_now
+            sr_result = run_self_reflection_now(thread_id)
+            updated_slots = len(sr_result) if sr_result else 0
+            if updated_slots > 0:
+                actions_taken.append({
+                    "action": "self_reflection",
+                    "detail": f"Self-reflection updated {updated_slots} self-model slots",
+                    "slots": updated_slots,
+                })
+                logger.info(f"[HEARTBEAT] Self-reflection: updated {updated_slots} slots")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Self-reflection skipped: {e}")
+
         elapsed = _time.time() - start
         summary = "; ".join(a["detail"] for a in actions_taken) if actions_taken else "Heartbeat OK, no actions needed"
         

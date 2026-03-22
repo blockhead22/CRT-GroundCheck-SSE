@@ -805,7 +805,11 @@ def get_heartbeat_scheduler(
 def run_self_reflection_now(thread_id: str = "default") -> Dict[str, Optional[str]]:
     """Standalone self-reflection trigger — runs the LLM self-awareness pass for
     a given thread and returns the updated self-model slots.  Can be called from
-    any context without needing a running HeartbeatScheduler instance."""
+    any context without needing a running HeartbeatScheduler instance.
+
+    This is the primary entry point used by HeartbeatLLMExecutor.run_heartbeat_for_thread()
+    to execute self-reflection as part of the active heartbeat loop.
+    """
     _dummy = HeartbeatScheduler.__new__(HeartbeatScheduler)
     _dummy._run_self_reflection(thread_id)
     from personal_agent.self_model import get_self_model
