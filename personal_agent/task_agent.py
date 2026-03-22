@@ -531,9 +531,11 @@ def classify_intent(
     # Only route to task agent when there's a genuine action verb that
     # survives after removing the service name from the message.
     known_svcs = _get_known_services()
+    # Also check a space-stripped version for fuzzy matching ("molt book" → "moltbook")
+    msg_compact = re.sub(r"[\s_-]+", "", msg_lower)
     if known_svcs:
         for svc_name, svc_meta in known_svcs.items():
-            if re.search(r"\b" + re.escape(svc_name) + r"\b", msg_lower):
+            if re.search(r"\b" + re.escape(svc_name) + r"\b", msg_lower) or svc_name in msg_compact:
                 # Meta-question guard: strip the service name and check
                 # if a real action verb remains.  Questions like
                 # "what is moltbook" or "how does moltbook work" should
@@ -2003,7 +2005,7 @@ class CRTTaskAgent:
 
         try:
             for tok_type, text in self._llm.chat_stream(
-                messages, max_tokens=400, temperature=0.3, model=fast_model,
+                messages, max_tokens=800, temperature=0.3, model=fast_model,
             ):
                 if tok_type == "thinking":
                     thinking_buf += text
@@ -2119,7 +2121,7 @@ class CRTTaskAgent:
         # Use fast model for answer summarisation — reasoning models timeout
         fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
         try:
-            return self._llm.chat(messages, max_tokens=400, temperature=0.3, model=fast_model)
+            return self._llm.chat(messages, max_tokens=800, temperature=0.3, model=fast_model)
         except Exception as e:
             logger.warning("[TASK_AGENT] LLM call failed: %s", e)
             return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)

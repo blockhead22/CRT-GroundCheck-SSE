@@ -1182,8 +1182,13 @@ def _is_broad_recall_request(text: str) -> bool:
         "what facts do you have about me",
         "what information do you have about me",
         "tell me about me",
+        "tell me more about me",
+        "tell me about who i am",
+        "tell me more about who i am",
+        "what do you know about who i am",
         "describe me",
         "who am i to you",
+        "who am i",
         "what's my profile",
         "my profile",
     )
