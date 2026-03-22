@@ -3499,10 +3499,15 @@ def chat_stream(req: ChatSendRequest, request: Request):
                         req.message, req.thread_id, _task_intent,
                         active_task=_active_task, user_confirmed=_user_confirmed,
                     ):
-                        if _event["type"] == "agent_checkpoint":
+                        if _event["type"] in ("agent_checkpoint", "agent_checkpoint_write"):
                             # ── CHECKPOINT: Emit to user, pause execution ──
                             yield _sse(_event)
                             _checkpoint_hit = True
+                            _cp_tier = (
+                                _event.get("metadata", {}).get("checkpoint_tier")
+                                or _event.get("metadata", {}).get("tier")
+                                or "tier_1"
+                            )
                             _session_db.store_pending_checkpoint(
                                 thread_id=req.thread_id,
                                 intent_data={
@@ -3512,7 +3517,7 @@ def chat_stream(req: ChatSendRequest, request: Request):
                                     "confidence": _task_intent.confidence,
                                     "reason": _task_intent.reason,
                                 },
-                                checkpoint_tier=_event["metadata"]["checkpoint_tier"],
+                                checkpoint_tier=_cp_tier,
                             )
                             break  # Stop — wait for user's next message
 

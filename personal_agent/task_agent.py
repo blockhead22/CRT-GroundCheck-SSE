@@ -964,81 +964,103 @@ class CRTTaskAgent:
             and intent.slots.get("action") in ("follow_instructions", "write", "query")
         )
         replan_attempted_but_failed = False
+        llm_loop_final_content = ""
         if needs_replan:
             yield {"type": "status", "content": "analyzing fetched content"}
-            phase2_plan = self._replan_from_content(replan_source, message, intent)
 
-            if not phase2_plan:
-                # Re-plan failed — flag it so we use a deterministic answer
-                # instead of letting the LLM narrate a fake execution
-                replan_attempted_but_failed = True
-                yield {
-                    "type": "status",
-                    "content": "could not determine execution steps from content",
-                }
-                needs_replan = False  # skip to honest answer below
-
-            if needs_replan and phase2_plan:
-                _MAX_STEPS = 8  # hard ceiling per task
-                phase2_plan = phase2_plan[:_MAX_STEPS]
-                step_budget = len(phase2_plan)
-
-                # ── Tier 1 checkpoint for write actions in phase 2 ─────────
-                # POST/write steps are destructive — always pause for user
-                has_writes = any(
-                    s["tool"] in ("http_post",) for s in phase2_plan
-                )
-                if has_writes:
-                    write_urls = [
-                        s["input"].get("url", "unknown")
-                        for s in phase2_plan if s["tool"] == "http_post"
-                    ]
-                    yield {
-                        "type": "agent_checkpoint",
-                        "content": (
-                            f"Phase 2 includes {len(write_urls)} write action(s): "
-                            + ", ".join(write_urls[:3])
-                            + ". Proceed?"
-                        ),
-                        "metadata": {
-                            "tier": "tier_1",
-                            "intent_type": intent.intent_type,
-                            "action": intent.slots.get("action", ""),
-                            "write_urls": write_urls[:3],
-                            "phase": 2,
-                        },
-                    }
-                    return  # pause — user must confirm to continue
-
-                yield {
-                    "type": "plan_ready",
-                    "content": f"{step_budget} action step{'s' if step_budget != 1 else ''}",
-                    "metadata": {"steps": phase2_plan, "budget": step_budget, "phase": 2},
-                }
-
-                base_idx = len(steps)
-                for j, step_plan in enumerate(phase2_plan):
-                    tool = step_plan["tool"]
-                    inp = dict(step_plan["input"])
-                    step_idx = base_idx + j
-                    step = AgentStep(step_index=step_idx, tool_name=tool, input=inp, status="running")
-                    steps.append(step)
-
-                    yield {"type": "tool_start", "content": f"▷ {tool}",
-                           "metadata": {"tool_name": tool, "input": inp, "step_index": step_idx,
-                                        "step_num": j + 1, "step_total": step_budget}}
-
-                    result_event = yield from self._execute_step(
-                        step, tool, inp, thread_id, step_idx,
-                        fetched_content=fetched_content, task_context=task_context,
+            # ── Primary: LLM-driven iterative tool loop ────────────────
+            _used_llm_loop = False
+            if self._llm is not None and hasattr(self._llm, "chat_with_tools"):
+                try:
+                    loop_steps, llm_loop_final_content = yield from self._llm_tool_loop(
+                        message=message,
+                        thread_id=thread_id,
+                        intent=intent,
+                        fetched_content=replan_source,
+                        task_context=task_context,
+                        existing_steps=steps,
+                        budget=8,
                     )
+                    if loop_steps:
+                        steps.extend(loop_steps)
+                        for s in loop_steps:
+                            if s.extracted_fields:
+                                stored_credentials.update(s.extracted_fields)
+                        _used_llm_loop = True
+                    else:
+                        logger.info("[TASK_AGENT] LLM tool loop returned 0 steps, falling back to curl parser")
+                except Exception as e:
+                    logger.warning("[TASK_AGENT] LLM tool loop failed, falling back to curl parser: %s", e)
 
-                    if step.status == "ok":
-                        if step.extracted_fields:
-                            stored_credentials.update(step.extracted_fields)
-                            task_context.update(step.extracted_fields)
+            # ── Fallback: deterministic curl parser ────────────────────
+            if not _used_llm_loop:
+                phase2_plan = self._replan_from_content(replan_source, message, intent)
 
-                    yield result_event
+                if not phase2_plan:
+                    replan_attempted_but_failed = True
+                    yield {
+                        "type": "status",
+                        "content": "could not determine execution steps from content",
+                    }
+                    needs_replan = False
+                else:
+                    _MAX_STEPS = 8
+                    phase2_plan = phase2_plan[:_MAX_STEPS]
+                    step_budget = len(phase2_plan)
+
+                    # Checkpoint for write actions
+                    has_writes = any(s["tool"] in ("http_post",) for s in phase2_plan)
+                    if has_writes:
+                        write_urls = [
+                            s["input"].get("url", "unknown")
+                            for s in phase2_plan if s["tool"] == "http_post"
+                        ]
+                        yield {
+                            "type": "agent_checkpoint",
+                            "content": (
+                                f"Phase 2 includes {len(write_urls)} write action(s): "
+                                + ", ".join(write_urls[:3])
+                                + ". Proceed?"
+                            ),
+                            "metadata": {
+                                "tier": "tier_1",
+                                "intent_type": intent.intent_type,
+                                "action": intent.slots.get("action", ""),
+                                "write_urls": write_urls[:3],
+                                "phase": 2,
+                            },
+                        }
+                        return
+
+                    yield {
+                        "type": "plan_ready",
+                        "content": f"{step_budget} action step{'s' if step_budget != 1 else ''}",
+                        "metadata": {"steps": phase2_plan, "budget": step_budget, "phase": 2},
+                    }
+
+                    base_idx = len(steps)
+                    for j, step_plan in enumerate(phase2_plan):
+                        tool = step_plan["tool"]
+                        inp = dict(step_plan["input"])
+                        step_idx = base_idx + j
+                        step = AgentStep(step_index=step_idx, tool_name=tool, input=inp, status="running")
+                        steps.append(step)
+
+                        yield {"type": "tool_start", "content": f"▷ {tool}",
+                               "metadata": {"tool_name": tool, "input": inp, "step_index": step_idx,
+                                            "step_num": j + 1, "step_total": step_budget}}
+
+                        result_event = yield from self._execute_step(
+                            step, tool, inp, thread_id, step_idx,
+                            fetched_content=fetched_content, task_context=task_context,
+                        )
+
+                        if step.status == "ok":
+                            if step.extracted_fields:
+                                stored_credentials.update(step.extracted_fields)
+                                task_context.update(step.extracted_fields)
+
+                        yield result_event
 
         # ── 4. Persist task state to session DB ───────────────────────────
         self._persist_task_state(thread_id, intent, steps, task_context, stored_credentials)
@@ -1059,7 +1081,11 @@ class CRTTaskAgent:
 
         # ── 6. Generate answer (streaming with thinking tokens) ───────────
         yield {"type": "status", "content": "drafting response"}
-        if intent.slots.get("_no_endpoint"):
+        if llm_loop_final_content:
+            # LLM tool loop already synthesized an answer
+            answer = llm_loop_final_content
+            yield {"type": "token", "content": answer}
+        elif intent.slots.get("_no_endpoint"):
             # Service recognized from credentials but no API endpoint stored.
             # Deterministic answer — never let the LLM hallucinate fake service data.
             service = intent.slots.get("service", "the service")
@@ -1125,8 +1151,6 @@ class CRTTaskAgent:
     # Phase-2 re-planner: content → concrete tool calls
     # ------------------------------------------------------------------
 
-    _VALID_TOOLS = {"http_post", "http_get_json", "store_credential"}
-
     # Tool schemas for native function-calling (Qwen3 / Ollama tool use)
     _TOOL_SCHEMAS: List[Dict[str, Any]] = [
         {
@@ -1183,7 +1207,242 @@ class CRTTaskAgent:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "request_budget_extension",
+                "description": "Request more tool calls if you need additional steps to complete the task. Only call this when you genuinely need more steps.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "reason": {"type": "string", "description": "Why more steps are needed"},
+                        "additional_steps": {"type": "integer", "description": "How many more steps needed (1-7)"},
+                    },
+                    "required": ["reason", "additional_steps"],
+                },
+            },
+        },
     ]
+
+    _VALID_TOOLS = {"http_post", "http_get_json", "store_credential", "request_budget_extension"}
+
+    # ------------------------------------------------------------------
+    # LLM Tool Loop — iterative agent execution
+    # ------------------------------------------------------------------
+
+    _TOOL_LOOP_SYSTEM_PROMPT = """You are Aether, executing a task. You have HTTP tools to interact with APIs.
+
+RULES:
+1. Execute the user's goal by calling tools in the correct order.
+2. After each tool result, analyze the response and decide your next action.
+3. YOUR_API_KEY placeholders in headers are replaced automatically — just include them.
+4. When the task is complete, stop calling tools and provide a brief summary of what was accomplished.
+5. If a step fails, try to recover (different endpoint, fix parameters) or explain what went wrong.
+6. You have a budget of {budget} tool calls. If you need more, call request_budget_extension with a reason.
+7. Never fabricate API responses. Only report what tools actually returned.
+8. For browsing/reading tasks: fetch the feed or list, identify interesting items, then fetch details on the best ones.
+9. Present results naturally — titles, summaries, why something is interesting."""
+
+    _HARD_MAX_BUDGET = 15
+    _MAX_CONSECUTIVE_FAILURES = 3
+
+    def _llm_tool_loop(
+        self,
+        message: str,
+        thread_id: str,
+        intent: TaskIntent,
+        fetched_content: Optional[str],
+        task_context: Dict[str, Any],
+        existing_steps: List[AgentStep],
+        budget: int = 8,
+    ) -> Generator[Dict[str, Any], None, Tuple[List[AgentStep], str]]:
+        """Iterative LLM-driven tool execution loop.
+
+        The LLM sees skill docs + user goal, decides which tools to call,
+        sees results, and decides next steps. Continues until it stops
+        calling tools, hits the budget, or fails 3 times consecutively.
+
+        Yields SSE events for streaming. Returns (steps, final_content).
+        """
+        service = intent.slots.get("service", "")
+        action = intent.slots.get("action", "query")
+
+        system_prompt = self._TOOL_LOOP_SYSTEM_PROMPT.format(budget=budget)
+        if service:
+            system_prompt += f"\nService: {service}\nAction: {action}"
+
+        # Build initial messages with skill content
+        skill_snippet = (fetched_content or "")[:8000]
+        messages: List[Dict[str, Any]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Goal: {message}\n\nAPI Documentation:\n{skill_snippet}"},
+        ]
+
+        steps: List[AgentStep] = []
+        base_idx = len(existing_steps)
+        tool_call_count = 0
+        consecutive_failures = 0
+        final_content = ""
+
+        # Use fast model for tool loop reasoning
+        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+
+        while tool_call_count < budget:
+            # 1. Call LLM with current context
+            yield {
+                "type": "status",
+                "content": f"reasoning (step {tool_call_count + 1}/{budget})",
+            }
+
+            try:
+                result = self._llm.chat_with_tools(
+                    messages=messages,
+                    tools=self._TOOL_SCHEMAS,
+                    max_tokens=1000,
+                    temperature=0.1,
+                    model=fast_model,
+                )
+            except Exception as e:
+                logger.warning("[TOOL_LOOP] LLM call failed: %s", e)
+                yield {"type": "status", "content": f"LLM error: {e}"}
+                break
+
+            tool_calls = result.get("tool_calls", [])
+            llm_content = result.get("content", "")
+
+            # 2. Stream LLM reasoning
+            if llm_content:
+                yield {
+                    "type": "agent_thinking_token",
+                    "content": llm_content,
+                    "metadata": {"step": "tool_loop"},
+                }
+
+            # 3. No tool calls = LLM is done
+            if not tool_calls:
+                final_content = llm_content
+                break
+
+            # 4. Append assistant message to history
+            messages.append({"role": "assistant", "content": llm_content or ""})
+
+            # 5. Execute each tool call
+            for tc in tool_calls:
+                name = tc.get("name", "")
+                args = tc.get("arguments", {})
+
+                # Budget extension request
+                if name == "request_budget_extension":
+                    reason = args.get("reason", "")
+                    extra = min(int(args.get("additional_steps", 3)), self._HARD_MAX_BUDGET - budget)
+                    if extra > 0:
+                        budget += extra
+                        yield {
+                            "type": "status",
+                            "content": f"budget extended → {budget} ({reason})",
+                        }
+                        logger.info("[TOOL_LOOP] Budget extended to %d: %s", budget, reason)
+                    messages.append({
+                        "role": "tool",
+                        "content": json.dumps({"budget_extended_to": budget}),
+                    })
+                    continue
+
+                if name not in self._VALID_TOOLS:
+                    messages.append({
+                        "role": "tool",
+                        "content": json.dumps({"error": f"unknown tool: {name}"}),
+                    })
+                    continue
+
+                step_idx = base_idx + len(steps)
+                step = AgentStep(step_index=step_idx, tool_name=name, input=dict(args), status="running")
+                steps.append(step)
+
+                # Checkpoint for write actions (POST)
+                if name == "http_post":
+                    post_url = args.get("url", "unknown")
+                    payload_preview = json.dumps(args.get("payload", {}))[:200]
+                    yield {
+                        "type": "agent_checkpoint_write",
+                        "content": f"About to POST to {post_url}: {payload_preview}. Confirm?",
+                        "metadata": {
+                            "tier": "tier_1",
+                            "tool_name": name,
+                            "input": args,
+                            "step_index": step_idx,
+                        },
+                    }
+                    # Note: for now, write checkpoints break the loop.
+                    # The caller (run_stream) will persist state and resume
+                    # after user confirmation. Full resume support is Phase 2.
+                    return (steps, "Write action requires confirmation.")
+
+                # Credential injection
+                self._inject_credentials(dict(args), task_context, thread_id)
+                # Update step input after injection
+                step.input = dict(args)
+
+                # Emit tool_start
+                yield {
+                    "type": "tool_start",
+                    "content": f"▷ {name}",
+                    "metadata": {
+                        "tool_name": name,
+                        "input": args,
+                        "step_index": step_idx,
+                    },
+                }
+
+                # Execute via existing infrastructure
+                result_event = yield from self._execute_step(
+                    step, name, args, thread_id, step_idx,
+                    fetched_content=fetched_content, task_context=task_context,
+                )
+
+                # Track results
+                if step.status == "ok":
+                    consecutive_failures = 0
+                    if step.extracted_fields:
+                        task_context.update(step.extracted_fields)
+                else:
+                    consecutive_failures += 1
+
+                tool_call_count += 1
+
+                # Emit tool_result
+                yield result_event
+
+                # Append result to message history so LLM sees it
+                tool_result_summary = {
+                    "tool": name,
+                    "status": step.status,
+                    "output": (step.output_preview or "")[:2000],
+                    "error": step.error,
+                }
+                if step.extracted_fields:
+                    tool_result_summary["extracted"] = step.extracted_fields
+                messages.append({
+                    "role": "tool",
+                    "content": json.dumps(tool_result_summary),
+                })
+
+                # Check failure threshold
+                if consecutive_failures >= self._MAX_CONSECUTIVE_FAILURES:
+                    yield {"type": "status", "content": "stopping — 3 consecutive failures"}
+                    break
+
+                if tool_call_count >= budget:
+                    break
+
+            if consecutive_failures >= self._MAX_CONSECUTIVE_FAILURES:
+                break
+
+        logger.info(
+            "[TOOL_LOOP] Completed: %d tool calls, %d steps, %d failures",
+            tool_call_count, len(steps), consecutive_failures,
+        )
+        return (steps, final_content)
 
     # ------------------------------------------------------------------
     # Curl-command parser — deterministic Phase-2 plan extraction
