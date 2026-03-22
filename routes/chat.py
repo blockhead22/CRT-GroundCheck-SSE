@@ -109,6 +109,10 @@ _CONTINUITY_FOLLOWUP_HINTS = (
     "explain it",
     "why is that",
     "interesting fact",
+    "who am i",
+    "about me",
+    "about who i am",
+    "more about me",
 )
 
 _GROUNDCHECK_BRIDGE_LOCK = threading.Lock()
@@ -2444,10 +2448,49 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
         )
 
     # Broad recall: "what do you know about me?" — dump all high-trust facts.
-    if _is_broad_recall_request(effective_message):
+    # Also handles identity questions right after user provides info (recency awareness).
+    _is_identity_question = _is_broad_recall_request(effective_message)
+    if not _is_identity_question:
+        # Also catch "who am I" / "tell me about who I am" that might not
+        # fully match broad recall but need recency awareness
+        _eff_lower = effective_message.lower()
+        _is_identity_question = any(
+            p in _eff_lower for p in ("who am i", "about who i am", "about me")
+        ) and "?" in effective_message
+
+    if _is_identity_question:
         control_state.request_kind = "broad_recall"
         control_state.mark("bind", "memory_dump")
+
+        # Recency awareness: check if user just provided identity info
+        recent_context = ""
+        try:
+            recent = session_db.get_recent_queries(req.thread_id, window=3) if session_db else []
+            for row in (recent or []):
+                if not isinstance(row, dict):
+                    continue
+                prev_query = str(row.get("query_text") or "").strip()
+                # If previous user message was a substantial assertion (bio, about me, etc.)
+                if len(prev_query) > 100:
+                    recent_context = prev_query
+                    break
+        except Exception:
+            pass
+
         answer = _answer_broad_recall(engine, req.thread_id)
+
+        # If we have recent context and the broad recall was sparse, enrich
+        if recent_context and ("don't have" in answer.lower() or "0 facts" in answer.lower()):
+            answer = (
+                "Based on what you just shared with me, here's what I know:\n\n"
+                + recent_context[:500]
+            )
+        elif recent_context:
+            answer = answer + (
+                "\n\nAdditionally, you recently shared more detail about yourself — "
+                "I'm processing that into my memory now."
+            )
+
         if greeting_text:
             answer = f"{greeting_text}\n\n{answer}"
         control_state.mark("decide", "ready", detail="broad_recall")
@@ -2460,6 +2503,7 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 "confidence": 0.90,
                 "retrieved_memories": [],
                 "prompt_memories": [],
+                "recency_context_used": bool(recent_context),
             },
         )
 
