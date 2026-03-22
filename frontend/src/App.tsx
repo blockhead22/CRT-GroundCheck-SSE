@@ -804,6 +804,15 @@ export default function App() {
     )
   }
 
+  // ── Standalone Docs route — completely outside the dashboard shell ──
+  if (location.pathname.startsWith('/docs')) {
+    return (
+      <div className="aetheris-dark h-screen w-full overflow-hidden relative">
+        <DocsPage onBackToApp={() => { navigate('/'); setNavActiveRaw('chat') }} />
+      </div>
+    )
+  }
+
   return (
     <div className="aetheris-dark h-screen w-full overflow-hidden relative">
       {/* Dynamic mood-reactive background */}
@@ -907,7 +916,7 @@ export default function App() {
                 ) : navActive === 'telemetry' ? (
                   <TelemetryPage threadId={selectedThread?.id} />
                 ) : (
-                  <DocsPage />
+                  <div className="flex flex-1 items-center justify-center p-10 text-white/40 text-sm">Page not found</div>
                 )}
               </main>
             </div>

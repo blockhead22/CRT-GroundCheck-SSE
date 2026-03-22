@@ -1160,6 +1160,11 @@ def _is_self_referential_question(text: str) -> bool:
         "whats new with you",
         "what is new with you",
         "how are you",
+        "how are things",
+        "how's it going",
+        "hows it going",
+        "how is it going",
+        "how's everything",
         "how have you been",
         "what are you thinking",
         "what are you currently",
@@ -1194,6 +1199,13 @@ def _is_self_referential_question(text: str) -> bool:
         w in t for w in ("work", "gating", "memory", "contradict", "trust", "belief", "broken", "problem", "wrong",
                          "heartbeat", "compress", "reflect", "thinking", "new with", "pipeline", "system",
                          "architecture", "learn", "improve", "personality", "identity", "yourself")
+    ):
+        return True
+    # Casual greetings addressed to Aether: "Hello Aether, how are things today?"
+    # These should use the self-model for a grounded status response.
+    if addressed_to_aether and any(
+        w in t for w in ("how are", "how's", "hows", "how is", "what's up", "whats up",
+                         "how things", "things going", "doing today", "going today")
     ):
         return True
     return False
@@ -1244,17 +1256,43 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
 
     self_context = "\n".join(self_context_parts)
 
-    system_prompt = (
-        "You are Aether. The user is asking about how you work, your state, or your design. "
-        "Answer from the self-knowledge context below. Be honest, specific, and practical. "
-        "Explain with concrete examples from how you actually operate — not abstract definitions. "
-        "For example: 'When you tell me your favorite color is orange, I store that as a memory with a trust score. "
-        "If you later say it's blue, I don't overwrite — I keep both and ask you which is right.' "
-        "If you don't have data for something, say so. "
-        "Do NOT make up capabilities you don't have. Speak as yourself in first person. "
-        "Keep it conversational, not like a spec document.\n\n"
-        f"{self_context}"
-    )
+    # Detect casual greetings vs technical questions and adjust the prompt tone
+    _t_lower = (text or "").strip().lower()
+    _is_casual_greeting = any(g in _t_lower for g in (
+        "hello", "hey", "hi ", "hi,", "howdy", "good morning", "good afternoon",
+        "good evening", "how are", "how's it", "hows it", "how is it",
+        "how are things", "what's up", "whats up", "how's everything",
+    ))
+
+    if _is_casual_greeting:
+        # Casual greeting: produce a warm, status-grounded reply (not a tech doc)
+        system_prompt = (
+            "You are Aether. The user is greeting you casually. "
+            "Respond warmly and briefly. Use your self-model state below to give "
+            "a grounded status update — mention what you've been working on, any "
+            "interesting self-observations, or areas of uncertainty you're tracking. "
+            "Keep it natural and conversational, like a colleague sharing a quick update. "
+            "Do NOT give a generic 'I'm operational and ready to assist' response. "
+            "Instead, share something real from your self-model. For example: "
+            "'Things are going well — I've been tracking some uncertainty around X, "
+            "and my trust scores in Y have been improving.' "
+            "If your self-model is empty, be honest: 'I'm still getting set up — "
+            "no self-observations yet, but I'm ready to chat.' "
+            "Speak as yourself in first person. Be warm but concise (2-4 sentences max).\n\n"
+            f"{self_context}"
+        )
+    else:
+        system_prompt = (
+            "You are Aether. The user is asking about how you work, your state, or your design. "
+            "Answer from the self-knowledge context below. Be honest, specific, and practical. "
+            "Explain with concrete examples from how you actually operate — not abstract definitions. "
+            "For example: 'When you tell me your favorite color is orange, I store that as a memory with a trust score. "
+            "If you later say it's blue, I don't overwrite — I keep both and ask you which is right.' "
+            "If you don't have data for something, say so. "
+            "Do NOT make up capabilities you don't have. Speak as yourself in first person. "
+            "Keep it conversational, not like a spec document.\n\n"
+            f"{self_context}"
+        )
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -2935,15 +2973,96 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
 
     reintro_count = sum(1 for m in retrieved_mems if m.get("reintroduced_claim") is True)
 
-    # ====== Trust reinforcement: boost trust for memories actually used ======
+    # ====== Trust reinforcement: context-aware trust update for cited memories ======
+    # BUG FIX: Previously boosted trust for ALL cited memories unconditionally.
+    # Now checks whether the user's message agrees or contradicts each memory.
+    # - Agreement → trust goes up (reinforce)
+    # - Contradiction → trust goes down (penalize)
+    # - Neutral citation → no change (avoid blind boosting)
     try:
-        from personal_agent.trust_decay import reinforce_memory
+        from personal_agent.trust_decay import reinforce_memory, REINFORCE_BOOST, TRUST_FLOOR
+        from personal_agent.crt_core import CRTMath, CRTConfig, encode_vector
+        import numpy as _np_trust
+
+        _crt_trust = None
+        try:
+            _crt_trust = CRTMath(CRTConfig())
+        except Exception:
+            pass
+
+        _user_vec = None
+        try:
+            _user_vec = encode_vector(effective_message)
+        except Exception:
+            pass
+
         for mem in retrieved_mems:
             mid = mem.get("memory_id")
-            if mid:
-                reinforce_memory(mid)
+            mem_text = mem.get("text") or ""
+            if not mid or not mem_text:
+                continue
+
+            # Compute semantic similarity between user message and memory
+            _mem_vec = None
+            try:
+                _mem_vec = encode_vector(mem_text)
+            except Exception:
+                pass
+
+            if _user_vec is not None and _mem_vec is not None and _crt_trust is not None:
+                similarity = float(_np_trust.dot(_user_vec, _mem_vec) / (
+                    _np_trust.linalg.norm(_user_vec) * _np_trust.linalg.norm(_mem_vec) + 1e-8
+                ))
+                drift = _crt_trust.drift_meaning(_user_vec, _mem_vec)
+
+                # Check for contradiction signals between user message and memory
+                is_contra = False
+                try:
+                    is_contra, _ = _crt_trust.detect_contradiction(
+                        drift=drift,
+                        confidence_new=0.9,
+                        confidence_prior=0.7,
+                        source=None,
+                        text_new=effective_message,
+                        text_prior=mem_text,
+                    )
+                except Exception:
+                    # detect_contradiction may fail on source=None; fall back to drift threshold
+                    is_contra = drift > 0.6
+
+                if is_contra:
+                    # User contradicts this memory → penalize trust
+                    try:
+                        from personal_agent.trust_decay import _find_groundcheck_db, _is_crt_schema
+                        import sqlite3 as _sql_trust
+                        _db = _find_groundcheck_db()
+                        if _db:
+                            _conn = _sql_trust.connect(str(_db))
+                            _conn.row_factory = _sql_trust.Row
+                            _id_col = "memory_id" if _is_crt_schema(_conn) else "id"
+                            _row = _conn.execute(f"SELECT trust FROM memories WHERE {_id_col} = ?", (mid,)).fetchone()
+                            if _row:
+                                _old = _row["trust"]
+                                # Penalize: reduce by REINFORCE_BOOST scaled by drift severity
+                                _penalty = REINFORCE_BOOST * min(drift * 2, 1.5)
+                                _new = max(TRUST_FLOOR, _old - _penalty)
+                                if _new < _old:
+                                    _conn.execute(f"UPDATE memories SET trust = ? WHERE {_id_col} = ?",
+                                                  (round(_new, 4), mid))
+                                    _conn.commit()
+                                    logger.debug(f"[TRUST_DECAY] Contradicted memory {mid}: {_old:.3f} → {_new:.3f} (drift={drift:.3f})")
+                            _conn.close()
+                    except Exception as _te:
+                        logger.debug(f"[TRUST_DECAY] Error penalizing contradicted memory {mid}: {_te}")
+                elif similarity > 0.5 and drift < 0.35:
+                    # User agrees with this memory → reinforce trust
+                    reinforce_memory(mid, context_text=effective_message)
+                # else: neutral citation (low similarity, moderate drift) → no trust change
+            else:
+                # Vectors unavailable — no trust change (safe default, avoids blind boosting)
+                pass
     except Exception as e:
-        logger.debug(f"[TRUST_DECAY] Error reinforcing memories: {e}")
+        logger.debug(f"[TRUST_DECAY] Error in context-aware trust update: {e}")
 
     base_answer = strip_think_blocks(str(result.get("answer") or ""))
 
@@ -3720,11 +3839,68 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     yield f"data: {json.dumps({'type': 'thinking_token', 'content': thought_chunk})}\n\n"
                 yield f"data: {json.dumps({'type': 'thinking_end', 'content': ''})}\n\n"
 
-            # ── Stream answer tokens ──────────────────────────────────────
+            # ── Stream answer tokens with mid-stream verification ────────
             answer = str(shared_response.answer or "")
             yield _phase('answer', 'Writing response')
-            for text_chunk in _chunk_text(answer):
-                yield f"data: {json.dumps({'type': 'token', 'content': text_chunk})}\n\n"
+
+            # Initialize stream verifier for checkpoint-based checks
+            _stream_stopped = False
+            try:
+                from personal_agent.stream_verifier import StreamVerifier
+                _verifier = StreamVerifier(
+                    retrieved_memories=_retrieved,
+                    checkpoint_interval=150,
+                )
+                _streamed_buffer = ""
+                for text_chunk in _chunk_text(answer):
+                    _streamed_buffer += text_chunk
+                    yield f"data: {json.dumps({'type': 'token', 'content': text_chunk})}\n\n"
+
+                    # Run checkpoint if we've accumulated enough tokens
+                    if _verifier.should_checkpoint(_streamed_buffer):
+                        _cp_result = _verifier.run_checkpoint(_streamed_buffer)
+
+                        # Emit checkpoint event for frontend pipeline trace
+                        yield _sse({
+                            "type": "stream_checkpoint",
+                            "content": f"Checkpoint @ ~{_cp_result.token_count} tokens",
+                            "metadata": _cp_result.to_dict(),
+                        })
+
+                        if _cp_result.action == "strip" and _cp_result.stripped_content is not None:
+                            # Think tag leak: replace answer with stripped version
+                            answer = _cp_result.stripped_content
+                            logger.warning("[STREAM_VERIFY] Think tags stripped from response")
+                            # Continue streaming — the tags are stripped from final answer
+
+                        elif _cp_result.action == "stop":
+                            # Fact contradiction or repetition: stop generation
+                            logger.warning(
+                                "[STREAM_VERIFY] Stopping stream: %s",
+                                _cp_result.detail,
+                            )
+                            answer = _streamed_buffer  # Keep what we have
+                            _stream_stopped = True
+                            yield _sse({
+                                "type": "stream_stopped",
+                                "content": _cp_result.detail or "Stream stopped by verification",
+                                "metadata": _cp_result.to_dict(),
+                            })
+                            break
+
+                # Store verification summary in metadata
+                _verify_summary = _verifier.get_summary()
+                if _verify_summary["checkpoints_run"] > 0:
+                    metadata["stream_verification"] = _verify_summary
+
+            except ImportError:
+                # StreamVerifier not available — fall back to simple chunking
+                for text_chunk in _chunk_text(answer):
+                    yield f"data: {json.dumps({'type': 'token', 'content': text_chunk})}\n\n"
+            except Exception as _sv_err:
+                logger.debug("[STREAM_VERIFY] Verification failed: %s", _sv_err)
+                # Already streamed what we have — continue
+
             yield _phase('answer', end=True)
 
             # ── Self-correction check (before done) ──────────────────────

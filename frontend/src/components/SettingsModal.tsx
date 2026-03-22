@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getProfile, updateAuthProfile, setProfileFacts, setProfileName } from '../lib/api'
-import type { AuthUser } from '../lib/api'
+import { getProfile, updateAuthProfile, setProfileFacts, setProfileName, getCloudSettings, updateCloudSettings, getCloudUsage } from '../lib/api'
+import type { AuthUser, CloudSettings, CloudUsage } from '../lib/api'
 
 type Props = {
   isOpen: boolean
@@ -10,6 +10,32 @@ type Props = {
   threadId: string
   onDisplayNameChanged: (name: string) => void
   onProfileUpdated: () => void
+}
+
+const ESCALATION_OPTIONS = [
+  { value: 'conservative', label: 'Conservative' },
+  { value: 'balanced', label: 'Balanced' },
+  { value: 'cost_saver', label: 'Cost Saver' },
+  { value: 'local_only', label: 'Local Only' },
+]
+
+function Toggle({ label, checked, onChange, description }: {
+  label: string; checked: boolean; onChange: (v: boolean) => void; description?: string
+}) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <div className="flex-1">
+        <div className="text-sm text-white/80">{label}</div>
+        {description && <div className="text-xs text-white/40 mt-0.5">{description}</div>}
+      </div>
+      <button
+        onClick={() => onChange(!checked)}
+        className={`relative h-6 w-11 rounded-full transition-colors ${checked ? 'bg-blue-500/80' : 'bg-white/10'}`}
+      >
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
+  )
 }
 
 export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNameChanged, onProfileUpdated }: Props) {
@@ -21,6 +47,11 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  // Cloud settings state
+  const [cloudSettings, setCloudSettingsState] = useState<CloudSettings | null>(null)
+  const [cloudUsage, setCloudUsage] = useState<CloudUsage | null>(null)
+  const [cloudSaving, setCloudSaving] = useState(false)
+
   // Load profile on open
   useEffect(() => {
     if (!isOpen) return
@@ -31,6 +62,10 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
       setNickname(p.slots?.nickname || p.slots?.preferred_name || '')
       setSlots(p.slots || {})
     }).catch(() => {})
+
+    // Load cloud settings
+    getCloudSettings().then(setCloudSettingsState).catch(() => {})
+    getCloudUsage().then(setCloudUsage).catch(() => {})
   }, [isOpen, threadId, authUser])
 
   async function handleSave() {
@@ -78,6 +113,53 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
       console.error('Add fact failed:', e)
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleCloudToggle(key: string, value: boolean) {
+    if (!cloudSettings) return
+    const newVal = value ? 'on' : 'off'
+    setCloudSettingsState({ ...cloudSettings, [key]: newVal })
+    setCloudSaving(true)
+    try {
+      await updateCloudSettings({ [key]: newVal })
+    } catch (e) {
+      console.error('Cloud setting update failed:', e)
+      // Revert
+      setCloudSettingsState({ ...cloudSettings, [key]: value ? 'off' : 'on' })
+    } finally {
+      setCloudSaving(false)
+    }
+  }
+
+  async function handleCloudSelect(key: string, value: string) {
+    if (!cloudSettings) return
+    setCloudSettingsState({ ...cloudSettings, [key]: value })
+    setCloudSaving(true)
+    try {
+      await updateCloudSettings({ [key]: value })
+    } catch (e) {
+      console.error('Cloud setting update failed:', e)
+    } finally {
+      setCloudSaving(false)
+    }
+  }
+
+  async function handleCloudSlider(key: string, value: string) {
+    if (!cloudSettings) return
+    setCloudSettingsState({ ...cloudSettings, [key]: value })
+    // Debounce: save on mouse up (handled by onMouseUp/onTouchEnd in the slider)
+  }
+
+  async function commitCloudSlider(key: string) {
+    if (!cloudSettings) return
+    setCloudSaving(true)
+    try {
+      await updateCloudSettings({ [key]: cloudSettings[key] })
+    } catch (e) {
+      console.error('Cloud setting update failed:', e)
+    } finally {
+      setCloudSaving(false)
     }
   }
 
@@ -144,6 +226,133 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
               >
                 {saving ? 'Saving...' : saved ? 'Saved' : 'Save Profile'}
               </button>
+            </div>
+
+            {/* Cloud Features Section */}
+            <div className="border-b border-white/10 px-6 py-5">
+              <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Cloud Features</div>
+              <p className="mb-4 text-xs text-white/40">
+                Enable cloud LLM verification for higher-accuracy CRT operations. Calls use gpt-4o-mini (Tier 1) or Claude (Tier 2).
+              </p>
+
+              {cloudSettings ? (
+                <div className="space-y-1">
+                  <Toggle
+                    label="Slot Classification"
+                    description="Cloud-powered fact extraction from user statements"
+                    checked={cloudSettings.cloud_slot_classification === 'on'}
+                    onChange={(v) => handleCloudToggle('cloud_slot_classification', v)}
+                  />
+                  <Toggle
+                    label="NLI Contradiction Detection"
+                    description="Natural language inference to catch conflicting facts"
+                    checked={cloudSettings.cloud_nli_contradiction === 'on'}
+                    onChange={(v) => handleCloudToggle('cloud_nli_contradiction', v)}
+                  />
+                  <Toggle
+                    label="Reflection Validation"
+                    description="Epistemic audit of self-model updates"
+                    checked={cloudSettings.cloud_reflection_validation === 'on'}
+                    onChange={(v) => handleCloudToggle('cloud_reflection_validation', v)}
+                  />
+
+                  {/* Escalation Policy */}
+                  <div className="pt-3">
+                    <label className="mb-1.5 block text-sm text-white/70">Escalation Policy</label>
+                    <select
+                      value={cloudSettings.cloud_escalation_policy}
+                      onChange={(e) => handleCloudSelect('cloud_escalation_policy', e.target.value)}
+                      className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                    >
+                      {ESCALATION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value} className="bg-gray-900">{opt.label}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-white/40">Controls when local results escalate to cloud verification</p>
+                  </div>
+
+                  {/* Confidence Threshold */}
+                  <div className="pt-3">
+                    <label className="mb-1.5 block text-sm text-white/70">
+                      Confidence Threshold: {cloudSettings.cloud_confidence_threshold}
+                    </label>
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="1.0"
+                      step="0.05"
+                      value={cloudSettings.cloud_confidence_threshold}
+                      onChange={(e) => handleCloudSlider('cloud_confidence_threshold', e.target.value)}
+                      onMouseUp={() => commitCloudSlider('cloud_confidence_threshold')}
+                      onTouchEnd={() => commitCloudSlider('cloud_confidence_threshold')}
+                      className="w-full accent-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Below this threshold, results may be escalated to cloud</p>
+                  </div>
+
+                  {/* Daily Limit Multiplier */}
+                  <div className="pt-3">
+                    <label className="mb-1.5 block text-sm text-white/70">
+                      Daily Limit Multiplier: {cloudSettings.cloud_daily_limit_multiplier}x
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="3.0"
+                      step="0.5"
+                      value={cloudSettings.cloud_daily_limit_multiplier}
+                      onChange={(e) => handleCloudSlider('cloud_daily_limit_multiplier', e.target.value)}
+                      onMouseUp={() => commitCloudSlider('cloud_daily_limit_multiplier')}
+                      onTouchEnd={() => commitCloudSlider('cloud_daily_limit_multiplier')}
+                      className="w-full accent-blue-500"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Scale daily call limits up or down (0 = disabled)</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-white/40">Loading cloud settings...</p>
+              )}
+
+              {/* Usage Display */}
+              {cloudUsage && (
+                <div className="mt-4 rounded-xl bg-white/5 px-4 py-3">
+                  <div className="text-xs font-medium text-white/50 mb-2">Usage (this session)</div>
+                  <div className="space-y-1 text-xs text-white/60">
+                    {cloudUsage.slot_classification && (
+                      <div className="flex justify-between">
+                        <span>Slot Classification</span>
+                        <span>{cloudUsage.slot_classification.calls} calls / ~{cloudUsage.slot_classification.est_tokens} tokens</span>
+                      </div>
+                    )}
+                    {cloudUsage.nli_contradiction && (
+                      <div className="flex justify-between">
+                        <span>NLI Contradiction</span>
+                        <span>{cloudUsage.nli_contradiction.calls} calls / ~{cloudUsage.nli_contradiction.est_tokens} tokens</span>
+                      </div>
+                    )}
+                    {cloudUsage.reflection_validation && (
+                      <div className="flex justify-between">
+                        <span>Reflection Validation</span>
+                        <span>{cloudUsage.reflection_validation.calls} calls / ~{cloudUsage.reflection_validation.est_tokens} tokens</span>
+                      </div>
+                    )}
+                    {cloudUsage.total_cost_est != null && (
+                      <div className="flex justify-between pt-1 border-t border-white/10 font-medium">
+                        <span>Estimated Cost</span>
+                        <span>${cloudUsage.total_cost_est.toFixed(4)}</span>
+                      </div>
+                    )}
+                    {cloudUsage.daily_limits && (
+                      <div className="pt-1 border-t border-white/10">
+                        <span className="text-white/50">Daily limits: </span>
+                        {Object.entries(cloudUsage.daily_limits).map(([k, v]) => (
+                          <span key={k} className="mr-3">{k.replace(/_/g, ' ')}: {v.used}/{v.limit}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Known Facts Section */}

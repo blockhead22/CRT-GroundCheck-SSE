@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { ChatThread, NavId } from '../types'
 import type { AuthUser } from '../lib/api'
 
-const nav: Array<{ id: NavId; label: string; icon: string }> = [
+const nav: Array<{ id: NavId; label: string; icon: string; standalone?: boolean }> = [
   { id: 'chat', label: 'Chat', icon: '✦' },
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
   { id: 'copilot', label: 'Aether', icon: '◈' },
@@ -13,7 +13,7 @@ const nav: Array<{ id: NavId; label: string; icon: string }> = [
   { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
   { id: 'jobs', label: 'Jobs', icon: '☷' },
   { id: 'settings', label: 'Settings', icon: '⚙' },
-  { id: 'docs', label: 'Docs', icon: '≣' },
+  { id: 'docs', label: 'Docs', icon: '≣', standalone: true },
 ]
 
 export function Sidebar(props: {
@@ -39,7 +39,11 @@ export function Sidebar(props: {
   onLogout?: () => void
   onShowLogin?: () => void
 }) {
-  const handleNavClick = (id: NavId) => {
+  const handleNavClick = (id: NavId, standalone?: boolean) => {
+    if (standalone) {
+      window.location.href = `/${id}`
+      return
+    }
     props.onNav(id)
     if (props.isMobile) props.onClose()
   }
@@ -92,7 +96,7 @@ export function Sidebar(props: {
             return props.isMobile ? (
               <button
                 key={item.id}
-                onClick={() => handleNavClick(item.id)}
+                onClick={() => handleNavClick(item.id, item.standalone)}
                 className={
                   'flex flex-col items-center justify-center gap-1 rounded-xl p-3 text-center transition ' +
                   (isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 active:bg-white/15')
@@ -111,7 +115,7 @@ export function Sidebar(props: {
             ) : (
               <button
                 key={item.id}
-                onClick={() => handleNavClick(item.id)}
+                onClick={() => handleNavClick(item.id, item.standalone)}
                 className={
                   'group relative flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-200 ' +
                   (isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/[0.07] hover:text-white/90')
@@ -299,7 +303,7 @@ export function Sidebar(props: {
                     return (
                       <button
                         key={item.id}
-                        onClick={() => handleNavClick(item.id)}
+                        onClick={() => handleNavClick(item.id, item.standalone)}
                         className={
                           'flex flex-col items-center justify-center gap-1 rounded-xl p-3 text-center transition ' +
                           (isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 active:bg-white/15')

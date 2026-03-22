@@ -56,6 +56,29 @@ class OllamaClient:
             self._client = None
         self._verify_model()
     
+    # Models known to use a separate thinking/reasoning pass that consumes
+    # part of the num_predict budget.  When one of these is selected we
+    # inflate num_predict so the *visible* answer is not truncated.
+    _THINKING_MODELS = {"qwen3", "deepseek-r1", "qwq"}
+
+    def _is_thinking_model(self, model_name: str) -> bool:
+        """Return True if *model_name* is known to spend tokens on internal thinking."""
+        name = (model_name or "").lower()
+        return any(t in name for t in self._THINKING_MODELS)
+
+    def _effective_num_predict(self, max_tokens: int, model_name: str) -> int:
+        """Return inflated num_predict for thinking models.
+
+        Thinking models (qwen3, deepseek-r1, etc.) use part of the token
+        budget for internal chain-of-thought.  Without inflation the visible
+        answer is often truncated mid-sentence.  We give 4x headroom
+        (capped at 8192) so the model has room for both reasoning *and*
+        a complete response.
+        """
+        if self._is_thinking_model(model_name):
+            return max(max_tokens * 4, min(max_tokens * 4, 8192))
+        return max_tokens
+
     def _verify_model(self):
         """Check if model is available."""
         try:
@@ -112,7 +135,7 @@ class OllamaClient:
                 model=selected_model,
                 messages=messages,
                 options={
-                    'num_predict': max_tokens,
+                    'num_predict': self._effective_num_predict(max_tokens, selected_model),
                     'temperature': temperature,
                     'repeat_penalty': 1.15,
                 },
@@ -170,7 +193,7 @@ class OllamaClient:
                 model=selected_model,
                 messages=messages,
                 options={
-                    'num_predict': max_tokens,
+                    'num_predict': self._effective_num_predict(max_tokens, selected_model),
                     'temperature': temperature,
                     'repeat_penalty': 1.15,
                 }
@@ -275,7 +298,7 @@ class OllamaClient:
                 model=selected_model,
                 messages=messages,
                 options={
-                    "num_predict": max_tokens,
+                    "num_predict": self._effective_num_predict(max_tokens, selected_model),
                     "temperature": temperature,
                     "repeat_penalty": 1.15,
                 },
@@ -375,7 +398,7 @@ class OllamaClient:
                 messages=messages,
                 tools=tools,
                 options={
-                    "num_predict": max_tokens,
+                    "num_predict": self._effective_num_predict(max_tokens, selected_model),
                     "temperature": temperature,
                     "repeat_penalty": 1.15,
                 },

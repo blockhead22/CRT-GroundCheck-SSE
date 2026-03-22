@@ -3,6 +3,7 @@ Authentication module for CRT.
 Simple session-based auth with SQLite storage.
 """
 
+import logging
 import sqlite3
 import hashlib
 import secrets
@@ -16,6 +17,8 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, asdict
 from contextlib import contextmanager
+
+logger = logging.getLogger(__name__)
 
 AUTH_DB_PATH = Path(__file__).parent / "data" / "auth.db"
 
@@ -173,11 +176,23 @@ def init_auth_db():
             )
         """)
         
+        # User settings table (key-value per user)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS user_settings (
+                user_id INTEGER NOT NULL,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                UNIQUE(user_id, key),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+
         # Create indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_threads_user ON user_chat_threads(user_id)")
-        
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_settings_user ON user_settings(user_id)")
+
         conn.commit()
         print(f"Auth database initialized at {AUTH_DB_PATH}")
 
@@ -437,6 +452,59 @@ def update_user_display_name(user_id: int, display_name: str) -> bool:
         """, (display_name, now, user_id))
         conn.commit()
         return cursor.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# User settings (key-value store per user)
+# ---------------------------------------------------------------------------
+
+# Default cloud settings
+CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
+    "cloud_slot_classification": "off",
+    "cloud_nli_contradiction": "off",
+    "cloud_reflection_validation": "off",
+    "cloud_escalation_policy": "conservative",
+    "cloud_confidence_threshold": "0.8",
+    "cloud_daily_limit_multiplier": "1.0",
+}
+
+
+def get_user_settings(user_id: int) -> Dict[str, str]:
+    """Get all settings for a user, merged with defaults."""
+    result = dict(CLOUD_SETTING_DEFAULTS)
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT key, value FROM user_settings WHERE user_id = ?", (user_id,))
+        for row in cursor.fetchall():
+            result[row["key"]] = row["value"]
+    return result
+
+
+def get_user_setting(user_id: int, key: str, default: Optional[str] = None) -> Optional[str]:
+    """Get a single setting for a user."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT value FROM user_settings WHERE user_id = ? AND key = ?",
+            (user_id, key),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row["value"]
+    # Fall back to built-in defaults, then caller default
+    return CLOUD_SETTING_DEFAULTS.get(key, default)
+
+
+def set_user_setting(user_id: int, key: str, value: str) -> None:
+    """Set (upsert) a single setting for a user."""
+    with get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?)
+               ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value""",
+            (user_id, key, value),
+        )
+        conn.commit()
 
 
 # Lazy initialization — call init_auth_db() explicitly at app startup, not on import

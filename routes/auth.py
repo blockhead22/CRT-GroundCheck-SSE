@@ -193,3 +193,77 @@ def auth_load_chats(authorization: Optional[str] = Header(None)):
     threads = auth_module.load_user_threads(user.id)
     return SyncChatResponse(ok=True, threads=threads)
 
+
+# ---------------------------------------------------------------------------
+# User Settings (cloud toggles, preferences)
+# ---------------------------------------------------------------------------
+
+
+def _get_user_from_token(authorization: Optional[str]):
+    """Extract and validate user from Bearer token. Raises 401 on failure."""
+    import logging as _logging
+    _log = _logging.getLogger(__name__)
+    _log.info(f"[AUTH-DEBUG] authorization type={type(authorization).__name__} value={repr(authorization)[:80]}")
+    if authorization is not None and not isinstance(authorization, str):
+        authorization = str(authorization)
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    if not token:
+        _log.info(f"[AUTH-DEBUG] No token extracted. authorization={repr(authorization)[:60]}")
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    user = auth_module.validate_session(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+    return user
+
+
+@router.get("/settings")
+def auth_get_settings(authorization: Optional[str] = Header(None)):
+    """Return all settings for the authenticated user (merged with defaults)."""
+    user = _get_user_from_token(authorization)
+    settings = auth_module.get_user_settings(user.id)
+    return {"ok": True, "settings": settings}
+
+
+@router.patch("/settings")
+def auth_update_settings(
+    body: dict,
+    authorization: Optional[str] = Header(None),
+):
+    """Upsert settings. Accepts a flat {key: value} dict."""
+    user = _get_user_from_token(authorization)
+
+    # Whitelist of allowed setting keys
+    allowed_keys = {
+        "cloud_slot_classification",
+        "cloud_nli_contradiction",
+        "cloud_reflection_validation",
+        "cloud_escalation_policy",
+        "cloud_confidence_threshold",
+        "cloud_daily_limit_multiplier",
+    }
+
+    updated = {}
+    for key, value in body.items():
+        if key in allowed_keys:
+            auth_module.set_user_setting(user.id, key, str(value))
+            updated[key] = str(value)
+
+    return {"ok": True, "updated": updated}
+
+
+@router.get("/cloud-usage")
+def auth_cloud_usage(authorization: Optional[str] = Header(None)):
+    """Return CloudFeatureService usage stats."""
+    _get_user_from_token(authorization)  # auth check
+
+    try:
+        from personal_agent.cloud_features import get_cloud_feature_service
+        svc = get_cloud_feature_service()
+        if svc is None:
+            return {"ok": True, "usage": {}, "message": "Cloud features not initialized"}
+        return {"ok": True, "usage": svc.get_usage_summary()}
+    except Exception as e:
+        return {"ok": True, "usage": {}, "message": str(e)}
+

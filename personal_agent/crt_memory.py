@@ -1592,7 +1592,26 @@ class CRTMemorySystem:
         
         if not memories:
             return []
-        
+
+        # Query expansion for question patterns like "what is my favorite color"
+        # Expand to include slot-style terms so embedding similarity is higher
+        expanded_vectors = [query_vector]
+        _question_slot_re = re.compile(
+            r"\b(?:what(?:'s| is| are)?\s+(?:my|your)\s+)"    # "what is my"
+            r"(?:favorite\s+)?(\w[\w\s]{1,30})\b",            # "favorite color"
+            re.IGNORECASE,
+        )
+        _slot_match = _question_slot_re.search(query)
+        if _slot_match:
+            slot_phrase = _slot_match.group(1).strip()
+            # Build expanded query with slot-name style: "favorite_color orange"
+            slot_key = slot_phrase.replace(" ", "_")
+            expanded_text = f"{slot_key} {slot_phrase}"
+            try:
+                expanded_vectors.append(encode_vector(expanded_text))
+            except Exception:
+                pass
+
         # Compute scores — tier-aware: fold query to each memory's dimensionality
         t_now = time.time()
         from personal_agent.memory_compression import fold_vector, TIER_DIMS
@@ -1604,31 +1623,42 @@ class CRTMemorySystem:
         memory_dicts = []
         for m in memories:
             tier = getattr(m, 'compression_tier', 2)
-            try:
-                if tier < 2 and m.compressed_vector is not None and len(m.compressed_vector) > 0:
-                    # Memory is compressed — fold query to its tier for comparison
-                    target_dim = TIER_DIMS.get(tier, 384)
-                    folded_query, _ = fold_vector(query_vector, target_dim)
-                    effective_vector = m.compressed_vector
-                    sim = float(np.dot(folded_query, effective_vector) / (
-                        np.linalg.norm(folded_query) * np.linalg.norm(effective_vector) + 1e-8
-                    ))
-                else:
-                    # Full vector — compare directly
-                    if m.vector is None or len(m.vector) == 0:
-                        continue  # skip malformed memories
-                    sim = float(np.dot(query_vector, m.vector) / (
-                        np.linalg.norm(query_vector) * np.linalg.norm(m.vector) + 1e-8
-                    ))
-            except Exception:
-                continue  # skip any vector shape mismatches
+            best_sim = -1.0
+            for qvec in expanded_vectors:
+                try:
+                    if tier < 2 and m.compressed_vector is not None and len(m.compressed_vector) > 0:
+                        # Memory is compressed — fold query to its tier for comparison
+                        target_dim = TIER_DIMS.get(tier, 384)
+                        folded_query, _ = fold_vector(qvec, target_dim)
+                        effective_vector = m.compressed_vector
+                        sim = float(np.dot(folded_query, effective_vector) / (
+                            np.linalg.norm(folded_query) * np.linalg.norm(effective_vector) + 1e-8
+                        ))
+                    else:
+                        # Full vector — compare directly
+                        if m.vector is None or len(m.vector) == 0:
+                            continue  # skip malformed memories
+                        sim = float(np.dot(qvec, m.vector) / (
+                            np.linalg.norm(qvec) * np.linalg.norm(m.vector) + 1e-8
+                        ))
+                    best_sim = max(best_sim, sim)
+                except Exception:
+                    continue  # skip any vector shape mismatches
+
+            if best_sim < 0:
+                continue  # no valid similarity computed
 
             # CRT scoring: R = sim * recency * belief_weight * tier_weight
             age = t_now - m.timestamp
-            recency = math.exp(-age / 86400.0)  # 1-day lambda
+            # BUG FIX: Previous lambda of 86400 (1 day) was far too aggressive.
+            # Stable facts like "favorite color = orange" become unretrievable
+            # after 2-3 days. Use 7-day lambda (604800s) so memories remain
+            # discoverable for weeks. A 7-day-old memory gets recency ~0.37
+            # instead of the old ~0.0006.
+            recency = math.exp(-age / 604800.0)  # 7-day lambda
             belief = 0.7 * m.trust + 0.3 * m.confidence
             tier_weight = _TIER_WEIGHT.get(tier, 1.0)
-            score = max(0.0, sim) * recency * belief * tier_weight
+            score = max(0.0, best_sim) * recency * belief * tier_weight
             memory_dicts.append((m, score))
 
         # Sort by score descending

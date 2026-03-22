@@ -399,6 +399,9 @@ export type StreamEventType =
   | 'phase_start'
   | 'phase_end'
   | 'token'
+  | 'correction'
+  | 'stream_checkpoint'
+  | 'stream_stopped'
   | 'done'
   | 'error'
 
@@ -1279,7 +1282,10 @@ export type AuthMeResponse = {
 const AUTH_TOKEN_KEY = 'crt_auth_token'
 
 export function getAuthToken(): string | null {
-  return typeof window !== 'undefined' ? window.localStorage.getItem(AUTH_TOKEN_KEY) : null
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(AUTH_TOKEN_KEY)
+    || window.localStorage.getItem('auth_token')
+    || null
 }
 
 export function setAuthToken(token: string | null): void {
@@ -1906,6 +1912,68 @@ export type EpistemicEvent = {
   memory_ids: string[]
   payload: Record<string, unknown>
 }
+
+// ---------------------------------------------------------------------------
+// Cloud Settings
+// ---------------------------------------------------------------------------
+
+export type CloudSettings = {
+  cloud_slot_classification: string
+  cloud_nli_contradiction: string
+  cloud_reflection_validation: string
+  cloud_escalation_policy: string
+  cloud_confidence_threshold: string
+  cloud_daily_limit_multiplier: string
+  [key: string]: string
+}
+
+export type CloudUsage = {
+  slot_classification?: { calls: number; est_tokens: number }
+  nli_contradiction?: { calls: number; est_tokens: number }
+  reflection_validation?: { calls: number; est_tokens: number }
+  total_cost_est?: number
+  daily_limits?: Record<string, { used: number; limit: number }>
+}
+
+export async function getCloudSettings(): Promise<CloudSettings> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  const res = await fetch(`${base}/api/auth/settings`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`Failed to load settings: ${res.statusText}`)
+  const data = await res.json()
+  return data.settings as CloudSettings
+}
+
+export async function updateCloudSettings(settings: Partial<CloudSettings>): Promise<Record<string, string>> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  const res = await fetch(`${base}/api/auth/settings`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(settings),
+  })
+  if (!res.ok) throw new Error(`Failed to update settings: ${res.statusText}`)
+  const data = await res.json()
+  return data.updated
+}
+
+export async function getCloudUsage(): Promise<CloudUsage> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  const res = await fetch(`${base}/api/auth/cloud-usage`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`Failed to load cloud usage: ${res.statusText}`)
+  const data = await res.json()
+  return data.usage as CloudUsage
+}
+
+// ---------------------------------------------------------------------------
 
 export type EpistemicTimeline = {
   thread_id: string
