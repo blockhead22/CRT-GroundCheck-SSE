@@ -1215,6 +1215,67 @@ class CRTMemorySystem:
                 return existing_mem
             # Fallthrough: if the row vanished between check and fetch, insert normally
 
+        # --- Slot-level exclusivity: demote old values for exclusive slots ---
+        # This runs AFTER text-based dedup (which only catches near-identical text)
+        # to handle cases like "favorite color is green" vs "favorite color is orange".
+        EXCLUSIVE_SLOTS = {
+            "favorite_color", "name", "first_name", "last_name", "birthday",
+            "birth_date", "legal_name", "primary_city", "city", "employer",
+            "job_title", "nickname",
+        }
+        _corrective_phrases = ("not ", "actually", "always has been", "never was")
+        _has_corrective_language = any(p in text.lower() for p in _corrective_phrases)
+        try:
+            from .fact_slots import extract_fact_slots as _efs
+            _new_slots = _efs(text)
+            for _slot_name, _slot_fact in _new_slots.items():
+                if _slot_name not in EXCLUSIVE_SLOTS:
+                    continue
+                _new_val_norm = str(getattr(_slot_fact, "normalized", getattr(_slot_fact, "value", _slot_fact))).strip().lower()
+                # Query memory_facts for existing entries with same slot but different value
+                _conn_ex = self._get_connection()
+                _cur_ex = _conn_ex.cursor()
+                _cur_ex.execute("""
+                    SELECT mf.memory_id, mf.normalized, m.trust
+                    FROM memory_facts mf
+                    JOIN memories m ON mf.memory_id = m.memory_id
+                    WHERE mf.slot = ? AND m.deprecated = 0
+                """, (_slot_name,))
+                _existing_rows = _cur_ex.fetchall()
+                _conn_ex.close()
+                for _ex_mem_id, _ex_norm, _ex_trust in _existing_rows:
+                    if str(_ex_norm).strip().lower() == _new_val_norm:
+                        continue  # Same value — not a conflict
+                    # Demote the old memory's trust (Law 2: don't hard-delete, just demote)
+                    _demoted_trust = float(_ex_trust) * 0.4
+                    self._update_memory_trust(_ex_mem_id, _demoted_trust)
+                    self.record_memory_event(
+                        memory_id=_ex_mem_id,
+                        event_type="slot_exclusivity_demoted",
+                        actor="system",
+                        reason=f"superseded by new memory: {_slot_name}={_new_val_norm}",
+                        metadata={
+                            "slot": _slot_name,
+                            "old_value": str(_ex_norm),
+                            "new_value": _new_val_norm,
+                            "old_trust": float(_ex_trust),
+                            "demoted_trust": _demoted_trust,
+                        },
+                    )
+                    logger.info(
+                        "[SLOT_EXCLUSIVITY] Demoted %s for slot %s: %s -> %s (trust %.3f -> %.3f)",
+                        _ex_mem_id, _slot_name, _ex_norm, _new_val_norm,
+                        float(_ex_trust), _demoted_trust,
+                    )
+        except Exception as _slot_ex_err:
+            logger.debug(f"[SLOT_EXCLUSIVITY] Slot exclusivity check failed (non-fatal): {_slot_ex_err}")
+
+        # Corrective language trust boost: if user is explicitly correcting a value,
+        # start the new memory at 0.90 instead of the default 0.70.
+        if _has_corrective_language:
+            confidence = max(confidence, 0.90)
+            logger.info(f"[SLOT_EXCLUSIVITY] Corrective language detected, boosting confidence to {confidence:.2f}: {text[:60]}")
+
         # Compute significance for SSE mode selection
         all_vectors = self._get_all_vectors()
         novelty = self.crt_math.novelty(vector, all_vectors)

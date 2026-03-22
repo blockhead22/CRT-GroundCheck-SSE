@@ -1461,7 +1461,39 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"
         if adaptive_hint:
             prompt += f"{adaptive_hint}\n\n"
-        
+
+        # ------------------------------------------------------------------
+        # Self-model reinjection: give the LLM awareness of its own state
+        # ------------------------------------------------------------------
+        try:
+            from personal_agent.self_model import get_self_model, SELF_MODEL_SLOTS
+            _sm = get_self_model()
+            _sm_data = _sm.read_model()
+            # Build compact snapshot — skip empty/None slots
+            _sm_lines = []
+            _slot_labels = {
+                "uncertainty_domains": "Uncertain about",
+                "correction_pattern": "Correction pattern",
+                "trust_trajectory": "Trust trajectory",
+                "known_blindspots": "Known blindspots",
+                "growing_confidence": "Growing confidence in",
+                "user_relationship": "User relationship",
+                "response_style": "Response style",
+            }
+            for _slot in SELF_MODEL_SLOTS:
+                _val = (_sm_data.get(_slot) or "").strip()
+                if _val and _val != "(not yet set)":
+                    _label = _slot_labels.get(_slot, _slot)
+                    _sm_lines.append(f"- {_label}: {_val[:120]}")
+            if _sm_lines:
+                prompt += (
+                    "[Self-awareness snapshot — internal calibration, do not recite verbatim]\n"
+                    + "\n".join(_sm_lines)
+                    + "\n\n"
+                )
+        except Exception:
+            pass  # Self-model unavailable — proceed without it
+
         # Detect provenance queries — user is asking HOW/WHY we know something
         _provenance_cues = ("how do you know", "why do you think", "where did you learn",
                             "when did i tell", "how are you sure", "what makes you think",

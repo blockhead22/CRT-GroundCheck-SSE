@@ -2729,22 +2729,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     if fact_check_preamble:
         query_with_context = effective_message + fact_check_preamble
 
-    # ====== Self-awareness: inject top self-model facts into LLM context ======
-    # IMPORTANT: This goes into a SEPARATE variable for LLM prompting only.
-    # Do NOT append to query_with_context — that contaminates memory storage
-    # and retrieval, causing every stored memory to include the self-awareness
-    # preamble text.
-    _self_awareness_context = ""
-    try:
-        from personal_agent.self_model import get_self_model
-        _top_facts = get_self_model().get_top_facts(3)
-        if _top_facts:
-            _self_awareness_context = (
-                "\n\n[Self-awareness — internal calibration only, do not repeat to user verbatim]\n"
-                + "\n".join(f"- {f}" for f in _top_facts)
-            )
-    except Exception:
-        pass
+    # Self-awareness injection now happens in reasoning.py/_build_quick_prompt
+    # where the system prompt is assembled. No separate variable needed here.
 
     recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
     # Pass structured history for proper multi-turn chat; keep text
@@ -2818,25 +2804,132 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     _cloud_result = _cloud_svc.classify_slot(
                         effective_message, _existing_slots
                     )
+                    print(f"[CLOUD_SLOT_FLOW] cloud_result={_cloud_result}")
                     if _cloud_result and _cloud_result.get("contains_fact"):
                         _cloud_slot = _cloud_result.get("slot_name")
                         _cloud_value = _cloud_result.get("value")
+                        print(f"[CLOUD_SLOT_FLOW] contains_fact=True, slot={_cloud_slot}, value={_cloud_value}")
                         if _cloud_slot and _cloud_value:
-                            result.setdefault("slots_extracted", {})
-                            if isinstance(result["slots_extracted"], dict):
-                                result["slots_extracted"][_cloud_slot] = _cloud_value
-                            logger.info(
-                                "[CLOUD_SLOT] Cloud classified: %s=%s",
-                                _cloud_slot, str(_cloud_value)[:60],
-                            )
+                            try:
+                                result.setdefault("slots_extracted", {})
+                                if isinstance(result["slots_extracted"], dict):
+                                    result["slots_extracted"][_cloud_slot] = _cloud_value
+                            except Exception as _se_err:
+                                print(f"[CLOUD_SLOT_FLOW] slots_extracted error: {_se_err}")
+                            # --- Cloud-driven slot exclusivity demotion ---
+                            print(f"[SLOT_EXCLUSIVITY] Entering demotion check for {_cloud_slot}={_cloud_value}")
+                            _EXCLUSIVE_SLOTS = {
+                                "favorite_color", "name", "first_name", "last_name",
+                                "birthday", "birth_date", "legal_name", "primary_city",
+                                "city", "employer", "job_title", "nickname",
+                            }
+                            _is_exclusive = _cloud_result.get("exclusive", _cloud_slot in _EXCLUSIVE_SLOTS)
+                            print(f"[SLOT_EXCLUSIVITY] exclusive={_is_exclusive}")
+                            if _is_exclusive:
+                                try:
+                                    _new_val_norm = str(_cloud_value).strip().lower()
+                                    # memory_facts may be empty — also search memories table directly
+                                    # for text containing this slot's known pattern
+                                    _conn_ex = engine.memory._get_connection()
+                                    _cur_ex = _conn_ex.cursor()
+                                    # Strategy: search memories text for "favorite color" pattern
+                                    _slot_search = _cloud_slot.replace("_", " ")  # favorite_color -> favorite color
+                                    _cur_ex.execute("""
+                                        SELECT memory_id, text, trust
+                                        FROM memories
+                                        WHERE LOWER(text) LIKE ?
+                                        AND deprecated = 0
+                                        AND LOWER(text) NOT LIKE ?
+                                    """, (f"%{_slot_search}%", f"%{_slot_search}%{_new_val_norm}%"))
+                                    _text_rows = _cur_ex.fetchall()
+                                    # Also check memory_facts table
+                                    _cur_ex.execute("""
+                                        SELECT mf.memory_id, mf.normalized, m.trust
+                                        FROM memory_facts mf
+                                        JOIN memories m ON mf.memory_id = m.memory_id
+                                        WHERE mf.slot = ? AND m.deprecated = 0
+                                    """, (_cloud_slot,))
+                                    _fact_rows = _cur_ex.fetchall()
+                                    _conn_ex.close()
+                                    print(f"[SLOT_EXCLUSIVITY] text_search={len(_text_rows)} rows, facts_table={len(_fact_rows)} rows")
+                                    # Demote from text search (catches entries not in memory_facts)
+                                    _demoted_ids = set()
+                                    for _ex_mem_id, _ex_text, _ex_trust in _text_rows:
+                                        if _new_val_norm in str(_ex_text).lower():
+                                            continue  # Contains the new value — same side
+                                        _demoted = float(_ex_trust) * 0.4
+                                        engine.memory._update_memory_trust(_ex_mem_id, _demoted)
+                                        _demoted_ids.add(_ex_mem_id)
+                                        print(
+                                            f"[SLOT_EXCLUSIVITY] DEMOTED {_ex_mem_id} "
+                                            f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
+                                            f"text: {str(_ex_text)[:60]}"
+                                        )
+                                    # Demote from facts table (if populated)
+                                    for _ex_mem_id, _ex_norm, _ex_trust in _fact_rows:
+                                        if _ex_mem_id in _demoted_ids:
+                                            continue
+                                        if str(_ex_norm).strip().lower() == _new_val_norm:
+                                            continue
+                                        _demoted = float(_ex_trust) * 0.4
+                                        engine.memory._update_memory_trust(_ex_mem_id, _demoted)
+                                        print(
+                                            f"[SLOT_EXCLUSIVITY] DEMOTED {_ex_mem_id} "
+                                            f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
+                                            f"norm: {_ex_norm}"
+                                        )
+                                    # Store cloud-classified fact in memory_facts for future lookups
+                                    try:
+                                        _conn_store = engine.memory._get_connection()
+                                        _cur_store = _conn_store.cursor()
+                                        # Find the most recent memory matching this text
+                                        _cur_store.execute("""
+                                            SELECT memory_id FROM memories
+                                            WHERE LOWER(text) LIKE ? AND deprecated = 0
+                                            ORDER BY timestamp DESC LIMIT 1
+                                        """, (f"%{_new_val_norm}%",))
+                                        _new_mem_row = _cur_store.fetchone()
+                                        if _new_mem_row:
+                                            _cur_store.execute(
+                                                "INSERT OR REPLACE INTO memory_facts (memory_id, slot, value, normalized) VALUES (?, ?, ?, ?)",
+                                                (_new_mem_row[0], _cloud_slot, str(_cloud_value), _new_val_norm),
+                                            )
+                                            _conn_store.commit()
+                                            print(f"[SLOT_EXCLUSIVITY] Stored fact: {_cloud_slot}={_new_val_norm} for {_new_mem_row[0]}")
+                                        _conn_store.close()
+                                    except Exception as _sf_err:
+                                        print(f"[SLOT_EXCLUSIVITY] Fact store error (non-fatal): {_sf_err}")
+                                except Exception as _slot_ex_err:
+                                    import traceback
+                                    print(f"[SLOT_EXCLUSIVITY] Error: {_slot_ex_err}")
+                                    traceback.print_exc()
+                    else:
+                        print(f"[CLOUD_SLOT_FLOW] No fact detected or no result")
     except Exception as _cloud_slot_err:
         logger.warning("[CLOUD_SLOT] Cloud slot classification failed (non-fatal): %s", _cloud_slot_err)
 
     # ====== CRT-AS-CRITIC: Post-generation verification ======
     # Verify the draft answer against stored memories using GroundCheck (~1ms).
     # This replaces unreliable LLM self-critique with external truth checking.
+    # Skip for simple greetings — they are not factual assertions and should
+    # never trigger the contradiction_disclosure gate.
+    _GREETING_WORDS = {
+        "hello", "hi", "hey", "good morning", "good afternoon", "good evening",
+        "what's up", "whats up", "howdy", "yo", "sup", "hiya", "greetings",
+        "how are you", "how's it going", "hows it going",
+    }
+    _critic_msg_lower = (effective_message or "").strip().lower().rstrip("!?.,'")
+    # Strip the bot's name for matching (e.g. "hello aether" -> "hello")
+    _critic_msg_clean = _critic_msg_lower.replace("aether", "").strip().rstrip(",!. ")
+    _skip_critic_greeting = (
+        _critic_msg_clean in _GREETING_WORDS
+        or (len(_critic_msg_lower) < 20 and any(_critic_msg_lower.startswith(g) for g in _GREETING_WORDS))
+    )
     critic_meta = None
+    if _skip_critic_greeting:
+        logger.debug("[CRT-CRITIC] Skipping contradiction gate for greeting: %s", effective_message[:60])
     try:
+      if not _skip_critic_greeting:
         from personal_agent.crt_critic import CRTCritic, VerifyVerdict
         _critic = CRTCritic()
         _draft = result.get("answer", "")
