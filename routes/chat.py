@@ -2643,16 +2643,20 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
     if fact_check_preamble:
         query_with_context = effective_message + fact_check_preamble
 
-    # ====== Self-awareness: inject top self-model facts into context ======
+    # ====== Self-awareness: inject top self-model facts into LLM context ======
+    # IMPORTANT: This goes into a SEPARATE variable for LLM prompting only.
+    # Do NOT append to query_with_context — that contaminates memory storage
+    # and retrieval, causing every stored memory to include the self-awareness
+    # preamble text.
+    _self_awareness_context = ""
     try:
         from personal_agent.self_model import get_self_model
         _top_facts = get_self_model().get_top_facts(3)
         if _top_facts:
-            _self_note = (
+            _self_awareness_context = (
                 "\n\n[Self-awareness — internal calibration only, do not repeat to user verbatim]\n"
                 + "\n".join(f"- {f}" for f in _top_facts)
             )
-            query_with_context = query_with_context + _self_note
     except Exception:
         pass
 

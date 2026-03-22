@@ -971,8 +971,12 @@ class CRTTaskAgent:
             yield {"type": "status", "content": "analyzing fetched content"}
 
             # ── Primary: LLM-driven iterative tool loop ────────────────
+            # Skip LLM loop for write actions — qwen3:14b can't reliably match
+            # user intent to the correct write endpoint from docs. The deterministic
+            # curl parser with intent-scored POST selection is more reliable.
             _used_llm_loop = False
-            if self._llm is not None and hasattr(self._llm, "chat_with_tools"):
+            _skip_llm_for_write = (action == "write")
+            if not _skip_llm_for_write and self._llm is not None and hasattr(self._llm, "chat_with_tools"):
                 try:
                     loop_steps, llm_loop_final_content = yield from self._llm_tool_loop(
                         message=message,
@@ -1812,6 +1816,10 @@ RULES:
 
         # For query actions, collect all candidate GETs with scores, then pick best
         get_candidates: List[Tuple[int, Dict[str, Any]]] = []  # (score, step_dict)
+        # For write actions, collect all candidate POSTs with scores, then pick best
+        post_candidates: List[Tuple[int, Dict[str, Any]]] = []  # (score, step_dict)
+        msg_lower = message.lower()
+        _msg_words = set(re.findall(r'\b\w{3,}\b', msg_lower))
 
         for m in self._CURL_RE.finditer(normalised):
             flags_str = m.group(1)
@@ -1873,12 +1881,6 @@ RULES:
                         )
                         continue
 
-                # Cap POST steps — documentation examples add 5-6 extra
-                # endpoints that aren't part of the actual registration flow
-                if post_count >= _MAX_POST_STEPS:
-                    logger.debug("[TASK_AGENT] Curl parser: skipping POST #%d (cap=%d): %s",
-                                 post_count + 1, _MAX_POST_STEPS, url[:80])
-                    continue
                 if payload is None:
                     payload = {}
                 step_input: Dict[str, Any] = {"url": url, "payload": payload}
@@ -1886,8 +1888,18 @@ RULES:
                     step_input["headers"] = headers
                 if expected_fields:
                     step_input["expected_fields"] = expected_fields
-                steps.append({"tool": "http_post", "input": step_input})
-                post_count += 1
+
+                # Score this POST endpoint against user intent
+                # Look back ~500 chars for section context (headers, descriptions)
+                context_start = max(0, m.start() - 500)
+                context_window = normalised[context_start:m.end()].lower()
+                post_score = 0
+                for word in _msg_words:
+                    if len(word) >= 3 and word in context_window:
+                        post_score += 2
+                    if len(word) >= 3 and word in url.lower():
+                        post_score += 5  # URL match is strongest signal
+                post_candidates.append((post_score, {"tool": "http_post", "input": step_input}))
 
                 # Auto-queue a store_credential step for any api_key field in response
                 if not credential_step_queued and any(
@@ -1945,6 +1957,24 @@ RULES:
                     "[TASK_AGENT] Curl parser: selected GET (score=%d): %s",
                     score, step_dict["input"].get("url", "")[:80],
                 )
+
+        # For write actions, pick the best-scoring POST endpoints
+        if not query_only and post_candidates:
+            post_candidates.sort(key=lambda x: x[0], reverse=True)
+            seen_paths_post: set = set()
+            for score, step_dict in post_candidates:
+                url = step_dict["input"].get("url", "")
+                base_path = url.split("?")[0]
+                if base_path in seen_paths_post:
+                    continue
+                seen_paths_post.add(base_path)
+                steps.append(step_dict)
+                logger.info(
+                    "[TASK_AGENT] Curl parser: selected POST (score=%d): %s",
+                    score, step_dict["input"].get("url", "")[:80],
+                )
+                if len([s for s in steps if s["tool"] == "http_post"]) >= _MAX_POST_STEPS:
+                    break
 
         logger.info("[TASK_AGENT] Curl parser found %d steps", len(steps))
         return steps
