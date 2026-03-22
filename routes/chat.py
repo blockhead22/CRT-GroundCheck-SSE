@@ -2933,11 +2933,20 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 "Facts about you come from what you've told me, while my assistant identity comes from my configured system role. "
                 "If those records conflict, I disclose the conflict instead of silently picking a winner."
             )
+        if "explanatory_memory_fail" in reason or "no_memory" in reason:
+            # No relevant memory found — don't claim "conflicting information"
+            if answer_text and not suspicious and "conflicting" not in lower_answer:
+                return answer_text
+            return "I don't have a stored memory for that topic. Tell me about it and I'll remember for next time."
+        if "low_alignment" in reason or "degraded_output" in reason:
+            if answer_text and not suspicious and "conflicting" not in lower_answer:
+                return answer_text
+            return "I found some related memories but couldn't build a confident answer. Could you be more specific?"
         if "uncertainty" in reason or "grounding_fail" in reason:
             if answer_text and not suspicious:
                 return answer_text
             return "I'm not confident enough in my answer to share it. Could you give me more context?"
-        if answer_text and not suspicious:
+        if answer_text and not suspicious and "conflicting" not in lower_answer:
             return answer_text
         return "I wasn't able to generate a reliable response to that. Try rephrasing, or ask me to explain why."
 
