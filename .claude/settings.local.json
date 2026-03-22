@@ -16,7 +16,8 @@
       "WebFetch(domain:docs.openclaw.ai)",
       "Skill(claude-api)",
       "Skill(claude-api:*)",
-      "WebSearch"
+      "WebSearch",
+      "mcp__mcp-registry__search_mcp_registry"
     ]
   }
 }

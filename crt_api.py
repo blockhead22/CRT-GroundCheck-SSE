@@ -1062,7 +1062,7 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=origins if origins else ["*"],
         allow_credentials=allow_creds,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Accept"],
     )
 

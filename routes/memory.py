@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from pydantic import BaseModel
 
 import re as _re
 
@@ -235,31 +236,30 @@ def set_profile_name(req: ChatSendRequest, request: Request) -> ChatSendResponse
     return chat_send(req)
 
 
-@router.post("/api/profile/set_facts")
-def set_profile_facts(request: Request):
-    """Batch-set profile facts via CRT memory system."""
-    import json as _json, asyncio
-    body_bytes = asyncio.get_event_loop().run_until_complete(request.body())
-    body = _json.loads(body_bytes) if body_bytes else {}
+class _SetFactsRequest(BaseModel):
+    thread_id: str = "default"
+    facts: Dict[str, str] = {}
 
-    thread_id = body.get("thread_id", "default")
-    facts: dict = body.get("facts", {})
-    if not facts:
+
+@router.post("/api/profile/set_facts")
+def set_profile_facts(req: _SetFactsRequest):
+    """Batch-set profile facts via CRT memory system."""
+    if not req.facts:
         return {"ok": True, "stored": 0}
 
     from routes.models import ChatSendRequest
     from crt_api import chat_send
 
     stored = 0
-    for slot, value in facts.items():
+    for slot, value in req.facts.items():
         if not isinstance(value, str) or not value.strip():
             continue
         try:
-            req = ChatSendRequest(
-                thread_id=thread_id,
+            fact_req = ChatSendRequest(
+                thread_id=req.thread_id,
                 message=f"FACT: {slot} = {value.strip()}",
             )
-            chat_send(req)
+            chat_send(fact_req)
             stored += 1
         except Exception as e:
             logger.warning("[PROFILE] Failed to store fact %s: %s", slot, e)

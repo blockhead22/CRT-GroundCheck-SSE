@@ -1155,12 +1155,45 @@ def _is_self_referential_question(text: str) -> bool:
         "what went wrong",
         "why did you fail",
         "what happened",  # when addressed to aether
+        # State/introspection questions
+        "what's new with you",
+        "whats new with you",
+        "what is new with you",
+        "how are you",
+        "how have you been",
+        "what are you thinking",
+        "what are you currently",
+        "what's on your mind",
+        "whats on your mind",
+        "about yourself",
+        "about you",
+        # Architecture/system component questions
+        "heartbeat",
+        "compression",
+        "trust score",
+        "trust decay",
+        "self-reflection",
+        "self reflection",
+        "your pipeline",
+        "your system",
+        "your architecture",
+        "do you have a",  # "do you have a heartbeat/memory/etc"
+        "do you use",
+        "do you know yourself",
+        "do you understand yourself",
+        "what do you believe",
+        "what do you think about",
+        "your personality",
+        "your identity",
+        "your name",
     )
     if any(p in t for p in self_patterns):
         return True
     # "Aether, <question about the system>" pattern
     if addressed_to_aether and any(
-        w in t for w in ("work", "gating", "memory", "contradict", "trust", "belief", "broken", "problem", "wrong")
+        w in t for w in ("work", "gating", "memory", "contradict", "trust", "belief", "broken", "problem", "wrong",
+                         "heartbeat", "compress", "reflect", "thinking", "new with", "pipeline", "system",
+                         "architecture", "learn", "improve", "personality", "identity", "yourself")
     ):
         return True
     return False
@@ -1188,6 +1221,14 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         "- You ask before acting (checkpoint system for agentic tasks)",
         "- You learn from your mistakes via a self-reflection loop",
         "- You maintain an append-only contradiction ledger",
+        "",
+        "Your active systems:",
+        "- Heartbeat loop: runs hourly, performs trust decay, adaptive memory compression, and self-reflection",
+        "- Self-reflection (step 7 of heartbeat): gathers gate failures, negative feedback, trust deltas, and open contradictions from the last 24h, then updates your 7-slot self-model",
+        "- Adaptive compression: stable low-trust memories fold to 10D/64D, volatile ones stay at 384D full fidelity. Volatility = drift + contradictions + fidelity loss",
+        "- LLM tool loop: for service actions (like querying APIs), you chain up to 8 tool calls with reasoning between each step",
+        "- GroundCheck: sub-2ms post-generation verification that catches contradictions against stored facts",
+        "- Pipeline: intent routing → memory retrieval → fact checking → response generation → verification → trust updates",
         "",
         "Your current self-model state:",
     ]

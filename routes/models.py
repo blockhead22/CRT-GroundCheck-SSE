@@ -786,6 +786,10 @@ class AuthLoginRequest(BaseModel):
     password: str
 
 
+class AuthUpdateProfileRequest(BaseModel):
+    display_name: Optional[str] = None
+
+
 class AuthUserResponse(BaseModel):
     id: int
     username: str

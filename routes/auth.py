@@ -10,6 +10,7 @@ from routes.models import (
     AuthLoginRequest,
     AuthLoginResponse,
     AuthMeResponse,
+    AuthUpdateProfileRequest,
     SyncChatRequest,
     SyncChatResponse,
     AuthUserResponse,
@@ -113,12 +114,10 @@ def auth_me(authorization: Optional[str] = Header(None)):
 
 @router.patch("/update_profile")
 def auth_update_profile(
-    request: Request,
+    req: AuthUpdateProfileRequest,
     authorization: Optional[str] = Header(None),
 ):
     """Update the authenticated user's profile fields (e.g. display_name)."""
-    import json as _json
-
     token = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
@@ -129,14 +128,8 @@ def auth_update_profile(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid or expired session")
 
-    # Parse body manually since we don't have a dedicated Pydantic model.
-    import asyncio
-    body_bytes = asyncio.get_event_loop().run_until_complete(request.body())
-    body = _json.loads(body_bytes) if body_bytes else {}
-
-    display_name = body.get("display_name")
-    if display_name and isinstance(display_name, str) and display_name.strip():
-        auth_module.update_user_display_name(user.id, display_name.strip())
+    if req.display_name and req.display_name.strip():
+        auth_module.update_user_display_name(user.id, req.display_name.strip())
 
     # Re-fetch user to return updated data.
     updated = auth_module.validate_session(token)
