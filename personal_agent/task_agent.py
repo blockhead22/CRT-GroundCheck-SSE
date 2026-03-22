@@ -123,7 +123,8 @@ _SERVICE_WRITE_RE = re.compile(
     re.IGNORECASE,
 )
 _SERVICE_READ_RE = re.compile(
-    r"\b(check|see|get|fetch|read|look|find|show|list|view|"
+    r"\b(check|see|get|fetch|read|look|find|show|list|view|browse|search|"
+    r"interesting|trending|popular|recent|latest|"
     r"any\s+new|whats\s+new|what(?:'?s|\s+are|\s+is)\s+new|"
     r"are\s+there|what(?:'?s|\s+are|\s+is)|updates?|notifications?)\b",
     re.IGNORECASE,
@@ -946,6 +947,33 @@ class CRTTaskAgent:
                 _MAX_STEPS = 8  # hard ceiling per task
                 phase2_plan = phase2_plan[:_MAX_STEPS]
                 step_budget = len(phase2_plan)
+
+                # ── Tier 1 checkpoint for write actions in phase 2 ─────────
+                # POST/write steps are destructive — always pause for user
+                has_writes = any(
+                    s["tool"] in ("http_post",) for s in phase2_plan
+                )
+                if has_writes:
+                    write_urls = [
+                        s["input"].get("url", "unknown")
+                        for s in phase2_plan if s["tool"] == "http_post"
+                    ]
+                    yield {
+                        "type": "agent_checkpoint",
+                        "content": (
+                            f"Phase 2 includes {len(write_urls)} write action(s): "
+                            + ", ".join(write_urls[:3])
+                            + ". Proceed?"
+                        ),
+                        "metadata": {
+                            "tier": "tier_1",
+                            "intent_type": intent.intent_type,
+                            "action": intent.slots.get("action", ""),
+                            "write_urls": write_urls[:3],
+                            "phase": 2,
+                        },
+                    }
+                    return  # pause — user must confirm to continue
 
                 yield {
                     "type": "plan_ready",
@@ -1881,8 +1909,14 @@ class CRTTaskAgent:
         content_buf = ""
         thinking_start = time.time()
 
+        # Use the fast model for answer generation — reasoning models are too
+        # slow for simple "summarise these API results" tasks and cause timeouts.
+        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+
         try:
-            for tok_type, text in self._llm.chat_stream(messages, max_tokens=400, temperature=0.3):
+            for tok_type, text in self._llm.chat_stream(
+                messages, max_tokens=400, temperature=0.3, model=fast_model,
+            ):
                 if tok_type == "thinking":
                     thinking_buf += text
                     yield {"type": "agent_thinking_token", "content": text,
@@ -1994,8 +2028,10 @@ class CRTTaskAgent:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"{message}\n\n{context_block}".strip()},
         ]
+        # Use fast model for answer summarisation — reasoning models timeout
+        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
         try:
-            return self._llm.chat(messages, max_tokens=400, temperature=0.3)
+            return self._llm.chat(messages, max_tokens=400, temperature=0.3, model=fast_model)
         except Exception as e:
             logger.warning("[TASK_AGENT] LLM call failed: %s", e)
             return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)
