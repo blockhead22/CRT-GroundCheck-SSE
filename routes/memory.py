@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
 import re as _re
@@ -25,7 +25,7 @@ from personal_agent.fact_slots import (
 from personal_agent.judgment_audit_log import get_judgment_log, CONTRADICTION_STORE
 from personal_agent.db_utils import get_db_connection
 
-from routes.deps import sanitize_thread_id
+from routes.deps import sanitize_thread_id, resolve_user_id
 from routes.models import (
     ChatSendRequest,
     ChatSendResponse,
@@ -70,6 +70,7 @@ def _memory_item_to_dict(mem) -> Dict[str, Any]:
         "source": getattr(getattr(mem, "source", None), "value", None) or str(getattr(mem, "source", "")),
         "sse_mode": getattr(getattr(mem, "sse_mode", None), "value", None) or str(getattr(mem, "sse_mode", "")),
         "thread_id": getattr(mem, "thread_id", None),
+        "user_id": getattr(mem, "user_id", None),
         "authority": str(getattr(mem, "authority", "confirmed") or "confirmed"),
         "channel": str(getattr(mem, "channel", "unknown") or "unknown"),
         "origin": getattr(mem, "origin", None),
@@ -81,9 +82,16 @@ def _memory_item_to_dict(mem) -> Dict[str, Any]:
     }
 
 
-def _recent_scope_items(engine: CRTEnhancedRAG, tid: str) -> list:
-    """Return the same raw memory scope used by /api/memory/recent."""
+def _recent_scope_items(engine: CRTEnhancedRAG, tid: str, user_id: Optional[str] = None) -> list:
+    """Return the same raw memory scope used by /api/memory/recent.
+
+    When *user_id* is provided the scope is all memories owned by that user
+    (regardless of thread).  Otherwise falls back to thread-based scoping for
+    backward compatibility.
+    """
     try:
+        if user_id:
+            return list(engine.memory._load_all_memories(user_id=user_id))
         if tid == "default":
             all_items = engine.memory._load_all_memories()
             return [
@@ -190,9 +198,10 @@ def get_doc(doc_id: str, request: Request) -> DocGetResponse:
 # ========================================================================
 
 @router.get("/api/profile", response_model=ProfileResponse)
-def get_profile(request: Request, thread_id: str = Query(default="default")) -> ProfileResponse:
+def get_profile(request: Request, thread_id: str = Query(default="default"), authorization: Optional[str] = Header(None)) -> ProfileResponse:
     engine = _get_engine(request, thread_id)
     tid = sanitize_thread_id(thread_id)
+    uid = resolve_user_id(authorization)
     slots = {
         str(slot): str((fact or {}).get("value") or "")
         for slot, fact in (engine.get_effective_user_facts(thread_id=tid) or {}).items()
@@ -439,16 +448,17 @@ def get_fact_history(
 # ========================================================================
 
 @router.get("/api/dashboard/overview", response_model=DashboardOverviewResponse)
-def dashboard_overview(request: Request, thread_id: str = Query(default="default")) -> DashboardOverviewResponse:
+def dashboard_overview(request: Request, thread_id: str = Query(default="default"), authorization: Optional[str] = Header(None)) -> DashboardOverviewResponse:
     engine = _get_engine(request, thread_id)
     tid = sanitize_thread_id(thread_id)
+    uid = resolve_user_id(authorization)
 
     try:
-        global_memories_total = len(engine.memory._load_all_memories())
+        global_memories_total = len(engine.memory._load_all_memories(user_id=uid))
     except Exception:
         global_memories_total = 0
 
-    memories_total = len(_recent_scope_items(engine, tid))
+    memories_total = len(_recent_scope_items(engine, tid, user_id=uid))
 
     try:
         effective_facts_total = len(engine.get_structured_facts(thread_id=tid, scope="effective"))
@@ -711,9 +721,10 @@ def _check_inline_contradiction(
 
 
 @router.post("/api/memory/store", response_model=MemoryStoreResponse)
-def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreResponse:
+def memory_store(req: MemoryStoreRequest, request: Request, authorization: Optional[str] = Header(None)) -> MemoryStoreResponse:
     tid = sanitize_thread_id(req.thread_id)
     engine = _get_engine(request, tid)
+    uid = resolve_user_id(authorization)
 
     try:
         source = MemorySource(str(req.source or "user").strip().lower())
@@ -738,6 +749,7 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
         source_kind=req.source_kind,
         model_id=req.model_id,
         run_id=req.run_id,
+        user_id=uid,
     )
     mem = ingest_result["memory"]
     fact_store_updated = bool(ingest_result.get("fact_store_updated"))
@@ -766,10 +778,11 @@ def memory_store(req: MemoryStoreRequest, request: Request) -> MemoryStoreRespon
     )
 
 @router.get("/api/memory/recent", response_model=list[MemoryListItem])
-def memory_recent(request: Request, thread_id: str = Query(default="default"), limit: int = Query(default=30, ge=1, le=200)) -> list[MemoryListItem]:
+def memory_recent(request: Request, thread_id: str = Query(default="default"), limit: int = Query(default=30, ge=1, le=200), authorization: Optional[str] = Header(None)) -> list[MemoryListItem]:
     tid = sanitize_thread_id(thread_id)
     engine = _get_engine(request, tid)
-    items = _recent_scope_items(engine, tid)
+    uid = resolve_user_id(authorization)
+    items = _recent_scope_items(engine, tid, user_id=uid)
     items.sort(key=lambda m: float(getattr(m, "timestamp", 0.0) or 0.0), reverse=True)
 
     out: list[MemoryListItem] = []
@@ -785,9 +798,11 @@ def memory_search(
     q: str = Query(min_length=1),
     k: int = Query(default=10, ge=1, le=50),
     min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
+    authorization: Optional[str] = Header(None),
 ) -> list[MemoryListItem]:
     tid = sanitize_thread_id(thread_id)
     engine = _get_engine(request, tid)
+    uid = resolve_user_id(authorization)
     try:
         retrieved = engine.retrieve(
             q,
@@ -800,7 +815,10 @@ def memory_search(
     except Exception:
         retrieved = []
 
-    def _matches_thread(mem) -> bool:
+    def _matches_scope(mem) -> bool:
+        """When user_id is available, match by user; else fall back to thread."""
+        if uid:
+            return str(getattr(mem, "user_id", "") or "") == uid
         mt = str(getattr(mem, "thread_id", "") or "")
         if tid == "default":
             return not mt or mt.lower() in ("default", "")
@@ -824,7 +842,7 @@ def memory_search(
 
     out: list[MemoryListItem] = []
     for mem, _score in retrieved:
-        if not _matches_thread(mem):
+        if not _matches_scope(mem):
             continue
         if not _supports_inferred_slot(mem):
             continue

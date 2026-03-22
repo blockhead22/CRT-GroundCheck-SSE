@@ -16,6 +16,7 @@ Philosophy:
 - Only reflection merges conflicting beliefs
 """
 
+import contextvars
 import math
 import sqlite3
 import json
@@ -26,6 +27,14 @@ from typing import List, Dict, Optional, Any, Tuple, Set
 from datetime import datetime
 from dataclasses import dataclass, asdict
 import time
+
+# Context variable for propagating the authenticated user_id into engine
+# internals without changing every call signature.  Route handlers set this
+# before invoking the engine; store_memory reads it as a fallback when no
+# explicit user_id argument is provided.
+_request_user_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar(
+    "_request_user_id", default=None,
+)
 
 from .db_utils import retry_on_lock, get_db_connection
 from .crt_core import (
@@ -172,6 +181,9 @@ class MemoryItem:
     channel: str = "unknown"                    # webchat | telegram | moltbook | system | unknown | api | ...
     origin: Optional[str] = None                # URL, message ID, etc.
     kind: str = "observation"                   # user_fact | ops | preference | ...
+
+    # User scoping — primary retrieval key (thread_id kept for audit trail)
+    user_id: Optional[str] = None               # Authenticated user ID; None = legacy/anonymous
 
     # Phase B/C: Model provenance + staleness
     review_after: Optional[float] = None        # Unix ts — if set and passed, memory is stale
@@ -599,6 +611,12 @@ class CRTMemorySystem:
             logger.info(f"[MIGRATION] Adding run_id column to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN run_id TEXT")
 
+        # User-scoped retrieval (user_id replaces thread_id as primary filter)
+        if "user_id" not in columns:
+            logger.info(f"[MIGRATION] Adding user_id column to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN user_id TEXT")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id)")
+
         # Adaptive compression (Phase 1)
         if "compression_tier" not in columns:
             logger.info(f"[MIGRATION] Adding compression columns to {self.db_path}")
@@ -662,6 +680,53 @@ class CRTMemorySystem:
     @staticmethod
     def _normalize_dedupe_text(text: Optional[str]) -> str:
         return re.sub(r"\s+", " ", str(text or "").strip()).lower()
+
+    _DEDUP_SIMILARITY_THRESHOLD = 0.9
+
+    def _find_dedup_match(
+        self, vector: np.ndarray, text: str
+    ) -> Optional[Tuple[str, float]]:
+        """Return (memory_id, trust) of an existing memory that is a semantic
+        duplicate of *text* / *vector*, or None if no duplicate is found.
+
+        A match requires:
+        1. Cosine similarity >= 0.9 between the embedding vectors.
+        2. Normalized-text equality (guards against high-similarity but
+           semantically different short phrases).
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "SELECT memory_id, vector_json, text, trust FROM memories"
+            )
+            rows = cursor.fetchall()
+        finally:
+            conn.close()
+
+        if not rows:
+            return None
+
+        norm_new = self._normalize_dedupe_text(text)
+        best: Optional[Tuple[str, float, float]] = None  # (id, sim, trust)
+
+        for memory_id, vector_json, existing_text, trust in rows:
+            try:
+                existing_vec = np.array(json.loads(vector_json))
+            except Exception:
+                continue
+            sim = float(self.crt_math.similarity(vector, existing_vec))
+            if sim < self._DEDUP_SIMILARITY_THRESHOLD:
+                continue
+            # High vector similarity — confirm with normalized text match
+            if self._normalize_dedupe_text(existing_text) != norm_new:
+                continue
+            if best is None or sim > best[1]:
+                best = (memory_id, sim, float(trust))
+
+        if best is not None:
+            return (best[0], best[2])
+        return None
 
     def _is_sync_style_write(
         self,
@@ -1025,6 +1090,7 @@ class CRTMemorySystem:
         source_kind: Optional[str] = None,
         model_id: Optional[str] = None,
         run_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> MemoryItem:
         """
         Store new memory with CRT principles.
@@ -1115,7 +1181,38 @@ class CRTMemorySystem:
 
         # Encode
         vector = encode_vector(text)
-        
+
+        # --- Dedup check: skip insert if a near-identical memory already exists ---
+        dedup_match = self._find_dedup_match(vector, text)
+        if dedup_match is not None:
+            existing_id, existing_trust = dedup_match
+            # Bump trust: reinforce the existing memory (capped at 1.0)
+            new_trust = min(float(existing_trust) + 0.05, 1.0)
+            now = time.time()
+            conn = self._get_connection()
+            conn.execute(
+                "UPDATE memories SET trust = ?, timestamp = ? WHERE memory_id = ?",
+                (new_trust, now, existing_id),
+            )
+            conn.commit()
+            conn.close()
+            self.record_memory_event(
+                memory_id=existing_id,
+                event_type="dedup_reinforced",
+                actor="system",
+                reason=f"duplicate suppressed (sim>0.9), trust {existing_trust:.3f}->{new_trust:.3f}",
+                metadata={"new_text": text[:200], "old_trust": existing_trust, "new_trust": new_trust},
+            )
+            logger.info(
+                "[DEDUP] Reinforced existing memory %s instead of inserting duplicate (trust %.3f->%.3f): %s",
+                existing_id, existing_trust, new_trust, text[:80],
+            )
+            # Return the existing memory item so callers behave normally
+            existing_mem = self.get_memory_by_id(existing_id)
+            if existing_mem is not None:
+                return existing_mem
+            # Fallthrough: if the row vanished between check and fetch, insert normally
+
         # Compute significance for SSE mode selection
         all_vectors = self._get_all_vectors()
         novelty = self.crt_math.novelty(vector, all_vectors)
@@ -1224,6 +1321,17 @@ class CRTMemorySystem:
             logger.warning(f"[TWO_TIER] Failed to extract facts: {e}")
             extraction_method = 'none'
         
+        # Resolve user_id: prefer explicit arg → context dict → context variable.
+        resolved_user_id = str(user_id or "").strip() or None
+        if not resolved_user_id and isinstance(context, dict):
+            ctx_uid = context.get("user_id")
+            if ctx_uid is not None:
+                ctx_uid_str = str(ctx_uid).strip()
+                if ctx_uid_str:
+                    resolved_user_id = ctx_uid_str
+        if not resolved_user_id:
+            resolved_user_id = _request_user_id.get(None)
+
         # Create memory item
         memory = MemoryItem(
             memory_id=f"mem_{int(time.time() * 1000)}_{hash(text) % 10000}",
@@ -1236,6 +1344,7 @@ class CRTMemorySystem:
             sse_mode=sse_mode,
             context=context,
             thread_id=resolved_thread_id,
+            user_id=resolved_user_id,
             fact_tuples=fact_tuples_json,
             extraction_method=extraction_method,
             temporal_status=temporal_status,
@@ -1257,8 +1366,8 @@ class CRTMemorySystem:
         try:
             cursor.execute("""
                 INSERT INTO memories
-                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind, review_after, source_kind, model_id, run_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind, review_after, source_kind, model_id, run_id, user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 memory.memory_id,
                 json.dumps(vector.tolist()),
@@ -1282,6 +1391,7 @@ class CRTMemorySystem:
                 resolved_source_kind,
                 model_id,
                 run_id,
+                resolved_user_id,
             ))
         except sqlite3.OperationalError as e:
             # Backward compatibility for old ad-hoc tables that may not include thread_id.
@@ -1405,6 +1515,7 @@ class CRTMemorySystem:
         exclude_authorities: Optional[Set[str]] = None,
         kinds: Optional[Set[str]] = None,
         exclude_kinds: Optional[Set[str]] = None,
+        user_id: Optional[str] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using trust-weighted scoring.
@@ -1423,9 +1534,10 @@ class CRTMemorySystem:
         Returns list of (memory, score) tuples.
         """
         query_vector = encode_vector(query)
-        
-        # Load all memories
-        memories = self._load_all_memories()
+
+        # Load all memories — scope to user when available (fall back to context var)
+        effective_user_id = user_id or _request_user_id.get(None)
+        memories = self._load_all_memories(user_id=effective_user_id)
         
         # Build set of IDs to exclude
         deprecated_ids = set()
@@ -1483,6 +1595,10 @@ class CRTMemorySystem:
         t_now = time.time()
         from personal_agent.memory_compression import fold_vector, TIER_DIMS
 
+        # Compression tier fidelity penalty: lower-dim vectors lose
+        # information, so we discount their similarity scores.
+        _TIER_WEIGHT = {0: 0.85, 1: 0.95, 2: 1.0}
+
         memory_dicts = []
         for m in memories:
             tier = getattr(m, 'compression_tier', 2)
@@ -1505,11 +1621,12 @@ class CRTMemorySystem:
             except Exception:
                 continue  # skip any vector shape mismatches
 
-            # CRT scoring: R = sim * recency * belief_weight
+            # CRT scoring: R = sim * recency * belief_weight * tier_weight
             age = t_now - m.timestamp
             recency = math.exp(-age / 86400.0)  # 1-day lambda
             belief = 0.7 * m.trust + 0.3 * m.confidence
-            score = max(0.0, sim) * recency * belief
+            tier_weight = _TIER_WEIGHT.get(tier, 1.0)
+            score = max(0.0, sim) * recency * belief * tier_weight
             memory_dicts.append((m, score))
 
         # Sort by score descending
@@ -2290,84 +2407,105 @@ class CRTMemorySystem:
             memory.model_id = row[25]
         if len(row) > 26:
             memory.run_id = row[26]
-        # Adaptive compression fields (columns 27-32)
+        # user_id (column 27 — added before compression columns in migration order)
         if len(row) > 27:
-            memory.compression_tier = int(row[27]) if row[27] is not None else 2
-        if len(row) > 28 and row[28]:
-            try:
-                memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.float32)
-            except Exception:
-                pass
+            memory.user_id = row[27]
+        # Adaptive compression fields (columns 28-33)
+        if len(row) > 28:
+            memory.compression_tier = int(row[28]) if row[28] is not None else 2
         if len(row) > 29 and row[29]:
             try:
-                memory.cogni_seed = json.loads(row[29])
+                memory.compressed_vector = np.array(json.loads(row[29]), dtype=np.float32)
             except Exception:
                 pass
-        if len(row) > 30:
-            memory.stable_cycles = int(row[30]) if row[30] is not None else 0
+        if len(row) > 30 and row[30]:
+            try:
+                memory.cogni_seed = json.loads(row[30])
+            except Exception:
+                pass
         if len(row) > 31:
-            memory.contradiction_count = int(row[31]) if row[31] is not None else 0
+            memory.stable_cycles = int(row[31]) if row[31] is not None else 0
         if len(row) > 32:
-            memory.access_count = int(row[32]) if row[32] is not None else 0
+            memory.contradiction_count = int(row[32]) if row[32] is not None else 0
+        if len(row) > 33:
+            memory.access_count = int(row[33]) if row[33] is not None else 0
         return memory
     
-    def _load_all_memories(self) -> List[MemoryItem]:
-        """Load all memories from database."""
+    def _load_all_memories(self, user_id: Optional[str] = None) -> List[MemoryItem]:
+        """Load all memories from database, scoped to user when available.
+
+        Resolution order for user scope:
+        1. Explicit ``user_id`` argument
+        2. ``_request_user_id`` context variable (set by route handlers)
+        3. No filter (legacy / anonymous — returns everything)
+        """
+        effective_uid = user_id or _request_user_id.get(None)
         conn = self._get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute("SELECT * FROM memories")
+
+        if effective_uid is not None:
+            cursor.execute("SELECT * FROM memories WHERE user_id = ?", (effective_uid,))
+        else:
+            cursor.execute("SELECT * FROM memories")
         rows = cursor.fetchall()
         conn.close()
-        
+
         return [self._row_to_memory(row) for row in rows]
     
     def _load_memories_filtered(
         self,
         source: Optional[MemorySource] = None,
         thread_id: Optional[str] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
+        user_id: Optional[str] = None,
     ) -> List[MemoryItem]:
         """
         Load memories with SQL-level filtering to avoid loading entire database.
-        
+
         Performance optimization: Use this instead of _load_all_memories() when
-        you need to filter by source, thread, or limit results.
-        
+        you need to filter by source, user, or limit results.
+
         Args:
             source: Filter by memory source (USER, SYSTEM, etc.)
-            thread_id: Filter by thread
+            thread_id: Filter by thread (kept for backward compat / audit queries)
             limit: Maximum number of results
-            
+            user_id: Filter by authenticated user (primary retrieval scope)
+
         Returns:
             Filtered list of MemoryItem objects
         """
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+
         # Build query with filters
         query = "SELECT * FROM memories WHERE 1=1"
         params = []
-        
+
         if source is not None:
             query += " AND source = ?"
             params.append(source.value)
-            
-        if thread_id is not None:
+
+        # user_id is the primary retrieval scope; thread_id is kept for audit
+        effective_uid = user_id or _request_user_id.get(None)
+        if effective_uid is not None:
+            query += " AND user_id = ?"
+            params.append(effective_uid)
+        elif thread_id is not None:
+            # Backward compat: fall back to thread_id when user_id not available
             query += " AND thread_id = ?"
             params.append(thread_id)
-            
+
         # Order by timestamp descending for latest-first behavior
         query += " ORDER BY timestamp DESC"
-        
+
         if limit is not None:
             query += " LIMIT ?"
             params.append(limit)
-        
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
-        
+
         return [self._row_to_memory(row) for row in rows]
     
     def _get_all_vectors(self) -> List[np.ndarray]:
@@ -2709,7 +2847,11 @@ class CRTMemorySystem:
         if exclude_deprecated:
             sql += " AND COALESCE(m.deprecated, 0) = 0"
 
-        if thread_id is not None:
+        effective_uid = _request_user_id.get(None)
+        if effective_uid is not None:
+            sql += " AND m.user_id = ?"
+            params.append(effective_uid)
+        elif thread_id is not None:
             sql += " AND COALESCE(m.thread_id, '') = ?"
             params.append(str(thread_id))
 

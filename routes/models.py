@@ -107,6 +107,7 @@ class MemoryListItem(BaseModel):
     source: str
     sse_mode: str
     thread_id: Optional[str] = None
+    user_id: Optional[str] = None
     authority: str = Field(default="confirmed")
     channel: str = Field(default="unknown")
     origin: Optional[str] = None

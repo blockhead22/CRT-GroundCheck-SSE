@@ -32,7 +32,7 @@ export function Topbar(props: {
     props.apiStatus === 'connected' ? 'Online' : props.apiStatus === 'disconnected' ? 'Offline' : '...'
 
   return (
-    <div className="flex items-center justify-between rounded-[28px] glass-panel px-3 py-2 sm:px-5 sm:py-2.5">
+    <div className="relative flex items-center justify-between rounded-[28px] glass-panel px-3 py-2 sm:px-5 sm:py-2.5" style={{ zIndex: 100 }}>
       {/* Left: Menu + Title */}
       <div className="flex items-center gap-2 sm:gap-3">
         <button
@@ -89,7 +89,7 @@ export function Topbar(props: {
         </div>
 
         {/* User avatar */}
-        <div className="relative">
+        <div className="relative" style={{ zIndex: 9999 }}>
           <motion.button
             onClick={() => setShowSettings(!showSettings)}
             initial={{ scale: 0.95, opacity: 0 }}

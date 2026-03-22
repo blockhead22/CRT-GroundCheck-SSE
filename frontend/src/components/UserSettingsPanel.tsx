@@ -79,7 +79,8 @@ export function UserSettingsPanel(props: {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-[380px] overflow-hidden rounded-2xl glass-panel border border-white/10 shadow-2xl"
+          className="absolute right-0 top-[calc(100%+8px)] w-[380px] overflow-hidden rounded-2xl glass-panel border border-white/10 shadow-2xl"
+          style={{ zIndex: 9999 }}
         >
           {/* Header */}
           <div className="border-b border-white/10 bg-white/5 p-4">

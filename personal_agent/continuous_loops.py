@@ -1579,7 +1579,7 @@ def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, Personalit
     enabled_reflection = os.getenv("CRT_REFLECTION_LOOP_ENABLED", "true").lower() == "true"
     enabled_personality = os.getenv("CRT_PERSONALITY_LOOP_ENABLED", "true").lower() == "true"
     enabled_self_reply = os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_ENABLED", "true").lower() == "true"
-    enabled_heartbeat = os.getenv("CRT_HEARTBEAT_LOOP_ENABLED", "false").lower() == "true"
+    enabled_heartbeat = os.getenv("CRT_HEARTBEAT_LOOP_ENABLED", "true").lower() == "true"
     reflection_interval = int(os.getenv("CRT_REFLECTION_LOOP_SECONDS", "900") or 900)
     personality_interval = int(os.getenv("CRT_PERSONALITY_LOOP_SECONDS", "1200") or 1200)
     self_reply_interval = int(os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_SECONDS", "1800") or 1800)

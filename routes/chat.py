@@ -21,10 +21,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Header, Request
 from fastapi.responses import StreamingResponse
 
-from .deps import sanitize_thread_id
+from .deps import sanitize_thread_id, resolve_user_id
 from personal_agent.text_utils import (
     strip_thinking_tags as _strip_thinking_tags,
     strip_think_blocks,
@@ -1866,11 +1866,18 @@ def _answer_from_docs(
 
 
 @router.post("/send", response_model=ChatSendResponse)
-def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
+def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[str] = Header(None)) -> ChatSendResponse:
     get_engine = request.app.state.get_engine
     get_llm_client = request.app.state.get_llm_client
     increment_turn = request.app.state.increment_turn
     _log_collapse_trail = request.app.state.log_collapse_trail
+
+    # Propagate authenticated user_id into memory system context variable
+    # so all memory writes during this request are tagged with the user.
+    uid = resolve_user_id(authorization)
+    if uid:
+        from personal_agent.crt_memory import _request_user_id
+        _request_user_id.set(uid)
 
     engine = get_engine(req.thread_id)
     runtime_config = get_runtime_config()
@@ -3432,8 +3439,13 @@ def _run_shared_chat_pipeline(req: ChatSendRequest, request: Request) -> ChatSen
 
 
 @router.post("/stream")
-def chat_stream(req: ChatSendRequest, request: Request):
+def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[str] = Header(None)):
     """Stream using the same shared pipeline as /send to prevent drift."""
+    # Propagate authenticated user_id into memory context variable
+    uid = resolve_user_id(authorization)
+    if uid:
+        from personal_agent.crt_memory import _request_user_id
+        _request_user_id.set(uid)
     logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
 
     def generate_stream():
@@ -3757,7 +3769,7 @@ def chat_stream(req: ChatSendRequest, request: Request):
 
 
 @router.post("/intent", response_model=IntentQueryResponse)
-def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryResponse:
+def chat_intent(req: IntentQueryRequest, request: Request, authorization: Optional[str] = Header(None)) -> IntentQueryResponse:
     """Query with IntentRouter + FactStore routing.
 
     Uses IntentRouter + FactStore for smarter routing,
@@ -3766,6 +3778,12 @@ def chat_intent(req: IntentQueryRequest, request: Request) -> IntentQueryRespons
     get_engine = request.app.state.get_engine
     increment_turn = request.app.state.increment_turn
     _log_collapse_trail = request.app.state.log_collapse_trail
+
+    # Propagate authenticated user_id into memory context variable
+    uid = resolve_user_id(authorization)
+    if uid:
+        from personal_agent.crt_memory import _request_user_id
+        _request_user_id.set(uid)
 
     engine = get_engine(req.thread_id)
     increment_turn(req.thread_id)

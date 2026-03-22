@@ -1523,19 +1523,18 @@ class CRTEnhancedRAG:
         *,
         thread_id: Optional[str] = None,
         exclude_memory_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> List[MemoryItem]:
-        """Load USER memories scoped to the active thread when available."""
+        """Load USER memories scoped to the authenticated user (or thread as fallback)."""
         try:
-            if thread_id is not None:
-                memories = self.memory._load_memories_filtered(
-                    source=MemorySource.USER,
-                    thread_id=str(thread_id),
-                )
-            else:
-                memories = self.memory._load_memories_filtered(source=MemorySource.USER)
+            memories = self.memory._load_memories_filtered(
+                source=MemorySource.USER,
+                user_id=user_id,
+                thread_id=str(thread_id) if (thread_id is not None and user_id is None) else None,
+            )
         except Exception:
             memories = [
-                m for m in self.memory._load_all_memories()
+                m for m in self.memory._load_all_memories(user_id=user_id)
                 if m.source == MemorySource.USER
             ]
 
@@ -1605,6 +1604,7 @@ class CRTEnhancedRAG:
         source_kind: Optional[str] = None,
         model_id: Optional[str] = None,
         run_id: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Shared write path for governed memory plus canonical fact surfaces."""
         memory = self.memory.store_memory(
@@ -1622,6 +1622,7 @@ class CRTEnhancedRAG:
             source_kind=source_kind,
             model_id=model_id,
             run_id=run_id,
+            user_id=user_id,
         )
 
         fact_result: Dict[str, Any] = {}

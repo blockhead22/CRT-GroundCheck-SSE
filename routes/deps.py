@@ -10,12 +10,38 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, Optional
 
-from fastapi import Query, Request
+from fastapi import Header, Query, Request
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.text_utils import sanitize_thread_id  # noqa: F401 – re-exported
 
 logger = logging.getLogger(__name__)
+
+
+def resolve_user_id(authorization: Optional[str] = Header(None)) -> Optional[str]:
+    """Extract the authenticated user ID from the Bearer token, or None.
+
+    This is a lightweight helper intended for use as a FastAPI dependency
+    or as a plain function called from route handlers.  It returns None
+    when no valid session exists so that callers can fall back gracefully
+    to thread-scoped behaviour for anonymous / legacy requests.
+    """
+    # Handle both plain strings and FastAPI Header objects
+    if authorization is not None and not isinstance(authorization, str):
+        authorization = str(authorization)
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization[7:]
+    if not token:
+        return None
+    try:
+        import auth as auth_module
+        user = auth_module.validate_session(token)
+        if user is not None:
+            return str(user.id)
+    except Exception:
+        pass
+    return None
 
 
 # sanitize_thread_id imported from personal_agent.text_utils (re-exported above)
