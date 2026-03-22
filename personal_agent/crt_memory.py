@@ -16,6 +16,7 @@ Philosophy:
 - Only reflection merges conflicting beliefs
 """
 
+import math
 import sqlite3
 import json
 import logging
@@ -175,6 +176,14 @@ class MemoryItem:
     source_kind: str = "principal"              # principal | tool_receipt | model_output | social | external | system
     model_id: Optional[str] = None             # generating model identifier
     run_id: Optional[str] = None               # run/request identifier for traceability
+
+    # Adaptive compression (Phase 1)
+    compression_tier: int = 2                   # 0=cold(10D), 1=warm(64D), 2=full(384D)
+    compressed_vector: Optional[np.ndarray] = None  # folded vector (None for tier 2)
+    cogni_seed: Optional[Dict] = None           # CogniSeed dict for reconstruction
+    stable_cycles: int = 0                      # consecutive low-volatility heartbeat cycles
+    contradiction_count: int = 0                # times contradicted
+    access_count: int = 0                       # retrieval hit count
     
     def to_dict(self) -> Dict:
         """Convert to dictionary (for storage)."""
@@ -202,6 +211,12 @@ class MemoryItem:
             'source_kind': self.source_kind,
             'model_id': self.model_id,
             'run_id': self.run_id,
+            'compression_tier': self.compression_tier,
+            'compressed_vector': self.compressed_vector.tolist() if self.compressed_vector is not None else None,
+            'cogni_seed': self.cogni_seed,
+            'stable_cycles': self.stable_cycles,
+            'contradiction_count': self.contradiction_count,
+            'access_count': self.access_count,
         }
     
     @staticmethod
@@ -231,6 +246,12 @@ class MemoryItem:
             source_kind=data.get('source_kind', 'principal'),
             model_id=data.get('model_id'),
             run_id=data.get('run_id'),
+            compression_tier=data.get('compression_tier', 2),
+            compressed_vector=np.array(data['compressed_vector']) if data.get('compressed_vector') is not None else None,
+            cogni_seed=data.get('cogni_seed'),
+            stable_cycles=data.get('stable_cycles', 0),
+            contradiction_count=data.get('contradiction_count', 0),
+            access_count=data.get('access_count', 0),
         )
     
     def get_domains(self) -> List[str]:
@@ -575,6 +596,17 @@ class CRTMemorySystem:
         if "run_id" not in columns:
             logger.info(f"[MIGRATION] Adding run_id column to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN run_id TEXT")
+
+        # Adaptive compression (Phase 1)
+        if "compression_tier" not in columns:
+            logger.info(f"[MIGRATION] Adding compression columns to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN compression_tier INTEGER DEFAULT 2")
+            cursor.execute("ALTER TABLE memories ADD COLUMN compressed_vector_json TEXT")
+            cursor.execute("ALTER TABLE memories ADD COLUMN cogni_seed_json TEXT")
+            cursor.execute("ALTER TABLE memories ADD COLUMN stable_cycles INTEGER DEFAULT 0")
+            cursor.execute("ALTER TABLE memories ADD COLUMN contradiction_count INTEGER DEFAULT 0")
+            cursor.execute("ALTER TABLE memories ADD COLUMN access_count INTEGER DEFAULT 0")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_compression_tier ON memories(compression_tier)")
 
         conn.commit()
         conn.close()
@@ -1303,6 +1335,17 @@ class CRTMemorySystem:
                 old_trust = old_mem.trust
                 new_trust = old_trust * 0.4
                 self._update_memory_trust(old_mem.memory_id, new_trust)
+                # Increment contradiction_count for compression volatility tracking
+                try:
+                    c = self._get_connection()
+                    c.execute(
+                        "UPDATE memories SET contradiction_count = COALESCE(contradiction_count, 0) + 1 WHERE memory_id = ?",
+                        (old_mem.memory_id,),
+                    )
+                    c.commit()
+                    c.close()
+                except Exception:
+                    pass
                 logger.info(f"[TRUST_DECAY] Reduced trust for contradicted memory: {old_mem.text[:60]} (trust: {old_trust:.2f} -> {new_trust:.2f})")
 
         # B: Model disagreement detection — when model_output writes slot values that
@@ -1434,27 +1477,57 @@ class CRTMemorySystem:
         if not memories:
             return []
         
-        # Compute scores
+        # Compute scores — tier-aware: fold query to each memory's dimensionality
         t_now = time.time()
-        memory_dicts = [
-            {
-                'vector': m.vector,
-                'timestamp': m.timestamp,
-                'trust': m.trust,
-                'confidence': m.confidence
-            }
-            for m in memories
-        ]
-        
-        scores = self.crt_math.compute_retrieval_scores(
-            query_vector=query_vector,
-            memories=memory_dicts,
-            t_now=t_now
-        )
-        
-        # Return top k
-        top_k = scores[:k]
-        return [(memories[idx], score) for idx, score in top_k]
+        from personal_agent.memory_compression import fold_vector, TIER_DIMS
+
+        memory_dicts = []
+        for m in memories:
+            tier = getattr(m, 'compression_tier', 2)
+            try:
+                if tier < 2 and m.compressed_vector is not None and len(m.compressed_vector) > 0:
+                    # Memory is compressed — fold query to its tier for comparison
+                    target_dim = TIER_DIMS.get(tier, 384)
+                    folded_query, _ = fold_vector(query_vector, target_dim)
+                    effective_vector = m.compressed_vector
+                    sim = float(np.dot(folded_query, effective_vector) / (
+                        np.linalg.norm(folded_query) * np.linalg.norm(effective_vector) + 1e-8
+                    ))
+                else:
+                    # Full vector — compare directly
+                    if m.vector is None or len(m.vector) == 0:
+                        continue  # skip malformed memories
+                    sim = float(np.dot(query_vector, m.vector) / (
+                        np.linalg.norm(query_vector) * np.linalg.norm(m.vector) + 1e-8
+                    ))
+            except Exception:
+                continue  # skip any vector shape mismatches
+
+            # CRT scoring: R = sim * recency * belief_weight
+            age = t_now - m.timestamp
+            recency = math.exp(-age / 86400.0)  # 1-day lambda
+            belief = 0.7 * m.trust + 0.3 * m.confidence
+            score = max(0.0, sim) * recency * belief
+            memory_dicts.append((m, score))
+
+        # Sort by score descending
+        memory_dicts.sort(key=lambda x: x[1], reverse=True)
+
+        # Increment access_count for returned memories
+        top_k = memory_dicts[:k]
+        try:
+            conn = self._get_connection()
+            for m, _ in top_k:
+                conn.execute(
+                    "UPDATE memories SET access_count = COALESCE(access_count, 0) + 1 WHERE memory_id = ?",
+                    (m.memory_id,),
+                )
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+
+        return [(m, score) for m, score in top_k]
     
     def get_best_prior_belief(self, query: str) -> Optional[MemoryItem]:
         """
@@ -2215,6 +2288,25 @@ class CRTMemorySystem:
             memory.model_id = row[25]
         if len(row) > 26:
             memory.run_id = row[26]
+        # Adaptive compression fields (columns 27-32)
+        if len(row) > 27:
+            memory.compression_tier = int(row[27]) if row[27] is not None else 2
+        if len(row) > 28 and row[28]:
+            try:
+                memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.float32)
+            except Exception:
+                pass
+        if len(row) > 29 and row[29]:
+            try:
+                memory.cogni_seed = json.loads(row[29])
+            except Exception:
+                pass
+        if len(row) > 30:
+            memory.stable_cycles = int(row[30]) if row[30] is not None else 0
+        if len(row) > 31:
+            memory.contradiction_count = int(row[31]) if row[31] is not None else 0
+        if len(row) > 32:
+            memory.access_count = int(row[32]) if row[32] is not None else 0
         return memory
     
     def _load_all_memories(self) -> List[MemoryItem]:

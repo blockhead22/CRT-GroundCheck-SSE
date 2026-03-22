@@ -282,6 +282,23 @@ def run_trust_decay_pass() -> dict:
                     reinforced += 1
 
         conn.commit()
+
+        # ------------------------------------------------------------------
+        # 3. Compression pass — fold/unfold memories based on volatility
+        # ------------------------------------------------------------------
+        compression_summary = {}
+        try:
+            from personal_agent.memory_compression import run_compression_pass
+            compression_summary = run_compression_pass(
+                conn,
+                id_col=id_col,
+                grace_cutoff=grace_cutoff,
+            )
+            conn.commit()
+        except Exception as comp_err:
+            logger.warning("[COMPRESSION] Error during compression pass: %s", comp_err)
+            compression_summary = {"skipped": True, "reason": str(comp_err)}
+
         conn.close()
 
         _last_decay_ts = now
@@ -292,6 +309,7 @@ def run_trust_decay_pass() -> dict:
             "total_stale_checked": len(stale_rows),
             "crt_math_active": crt_available,
             "timestamp": now,
+            "compression": compression_summary,
         }
         logger.info("[TRUST_DECAY] Pass complete: %s", summary)
         return summary
