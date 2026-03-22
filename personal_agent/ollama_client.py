@@ -185,29 +185,45 @@ class OllamaClient:
             return f"[Ollama error: {e}]"
 
     def _resolve_visible_text(self, content: str, thinking: str) -> str:
-        """Return safe user-visible text, never raw chain-of-thought."""
+        """Return safe user-visible text, never raw chain-of-thought.
+
+        Handles three response formats:
+        1. Native thinking field: thinking="reasoning...", content="answer"
+           → Return content (the answer).
+        2. Inline <think> tags: content="<think>reasoning</think>answer"
+           → Extract and return the answer portion.
+        3. Mixed/legacy: thinking contains <think> tags with visible text
+           after the closing tag → extract the visible portion.
+
+        The thinking field itself is NEVER returned as visible text.
+        """
         visible = str(content or "").strip()
         if visible:
-            # qwen2.5-coder sometimes puts a </think> closing tag at the start of
-            # content when the opening <think> was in the separate thinking field.
-            # Strip any dangling think tags before returning.
+            # Strip any dangling/inline think tags from content.
             _, visible = extract_think_content(visible)
             visible = str(visible or "").strip()
             if visible:
                 return visible
 
+        # Content is empty. If thinking has content, the model used
+        # the native thinking field — the reasoning IS the thinking,
+        # not visible text. Only extract if there are actual <think>
+        # tags (legacy format where both thinking and answer ended up
+        # in the same field).
         thinking_text = str(thinking or "").strip()
         if not thinking_text:
             return ""
 
-        # If the model emitted <think>...</think> blocks in a single field,
-        # only keep any visible text outside the think block.
-        _, extracted_visible = extract_think_content(thinking_text)
-        extracted_visible = str(extracted_visible or "").strip()
-        if extracted_visible:
-            return extracted_visible
+        # Check for <think> tags — only then might there be visible
+        # text outside the tags in this field.
+        if "<think>" in thinking_text.lower():
+            _, extracted_visible = extract_think_content(thinking_text)
+            extracted_visible = str(extracted_visible or "").strip()
+            if extracted_visible:
+                return extracted_visible
 
-        # Do not leak internal reasoning when no visible answer exists.
+        # Native thinking field with no content = model reasoned but
+        # produced no answer. Do not leak the reasoning.
         return "[Model returned internal reasoning without a final answer. Please retry.]"
     
     def chat_stream(
