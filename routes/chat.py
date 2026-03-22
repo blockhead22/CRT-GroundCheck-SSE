@@ -1291,16 +1291,46 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
                 grouped[slot] = []
             grouped[slot].append(fact)
 
-        # Build readable output
+        # Build a fact summary block for the LLM to synthesize
+        fact_lines: list = []
+        for f in all_facts[:40]:  # Cap input to LLM
+            fact_lines.append(f"- {f['text']}")
+        fact_block = "\n".join(fact_lines)
+
+        # Let the LLM synthesize a natural summary from the raw facts
+        try:
+            from personal_agent.ollama_client import OllamaClient
+            fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+            llm = OllamaClient(model=fast_model)
+
+            system = (
+                "You are Aether. The user asked what you know about them. "
+                "Below are raw facts from your memory system. Synthesize them into a natural, "
+                "concise summary — like a friend describing what they know about someone. "
+                "Group related facts together (identity, preferences, personality, projects, etc.). "
+                "Don't list raw database entries. Don't mention trust scores or memory IDs. "
+                "Be warm but factual. If there are contradictions (e.g., multiple favorite colors), "
+                "mention the conflict honestly. Keep it under 200 words."
+            )
+            messages = [
+                {"role": "system", "content": system},
+                {"role": "user", "content": f"Here are {len(all_facts)} stored facts about the user:\n\n{fact_block}"},
+            ]
+            answer = llm.chat(messages, max_tokens=400, temperature=0.4, model=fast_model)
+            if answer and answer.strip():
+                return answer.strip()
+        except Exception as llm_err:
+            logger.warning("[BROAD_RECALL] LLM synthesis failed, falling back to structured: %s", llm_err)
+
+        # Fallback: structured list if LLM fails
         lines = [f"Here's what I know about you ({len(all_facts)} facts):\n"]
         for slot, facts in sorted(grouped.items()):
-            display_slot = slot.replace("_", " ").title() if slot == "general" else slot.replace("_", " ").title()
+            display_slot = slot.replace("_", " ").title()
             lines.append(f"**{display_slot}:**")
-            for f in facts[:8]:  # Cap per category
-                trust_pct = int(f["trust"] * 100)
-                lines.append(f"- {f['text']} ({trust_pct}% trust)")
-            if len(facts) > 8:
-                lines.append(f"  ...and {len(facts) - 8} more")
+            for f in facts[:5]:
+                lines.append(f"- {f['text']}")
+            if len(facts) > 5:
+                lines.append(f"  ...and {len(facts) - 5} more")
             lines.append("")
 
         return "\n".join(lines).strip()
