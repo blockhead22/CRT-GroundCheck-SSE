@@ -5,7 +5,7 @@
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Product: Hybrid Verified](https://img.shields.io/badge/product-hybrid_verified-black.svg)](#what-this-is)
-[![Status: Active hardening](https://img.shields.io/badge/status-active%20hardening-orange.svg)](#current-status-march-10-2026)
+[![Status: Active hardening](https://img.shields.io/badge/status-active%20hardening-orange.svg)](#current-status-march-22-2026)
 
 ---
 
@@ -37,6 +37,8 @@ The product direction is no longer "local GPT replacement." The core value is th
 - contradiction preservation and disclosure
 - verifier-gated answering
 - model routing
+- agentic tool-loop execution
+- self-reflection and introspection
 - runtime observability
 
 Generation can stay local or escalate to a stronger cloud model. Memory, contradiction checks, verification, routing policy, and traceability stay under the local CRT control layer.
@@ -53,16 +55,21 @@ If you tell the system *"I work at Microsoft"* and later say *"I work at Google"
 
 ---
 
-## Current Status (March 10, 2026)
+## Current Status (March 22, 2026)
 
 This repository is in active hardening and now targets a **hybrid verified agent** product shape.
+
+The system has crossed from memory-governed chat to a **self-reflecting, tool-chaining agent with real-time observable reasoning**.
 
 Current operating stance:
 
 - `product_mode.mode = "hybrid_verified"`
 - local remains the authority for memory, verification, routing, and observability
-- cloud generation is supported by the stack but disabled by default
+- cloud generation supported via Anthropic client with token-bucket rate limiting
 - cloud-bound context is policy-filtered by channel and slot before send
+- **LLM tool loop** is now the primary execution path for task/service actions
+- **self-reflection** runs on heartbeat — the agent introspects on its own gate failures, trust deltas, and corrections
+- **self-referential routing** handles questions about the agent's own capabilities and state
 - the single main startup entrypoint is `start_services.ps1`
 
 Validated environment:
@@ -70,7 +77,7 @@ Validated environment:
 - Windows PowerShell
 - Python `3.13`
 - local Ollama optional
-- cloud provider optional and disabled by default
+- cloud provider optional (Anthropic client + rate limiter now production-ready)
 
 Historical benchmark numbers remain below for context and are labeled with dates.
 
@@ -78,24 +85,37 @@ Historical benchmark numbers remain below for context and are labeled with dates
 
 ## Roadmap
 
-### Phase A: Natural Agent (current)
+### Phase A: Natural Agent (complete)
 
 Make the agent respond like a real assistant, not a database terminal.
 
-- Natural generative responses instead of hardcoded templates
-- Open-world fact learning (LLM-driven extraction, not just regex slots)
-- Provenance-aware answers ("you told me this on Jan 15, trust 0.91")
-- Conversational contradiction surfacing instead of scaffold blocks
-- Async post-processing (reflection, active learning off the hot path)
+- ~~Natural generative responses instead of hardcoded templates~~
+- ~~Open-world fact learning (LLM-driven extraction, not just regex slots)~~
+- ~~Provenance-aware answers ("you told me this on Jan 15, trust 0.91")~~
+- ~~Conversational contradiction surfacing instead of scaffold blocks~~
+- ~~Async post-processing (reflection, active learning off the hot path)~~
+- LLM-synthesized broad recall ("what do you know about me?" → topic-grouped natural summary)
+- Self-referential question routing (questions about Aether itself use self-model, not user-fact memory)
 
-### Phase B: Hybrid Routing
+### Phase B: Hybrid Routing (complete)
 
 Wire local and cloud generation end-to-end with automatic escalation.
 
-- Quality threshold triggers for cloud escalation
-- Redaction rules for cloud-bound context
-- Trace logging showing why a query stayed local vs escalated
-- Target: <5s simple queries, <15s complex
+- ~~Quality threshold triggers for cloud escalation~~
+- ~~Redaction rules for cloud-bound context~~
+- ~~Trace logging showing why a query stayed local vs escalated~~
+- Production Anthropic client with token-bucket rate limiter
+- Model router selects fast model (qwen3:14b) for self-reflection and tool-loop reasoning
+
+### Phase B.5: Agentic Execution (current)
+
+The agent now plans and acts, not just answers.
+
+- **LLM tool loop**: iterative agent execution where the LLM sees skill docs + user goal, picks tools, sees results, and decides next steps — chaining calls until the goal is met or budget exhausted (default 8 calls, expandable to 15)
+- **Service continuation**: follow-up messages inherit service context from the last completed task without repeating the service name
+- **Self-reflection on heartbeat**: gathers gate failures, negative feedback, trust deltas, and open contradictions from the last 24h; updates a 7-slot self-model (uncertainty domains, correction patterns, trust trajectory, known blindspots, growing confidence, user relationship, response style)
+- **Visible agent reasoning**: thinking tokens stream inline so users see the agent narrating in real-time; expandable thinking traces in the frontend
+- **Checkpointed POST actions**: write operations yield checkpoint events for user confirmation before executing
 
 ### Phase C: Library Extraction
 
@@ -367,9 +387,21 @@ The system will never, on its own initiative, delete a contradiction or silently
 User message
    â”‚
    â–¼
-IntentRouter â”€â”€ classifies intent (fact, question, correction, task, chat)
+IntentRouter â”€â”€ classifies intent (fact, question, correction, task, service_action, chat)
    â”‚
-   â–¼
+   â”œâ”€â”€ [task / service_action] â”€â”€â–¶ LLM Tool Loop
+   â”‚                                 LLM sees skill docs + goal
+   â”‚                                 picks tools â†' sees results â†' reasons â†' next step
+   â”‚                                 chains calls until goal met or budget exhausted
+   â”‚                                 (service continuation: inherits context from last task)
+   â”‚                                 â–¼
+   â”‚                               Streamed response with inline reasoning + tool traces
+   â”‚
+   â”œâ”€â”€ [self-referential] â”€â”€â–¶ Self-Model Handler
+   â”‚                            answers from self-model + system knowledge
+   â”‚
+   â””â”€â”€ [fact / question / correction / chat] â–¼
+   â”‚
 Fact Extraction â”€â”€ Tier A: regex hard slots (name, employer, location, age)
    â”‚                Tier B: LLM open-world tuples (hobbies, preferences, anything)
    â–¼
@@ -394,15 +426,27 @@ Trust Evolution â”€â”€ aligned memories gain trust, contradicted ones 
 
 ### Additional Systems
 
+**LLM Tool Loop** — Iterative agent execution. The LLM sees skill documentation and user goals, picks tools, sees results, and reasons about next steps — chaining calls (GET feed → analyze → GET post → summarize) until the goal is met or budget exhausted. Default 8 calls, expandable to 15. 3 consecutive failures trigger auto-stop. POST actions are checkpointed for user confirmation.
+
+**Self-Reflection** — Runs on the heartbeat cycle. Gathers gate failures, negative feedback, trust deltas, and open contradictions from the last 24 hours. Updates a 7-slot self-model: uncertainty domains, correction patterns, trust trajectory, known blindspots, growing confidence, user relationship, and response style.
+
+**Self-Referential Routing** — Questions about the agent itself ("how do you work?", "any contradictions?") route to a dedicated handler that builds answers from the self-model and system knowledge instead of searching user-fact memory (which gate-fails on low alignment). Includes recency awareness and self-correction SSE follow-ups.
+
+**Broad Recall** — "What do you know about me?" passes raw facts to the LLM which synthesizes a natural, topic-grouped conversational summary. Falls back to structured list if LLM is unavailable.
+
+**Service Continuation** — After a service action (e.g., "what's new on moltbook?"), follow-up messages like "any new threads?" automatically inherit the service context from the last completed task. No need to repeat the service name.
+
 **Disclosure Policy** — Facts with medium confidence (0.4—0.9) get routed to clarification instead of binary accept/reject. A budget system prevents overwhelming the user with questions.
 
 **Reflection System** — Post-response assessment: did the answer make sense? Should something be revisited? Feeds into the thinking loop.
 
 **Thinking Loop** — Autonomous background contemplation. The system periodically reviews its own memories, identifies tensions, and evolves its understanding.
 
-**Heartbeat System** — Proactive engagement. Instead of only responding when spoken to, the system can initiate check-ins based on learned patterns.
+**Heartbeat System** — Proactive engagement. Instead of only responding when spoken to, the system can initiate check-ins based on learned patterns. Now also runs self-reflection as step 7 in the heartbeat executor.
 
 **Episodic Memory** — Session summaries, preference tracking, concept linking. Builds a longitudinal understanding of the user.
+
+**Visible Agent Reasoning** — Agent thinking tokens stream inline in the frontend so users see the agent narrating decisions in real-time. Expandable thinking traces show the full reasoning chain during pipeline execution.
 
 ---
 
@@ -458,6 +502,10 @@ personal_agent/
 |- runtime_config.py        # Product mode, provider stack, privacy policy
 |- model_router.py          # Local vs cloud routing decisions
 |- hybrid_llm_client.py     # Local-first generation client with cloud escalation
+|- anthropic_client.py      # Anthropic API client for cloud escalation
+|- rate_limiter.py          # Token-bucket rate limiter for cloud API calls
+|- task_agent.py            # LLM tool loop — iterative agentic execution
+|- memory_compression.py    # Memory compression with trust-aware lifecycle
 |- fact_slots.py            # Deterministic regex fact extraction (Tier A)
 |- two_tier_facts.py        # Hard slots + open-world tuples (Tier A + B)
 |- fact_store.py            # Structured slot-based storage
@@ -472,7 +520,8 @@ personal_agent/
 |- reflection_system.py     # Post-response confidence assessment
 |- thinking_loop.py         # Autonomous background contemplation
 |- continuous_loops.py      # 24/7 reflection + personality loops
-|- heartbeat_system.py      # Proactive engagement scheduler
+|- heartbeat_system.py      # Proactive engagement scheduler + self-reflection
+|- heartbeat_executor.py    # Heartbeat LLM executor (runs self-reflection as step 7)
 |- agent_loop.py            # ReAct pattern agent with tool orchestration
 |- ollama_client.py         # Local LLM integration (Ollama)
 |- training_loop.py         # Conservative learned model training
@@ -631,12 +680,13 @@ python tools/adversarial_crt_challenge.py --turns 35
 python tools/agent_adversarial_driver.py --url http://127.0.0.1:8123 --mode auto --turns 50
 ```
 
-### Current Snapshot (Mar 10, 2026)
+### Current Snapshot (Mar 22, 2026)
 
 | Suite | Result |
 |-------|--------|
 | Full local `pytest -q` | Pending refresh for the hybrid-verified README/CI alignment pass |
 | Targeted hybrid/config regressions | Passing during the hybrid routing/privacy transition |
+| Memory compression integration (31 tests) | **31/31 passed** |
 
 ### Historical Benchmarks (Feb 2026)
 
