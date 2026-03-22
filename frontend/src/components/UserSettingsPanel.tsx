@@ -51,6 +51,7 @@ export function UserSettingsPanel(props: {
   selectedModel?: string
   onModelChange: (modelId: string) => void
   onLogout?: () => void
+  onOpenSettings?: () => void
 }) {
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -180,16 +181,24 @@ export function UserSettingsPanel(props: {
           </div>
 
           {/* Footer Actions */}
-          {props.onLogout && (
-            <div className="border-t border-white/10 bg-white/5 p-4">
+          <div className="border-t border-white/10 bg-white/5 p-4 space-y-2">
+            {props.onOpenSettings && (
+              <button
+                onClick={() => { props.onOpenSettings?.(); props.onClose() }}
+                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/80 transition-all hover:border-white/20 hover:bg-white/10 flex items-center justify-center gap-2"
+              >
+                <span className="text-base">&#9881;</span> Settings
+              </button>
+            )}
+            {props.onLogout && (
               <button
                 onClick={props.onLogout}
                 className="w-full rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-all hover:border-rose-500/50 hover:bg-rose-500/20"
               >
                 Sign Out
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </motion.div>
       )}
     </AnimatePresence>

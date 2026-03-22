@@ -30,6 +30,9 @@ class OllamaClient:
         """
         # Prefer explicit model, then CRT_OLLAMA_MODEL, else fallback.
         self.model = model or os.getenv("CRT_OLLAMA_MODEL") or "qwen2.5-coder:14b"
+        # Last thinking content from chat()/generate() — available for callers
+        # that need the reasoning trace without changing the return type.
+        self.last_thinking: str = ""
 
         if ollama is None:
             raise ModuleNotFoundError(
@@ -178,9 +181,11 @@ class OllamaClient:
                 msg = response.message
                 content = msg.content if msg.content else ""
                 thinking = getattr(msg, 'thinking', None) or ""
-                return self._resolve_visible_text(content, thinking)
             else:
-                return response['message']['content']
+                content = response['message'].get('content', '')
+                thinking = response['message'].get('thinking', '')
+            self.last_thinking = str(thinking or "")
+            return self._resolve_visible_text(content, thinking)
         except Exception as e:
             return f"[Ollama error: {e}]"
 
@@ -223,7 +228,25 @@ class OllamaClient:
                 return extracted_visible
 
         # Native thinking field with no content = model reasoned but
-        # produced no answer. Do not leak the reasoning.
+        # produced no answer. Try to extract a conclusion from the last
+        # sentence(s) of the thinking — often the model's final answer
+        # is the last line of its reasoning.
+        lines = [ln.strip() for ln in thinking_text.splitlines() if ln.strip()]
+        if lines:
+            # Take the last non-empty line as a best-effort answer.
+            last = lines[-1]
+            # Skip lines that are clearly meta-reasoning, not answers.
+            _meta_prefixes = ("so ", "wait", "hmm", "let me", "i think", "i need",
+                              "but ", "however", "actually", "okay")
+            if not last.lower().startswith(_meta_prefixes) and len(last) > 5:
+                return last
+            # Try second-to-last
+            if len(lines) >= 2:
+                second_last = lines[-2]
+                if not second_last.lower().startswith(_meta_prefixes) and len(second_last) > 5:
+                    return second_last
+
+        # Genuine failure — no extractable answer.
         return "[Model returned internal reasoning without a final answer. Please retry.]"
     
     def chat_stream(

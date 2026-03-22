@@ -18,6 +18,7 @@ export function Topbar(props: {
   selectedModel?: string
   onModelChange?: (modelId: string) => void
   onLogout?: () => void
+  onOpenSettings?: () => void
 }) {
   const [showSettings, setShowSettings] = useState(false)
   const initial = (props.userName?.trim()?.[0] || 'U').toUpperCase()
@@ -109,6 +110,7 @@ export function Topbar(props: {
               setShowSettings(false)
             }}
             onLogout={props.onLogout}
+            onOpenSettings={props.onOpenSettings}
           />
         </div>
       </div>

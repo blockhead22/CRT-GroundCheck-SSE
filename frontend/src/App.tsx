@@ -24,7 +24,8 @@ import { CopilotPage } from './pages/CopilotPage'
 import { LiveFeedPage } from './pages/LiveFeedPage'
 import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
-import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, type AuthUser } from './lib/api'
+import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
+import { SettingsModal } from './components/SettingsModal'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -44,6 +45,10 @@ export default function App() {
   }
   const [navActive, setNavActiveRaw] = useState<NavId>(navFromUrl)
   const setNavActive = useCallback((id: NavId) => {
+    if (id === 'settings') {
+      setSettingsOpen(true)
+      return
+    }
     setNavActiveRaw(id)
     navigate(id === 'chat' ? '/' : `/${id}`)
   }, [navigate])
@@ -79,6 +84,7 @@ export default function App() {
   const [xrayMode, setXrayMode] = useState(false)
   const [demoModeOpen, setDemoModeOpen] = useState(false)
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   
   // Model selection
   const [selectedModel, setSelectedModel] = useState<string>(() => {
@@ -850,6 +856,7 @@ export default function App() {
               selectedModel={selectedModel}
               onModelChange={setSelectedModel}
               onLogout={handleLogout}
+              onOpenSettings={() => setSettingsOpen(true)}
             />
 
             <div className="relative min-h-0 flex-1">
@@ -922,6 +929,26 @@ export default function App() {
         initialName={profileHasName ? userName : ''}
         onClose={() => setSetNameOpen(false)}
         onSubmit={handleSetName}
+      />
+
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        authUser={authUser}
+        threadId={selectedThread?.id ?? 'default'}
+        onDisplayNameChanged={(name) => {
+          setUserName(name)
+          setAuthUser((prev) => prev ? { ...prev, display_name: name } : prev)
+        }}
+        onProfileUpdated={() => {
+          // Reload profile to pick up new facts
+          const tid = selectedThread?.id ?? selectedThreadId
+          getProfile(tid).then((p) => {
+            const raw = (p?.name || p?.slots?.name || '').trim()
+            setProfileHasName(Boolean(raw))
+            if (raw) setUserName(raw)
+          }).catch(() => {})
+        }}
       />
 
       <ThreadRenameLightbox

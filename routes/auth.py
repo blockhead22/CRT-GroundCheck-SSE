@@ -111,6 +111,49 @@ def auth_me(authorization: Optional[str] = Header(None)):
     )
 
 
+@router.patch("/update_profile")
+def auth_update_profile(
+    request: Request,
+    authorization: Optional[str] = Header(None),
+):
+    """Update the authenticated user's profile fields (e.g. display_name)."""
+    import json as _json
+
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = auth_module.validate_session(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired session")
+
+    # Parse body manually since we don't have a dedicated Pydantic model.
+    import asyncio
+    body_bytes = asyncio.get_event_loop().run_until_complete(request.body())
+    body = _json.loads(body_bytes) if body_bytes else {}
+
+    display_name = body.get("display_name")
+    if display_name and isinstance(display_name, str) and display_name.strip():
+        auth_module.update_user_display_name(user.id, display_name.strip())
+
+    # Re-fetch user to return updated data.
+    updated = auth_module.validate_session(token)
+    if not updated:
+        raise HTTPException(status_code=500, detail="Failed to fetch updated user")
+
+    return {
+        "ok": True,
+        "user": AuthUserResponse(
+            id=updated.id,
+            username=updated.username,
+            display_name=updated.display_name,
+            created_at=updated.created_at,
+        ),
+    }
+
+
 @router.post("/sync-chats", response_model=SyncChatResponse)
 def auth_sync_chats(req: SyncChatRequest, authorization: Optional[str] = Header(None)):
     """Sync chat threads for logged in user."""

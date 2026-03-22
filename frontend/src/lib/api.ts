@@ -687,6 +687,28 @@ export async function setProfileName(args: { threadId: string; name: string }): 
   })
 }
 
+export async function updateAuthProfile(fields: { display_name?: string }): Promise<{ ok: boolean; user: AuthUser }> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  const res = await fetch(`${base}/api/auth/update_profile`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) throw new Error('Failed to update profile')
+  return res.json()
+}
+
+export async function setProfileFacts(threadId: string, facts: Record<string, string>): Promise<{ ok: boolean; stored: number }> {
+  return postJson<{ ok: boolean; stored: number }>('/api/profile/set_facts', {
+    thread_id: threadId,
+    facts,
+  })
+}
+
 export type DocListItem = { id: string; title: string; kind: string }
 export type DocGetResponse = { id: string; title: string; kind: string; markdown: string }
 

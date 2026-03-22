@@ -575,9 +575,14 @@ class ReasoningEngine:
         
         self.reasoning_traces.append(trace)
         
+        # Capture thinking trace from LLM client if available.
+        _thinking = None
+        if self.llm and hasattr(self.llm, 'last_thinking'):
+            _thinking = self.llm.last_thinking or None
+
         return {
             'mode': ReasoningMode.QUICK.value,
-            'thinking': None,  # Not shown in quick mode
+            'thinking': _thinking,
             'answer': answer,
             'reasoning_trace': trace.to_dict(),
             'confidence': confidence,
