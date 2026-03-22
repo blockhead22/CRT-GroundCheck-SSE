@@ -889,6 +889,81 @@ def _chunk_text(text: str, chunk_size: int = 320) -> List[str]:
     return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
 
 
+def _post_answer_quick_check(
+    *,
+    answer: str,
+    retrieved_memories: List[Dict[str, Any]],
+    session_db: "Any",
+    thread_id: str,
+) -> Optional[str]:
+    """Quick post-answer validation — catches "I don't know" when we actually do.
+
+    Runs AFTER answer tokens are streamed but BEFORE ``done`` is emitted.
+    No LLM call — pure pattern matching + data lookup.  Target: <500ms.
+    Returns a correction string or None.
+    """
+    if not answer:
+        return None
+
+    answer_lower = answer.lower()
+
+    # Patterns that indicate the system claims ignorance
+    ignorance_phrases = (
+        "i don't have",
+        "i don't know",
+        "not stored",
+        "no memory",
+        "no stored memory",
+        "don't have specific",
+        "don't have that stored",
+        "haven't learned",
+        "i have no information",
+        "not in my memory",
+        "i don't have enough context",
+    )
+
+    claims_ignorance = any(phrase in answer_lower for phrase in ignorance_phrases)
+    if not claims_ignorance:
+        return None
+
+    # Check if retrieved memories actually contain relevant data
+    high_trust_facts: List[str] = []
+    for mem in (retrieved_memories or []):
+        if not isinstance(mem, dict):
+            continue
+        trust = float(mem.get("trust") or mem.get("confidence") or 0)
+        text = str(mem.get("text") or "").strip()
+        source = str(mem.get("source") or "").lower()
+        if trust >= 0.5 and text and source in ("user", "inferred"):
+            # Skip very short or meta entries
+            if len(text) > 10 and not text.lower().startswith(("how can i", "hello", "i'm here")):
+                high_trust_facts.append(text[:200])
+
+    if high_trust_facts:
+        # We have data but claimed we don't — correct ourselves
+        facts_preview = "; ".join(high_trust_facts[:3])
+        return f"Wait — I actually do have some relevant memories: {facts_preview}"
+
+    # Check recent conversation history for relevant context
+    try:
+        if session_db and hasattr(session_db, "get_recent_queries"):
+            recent = session_db.get_recent_queries(thread_id, window=2)
+            for row in (recent or []):
+                if not isinstance(row, dict):
+                    continue
+                prev_query = str(row.get("query_text") or "").strip()
+                # If the user just told us something substantial in the previous turn
+                if len(prev_query) > 100:
+                    return (
+                        f"Actually, you just shared some information with me in our recent conversation. "
+                        f"Let me look at that more carefully."
+                    )
+    except Exception:
+        pass
+
+    return None
+
+
 def _normalize_confirmation_text(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "").strip().lower())
 
@@ -3541,6 +3616,25 @@ def chat_stream(req: ChatSendRequest, request: Request):
             for text_chunk in _chunk_text(answer):
                 yield f"data: {json.dumps({'type': 'token', 'content': text_chunk})}\n\n"
             yield _phase('answer', end=True)
+
+            # ── Self-correction check (before done) ──────────────────────
+            # If the answer says "I don't know" but we actually have data,
+            # emit a correction event so the user sees it in the same turn.
+            correction_text = None
+            try:
+                correction_text = _post_answer_quick_check(
+                    answer=answer,
+                    retrieved_memories=_retrieved,
+                    session_db=session_db,
+                    thread_id=req.thread_id,
+                )
+            except Exception as _corr_err:
+                logger.debug("[STREAM] correction check failed: %s", _corr_err)
+
+            if correction_text:
+                yield f"data: {json.dumps({'type': 'correction', 'content': correction_text})}\n\n"
+                metadata["correction_applied"] = True
+                metadata["correction_text"] = correction_text
 
             yield f"data: {json.dumps({'type': 'done', 'content': answer, 'metadata': metadata})}\n\n"
 
