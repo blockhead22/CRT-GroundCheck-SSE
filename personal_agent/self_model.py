@@ -233,14 +233,17 @@ class SelfModel:
             )
 
             memory_id = str(uuid.uuid4())
+            # vector_json and sse_mode are NOT NULL — provide defaults
+            import json as _json
+            empty_vec = _json.dumps([])
             conn.execute(
                 """
                 INSERT INTO memories
                     (memory_id, text, timestamp, confidence, trust, source,
-                     kind, thread_id, deprecated)
-                VALUES (?, ?, ?, ?, ?, 'self_reflection', 'self_model', ?, 0)
+                     kind, thread_id, deprecated, vector_json, sse_mode)
+                VALUES (?, ?, ?, ?, ?, 'self_reflection', 'self_model', ?, 0, ?, 'LOSSLESS')
                 """,
-                (memory_id, text, time.time(), trust, trust, thread_id),
+                (memory_id, text, time.time(), trust, trust, thread_id, empty_vec),
             )
             conn.commit()
             conn.close()
