@@ -2794,18 +2794,18 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     # If local fact extraction couldn't classify a slot, try cloud classification.
     try:
         _local_slots = result.get("slots_extracted") or result.get("facts") or {}
-        logger.info("[CLOUD_DEBUG] Local slots: %s, uid: %s", bool(_local_slots), uid)
+        print(f"[CLOUD_DEBUG] Local slots: {bool(_local_slots)}, uid: {uid}")
         if not _local_slots or (isinstance(_local_slots, dict) and not _local_slots):
             import auth as _auth_mod
             _uid_int = int(uid) if uid else 1
             _cloud_slot_enabled = str(
                 _auth_mod.get_user_setting(_uid_int, "cloud_slot_classification", "false")
             ).lower() in ("true", "1", "yes", "on")
-            logger.info("[CLOUD_DEBUG] Slot classification enabled: %s", _cloud_slot_enabled)
+            print(f"[CLOUD_DEBUG] Slot classification enabled: {_cloud_slot_enabled}")
             if _cloud_slot_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc = get_cloud_feature_service()
-                logger.info("[CLOUD_DEBUG] Cloud service: %s", _cloud_svc is not None)
+                print(f"[CLOUD_DEBUG] Cloud service: {_cloud_svc is not None}")
                 if _cloud_svc is not None:
                     # Gather existing slot names from memory for context
                     _existing_slots = []
@@ -2898,6 +2898,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     try:
         _critic_confidence = float((critic_meta or {}).get("confidence") or 0.0)
         _critic_verdict_str = str((critic_meta or {}).get("verdict") or "")
+        print(f"[CLOUD_NLI] Critic verdict: {_critic_verdict_str}, confidence: {_critic_confidence}")
         if _critic_verdict_str == "soft_fail" and 0.4 <= _critic_confidence <= 0.7:
             import auth as _auth_mod_nli
             _uid_int_nli = int(uid) if uid else 1
@@ -2920,13 +2921,13 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             result["gates_passed"] = False
                             result["gate_reason"] = "cloud_nli_contradiction"
                             result["contradiction_detected"] = True
-                            logger.info("[CLOUD_NLI] Cloud confirmed contradiction — upgraded to hard fail")
+                            print("[CLOUD_NLI] Cloud confirmed contradiction — upgraded to hard fail")
                         elif _nli_relation in ("entailment", "neutral"):
                             # Cloud says no contradiction — upgrade to pass
                             result["gates_passed"] = True
                             result.pop("gate_reason", None)
                             result["contradiction_detected"] = False
-                            logger.info("[CLOUD_NLI] Cloud cleared contradiction — upgraded to pass")
+                            print("[CLOUD_NLI] Cloud cleared contradiction — upgraded to pass")
     except Exception as _cloud_nli_err:
         logger.warning("[CLOUD_NLI] Cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
 

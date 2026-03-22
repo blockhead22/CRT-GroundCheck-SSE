@@ -86,7 +86,7 @@ from personal_agent.heartbeat_api import (
 # Auth module
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 import auth as auth_module
 
@@ -1389,9 +1389,9 @@ def create_app() -> FastAPI:
                 openai_client=_cloud_openai,
                 cookie_session=_cloud_cookie,
             )
-            logger.info("[STARTUP] Cloud feature service initialized")
+            print(f"[STARTUP] Cloud feature service initialized (openai={_cloud_openai is not None}, cookie={_cloud_cookie is not None}, key_len={len(_oai_key)})")
         except Exception as e:
-            logger.info("[STARTUP] Cloud feature service not initialized (non-fatal): %s", e)
+            print(f"[STARTUP] Cloud feature service not initialized (non-fatal): {e}")
 
         # Schedule periodic session cleanup (every 6 hours)
         def _session_cleanup_worker():

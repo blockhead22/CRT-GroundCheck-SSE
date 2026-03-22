@@ -64,8 +64,16 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
     // Load cloud settings
     getCloudSettings().then(setCloudSettingsState).catch(() => {})
-    getCloudUsage().then(setCloudUsage).catch(() => {})
+    getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
   }, [threadId, authUser])
+
+  // Auto-refresh cloud usage every 10s
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function handleSave() {
     setSaving(true)
@@ -321,9 +329,15 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
               </div>
 
               {/* Usage Display */}
-              {cloudUsage && (
+              {cloudUsage !== null && (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                  <div className="text-xs font-medium uppercase tracking-wide text-white/50 mb-3">Usage (this session)</div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-medium uppercase tracking-wide text-white/50">Usage (this session)</div>
+                    <button
+                      onClick={() => getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})}
+                      className="text-xs text-blue-400 hover:text-blue-300"
+                    >refresh</button>
+                  </div>
                   <div className="space-y-1 text-xs text-white/60">
                     {cloudUsage.slot_classification && (
                       <div className="flex justify-between">
@@ -349,13 +363,16 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                         <span>${cloudUsage.total_cost_est.toFixed(4)}</span>
                       </div>
                     )}
-                    {cloudUsage.daily_limits && (
+                    {cloudUsage.daily_limits && Object.keys(cloudUsage.daily_limits).length > 0 && (
                       <div className="pt-1 border-t border-white/10">
                         <span className="text-white/50">Daily limits: </span>
                         {Object.entries(cloudUsage.daily_limits).map(([k, v]) => (
                           <span key={k} className="mr-3">{k.replace(/_/g, ' ')}: {v.used}/{v.limit}</span>
                         ))}
                       </div>
+                    )}
+                    {!cloudUsage.slot_classification && !cloudUsage.nli_contradiction && !cloudUsage.reflection_validation && (
+                      <p className="text-white/30 italic">No cloud calls yet this session</p>
                     )}
                   </div>
                 </div>

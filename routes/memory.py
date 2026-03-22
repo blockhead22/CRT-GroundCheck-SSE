@@ -245,7 +245,7 @@ def set_profile_name(req: ChatSendRequest, request: Request):
         engine.memory.store_memory(
             text=f"FACT: name = {text}",
             confidence=1.0,
-            source="user",
+            source=MemorySource.USER,
             context={"thread_id": req.thread_id or "default", "kind": "identity"},
         )
         return {"ok": True, "name": text}

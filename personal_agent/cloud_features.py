@@ -135,7 +135,9 @@ class CloudFeatureService:
         self, system: str, prompt: str, max_tokens: int = 300, *, feature: str = "unknown",
     ) -> Optional[Dict[str, Any]]:
         """Call the OpenAI-compatible client and parse JSON response."""
-        if not self._openai_available():
+        _avail = self._openai_available()
+        if not _avail:
+            print(f"[CLOUD_SLOT] OpenAI not available: client={self.openai is not None}, is_available={getattr(self.openai, 'is_available', 'N/A') if self.openai else 'no client'}")
             return None
         usage_logger = get_cloud_usage_logger()
         full_prompt = f"{system}\n{prompt}"
@@ -150,6 +152,7 @@ class CloudFeatureService:
                 model="gpt-4o-mini",
             )
             latency = int((time.time() - t0) * 1000)
+            print(f"[CLOUD_SLOT] OpenAI raw response ({latency}ms): {repr(raw)[:200]}")
             if not raw or raw.startswith("[Cloud LLM"):
                 usage_logger.log(
                     provider="openai", feature=feature, model="gpt-4o-mini",
@@ -176,7 +179,7 @@ class CloudFeatureService:
                 prompt=full_prompt, response=raw or "", latency_ms=latency,
                 success=False, error_message=str(e),
             )
-            logger.warning("[CLOUD] OpenAI call failed: %s", e)
+            print(f"[CLOUD_SLOT] OpenAI call FAILED: {e}")
             return None
 
     def _call_cookie(
@@ -258,15 +261,16 @@ class CloudFeatureService:
             return None
 
         system, prompt = slot_classification_prompt(statement, existing_slots)
+        print(f"[CLOUD_SLOT] Calling OpenAI for: {statement[:60]}")
         result = self._call_openai(system, prompt, feature="slot_classification")
 
         if result is not None:
             self._track_usage("slot_classification", est_tokens=250, cost=0.000075)
             self._record_daily_call("slot_classification")
-            logger.info("[CLOUD] Slot classification: %s", result.get("slot_name", "none"))
+            print(f"[CLOUD_SLOT] Result: contains_fact={result.get('contains_fact')}, slot={result.get('slot_name', 'none')}")
             return result
 
-        logger.debug("[CLOUD] Slot classification unavailable (no provider)")
+        print("[CLOUD_SLOT] No provider available")
         return None
 
     # ------------------------------------------------------------------
