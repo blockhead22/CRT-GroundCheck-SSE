@@ -29,6 +29,45 @@ function StreamCursor() {
 }
 
 
+// Expandable thinking trace — shows live LLM reasoning during pipeline
+function ThinkingPreview({ content }: { content: string }) {
+  const [expanded, setExpanded] = useState(false)
+  const lines = content.split('\n').filter(Boolean)
+  const preview = lines.slice(-3).join('\n')
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[11px] leading-relaxed"
+      style={{ borderColor: 'rgba(232,132,58,0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-muted)' }}
+    >
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="w-full text-left flex items-center gap-2 mb-1"
+      >
+        <span className="font-mono text-[10px]" style={{ color: '#e8843a' }}>
+          {expanded ? '▼' : '▶'} thinking
+        </span>
+        <span className="text-[10px] font-mono" style={{ color: '#5a5445' }}>
+          {lines.length} lines
+        </span>
+      </button>
+      <div
+        className={expanded ? '' : 'line-clamp-3'}
+        style={expanded ? {} : {
+          maskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
+        }}
+      >
+        <pre className="whitespace-pre-wrap text-[11px] font-mono" style={{ color: 'rgba(240,235,225,0.5)' }}>
+          {expanded ? content : preview}
+        </pre>
+      </div>
+    </motion.div>
+  )
+}
+
 // Streaming message — rich activity timeline + streaming text
 function StreamingMessage({
   content,
@@ -53,21 +92,9 @@ function StreamingMessage({
       {/* Pipeline trace — shown during and after streaming */}
       <PipelineTrace statuses={statusLog} streaming={!hasContent} />
 
-      {/* Thinking preview */}
+      {/* Thinking trace — expandable live reasoning */}
       {isThinking && thinkingContent && (
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[11px] italic leading-relaxed"
-          style={{ borderColor: 'var(--border-soft)', background: 'var(--surface)', color: 'var(--text-muted)' }}
-        >
-          <div className="line-clamp-3" style={{
-            maskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, white 40%, transparent 100%)',
-          }}>
-            {thinkingContent}
-          </div>
-        </motion.div>
+        <ThinkingPreview content={thinkingContent} />
       )}
 
       {/* Streaming text */}
