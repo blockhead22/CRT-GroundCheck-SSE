@@ -1244,6 +1244,7 @@ CONTEXT:
 - Your credentials are stored and will be auto-injected into Authorization headers.
 - Do NOT register, sign up, or create accounts — you already have one.
 - Action type: {action}. For "query" actions, use only GET requests. Do NOT POST unless the user explicitly asked to write/post/comment.
+- For "write" actions: Match the user's EXACT intent to the correct endpoint. If they say "mark notifications as read", use the notifications endpoint, NOT the posts endpoint. Read the API docs carefully for the right URL and method.
 
 HOW TO WORK:
 1. THINK OUT LOUD before every tool call. Say what you're about to do and why.
@@ -1276,12 +1277,12 @@ RULES:
 
         msg_lower = message.lower()
 
-        # Split by markdown headers (## sections)
+        # Split by markdown headers (## and ### sections)
         sections: List[Tuple[str, str]] = []
         current_header = ""
         current_body: List[str] = []
         for line in content.split("\n"):
-            if line.startswith("## "):
+            if line.startswith("## ") or line.startswith("### "):
                 if current_header or current_body:
                     sections.append((current_header, "\n".join(current_body)))
                 current_header = line
@@ -1307,11 +1308,13 @@ RULES:
             priority_keywords = ["search", "feed", "home", "post", "submolt",
                                  "notification", "following", "profile", "comment"]
         else:
-            priority_keywords = ["post", "comment", "vote", "submolt", "follow"]
+            priority_keywords = ["post", "comment", "vote", "submolt", "follow",
+                                 "notification", "mark", "read", "update", "delete"]
 
         # Extra boost from user message
         for word in ["thread", "search", "find", "browse", "interesting", "trending",
-                     "hot", "new", "comment", "reply", "post", "feed", "notification"]:
+                     "hot", "new", "comment", "reply", "post", "feed", "notification",
+                     "mark", "read", "unread", "dismiss", "clear", "archive"]:
             if word in msg_lower:
                 priority_keywords.insert(0, word)
 
@@ -1321,6 +1324,9 @@ RULES:
 
         # Cap individual section size to prevent one huge section eating the budget
         _MAX_SECTION = 1800
+
+        # Extract user message keywords for body-level matching
+        _msg_words = set(re.findall(r'\b\w{3,}\b', msg_lower))
 
         # First pass: score and sort sections by priority keyword match
         scored_sections: List[Tuple[int, str, str]] = []
@@ -1333,6 +1339,11 @@ RULES:
             for i, kw in enumerate(priority_keywords):
                 if kw in header_lower:
                     score = max(score, len(priority_keywords) - i)
+            # Bonus: check if user message keywords appear in section body
+            body_lower = body.lower()
+            for word in _msg_words:
+                if len(word) >= 4 and word in body_lower:
+                    score += 1
             if score > 0:
                 scored_sections.append((score, header, body))
 
@@ -1398,6 +1409,13 @@ RULES:
         system_prompt = self._TOOL_LOOP_SYSTEM_PROMPT.format(budget=budget, action=action)
         if service:
             system_prompt += f"\nService: {service}\nAction: {action}"
+        if action == "write":
+            user_msg = intent.slots.get("raw_message", message)
+            system_prompt += (
+                f"\n\nIMPORTANT — The user's EXACT request is: \"{user_msg}\"\n"
+                f"Find the API endpoint in the docs below that EXACTLY matches this request. "
+                f"Do NOT default to creating a post or any other action unless the user explicitly asked for it."
+            )
 
         # Build initial messages with skill content — extract relevant sections
         raw_skill = fetched_content or ""
