@@ -1232,16 +1232,23 @@ class CRTTaskAgent:
 
     _TOOL_LOOP_SYSTEM_PROMPT = """You are Aether, executing a task. You have HTTP tools to interact with APIs.
 
+CONTEXT:
+- You are already registered and authenticated with this service.
+- Your credentials are stored and will be auto-injected into Authorization headers.
+- Do NOT register, sign up, or create accounts — you already have one.
+- Action type: {action}. For "query" actions, use only GET requests. Do NOT POST unless the user explicitly asked to write/post/comment.
+
 RULES:
-1. Execute the user's goal by calling tools in the correct order.
+1. Execute the user's goal by calling the RIGHT endpoints. Read the API docs carefully.
 2. After each tool result, analyze the response and decide your next action.
-3. YOUR_API_KEY placeholders in headers are replaced automatically — just include them.
+3. Include "Authorization": "Bearer YOUR_API_KEY" in headers — it gets replaced automatically.
 4. When the task is complete, stop calling tools and provide a brief summary of what was accomplished.
 5. If a step fails, try to recover (different endpoint, fix parameters) or explain what went wrong.
 6. You have a budget of {budget} tool calls. If you need more, call request_budget_extension with a reason.
 7. Never fabricate API responses. Only report what tools actually returned.
 8. For browsing/reading tasks: fetch the feed or list, identify interesting items, then fetch details on the best ones.
-9. Present results naturally — titles, summaries, why something is interesting."""
+9. Present results naturally — titles, summaries, why something is interesting.
+10. SKIP registration/setup sections in the docs — go straight to the endpoints that serve the user's goal."""
 
     _HARD_MAX_BUDGET = 15
     _MAX_CONSECUTIVE_FAILURES = 3
@@ -1267,7 +1274,7 @@ RULES:
         service = intent.slots.get("service", "")
         action = intent.slots.get("action", "query")
 
-        system_prompt = self._TOOL_LOOP_SYSTEM_PROMPT.format(budget=budget)
+        system_prompt = self._TOOL_LOOP_SYSTEM_PROMPT.format(budget=budget, action=action)
         if service:
             system_prompt += f"\nService: {service}\nAction: {action}"
 
@@ -1284,6 +1291,13 @@ RULES:
         consecutive_failures = 0
         final_content = ""
 
+        # For query actions, remove http_post from available tools
+        # so the LLM can't accidentally try to write
+        available_tools = self._TOOL_SCHEMAS
+        if action == "query":
+            available_tools = [t for t in self._TOOL_SCHEMAS
+                               if t["function"]["name"] != "http_post"]
+
         # Use fast model for tool loop reasoning
         fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
 
@@ -1297,7 +1311,7 @@ RULES:
             try:
                 result = self._llm.chat_with_tools(
                     messages=messages,
-                    tools=self._TOOL_SCHEMAS,
+                    tools=available_tools,
                     max_tokens=1000,
                     temperature=0.1,
                     model=fast_model,
