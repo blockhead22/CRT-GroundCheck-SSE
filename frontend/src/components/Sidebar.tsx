@@ -52,18 +52,18 @@ export function Sidebar(props: {
   const sidebarContent = (
     <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
       <div className="flex items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-2">
-          <div className="grid h-9 w-9 place-items-center rounded-xl accent-button text-white">
-            <span className="text-sm font-semibold">Q</span>
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl accent-button text-white shadow-[0_0_20px_rgba(201,95,40,0.3)]">
+            <span className="text-sm font-bold tracking-wide">Q</span>
           </div>
           <div>
-            <div className="text-sm font-semibold text-white font-display">CRT</div>
-            <div className="text-xs text-white/60">AI Chat Helper</div>
+            <div className="text-base font-semibold text-white font-display tracking-wider">CRT</div>
+            <div className="text-[11px] text-white/40 tracking-wide">Aether Intelligence</div>
           </div>
         </div>
         <button
           onClick={props.onClose}
-          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+          className="rounded-xl bg-white/[0.04] px-2 py-1 text-xs text-white/40 hover:bg-white/[0.08] hover:text-white/60 transition-all"
           aria-label="Close sidebar"
           title="Close"
         >
@@ -113,14 +113,16 @@ export function Sidebar(props: {
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
                 className={
-                  'group flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition ' +
-                  (isActive ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/10')
+                  'group flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-200 ' +
+                  (isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/[0.07] hover:text-white/90')
                 }
               >
                 <span
                   className={
-                    'grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-xs ' +
-                    (isActive ? 'text-violet-200' : 'text-white/50')
+                    'grid h-8 w-8 place-items-center rounded-lg text-xs transition-all duration-200 ' +
+                    (isActive
+                      ? 'bg-[var(--accent)]/15 text-[#e8843a] shadow-[0_0_12px_rgba(201,95,40,0.25)] border border-[#c95f28]/30'
+                      : 'border border-white/[0.06] bg-white/[0.03] text-white/40 group-hover:text-white/60 group-hover:border-white/10')
                   }
                 >
                   {item.icon}
@@ -157,23 +159,25 @@ export function Sidebar(props: {
                     key={t.id}
                     onClick={() => handleThreadSelect(t.id)}
                     className={
-                      'group rounded-xl border border-white/10 px-3 py-3 text-left active:bg-white/15 ' +
-                      (selected ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10')
+                      'group rounded-2xl px-3.5 py-3 text-left transition-all duration-200 ' +
+                      (selected
+                        ? 'bg-white/[0.08] border border-[#c95f28]/20 shadow-[0_0_16px_rgba(201,95,40,0.08)]'
+                        : 'bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1]')
                     }
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-white">{t.title}</div>
-                        <div className="text-xs text-white/50 mt-0.5">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
+                        <div className="truncate text-sm font-medium text-white/90">{t.title}</div>
+                        <div className="text-[11px] text-white/30 mt-1">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
                       </div>
-                      <div className={`flex flex-none items-center gap-1 ${props.isMobile ? 'opacity-100' : 'opacity-0 transition group-hover:opacity-100'}`}>
+                      <div className={`flex flex-none items-center gap-1 ${props.isMobile ? 'opacity-100' : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100'}`}>
                         <button
                           onClick={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
                             props.onRequestRenameThread(t.id)
                           }}
-                          className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
+                          className="rounded-lg bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
                           aria-label="Rename chat"
                           title="Rename"
                         >
@@ -185,7 +189,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onDeleteThread(t.id)
                           }}
-                          className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
+                          className="rounded-lg bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
                           aria-label="Delete chat"
                           title="Delete"
                         >

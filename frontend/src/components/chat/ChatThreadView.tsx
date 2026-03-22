@@ -313,7 +313,13 @@ export function ChatThreadView(props: {
         >
           <div
             className="inline-flex rounded-full p-[3px] gap-[2px]"
-            style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+            style={{
+              background: 'rgba(29,27,22,0.6)',
+              border: '1px solid rgba(240,235,225,0.05)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            }}
           >
             {(['history', 'theater'] as const).map((mode) => {
               const active = mode === 'theater' ? activeTheaterMode : !activeTheaterMode
@@ -321,10 +327,11 @@ export function ChatThreadView(props: {
                 <motion.button
                   key={mode}
                   onClick={() => setTheaterMode(mode === 'theater')}
-                  className="rounded-full px-3.5 py-0.5 text-[10px] font-mono uppercase tracking-widest"
+                  className="rounded-full px-4 py-1 text-[10px] font-mono uppercase tracking-widest"
                   animate={{
-                    background: active ? '#c95f28' : 'transparent',
+                    background: active ? 'rgba(201,95,40,0.9)' : 'transparent',
                     color: active ? '#F0EBE1' : '#5a5445',
+                    boxShadow: active ? '0 0 12px rgba(201,95,40,0.3)' : '0 0 0 transparent',
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -495,17 +502,24 @@ export function ChatThreadView(props: {
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   className="flex min-h-[60vh] flex-col items-center justify-center text-center"
                 >
+                  {/* Subtle ambient glow behind hero text */}
+                  <div className="relative">
+                    <div
+                      className="absolute inset-0 -z-10 blur-[80px] opacity-20"
+                      style={{ background: 'radial-gradient(ellipse at center, rgba(201,95,40,0.5) 0%, transparent 70%)' }}
+                    />
+                    <motion.div
+                      className="font-display md:text-8xl lg:text-9xl"
+                      style={{ fontSize: 'clamp(4rem, 12vw, 9rem)', lineHeight: 1, color: '#F0EBE1' }}
+                      initial={{ opacity: 0, y: 32, letterSpacing: '0.1em' }}
+                      animate={{ opacity: 1, y: 0, letterSpacing: '0.04em' }}
+                      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                      Hey {displayName}
+                    </motion.div>
+                  </div>
                   <motion.div
-                    className="font-display md:text-8xl lg:text-9xl"
-                    style={{ fontSize: 'clamp(4rem, 12vw, 9rem)', lineHeight: 1, color: '#F0EBE1' }}
-                    initial={{ opacity: 0, y: 32, letterSpacing: '0.1em' }}
-                    animate={{ opacity: 1, y: 0, letterSpacing: '0.04em' }}
-                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    Hey {displayName}
-                  </motion.div>
-                  <motion.div
-                    className="mt-4 text-sm tracking-widest uppercase"
+                    className="mt-5 text-[13px] tracking-[0.2em] uppercase font-mono"
                     style={{ color: 'var(--text-faint)' }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -519,8 +533,8 @@ export function ChatThreadView(props: {
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
                       onClick={props.onRequestSetName}
-                      className="mt-8 rounded-full border px-5 py-2 text-sm transition"
-                      style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+                      className="mt-10 rounded-full border px-6 py-2.5 text-sm transition-all hover:bg-white/[0.04] hover:border-white/15"
+                      style={{ borderColor: 'rgba(240,235,225,0.08)', color: 'var(--text-muted)' }}
                     >
                       Set your name
                     </motion.button>
@@ -530,7 +544,7 @@ export function ChatThreadView(props: {
 
               {/* Message history — staggered entrance */}
               {!empty && (
-                <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-5">
                   {props.thread.messages.map((m, idx) => (
                     <motion.div
                       key={m.id}

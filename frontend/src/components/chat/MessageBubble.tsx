@@ -179,7 +179,7 @@ export function MessageBubble(props: {
     return { id, text }
   })()
 
-  // User message — compact right-aligned pill
+  // User message — compact right-aligned pill with depth
   if (isUser) {
     return (
       <motion.div
@@ -189,18 +189,25 @@ export function MessageBubble(props: {
         className="flex justify-end"
       >
         <div className="group max-w-[72%]">
-          <div className="rounded-2xl px-4 py-3 text-[14.5px] leading-relaxed" style={{ background: 'var(--user-bubble)', color: 'var(--user-bubble-fg)', boxShadow: '0 2px 12px rgba(201,95,40,0.22)' }}>
+          <div
+            className="rounded-2xl px-5 py-3.5 text-[14.5px] leading-relaxed"
+            style={{
+              background: 'linear-gradient(135deg, #c95f28 0%, #b05424 100%)',
+              color: 'var(--user-bubble-fg)',
+              boxShadow: '0 2px 8px rgba(201,95,40,0.3), 0 8px 24px rgba(201,95,40,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
+            }}
+          >
             {props.msg.text}
           </div>
-          <div className="mt-1 flex justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <span className="text-[11px] text-white/30">{formatTime(props.msg.createdAt)}</span>
+          <div className="mt-1.5 flex justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <span className="text-[10px] text-white/25 font-mono">{formatTime(props.msg.createdAt)}</span>
           </div>
         </div>
       </motion.div>
     )
   }
 
-  // Assistant message — editorial, no bubble
+  // Assistant message — card-style with subtle depth
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -210,16 +217,25 @@ export function MessageBubble(props: {
     >
       <div
         className={[
-          props.selected ? 'rounded-2xl px-4 py-3 -mx-4' : '',
-          localRating === 'down' ? 'border-l-2 pl-3 -ml-3' : '',
-          localRating === 'up' ? 'border-l-2 pl-3 -ml-3' : '',
-          gatesFailed && !localRating ? 'border-l-2 pl-3 -ml-3' : '',
+          'rounded-2xl px-5 py-4 transition-all duration-200',
+          props.selected ? '' : '',
+          localRating === 'down' ? 'border-l-2' : '',
+          localRating === 'up' ? 'border-l-2' : '',
+          gatesFailed && !localRating ? 'border-l-2' : '',
         ].join(' ')}
         style={{
-          ...(props.selected ? { boxShadow: '0 0 0 1px rgba(201,95,40,0.3)', background: 'rgba(201,95,40,0.05)' } : {}),
+          background: props.selected
+            ? 'rgba(201,95,40,0.06)'
+            : 'rgba(29,27,22,0.5)',
+          border: props.selected
+            ? '1px solid rgba(201,95,40,0.2)'
+            : '1px solid rgba(240,235,225,0.04)',
+          boxShadow: props.selected
+            ? '0 0 24px rgba(201,95,40,0.1), 0 2px 8px rgba(0,0,0,0.15)'
+            : '0 1px 4px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.02)',
           ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
           ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
-          ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)', background: 'rgba(251,146,60,0.03)' } : {}),
+          ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)', background: 'rgba(251,146,60,0.04)' } : {}),
         }}
       >
         {/* Profile updates */}
@@ -449,8 +465,8 @@ export function MessageBubble(props: {
         )}
 
         {/* Footer row — always visible timestamp + optional meta */}
-        <div className="mt-3 flex items-center gap-3">
-          <span className="text-[11px] text-white/25 tabular-nums">{formatTime(props.msg.createdAt)}</span>
+        <div className="mt-4 flex items-center gap-3 pt-3" style={{ borderTop: '1px solid rgba(240,235,225,0.04)' }}>
+          <span className="text-[10px] text-white/20 tabular-nums font-mono">{formatTime(props.msg.createdAt)}</span>
 
           {/* Status badges — condensed */}
           {meta && (

@@ -105,6 +105,14 @@
   --blur-md: 8px;
   --blur-lg: 16px;
   --blur-xl: 24px;
+
+  /* Depth Shadows — layered for realism */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08);
+  --shadow-card-hover: 0 2px 4px rgba(0,0,0,0.16), 0 8px 24px rgba(0,0,0,0.12);
+  --shadow-elevated: 0 4px 12px rgba(0,0,0,0.2), 0 16px 40px rgba(0,0,0,0.15);
+  --shadow-panel: 0 0 1px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.25);
+  --shadow-glow-accent: 0 0 24px rgba(201,95,40,0.15);
+  --shadow-inset-subtle: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 /* Utility Classes */
@@ -216,31 +224,35 @@
 
 /* Glass Morphism Effect */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(var(--blur-lg));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(var(--blur-lg));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--shadow-inset-subtle);
 }
 
 .glass-dark {
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(var(--blur-lg));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(var(--blur-xl));
+  -webkit-backdrop-filter: blur(var(--blur-xl));
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 /* Card Styles */
 .card-premium {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.04);
   backdrop-filter: blur(var(--blur-md));
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  -webkit-backdrop-filter: blur(var(--blur-md));
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-card);
   transition: all var(--duration-normal) var(--ease-out);
 }
 
 .card-premium:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-xl);
-  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-card-hover);
+  border-color: rgba(255, 255, 255, 0.14);
 }
 
 /* Button Styles */

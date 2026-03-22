@@ -57,11 +57,15 @@ export function Composer(props: {
         <motion.div
           animate={{
             boxShadow: focused
-              ? '0 0 0 1px rgba(100,87,249,0.45), 0 8px 32px rgba(0,0,0,0.4)'
-              : '0 2px 16px rgba(0,0,0,0.3)',
+              ? '0 0 0 1px rgba(201,95,40,0.3), 0 8px 32px rgba(0,0,0,0.4), 0 0 48px rgba(201,95,40,0.06)'
+              : '0 2px 12px rgba(0,0,0,0.2), 0 1px 4px rgba(0,0,0,0.15)',
+            borderColor: focused
+              ? 'rgba(201,95,40,0.25)'
+              : 'rgba(240,235,225,0.06)',
           }}
-          transition={{ duration: 0.18 }}
-          className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--composer-bg)]"
+          transition={{ duration: 0.2 }}
+          className="relative overflow-hidden rounded-2xl border"
+          style={{ background: 'rgba(22,20,16,0.8)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
         >
           <textarea
             ref={textareaRef}
@@ -71,18 +75,18 @@ export function Composer(props: {
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             disabled={isDisabled}
-            placeholder={props.placeholder ?? 'Message Aether…'}
+            placeholder={props.placeholder ?? 'Message Aether...'}
             rows={1}
-            className="w-full resize-none bg-transparent px-5 pb-3 pt-4 text-[15px] leading-relaxed text-white placeholder:text-white/25 focus:outline-none disabled:opacity-50"
+            className="w-full resize-none bg-transparent px-5 pb-3 pt-4 text-[15px] leading-relaxed text-white/90 placeholder:text-white/20 focus:outline-none disabled:opacity-50"
             style={{ scrollbarWidth: 'none' }}
             autoComplete="off"
             spellCheck="false"
           />
 
           {/* Bottom bar with hint + buttons */}
-          <div className="flex items-center justify-between px-4 pb-3">
-            <div className="text-[11px] text-white/20">
-              {canSend ? 'Enter to send · Shift+Enter for newline' : ''}
+          <div className="flex items-center justify-between px-5 pb-3">
+            <div className="text-[10px] text-white/15 font-mono">
+              {canSend ? 'Enter to send' : ''}
             </div>
             <div className="flex items-center gap-2">
               {props.onResearch ? (
@@ -92,7 +96,7 @@ export function Composer(props: {
                   onClick={research}
                   disabled={isDisabled || !canSend}
                   title="Deep research"
-                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/50 transition hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-300 disabled:cursor-not-allowed disabled:opacity-30"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.04] text-white/30 transition-all hover:bg-white/[0.08] hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-20"
                 >
                   {props.researching ? (
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
@@ -113,8 +117,8 @@ export function Composer(props: {
                 aria-label="Send"
                 className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
                   canSend && !isDisabled
-                    ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_12px_rgba(100,87,249,0.4)]'
-                    : 'bg-white/5 text-white/20 cursor-not-allowed'
+                    ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(201,95,40,0.35)]'
+                    : 'bg-white/[0.04] text-white/15 cursor-not-allowed'
                 }`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
