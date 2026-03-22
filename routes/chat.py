@@ -1021,6 +1021,143 @@ def _is_architecture_explanation_request(text: str) -> bool:
     return any(n in t for n in needles)
 
 
+def _is_self_referential_question(text: str) -> bool:
+    """Detect questions about Aether itself — how it works, its state, its design.
+
+    These should be answered from the self-model and system knowledge,
+    NOT from user-fact memory search (which gate-fails on low alignment).
+    """
+    t = (text or "").strip().lower()
+    if not t or len(t) > 500:
+        return False
+    # Must be a question (or addressed to Aether)
+    is_question = "?" in t or t.startswith(("how ", "what ", "why ", "do you ", "can you ", "are you ", "tell me"))
+    addressed_to_aether = "aether" in t
+    if not is_question and not addressed_to_aether:
+        return False
+    # Self-referential patterns
+    self_patterns = (
+        "how do you work",
+        "how does your",
+        "how do you think",
+        "how do you remember",
+        "how do you learn",
+        "how do you process",
+        "how do you decide",
+        "what are you",
+        "who are you",
+        "what do you do",
+        "tell me about yourself",
+        "describe yourself",
+        "explain yourself",
+        "explain how you",
+        "explain your",
+        "what is your purpose",
+        "what are your capabilities",
+        "any new contradictions",
+        "any contradictions",
+        "do you have contradictions",
+        "your contradictions",
+        "your memory",
+        "your beliefs",
+        "your self-model",
+        "your self model",
+        "reconstruction gating",
+        "what is gating",
+        "how does gating",
+        "what is crt",
+        "how does crt",
+        "tell me how you work",
+        "what do you know about yourself",
+        "what have you learned about yourself",
+        "are you learning",
+        "are you improving",
+        "what is the problem",  # when addressed to aether
+        "what went wrong",
+        "why did you fail",
+        "what happened",  # when addressed to aether
+    )
+    if any(p in t for p in self_patterns):
+        return True
+    # "Aether, <question about the system>" pattern
+    if addressed_to_aether and any(
+        w in t for w in ("work", "gating", "memory", "contradict", "trust", "belief", "broken", "problem", "wrong")
+    ):
+        return True
+    return False
+
+
+def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
+    """Build an answer about Aether from self-model + system knowledge.
+
+    Uses the LLM with self-model context injected so it can answer
+    naturally about its own design, state, and capabilities.
+    """
+    from personal_agent.self_model import get_self_model
+
+    self_model = get_self_model()
+    model_data = self_model.read_model()
+    top_facts = self_model.get_top_facts(5)
+
+    # Build self-knowledge context
+    self_context_parts = [
+        "You are Aether, a persistent AI assistant built on CRT (Cognitive Reflective Transformer).",
+        "Your core design principles:",
+        "- You preserve contradictions instead of silently resolving them",
+        "- You use trust-weighted memories that evolve over time",
+        "- You have reconstruction gating: belief (high-confidence) vs speech (tentative) responses",
+        "- You ask before acting (checkpoint system for agentic tasks)",
+        "- You learn from your mistakes via a self-reflection loop",
+        "- You maintain an append-only contradiction ledger",
+        "",
+        "Your current self-model state:",
+    ]
+    for slot, value in model_data.items():
+        if value and value != "(not yet set)":
+            self_context_parts.append(f"  {slot}: {value}")
+
+    if top_facts:
+        self_context_parts.append("")
+        self_context_parts.append("Recent self-observations:")
+        for fact in top_facts:
+            self_context_parts.append(f"  - {fact}")
+
+    self_context = "\n".join(self_context_parts)
+
+    system_prompt = (
+        "You are Aether. The user is asking about how you work, your state, or your design. "
+        "Answer from the self-knowledge context below. Be honest, specific, and concise. "
+        "If you don't have data for something (e.g., no contradictions recorded), say so. "
+        "Do NOT make up capabilities you don't have. Speak as yourself, not about yourself in third person.\n\n"
+        f"{self_context}"
+    )
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": text},
+    ]
+
+    try:
+        llm_client = engine.llm_client if hasattr(engine, "llm_client") else None
+        if llm_client is None:
+            from personal_agent.ollama_client import OllamaClient
+            import os
+            fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+            llm_client = OllamaClient(model=fast_model)
+        # Use fast model for self-referential answers
+        import os
+        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+        return llm_client.chat(messages, max_tokens=400, temperature=0.4, model=fast_model)
+    except Exception as e:
+        logger.warning("[SELF_REF] LLM call failed: %s", e)
+        # Deterministic fallback
+        return (
+            "I'm Aether, built on CRT — a system that preserves contradictions, "
+            "evolves trust on memories over time, and asks before acting. "
+            "I can tell you more about specific parts of how I work if you ask."
+        )
+
+
 def _is_contradiction_inventory_request(text: str) -> bool:
     """Detect user requests asking about contradictions/conflicts."""
     t = (text or "").strip().lower()
@@ -2020,6 +2157,27 @@ def chat_send(req: ChatSendRequest, request: Request) -> ChatSendResponse:
                 "confidence": 0.85,
                 "retrieved_memories": [],
                 "prompt_memories": prompt_items,
+            },
+        )
+
+    # Self-referential questions: "how do you work?", "any contradictions?", etc.
+    # Route to self-model + system knowledge instead of user-fact memory search.
+    if _is_self_referential_question(effective_message):
+        control_state.request_kind = "self_referential"
+        control_state.mark("bind", "self_model")
+        answer = _answer_self_referential(effective_message, engine, req.thread_id)
+        if greeting_text:
+            answer = f"{greeting_text}\n\n{answer}"
+        control_state.mark("decide", "ready", detail="self_referential")
+        return _chat_response(
+            answer=answer,
+            response_type="explanation",
+            gates_passed=True,
+            gate_reason="self_referential",
+            metadata={
+                "confidence": 0.80,
+                "retrieved_memories": [],
+                "prompt_memories": [],
             },
         )
 
