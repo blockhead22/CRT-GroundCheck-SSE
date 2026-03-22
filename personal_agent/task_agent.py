@@ -1230,7 +1230,7 @@ class CRTTaskAgent:
     # LLM Tool Loop — iterative agent execution
     # ------------------------------------------------------------------
 
-    _TOOL_LOOP_SYSTEM_PROMPT = """You are Aether, executing a task. You have HTTP tools to interact with APIs.
+    _TOOL_LOOP_SYSTEM_PROMPT = """You are Aether, executing a task step by step. Think out loud. The user can see your reasoning.
 
 CONTEXT:
 - You are already registered and authenticated with this service.
@@ -1238,17 +1238,25 @@ CONTEXT:
 - Do NOT register, sign up, or create accounts — you already have one.
 - Action type: {action}. For "query" actions, use only GET requests. Do NOT POST unless the user explicitly asked to write/post/comment.
 
+HOW TO WORK:
+1. THINK OUT LOUD before every tool call. Say what you're about to do and why:
+   "Let me check the hot posts to find trending content..."
+   "That post about agent drift has high engagement — let me read the full thread..."
+   "I'll search for threads related to AI memory since that matches your interests..."
+2. Call the tool.
+3. When you get results back, ANALYZE them out loud:
+   "Found 5 posts. The top one has 15 upvotes and is about..."
+   "This thread has 8 comments, mostly discussing..."
+4. Then decide: do you have enough to answer the user's question, or should you dig deeper?
+5. When done, give a natural summary of what you found.
+
 RULES:
-1. Execute the user's goal by calling the RIGHT endpoints. Read the API docs carefully.
-2. After each tool result, analyze the response and decide your next action.
-3. Include "Authorization": "Bearer YOUR_API_KEY" in headers — it gets replaced automatically.
-4. When the task is complete, stop calling tools and provide a brief summary of what was accomplished.
-5. If a step fails, try to recover (different endpoint, fix parameters) or explain what went wrong.
-6. You have a budget of {budget} tool calls. If you need more, call request_budget_extension with a reason.
-7. Never fabricate API responses. Only report what tools actually returned.
-8. For browsing/reading tasks: fetch the feed or list, identify interesting items, then fetch details on the best ones.
-9. Present results naturally — titles, summaries, why something is interesting.
-10. SKIP registration/setup sections in the docs — go straight to the endpoints that serve the user's goal."""
+- Include "Authorization": "Bearer YOUR_API_KEY" in headers — it gets replaced automatically.
+- You have a budget of {budget} tool calls. Use them wisely but don't stop after just one.
+- For browsing tasks: GET the feed/list first, then GET details on the interesting items.
+- Never fabricate API responses. Only report what tools actually returned.
+- SKIP registration/setup sections in the docs.
+- Always explain what you're doing and why — the user is watching."""
 
     _HARD_MAX_BUDGET = 15
     _MAX_CONSECUTIVE_FAILURES = 3
@@ -1436,8 +1444,12 @@ RULES:
             tool_calls = result.get("tool_calls", [])
             llm_content = result.get("content", "")
 
-            # 2. Stream LLM reasoning
+            # 2. Stream LLM reasoning — visible to user as thinking + status
             if llm_content:
+                # Show a condensed version in the pipeline trace
+                first_line = llm_content.strip().split("\n")[0][:120]
+                yield {"type": "status", "content": first_line}
+                # Full reasoning in thinking trace
                 yield {
                     "type": "agent_thinking_token",
                     "content": llm_content,
@@ -1563,6 +1575,20 @@ RULES:
 
             if consecutive_failures >= self._MAX_CONSECUTIVE_FAILURES:
                 break
+
+            # After processing all tool calls in this batch, nudge the LLM
+            # to analyze results and decide next steps (prevents premature stop)
+            if tool_call_count > 0 and tool_call_count < budget:
+                remaining = budget - tool_call_count
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"You've used {tool_call_count}/{budget} tool calls. "
+                        f"Analyze the results above. Do you have enough to answer the user's question? "
+                        f"If not, call another tool. If yes, provide your final summary. "
+                        f"Think out loud about what you found and what to do next."
+                    ),
+                })
 
         logger.info(
             "[TOOL_LOOP] Completed: %d tool calls, %d steps, %d failures",
