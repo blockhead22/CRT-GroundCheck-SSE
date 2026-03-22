@@ -134,7 +134,7 @@ class ThinkingLoop:
                 return None
             try:
                 from personal_agent.ollama_client import OllamaClient
-                model = os.getenv("CRT_OLLAMA_MODEL", "deepseek-r1:latest")
+                model = os.getenv("CRT_OLLAMA_MODEL", "qwen3:14b")
                 self._llm_client = OllamaClient(model=model)
             except Exception as e:
                 logger.warning(f"[THINKING] Failed to init LLM: {e}")

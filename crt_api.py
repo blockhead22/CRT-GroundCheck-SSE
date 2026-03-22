@@ -1266,7 +1266,7 @@ def create_app() -> FastAPI:
         # Pre-warm the default Ollama model so first request doesn't cold-load.
         try:
             import ollama as _ollama_mod
-            _warm_model = _default_router_model or "deepseek-r1:latest"
+            _warm_model = _default_router_model or "qwen3:14b"
             logger.info("[STARTUP] Pre-warming Ollama model: %s", _warm_model)
             _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
             logger.info("[STARTUP] \u2714 Ollama model %s loaded into VRAM", _warm_model)

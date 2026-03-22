@@ -1419,7 +1419,7 @@ RULES:
                                if t["function"]["name"] != "http_post"]
 
         # Use fast model for tool loop reasoning
-        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+        fast_model = os.getenv("CRT_MODEL_FAST") or "role:fast"
 
         while tool_call_count < budget:
             # 1. Call LLM with current context
@@ -2497,10 +2497,14 @@ RULES:
             fetched_content, intent, steps, stored_credentials, active_task
         )
         system_prompt = (
-            "You are Aether. Report what actually happened based on the tool results below. "
-            "Be concise and direct — 2-4 sentences max. "
-            "Only state outcomes that are in the verified results. "
-            "If something failed, say so. Do not plan, reason, or explain what you would do."
+            "You are Aether. Report what actually happened based on the tool results below.\n"
+            "RULES:\n"
+            "- 2-4 sentences max. Start with the answer immediately.\n"
+            "- Only state outcomes that are in the verified results.\n"
+            "- If something failed, say so.\n"
+            "- Do NOT include meta-reasoning about sufficiency, next steps, or whether more data is needed.\n"
+            "- Do NOT start with 'The information shows', 'Based on the data', 'The results indicate'.\n"
+            "- Put ALL reasoning in <think> tags. Everything outside <think> is shown verbatim to the user."
         )
         messages = [
             {"role": "system", "content": system_prompt},
@@ -2513,7 +2517,27 @@ RULES:
 
         # Use the fast model for answer generation — reasoning models are too
         # slow for simple "summarise these API results" tasks and cause timeouts.
-        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+        fast_model = os.getenv("CRT_MODEL_FAST") or "role:fast"
+
+        # Reasoning prefixes that should be routed to thinking, not content.
+        # The model sometimes outputs meta-reasoning outside <think> tags.
+        _REASONING_PREFIXES = (
+            "the information from",
+            "the results show",
+            "the data indicates",
+            "based on the",
+            "this suggests",
+            "no further tool",
+            "no specific request",
+            "since the user",
+            "i've explored",
+            "i have enough",
+            "the search returned",
+            "let me ",
+        )
+        # Buffer initial content to detect reasoning paragraphs
+        content_line_buf = ""
+        first_content_emitted = False
 
         try:
             for tok_type, text in self._llm.chat_stream(
@@ -2524,8 +2548,55 @@ RULES:
                     yield {"type": "agent_thinking_token", "content": text,
                            "metadata": {"step": "generate_answer"}}
                 else:
-                    content_buf += text
-                    yield {"type": "token", "content": text}
+                    if not first_content_emitted:
+                        # Buffer content until we see a newline or enough text
+                        content_line_buf += text
+                        # Check if we have a full first line/paragraph
+                        if "\n" in content_line_buf or len(content_line_buf) > 200:
+                            first_line = content_line_buf.split("\n")[0].strip().lower()
+                            if any(first_line.startswith(p) for p in _REASONING_PREFIXES):
+                                # Route the reasoning paragraph to thinking
+                                para_end = content_line_buf.find("\n\n")
+                                if para_end != -1:
+                                    reasoning_part = content_line_buf[:para_end]
+                                    remaining = content_line_buf[para_end + 2:]
+                                    thinking_buf += reasoning_part
+                                    yield {"type": "agent_thinking_token",
+                                           "content": reasoning_part,
+                                           "metadata": {"step": "generate_answer"}}
+                                    if remaining.strip():
+                                        content_buf += remaining
+                                        yield {"type": "token", "content": remaining}
+                                    first_content_emitted = True
+                                else:
+                                    # Whole buffer is reasoning, redirect it all
+                                    thinking_buf += content_line_buf
+                                    yield {"type": "agent_thinking_token",
+                                           "content": content_line_buf,
+                                           "metadata": {"step": "generate_answer"}}
+                                    first_content_emitted = True
+                                content_line_buf = ""
+                            else:
+                                # Not reasoning — flush buffer as content
+                                content_buf += content_line_buf
+                                yield {"type": "token", "content": content_line_buf}
+                                first_content_emitted = True
+                                content_line_buf = ""
+                    else:
+                        content_buf += text
+                        yield {"type": "token", "content": text}
+
+            # Flush any remaining buffered content
+            if content_line_buf:
+                first_line = content_line_buf.strip().lower()
+                if any(first_line.startswith(p) for p in _REASONING_PREFIXES):
+                    thinking_buf += content_line_buf
+                    yield {"type": "agent_thinking_token",
+                           "content": content_line_buf,
+                           "metadata": {"step": "generate_answer"}}
+                else:
+                    content_buf += content_line_buf
+                    yield {"type": "token", "content": content_line_buf}
 
             if thinking_buf:
                 thinking_ms = int((time.time() - thinking_start) * 1000)
@@ -2620,10 +2691,14 @@ RULES:
             return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)
 
         system_prompt = (
-            "You are Aether. Report what actually happened based on the tool results below. "
-            "Be concise and direct — 2-4 sentences max. "
-            "Only state outcomes that are in the verified results. "
-            "If something failed, say so. Do not plan, reason, or explain what you would do."
+            "You are Aether. Report what actually happened based on the tool results below.\n"
+            "RULES:\n"
+            "- 2-4 sentences max. Start with the answer immediately.\n"
+            "- Only state outcomes that are in the verified results.\n"
+            "- If something failed, say so.\n"
+            "- Do NOT include meta-reasoning about sufficiency, next steps, or whether more data is needed.\n"
+            "- Do NOT start with 'The information shows', 'Based on the data', 'The results indicate'.\n"
+            "- Put ALL reasoning in <think> tags. Everything outside <think> is shown verbatim to the user."
         )
 
         messages = [
@@ -2631,7 +2706,7 @@ RULES:
             {"role": "user", "content": f"{message}\n\n{context_block}".strip()},
         ]
         # Use fast model for answer summarisation — reasoning models timeout
-        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+        fast_model = os.getenv("CRT_MODEL_FAST") or "role:fast"
         try:
             return self._llm.chat(messages, max_tokens=800, temperature=0.3, model=fast_model)
         except Exception as e:

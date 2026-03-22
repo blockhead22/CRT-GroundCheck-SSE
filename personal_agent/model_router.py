@@ -79,7 +79,7 @@ class ModelRouter:
         default_model: Optional[str] = None,
         runtime_config: Optional[Dict[str, Any]] = None,
     ) -> None:
-        fallback_default = default_model or os.getenv("CRT_OLLAMA_MODEL") or "deepseek-r1:latest"
+        fallback_default = default_model or os.getenv("CRT_OLLAMA_MODEL") or "qwen3:14b"
         runtime_config = runtime_config or {}
         generation_cfg = runtime_config.get("generation_stack") if isinstance(runtime_config, dict) else {}
         local_cfg = (generation_cfg.get("local") or {}) if isinstance(generation_cfg, dict) else {}

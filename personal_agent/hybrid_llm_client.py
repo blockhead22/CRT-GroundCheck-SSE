@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -9,6 +10,21 @@ import requests
 
 from .ollama_client import OllamaClient
 from .text_utils import extract_think_content
+
+logger = logging.getLogger(__name__)
+
+# Lazy import to avoid hard dependency
+_AnthropicClient = None
+
+def _get_anthropic_client_class():
+    global _AnthropicClient
+    if _AnthropicClient is None:
+        try:
+            from .anthropic_client import AnthropicClient
+            _AnthropicClient = AnthropicClient
+        except ImportError:
+            _AnthropicClient = None
+    return _AnthropicClient
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
@@ -138,25 +154,33 @@ class OpenAICompatibleClient:
 
 
 class HybridLLMClient:
-    """Local-first client that can explicitly route generation to cloud."""
+    """Local-first client that can explicitly route generation to cloud or Anthropic."""
 
     def __init__(
         self,
         *,
         local_client: Optional[OllamaClient] = None,
         cloud_client: Optional[OpenAICompatibleClient] = None,
+        anthropic_client: Optional[Any] = None,
         product_mode: str = "local_only",
         cloud_policy: Optional[CloudPromptPolicy] = None,
+        rate_limiter: Optional[Any] = None,
+        model_roles: Optional[Dict[str, str]] = None,
     ) -> None:
         self.local_client = local_client
         self.cloud_client = cloud_client
+        self.anthropic_client = anthropic_client
         self.product_mode = str(product_mode or "local_only").strip().lower() or "local_only"
         self.cloud_policy = cloud_policy or CloudPromptPolicy()
+        self.rate_limiter = rate_limiter
+        self.model_roles: Dict[str, str] = model_roles or {}
 
     @property
     def model(self) -> str:
         if self.local_client is not None:
             return str(getattr(self.local_client, "model", "") or "")
+        if self.anthropic_client is not None:
+            return str(getattr(self.anthropic_client, "model", "") or "")
         if self.cloud_client is not None:
             return str(getattr(self.cloud_client, "model", "") or "")
         return ""
@@ -165,13 +189,54 @@ class HybridLLMClient:
     def cloud_available(self) -> bool:
         return bool(self.cloud_client is not None and self.cloud_client.is_available)
 
+    @property
+    def anthropic_available(self) -> bool:
+        return bool(self.anthropic_client is not None and getattr(self.anthropic_client, "is_available", False))
+
     def _resolve_target(self, model: Optional[str]) -> Tuple[str, Optional[str]]:
+        """
+        Resolve a model string to (provider, model_name).
+
+        Supported prefixes:
+          - "anthropic:claude-sonnet-4-6" → ("anthropic", "claude-sonnet-4-6")
+          - "cloud:gpt-4o" → ("cloud", "gpt-4o")
+          - "local:qwen3:14b" → ("local", "qwen3:14b")
+          - "role:answer" → looks up model_roles["answer"] → re-resolves
+          - plain string → ("local", string)
+
+        Also checks env var overrides: CRT_MODEL_ROLE_{ROLE} (e.g. CRT_MODEL_ROLE_ANSWER)
+        """
         selected = str(model or "").strip()
+
+        # Role-based resolution
+        if selected.startswith("role:"):
+            role_name = selected.split(":", 1)[1].strip()
+            # Env var override (hot-switchable without restart)
+            env_key = f"CRT_MODEL_ROLE_{role_name.upper()}"
+            resolved = os.getenv(env_key) or self.model_roles.get(role_name, "")
+            if not resolved:
+                return "local", None
+            # Re-resolve the looked-up value (could be "anthropic:..." etc)
+            return self._resolve_target(resolved)
+
+        if selected.startswith("anthropic:"):
+            return "anthropic", selected.split(":", 1)[1].strip() or None
         if selected.startswith("cloud:"):
             return "cloud", selected.split(":", 1)[1].strip() or None
         if selected.startswith("local:"):
             return "local", selected.split(":", 1)[1].strip() or None
         return "local", selected or None
+
+    def _check_anthropic_rate_limit(self) -> bool:
+        """Check if Anthropic requests are within rate limits. Returns True if OK."""
+        if self.rate_limiter is None:
+            return True
+        return self.rate_limiter.can_request()
+
+    def _record_anthropic_usage(self, tokens: int = 0) -> None:
+        """Record an Anthropic API call for rate limiting."""
+        if self.rate_limiter is not None:
+            self.rate_limiter.record_request(tokens)
 
     @staticmethod
     def _normalize_slot(slot: str) -> str:
@@ -271,36 +336,40 @@ class HybridLLMClient:
     ) -> str:
         provider, selected_model = self._resolve_target(model)
 
+        # Anthropic route
+        if provider == "anthropic" and self.anthropic_client is not None:
+            if self._check_anthropic_rate_limit():
+                safe_prompt = self._scrub_prompt_for_cloud(prompt)
+                result = self.anthropic_client.generate(
+                    safe_prompt, system=system, max_tokens=max_tokens,
+                    temperature=temperature, model=selected_model,
+                )
+                self._record_anthropic_usage()
+                return result
+            else:
+                logger.info("[HYBRID] Anthropic rate limited, falling back to local")
+                if self.rate_limiter:
+                    self.rate_limiter.record_fallback()
+                provider = "local"
+
         if provider == "cloud" and self.cloud_available and self.cloud_client is not None:
             safe_prompt = self._scrub_prompt_for_cloud(prompt)
             return self.cloud_client.generate(
-                safe_prompt,
-                system=system,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=stream,
-                model=selected_model,
+                safe_prompt, system=system, max_tokens=max_tokens,
+                temperature=temperature, stream=stream, model=selected_model,
             )
 
         if self.local_client is not None:
             return self.local_client.generate(
-                prompt,
-                system=system,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=stream,
-                model=selected_model,
+                prompt, system=system, max_tokens=max_tokens,
+                temperature=temperature, stream=stream, model=selected_model,
             )
 
-        if provider == "cloud" and self.cloud_client is not None:
+        if self.cloud_client is not None:
             safe_prompt = self._scrub_prompt_for_cloud(prompt)
             return self.cloud_client.generate(
-                safe_prompt,
-                system=system,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=stream,
-                model=selected_model,
+                safe_prompt, system=system, max_tokens=max_tokens,
+                temperature=temperature, stream=stream, model=selected_model,
             )
 
         return "[No LLM available]"
@@ -314,38 +383,53 @@ class HybridLLMClient:
     ) -> str:
         provider, selected_model = self._resolve_target(model)
 
+        # Anthropic route
+        if provider == "anthropic" and self.anthropic_client is not None:
+            if self._check_anthropic_rate_limit():
+                safe_messages = self._scrub_messages_for_cloud(messages)
+                result = self.anthropic_client.chat(
+                    safe_messages, max_tokens=max_tokens,
+                    temperature=temperature, model=selected_model,
+                )
+                self._record_anthropic_usage()
+                return result
+            else:
+                logger.info("[HYBRID] Anthropic rate limited, falling back to local")
+                if self.rate_limiter:
+                    self.rate_limiter.record_fallback()
+                provider = "local"
+
         if provider == "cloud" and self.cloud_available and self.cloud_client is not None:
-            safe_messages: List[Dict[str, str]] = []
-            for item in list(messages or []):
-                if not isinstance(item, dict):
-                    continue
-                safe_item = dict(item)
-                safe_item["content"] = self._scrub_prompt_for_cloud(str(item.get("content") or ""))
-                safe_messages.append(safe_item)
+            safe_messages = self._scrub_messages_for_cloud(messages)
             return self.cloud_client.chat(
-                safe_messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                model=selected_model,
+                safe_messages, max_tokens=max_tokens,
+                temperature=temperature, model=selected_model,
             )
 
         if self.local_client is not None:
             return self.local_client.chat(
-                messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                model=selected_model,
+                messages, max_tokens=max_tokens,
+                temperature=temperature, model=selected_model,
             )
 
-        if provider == "cloud" and self.cloud_client is not None:
+        if self.cloud_client is not None:
             return self.cloud_client.chat(
-                messages,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                model=selected_model,
+                messages, max_tokens=max_tokens,
+                temperature=temperature, model=selected_model,
             )
 
         return "[No LLM available]"
+
+    def _scrub_messages_for_cloud(self, messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Scrub PII from messages before sending to cloud/anthropic."""
+        safe_messages: List[Dict[str, str]] = []
+        for item in list(messages or []):
+            if not isinstance(item, dict):
+                continue
+            safe_item = dict(item)
+            safe_item["content"] = self._scrub_prompt_for_cloud(str(item.get("content") or ""))
+            safe_messages.append(safe_item)
+        return safe_messages
 
     def chat_with_tools(
         self,
@@ -355,13 +439,40 @@ class HybridLLMClient:
         temperature: float = 0.3,
         model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Tool-calling via local OllamaClient — delegates directly."""
-        _provider, selected_model = self._resolve_target(model)
+        """Tool-calling — routes to anthropic, local, or cloud."""
+        provider, selected_model = self._resolve_target(model)
+
+        # Anthropic route — Claude has native tool calling
+        if provider == "anthropic" and self.anthropic_client is not None:
+            if self._check_anthropic_rate_limit():
+                safe_messages = self._scrub_messages_for_cloud(messages)
+                result = self.anthropic_client.chat_with_tools(
+                    safe_messages, tools=tools, max_tokens=max_tokens,
+                    temperature=temperature, model=selected_model,
+                )
+                self._record_anthropic_usage()
+                return result
+            else:
+                logger.info("[HYBRID] Anthropic rate limited for tool call, falling back to local")
+                if self.rate_limiter:
+                    self.rate_limiter.record_fallback()
+
+        # Local route (default)
         if self.local_client is not None and hasattr(self.local_client, "chat_with_tools"):
             return self.local_client.chat_with_tools(
                 messages, tools=tools, max_tokens=max_tokens,
                 temperature=temperature, model=selected_model,
             )
+
+        # Anthropic fallback if local unavailable
+        if self.anthropic_client is not None and self._check_anthropic_rate_limit():
+            result = self.anthropic_client.chat_with_tools(
+                messages, tools=tools, max_tokens=max_tokens,
+                temperature=temperature, model=selected_model,
+            )
+            self._record_anthropic_usage()
+            return result
+
         return {"tool_calls": [], "content": "", "used_tools": False}
 
     def chat_stream(
@@ -371,8 +482,25 @@ class HybridLLMClient:
         temperature: float = 0.7,
         model: Optional[str] = None,
     ):
-        """Stream (token_type, text) tuples — delegates to local client."""
-        _provider, selected_model = self._resolve_target(model)
+        """Stream (token_type, text) tuples — routes to anthropic, local, or cloud."""
+        provider, selected_model = self._resolve_target(model)
+
+        # Anthropic route — Claude supports streaming
+        if provider == "anthropic" and self.anthropic_client is not None:
+            if self._check_anthropic_rate_limit():
+                safe_messages = self._scrub_messages_for_cloud(messages)
+                yield from self.anthropic_client.chat_stream(
+                    safe_messages, max_tokens=max_tokens,
+                    temperature=temperature, model=selected_model,
+                )
+                self._record_anthropic_usage()
+                return
+            else:
+                logger.info("[HYBRID] Anthropic rate limited for stream, falling back to local")
+                if self.rate_limiter:
+                    self.rate_limiter.record_fallback()
+
+        # Local route (default)
         if self.local_client is not None:
             yield from self.local_client.chat_stream(
                 messages, max_tokens=max_tokens, temperature=temperature, model=selected_model
@@ -388,9 +516,12 @@ def create_primary_llm_client(runtime_cfg: Optional[Dict[str, Any]] = None) -> O
     generation_cfg = runtime_cfg.get("generation_stack") if isinstance(runtime_cfg, dict) else {}
     local_cfg = (generation_cfg.get("local") or {}) if isinstance(generation_cfg, dict) else {}
     cloud_cfg = (generation_cfg.get("cloud") or {}) if isinstance(generation_cfg, dict) else {}
+    anthropic_cfg = (generation_cfg.get("anthropic") or {}) if isinstance(generation_cfg, dict) else {}
+    model_roles_cfg = (generation_cfg.get("model_roles") or {}) if isinstance(generation_cfg, dict) else {}
 
     product_mode = str((product_cfg or {}).get("mode") or os.getenv("CRT_PRODUCT_MODE") or "local_only").strip().lower()
 
+    # ── Local client ──────────────────────────────────────────────────
     local_enabled = bool(local_cfg.get("enabled", True)) and _env_bool("CRT_ENABLE_LLM", True)
     local_model = str(os.getenv("CRT_OLLAMA_MODEL") or local_cfg.get("default_model") or "llama3.2:latest").strip()
 
@@ -401,6 +532,7 @@ def create_primary_llm_client(runtime_cfg: Optional[Dict[str, Any]] = None) -> O
         except Exception:
             local_client = None
 
+    # ── Cloud client (OpenAI-compatible) ──────────────────────────────
     cloud_enabled = bool(cloud_cfg.get("enabled", False)) and product_mode == "hybrid_verified"
     cloud_model = str(os.getenv("CRT_CLOUD_MODEL") or cloud_cfg.get("model") or "").strip()
     cloud_api_key_env = str(cloud_cfg.get("api_key_env") or "OPENAI_API_KEY").strip()
@@ -419,17 +551,67 @@ def create_primary_llm_client(runtime_cfg: Optional[Dict[str, Any]] = None) -> O
         if candidate.is_available:
             cloud_client = candidate
 
+    # ── Anthropic client ──────────────────────────────────────────────
+    anthropic_enabled = bool(anthropic_cfg.get("enabled", False))
+    anthropic_model = str(os.getenv("CRT_ANTHROPIC_MODEL") or anthropic_cfg.get("model") or "claude-sonnet-4-6").strip()
+    anthropic_api_key_env = str(anthropic_cfg.get("api_key_env") or "ANTHROPIC_API_KEY").strip()
+    anthropic_timeout = float(anthropic_cfg.get("timeout_seconds") or 120)
+
+    anthropic_client = None
+    if anthropic_enabled and os.getenv(anthropic_api_key_env):
+        AnthropicClientClass = _get_anthropic_client_class()
+        if AnthropicClientClass is not None:
+            try:
+                anthropic_client = AnthropicClientClass(
+                    model=anthropic_model,
+                    api_key_env=anthropic_api_key_env,
+                    timeout_seconds=anthropic_timeout,
+                )
+                logger.info("[HYBRID] Anthropic client initialized: model=%s", anthropic_model)
+            except Exception as e:
+                logger.warning("[HYBRID] Failed to init Anthropic client: %s", e)
+                anthropic_client = None
+        else:
+            logger.info("[HYBRID] anthropic package not installed, skipping Anthropic client")
+
+    # ── Rate limiter ──────────────────────────────────────────────────
+    rate_limiter = None
+    if anthropic_client is not None:
+        rate_limits = anthropic_cfg.get("rate_limits") or {}
+        rpm = int(rate_limits.get("rpm") or os.getenv("CRT_ANTHROPIC_RPM") or 50)
+        tpd = int(rate_limits.get("tpd") or os.getenv("CRT_ANTHROPIC_TPD") or 1_000_000)
+        try:
+            from .rate_limiter import PersonalRateLimiter
+            rate_limiter = PersonalRateLimiter(provider="anthropic", rpm_limit=rpm, tpd_limit=tpd)
+        except Exception as e:
+            logger.warning("[HYBRID] Failed to init rate limiter: %s", e)
+
+    # ── Model roles ───────────────────────────────────────────────────
+    model_roles: Dict[str, str] = {}
+    for role_name, role_model in model_roles_cfg.items():
+        # Env var override: CRT_MODEL_ROLE_ANSWER, CRT_MODEL_ROLE_FAST, etc.
+        env_key = f"CRT_MODEL_ROLE_{str(role_name).upper()}"
+        model_roles[str(role_name)] = str(os.getenv(env_key) or role_model or "").strip()
+    if model_roles:
+        logger.info("[HYBRID] Model roles: %s", model_roles)
+
+    # ── Cloud prompt policy ───────────────────────────────────────────
     policy = CloudPromptPolicy(
         redact_memory_metadata=bool(cloud_cfg.get("redact_memory_metadata", True)),
         max_context_chars=int(cloud_cfg.get("max_context_chars") or 14000),
         fact_allowlist=tuple(str(x).strip() for x in (cloud_cfg.get("fact_allowlist") or []) if str(x).strip()),
         slot_denylist=tuple(str(x).strip() for x in (cloud_cfg.get("slot_denylist") or []) if str(x).strip()),
     )
-    if local_client is None and cloud_client is None:
+
+    if local_client is None and cloud_client is None and anthropic_client is None:
         return None
+
     return HybridLLMClient(
         local_client=local_client,
         cloud_client=cloud_client,
+        anthropic_client=anthropic_client,
         product_mode=product_mode,
         cloud_policy=policy,
+        rate_limiter=rate_limiter,
+        model_roles=model_roles,
     )

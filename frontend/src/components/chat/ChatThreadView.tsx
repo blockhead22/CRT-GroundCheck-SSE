@@ -74,12 +74,14 @@ function StreamingMessage({
   isThinking,
   statusLog,
   thinkingContent,
+  hideTrace,
 }: {
   content: string
   isThinking: boolean
   phase: string | null
   statusLog: string[]
   thinkingContent: string
+  hideTrace?: boolean
 }) {
   const hasContent = Boolean(content)
 
@@ -89,8 +91,8 @@ function StreamingMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Pipeline trace — shown during and after streaming */}
-      <PipelineTrace statuses={statusLog} streaming={!hasContent} />
+      {/* Pipeline trace — hidden when AgentThinkingStrip is active (task routes) */}
+      {!hideTrace && <PipelineTrace statuses={statusLog} streaming={!hasContent} />}
 
       {/* Thinking trace — expandable live reasoning */}
       {isThinking && thinkingContent && (
@@ -592,6 +594,7 @@ export function ChatThreadView(props: {
                           phase={props.streamPhase ?? null}
                           statusLog={props.streamStatusLog ?? []}
                           thinkingContent={props.streamingThinking ?? ''}
+                          hideTrace={Boolean(props.agentThinkingState)}
                         />
                       </motion.div>
                     )}

@@ -6,7 +6,7 @@ $env:CRT_HOST = "127.0.0.1"  # Localhost only — change to 0.0.0.0 ONLY behind 
 $env:CRT_CORS_ORIGINS = "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174"
 $env:CRT_SHARED_MEMORY = "true"
 $env:CRT_ENABLE_LLM = "true"
-$env:CRT_OLLAMA_MODEL = "deepseek-r1:latest"
+if (-not $env:CRT_OLLAMA_MODEL) { $env:CRT_OLLAMA_MODEL = "qwen3:14b" }
 if (-not $env:HF_HUB_OFFLINE) { $env:HF_HUB_OFFLINE = "1" }
 if (-not $env:TRANSFORMERS_OFFLINE) { $env:TRANSFORMERS_OFFLINE = "1" }
 

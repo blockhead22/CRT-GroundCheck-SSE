@@ -123,8 +123,24 @@
     "generation_stack":  {
                              "local":  {
                                            "enabled":  true,
-                                           "default_model":  "deepseek-r1:latest"
+                                           "default_model":  "qwen3:14b"
                                        },
+                             "anthropic":  {
+                                               "enabled":  true,
+                                               "model":  "claude-sonnet-4-6",
+                                               "api_key_env":  "ANTHROPIC_API_KEY",
+                                               "timeout_seconds":  120,
+                                               "rate_limits":  {
+                                                                    "rpm":  50,
+                                                                    "tpd":  1000000
+                                                                }
+                                           },
+                             "model_roles":  {
+                                                 "fast":  "local:qwen3:14b",
+                                                 "reasoning":  "local:qwen3:14b",
+                                                 "tool_loop":  "local:qwen3:14b",
+                                                 "answer":  "local:qwen3:14b"
+                                             },
                              "cloud":  {
                                            "enabled":  false,
                                            "provider":  "openai_compatible",

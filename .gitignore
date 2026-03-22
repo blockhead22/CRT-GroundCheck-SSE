@@ -117,3 +117,6 @@ models/*/checkpoint_final.pt
 # VILT/LoRA model checkpoints (large, reproducible)
 models/vilt_*/
 models/dnnt_*/
+/.claude/worktrees/wonderful-ride/frontend/node_modules
+/.claude/worktrees/wonderful-ride/frontend
+/.claude/worktrees/wonderful-ride
