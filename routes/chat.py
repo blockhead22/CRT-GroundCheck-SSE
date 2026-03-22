@@ -1225,6 +1225,9 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
         has_source = "source" in cols
         has_context = "context" in cols
 
+        # Detect the context column name (CRT uses context_json, older schemas use context)
+        ctx_col = "context_json" if "context_json" in cols else ("context" if "context" in cols else None)
+
         where_parts = ["trust >= 0.3"]
         if has_deprecated:
             where_parts.append("(deprecated IS NULL OR deprecated = 0)")
@@ -1232,8 +1235,9 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
             where_parts.append("source IN ('user', 'USER', 'inferred', 'INFERRED')")
         where_sql = " AND ".join(where_parts)
 
+        ctx_select = f", {ctx_col}" if ctx_col else ""
         rows = conn.execute(
-            f"SELECT text, trust, context FROM memories "
+            f"SELECT text, trust{ctx_select} FROM memories "
             f"WHERE {where_sql} ORDER BY trust DESC LIMIT 100"
         ).fetchall()
         conn.close()
@@ -1252,9 +1256,10 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
             # Skip FACT: prefix duplicates and very short entries
             # Extract slot from context JSON
             slot = "general"
-            if has_context and row["context"]:
+            ctx_raw = row[ctx_col] if ctx_col and ctx_col in row.keys() else None
+            if ctx_raw:
                 try:
-                    ctx = _json.loads(row["context"]) if isinstance(row["context"], str) else {}
+                    ctx = _json.loads(ctx_raw) if isinstance(ctx_raw, str) else {}
                     slot = ctx.get("detected_slot") or ctx.get("slot") or "general"
                 except Exception:
                     pass
