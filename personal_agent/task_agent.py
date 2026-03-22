@@ -1206,11 +1206,64 @@ class CRTTaskAgent:
                 found.append(indicator)
         return found[:5]
 
+    # ------------------------------------------------------------------
+    # Intent-aware endpoint scoring
+    # ------------------------------------------------------------------
+
+    # Maps user intent keywords → URL path fragments that serve that intent.
+    # Higher weight = stronger signal.  Checked in order; first match wins
+    # a base score of 10, additional keyword hits add +3 each.
+    _ENDPOINT_INTENT_KEYWORDS: List[Tuple[Tuple[str, ...], Tuple[str, ...]]] = [
+        # (user message keywords, matching URL path fragments)
+        (("search", "find", "look for", "discover", "interesting"), ("/search",)),
+        (("feed", "timeline", "personali"), ("/feed",)),
+        (("thread", "post", "new post", "latest post", "browse", "trending", "hot", "rising", "new thread"),
+         ("/posts?", "/posts?sort=", "/submolts/")),
+        (("submolt", "communit", "subreddit"), ("/submolts",)),
+        (("comment", "reply", "replies", "discussion"), ("/comments",)),
+        (("notif", "alert", "unread"), ("/notifications", "/home")),
+        (("profile", "account", "me", "my info", "karma", "status"), ("/agents/me", "/agents/status")),
+        (("follow", "following", "follower"), ("/follow", "/feed?filter=following")),
+        (("upvote", "downvote", "vote"), ("/upvote", "/downvote")),
+        (("update", "what's new", "whats new", "new on", "latest", "check"), ("/home", "/feed")),
+    ]
+
+    def _score_endpoint_for_intent(self, url: str, message: str, section_context: str) -> int:
+        """Score how well a GET endpoint matches the user's intent.
+
+        Returns 0 for no match (use as fallback only), higher = better match.
+        ``section_context`` is the ~300 chars of skill.md text before the curl
+        command — typically the markdown heading + description.
+        """
+        msg_lower = message.lower()
+        score = 0
+
+        for keywords, path_fragments in self._ENDPOINT_INTENT_KEYWORDS:
+            keyword_hits = sum(1 for kw in keywords if kw in msg_lower)
+            if keyword_hits == 0:
+                continue
+            # Check if this URL matches any of the path fragments for this intent
+            url_lower = url.lower()
+            for frag in path_fragments:
+                if frag.lower() in url_lower:
+                    score += 10 + (keyword_hits * 3)
+                    break
+
+        # Bonus: section heading keywords that match user message
+        if section_context:
+            ctx_lower = section_context.lower()
+            for word in msg_lower.split():
+                if len(word) > 3 and word in ctx_lower:
+                    score += 1
+
+        return score
+
     def _parse_curl_steps(
         self, content: str, message: str, intent: TaskIntent
     ) -> List[Dict[str, Any]]:
         """
         Deterministically extract API calls from curl examples in skill.md-style docs.
+        For query actions: scores endpoints against user intent and picks the best matches.
         Returns [{tool, input}] or [] if nothing found.
         """
         # Normalise line continuations so flags/URL land on one logical line
@@ -1219,10 +1272,12 @@ class CRTTaskAgent:
         steps: List[Dict[str, Any]] = []
         credential_step_queued = False
         post_count = 0
-        get_count = 0
         _MAX_POST_STEPS = 2  # Cap: registration + one follow-up max
         _MAX_QUERY_GET_STEPS = 2  # Cap GET steps for query actions
         query_only = intent.slots.get("action") == "query"
+
+        # For query actions, collect all candidate GETs with scores, then pick best
+        get_candidates: List[Tuple[int, Dict[str, Any]]] = []  # (score, step_dict)
 
         for m in self._CURL_RE.finditer(normalised):
             flags_str = m.group(1)
@@ -1315,14 +1370,47 @@ class CRTTaskAgent:
                     credential_step_queued = True
 
             elif method in ("GET", ""):
-                # Cap GET steps for query actions to avoid hammering the API
-                if query_only and get_count >= _MAX_QUERY_GET_STEPS:
-                    continue
                 step_input = {"url": url}
                 if headers:
                     step_input["headers"] = headers
-                steps.append({"tool": "http_get_json", "input": step_input})
-                get_count += 1
+
+                if query_only:
+                    # Score this endpoint against user intent instead of grabbing blindly
+                    # Get ~300 chars before this curl command for section context
+                    ctx_start = max(0, m.start() - 300)
+                    section_context = normalised[ctx_start: m.start()]
+                    user_msg = intent.slots.get("raw_message", message)
+                    score = self._score_endpoint_for_intent(url, user_msg, section_context)
+                    get_candidates.append((score, {"tool": "http_get_json", "input": step_input}))
+                    logger.debug(
+                        "[TASK_AGENT] Curl parser: GET candidate score=%d url=%s",
+                        score, url[:80],
+                    )
+                else:
+                    steps.append({"tool": "http_get_json", "input": step_input})
+
+        # For query actions, pick the best-scoring GET endpoints
+        if query_only and get_candidates:
+            # Sort by score descending, deduplicate by URL path, take top N
+            get_candidates.sort(key=lambda x: x[0], reverse=True)
+            seen_paths: set = set()
+            selected: List[Tuple[int, Dict[str, Any]]] = []
+            for score, step_dict in get_candidates:
+                # Deduplicate by base path (strip query params for comparison)
+                url = step_dict["input"].get("url", "")
+                base_path = url.split("?")[0]
+                if base_path in seen_paths:
+                    continue
+                seen_paths.add(base_path)
+                selected.append((score, step_dict))
+                if len(selected) >= _MAX_QUERY_GET_STEPS:
+                    break
+            for score, step_dict in selected:
+                steps.append(step_dict)
+                logger.info(
+                    "[TASK_AGENT] Curl parser: selected GET (score=%d): %s",
+                    score, step_dict["input"].get("url", "")[:80],
+                )
 
         logger.info("[TASK_AGENT] Curl parser found %d steps", len(steps))
         return steps
