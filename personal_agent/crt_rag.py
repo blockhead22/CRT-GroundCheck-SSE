@@ -985,12 +985,14 @@ class CRTEnhancedRAG:
         # Reduced over-fetch multiplier from 5x to 2x since we now filter more efficiently
         candidate_k = max(int(k) * 2, int(k))
         retrieved = self.memory.retrieve_memories(
-            query, 
-            candidate_k, 
+            query,
+            candidate_k,
             min_trust,
             exclude_deprecated=True,
             ledger=self.ledger,
-            excluded_ids=excluded_mem_ids if exclude_contradiction_sources else None
+            excluded_ids=excluded_mem_ids if exclude_contradiction_sources else None,
+            exclude_kinds={"narrative_summary", "narrative_note", "self_model",
+                           "evolution_observation", "evolution_proposal", "synthesis"},
         )
 
         # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
@@ -6295,14 +6297,14 @@ class CRTEnhancedRAG:
             self.memory.store_memory(
                 text=summary_text,
                 confidence=0.6,
-                source=MemorySource.USER,
+                source=MemorySource.SYSTEM,
                 context={
                     "type": "user_input",
-                    "kind": "narrative_summary",
                     "source_text_len": len(text),
                 },
                 user_marked_important=user_marked_important,
                 thread_id=thread_id,
+                kind="narrative_summary",
             )
         except Exception as e:
             log_swallowed_exception("crt_rag._maybe_store_longform_summary.store", e)

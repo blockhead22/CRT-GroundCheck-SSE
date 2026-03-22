@@ -77,6 +77,8 @@ _NON_USER_FACT_KINDS = {
     "evolution_observation",
     "evolution_proposal",
     "narrative_note",
+    "narrative_summary",
+    "self_model",
     "sentiment_contradiction",
     "synthesis",
 }
