@@ -1253,6 +1253,117 @@ RULES:
     _HARD_MAX_BUDGET = 15
     _MAX_CONSECUTIVE_FAILURES = 3
 
+    @staticmethod
+    def _extract_relevant_skill_sections(content: str, action: str, message: str) -> str:
+        """Extract only the API sections relevant to the user's goal.
+
+        Skill.md files are often 30KB+ — sending the whole thing wastes context
+        and causes the LLM to pick early endpoints (registration, setup) instead
+        of the ones that match the user's intent.
+        """
+        if not content or len(content) < 500:
+            return content[:8000]
+
+        msg_lower = message.lower()
+
+        # Split by markdown headers (## sections)
+        sections: List[Tuple[str, str]] = []
+        current_header = ""
+        current_body: List[str] = []
+        for line in content.split("\n"):
+            if line.startswith("## "):
+                if current_header or current_body:
+                    sections.append((current_header, "\n".join(current_body)))
+                current_header = line
+                current_body = []
+            else:
+                current_body.append(line)
+        if current_header or current_body:
+            sections.append((current_header, "\n".join(current_body)))
+
+        # Always include: Base URL, Authentication
+        # For queries: Posts, Feed, Search, Comments, Submolts, Notifications
+        # For writes: Posts (create), Comments (add), Voting
+        # Skip: Register, Heartbeat, Setup, Claim Status
+
+        skip_headers = {
+            "register", "registration", "heartbeat", "set up", "setup",
+            "claim", "install", "crypto", "verification challenge",
+        }
+
+        # Priority sections based on action + message keywords
+        priority_keywords: List[str] = []
+        if action == "query":
+            priority_keywords = ["search", "feed", "home", "post", "submolt",
+                                 "notification", "following", "profile", "comment"]
+        else:
+            priority_keywords = ["post", "comment", "vote", "submolt", "follow"]
+
+        # Extra boost from user message
+        for word in ["thread", "search", "find", "browse", "interesting", "trending",
+                     "hot", "new", "comment", "reply", "post", "feed", "notification"]:
+            if word in msg_lower:
+                priority_keywords.insert(0, word)
+
+        selected: List[str] = []
+        total_chars = 0
+        max_chars = 8000
+
+        # Cap individual section size to prevent one huge section eating the budget
+        _MAX_SECTION = 1800
+
+        # First pass: score and sort sections by priority keyword match
+        scored_sections: List[Tuple[int, str, str]] = []
+        for header, body in sections:
+            header_lower = header.lower()
+            if any(skip in header_lower for skip in skip_headers):
+                continue
+            # Score: earlier position in priority_keywords = higher score
+            score = 0
+            for i, kw in enumerate(priority_keywords):
+                if kw in header_lower:
+                    score = max(score, len(priority_keywords) - i)
+            if score > 0:
+                scored_sections.append((score, header, body))
+
+        # Sort by score descending — most relevant sections first
+        scored_sections.sort(key=lambda x: x[0], reverse=True)
+
+        for _score, header, body in scored_sections:
+            section_text = f"{header}\n{body}"
+            if len(section_text) > _MAX_SECTION:
+                section_text = section_text[:_MAX_SECTION] + "\n[... truncated]"
+            if total_chars + len(section_text) < max_chars:
+                selected.append(section_text)
+                total_chars += len(section_text)
+
+        # Second pass: fill remaining budget with other sections
+        for header, body in sections:
+            header_lower = header.lower()
+            if any(skip in header_lower for skip in skip_headers):
+                continue
+            section_text = f"{header}\n{body}"
+            if any(section_text.startswith(s[:50]) for s in selected):
+                continue
+            if len(section_text) > _MAX_SECTION:
+                section_text = section_text[:_MAX_SECTION] + "\n[... truncated]"
+            if total_chars + len(section_text) < max_chars:
+                selected.append(section_text)
+                total_chars += len(section_text)
+
+        if not selected:
+            return content[:8000]
+
+        # Always prepend base URL info
+        base_url_line = ""
+        for line in content.split("\n")[:50]:
+            if "base url" in line.lower() or "api/v1" in line.lower():
+                base_url_line = line.strip()
+                break
+
+        result = base_url_line + "\n\n" + "\n\n".join(selected) if base_url_line else "\n\n".join(selected)
+        return result[:max_chars]
+
     def _llm_tool_loop(
         self,
         message: str,
@@ -1278,8 +1389,9 @@ RULES:
         if service:
             system_prompt += f"\nService: {service}\nAction: {action}"
 
-        # Build initial messages with skill content
-        skill_snippet = (fetched_content or "")[:8000]
+        # Build initial messages with skill content — extract relevant sections
+        raw_skill = fetched_content or ""
+        skill_snippet = self._extract_relevant_skill_sections(raw_skill, action, message)
         messages: List[Dict[str, Any]] = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Goal: {message}\n\nAPI Documentation:\n{skill_snippet}"},
