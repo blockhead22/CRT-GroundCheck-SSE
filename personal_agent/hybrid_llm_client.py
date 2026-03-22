@@ -347,6 +347,23 @@ class HybridLLMClient:
 
         return "[No LLM available]"
 
+    def chat_with_tools(
+        self,
+        messages: List[Dict[str, Any]],
+        tools: List[Dict[str, Any]],
+        max_tokens: int = 1000,
+        temperature: float = 0.3,
+        model: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Tool-calling via local OllamaClient — delegates directly."""
+        _provider, selected_model = self._resolve_target(model)
+        if self.local_client is not None and hasattr(self.local_client, "chat_with_tools"):
+            return self.local_client.chat_with_tools(
+                messages, tools=tools, max_tokens=max_tokens,
+                temperature=temperature, model=selected_model,
+            )
+        return {"tool_calls": [], "content": "", "used_tools": False}
+
     def chat_stream(
         self,
         messages: List[Dict[str, str]],
