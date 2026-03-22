@@ -1232,6 +1232,11 @@ class CRTTaskAgent:
 
     _TOOL_LOOP_SYSTEM_PROMPT = """You are Aether, executing a task step by step. Think out loud. The user can see your reasoning.
 
+CRITICAL: Focus on exactly what the user asked. Read their goal carefully and pick the API endpoint that best matches their intent.
+- "what's new" / "what's happening" → use the feed/home/timeline endpoint, NOT search
+- "search for X" / "find X" → use the search endpoint with the user's terms
+- "show me my X" → use the user's profile/account endpoint
+
 CONTEXT:
 - You are already registered and authenticated with this service.
 - Your credentials are stored and will be auto-injected into Authorization headers.
@@ -1239,14 +1244,9 @@ CONTEXT:
 - Action type: {action}. For "query" actions, use only GET requests. Do NOT POST unless the user explicitly asked to write/post/comment.
 
 HOW TO WORK:
-1. THINK OUT LOUD before every tool call. Say what you're about to do and why:
-   "Let me check the hot posts to find trending content..."
-   "That post about agent drift has high engagement — let me read the full thread..."
-   "I'll search for threads related to AI memory since that matches your interests..."
-2. Call the tool.
-3. When you get results back, ANALYZE them out loud:
-   "Found 5 posts. The top one has 15 upvotes and is about..."
-   "This thread has 8 comments, mostly discussing..."
+1. THINK OUT LOUD before every tool call. Say what you're about to do and why.
+2. Call the tool. Always use FULL URLs (https://...), never relative paths.
+3. When you get results back, ANALYZE them out loud.
 4. Then decide: do you have enough to answer the user's question, or should you dig deeper?
 5. When done, give a natural summary of what you found.
 
@@ -1456,10 +1456,57 @@ RULES:
                     "metadata": {"step": "tool_loop"},
                 }
 
-            # 3. No tool calls = LLM is done
+            # 3. No tool calls — LLM may be done, or may need a nudge
             if not tool_calls:
-                final_content = llm_content
-                break
+                if tool_call_count == 0:
+                    # Never called a tool at all — accept as final answer
+                    final_content = llm_content
+                    break
+                # Already called tools but stopped — nudge once to continue
+                # (the LLM sometimes summarizes prematurely after 1 call)
+                messages.append({"role": "assistant", "content": llm_content or ""})
+                remaining = budget - tool_call_count
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"You still have {remaining} tool calls remaining. "
+                        f"Look at the results above — do you have ENOUGH information to fully answer the user's question? "
+                        f"If you need more data (details on specific items, related endpoints, etc.), call another tool now. "
+                        f"If you truly have enough, provide your final summary."
+                    ),
+                })
+                # Give LLM one more chance — if it still doesn't call tools, accept
+                try:
+                    retry_result = self._llm.chat_with_tools(
+                        messages=messages,
+                        tools=available_tools,
+                        max_tokens=1000,
+                        temperature=0.1,
+                        model=fast_model,
+                    )
+                except Exception:
+                    final_content = llm_content
+                    break
+
+                retry_tools = retry_result.get("tool_calls", [])
+                retry_content = retry_result.get("content", "")
+
+                if retry_content:
+                    yield {
+                        "type": "agent_thinking_token",
+                        "content": retry_content,
+                        "metadata": {"step": "tool_loop"},
+                    }
+
+                if not retry_tools:
+                    # LLM confirmed it's done
+                    final_content = retry_content or llm_content
+                    break
+
+                # LLM wants to continue — inject its response and tool calls
+                # back into the normal flow
+                tool_calls = retry_tools
+                llm_content = retry_content
 
             # 4. Append assistant message to history
             messages.append({"role": "assistant", "content": llm_content or ""})
@@ -1515,6 +1562,27 @@ RULES:
                     # The caller (run_stream) will persist state and resume
                     # after user confirmation. Full resume support is Phase 2.
                     return (steps, "Write action requires confirmation.")
+
+                # Fix relative URLs — LLMs often emit /api/v1/... without the host
+                if name in ("http_get_json", "http_post"):
+                    url = args.get("url", "")
+                    if url and not url.startswith(("http://", "https://")):
+                        # Try to resolve from known service base
+                        svc_base = _KNOWN_SERVICES.get(service, {}).get("api_base", "")
+                        if svc_base:
+                            # Strip overlapping path prefix: /api/v1/posts + base https://x.com/api/v1 → https://x.com/api/v1/posts
+                            from urllib.parse import urlparse
+                            base_path = urlparse(svc_base).path.rstrip("/")
+                            if url.startswith(base_path):
+                                url = svc_base.rstrip("/") + url[len(base_path):]
+                            elif url.startswith("/"):
+                                # Absolute path but no overlap — prepend scheme+host
+                                parsed = urlparse(svc_base)
+                                url = f"{parsed.scheme}://{parsed.netloc}{url}"
+                            else:
+                                url = svc_base.rstrip("/") + "/" + url
+                            args["url"] = url
+                            logger.info("[TOOL_LOOP] Fixed relative URL → %s", url)
 
                 # Credential injection
                 self._inject_credentials(dict(args), task_context, thread_id)
@@ -1583,10 +1651,10 @@ RULES:
                 messages.append({
                     "role": "user",
                     "content": (
-                        f"You've used {tool_call_count}/{budget} tool calls. "
-                        f"Analyze the results above. Do you have enough to answer the user's question? "
-                        f"If not, call another tool. If yes, provide your final summary. "
-                        f"Think out loud about what you found and what to do next."
+                        f"Results received. You've used {tool_call_count}/{budget} tool calls ({remaining} remaining). "
+                        f"Think out loud: what did you learn? Is this enough to fully answer the user's question? "
+                        f"If a list was returned, consider fetching details on the most relevant items. "
+                        f"If you have enough, give your final answer now."
                     ),
                 })
 

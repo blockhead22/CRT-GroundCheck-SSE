@@ -30,9 +30,11 @@ export type AgentThinkingState = {
   // Set once plan_ready fires
   plan?: AgentPlanStep[]
   // Accumulate as tool events arrive
-  toolSteps: AgentStep[]
+  toolSteps: (AgentStep & { reasoning?: string })[]
   // Tracks which step_index is actively running
   activeStepIndex?: number
+  // Reasoning tokens waiting to be attached to the next tool_start
+  pendingReasoning?: string
   // Set once validate_result fires
   validated?: boolean
   // Set once drafting starts
@@ -212,12 +214,18 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
           </div>
         )}
 
-        {/* Tool execution steps */}
+        {/* Tool execution steps — with reasoning before each */}
         {state.toolSteps.map((step) => {
           const isRunning = step.status === 'running' || step.step_index === state.activeStepIndex
           const isExpanded = expandedStep === step.step_index
           return (
             <div key={step.step_index}>
+              {/* Reasoning text — shown before the tool call it explains */}
+              {step.reasoning && (
+                <div className="ml-5 mb-1 mt-1 text-[11px] leading-relaxed" style={{ color: '#a09880' }}>
+                  {step.reasoning.trim()}
+                </div>
+              )}
               <button
                 className="w-full flex items-center gap-2 text-[11px] font-mono text-left rounded px-1 py-[2px] transition-colors hover:bg-white/4"
                 onClick={() => setExpandedStep(isExpanded ? null : step.step_index)}
@@ -257,6 +265,13 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
             </div>
           )
         })}
+
+        {/* Pending reasoning — LLM is thinking before next tool call */}
+        {state.pendingReasoning && (
+          <div className="ml-5 mt-1 text-[11px] leading-relaxed" style={{ color: '#a09880' }}>
+            {state.pendingReasoning.trim()}
+          </div>
+        )}
 
         {/* Validate row */}
         {state.validated && (

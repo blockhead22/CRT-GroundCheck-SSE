@@ -76,6 +76,8 @@ _NON_USER_FACT_KINDS = {
     "evolution_observation",
     "evolution_proposal",
     "narrative_note",
+    "sentiment_contradiction",
+    "synthesis",
 }
 
 _ALLOWED_MEMORY_KINDS = {
@@ -1276,7 +1278,10 @@ class CRTMemorySystem:
 
         # Cache extracted hard facts in memory_facts table for fast slot lookups.
         # This avoids re-running regex on all memories at query time.
-        if extraction_method in ('regex', 'hybrid'):
+        # Skip fact extraction for narrative/system kinds to prevent pollution —
+        # these contain LLM-generated summaries that re-extract user facts with
+        # wrong source attribution.
+        if extraction_method in ('regex', 'hybrid') and kind not in _NON_USER_FACT_KINDS:
             try:
                 from .fact_slots import extract_fact_slots
                 hard_facts = extract_fact_slots(text)

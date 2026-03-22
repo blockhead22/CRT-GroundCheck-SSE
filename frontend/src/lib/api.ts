@@ -411,6 +411,7 @@ export type AgentStep = {
   duration_ms?: number
   status: 'pending' | 'running' | 'ok' | 'error' | 'queued'
   error?: string
+  reasoning?: string
 }
 
 export type StreamEvent = {
