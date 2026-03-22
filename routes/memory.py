@@ -235,14 +235,23 @@ def consolidate_profile(request: Request):
 
 
 @router.post("/api/profile/set_name")
-def set_profile_name(req: ChatSendRequest, request: Request) -> ChatSendResponse:
-    """Set profile name by sending a FACT message through CRT.
-
-    Delegates to the main chat endpoint on the app — this ensures proper
-    CRT processing.
-    """
-    from crt_api import chat_send
-    return chat_send(req)
+def set_profile_name(req: ChatSendRequest, request: Request):
+    """Set profile name by storing it as a FACT memory."""
+    engine = _get_engine(request, req.thread_id or "default")
+    try:
+        text = req.message.strip() if req.message else ""
+        if not text:
+            return {"ok": False, "error": "No name provided"}
+        engine.memory.store_memory(
+            text=f"FACT: name = {text}",
+            confidence=1.0,
+            source="user",
+            context={"thread_id": req.thread_id or "default", "kind": "identity"},
+        )
+        return {"ok": True, "name": text}
+    except Exception as e:
+        logger.error(f"[PROFILE] Failed to set name: {e}")
+        return {"ok": False, "error": str(e)}
 
 
 class _SetFactsRequest(BaseModel):

@@ -1074,10 +1074,6 @@ def create_app() -> FastAPI:
 
     docs_dir = root / "docs"
     doc_map: Dict[str, Dict[str, Any]] = {
-        # Mirrors the Streamlit dashboard docs tabs.
-        "architecture": {"title": "CRT System Architecture", "kind": "docs", "path": docs_dir / "CRT_SYSTEM_ARCHITECTURE.md"},
-        "faq": {"title": "CRT FAQ", "kind": "docs", "path": docs_dir / "CRT_FAQ.md"},
-        "functional_spec": {"title": "CRT Functional Spec", "kind": "docs", "path": docs_dir / "CRT_FUNCTIONAL_SPEC.md"},
         # Developer documentation — architecture, internals, and guides.
         "sys_architecture": {"title": "System Architecture", "kind": "guide", "path": docs_dir / "ARCHITECTURE.md"},
         "request_lifecycle": {"title": "How a Request Flows Through CRT", "kind": "guide", "path": docs_dir / "REQUEST_LIFECYCLE.md"},
@@ -1368,6 +1364,33 @@ def create_app() -> FastAPI:
                 logger.info(f"[STARTUP] Self-knowledge already seeded in {len(thread_dbs)} DBs")
         except Exception as e:
             logger.warning(f"[STARTUP] Failed to seed self-knowledge: {e}")
+
+        # Initialize cloud feature service (optional — degrades gracefully)
+        try:
+            from personal_agent.cloud_features import init_cloud_feature_service
+            _cloud_openai = None
+            _cloud_cookie = None
+            _oai_key = os.getenv("OPENAI_API_KEY", "").strip()
+            if _oai_key:
+                from personal_agent.hybrid_llm_client import OpenAICompatibleClient
+                _cloud_openai = OpenAICompatibleClient(
+                    model="gpt-4o-mini",
+                    api_key_env="OPENAI_API_KEY",
+                )
+            _claude_cookie = os.getenv("CLAUDE_SESSION_COOKIE", "").strip()
+            if _claude_cookie:
+                try:
+                    from tests.cloud_providers.providers import CookieProvider
+                    _cloud_cookie = CookieProvider()
+                except Exception as _cookie_err:
+                    logger.debug("[STARTUP] CookieProvider not available: %s", _cookie_err)
+            init_cloud_feature_service(
+                openai_client=_cloud_openai,
+                cookie_session=_cloud_cookie,
+            )
+            logger.info("[STARTUP] Cloud feature service initialized")
+        except Exception as e:
+            logger.info("[STARTUP] Cloud feature service not initialized (non-fatal): %s", e)
 
         # Schedule periodic session cleanup (every 6 hours)
         def _session_cleanup_worker():

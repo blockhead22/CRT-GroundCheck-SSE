@@ -8,19 +8,6 @@ type DocTab = 'architecture' | 'faq' | 'functional_spec' | 'reference' | 'guide'
 
 const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: string }> }> = [
   {
-    heading: 'Getting Started',
-    items: [
-      { id: 'architecture', label: 'Architecture' },
-      { id: 'faq', label: 'FAQ' },
-    ],
-  },
-  {
-    heading: 'Specification',
-    items: [
-      { id: 'functional_spec', label: 'Functional Spec' },
-    ],
-  },
-  {
     heading: 'Developer Guide',
     items: [
       { id: 'guide', label: 'Guides' },
@@ -227,7 +214,7 @@ const docsMdComponents = {
 export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
   const [docs, setDocs] = useState<Array<{ id: string; title: string; kind: string }>>([])
   const [activeDocId, setActiveDocId] = useState<string>('architecture')
-  const [tab, setTab] = useState<DocTab>('architecture')
+  const [tab, setTab] = useState<DocTab>('guide')
   const [md, setMd] = useState<string>('')
   const [title, setTitle] = useState<string>('')
   const [error, setError] = useState<string | null>(null)

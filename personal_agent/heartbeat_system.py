@@ -683,24 +683,64 @@ Output ONLY valid JSON, nothing else."""
             logger.debug("[SELF_REFLECTION] JSON parse failed: %s | raw=%s", parse_exc, raw[:200])
             return
 
+        # ── cloud reflection validation (optional) ─────────────────────────
+        _cloud_reflection_skip = False
+        try:
+            import auth as _auth_mod_refl
+            # Use user_id=1 (single-user default) for heartbeat context
+            _cloud_refl_enabled = str(
+                _auth_mod_refl.get_user_setting(1, "cloud_reflection_validation", "false")
+            ).lower() in ("true", "1", "yes")
+            if _cloud_refl_enabled:
+                from personal_agent.cloud_features import get_cloud_feature_service
+                _cloud_svc_refl = get_cloud_feature_service()
+                if _cloud_svc_refl is not None:
+                    # Build evidence list from the signals gathered above
+                    _evidence_for_cloud = []
+                    for gf in gate_fails_lines:
+                        _evidence_for_cloud.append({"type": "gate_fail", "detail": gf})
+                    for nf in negative_feedback_lines:
+                        _evidence_for_cloud.append({"type": "negative_feedback", "detail": nf})
+                    for td in trust_delta_lines:
+                        _evidence_for_cloud.append({"type": "trust_delta", "detail": td})
+                    if open_contradictions:
+                        _evidence_for_cloud.append({"type": "open_contradictions", "count": open_contradictions})
+
+                    _proposed = {k: str(v) for k, v in data.items() if k != "notable_events" and v}
+                    _validation = _cloud_svc_refl.validate_reflection(
+                        evidence=_evidence_for_cloud,
+                        proposed_update=_proposed,
+                    )
+                    if _validation and not _validation.get("valid", True):
+                        _cloud_reflection_skip = True
+                        logger.info(
+                            "[CLOUD_REFLECTION] Cloud rejected self-model update: %s",
+                            _validation.get("concerns", "unspecified"),
+                        )
+        except Exception as _cloud_refl_err:
+            logger.debug("[CLOUD_REFLECTION] Cloud validation failed (non-fatal): %s", _cloud_refl_err)
+
         # ── update self-model slots ──────────────────────────────────────────
         last_snapshot = self_model.get_last_snapshot()
         new_snapshot: Dict[str, Any] = {}
         delta: Dict[str, str] = {}
 
         from personal_agent.self_model import SELF_MODEL_SLOTS
-        for slot in SELF_MODEL_SLOTS:
-            value = str(data.get(slot) or "").strip()
-            if not value or value == "(not yet set)":
-                continue
-            # Compute delta from last snapshot
-            old_val = last_snapshot.get(slot, "")
-            if old_val and old_val != value:
-                delta[slot] = f"{old_val[:60]} → {value[:60]}"
-            new_snapshot[slot] = value
-            # Severity-weighted trust: use negative feedback density as evidence quality
-            trust = max(0.35, min(0.80, 0.55 + len(negative_feedback_lines) * 0.03))
-            self_model.update_slot(slot, value, trust=trust, thread_id=thread_id)
+        if _cloud_reflection_skip:
+            logger.info("[SELF_REFLECTION] Skipping self-model update (cloud validation rejected)")
+        else:
+            for slot in SELF_MODEL_SLOTS:
+                value = str(data.get(slot) or "").strip()
+                if not value or value == "(not yet set)":
+                    continue
+                # Compute delta from last snapshot
+                old_val = last_snapshot.get(slot, "")
+                if old_val and old_val != value:
+                    delta[slot] = f"{old_val[:60]} → {value[:60]}"
+                new_snapshot[slot] = value
+                # Severity-weighted trust: use negative feedback density as evidence quality
+                trust = max(0.35, min(0.80, 0.55 + len(negative_feedback_lines) * 0.03))
+                self_model.update_slot(slot, value, trust=trust, thread_id=thread_id)
 
         # ── write checkpoint ─────────────────────────────────────────────────
         notable = data.get("notable_events") or []

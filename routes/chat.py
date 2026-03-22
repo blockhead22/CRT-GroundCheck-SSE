@@ -2790,6 +2790,46 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         response_type=str(result.get("response_type") or ""),
     )
 
+    # ====== CLOUD SLOT CLASSIFICATION (optional) ======
+    # If local fact extraction couldn't classify a slot, try cloud classification.
+    try:
+        _local_slots = result.get("slots_extracted") or result.get("facts") or {}
+        if not _local_slots or (isinstance(_local_slots, dict) and not _local_slots):
+            import auth as _auth_mod
+            _uid_for_cloud = resolve_user_id(authorization) if 'authorization' in dir() else uid
+            _uid_int = int(_uid_for_cloud) if _uid_for_cloud else 1
+            _cloud_slot_enabled = str(
+                _auth_mod.get_user_setting(_uid_int, "cloud_slot_classification", "false")
+            ).lower() in ("true", "1", "yes")
+            if _cloud_slot_enabled:
+                from personal_agent.cloud_features import get_cloud_feature_service
+                _cloud_svc = get_cloud_feature_service()
+                if _cloud_svc is not None:
+                    # Gather existing slot names from memory for context
+                    _existing_slots = []
+                    try:
+                        _existing_slots = list(
+                            (extract_fact_slots(effective_message) or {}).keys()
+                        ) or []
+                    except Exception:
+                        pass
+                    _cloud_result = _cloud_svc.classify_slot(
+                        effective_message, _existing_slots
+                    )
+                    if _cloud_result and _cloud_result.get("contains_fact"):
+                        _cloud_slot = _cloud_result.get("slot_name")
+                        _cloud_value = _cloud_result.get("value")
+                        if _cloud_slot and _cloud_value:
+                            result.setdefault("slots_extracted", {})
+                            if isinstance(result["slots_extracted"], dict):
+                                result["slots_extracted"][_cloud_slot] = _cloud_value
+                            logger.info(
+                                "[CLOUD_SLOT] Cloud classified: %s=%s",
+                                _cloud_slot, str(_cloud_value)[:60],
+                            )
+    except Exception as _cloud_slot_err:
+        logger.debug("[CLOUD_SLOT] Cloud slot classification failed (non-fatal): %s", _cloud_slot_err)
+
     # ====== CRT-AS-CRITIC: Post-generation verification ======
     # Verify the draft answer against stored memories using GroundCheck (~1ms).
     # This replaces unreliable LLM self-critique with external truth checking.
@@ -2849,6 +2889,45 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         detail=str((critic_meta or {}).get("verdict") or "no_critic"),
         gates_passed=bool(result.get("gates_passed")),
     )
+
+    # ====== CLOUD NLI CONTRADICTION CHECK (optional) ======
+    # If the CRT critic returned SOFT_FAIL (uncertain confidence 0.4-0.7),
+    # escalate to cloud NLI for a definitive answer.
+    try:
+        _critic_confidence = float((critic_meta or {}).get("confidence") or 0.0)
+        _critic_verdict_str = str((critic_meta or {}).get("verdict") or "")
+        if _critic_verdict_str == "soft_fail" and 0.4 <= _critic_confidence <= 0.7:
+            import auth as _auth_mod_nli
+            _uid_for_nli = resolve_user_id(authorization) if 'authorization' in dir() else uid
+            _uid_int_nli = int(_uid_for_nli) if _uid_for_nli else 1
+            _cloud_nli_enabled = str(
+                _auth_mod_nli.get_user_setting(_uid_int_nli, "cloud_nli_contradiction", "false")
+            ).lower() in ("true", "1", "yes")
+            if _cloud_nli_enabled:
+                from personal_agent.cloud_features import get_cloud_feature_service
+                _cloud_svc_nli = get_cloud_feature_service()
+                if _cloud_svc_nli is not None:
+                    # Extract the contradicting facts from critic metadata
+                    _contradictions = (critic_meta or {}).get("contradictions") or []
+                    _fact_a = effective_message
+                    _fact_b = _contradictions[0] if _contradictions else str(result.get("answer", ""))[:200]
+                    _nli_result = _cloud_svc_nli.check_contradiction(_fact_a, _fact_b)
+                    if _nli_result:
+                        _nli_relation = str(_nli_result.get("relation") or "").lower()
+                        if _nli_relation == "contradiction":
+                            # Cloud confirms contradiction — upgrade to hard fail
+                            result["gates_passed"] = False
+                            result["gate_reason"] = "cloud_nli_contradiction"
+                            result["contradiction_detected"] = True
+                            logger.info("[CLOUD_NLI] Cloud confirmed contradiction — upgraded to hard fail")
+                        elif _nli_relation in ("entailment", "neutral"):
+                            # Cloud says no contradiction — upgrade to pass
+                            result["gates_passed"] = True
+                            result.pop("gate_reason", None)
+                            result["contradiction_detected"] = False
+                            logger.info("[CLOUD_NLI] Cloud cleared contradiction — upgraded to pass")
+    except Exception as _cloud_nli_err:
+        logger.debug("[CLOUD_NLI] Cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
 
     # ── Gate telemetry emission ──────────────────────────────────────────────
     try:

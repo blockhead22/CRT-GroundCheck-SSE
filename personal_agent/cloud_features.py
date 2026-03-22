@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
+from personal_agent.cloud_usage_logger import get_cloud_usage_logger
+
 # Re-use the structured prompts from the test harness
 from tests.cloud_providers.prompts import (
     slot_classification_prompt,
@@ -129,10 +131,16 @@ class CloudFeatureService:
         except Exception:
             return False
 
-    def _call_openai(self, system: str, prompt: str, max_tokens: int = 300) -> Optional[Dict[str, Any]]:
+    def _call_openai(
+        self, system: str, prompt: str, max_tokens: int = 300, *, feature: str = "unknown",
+    ) -> Optional[Dict[str, Any]]:
         """Call the OpenAI-compatible client and parse JSON response."""
         if not self._openai_available():
             return None
+        usage_logger = get_cloud_usage_logger()
+        full_prompt = f"{system}\n{prompt}"
+        t0 = time.time()
+        raw: Optional[str] = None
         try:
             raw = self.openai.generate(
                 prompt=prompt,
@@ -141,7 +149,13 @@ class CloudFeatureService:
                 temperature=0.3,
                 model="gpt-4o-mini",
             )
+            latency = int((time.time() - t0) * 1000)
             if not raw or raw.startswith("[Cloud LLM"):
+                usage_logger.log(
+                    provider="openai", feature=feature, model="gpt-4o-mini",
+                    prompt=full_prompt, response=raw or "", latency_ms=latency,
+                    success=False, error_message="Empty or placeholder response",
+                )
                 return None
             # Strip markdown fences if present
             text = raw.strip()
@@ -149,30 +163,73 @@ class CloudFeatureService:
                 lines = text.split("\n")
                 lines = [l for l in lines if not l.strip().startswith("```")]
                 text = "\n".join(lines).strip()
-            return json.loads(text)
+            parsed = json.loads(text)
+            usage_logger.log(
+                provider="openai", feature=feature, model="gpt-4o-mini",
+                prompt=full_prompt, response=raw, latency_ms=latency, success=True,
+            )
+            return parsed
         except (json.JSONDecodeError, Exception) as e:
+            latency = int((time.time() - t0) * 1000)
+            usage_logger.log(
+                provider="openai", feature=feature, model="gpt-4o-mini",
+                prompt=full_prompt, response=raw or "", latency_ms=latency,
+                success=False, error_message=str(e),
+            )
             logger.warning("[CLOUD] OpenAI call failed: %s", e)
             return None
 
-    def _call_cookie(self, system: str, prompt: str, max_tokens: int = 300) -> Optional[Dict[str, Any]]:
+    def _call_cookie(
+        self, system: str, prompt: str, max_tokens: int = 300, *, feature: str = "unknown",
+    ) -> Optional[Dict[str, Any]]:
         """Call the Cookie (Claude session) provider and parse JSON response."""
         if not self._cookie_available():
             return None
+        usage_logger = get_cloud_usage_logger()
+        full_prompt = f"{system}\n{prompt}"
+        t0 = time.time()
+        raw_content: str = ""
         try:
             result = self.cookie.complete(system, prompt, max_tokens=max_tokens)
+            latency = int((time.time() - t0) * 1000)
+            raw_content = getattr(result, "content", "") or ""
             if result.error:
+                usage_logger.log(
+                    provider="claude_subscription", feature=feature,
+                    model="claude-sonnet-4-5", prompt=full_prompt,
+                    response=raw_content, latency_ms=latency,
+                    success=False, error_message=str(result.error),
+                )
                 logger.warning("[CLOUD] Cookie call failed: %s", result.error)
                 return None
             if result.parsed is not None:
+                usage_logger.log(
+                    provider="claude_subscription", feature=feature,
+                    model="claude-sonnet-4-5", prompt=full_prompt,
+                    response=raw_content, latency_ms=latency, success=True,
+                )
                 return result.parsed
             # Try manual parse
-            text = result.content.strip()
+            text = raw_content.strip()
             if text.startswith("```"):
                 lines = text.split("\n")
                 lines = [l for l in lines if not l.strip().startswith("```")]
                 text = "\n".join(lines).strip()
-            return json.loads(text)
+            parsed = json.loads(text)
+            usage_logger.log(
+                provider="claude_subscription", feature=feature,
+                model="claude-sonnet-4-5", prompt=full_prompt,
+                response=raw_content, latency_ms=latency, success=True,
+            )
+            return parsed
         except (json.JSONDecodeError, Exception) as e:
+            latency = int((time.time() - t0) * 1000)
+            usage_logger.log(
+                provider="claude_subscription", feature=feature,
+                model="claude-sonnet-4-5", prompt=full_prompt,
+                response=raw_content, latency_ms=latency,
+                success=False, error_message=str(e),
+            )
             logger.warning("[CLOUD] Cookie call failed: %s", e)
             return None
 
@@ -201,7 +258,7 @@ class CloudFeatureService:
             return None
 
         system, prompt = slot_classification_prompt(statement, existing_slots)
-        result = self._call_openai(system, prompt)
+        result = self._call_openai(system, prompt, feature="slot_classification")
 
         if result is not None:
             self._track_usage("slot_classification", est_tokens=250, cost=0.000075)
@@ -230,7 +287,7 @@ class CloudFeatureService:
             return None
 
         system, prompt = nli_contradiction_prompt(fact_a, fact_b)
-        result = self._call_openai(system, prompt)
+        result = self._call_openai(system, prompt, feature="nli_contradiction")
 
         if result is not None:
             self._track_usage("nli_contradiction", est_tokens=200, cost=0.00006)
@@ -266,7 +323,7 @@ class CloudFeatureService:
         system, prompt = reflection_validation_prompt(evidence, proposed_update)
 
         # Try Tier 2 first (Claude via cookie session — better at nuanced reasoning)
-        result = self._call_cookie(system, prompt, max_tokens=500)
+        result = self._call_cookie(system, prompt, max_tokens=500, feature="reflection_validation")
         if result is not None:
             self._track_usage("reflection_validation", est_tokens=400, cost=0.0)
             self._record_daily_call("reflection_validation")
@@ -274,7 +331,7 @@ class CloudFeatureService:
             return result
 
         # Fall back to Tier 1 (OpenAI)
-        result = self._call_openai(system, prompt, max_tokens=500)
+        result = self._call_openai(system, prompt, max_tokens=500, feature="reflection_validation")
         if result is not None:
             self._track_usage("reflection_validation", est_tokens=400, cost=0.0002)
             self._record_daily_call("reflection_validation")

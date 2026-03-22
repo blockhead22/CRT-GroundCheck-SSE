@@ -263,3 +263,56 @@ def auth_cloud_usage(authorization: Optional[str] = Header(None)):
     except Exception as e:
         return {"ok": True, "usage": {}, "message": str(e)}
 
+
+@router.get("/cloud-usage-history")
+def auth_cloud_usage_history(
+    authorization: Optional[str] = Header(None),
+    limit: int = 50,
+    feature: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """Return the last N cloud usage entries from SQLite, with optional filters.
+
+    Query params:
+        limit: max rows (1-500, default 50)
+        feature: filter by feature name (slot_classification, nli_contradiction, reflection_validation)
+        start_date: ISO date lower bound (e.g. 2026-03-22)
+        end_date: ISO date upper bound (e.g. 2026-03-22)
+    """
+    _get_user_from_token(authorization)  # auth check
+
+    try:
+        from personal_agent.cloud_usage_logger import get_cloud_usage_logger
+        ul = get_cloud_usage_logger()
+        entries = ul.get_history(
+            limit=limit,
+            feature=feature,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        return {"ok": True, "entries": entries, "count": len(entries)}
+    except Exception as e:
+        return {"ok": False, "entries": [], "count": 0, "error": str(e)}
+
+
+@router.get("/cloud-usage-summary")
+def auth_cloud_usage_summary(
+    authorization: Optional[str] = Header(None),
+    date: Optional[str] = None,
+):
+    """Return aggregated daily summary of cloud usage.
+
+    Query params:
+        date: ISO date string (e.g. 2026-03-22). Defaults to today UTC.
+    """
+    _get_user_from_token(authorization)  # auth check
+
+    try:
+        from personal_agent.cloud_usage_logger import get_cloud_usage_logger
+        ul = get_cloud_usage_logger()
+        summary = ul.get_daily_summary(date_str=date)
+        return {"ok": True, "summary": summary}
+    except Exception as e:
+        return {"ok": False, "summary": {}, "error": str(e)}
+

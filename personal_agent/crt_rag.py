@@ -6018,6 +6018,30 @@ class CRTEnhancedRAG:
         # Do not append provenance footers into the user-visible answer text; the UI can
         # render provenance using prompt/retrieved memories.
         final_answer = candidate_output
+
+        # ── NEW CONTRADICTION DISCLOSURE ─────────────────────────────────
+        # If we JUST detected a contradiction in THIS message (not a pre-existing one),
+        # override the response to surface the conflict instead of blindly accepting.
+        if contradiction_detected and contradiction_entry is not None and selected_prev is not None:
+            old_trust = float(getattr(selected_prev, 'confidence', 0.0))
+            new_trust = float(getattr(user_memory, 'confidence', 0.0)) if user_memory else 0.7
+            # Only override if the existing memory has meaningfully higher trust
+            if old_trust >= 0.8:
+                old_text = selected_prev.text[:200]
+                new_text = user_query[:200]
+                final_answer = (
+                    f"I noticed a conflict with what I already know.\n\n"
+                    f"Previously stored (trust {old_trust:.0%}): {old_text}\n"
+                    f"You just said: {new_text}\n\n"
+                    f"Which one is correct? I want to make sure I have this right."
+                )
+                gates_passed = False
+                gate_reason = "new_contradiction_disclosure"
+                response_type = "speech"
+                logger.info(
+                    f"[CONTRADICTION_OVERRIDE] Overrode response — old trust={old_trust:.2f}, "
+                    f"new assertion conflicts with stored fact"
+                )
         
         # SPRINT 1: Force append caveats when contradictions exist
         # This ensures caveat violations are reduced to 0
