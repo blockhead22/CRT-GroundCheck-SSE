@@ -54,7 +54,8 @@ _KNOWN_SERVICE_RE = re.compile(
 # Write-action verbs that imply mutating the service (post, update, delete, …)
 _WRITE_VERB_RE = re.compile(
     r"\b(post|publish|send|submit|create|add|update|edit|change|delete|remove|"
-    r"register|sign\s+up|join|follow|unfollow|like|reply)\b",
+    r"register|sign\s+up|join|follow|unfollow|like|reply|mark|"
+    r"dismiss|clear|archive|mute|unmute|block|unblock|pin|unpin)\b",
     re.IGNORECASE,
 )
 
@@ -119,7 +120,8 @@ _RESPONSE_FIELD_INDICATORS = (
 # Service action verbs (for credential-store-based service detection)
 _SERVICE_WRITE_RE = re.compile(
     r"\b(post|publish|send|submit|create|add|update|edit|change|delete|remove|"
-    r"register|sign\s+up|join|follow|unfollow|like|reply|write)\b",
+    r"register|sign\s+up|join|follow|unfollow|like|reply|write|mark|"
+    r"dismiss|clear|archive|mute|unmute|block|unblock|pin|unpin)\b",
     re.IGNORECASE,
 )
 _SERVICE_READ_RE = re.compile(
@@ -1082,8 +1084,8 @@ class CRTTaskAgent:
         # ── 6. Generate answer (streaming with thinking tokens) ───────────
         yield {"type": "status", "content": "drafting response"}
         if llm_loop_final_content:
-            # LLM tool loop already synthesized an answer
-            answer = llm_loop_final_content
+            # LLM tool loop already synthesized an answer — filter reasoning
+            answer = self._filter_reasoning_from_content(llm_loop_final_content)
             yield {"type": "token", "content": answer}
         elif intent.slots.get("_no_endpoint"):
             # Service recognized from credentials but no API endpoint stored.
@@ -2671,6 +2673,75 @@ RULES:
                 f"{json.dumps(active_task.get('context', {}), indent=2)}\n[End]"
             )
         return "\n\n".join(context_parts)
+
+    # ------------------------------------------------------------------
+    # Reasoning filter for tool loop output
+    # ------------------------------------------------------------------
+
+    _TOOL_LOOP_REASONING_PREFIXES = (
+        "i have enough",
+        "the information from",
+        "the results show",
+        "the data indicates",
+        "the current results",
+        "the initial tool call",
+        "the dashboard data",
+        "based on the",
+        "this suggests",
+        "this fulfills",
+        "no further tool",
+        "no specific request",
+        "since the user",
+        "since no specific",
+        "i've explored",
+        "i've retrieved",
+        "the search returned",
+        "additional tool calls",
+        "with the provided data",
+        "let me ",
+        "no further tool calls",
+        "the api documentation",
+        "i'll summarize",
+        "i will summarize",
+    )
+
+    def _filter_reasoning_from_content(self, text: str) -> str:
+        """Strip internal reasoning paragraphs from tool loop output.
+
+        The LLM often produces meta-reasoning like:
+          "I have enough information to answer the user's question..."
+          "The initial tool call provided a comprehensive overview..."
+          "This fulfills the goal of checking..."
+          "Final summary: <actual useful content>"
+
+        This method keeps only the user-facing content.
+        """
+        if not text or not text.strip():
+            return text
+
+        paragraphs = text.split("\n\n")
+        kept = []
+        for para in paragraphs:
+            stripped = para.strip()
+            if not stripped:
+                continue
+            first_line = stripped.lower()
+            # Check for "Final summary:" prefix — extract just the content after it
+            if first_line.startswith("final summary:"):
+                kept.append(stripped[len("final summary:"):].strip())
+                continue
+            # Skip reasoning paragraphs
+            if any(first_line.startswith(p) for p in self._TOOL_LOOP_REASONING_PREFIXES):
+                logger.debug("[REASONING_FILTER] Stripped: %s", stripped[:80])
+                continue
+            kept.append(stripped)
+
+        result = "\n\n".join(kept).strip()
+        if not result:
+            # Everything was reasoning — fall back to the last paragraph
+            # (usually the most useful content)
+            result = paragraphs[-1].strip() if paragraphs else text
+        return result
 
     # ------------------------------------------------------------------
 
