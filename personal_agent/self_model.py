@@ -241,7 +241,7 @@ class SelfModel:
                 INSERT INTO memories
                     (memory_id, text, timestamp, confidence, trust, source,
                      kind, thread_id, deprecated, vector_json, sse_mode)
-                VALUES (?, ?, ?, ?, ?, 'self_reflection', 'self_model', ?, 0, ?, 'LOSSLESS')
+                VALUES (?, ?, ?, ?, ?, 'self_reflection', 'self_model', ?, 0, ?, 'L')
                 """,
                 (memory_id, text, time.time(), trust, trust, thread_id, empty_vec),
             )
