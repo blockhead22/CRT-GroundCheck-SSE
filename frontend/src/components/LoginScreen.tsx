@@ -48,7 +48,7 @@ export function LoginScreen(props: {
         <div className="glass-panel rounded-[28px] p-6 sm:p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-2xl accent-button mb-4">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded-sm accent-button mb-4">
               <span className="text-2xl font-bold text-white">Q</span>
             </div>
             <h1 className="text-2xl font-bold text-white font-display">CRT</h1>
@@ -59,7 +59,7 @@ export function LoginScreen(props: {
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setMode('login')}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`flex-1 py-2.5 rounded text-sm font-medium transition ${
                 mode === 'login'
                   ? 'bg-white/15 text-white'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
@@ -69,7 +69,7 @@ export function LoginScreen(props: {
             </button>
             <button
               onClick={() => setMode('register')}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
+              className={`flex-1 py-2.5 rounded text-sm font-medium transition ${
                 mode === 'register'
                   ? 'bg-white/15 text-white'
                   : 'bg-white/5 text-white/60 hover:bg-white/10'
@@ -88,7 +88,7 @@ export function LoginScreen(props: {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter username"
-                className="w-full rounded-xl glass-field px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                className="w-full rounded glass-field px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
                 required
                 minLength={3}
                 autoComplete="username"
@@ -103,7 +103,7 @@ export function LoginScreen(props: {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="How should we call you?"
-                  className="w-full rounded-xl glass-field px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                  className="w-full rounded glass-field px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
                   autoComplete="name"
                 />
               </div>
@@ -116,7 +116,7 @@ export function LoginScreen(props: {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full rounded-xl glass-field px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
+                className="w-full rounded glass-field px-4 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-white/20"
                 required
                 minLength={4}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
@@ -124,7 +124,7 @@ export function LoginScreen(props: {
             </div>
 
             {error && (
-              <div className="rounded-xl bg-rose-500/20 border border-rose-500/30 px-4 py-3 text-sm text-rose-200">
+              <div className="rounded bg-rose-500/20 border border-rose-500/30 px-4 py-3 text-sm text-rose-200">
                 {error}
               </div>
             )}
@@ -132,7 +132,7 @@ export function LoginScreen(props: {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl accent-button py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="w-full rounded accent-button py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
             >
               {loading ? 'Please wait...' : mode === 'login' ? 'Login' : 'Create Account'}
             </button>

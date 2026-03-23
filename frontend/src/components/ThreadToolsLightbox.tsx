@@ -55,7 +55,7 @@ export function ThreadToolsLightbox(props: {
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 12, scale: 0.98, opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-white/10 bg-[#0B0D12] shadow-2xl"
+            className="w-full max-w-[560px] overflow-hidden rounded-sm border border-white/10 bg-[#0B0D12] shadow-lg"
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div>
@@ -64,7 +64,7 @@ export function ThreadToolsLightbox(props: {
               </div>
               <button
                 onClick={props.onClose}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
+                className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
                 title="Close"
               >
                 Esc
@@ -75,13 +75,13 @@ export function ThreadToolsLightbox(props: {
               <div className="grid grid-cols-1 gap-3">
                 <button
                   onClick={() => void props.onExport()}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10"
+                  className="rounded-sm border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10"
                 >
                   <div className="text-sm font-semibold text-white">Download thread export (JSON)</div>
                   <div className="mt-1 text-xs text-white/60">Memories + contradictions for audit/debug.</div>
                 </button>
 
-                <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4">
+                <div className="rounded-sm border border-rose-500/30 bg-rose-500/10 p-4">
                   <div className="text-sm font-semibold text-rose-100">Danger zone</div>
                   <div className="mt-1 text-xs text-rose-200/80">
                     Reset deletes the SQLite DB files for this thread. This cannot be undone.
@@ -93,13 +93,13 @@ export function ThreadToolsLightbox(props: {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setConfirmTarget(null)}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
+                          className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => void props.onReset(confirmTarget)}
-                          className="rounded-xl bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500"
+                          className="rounded bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-500"
                         >
                           Yes, reset
                         </button>
@@ -109,19 +109,19 @@ export function ThreadToolsLightbox(props: {
                     <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <button
                         onClick={() => setConfirmTarget('memory')}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
                       >
                         Reset memory
                       </button>
                       <button
                         onClick={() => setConfirmTarget('ledger')}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
                       >
                         Reset ledger
                       </button>
                       <button
                         onClick={() => setConfirmTarget('all')}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
                       >
                         Reset all
                       </button>

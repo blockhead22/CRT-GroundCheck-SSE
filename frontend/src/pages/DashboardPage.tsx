@@ -365,7 +365,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
           <div className="mt-1 text-sm text-white/60">Thread: {props.threadId}</div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded-sm border border-white/10 bg-white/5 p-1">
             {(
               [
                 { id: 'overview', label: 'Overview' },
@@ -377,7 +377,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={
-                  'rounded-xl px-3 py-2 text-xs font-semibold ' +
+                  'rounded px-3 py-2 text-xs font-semibold ' +
                   (tab === t.id ? 'bg-violet-600 text-white' : 'text-white/70 hover:bg-white/10')
                 }
               >
@@ -387,14 +387,14 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
           </div>
           <button
             onClick={() => void refresh()}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+            className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
           >
             Refresh
           </button>
           <button
             disabled={busy}
             onClick={() => setToolsOpen(true)}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+            className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
           >
             Thread tools
           </button>
@@ -403,7 +403,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
 
       <div className="min-h-0 flex-1 overflow-auto p-5">
         {error ? (
-          <div className="mb-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+          <div className="mb-4 rounded-sm border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
             {error}
           </div>
         ) : null}
@@ -411,19 +411,19 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
         {tab === 'overview' ? (
           <>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Thread memories</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{overview?.memories_total ?? '—'}</div>
                 <div className="mt-1 text-xs text-white/50">
                   Raw CRT {overview?.memory_scope ?? 'thread'} memory surface
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Effective facts</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{overview?.effective_facts_total ?? '—'}</div>
                 <div className="mt-1 text-xs text-white/50">Canonical effective fact surface</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Open contradictions</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{overview?.open_contradictions ?? '—'}</div>
                 <div className="mt-1 text-xs text-white/50">
@@ -433,12 +433,12 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
             </div>
 
             <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Global shared memories</div>
                 <div className="mt-2 text-3xl font-semibold text-white">{overview?.global_memories_total ?? '—'}</div>
                 <div className="mt-1 text-xs text-white/50">All raw rows in shared CRT memory DB</div>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-semibold tracking-wide text-white/60">Belief vs Speech (7d)</div>
                 <div className="mt-2 text-sm text-white/80">
                   Belief {overview ? fmtPct01(overview.belief_ratio) : '—'} · Speech{' '}
@@ -454,7 +454,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
             </div>
 
             {overview?.model_routing && (
-              <div className="mt-4 rounded-2xl border border-sky-500/20 bg-sky-500/5 p-4">
+              <div className="mt-4 rounded-sm border border-sky-500/20 bg-sky-500/5 p-4">
                 <div className="mb-3 text-sm font-semibold text-sky-200">Model Routing</div>
                 <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
                   {(
@@ -468,7 +468,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   ).map(({ label, key }) => {
                     const val = overview.model_routing![key]
                     return val ? (
-                      <div key={key} className="rounded-xl border border-white/10 bg-white/5 p-2">
+                      <div key={key} className="rounded border border-white/10 bg-white/5 p-2">
                         <div className="text-white/50">{label}</div>
                         <div className="mt-1 truncate font-mono font-medium text-white/90" title={val}>{val}</div>
                       </div>
@@ -479,7 +479,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
             )}
 
             {learningStats && (
-              <div className="mt-4 rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4">
+              <div className="mt-4 rounded-sm border border-violet-500/20 bg-violet-500/5 p-4">
                 <div className="flex items-center gap-2">
                   <div className="text-sm font-semibold text-violet-200">Active Learning</div>
                   {learningStats.model_loaded && (
@@ -512,7 +512,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
               </div>
             )}
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-6 rounded-sm border border-white/10 bg-white/5 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-white">Next contradiction to resolve</div>
@@ -522,7 +522,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   <button
                     disabled={contraBusy}
                     onClick={() => void refreshNextContra()}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                    className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                   >
                     Refresh
                   </button>
@@ -533,7 +533,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 <div className="mt-3 text-sm text-white/60">No open contradiction work item found for this thread.</div>
               ) : (
                 <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div className="rounded-sm border border-white/10 bg-black/20 p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-white">{nextContra.item.contradiction_type}</div>
@@ -551,42 +551,42 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                       <button
                         disabled={contraBusy}
                         onClick={() => void doMarkAsked()}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                       >
                         Mark asked
                       </button>
                       <button
                         onClick={() => safeCopy(nextContra.item!.suggested_question)}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
                       >
                         Copy question
                       </button>
                     </div>
-                    <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-white/80">
+                    <pre className="mt-3 whitespace-pre-wrap rounded border border-white/10 bg-black/30 p-3 text-xs text-white/80">
                       {nextContra.item.suggested_question}
                     </pre>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div className="rounded-sm border border-white/10 bg-black/20 p-3">
                     <div className="text-xs font-semibold tracking-wide text-white/60">User clarification</div>
                     <textarea
                       value={contraAnswer}
                       onChange={(e) => setContraAnswer(e.target.value)}
                       placeholder="Example: Employer = Amazon"
-                      className="mt-2 h-28 w-full resize-none rounded-xl border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-violet-500/50"
+                      className="mt-2 h-28 w-full resize-none rounded border border-white/10 bg-black/30 p-3 text-sm text-white outline-none placeholder:text-white/30 focus:border-violet-500/50"
                     />
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
                         disabled={contraBusy || !contraAnswer.trim()}
                         onClick={() => void doRespond(true)}
-                        className="rounded-xl bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+                        className="rounded bg-violet-600 px-3 py-2 text-xs font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
                       >
                         Record answer + resolve
                       </button>
                       <button
                         disabled={contraBusy || !contraAnswer.trim()}
                         onClick={() => void doRespond(false)}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                       >
                         Record answer only
                       </button>
@@ -599,7 +599,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
               )}
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-6 rounded-sm border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-white">Background jobs</div>
@@ -611,7 +611,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   {props.onOpenJobs ? (
                     <button
                       onClick={props.onOpenJobs}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+                      className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
                     >
                       Open Jobs
                     </button>
@@ -626,21 +626,21 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 <button
                   disabled={busy}
                   onClick={() => void enqueueThreadJob('auto_resolve_contradictions', { max_to_resolve: 10 }, 1)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                  className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                 >
                   Auto-resolve contradictions (queued)
                 </button>
                 <button
                   disabled={busy}
                   onClick={() => void enqueueThreadJob('propose_promotions', {}, 0)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                  className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                 >
                   Propose promotions
                 </button>
                 <button
                   disabled={busy}
                   onClick={() => void enqueueThreadJob('summarize_session', { text: 'Summarize this session.' }, 0)}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                  className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                 >
                   Summarize session (smoke test)
                 </button>
@@ -659,7 +659,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 </div>
                 <div className="mt-3 space-y-2">
                   {threadJobs.map((j) => (
-                    <div key={j.id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div key={j.id} className="rounded-sm border border-white/10 bg-black/20 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-white">{j.type}</div>
@@ -680,7 +680,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-white">Open contradictions</div>
                   <div className="text-xs text-white/50">{contras.length} shown</div>
@@ -688,7 +688,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 <div className="mt-1 text-xs text-white/50">Scope: current thread only</div>
                 <div className="mt-3 space-y-2">
                   {contras.slice(0, 10).map((c) => (
-                    <div key={c.ledger_id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div key={c.ledger_id} className="rounded-sm border border-white/10 bg-black/20 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-xs text-white/50">
@@ -701,14 +701,14 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                           <button
                             disabled={busy}
                             onClick={() => void doResolve(c, 'accept_both')}
-                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                           >
                             Accept
                           </button>
                           <button
                             disabled={busy}
                             onClick={() => void doResolve(c, 'user_clarified')}
-                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                           >
                             Resolved
                           </button>
@@ -720,7 +720,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-white">Recent memories</div>
                   <div className="text-xs text-white/50">{memories.length} shown</div>
@@ -728,7 +728,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                 <div className="mt-1 text-xs text-white/50">Surface: raw CRT thread memory, not effective facts</div>
                 <div className="mt-3 space-y-2">
                   {memories.slice(0, 12).map((m) => (
-                    <div key={m.memory_id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <div key={m.memory_id} className="rounded-sm border border-white/10 bg-black/20 p-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="text-xs text-white/50">
@@ -749,10 +749,10 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
 
         {tab === 'memory' ? (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[380px_1fr]">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-sm border border-white/10 bg-white/5 p-4">
               <div className="text-sm font-semibold text-white">Memory explorer</div>
               <div className="mt-3 space-y-3">
-                <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+                <div className="flex items-center gap-1 rounded-sm border border-white/10 bg-white/5 p-1">
                   {(
                     [
                       { id: 'recent', label: 'Recent' },
@@ -763,7 +763,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                       key={m.id}
                       onClick={() => setMemoryMode(m.id)}
                       className={
-                        'flex-1 rounded-xl px-3 py-2 text-xs font-semibold ' +
+                        'flex-1 rounded px-3 py-2 text-xs font-semibold ' +
                         (memoryMode === m.id ? 'bg-violet-600 text-white' : 'text-white/70 hover:bg-white/10')
                       }
                     >
@@ -777,7 +777,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                   onChange={(e) => setSearchQ(e.target.value)}
                   onKeyDown={(e) => (e.key === 'Enter' ? void runSearch() : undefined)}
                   placeholder={memoryMode === 'search' ? 'Search memories…' : 'Filter by text…'}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                  className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
                 />
 
                 <div className="grid grid-cols-2 gap-2">
@@ -786,7 +786,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                     <select
                       value={sourceFilter}
                       onChange={(e) => setSourceFilter(e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:outline-none"
+                      className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:outline-none"
                     >
                       <option value="all">All</option>
                       {allSources.map((s) => (
@@ -802,7 +802,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                     <select
                       value={kindFilter}
                       onChange={(e) => setKindFilter(e.target.value as typeof kindFilter)}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:outline-none"
+                      className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/90 focus:outline-none"
                     >
                       <option value="all">All</option>
                       <option value="facts">FACT</option>
@@ -843,7 +843,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                     </div>
                     <button
                       onClick={() => void runSearch()}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10"
+                      className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white/80 hover:bg-white/10"
                     >
                       {searching ? 'Searching…' : 'Search now'}
                     </button>
@@ -856,7 +856,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                      className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/90"
+                      className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/90"
                     >
                       <option value="timestamp">Recent</option>
                       <option value="trust">Trust</option>
@@ -894,7 +894,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                     key={m.memory_id}
                     onClick={() => setSelectedMemoryId(m.memory_id)}
                     className={
-                      'w-full rounded-2xl border px-3 py-2 text-left ' +
+                      'w-full rounded-sm border px-3 py-2 text-left ' +
                       (m.memory_id === selectedMemoryId
                         ? 'border-violet-500/50 bg-violet-500/10'
                         : 'border-white/10 bg-black/20 hover:bg-white/5')
@@ -922,7 +922,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="rounded-sm border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white">Details</div>
                 <div className="text-xs text-white/50">{selectedMemoryId || '—'}</div>
@@ -930,7 +930,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
 
               {selectedMemory ? (
                 <>
-                  <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div className="mt-3 rounded-sm border border-white/10 bg-black/20 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="text-xs text-white/50">
                         {selectedMemory.source} · trust {selectedMemory.trust.toFixed(2)} · conf {selectedMemory.confidence.toFixed(2)} ·{' '}
@@ -939,13 +939,13 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => safeCopy(selectedMemory.memory_id)}
-                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                          className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
                         >
                           Copy ID
                         </button>
                         <button
                           onClick={() => safeCopy(selectedMemory.text)}
-                          className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                          className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
                         >
                           Copy text
                         </button>
@@ -956,7 +956,7 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
 
                   <div className="mt-4">
                     <div className="text-sm font-semibold text-white">Trust history</div>
-                    <div className="mt-2 overflow-auto rounded-2xl border border-white/10 bg-black/20">
+                    <div className="mt-2 overflow-auto rounded-sm border border-white/10 bg-black/20">
                       <table className="w-full min-w-[520px] text-left text-xs">
                         <thead className="border-b border-white/10 text-white/60">
                           <tr>
@@ -997,14 +997,14 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
         ) : null}
 
         {tab === 'ledger' ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-sm border border-white/10 bg-white/5 p-4">
             <div className="flex items-center justify-between">
               <div className="text-sm font-semibold text-white">Contradiction ledger</div>
               <div className="text-xs text-white/50">{contras.length} open</div>
             </div>
             <div className="mt-3 space-y-2">
               {contras.map((c) => (
-                <div key={c.ledger_id} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                <div key={c.ledger_id} className="rounded-sm border border-white/10 bg-black/20 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="text-xs text-white/50">
@@ -1020,14 +1020,14 @@ export function DashboardPage(props: { threadId: string; onOpenJobs?: () => void
                       <button
                         disabled={busy}
                         onClick={() => void doResolve(c, 'accept_both')}
-                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                        className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                       >
                         Accept
                       </button>
                       <button
                         disabled={busy}
                         onClick={() => void doResolve(c, 'user_clarified')}
-                        className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
+                        className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-white/80 hover:bg-white/10 disabled:opacity-50"
                       >
                         Resolved
                       </button>

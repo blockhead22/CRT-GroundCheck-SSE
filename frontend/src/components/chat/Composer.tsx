@@ -181,12 +181,10 @@ export function Composer(props: {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.95 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-xl border"
+                  className="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded border"
                   style={{
                     borderColor: 'rgba(240,235,225,0.08)',
                     background: 'rgba(18,16,12,0.95)',
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
                   }}
                 >
@@ -227,10 +225,8 @@ export function Composer(props: {
           transition={{ duration: 0.2 }}
           className="relative overflow-hidden border"
           style={{
-            background: 'rgba(22,20,16,0.8)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            borderRadius: '24px',
+            background: 'var(--surface)',
+            borderRadius: '3px',
           }}
         >
           <textarea
@@ -262,7 +258,7 @@ export function Composer(props: {
                   onClick={research}
                   disabled={isDisabled || !canSend}
                   title="Deep research"
-                  className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.04] text-white/30 transition-all hover:bg-white/[0.08] hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-20"
+                  className="flex h-8 w-8 items-center justify-center rounded bg-white/[0.04] text-white/30 transition-all hover:bg-white/[0.08] hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-20"
                 >
                   {props.researching ? (
                     <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/20 border-t-white/70" />
@@ -281,7 +277,7 @@ export function Composer(props: {
                 onClick={send}
                 disabled={isDisabled || !canSend}
                 aria-label="Send"
-                className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
+                className={`flex h-8 w-8 items-center justify-center rounded transition-all ${
                   canSend && !isDisabled
                     ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(212,132,92,0.35)]'
                     : 'bg-white/[0.04] text-white/15 cursor-not-allowed'

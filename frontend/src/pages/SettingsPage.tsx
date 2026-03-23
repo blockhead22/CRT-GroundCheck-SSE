@@ -217,13 +217,13 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
           <div className="mt-1 text-sm text-white/60">Manage your profile, cloud features, and account</div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-2xl border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded-sm border border-white/10 bg-white/5 p-1">
             {tabs.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={
-                  'rounded-xl px-3 py-2 text-xs font-semibold ' +
+                  'rounded px-3 py-2 text-xs font-semibold ' +
                   (tab === t.id ? 'bg-violet-600 text-white' : 'text-white/70 hover:bg-white/10')
                 }
               >
@@ -239,7 +239,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
         <div className="mx-auto max-w-2xl space-y-6">
           {tab === 'profile' && (
             <>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
                 <div className="mb-4 text-xs font-medium uppercase tracking-wide text-white/50">Profile</div>
 
                 <div className="space-y-4">
@@ -249,7 +249,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       placeholder="Your name"
-                      className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
                     />
                     <p className="mt-1 text-xs text-white/40">Shown in the topbar and profile</p>
                   </div>
@@ -260,7 +260,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
                       placeholder="What should Aether call you?"
-                      className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
                     />
                     <p className="mt-1 text-xs text-white/40">Aether will use this name when talking to you</p>
                   </div>
@@ -269,7 +269,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="mt-4 rounded-xl bg-white/10 px-5 py-2 text-sm font-medium text-white transition-all hover:bg-white/20 disabled:opacity-50"
+                  className="mt-4 rounded bg-white/10 px-5 py-2 text-sm font-medium text-white transition-all hover:bg-white/20 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : saved ? 'Saved' : 'Save Profile'}
                 </button>
@@ -279,7 +279,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
           {tab === 'cloud' && (
             <>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
                 <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Cloud Features</div>
                 <p className="mb-4 text-xs text-white/40">
                   Enable cloud LLM verification for higher-accuracy CRT operations. Calls use gpt-4o-mini (Tier 1) or Claude (Tier 2).
@@ -312,7 +312,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       <select
                         value={cloudSettings.cloud_escalation_policy}
                         onChange={(e) => handleCloudSelect('cloud_escalation_policy', e.target.value)}
-                        className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
                       >
                         {ESCALATION_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value} className="bg-gray-900">{opt.label}</option>
@@ -365,7 +365,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
               </div>
 
               {/* Claude (Tier 2) Section */}
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
                 <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Claude (Tier 2)</div>
                 <p className="mb-4 text-xs text-white/40">
                   Use Claude via cookie session for high-quality generation fallback and reflection validation.
@@ -412,7 +412,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                             setCloudSettingsState({ ...cloudSettings, cloud_claude_daily_limit: e.target.value })
                           }}
                           onBlur={(e) => handleCloudNumberInput('cloud_claude_daily_limit', e.target.value)}
-                          className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <p className="mt-1 text-xs text-white/40">Maximum Claude calls per day (all features combined)</p>
                       </div>
@@ -431,7 +431,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                             setCloudSettingsState({ ...cloudSettings, cloud_claude_max_tokens: e.target.value })
                           }}
                           onBlur={(e) => handleCloudNumberInput('cloud_claude_max_tokens', e.target.value)}
-                          className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
                         />
                         <p className="mt-1 text-xs text-white/40">Maximum tokens per Claude API call</p>
                       </div>
@@ -459,7 +459,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
               {/* Usage Display */}
               {cloudUsage !== null && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-xs font-medium uppercase tracking-wide text-white/50">Usage (this session)</div>
                     <button
@@ -522,13 +522,13 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
           )}
 
           {tab === 'facts' && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
               <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Known Facts</div>
 
               {Object.keys(slots).length > 0 ? (
                 <div className="mb-4 space-y-1.5">
                   {Object.entries(slots).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm">
+                    <div key={key} className="flex items-center gap-2 rounded-sm bg-white/5 px-3 py-2 text-sm">
                       <span className="font-medium text-white/70">{key}</span>
                       <span className="text-white/30">=</span>
                       <span className="text-white/90">{val}</span>
@@ -546,7 +546,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     value={newFactKey}
                     onChange={(e) => setNewFactKey(e.target.value)}
                     placeholder="Fact name (e.g. hobby)"
-                    className="w-full rounded-xl glass-field px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                    className="w-full rounded glass-field px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
                   />
                 </div>
                 <div className="flex-1">
@@ -554,14 +554,14 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     value={newFactValue}
                     onChange={(e) => setNewFactValue(e.target.value)}
                     placeholder="Value (e.g. skateboarding)"
-                    className="w-full rounded-xl glass-field px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                    className="w-full rounded glass-field px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddFact() }}
                   />
                 </div>
                 <button
                   onClick={handleAddFact}
                   disabled={saving || !newFactKey.trim() || !newFactValue.trim()}
-                  className="rounded-xl bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 disabled:opacity-30 transition-all"
+                  className="rounded bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20 disabled:opacity-30 transition-all"
                 >
                   Add
                 </button>
@@ -570,14 +570,14 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
           )}
 
           {tab === 'account' && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
               <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Account</div>
               <div className="space-y-2 text-sm text-white/60">
-                <div className="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-sm bg-white/5 px-4 py-3">
                   <span className="text-white/40">Username</span>
                   <span className="text-white/80">{authUser?.username || '\u2014'}</span>
                 </div>
-                <div className="flex items-center gap-3 rounded-lg bg-white/5 px-4 py-3">
+                <div className="flex items-center gap-3 rounded-sm bg-white/5 px-4 py-3">
                   <span className="text-white/40">User ID</span>
                   <span className="font-mono text-xs text-white/80">{authUser?.id || '\u2014'}</span>
                 </div>

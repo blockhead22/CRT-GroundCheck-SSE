@@ -28,13 +28,13 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="fixed right-0 top-0 z-[1200] flex h-screen w-full max-w-xl flex-col border-l border-white/10 bg-gray-900/95 shadow-2xl backdrop-blur-xl"
+        className="fixed right-0 top-0 z-[1200] flex h-screen w-full max-w-xl flex-col border-l border-white/10 bg-gray-900/95 shadow-lg"
       >
         {/* Header */}
         <div className="border-b border-white/10 bg-gradient-to-r from-violet-600/10 to-purple-600/10 p-6">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-600/20 text-2xl">
+              <div className="flex h-12 w-12 items-center justify-center rounded bg-violet-600/20 text-2xl">
                 🔍
               </div>
               <div>
@@ -44,7 +44,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
             </div>
             <button
               onClick={props.onClose}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+              className="flex h-10 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
               aria-label="Close ledger"
             >
               ✕
@@ -53,17 +53,17 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
 
           {/* Stats Bar */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl bg-white/5 p-3 text-center">
+            <div className="rounded bg-white/5 p-3 text-center">
               <div className="text-2xl font-bold text-white">{props.contradictions.length}</div>
               <div className="text-xs text-white/60">Total</div>
             </div>
-            <div className="rounded-xl bg-green-500/10 p-3 text-center">
+            <div className="rounded bg-green-500/10 p-3 text-center">
               <div className="text-2xl font-bold text-green-400">
                 {props.contradictions.filter((c) => c.status === 'disclosed').length}
               </div>
               <div className="text-xs text-green-300">Disclosed</div>
             </div>
-            <div className="rounded-xl bg-orange-500/10 p-3 text-center">
+            <div className="rounded bg-orange-500/10 p-3 text-center">
               <div className="text-2xl font-bold text-orange-400">
                 {props.contradictions.filter((c) => c.status !== 'disclosed').length}
               </div>
@@ -75,7 +75,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => setFilter('all')}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
+              className={`flex-1 rounded-sm px-3 py-2 text-xs font-medium transition ${
                 filter === 'all'
                   ? 'bg-violet-600 text-white'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
@@ -85,7 +85,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
             </button>
             <button
               onClick={() => setFilter('disclosed')}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
+              className={`flex-1 rounded-sm px-3 py-2 text-xs font-medium transition ${
                 filter === 'disclosed'
                   ? 'bg-green-600 text-white'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
@@ -95,7 +95,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
             </button>
             <button
               onClick={() => setFilter('pending')}
-              className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
+              className={`flex-1 rounded-sm px-3 py-2 text-xs font-medium transition ${
                 filter === 'pending'
                   ? 'bg-orange-600 text-white'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
@@ -128,7 +128,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -30 }}
                     transition={{ delay: index * 0.05 }}
-                    className="animate-ledgerEntryAppear rounded-2xl border border-white/10 bg-white/5 p-4 shadow-lg backdrop-blur-sm"
+                    className="animate-ledgerEntryAppear rounded-sm border border-white/10 bg-white/5 p-4 shadow-lg"
                   >
                     {/* Entry Header */}
                     <div className="mb-3 flex items-start justify-between">
@@ -150,7 +150,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
                     </div>
 
                     {/* Values */}
-                    <div className="mb-3 space-y-2 rounded-xl bg-black/30 p-3">
+                    <div className="mb-3 space-y-2 rounded bg-black/30 p-3">
                       <div className="border-l-4 border-red-500 pl-3">
                         <div className="mb-1 text-xs text-white/50">Old Value:</div>
                         <div className="text-sm text-white/90">{c.old_value}</div>
@@ -205,14 +205,14 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
               {props.onExport && (
                 <button
                   onClick={props.onExport}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10"
+                  className="flex-1 rounded border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition hover:bg-white/10"
                 >
                   📄 Export Ledger
                 </button>
               )}
               <button
                 onClick={props.onClose}
-                className="flex-1 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110"
+                className="flex-1 rounded bg-gradient-to-r from-violet-600 to-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:brightness-110"
               >
                 Close
               </button>

@@ -39,7 +39,7 @@ function ThinkingPreview({ content }: { content: string }) {
     <motion.div
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[11px] leading-relaxed"
+      className="mb-3 overflow-hidden rounded border px-3 py-2 text-[11px] leading-relaxed"
       style={{ borderColor: 'rgba(224,160,128,0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-muted)' }}
     >
       <button
@@ -113,9 +113,9 @@ function StreamingMessage({
                 const codeText = String(children ?? '').replace(/\n$/, '')
                 const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '')
                 if (!match && !codeText.includes('\n')) {
-                  return <code className="rounded-md bg-white/8 px-1.5 py-0.5 font-mono text-[0.88em]" style={{ color: 'var(--accent-6)' }}>{children}</code>
+                  return <code className="rounded-sm bg-white/8 px-1.5 py-0.5 font-mono text-[0.88em]" style={{ color: 'var(--accent-6)' }}>{children}</code>
                 }
-                return <pre className="my-2 overflow-x-auto rounded-xl border border-white/10 bg-black/40 p-4 text-sm text-white/80 font-mono">{codeText}</pre>
+                return <pre className="my-2 overflow-x-auto rounded border border-white/10 bg-black/40 p-4 text-sm text-white/80 font-mono">{codeText}</pre>
               },
             } as any}
           >
@@ -316,8 +316,6 @@ export function ChatThreadView(props: {
             style={{
               background: 'rgba(29,27,22,0.6)',
               border: '1px solid rgba(240,235,225,0.05)',
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
             }}
           >
@@ -659,7 +657,7 @@ export function ChatThreadView(props: {
                     transition={{ duration: 0.18 }}
                     className="mb-2 overflow-hidden"
                   >
-                    <div className="max-h-[360px] overflow-y-auto rounded-xl border border-white/10 bg-black/40 p-3 text-xs">
+                    <div className="max-h-[360px] overflow-y-auto rounded border border-white/10 bg-black/40 p-3 text-xs">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-white/50 font-medium">Open contradictions</span>
                         <button onClick={() => void refreshContradictions()} className="text-white/30 hover:text-white/60 transition-colors">refresh</button>
@@ -673,7 +671,7 @@ export function ChatThreadView(props: {
                       ) : (
                         <div className="space-y-2">
                           {contradictions.map((c) => (
-                            <div key={c.ledger_id} className="rounded-lg border border-white/8 bg-white/3 p-3">
+                            <div key={c.ledger_id} className="rounded-sm border border-white/8 bg-white/3 p-3">
                               <div className="font-semibold text-rose-200/80 text-[11px] mb-1">
                                 {(c.slot || c.contradiction_type || 'Contradiction').toUpperCase()}
                               </div>
@@ -695,7 +693,7 @@ export function ChatThreadView(props: {
 
               <button
                 onClick={() => setTrayOpen((v) => !v)}
-                className={`mb-2 flex w-full items-center justify-between rounded-xl border px-3 py-2 text-xs transition ${
+                className={`mb-2 flex w-full items-center justify-between rounded border px-3 py-2 text-xs transition ${
                   hasOpenContradictions
                     ? 'border-rose-500/25 bg-rose-500/8 text-rose-200/80 hover:bg-rose-500/12'
                     : 'border-white/8 bg-white/3 text-white/40 hover:bg-white/5'

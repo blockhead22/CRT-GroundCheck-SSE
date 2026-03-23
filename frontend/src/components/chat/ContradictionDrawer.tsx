@@ -49,7 +49,7 @@ function ResolutionRow({ item, threadId, onResolved }: {
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: resolved ? 0.3 : 1, x: 0 }}
       transition={{ duration: 0.18 }}
-      className="rounded-xl p-3"
+      className="rounded p-3"
       style={{ border: '1px solid rgba(240,235,225,0.06)', background: 'rgba(240,235,225,0.02)' }}
     >
       <div className="flex items-center gap-2 mb-1.5">
@@ -170,7 +170,6 @@ export function ContradictionDrawer({
               width: 'min(420px, 90vw)',
               background: 'rgba(18,17,16,0.97)',
               borderLeft: '1px solid rgba(240,235,225,0.07)',
-              backdropFilter: 'blur(24px)',
             }}
           >
             {/* Header */}
@@ -185,7 +184,7 @@ export function ContradictionDrawer({
               </div>
               <button
                 onClick={onClose}
-                className="rounded-lg px-2 py-1 text-[11px] transition-opacity hover:opacity-70"
+                className="rounded-sm px-2 py-1 text-[11px] transition-opacity hover:opacity-70"
                 style={{ color: 'rgba(240,235,225,0.3)', border: '1px solid rgba(240,235,225,0.08)' }}
               >
                 close

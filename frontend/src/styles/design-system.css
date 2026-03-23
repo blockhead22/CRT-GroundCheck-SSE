@@ -60,19 +60,19 @@
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
   --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
   
-  /* Glow Effects */
-  --glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
-  --glow-warning: 0 0 20px rgba(245, 158, 11, 0.3);
-  --glow-error: 0 0 20px rgba(239, 68, 68, 0.3);
-  --glow-info: 0 0 20px rgba(59, 130, 246, 0.3);
+  /* Glow Effects — muted for IDE look */
+  --glow-success: none;
+  --glow-warning: none;
+  --glow-error: none;
+  --glow-info: none;
   
-  /* Border Radius */
-  --radius-sm: 0.375rem;   /* 6px */
-  --radius-md: 0.5rem;     /* 8px */
-  --radius-lg: 0.75rem;    /* 12px */
-  --radius-xl: 1rem;       /* 16px */
-  --radius-2xl: 1.5rem;    /* 24px */
-  --radius-full: 9999px;   /* Fully rounded */
+  /* Border Radius — IDE-sharp */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-2xl: 6px;
+  --radius-full: 9999px;   /* Avatars only */
   
   /* Animation Timing */
   --duration-fast: 150ms;
@@ -106,13 +106,13 @@
   --blur-lg: 16px;
   --blur-xl: 24px;
 
-  /* Depth Shadows — layered for realism */
-  --shadow-card: 0 1px 2px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.08);
-  --shadow-card-hover: 0 2px 4px rgba(0,0,0,0.16), 0 8px 24px rgba(0,0,0,0.12);
-  --shadow-elevated: 0 4px 12px rgba(0,0,0,0.2), 0 16px 40px rgba(0,0,0,0.15);
-  --shadow-panel: 0 0 1px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.25);
-  --shadow-glow-accent: 0 0 24px rgba(212,132,92,0.15);
-  --shadow-inset-subtle: inset 0 1px 0 rgba(255,255,255,0.04);
+  /* Depth Shadows — flat IDE style */
+  --shadow-card: none;
+  --shadow-card-hover: none;
+  --shadow-elevated: 0 2px 8px rgba(0,0,0,0.3);
+  --shadow-panel: none;
+  --shadow-glow-accent: none;
+  --shadow-inset-subtle: none;
 }
 
 /* Utility Classes */
@@ -222,36 +222,26 @@
   background: linear-gradient(135deg, #7c3aed, var(--crt-stable));
 }
 
-/* Glass Morphism Effect */
+/* Solid panel effect — IDE style */
 .glass {
   background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(var(--blur-lg));
-  -webkit-backdrop-filter: blur(var(--blur-lg));
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: var(--shadow-inset-subtle);
 }
 
 .glass-dark {
   background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(var(--blur-xl));
-  -webkit-backdrop-filter: blur(var(--blur-xl));
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* Card Styles */
+/* Card Styles — flat IDE panels */
 .card-premium {
   background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(var(--blur-md));
-  -webkit-backdrop-filter: blur(var(--blur-md));
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-card);
-  transition: all var(--duration-normal) var(--ease-out);
+  border-radius: var(--radius-md);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
 .card-premium:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card-hover);
   border-color: rgba(255, 255, 255, 0.14);
 }
 
@@ -267,12 +257,11 @@
 }
 
 .btn-premium:hover {
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  opacity: 0.9;
 }
 
 .btn-premium:active {
-  transform: translateY(0);
+  opacity: 0.8;
 }
 
 .btn-success {
@@ -298,7 +287,7 @@
   display: inline-flex;
   align-items: center;
   padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: var(--font-medium);
   line-height: 1;
@@ -356,17 +345,14 @@
 
 .trust-fill.high {
   background: var(--crt-success);
-  box-shadow: var(--glow-success);
 }
 
 .trust-fill.medium {
   background: var(--crt-warning);
-  box-shadow: var(--glow-warning);
 }
 
 .trust-fill.low {
   background: var(--crt-error);
-  box-shadow: var(--glow-error);
 }
 
 /* Skeleton Loading */

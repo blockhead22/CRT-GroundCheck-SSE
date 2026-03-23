@@ -251,7 +251,7 @@ export function JournalPage(props: { threadId: string }) {
           <div className="mt-1 text-sm text-white/60">Background reflection + personality loop notes.</div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+          <div className="flex items-center gap-2 rounded border border-white/10 bg-white/5 px-3 py-2">
             <div className="text-[11px] font-semibold text-white/70">Auto replies</div>
             <button
               onClick={() => void toggleAutoReply()}
@@ -272,7 +272,7 @@ export function JournalPage(props: { threadId: string }) {
           </div>
           <button
             onClick={() => void load()}
-            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
+            className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10"
             disabled={loading}
           >
             {loading ? 'Refreshing...' : 'Refresh'}
@@ -281,27 +281,27 @@ export function JournalPage(props: { threadId: string }) {
       </div>
 
       {settingsError ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-100">
+        <div className="rounded border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-100">
           Auto-reply settings error: {settingsError}
         </div>
       ) : null}
 
       <div className="space-y-3">
         {error ? (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <div className="rounded border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
             Failed to load journal: {error}
           </div>
         ) : null}
 
         {emptyState ? (
-          <div className="rounded-2xl glass-card px-4 py-6 text-sm text-white/60">
+          <div className="rounded-sm glass-card px-4 py-6 text-sm text-white/60">
             No journal entries yet. The reflection/personality loops will append here as they run.
           </div>
         ) : null}
 
         <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
           <div className="space-y-3">
-            <div className="rounded-2xl glass-card px-4 py-4">
+            <div className="rounded-sm glass-card px-4 py-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Topics</div>
               {topicIndex.length === 0 ? (
                 <div className="mt-2 text-xs text-white/50">Topics will appear after reflections run.</div>
@@ -336,7 +336,7 @@ export function JournalPage(props: { threadId: string }) {
               )}
             </div>
 
-            <div className="rounded-2xl glass-card px-4 py-4">
+            <div className="rounded-sm glass-card px-4 py-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Threads</div>
               <div className="mt-3 space-y-2">
                 {rootEntries.length === 0 ? (
@@ -349,7 +349,7 @@ export function JournalPage(props: { threadId: string }) {
                       <button
                         key={entry.id}
                         onClick={() => setSelectedRootId(entry.id)}
-                        className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+                        className={`w-full rounded border px-3 py-3 text-left transition ${
                           isActive
                             ? 'border-sky-400/40 bg-sky-500/10'
                             : 'border-white/10 bg-white/5 hover:bg-white/10'
@@ -388,12 +388,12 @@ export function JournalPage(props: { threadId: string }) {
 
           <div className="space-y-3">
             {!selectedRootId ? (
-              <div className="rounded-2xl glass-card px-4 py-6 text-sm text-white/60">
+              <div className="rounded-sm glass-card px-4 py-6 text-sm text-white/60">
                 Select a thread to view its journal conversation.
               </div>
             ) : (
               <>
-                <div className="rounded-2xl glass-card px-4 py-4">
+                <div className="rounded-sm glass-card px-4 py-4">
                   <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Thread</div>
                   <div className="mt-3 space-y-3">
                     {threadEntries.map((entry) => {
@@ -412,7 +412,7 @@ export function JournalPage(props: { threadId: string }) {
                       const entryLabel = (entry.entry_type || 'note').replace(/_/g, ' ')
 
                       return (
-                        <div key={entry.id} className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4">
+                        <div key={entry.id} className="rounded-sm border border-white/10 bg-white/5 px-4 py-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="text-sm font-semibold text-white">{entry.title}</div>
@@ -454,7 +454,7 @@ export function JournalPage(props: { threadId: string }) {
                   </div>
                 </div>
 
-                <div className="rounded-2xl glass-card px-4 py-4">
+                <div className="rounded-sm glass-card px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Add a comment</div>
                     {replyTargetId ? (
@@ -465,20 +465,20 @@ export function JournalPage(props: { threadId: string }) {
                     value={commentBody}
                     onChange={(event) => setCommentBody(event.target.value)}
                     placeholder="Share a thought in this thread..."
-                    className="mt-3 min-h-[90px] w-full resize-none rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
+                    className="mt-3 min-h-[90px] w-full resize-none rounded border border-white/10 bg-white/5 p-3 text-sm text-white placeholder:text-white/40 focus:outline-none"
                   />
                   {commentError ? <div className="mt-2 text-xs text-rose-200">{commentError}</div> : null}
                   <div className="mt-3 flex items-center justify-end gap-2">
                     <button
                       onClick={() => setReplyTargetId(selectedRootId)}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/60 hover:bg-white/10"
+                      className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/60 hover:bg-white/10"
                       disabled={!selectedRootId}
                     >
                       Reply to root
                     </button>
                     <button
                       onClick={() => void submitReply()}
-                      className="rounded-xl bg-sky-500 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded bg-sky-500 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
                       disabled={posting || !selectedRootId}
                     >
                       {posting ? 'Posting...' : 'Post'}

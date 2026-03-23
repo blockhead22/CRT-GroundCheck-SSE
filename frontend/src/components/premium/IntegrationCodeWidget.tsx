@@ -122,19 +122,19 @@ export function IntegrationCodeWidget(props: IntegrationCodeWidgetProps) {
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg backdrop-blur-xl">
+    <div className="overflow-hidden rounded-sm border border-white/10 bg-white/5 shadow-lg">
       {/* Header */}
       <div className="border-b border-white/10 bg-gradient-to-r from-violet-600/10 to-purple-600/10 p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/20 text-lg">💻</div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-violet-600/20 text-lg">💻</div>
             <h3 className="text-lg font-semibold text-white">Integration Code</h3>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleCopy}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`flex items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition ${
               copied
                 ? 'bg-green-600 text-white'
                 : 'border border-white/10 bg-white/5 text-white/80 hover:bg-white/10'
@@ -160,7 +160,7 @@ export function IntegrationCodeWidget(props: IntegrationCodeWidgetProps) {
             <button
               key={example.language}
               onClick={() => setSelectedLang(example.language)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              className={`rounded-sm px-4 py-2 text-sm font-medium transition ${
                 selectedLang === example.language
                   ? 'bg-violet-600 text-white shadow-lg'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
@@ -185,7 +185,7 @@ export function IntegrationCodeWidget(props: IntegrationCodeWidgetProps) {
         </motion.pre>
 
         {/* Language Badge */}
-        <div className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white/60 backdrop-blur-sm">
+        <div className="absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white/60">
           {currentExample.label}
         </div>
       </div>
@@ -243,12 +243,12 @@ python crt_api.py  # Start server
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-md">
+    <div className="overflow-hidden rounded border border-white/10 bg-white/5 shadow-md">
       <div className="flex items-center justify-between border-b border-white/10 bg-black/20 px-4 py-2">
         <div className="text-sm font-medium text-white/80">Quick Start</div>
         <button
           onClick={handleCopy}
-          className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+          className={`rounded-sm px-2 py-1 text-xs font-medium transition ${
             copied ? 'bg-green-600 text-white' : 'bg-white/10 text-white/60 hover:bg-white/20'
           }`}
         >

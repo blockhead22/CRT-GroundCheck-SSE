@@ -85,7 +85,7 @@ export function ContradictionResolutionCard({
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.18 }}
-      className="mt-2 overflow-hidden rounded-xl"
+      className="mt-2 overflow-hidden rounded"
       style={{ border: '1px solid rgba(251,146,60,0.2)', background: 'rgba(251,146,60,0.04)' }}
     >
       <div className="px-3 pt-2.5 pb-2">

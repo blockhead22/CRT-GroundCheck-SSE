@@ -21,7 +21,7 @@ export function RightPanel(props: {
   }, [props.selectedMessage])
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] w-[340px] flex-none flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl">
+    <div className="flex h-[calc(100vh-3rem)] w-[340px] flex-none flex-col overflow-hidden rounded-sm border border-white/10 bg-white/5 shadow-soft">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="text-sm font-semibold text-white">{tab === 'history' ? 'History' : 'Inspector'}</div>
         <div className="flex items-center gap-2">
@@ -33,7 +33,7 @@ export function RightPanel(props: {
         <button
           onClick={() => setTab('history')}
           className={
-            'rounded-xl px-3 py-1.5 text-xs font-semibold ' +
+            'rounded px-3 py-1.5 text-xs font-semibold ' +
             (tab === 'history' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/80 hover:bg-white/10')
           }
         >
@@ -42,7 +42,7 @@ export function RightPanel(props: {
         <button
           onClick={() => setTab('inspector')}
           className={
-            'rounded-xl px-3 py-1.5 text-xs font-semibold ' +
+            'rounded px-3 py-1.5 text-xs font-semibold ' +
             (tab === 'inspector' ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/80 hover:bg-white/10')
           }
         >
@@ -68,14 +68,14 @@ export function RightPanel(props: {
                     key={t.id}
                     onClick={() => props.onSelectThread(t.id)}
                     className={
-                      'w-full rounded-2xl border px-3 py-3 text-left transition ' +
+                      'w-full rounded-sm border px-3 py-3 text-left transition ' +
                       (selected
                         ? 'border-violet-500/60 bg-violet-500/10'
                         : 'border-white/10 bg-white/5 hover:bg-white/10')
                     }
                   >
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 grid h-5 w-5 place-items-center rounded-md border border-white/10 bg-white/5">
+                      <div className="mt-0.5 grid h-5 w-5 place-items-center rounded-sm border border-white/10 bg-white/5">
                         <span className={selected ? 'text-violet-300' : 'text-white/40'}>✓</span>
                       </div>
                       <div className="min-w-0 flex-1">
@@ -90,7 +90,7 @@ export function RightPanel(props: {
               })}
 
               <div className="pt-2">
-                <button className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
+                <button className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/10">
                   Clear history
                 </button>
               </div>

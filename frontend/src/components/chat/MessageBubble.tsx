@@ -17,7 +17,7 @@ function MonacoBlock({ code, language }: { code: string; language?: string }) {
   const lines = code.split('\n').length
   const height = `${Math.max(100, Math.min(320, lines * 18 + 32))}px`
   return (
-    <div className="my-3 overflow-hidden rounded-xl border border-white/10 bg-black/40">
+    <div className="my-3 overflow-hidden rounded border border-white/10 bg-black/40">
       <Editor
         height={height}
         defaultLanguage={language || 'plaintext'}
@@ -59,7 +59,7 @@ const mdComponents = {
     const isBlock = Boolean(language) || codeText.includes('\n')
     if (!isBlock) {
       return (
-        <code className="rounded-md px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.12)', color: '#E8C8A0' }}>
+        <code className="rounded-sm px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.12)', color: '#E8C8A0' }}>
           {children}
         </code>
       )
@@ -94,7 +94,7 @@ const mdComponents = {
   },
   table({ children }: { children?: React.ReactNode }) {
     return (
-      <div className="my-3 overflow-x-auto rounded-xl border border-white/10">
+      <div className="my-3 overflow-x-auto rounded border border-white/10">
         <table className="w-full text-sm">{children}</table>
       </div>
     )
@@ -190,7 +190,7 @@ export function MessageBubble(props: {
       >
         <div className="group max-w-[72%]">
           <div
-            className="rounded-2xl px-5 py-3.5 text-[14.5px] leading-relaxed"
+            className="rounded-sm px-5 py-3.5 text-[14.5px] leading-relaxed"
             style={{
               background: 'linear-gradient(135deg, #D4845C 0%, #B87050 100%)',
               color: 'var(--user-bubble-fg)',
@@ -218,7 +218,7 @@ export function MessageBubble(props: {
     >
       <div
         className={[
-          'rounded-2xl px-5 py-4 transition-all duration-200',
+          'rounded-sm px-5 py-4 transition-all duration-200',
           props.selected ? '' : '',
           localRating === 'down' ? 'border-l-2' : '',
           localRating === 'up' ? 'border-l-2' : '',
@@ -268,7 +268,7 @@ export function MessageBubble(props: {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.18 }}
-              className="mt-3 overflow-hidden rounded-xl px-3 py-2.5 text-[11px]"
+              className="mt-3 overflow-hidden rounded px-3 py-2.5 text-[11px]"
               style={{ border: '1px solid rgba(212,112,88,0.2)', background: 'rgba(212,112,88,0.06)' }}
             >
               <div className="flex items-center gap-2 mb-1.5">
@@ -424,7 +424,7 @@ export function MessageBubble(props: {
             }}
           />
         ) : prov ? (
-          <div className="mt-3 rounded-xl border border-white/8 bg-white/3 px-3 py-2 text-[11px] text-white/40">
+          <div className="mt-3 rounded border border-white/8 bg-white/3 px-3 py-2 text-[11px] text-white/40">
             <span className="font-mono">{prov.id}</span>
             {prov.id && prov.text ? ' · ' : ''}
             <span className="line-clamp-1">{prov.text}</span>
@@ -433,7 +433,7 @@ export function MessageBubble(props: {
 
         {/* X-ray mode */}
         {props.xrayMode && meta?.xray && (
-          <div className="mt-3 rounded-xl px-3 py-3 text-[11px]" style={{ border: '1px solid rgba(224,160,128,0.15)', background: 'rgba(212,132,92,0.06)' }}>
+          <div className="mt-3 rounded px-3 py-3 text-[11px]" style={{ border: '1px solid rgba(224,160,128,0.15)', background: 'rgba(212,132,92,0.06)' }}>
             <div className="mb-2 font-semibold tracking-wide" style={{ color: '#E0A080' }}>X-RAY</div>
             {(meta.xray.memories_used ?? []).length > 0 && (
               <div className="space-y-1">
@@ -562,7 +562,7 @@ export function MessageBubble(props: {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.18 }}
-            className="mt-3 overflow-hidden rounded-xl border border-white/8 bg-black/20 p-3 text-[11px] text-white/50"
+            className="mt-3 overflow-hidden rounded border border-white/8 bg-black/20 p-3 text-[11px] text-white/50"
           >
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 font-mono">
               {responseType && <div><span className="text-white/30">type</span> <span className="text-white/70">{responseType}</span></div>}

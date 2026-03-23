@@ -51,7 +51,7 @@ export function ProfileNameLightbox(props: {
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 12, scale: 0.98, opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#0B0D12] shadow-2xl"
+            className="w-full max-w-[520px] overflow-hidden rounded-sm border border-white/10 bg-[#0B0D12] shadow-lg"
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div>
@@ -60,7 +60,7 @@ export function ProfileNameLightbox(props: {
               </div>
               <button
                 onClick={props.onClose}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
+                className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70 hover:bg-white/10"
                 title="Close"
               >
                 Esc
@@ -73,14 +73,14 @@ export function ProfileNameLightbox(props: {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Nick"
-                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                className="mt-2 w-full rounded border border-white/10 bg-white/5 px-3 py-3 text-sm text-white placeholder:text-white/30 focus:outline-none"
                 autoFocus
               />
 
               <div className="mt-5 flex items-center justify-end gap-2">
                 <button
                   onClick={props.onClose}
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+                  className="rounded border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
                 >
                   Cancel
                 </button>
@@ -92,7 +92,7 @@ export function ProfileNameLightbox(props: {
                     await props.onSubmit(trimmed)
                   }}
                   className={
-                    'rounded-xl px-4 py-2 text-sm font-semibold ' +
+                    'rounded px-4 py-2 text-sm font-semibold ' +
                     (canSubmit ? 'bg-violet-600 text-white hover:bg-violet-500' : 'bg-white/10 text-white/40')
                   }
                 >
@@ -100,7 +100,7 @@ export function ProfileNameLightbox(props: {
                 </button>
               </div>
 
-              <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/60">
+              <div className="mt-4 rounded border border-white/10 bg-white/5 p-3 text-xs text-white/60">
                 This will send: <span className="font-mono text-white/70">FACT: name = …</span>
               </div>
             </div>

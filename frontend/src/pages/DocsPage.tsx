@@ -60,7 +60,7 @@ function CodePanel({ code, language }: { code: string; language?: string }) {
   }
 
   return (
-    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
+    <div className="rounded overflow-hidden" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-2"
@@ -113,7 +113,7 @@ function InlineCodeBlock({ code, language }: { code: string; language?: string }
   }
 
   return (
-    <div className="group relative my-4 rounded-xl overflow-hidden" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
+    <div className="group relative my-4 rounded overflow-hidden" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
       <div className="flex items-center justify-between px-4 py-2" style={{ background: 'rgba(0,0,0,0.4)', borderBottom: '1px solid rgba(240,235,225,0.04)' }}>
         <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: '#5a5445' }}>{language || 'code'}</span>
         <button onClick={handleCopy} className="text-[10px] font-mono px-2 py-0.5 rounded transition-all hover:bg-white/[0.06]" style={{ color: copied ? '#6abf7b' : '#5a5445' }}>
@@ -193,7 +193,7 @@ const docsMdComponents = {
   },
   table({ children }: { children?: React.ReactNode }) {
     return (
-      <div className="my-5 overflow-x-auto rounded-lg" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
+      <div className="my-5 overflow-x-auto rounded-sm" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
         <table className="w-full text-sm">{children}</table>
       </div>
     )
@@ -281,15 +281,13 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
         style={{
           borderBottom: '1px solid rgba(240,235,225,0.06)',
           background: 'rgba(14,13,11,0.8)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
         }}
       >
         <div className="flex items-center gap-3">
           {onBackToApp && (
             <button
               onClick={onBackToApp}
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] transition-all hover:bg-white/[0.06]"
+              className="flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-[13px] transition-all hover:bg-white/[0.06]"
               style={{ color: '#a09880' }}
             >
               <span>←</span>
@@ -299,7 +297,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
           {onBackToApp && <div className="h-4 w-px bg-white/[0.08]" />}
           <div className="flex items-center gap-2">
             <div
-              className="grid h-7 w-7 place-items-center rounded-lg text-xs font-bold text-white"
+              className="grid h-7 w-7 place-items-center rounded-sm text-xs font-bold text-white"
               style={{ background: 'var(--accent)' }}
             >
               ⬡
@@ -341,7 +339,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                         <button
                           onClick={() => setTab(item.id)}
                           className={
-                            'w-full flex items-center justify-between rounded-lg px-2 py-1.5 text-[13px] text-left transition-all ' +
+                            'w-full flex items-center justify-between rounded-sm px-2 py-1.5 text-[13px] text-left transition-all ' +
                             (isSectionActive ? 'text-white/90' : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]')
                           }
                         >
@@ -384,7 +382,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                       key={item.id}
                       onClick={() => setTab(item.id)}
                       className={
-                        'w-full rounded-lg px-2 py-1.5 text-[13px] text-left transition-all ' +
+                        'w-full rounded-sm px-2 py-1.5 text-[13px] text-left transition-all ' +
                         (isActive
                           ? 'text-white/90 bg-white/[0.06]'
                           : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]')
@@ -409,7 +407,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                   <button
                     key={`${h.id}-${i}`}
                     onClick={() => scrollToHeading(h.id)}
-                    className="text-left text-[12px] rounded-lg px-2 py-1 transition-colors hover:bg-white/[0.04] truncate"
+                    className="text-left text-[12px] rounded-sm px-2 py-1 transition-colors hover:bg-white/[0.04] truncate"
                     style={{
                       paddingLeft: `${(h.level - 1) * 10 + 8}px`,
                       color: h.level === 1 ? 'rgba(240,235,225,0.5)' : 'rgba(240,235,225,0.3)',
@@ -459,7 +457,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                   <div className="h-px mb-8" style={{ background: 'linear-gradient(90deg, rgba(212,132,92,0.4) 0%, transparent 50%)' }} />
 
                   {error && (
-                    <div className="rounded-xl p-4 mb-6 text-sm" style={{ border: '1px solid rgba(212,112,88,0.2)', background: 'rgba(212,112,88,0.06)', color: '#fb7185' }}>
+                    <div className="rounded p-4 mb-6 text-sm" style={{ border: '1px solid rgba(212,112,88,0.2)', background: 'rgba(212,112,88,0.06)', color: '#fb7185' }}>
                       {error}
                     </div>
                   )}
@@ -496,7 +494,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                   key={i}
                   onClick={() => setCodeTab(i)}
                   className={
-                    'rounded-lg px-3 py-1 text-[11px] font-mono transition-all ' +
+                    'rounded-sm px-3 py-1 text-[11px] font-mono transition-all ' +
                     (codeTab === i
                       ? 'text-white/90 bg-white/[0.08]'
                       : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]')

@@ -37,7 +37,7 @@ export default {
         card: '0 10px 30px rgba(17, 24, 39, 0.08)'
       },
       borderRadius: {
-        xl2: '1.25rem'
+        xl2: '0.625rem'
       }
     }
   },

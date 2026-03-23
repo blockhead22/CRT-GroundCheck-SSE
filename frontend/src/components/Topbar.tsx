@@ -37,7 +37,7 @@ export function Topbar(props: {
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={props.onToggleSidebarMobile}
-          className="rounded-xl bg-white/[0.04] p-2.5 text-lg text-white/50 hover:bg-white/[0.08] hover:text-white/70 active:bg-white/[0.12] transition-all"
+          className="rounded bg-white/[0.04] p-2.5 text-lg text-white/50 hover:bg-white/[0.08] hover:text-white/70 active:bg-white/[0.12] transition-all"
           aria-label="Toggle menu"
           title="Toggle menu"
         >
@@ -58,7 +58,7 @@ export function Topbar(props: {
 
       {/* Center: Search (hidden on mobile) */}
       <div className="hidden min-w-0 flex-1 justify-center px-4 md:flex">
-        <div className="flex w-full max-w-[360px] items-center gap-2 rounded-2xl glass-field px-4 py-2">
+        <div className="flex w-full max-w-[360px] items-center gap-2 rounded-sm glass-field px-4 py-2">
           <span className="text-white/30 text-sm">⌕</span>
           <input
             placeholder="Search"
@@ -76,7 +76,7 @@ export function Topbar(props: {
             value={props.apiBaseUrl}
             onChange={(e) => props.onChangeApiBaseUrl(e.target.value)}
             placeholder="(same origin)"
-            className="w-[180px] rounded-xl glass-field px-3 py-1.5 text-xs text-white/60 placeholder:text-white/20 focus:outline-none font-mono"
+            className="w-[180px] rounded glass-field px-3 py-1.5 text-xs text-white/60 placeholder:text-white/20 focus:outline-none font-mono"
           />
         </div>
 

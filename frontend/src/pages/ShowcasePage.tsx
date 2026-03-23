@@ -128,7 +128,7 @@ export function ShowcasePage() {
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-sm px-4 py-2 text-sm font-medium transition ${
                 activeSection === section.id
                   ? 'bg-violet-600 text-white shadow-lg'
                   : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
@@ -151,7 +151,7 @@ export function ShowcasePage() {
         >
           {activeSection === 'comparison' && (
             <div className="mx-auto max-w-5xl space-y-6">
-              <div className="rounded-xl bg-white/5 p-4">
+              <div className="rounded bg-white/5 p-4">
                 <h2 className="mb-2 text-lg font-semibold text-white">Side-by-Side Comparison</h2>
                 <p className="text-sm text-white/60">
                   Show users the difference between regular AI (hides contradictions) and CRT-enhanced AI (discloses
@@ -176,7 +176,7 @@ export function ShowcasePage() {
 
           {activeSection === 'examples' && (
             <div className="mx-auto max-w-6xl space-y-6">
-              <div className="rounded-xl bg-white/5 p-4">
+              <div className="rounded bg-white/5 p-4">
                 <h2 className="mb-2 text-lg font-semibold text-white">Pre-loaded Scenarios</h2>
                 <p className="text-sm text-white/60">
                   Let users explore common contradiction scenarios: job changes, location moves, medical updates, and
@@ -190,7 +190,7 @@ export function ShowcasePage() {
 
           {activeSection === 'ledger' && (
             <div className="mx-auto max-w-6xl space-y-6">
-              <div className="rounded-xl bg-white/5 p-4">
+              <div className="rounded bg-white/5 p-4">
                 <h2 className="mb-2 text-lg font-semibold text-white">Contradiction Ledger</h2>
                 <p className="text-sm text-white/60">
                   Real-time audit trail of all detected contradictions. Click the badge to open the full ledger panel.
@@ -205,12 +205,12 @@ export function ShowcasePage() {
                   </div>
                 </div>
               ) : error ? (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                <div className="rounded border border-red-500/30 bg-red-500/10 p-4">
                   <div className="mb-2 text-sm font-semibold text-red-300">Failed to load contradictions</div>
                   <div className="mb-3 text-xs text-red-400">{error}</div>
                   <button
                     onClick={fetchData}
-                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                    className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
                     Retry
                   </button>
@@ -222,7 +222,7 @@ export function ShowcasePage() {
                   </div>
 
                   {contradictions.length > 0 ? (
-                    <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-6">
+                    <div className="rounded border border-orange-500/30 bg-orange-500/5 p-6">
                       <div className="mb-4 flex items-center gap-3">
                         <div className="text-4xl">⚠️</div>
                         <div>
@@ -235,7 +235,7 @@ export function ShowcasePage() {
                       </div>
                       <div className="space-y-3">
                         {contradictions.slice(0, 3).map((c) => (
-                          <div key={c.ledger_id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <div key={c.ledger_id} className="rounded-sm border border-white/10 bg-black/20 p-3">
                             <div className="mb-2 flex items-center justify-between">
                               <span className="font-mono text-xs text-white/50">
                                 {c.contradiction_id || c.ledger_id}
@@ -262,7 +262,7 @@ export function ShowcasePage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+                    <div className="rounded border border-white/10 bg-white/5 p-8 text-center">
                       <div className="mb-4 text-6xl opacity-20">✓</div>
                       <div className="text-lg font-medium text-white/60">No contradictions detected</div>
                       <div className="mt-2 text-sm text-white/40">
@@ -277,7 +277,7 @@ export function ShowcasePage() {
 
           {activeSection === 'memory-lanes' && (
             <div className="mx-auto max-w-6xl space-y-6">
-              <div className="rounded-xl bg-white/5 p-4">
+              <div className="rounded bg-white/5 p-4">
                 <h2 className="mb-2 text-lg font-semibold text-white">Two-Lane Memory Architecture</h2>
                 <p className="text-sm text-white/60">
                   Visualize the separation between high-trust stable facts and pending candidate facts. Facts with trust
@@ -293,12 +293,12 @@ export function ShowcasePage() {
                   </div>
                 </div>
               ) : error ? (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                <div className="rounded border border-red-500/30 bg-red-500/10 p-4">
                   <div className="mb-2 text-sm font-semibold text-red-300">Failed to load memories</div>
                   <div className="mb-3 text-xs text-red-400">{error}</div>
                   <button
                     onClick={fetchData}
-                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                    className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
                     Retry
                   </button>
@@ -327,7 +327,7 @@ export function ShowcasePage() {
 
           {activeSection === 'trust-scores' && (
             <div className="mx-auto max-w-4xl space-y-6">
-              <div className="rounded-xl bg-white/5 p-4">
+              <div className="rounded bg-white/5 p-4">
                 <h2 className="mb-2 text-lg font-semibold text-white">Trust Score Evolution</h2>
                 <p className="text-sm text-white/60">
                   Track how trust in facts evolves over time through confirmations, age decay, and supersession by newer
@@ -343,18 +343,18 @@ export function ShowcasePage() {
                   </div>
                 </div>
               ) : error ? (
-                <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+                <div className="rounded border border-red-500/30 bg-red-500/10 p-4">
                   <div className="mb-2 text-sm font-semibold text-red-300">Failed to load memories</div>
                   <div className="mb-3 text-xs text-red-400">{error}</div>
                   <button
                     onClick={fetchData}
-                    className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                    className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
                     Retry
                   </button>
                 </div>
               ) : stableMemories.length === 0 && candidateMemories.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-white/5 p-8 text-center">
+                <div className="rounded border border-white/10 bg-white/5 p-8 text-center">
                   <div className="mb-4 text-6xl opacity-20">📊</div>
                   <div className="text-lg font-medium text-white/60">No memories to display</div>
                   <div className="mt-2 text-sm text-white/40">
@@ -392,7 +392,7 @@ export function ShowcasePage() {
 
           {activeSection === 'integration' && (
             <div className="mx-auto max-w-4xl space-y-6">
-              <div className="rounded-xl bg-white/5 p-4">
+              <div className="rounded bg-white/5 p-4">
                 <h2 className="mb-2 text-lg font-semibold text-white">Integration Code Examples</h2>
                 <p className="text-sm text-white/60">
                   Copy-paste ready code snippets for Python, JavaScript, and cURL. Get started integrating CRT in
@@ -402,7 +402,7 @@ export function ShowcasePage() {
 
               <IntegrationCodeWidget defaultLanguage="python" />
 
-              <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4">
+              <div className="rounded border border-violet-500/30 bg-violet-500/10 p-4">
                 <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-violet-300">
                   <span>📖</span>
                   <span>Full Documentation</span>

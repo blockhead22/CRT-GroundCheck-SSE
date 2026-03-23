@@ -58,7 +58,7 @@ function MiniBar({ value, max, color = 'bg-indigo-400' }: { value: number; max: 
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded border border-white/10 bg-white/5 p-4">
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/40">{title}</h3>
       {children}
     </div>
@@ -128,7 +128,7 @@ export function TelemetryPage({ threadId }: { threadId?: string }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto text-white">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-black/40 px-5 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-black/40 px-5 py-3">
         <div>
           <h2 className="text-base font-semibold text-white/90">Telemetry</h2>
           {lastRefresh && (

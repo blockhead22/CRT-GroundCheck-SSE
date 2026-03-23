@@ -204,7 +204,7 @@ export const HeartbeatPanel: React.FC<HeartbeatPanelProps> = ({ threadId }) => {
   };
 
   return (
-    <div className="p-4 space-y-4 bg-slate-50 rounded-lg">
+    <div className="p-4 space-y-4 bg-slate-50 rounded-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
           <Zap className="w-5 h-5 text-amber-500" />

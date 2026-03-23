@@ -136,11 +136,11 @@ export function ExamplesGallery(props: ExamplesGalleryProps) {
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => props.onLoadExample?.(scenario)}
-              className={`group relative overflow-hidden rounded-2xl border border-${categoryColor}-500/30 bg-${categoryColor}-500/5 p-6 text-left shadow-lg transition hover:shadow-xl`}
+              className={`group relative overflow-hidden rounded-sm border border-${categoryColor}-500/30 bg-${categoryColor}-500/5 p-6 text-left shadow-lg transition hover:shadow-xl`}
             >
               {/* Icon */}
               <div
-                className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-${categoryColor}-500/20 text-3xl`}
+                className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-sm bg-${categoryColor}-500/20 text-3xl`}
               >
                 {scenario.icon}
               </div>
@@ -169,7 +169,7 @@ export function ExamplesGallery(props: ExamplesGalleryProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="rounded-xl border border-violet-500/30 bg-violet-500/10 p-4"
+        className="rounded border border-violet-500/30 bg-violet-500/10 p-4"
       >
         <div className="flex items-start gap-3">
           <div className="text-2xl">💡</div>
@@ -200,13 +200,13 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
-      className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/60"
       onClick={props.onClose}
     >
       <motion.div
         initial={{ y: 20 }}
         animate={{ y: 0 }}
-        className="mx-4 w-full max-w-2xl rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900/95 to-gray-800/95 shadow-2xl backdrop-blur-xl"
+        className="mx-4 w-full max-w-2xl rounded-sm border border-white/10 bg-gradient-to-br from-gray-900/95 to-gray-800/95 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -215,7 +215,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
         >
           <div className="flex items-center gap-4">
             <div
-              className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-${categoryColor}-500/20 text-4xl`}
+              className={`flex h-16 w-16 items-center justify-center rounded-sm bg-${categoryColor}-500/20 text-4xl`}
             >
               {props.scenario.icon}
             </div>
@@ -226,7 +226,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
           </div>
           <button
             onClick={props.onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center rounded border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
           >
             ✕
           </button>
@@ -244,7 +244,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
                 className={`flex ${step.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                  className={`max-w-[85%] rounded-sm px-4 py-3 ${
                     step.type === 'user'
                       ? 'bg-violet-600/20 text-white'
                       : 'border border-white/10 bg-white/5 text-white/90'
@@ -264,7 +264,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
         <div className="border-t border-white/10 bg-black/20 p-4">
           <button
             onClick={props.onClose}
-            className="w-full rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-3 font-semibold text-white transition hover:brightness-110"
+            className="w-full rounded bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-3 font-semibold text-white transition hover:brightness-110"
           >
             Close Example
           </button>

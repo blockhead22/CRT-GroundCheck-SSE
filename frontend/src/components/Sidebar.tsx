@@ -57,7 +57,7 @@ export function Sidebar(props: {
     <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl accent-button text-white shadow-[0_0_20px_rgba(212,132,92,0.3)]">
+          <div className="grid h-10 w-10 place-items-center rounded-sm accent-button text-white shadow-[0_0_20px_rgba(212,132,92,0.3)]">
             <span className="text-sm font-bold tracking-wide">Q</span>
           </div>
           <div>
@@ -67,7 +67,7 @@ export function Sidebar(props: {
         </div>
         <button
           onClick={props.onClose}
-          className="rounded-xl bg-white/[0.04] px-2 py-1 text-xs text-white/40 hover:bg-white/[0.08] hover:text-white/60 transition-all"
+          className="rounded bg-white/[0.04] px-2 py-1 text-xs text-white/40 hover:bg-white/[0.08] hover:text-white/60 transition-all"
           aria-label="Close sidebar"
           title="Close"
         >
@@ -76,7 +76,7 @@ export function Sidebar(props: {
       </div>
 
       <div className="px-4">
-        <div className="flex items-center gap-2 rounded-xl glass-field px-3 py-2">
+        <div className="flex items-center gap-2 rounded glass-field px-3 py-2">
           <span className="text-white/50">⌕</span>
           <input
             value={props.search}
@@ -98,13 +98,13 @@ export function Sidebar(props: {
                 key={item.id}
                 onClick={() => handleNavClick(item.id, item.standalone)}
                 className={
-                  'flex flex-col items-center justify-center gap-1 rounded-xl p-3 text-center transition ' +
+                  'flex flex-col items-center justify-center gap-1 rounded p-3 text-center transition ' +
                   (isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 active:bg-white/15')
                 }
               >
                 <span
                   className={
-                    'grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-base ' +
+                    'grid h-10 w-10 place-items-center rounded-sm border border-white/10 bg-white/5 text-base ' +
                     (isActive ? 'text-violet-200' : 'text-white/50')
                   }
                 >
@@ -117,7 +117,7 @@ export function Sidebar(props: {
                 key={item.id}
                 onClick={() => handleNavClick(item.id, item.standalone)}
                 className={
-                  'group relative flex items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-all duration-200 ' +
+                  'group relative flex items-center gap-3 rounded px-3 py-2 text-left text-sm transition-all duration-200 ' +
                   (isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/[0.07] hover:text-white/90')
                 }
               >
@@ -132,7 +132,7 @@ export function Sidebar(props: {
                 )}
                 <span
                   className={
-                    'grid h-8 w-8 place-items-center rounded-lg text-xs transition-all duration-200 ' +
+                    'grid h-8 w-8 place-items-center rounded-sm text-xs transition-all duration-200 ' +
                     (isActive
                       ? 'bg-[rgba(212,132,92,0.15)] text-[#E0A080] shadow-[0_0_12px_rgba(212,132,92,0.25)] border border-[rgba(212,132,92,0.3)]'
                       : 'border border-white/[0.06] bg-white/[0.03] text-white/40 group-hover:text-white/60 group-hover:border-white/10')
@@ -154,7 +154,7 @@ export function Sidebar(props: {
                 props.onNewThread()
                 if (props.isMobile) props.onClose()
               }} 
-              className="rounded-lg bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+              className="rounded-sm bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
             >
               + New
             </button>
@@ -172,7 +172,7 @@ export function Sidebar(props: {
                     key={t.id}
                     onClick={() => handleThreadSelect(t.id)}
                     className={
-                      'group rounded-2xl px-3.5 py-3 text-left transition-all duration-200 ' +
+                      'group rounded-sm px-3.5 py-3 text-left transition-all duration-200 ' +
                       (selected
                         ? 'bg-white/[0.08] border border-[#D4845C]/20 shadow-[0_0_16px_rgba(212,132,92,0.08)]'
                         : 'bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1]')
@@ -190,7 +190,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onRequestRenameThread(t.id)
                           }}
-                          className="rounded-lg bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          className="rounded-sm bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
                           aria-label="Rename chat"
                           title="Rename"
                         >
@@ -202,7 +202,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onDeleteThread(t.id)
                           }}
-                          className="rounded-lg bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          className="rounded-sm bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
                           aria-label="Delete chat"
                           title="Delete"
                         >
@@ -247,7 +247,7 @@ export function Sidebar(props: {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+            className="fixed inset-0 z-40 bg-black/60 lg:hidden"
             onClick={props.onClose}
           />
 
@@ -264,7 +264,7 @@ export function Sidebar(props: {
             <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
               <div className="flex items-center justify-between px-4 py-4">
                 <div className="flex items-center gap-2">
-                  <div className="grid h-9 w-9 place-items-center rounded-xl accent-button text-white">
+                  <div className="grid h-9 w-9 place-items-center rounded accent-button text-white">
                     <span className="text-sm font-semibold">Q</span>
                   </div>
                   <div>
@@ -274,7 +274,7 @@ export function Sidebar(props: {
                 </div>
                 <button
                   onClick={props.onClose}
-                  className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
+                  className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/70 hover:bg-white/10"
                   aria-label="Close sidebar"
                   title="Close"
                 >
@@ -283,7 +283,7 @@ export function Sidebar(props: {
               </div>
 
               <div className="px-4">
-                <div className="flex items-center gap-2 rounded-xl glass-field px-3 py-2">
+                <div className="flex items-center gap-2 rounded glass-field px-3 py-2">
                   <span className="text-white/50">⌕</span>
                   <input
                     value={props.search}
@@ -305,13 +305,13 @@ export function Sidebar(props: {
                         key={item.id}
                         onClick={() => handleNavClick(item.id, item.standalone)}
                         className={
-                          'flex flex-col items-center justify-center gap-1 rounded-xl p-3 text-center transition ' +
+                          'flex flex-col items-center justify-center gap-1 rounded p-3 text-center transition ' +
                           (isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 active:bg-white/15')
                         }
                       >
                         <span
                           className={
-                            'grid h-10 w-10 place-items-center rounded-lg border border-white/10 bg-white/5 text-base ' +
+                            'grid h-10 w-10 place-items-center rounded-sm border border-white/10 bg-white/5 text-base ' +
                             (isActive ? 'text-violet-200' : 'text-white/50')
                           }
                         >
@@ -326,7 +326,7 @@ export function Sidebar(props: {
                 {/* User Account Section for Mobile */}
                 <div className="mt-4 px-2">
                   <div className="text-xs font-semibold tracking-wide text-white/60 mb-2">Account</div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                  <div className="rounded border border-white/10 bg-white/5 p-3">
                     {props.authUser ? (
                       <div className="space-y-3">
                         <div className="flex items-center gap-3">
@@ -343,7 +343,7 @@ export function Sidebar(props: {
                             props.onLogout?.()
                             props.onClose()
                           }}
-                          className="w-full rounded-lg bg-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+                          className="w-full rounded-sm bg-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
                         >
                           Logout
                         </button>
@@ -356,7 +356,7 @@ export function Sidebar(props: {
                             props.onShowLogin?.()
                             props.onClose()
                           }}
-                          className="w-full rounded-lg accent-button px-3 py-2 text-xs font-medium text-white"
+                          className="w-full rounded-sm accent-button px-3 py-2 text-xs font-medium text-white"
                         >
                           Login / Register
                         </button>
@@ -368,7 +368,7 @@ export function Sidebar(props: {
                 {/* API Settings for Mobile */}
               <div className="mt-4 px-2">
                 <div className="text-xs font-semibold tracking-wide text-white/60 mb-2">API Settings</div>
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="rounded border border-white/10 bg-white/5 p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <span className={`h-2 w-2 rounded-full ${
                       props.apiStatus === 'connected' ? 'bg-emerald-400' :
@@ -383,7 +383,7 @@ export function Sidebar(props: {
                     value={props.apiBaseUrl || ''}
                     onChange={(e) => props.onChangeApiBaseUrl?.(e.target.value)}
                     placeholder="API URL (e.g. http://192.168.1.91:8123)"
-                    className="w-full rounded-lg glass-field px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
+                    className="w-full rounded-sm glass-field px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
                   />
                 </div>
               </div>
@@ -396,7 +396,7 @@ export function Sidebar(props: {
                         props.onNewThread()
                         props.onClose()
                       }} 
-                      className="rounded-lg bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+                      className="rounded-sm bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
                     >
                       + New
                     </button>
@@ -414,7 +414,7 @@ export function Sidebar(props: {
                             key={t.id}
                             onClick={() => handleThreadSelect(t.id)}
                             className={
-                              'group rounded-xl border border-white/10 px-3 py-3 text-left active:bg-white/15 ' +
+                              'group rounded border border-white/10 px-3 py-3 text-left active:bg-white/15 ' +
                               (selected ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10')
                             }
                           >
@@ -430,7 +430,7 @@ export function Sidebar(props: {
                                     e.stopPropagation()
                                     props.onRequestRenameThread(t.id)
                                   }}
-                                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
+                                  className="rounded-sm border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
                                   aria-label="Rename chat"
                                   title="Rename"
                                 >
@@ -442,7 +442,7 @@ export function Sidebar(props: {
                                     e.stopPropagation()
                                     props.onDeleteThread(t.id)
                                   }}
-                                  className="rounded-lg border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
+                                  className="rounded-sm border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
                                   aria-label="Delete chat"
                                   title="Delete"
                                 >

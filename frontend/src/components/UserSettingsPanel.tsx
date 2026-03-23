@@ -79,7 +79,7 @@ export function UserSettingsPanel(props: {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="absolute right-0 top-[calc(100%+8px)] w-[380px] overflow-hidden rounded-2xl glass-panel border border-white/10 shadow-2xl"
+          className="absolute right-0 top-[calc(100%+8px)] w-[380px] overflow-hidden rounded-sm glass-panel border border-white/10 shadow-lg"
           style={{ zIndex: 9999 }}
         >
           {/* Header */}
@@ -98,8 +98,8 @@ export function UserSettingsPanel(props: {
           {/* Current Model Display */}
           <div className="border-b border-white/10 bg-white/5 p-4">
             <div className="text-xs font-medium uppercase tracking-wide text-white/50">Current Model</div>
-            <div className="mt-2 flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
-              <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-sm">
+            <div className="mt-2 flex items-center gap-2 rounded border border-white/10 bg-white/5 p-3">
+              <div className="grid h-8 w-8 place-items-center rounded-sm bg-gradient-to-br from-violet-500 to-purple-600 text-sm">
                 {currentModel.isReasoning ? '🧠' : '🤖'}
               </div>
               <div className="min-w-0 flex-1">
@@ -125,7 +125,7 @@ export function UserSettingsPanel(props: {
                     key={model.id}
                     onClick={() => props.onModelChange(model.id)}
                     className={`
-                      group w-full rounded-xl border p-3 text-left transition-all
+                      group w-full rounded border p-3 text-left transition-all
                       ${
                         isSelected
                           ? 'border-violet-500/50 bg-violet-500/10'
@@ -136,7 +136,7 @@ export function UserSettingsPanel(props: {
                     <div className="flex items-start gap-3">
                       <div
                         className={`
-                        grid h-10 w-10 flex-shrink-0 place-items-center rounded-lg text-base transition-all
+                        grid h-10 w-10 flex-shrink-0 place-items-center rounded-sm text-base transition-all
                         ${
                           isSelected
                             ? 'bg-gradient-to-br from-violet-500 to-purple-600'
@@ -186,7 +186,7 @@ export function UserSettingsPanel(props: {
             {props.onOpenSettings && (
               <button
                 onClick={() => { props.onOpenSettings?.(); props.onClose() }}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/80 transition-all hover:border-white/20 hover:bg-white/10 flex items-center justify-center gap-2"
+                className="w-full rounded border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white/80 transition-all hover:border-white/20 hover:bg-white/10 flex items-center justify-center gap-2"
               >
                 <span className="text-base">&#9881;</span> Settings
               </button>
@@ -194,7 +194,7 @@ export function UserSettingsPanel(props: {
             {props.onLogout && (
               <button
                 onClick={props.onLogout}
-                className="w-full rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-all hover:border-rose-500/50 hover:bg-rose-500/20"
+                className="w-full rounded border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-sm font-medium text-rose-300 transition-all hover:border-rose-500/50 hover:bg-rose-500/20"
               >
                 Sign Out
               </button>

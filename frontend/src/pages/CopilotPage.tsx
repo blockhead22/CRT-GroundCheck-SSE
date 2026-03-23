@@ -127,10 +127,10 @@ function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: st
             initial={{ opacity: 0, x: 80, scale: 0.9 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 80, scale: 0.9 }}
-            className="flex items-start gap-3 rounded-xl border border-violet-500/30 bg-[#1a1a2e]/95 backdrop-blur-xl p-3 shadow-2xl shadow-violet-500/10 cursor-pointer"
+            className="flex items-start gap-3 rounded border border-violet-500/30 bg-[#1a1a2e]/95 p-3 shadow-lg shadow-violet-500/10 cursor-pointer"
             onClick={() => onDismiss(t.id)}
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20">
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-violet-500/20">
               <span className="text-sm">🧠</span>
             </div>
             <div className="min-w-0 flex-1">
@@ -139,7 +139,7 @@ function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: st
               </div>
               <div className="text-sm text-white/80 mt-0.5 leading-snug">{t.text}</div>
               <div className="mt-1 flex items-center gap-2">
-                <span className={`inline-flex items-center rounded-md border px-1.5 py-0 text-[9px] ${sourceBadge(t.source).className}`}>
+                <span className={`inline-flex items-center rounded-sm border px-1.5 py-0 text-[9px] ${sourceBadge(t.source).className}`}>
                   {sourceBadge(t.source).label}
                 </span>
                 <span className="text-[9px] text-white/20">{timeAgo(t.ts)}</span>
@@ -159,9 +159,9 @@ function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: st
 function ProfileCard({ profile }: { profile: CopilotProfile | null }) {
   if (!profile) return null
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-violet-500/5 to-sky-500/5 p-5">
+    <div className="rounded-sm border border-white/10 bg-gradient-to-br from-violet-500/5 to-sky-500/5 p-5">
       <div className="flex items-center gap-3 mb-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-500/20 text-2xl">
+        <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-violet-500/20 text-2xl">
           🧠
         </div>
         <div>
@@ -177,7 +177,7 @@ function ProfileCard({ profile }: { profile: CopilotProfile | null }) {
           <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">Languages</div>
           <div className="flex flex-wrap gap-1.5">
             {profile.languages.map(l => (
-              <span key={l} className="rounded-md bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 text-xs text-emerald-300">
+              <span key={l} className="rounded-sm bg-emerald-500/15 border border-emerald-500/25 px-2 py-0.5 text-xs text-emerald-300">
                 {l}
               </span>
             ))}
@@ -248,7 +248,7 @@ function TeachForm({ onTaught, threadId = 'default' }: { onTaught: () => void; t
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+    <div className="rounded-sm border border-white/10 bg-white/[0.03] p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-white/40 mb-3">
         ✏️ Teach System
       </div>
@@ -257,7 +257,7 @@ function TeachForm({ onTaught, threadId = 'default' }: { onTaught: () => void; t
           <button
             key={p.label}
             onClick={() => { setText(p.template); inputRef.current?.focus() }}
-            className="rounded-lg bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] text-white/50 hover:text-white hover:bg-white/10 transition-all"
+            className="rounded-sm bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] text-white/50 hover:text-white hover:bg-white/10 transition-all"
           >
             {p.label}
           </button>
@@ -271,12 +271,12 @@ function TeachForm({ onTaught, threadId = 'default' }: { onTaught: () => void; t
           onChange={e => setText(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleTeach()}
           placeholder="Tell the system something about yourself..."
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 transition-colors"
+          className="flex-1 rounded border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 transition-colors"
         />
         <button
           onClick={handleTeach}
           disabled={!text.trim() || busy}
-          className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 px-5 py-2.5 text-sm font-medium text-white transition-all"
+          className="rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-30 disabled:hover:bg-violet-600 px-5 py-2.5 text-sm font-medium text-white transition-all"
         >
           {busy ? '...' : 'Teach'}
         </button>
@@ -588,7 +588,7 @@ function MemoryGraph({ memories }: { memories: CopilotMemory[] }) {
   }
 
   return (
-    <div ref={containerRef} className="relative rounded-2xl border border-white/10 bg-[#0d0d1a] overflow-hidden">
+    <div ref={containerRef} className="relative rounded-sm border border-white/10 bg-[#0d0d1a] overflow-hidden">
       <div className="absolute top-3 left-4 text-[10px] uppercase tracking-wider text-white/30 z-10 font-medium">
         Memory Graph — {memories.length} facts
       </div>
@@ -609,7 +609,7 @@ function MemoryGraph({ memories }: { memories: CopilotMemory[] }) {
       </div>
       {hovered && (
         <div
-          className="fixed z-50 rounded-xl border border-white/15 bg-[#12122a]/95 backdrop-blur-xl px-4 py-3 shadow-2xl max-w-xs pointer-events-none"
+          className="fixed z-50 rounded border border-white/15 bg-[#12122a]/95 px-4 py-3 shadow-lg max-w-xs pointer-events-none"
           style={{ left: mousePos.x + 14, top: mousePos.y - 12 }}
         >
           <div className="text-[13px] text-white/90 leading-relaxed">{hovered.text}</div>
@@ -636,7 +636,7 @@ function AccuracyTracker({ accuracy }: { accuracy: AccuracyStats | null }) {
   const gaugeAngle = accuracy.accuracy_rate * 180
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
       <div className="text-[10px] uppercase tracking-wider text-white/30 mb-4">📊 Accuracy Tracker</div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-5">
@@ -784,11 +784,11 @@ function FactChecksPanel() {
         {checks.length} pending finding{checks.length !== 1 ? 's' : ''} — sorted by volatility
       </div>
       {checks.map(c => (
-        <div key={c.id} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+        <div key={c.id} className="rounded border border-white/8 bg-white/[0.03] p-4">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase ${severityStyle(c.severity)}`}>
+                <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase ${severityStyle(c.severity)}`}>
                   {c.severity}
                 </span>
                 {c.volatility > 0 && (
@@ -805,7 +805,7 @@ function FactChecksPanel() {
             </div>
             <button
               onClick={() => handleResolve(c.id)}
-              className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all flex-shrink-0"
+              className="rounded-sm bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 text-xs text-emerald-400 hover:bg-emerald-500/20 transition-all flex-shrink-0"
               title="Mark as resolved"
             >
               ✓ Resolve
@@ -876,7 +876,7 @@ function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; o
       {/* Config + Scheduler cards */}
       <div className="grid gap-4 lg:grid-cols-2">
         {config && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-4">⚙️ Trust Decay Config</div>
             <div className="grid grid-cols-2 gap-3">
               {Object.entries(config).map(([k, v]) => (
@@ -889,7 +889,7 @@ function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; o
           </div>
         )}
         {scheduler && (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
             <div className="text-[10px] uppercase tracking-wider text-white/30 mb-4">🔄 Idle Scheduler</div>
             <div className="grid grid-cols-2 gap-3">
               {Object.entries(scheduler).map(([k, v]) => (
@@ -912,14 +912,14 @@ function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; o
         <button
           onClick={handleRunDecay}
           disabled={running}
-          className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
+          className="rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
         >
           {running ? '...' : '⏳ Run Trust Decay Pass'}
         </button>
         <button
           onClick={handleForceTick}
           disabled={running}
-          className="rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 border border-white/10 px-5 py-2.5 text-sm text-white/70 transition-all"
+          className="rounded bg-white/10 hover:bg-white/15 disabled:opacity-40 border border-white/10 px-5 py-2.5 text-sm text-white/70 transition-all"
         >
           Force Scheduler Tick
         </button>
@@ -930,7 +930,7 @@ function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; o
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4"
+          className="rounded border border-emerald-500/20 bg-emerald-500/5 p-4"
         >
           <div className="text-[10px] uppercase tracking-wider text-emerald-400 mb-2">Last Run Result</div>
           <pre className="text-xs text-white/60 font-mono whitespace-pre-wrap overflow-auto max-h-40">
@@ -941,13 +941,13 @@ function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; o
 
       {/* Low trust memories — reinforce candidates */}
       {memories.filter(m => m.trust < 0.5).length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
           <div className="text-[10px] uppercase tracking-wider text-amber-400/60 mb-3">
             ⚠️ Low-trust memories ({memories.filter(m => m.trust < 0.5).length}) — click to reinforce
           </div>
           <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
             {memories.filter(m => m.trust < 0.5).sort((a, b) => a.trust - b.trust).map(m => (
-              <div key={m.id} className="flex items-center gap-3 rounded-lg bg-white/[0.02] border border-white/5 p-3">
+              <div key={m.id} className="flex items-center gap-3 rounded-sm bg-white/[0.02] border border-white/5 p-3">
                 <span className={`font-mono text-xs font-bold ${trustColor(m.trust)}`}>
                   {(m.trust * 100).toFixed(0)}%
                 </span>
@@ -955,7 +955,7 @@ function TrustDecayPanel({ memories, onRefresh }: { memories: CopilotMemory[]; o
                 <button
                   onClick={() => handleReinforce(m.id)}
                   disabled={reinforcing === m.id}
-                  className="rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-[11px] text-emerald-400 hover:bg-emerald-500/20 transition-all flex-shrink-0"
+                  className="rounded-sm bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-[11px] text-emerald-400 hover:bg-emerald-500/20 transition-all flex-shrink-0"
                 >
                   {reinforcing === m.id ? '...' : '↑ Boost'}
                 </button>
@@ -1011,19 +1011,19 @@ function SessionsPanel() {
           onChange={e => setSearchTopic(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
           placeholder="Search sessions by topic..."
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 transition-colors"
+          className="flex-1 rounded border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/25 outline-none focus:border-violet-500/50 transition-colors"
         />
         <button
           onClick={handleSearch}
           disabled={searching}
-          className="rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
+          className="rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
         >
           {searching ? '...' : 'Search'}
         </button>
         {searchTopic && (
           <button
             onClick={() => { setSearchTopic(''); load() }}
-            className="rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 px-4 py-2.5 text-sm text-white/50 transition-all"
+            className="rounded bg-white/10 hover:bg-white/15 border border-white/10 px-4 py-2.5 text-sm text-white/50 transition-all"
           >
             Clear
           </button>
@@ -1042,12 +1042,12 @@ function SessionsPanel() {
             {sessions.length} session{sessions.length !== 1 ? 's' : ''}
           </div>
           {sessions.map((s, i) => (
-            <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+            <div key={i} className="rounded border border-white/8 bg-white/[0.03] overflow-hidden">
               <div
                 className="flex items-start gap-3 p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
                 onClick={() => setExpandedIdx(expandedIdx === i ? null : i)}
               >
-                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sm">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-sm bg-sky-500/15 text-sm">
                   📋
                 </div>
                 <div className="min-w-0 flex-1">
@@ -1151,7 +1151,7 @@ function CrtInsightsPanel() {
           <button
             key={st.id}
             onClick={() => setSubTab(st.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
               subTab === st.id
                 ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
                 : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
@@ -1167,11 +1167,11 @@ function CrtInsightsPanel() {
         <div className="flex flex-col gap-4">
           {/* Preferences */}
           {preferences.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
               <div className="text-[10px] uppercase tracking-wider text-white/30 mb-3">🎨 Learned Preferences</div>
               <div className="flex flex-wrap gap-2">
                 {preferences.map((p, i) => (
-                  <span key={i} className="rounded-lg bg-violet-500/10 border border-violet-500/20 px-3 py-1.5 text-xs text-violet-300">
+                  <span key={i} className="rounded-sm bg-violet-500/10 border border-violet-500/20 px-3 py-1.5 text-xs text-violet-300">
                     <span className="text-white/30 mr-1">{p.category || 'pref'}:</span>
                     {p.key || p.preference || JSON.stringify(p)}
                     {p.value && <span className="text-white/50 ml-1">= {p.value}</span>}
@@ -1188,7 +1188,7 @@ function CrtInsightsPanel() {
               {concepts.map((c, i) => {
                 const ct = conceptTypes[c.concept_type || c.type] || { icon: '🔹', color: 'text-white/60' }
                 return (
-                  <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+                  <div key={i} className="rounded border border-white/8 bg-white/[0.03] p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-lg">{ct.icon}</span>
                       <span className={`text-sm font-semibold ${ct.color}`}>
@@ -1238,7 +1238,7 @@ function CrtInsightsPanel() {
       {subTab === 'patterns' && (
         <div className="flex flex-col gap-3">
           {patterns.length > 0 ? patterns.map((p, i) => (
-            <div key={i} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+            <div key={i} className="rounded border border-white/8 bg-white/[0.03] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-[10px] uppercase text-white/30 font-medium">
                   {p.pattern_type || p.type || 'pattern'}
@@ -1281,7 +1281,7 @@ function CrtInsightsPanel() {
           {interactionStats && (
             <div className="grid gap-3 sm:grid-cols-3">
               {Object.entries(interactionStats).filter(([k]) => k !== 'period_hours').map(([k, v]) => (
-                <div key={k} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                <div key={k} className="rounded border border-white/10 bg-white/5 p-4">
                   <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">{k.replace(/_/g, ' ')}</div>
                   <div className="text-xl font-bold text-white">{typeof v === 'number' ? v.toLocaleString() : String(v)}</div>
                 </div>
@@ -1291,7 +1291,7 @@ function CrtInsightsPanel() {
 
           {/* Learning stats detail */}
           {learningStats && (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
               <div className="text-[10px] uppercase tracking-wider text-white/30 mb-3">🧠 Active Learning Stats</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {Object.entries(learningStats).map(([k, v]) => (
@@ -1309,7 +1309,7 @@ function CrtInsightsPanel() {
           <button
             onClick={handleRetrain}
             disabled={retraining}
-            className="self-start rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
+            className="self-start rounded bg-violet-600 hover:bg-violet-500 disabled:opacity-40 px-5 py-2.5 text-sm font-medium text-white transition-all"
           >
             {retraining ? 'Retraining...' : '🔄 Trigger Model Retrain'}
           </button>
@@ -1320,7 +1320,7 @@ function CrtInsightsPanel() {
       {subTab === 'training' && (
         <div className="flex flex-col gap-4">
           {trainingStats ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-5">
               <div className="text-[10px] uppercase tracking-wider text-white/30 mb-3">📊 Training Data Collection</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {Object.entries(trainingStats).map(([k, v]) => (
@@ -1365,7 +1365,7 @@ function SelfModelSlots({ slots }: { slots: SelfModelAwareness }) {
       {Object.entries(SLOT_META).map(([key, meta]) => {
         const value = slots[key]
         return (
-          <div key={key} className={`rounded-xl border p-4 transition-all ${value ? 'border-white/12 bg-white/[0.04]' : 'border-white/5 bg-white/[0.01] opacity-50'}`}>
+          <div key={key} className={`rounded border p-4 transition-all ${value ? 'border-white/12 bg-white/[0.04]' : 'border-white/5 bg-white/[0.01] opacity-50'}`}>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-base">{meta.icon}</span>
               <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">{meta.label}</span>
@@ -1408,7 +1408,7 @@ function PersonalityTimeline({ checkpoints }: { checkpoints: PersonalityCheckpoi
         const isExpanded = expanded === i
 
         return (
-          <div key={cp.id} className="rounded-xl border border-white/8 bg-white/[0.03] overflow-hidden">
+          <div key={cp.id} className="rounded border border-white/8 bg-white/[0.03] overflow-hidden">
             <div
               className="flex items-start gap-3 p-4 cursor-pointer hover:bg-white/[0.02] transition-colors"
               onClick={() => setExpanded(isExpanded ? null : i)}
@@ -1457,7 +1457,7 @@ function PersonalityTimeline({ checkpoints }: { checkpoints: PersonalityCheckpoi
                         <div className="text-[10px] uppercase tracking-wider text-amber-400/60 mb-2">Changes from previous</div>
                         <div className="space-y-1.5">
                           {deltaKeys.map(k => (
-                            <div key={k} className="rounded-lg bg-amber-500/5 border border-amber-500/15 px-3 py-2">
+                            <div key={k} className="rounded-sm bg-amber-500/5 border border-amber-500/15 px-3 py-2">
                               <div className="text-[10px] text-amber-400/70 mb-0.5">{SLOT_META[k]?.label || k}</div>
                               <div className="text-xs text-white/60">{String((cp.delta as any)[k])}</div>
                             </div>
@@ -1469,7 +1469,7 @@ function PersonalityTimeline({ checkpoints }: { checkpoints: PersonalityCheckpoi
                       <div className="text-[10px] uppercase tracking-wider text-white/25 mb-2">Snapshot</div>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {Object.entries(cp.snapshot).filter(([,v]) => v).map(([k, v]) => (
-                          <div key={k} className="rounded-lg bg-white/3 border border-white/5 px-3 py-2">
+                          <div key={k} className="rounded-sm bg-white/3 border border-white/5 px-3 py-2">
                             <div className="text-[10px] text-white/30 mb-0.5">{SLOT_META[k]?.label || k}</div>
                             <div className="text-xs text-white/60 line-clamp-3">{String(v)}</div>
                           </div>
@@ -1540,7 +1540,7 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
             <button
               key={st.id}
               onClick={() => setSubTab(st.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              className={`rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
                 subTab === st.id
                   ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
                   : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
@@ -1554,7 +1554,7 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
           <button
             onClick={runReflection}
             disabled={reflecting}
-            className="flex items-center gap-1 rounded-lg border border-violet-500/20 bg-violet-500/5 px-2.5 py-1 text-xs text-violet-400 hover:bg-violet-500/10 disabled:opacity-40 transition-all"
+            className="flex items-center gap-1 rounded-sm border border-violet-500/20 bg-violet-500/5 px-2.5 py-1 text-xs text-violet-400 hover:bg-violet-500/10 disabled:opacity-40 transition-all"
           >
             {reflecting ? <span className="h-3 w-3 animate-spin rounded-full border border-violet-400/40 border-t-violet-400 inline-block" /> : '◈'}
             {reflecting ? 'reflecting…' : 'reflect now'}
@@ -1565,7 +1565,7 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
 
       {subTab === 'current' && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3">
+          <div className="flex items-center gap-3 rounded border border-violet-500/20 bg-violet-500/5 px-4 py-3">
             <span className="text-2xl">◈</span>
             <div>
               <div className="text-sm font-medium text-violet-300">Self-Awareness Model</div>
@@ -1594,7 +1594,7 @@ function PersonalityPanel({ threadId }: { threadId: string }) {
           <div className="text-xs text-white/30">Adaptive traits inferred from conversation style — updated per-thread automatically.</div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {Object.entries(traits).filter(([,v]) => v != null).map(([key, value]) => (
-              <div key={key} className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
+              <div key={key} className="rounded border border-white/8 bg-white/[0.03] p-4">
                 <div className="text-[10px] uppercase tracking-wider text-white/30 mb-1">{key.replace(/_/g, ' ')}</div>
                 <div className="text-sm font-medium text-white/80">
                   {typeof value === 'number' ? value.toFixed(3) : String(value)}
@@ -1655,12 +1655,12 @@ function EpistemicEventCard({ ev, expanded, onToggle }: {
 
   return (
     <div
-      className="group cursor-pointer rounded-xl border border-white/8 bg-white/[0.02] px-4 py-3 hover:border-white/15 hover:bg-white/[0.04] transition-all"
+      className="group cursor-pointer rounded border border-white/8 bg-white/[0.02] px-4 py-3 hover:border-white/15 hover:bg-white/[0.04] transition-all"
       onClick={onToggle}
     >
       <div className="flex items-center gap-3">
         <div className={`h-2 w-2 flex-shrink-0 rounded-full ${style.dot}`} />
-        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${style.badge}`}>
+        <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-semibold ${style.badge}`}>
           {ev.label}
         </span>
         {detail && (
@@ -1690,7 +1690,7 @@ function EpistemicEventCard({ ev, expanded, onToggle }: {
           {Object.keys(ev.payload).length > 0 && (
             <div>
               <div className="text-[10px] uppercase tracking-wider text-white/25 mb-1">Payload</div>
-              <pre className="text-[10px] text-white/40 bg-white/[0.03] rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">
+              <pre className="text-[10px] text-white/40 bg-white/[0.03] rounded-sm p-2 overflow-x-auto whitespace-pre-wrap">
                 {JSON.stringify(ev.payload, null, 2)}
               </pre>
             </div>
@@ -1759,7 +1759,7 @@ function EpistemicTimelinePanel({ threadId }: { threadId: string }) {
         <select
           value={filter}
           onChange={e => handleFilter(e.target.value)}
-          className="ml-auto rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white outline-none cursor-pointer"
+          className="ml-auto rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white outline-none cursor-pointer"
         >
           {EVENT_FILTER_OPTIONS.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
@@ -1767,7 +1767,7 @@ function EpistemicTimelinePanel({ threadId }: { threadId: string }) {
         </select>
         <button
           onClick={() => load(offset, filter)}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:text-white hover:bg-white/10 transition-all"
+          className="rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/60 hover:text-white hover:bg-white/10 transition-all"
         >
           ↻
         </button>
@@ -1797,7 +1797,7 @@ function EpistemicTimelinePanel({ threadId }: { threadId: string }) {
               <button
                 onClick={() => load(Math.max(0, offset - limit))}
                 disabled={offset === 0}
-                className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-30 transition-all"
+                className="rounded-sm border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-30 transition-all"
               >
                 ← Newer
               </button>
@@ -1807,7 +1807,7 @@ function EpistemicTimelinePanel({ threadId }: { threadId: string }) {
               <button
                 onClick={() => load(offset + limit)}
                 disabled={offset + limit >= total}
-                className="rounded-lg border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-30 transition-all"
+                className="rounded-sm border border-white/10 bg-white/5 px-4 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-30 transition-all"
               >
                 Older →
               </button>
@@ -1827,7 +1827,7 @@ function StatCard({ label, value, sub, accent }: {
   label: string; value: string | number; sub?: string; accent?: string
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="flex flex-col gap-1 rounded-sm border border-white/10 bg-white/5 p-4">
       <div className="text-xs font-medium uppercase tracking-wider text-white/40">{label}</div>
       <div className={`text-2xl font-bold ${accent || 'text-white'}`}>{value}</div>
       {sub && <div className="text-xs text-white/40">{sub}</div>}
@@ -1964,21 +1964,21 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect, threadId 
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
-      className="group rounded-xl border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] transition-all"
+      className="group rounded border border-white/8 bg-white/[0.03] hover:bg-white/[0.06] transition-all"
     >
       <div className="flex items-start gap-3 p-4 cursor-pointer" onClick={onToggle}>
-        <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border ${trustBg(memory.trust)}`}>
+        <div className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm border ${trustBg(memory.trust)}`}>
           <span className={`text-sm font-bold ${trustColor(memory.trust)}`}>
             {(memory.trust * 100).toFixed(0)}
           </span>
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium ${src.className}`}>
+            <span className={`inline-flex items-center rounded-sm border px-2 py-0.5 text-[10px] font-medium ${src.className}`}>
               {src.label}
             </span>
             <span className="text-[10px] text-white/30 font-mono">{memory.namespace}</span>
-            <span className="text-[10px] rounded-md px-1.5 py-0 text-white/20" style={{ backgroundColor: (CATEGORY_COLORS[categorize(memory.text)] || '#888') + '20' }}>
+            <span className="text-[10px] rounded-sm px-1.5 py-0 text-white/20" style={{ backgroundColor: (CATEGORY_COLORS[categorize(memory.text)] || '#888') + '20' }}>
               {CATEGORY_ICONS[categorize(memory.text)]} {categorize(memory.text)}
             </span>
             <span className="ml-auto text-[10px] text-white/30">{timeAgo(memory.timestamp)}</span>
@@ -2037,23 +2037,23 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect, threadId 
                       if (e.key === 'Enter') { onCorrect(memory.id, editText); setEditing(false) }
                       if (e.key === 'Escape') setEditing(false)
                     }}
-                    className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50"
+                    className="flex-1 rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none focus:border-violet-500/50"
                     autoFocus
                   />
-                  <button onClick={() => { onCorrect(memory.id, editText); setEditing(false) }} className="rounded-lg bg-violet-600 px-3 py-1.5 text-xs text-white">Save</button>
-                  <button onClick={() => setEditing(false)} className="rounded-lg bg-white/10 px-3 py-1.5 text-xs text-white/50">Cancel</button>
+                  <button onClick={() => { onCorrect(memory.id, editText); setEditing(false) }} className="rounded-sm bg-violet-600 px-3 py-1.5 text-xs text-white">Save</button>
+                  <button onClick={() => setEditing(false)} className="rounded-sm bg-white/10 px-3 py-1.5 text-xs text-white/50">Cancel</button>
                 </div>
               ) : (
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={(e) => { e.stopPropagation(); setEditing(true); setEditText(memory.text) }}
-                    className="rounded-lg bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:text-white hover:bg-white/10 transition-all"
+                    className="rounded-sm bg-white/5 border border-white/10 px-3 py-1.5 text-xs text-white/50 hover:text-white hover:bg-white/10 transition-all"
                   >
                     ✏️ Correct
                   </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); onDelete(memory.id) }}
-                    className="rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-all"
+                    className="rounded-sm bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition-all"
                   >
                     🗑 Delete
                   </button>
@@ -2232,7 +2232,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
                 +{newCount} new
               </motion.span>
             )}
-            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5">
+            <div className="flex items-center gap-2 rounded border border-white/10 bg-white/5 px-3 py-1.5">
               <button onClick={() => setLive(v => !v)} className="flex items-center gap-1.5 text-xs">
                 <span className={`inline-block h-2 w-2 rounded-full ${live ? 'bg-emerald-400 animate-pulse' : 'bg-white/20'}`} />
                 <span className={live ? 'text-emerald-400' : 'text-white/40'}>{live ? 'Live' : 'Paused'}</span>
@@ -2254,7 +2254,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
             <StatCard label="Namespaces" value={stats.namespaces.length} sub={stats.namespaces.slice(0, 3).join(', ')} />
             <StatCard label="Accuracy" value={accuracy ? `${Math.round(accuracy.accuracy_rate * 100)}%` : '—'} accent="text-emerald-400" />
             <div className="col-span-2 sm:col-span-4 lg:col-span-1">
-              <div className="flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-col gap-1 rounded-sm border border-white/10 bg-white/5 p-4">
                 <div className="text-xs font-medium uppercase tracking-wider text-white/40">Trust</div>
                 <div className="mt-1"><TrustBar distribution={stats.trust_distribution} /></div>
               </div>
@@ -2268,7 +2268,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`rounded-sm px-3 py-1.5 text-xs font-medium transition-all ${
               tab === t.id
                 ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
                 : 'text-white/40 hover:text-white/60 hover:bg-white/5 border border-transparent'
@@ -2284,14 +2284,14 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
           <div className="flex flex-col gap-0">
             <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-4 py-3 sm:px-6">
               <input type="text" placeholder="Search..." value={searchQ} onChange={e => setSearchQ(e.target.value)}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none focus:border-violet-500/50 w-40" />
+                className="rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder-white/30 outline-none focus:border-violet-500/50 w-40" />
               <select value={nsFilter} onChange={e => setNsFilter(e.target.value)}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none cursor-pointer">
+                className="rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none cursor-pointer">
                 <option value="">All NS</option>
                 {(stats?.namespaces || []).map(ns => <option key={ns} value={ns}>{ns}</option>)}
               </select>
               <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none cursor-pointer">
+                className="rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none cursor-pointer">
                 <option value="">All Sources</option>
                 <option value="inferred">⚡ Auto</option>
                 <option value="user">👤 Explicit</option>
@@ -2299,7 +2299,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
                 <option value="code">💻 Code</option>
               </select>
               <select value={sortOrder} onChange={e => setSortOrder(e.target.value as SortOrder)}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none cursor-pointer">
+                className="rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white outline-none cursor-pointer">
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
                 <option value="trust_high">High trust</option>
@@ -2322,10 +2322,10 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
                 </div>
               ) : error ? (
                 <div className="flex items-center justify-center py-20">
-                  <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-8 text-center">
+                  <div className="rounded-sm border border-red-500/20 bg-red-500/5 p-8 text-center">
                     <span className="text-4xl">⚠️</span>
                     <div className="mt-2 text-sm text-red-400">{error}</div>
-                    <button onClick={() => { setLoading(true); fetchData() }} className="mt-3 rounded-lg bg-white/10 px-4 py-2 text-xs text-white">Retry</button>
+                    <button onClick={() => { setLoading(true); fetchData() }} className="mt-3 rounded-sm bg-white/10 px-4 py-2 text-xs text-white">Retry</button>
                   </div>
                 </div>
               ) : memories.length === 0 ? (

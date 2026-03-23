@@ -26,7 +26,7 @@ export function Tabs({
 export function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('inline-flex h-10 items-center justify-center rounded-md bg-white/5 p-1', className)}
+      className={cn('inline-flex h-10 items-center justify-center rounded-sm bg-white/5 p-1', className)}
       {...props}
     />
   )

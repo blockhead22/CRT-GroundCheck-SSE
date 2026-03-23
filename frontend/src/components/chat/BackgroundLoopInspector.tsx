@@ -139,7 +139,7 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
   }, [lastPersonality])
 
   return (
-    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-4">
       <div className="flex items-center justify-between">
         <div>
           <div className="text-sm font-semibold text-white">Background Loops</div>
@@ -156,7 +156,7 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
       ) : (
         <>
           <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="rounded border border-white/10 bg-black/20 px-3 py-2">
               <div className="text-white/50">Reflection</div>
               <div className="mt-1 text-white/80">
                 {lastReflection ? summarizeReflection(lastReflection) : 'Waiting for update...'}
@@ -165,7 +165,7 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
                 Last: {lastReflectionTs ? formatTime(lastReflectionTs) : '--'}
               </div>
             </div>
-            <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+            <div className="rounded border border-white/10 bg-black/20 px-3 py-2">
               <div className="text-white/50">Personality</div>
               <div className="mt-1 text-white/80">
                 {lastPersonality ? summarizePersonality(lastPersonality) : 'Waiting for update...'}
@@ -176,7 +176,7 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
             </div>
           </div>
 
-      <div className="mt-3 rounded-xl border border-white/10 bg-black/20">
+      <div className="mt-3 rounded border border-white/10 bg-black/20">
         <div className="px-3 pt-2 text-[11px] font-semibold uppercase tracking-wide text-white/40">Stream</div>
         <div
           ref={scrollRef}
@@ -207,7 +207,7 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as typeof mode)}
-              className="h-9 rounded-lg border border-white/10 bg-black/30 px-2 text-[11px] text-white/80 focus:outline-none"
+              className="h-9 rounded-sm border border-white/10 bg-black/30 px-2 text-[11px] text-white/80 focus:outline-none"
             >
               <option value="both">Both</option>
               <option value="reflection">Reflection</option>
@@ -223,12 +223,12 @@ export function BackgroundLoopInspector(props: { threadId: string | null }) {
                 }
               }}
               placeholder="Prompt note..."
-              className="h-9 min-w-[220px] flex-1 rounded-lg border border-white/10 bg-black/30 px-3 text-[11px] text-white/80 placeholder:text-white/40 focus:outline-none"
+              className="h-9 min-w-[220px] flex-1 rounded-sm border border-white/10 bg-black/30 px-3 text-[11px] text-white/80 placeholder:text-white/40 focus:outline-none"
             />
             <button
               onClick={handleRun}
               disabled={status.state === 'running'}
-              className="h-9 rounded-lg border border-white/10 bg-white/10 px-3 text-[11px] font-semibold text-white/80 hover:bg-white/15 disabled:opacity-50"
+              className="h-9 rounded-sm border border-white/10 bg-white/10 px-3 text-[11px] font-semibold text-white/80 hover:bg-white/15 disabled:opacity-50"
             >
               {status.state === 'running' ? 'Running...' : 'Run'}
             </button>

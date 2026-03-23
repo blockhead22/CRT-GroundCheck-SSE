@@ -6,7 +6,7 @@ function cn(...classes: (string | undefined | false)[]) {
 
 export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('rounded-lg border bg-white/5 shadow-sm', className)} {...props} />
+    <div ref={ref} className={cn('rounded-sm border bg-white/5 shadow-sm', className)} {...props} />
   )
 )
 Card.displayName = 'Card'

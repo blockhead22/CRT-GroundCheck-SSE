@@ -65,7 +65,7 @@ function Pill(props: { active: boolean; label: string; onClick: () => void }) {
     <button
       onClick={props.onClick}
       className={
-        'rounded-xl px-3 py-1.5 text-xs font-semibold ' +
+        'rounded px-3 py-1.5 text-xs font-semibold ' +
         (props.active ? 'bg-violet-600 text-white' : 'bg-white/5 text-white/80 hover:bg-white/10')
       }
     >
@@ -223,7 +223,7 @@ export function JobsPage(props: { threadId: string }) {
             <div className="mt-1 text-sm text-white/60">Queue + worker visibility and manual enqueuing</div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
+            <div className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
               Thread: <span className="font-semibold text-white">{props.threadId}</span>
             </div>
           </div>
@@ -258,12 +258,12 @@ export function JobsPage(props: { threadId: string }) {
         <div className="flex h-full min-h-0">
           <div className="w-[380px] flex-none border-r border-white/10 p-5">
             <div className="text-xs font-semibold tracking-wide text-white/60">Worker</div>
-            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-3 rounded-sm border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white">Status</div>
                 <button
                   onClick={() => void refresh().catch(() => {})}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
+                  className="rounded border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
                 >
                   Refresh
                 </button>
@@ -285,7 +285,7 @@ export function JobsPage(props: { threadId: string }) {
             </div>
 
             <div className="mt-6 text-xs font-semibold tracking-wide text-white/60">Enqueue</div>
-            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="mt-3 rounded-sm border border-white/10 bg-white/5 p-4">
               <div className="text-sm font-semibold text-white">New job</div>
               {template ? (
                 <div className="mt-1 text-xs text-white/60">{template.title} — {template.subtitle}</div>
@@ -297,7 +297,7 @@ export function JobsPage(props: { threadId: string }) {
                   <select
                     value={templateType}
                     onChange={(e) => setTemplateType(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none"
+                    className="mt-1 w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none"
                   >
                     {templates.map((t) => (
                       <option key={t.type} value={t.type}>
@@ -313,7 +313,7 @@ export function JobsPage(props: { threadId: string }) {
                     type="number"
                     value={priority}
                     onChange={(e) => setPriority(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none"
+                    className="mt-1 w-full rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white focus:outline-none"
                   />
                 </label>
 
@@ -322,7 +322,7 @@ export function JobsPage(props: { threadId: string }) {
                     <div className="text-xs font-semibold text-white/70">Payload (JSON)</div>
                     <button
                       onClick={() => template && setPayloadText(JSON.stringify(template.payload(props.threadId), null, 2))}
-                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                      className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
                     >
                       Reset
                     </button>
@@ -331,7 +331,7 @@ export function JobsPage(props: { threadId: string }) {
                     value={payloadText}
                     onChange={(e) => setPayloadText(e.target.value)}
                     rows={10}
-                    className="mt-1 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-3 py-2 font-mono text-[12px] text-white/90 focus:outline-none"
+                    className="mt-1 w-full resize-none rounded border border-white/10 bg-black/20 px-3 py-2 font-mono text-[12px] text-white/90 focus:outline-none"
                   />
                 </label>
 
@@ -339,7 +339,7 @@ export function JobsPage(props: { threadId: string }) {
                   disabled={busy}
                   onClick={() => void doEnqueue()}
                   className={
-                    'w-full rounded-xl px-4 py-2 text-sm font-semibold ' +
+                    'w-full rounded px-4 py-2 text-sm font-semibold ' +
                     (busy
                       ? 'cursor-not-allowed bg-white/10 text-white/50'
                       : 'bg-violet-600 text-white hover:bg-violet-500')
@@ -351,7 +351,7 @@ export function JobsPage(props: { threadId: string }) {
             </div>
 
             {error ? (
-              <div className="mt-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+              <div className="mt-4 rounded-sm border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
                 {error}
               </div>
             ) : null}
@@ -375,7 +375,7 @@ export function JobsPage(props: { threadId: string }) {
                         key={j.id}
                         onClick={() => setSelectedJobId(j.id)}
                         className={
-                          'w-full rounded-2xl border px-3 py-3 text-left transition ' +
+                          'w-full rounded-sm border px-3 py-3 text-left transition ' +
                           (active ? 'border-violet-400/40 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/10')
                         }
                       >
@@ -399,7 +399,7 @@ export function JobsPage(props: { threadId: string }) {
                   })}
 
                   {!jobs.length ? (
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+                    <div className="rounded-sm border border-white/10 bg-white/5 p-4 text-sm text-white/60">
                       No jobs found.
                     </div>
                   ) : null}
@@ -412,7 +412,7 @@ export function JobsPage(props: { threadId: string }) {
                   {selected?.job?.id ? (
                     <button
                       onClick={() => safeCopy(selected.job.id)}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
+                      className="rounded border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
                     >
                       Copy job id
                     </button>
@@ -420,12 +420,12 @@ export function JobsPage(props: { threadId: string }) {
                 </div>
 
                 {!selected ? (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
+                  <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-6 text-sm text-white/60">
                     Select a job to inspect events and artifacts.
                   </div>
                 ) : (
                   <div className="mt-4 space-y-4">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="truncate text-lg font-semibold text-white">{selected.job.type}</div>
@@ -454,31 +454,31 @@ export function JobsPage(props: { threadId: string }) {
                       </div>
 
                       {selected.job.error ? (
-                        <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
+                        <div className="mt-3 rounded border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-200">
                           {selected.job.error}
                         </div>
                       ) : null}
 
                       <div className="mt-3">
                         <div className="text-xs font-semibold text-white/70">Payload</div>
-                        <pre className="mt-2 overflow-auto rounded-xl border border-white/10 bg-black/20 p-3 text-[12px] text-white/80">
+                        <pre className="mt-2 overflow-auto rounded border border-white/10 bg-black/20 p-3 text-[12px] text-white/80">
                           {JSON.stringify(selected.job.payload ?? {}, null, 2)}
                         </pre>
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                       <div className="text-sm font-semibold text-white">Events</div>
                       <div className="mt-3 space-y-2">
                         {(selected.events || []).map((e, idx) => (
-                          <div key={idx} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <div key={idx} className="rounded border border-white/10 bg-white/5 p-3">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-white">{e.message}</div>
                               <div className="text-[11px] text-white/50">{fmtIso(e.ts)}</div>
                             </div>
                             <div className="mt-1 text-[11px] text-white/60">level: {e.level}</div>
                             {e.data ? (
-                              <pre className="mt-2 overflow-auto rounded-lg border border-white/10 bg-black/20 p-2 text-[11px] text-white/70">
+                              <pre className="mt-2 overflow-auto rounded-sm border border-white/10 bg-black/20 p-2 text-[11px] text-white/70">
                                 {JSON.stringify(e.data, null, 2)}
                               </pre>
                             ) : null}
@@ -490,11 +490,11 @@ export function JobsPage(props: { threadId: string }) {
                       </div>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
                       <div className="text-sm font-semibold text-white">Artifacts</div>
                       <div className="mt-3 space-y-2">
                         {(selected.artifacts || []).map((a, idx) => (
-                          <div key={idx} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                          <div key={idx} className="rounded border border-white/10 bg-white/5 p-3">
                             <div className="flex items-center justify-between gap-2">
                               <div className="text-xs font-semibold text-white">{a.kind}</div>
                               <div className="text-[11px] text-white/50">{fmtIso(a.created_at)}</div>
@@ -504,7 +504,7 @@ export function JobsPage(props: { threadId: string }) {
                             <div className="mt-2">
                               <button
                                 onClick={() => safeCopy(a.path)}
-                                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                                className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
                               >
                                 Copy path
                               </button>

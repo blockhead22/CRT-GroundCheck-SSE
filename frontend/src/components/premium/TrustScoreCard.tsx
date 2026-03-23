@@ -47,7 +47,7 @@ export function TrustScoreCard(props: TrustScoreCardProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      className={`overflow-hidden rounded-2xl border ${
+      className={`overflow-hidden rounded-sm border ${
         props.superseded
           ? 'border-white/10 bg-white/5 opacity-70'
           : `border-${color}-500/30 bg-${color}-500/5`
@@ -92,7 +92,7 @@ export function TrustScoreCard(props: TrustScoreCardProps) {
         </div>
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-2 gap-3 rounded-xl bg-black/20 p-3 text-xs">
+        <div className="grid grid-cols-2 gap-3 rounded bg-black/20 p-3 text-xs">
           {props.source && (
             <div>
               <div className="mb-1 text-white/50">Source</div>
@@ -121,7 +121,7 @@ export function TrustScoreCard(props: TrustScoreCardProps) {
 
         {/* Trust Evolution Chart (if history provided) */}
         {props.history && props.history.length > 1 && (
-          <div className="mt-4 rounded-xl bg-black/20 p-3">
+          <div className="mt-4 rounded bg-black/20 p-3">
             <div className="mb-2 text-xs font-medium text-white/70">Trust Evolution</div>
             <div className="flex h-20 items-end justify-between gap-1">
               {props.history.map((point, index) => (
@@ -134,7 +134,7 @@ export function TrustScoreCard(props: TrustScoreCardProps) {
                     style={{ minHeight: '4px' }}
                   />
                   {/* Tooltip */}
-                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded-lg bg-black/90 px-2 py-1 text-xs text-white/90 shadow-lg group-hover:block">
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded-sm bg-black/90 px-2 py-1 text-xs text-white/90 shadow-lg group-hover:block">
                     <div>{(point.trust * 100).toFixed(0)}%</div>
                     {point.event && <div className="text-white/60">{point.event}</div>}
                   </div>

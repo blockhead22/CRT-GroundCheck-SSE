@@ -82,7 +82,7 @@ export function AgentPanel({ trace, agentAnswer, onClose }: AgentPanelProps) {
         initial={{ scale: 0.95 }}
         animate={{ scale: 1 }}
         exit={{ scale: 0.95 }}
-        className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-sm bg-white shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -112,19 +112,19 @@ export function AgentPanel({ trace, agentAnswer, onClose }: AgentPanelProps) {
             <div className="flex gap-2">
               <button
                 onClick={expandAll}
-                className="rounded-lg px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+                className="rounded-sm px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 Expand All
               </button>
               <button
                 onClick={collapseAll}
-                className="rounded-lg px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+                className="rounded-sm px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 Collapse All
               </button>
               <button
                 onClick={onClose}
-                className="rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-100 transition-colors"
+                className="rounded-sm px-3 py-1.5 text-gray-600 hover:bg-gray-100 transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -195,7 +195,7 @@ function StepCard({ step, isExpanded, onToggle, getActionIcon, formatTimestamp }
   const hasObservation = step.observation !== null && step.observation !== undefined
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white overflow-hidden hover:border-gray-300 transition-colors">
+    <div className="rounded-sm border border-gray-200 bg-white overflow-hidden hover:border-gray-300 transition-colors">
       {/* Step Header */}
       <button
         onClick={onToggle}

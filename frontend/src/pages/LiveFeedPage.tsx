@@ -112,7 +112,7 @@ export function LiveFeedPage() {
         </div>
       ) : null}
 
-      <div ref={listRef} className="min-h-0 flex-1 overflow-auto rounded-xl border border-white/10 bg-black/30 p-3 font-mono text-xs">
+      <div ref={listRef} className="min-h-0 flex-1 overflow-auto rounded border border-white/10 bg-black/30 p-3 font-mono text-xs">
         {events.length === 0 ? (
           <div className="text-white/50">Waiting for events...</div>
         ) : (

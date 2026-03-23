@@ -219,7 +219,7 @@ export function MessageRatingBar({
             className="overflow-hidden"
           >
             <div
-              className="mt-0.5 rounded-xl p-2.5 text-[10px]"
+              className="mt-0.5 rounded p-2.5 text-[10px]"
               style={{ border: '1px solid rgba(240,235,225,0.06)', background: 'rgba(0,0,0,0.2)' }}
             >
               <div className="mb-1.5 font-semibold uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.25)' }}>

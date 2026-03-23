@@ -35,7 +35,7 @@ function PipelineCrumbs({ statuses, phase }: { statuses: string[]; phase?: strin
   if (!statuses.length && !phase) return null
 
   return (
-    <div className="rounded-xl glass-card px-3 py-2 text-xs text-white/80">
+    <div className="rounded glass-card px-3 py-2 text-xs text-white/80">
       <div className="flex items-center justify-between">
         <div className="text-[10px] font-semibold uppercase tracking-wide text-white/40">Pipeline</div>
         {phase ? (
@@ -85,7 +85,7 @@ function TaskingSection({ tasking }: { tasking?: TaskingMeta }) {
   })()
 
   return (
-    <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
+    <div className="rounded border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-cyan-200 hover:bg-cyan-500/10 transition-colors"
@@ -107,7 +107,7 @@ function TaskingSection({ tasking }: { tasking?: TaskingMeta }) {
       {isOpen ? (
         <div className="px-3 pb-3 text-[11px] text-cyan-100">
           {skipped ? (
-            <div className="rounded-lg bg-black/20 p-2 text-cyan-200/70">
+            <div className="rounded-sm bg-black/20 p-2 text-cyan-200/70">
               Tasking loop skipped ({skipped}).
             </div>
           ) : null}
@@ -131,7 +131,7 @@ function TaskingSection({ tasking }: { tasking?: TaskingMeta }) {
               <div className="font-semibold text-cyan-200">Plan</div>
               <ul className="mt-1 space-y-1">
                 {tasks.map((t) => (
-                  <li key={t.task_id} className="rounded-md bg-black/20 px-2 py-1 border border-white/5">
+                  <li key={t.task_id} className="rounded-sm bg-black/20 px-2 py-1 border border-white/5">
                     <div className="flex items-center gap-2">
                       <div className="font-mono text-cyan-200">{t.task_id}</div>
                       {t.status ? (
@@ -176,7 +176,7 @@ function PipelineSection({ statuses, draft }: { statuses: string[]; draft?: stri
   if (!statuses.length && !hasDraft) return null
 
   return (
-    <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 overflow-hidden">
+    <div className="rounded border border-sky-500/30 bg-sky-500/10 overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-sky-200 hover:bg-sky-500/10 transition-colors"
@@ -201,7 +201,7 @@ function PipelineSection({ statuses, draft }: { statuses: string[]; draft?: stri
               <div className="font-semibold text-sky-200">Steps</div>
               <ul className="mt-1 space-y-1">
                 {statuses.map((s, i) => (
-                  <li key={`${s}-${i}`} className="rounded-md bg-black/20 px-2 py-1">{s}</li>
+                  <li key={`${s}-${i}`} className="rounded-sm bg-black/20 px-2 py-1">{s}</li>
                 ))}
               </ul>
             </div>
@@ -209,7 +209,7 @@ function PipelineSection({ statuses, draft }: { statuses: string[]; draft?: stri
           {hasDraft ? (
             <div className="mt-3">
               <div className="font-semibold text-sky-200">Draft (live stream)</div>
-              <div className="mt-1 rounded-md bg-black/20 px-2 py-2 text-white/70 whitespace-pre-wrap">{draft}</div>
+              <div className="mt-1 rounded-sm bg-black/20 px-2 py-2 text-white/70 whitespace-pre-wrap">{draft}</div>
             </div>
           ) : null}
         </div>
@@ -239,7 +239,7 @@ function ToolCallSection({ toolCalls }: { toolCalls?: Array<Record<string, unkno
           const tcOutputPreview = tc.output_preview as string | undefined
           const tcError = tc.error as string | undefined
           return (
-            <div key={idx} className="rounded-xl border border-white/8 overflow-hidden"
+            <div key={idx} className="rounded border border-white/8 overflow-hidden"
               style={{ background: 'rgba(0,0,0,0.2)' }}>
               <button
                 className="w-full flex items-center gap-2 px-3 py-2 text-[11px] font-mono text-left hover:bg-white/4 transition-colors"
@@ -343,7 +343,7 @@ function ThinkingSection({ thinking, traceId, threadId }: { thinking?: string | 
   const charCount = displayContent?.length || 0
 
   return (
-    <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+    <div className="rounded border border-amber-500/30 bg-amber-500/5 overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-amber-300 hover:bg-amber-500/10 transition-colors"
@@ -369,7 +369,7 @@ function ThinkingSection({ thinking, traceId, threadId }: { thinking?: string | 
           transition={{ duration: 0.2 }}
           className="px-3 pb-3"
         >
-          <div className="max-h-64 overflow-y-auto rounded-lg bg-black/30 p-3 text-[11px] text-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
+          <div className="max-h-64 overflow-y-auto rounded-sm bg-black/30 p-3 text-[11px] text-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
             {isLoading ? (
               <span className="text-amber-300/60 animate-pulse">Loading thinking content...</span>
             ) : loadError ? (
@@ -441,7 +441,7 @@ function ReflectionSection({
   const colorClass = getConfidenceColor(confScore)
 
   return (
-    <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 overflow-hidden">
+    <div className="rounded border border-purple-500/30 bg-purple-500/5 overflow-hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-medium text-purple-300 hover:bg-purple-500/10 transition-colors"
@@ -563,7 +563,7 @@ export function CrtInspector(props: {
         {hasMessage ? (
           <button
             onClick={props.onClear}
-            className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 hover:bg-white/10"
+            className="rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80 hover:bg-white/10"
             title="Clear selection"
           >
             Clear
@@ -577,36 +577,36 @@ export function CrtInspector(props: {
         <div className="text-sm text-white/60">Select an assistant message to inspect CRT details.</div>
       ) : (
         <>
-          <div className="rounded-xl glass-card px-3 py-2 text-xs text-white/80">
+          <div className="rounded glass-card px-3 py-2 text-xs text-white/80">
             <div className="font-medium text-white">Message</div>
             <div className="mt-1 line-clamp-6 whitespace-pre-wrap text-white/80">{props.message?.text}</div>
           </div>
 
           <div className="mt-1 grid grid-cols-2 gap-3 text-xs">
-            <div className="rounded-xl glass-card px-3 py-2">
+            <div className="rounded glass-card px-3 py-2">
               <div className="text-white/60">Response</div>
               <div className="mt-0.5 font-medium text-white">{(meta?.response_type ?? '—').toUpperCase()}</div>
             </div>
-            <div className="rounded-xl glass-card px-3 py-2">
+            <div className="rounded glass-card px-3 py-2">
               <div className="text-white/60">Gates</div>
               <div className="mt-0.5 font-medium text-white">
                 {typeof meta?.gates_passed === 'boolean' ? (meta.gates_passed ? 'PASS' : 'FAIL') : '—'}
               </div>
               <div className="mt-0.5 text-white/60">{meta?.gate_reason ?? '—'}</div>
             </div>
-            <div className="rounded-xl glass-card px-3 py-2">
+            <div className="rounded glass-card px-3 py-2">
               <div className="text-white/60">Confidence</div>
               <div className="mt-0.5 font-medium text-white">{pct01(meta?.confidence)}</div>
             </div>
-            <div className="rounded-xl glass-card px-3 py-2">
+            <div className="rounded glass-card px-3 py-2">
               <div className="text-white/60">Session</div>
               <div className="mt-0.5 font-medium text-white">{meta?.session_id ?? '—'}</div>
             </div>
-            <div className="rounded-xl glass-card px-3 py-2">
+            <div className="rounded glass-card px-3 py-2">
               <div className="text-white/60">Intent align</div>
               <div className="mt-0.5 font-medium text-white">{pct01(meta?.intent_alignment)}</div>
             </div>
-            <div className="rounded-xl glass-card px-3 py-2">
+            <div className="rounded glass-card px-3 py-2">
               <div className="text-white/60">Memory align</div>
               <div className="mt-0.5 font-medium text-white">{pct01(meta?.memory_alignment)}</div>
             </div>
@@ -627,7 +627,7 @@ export function CrtInspector(props: {
             <div className="text-xs font-semibold tracking-wide text-white/60">Retrieved memories</div>
             <div className="mt-2 space-y-2">
               {(meta?.retrieved_memories ?? []).slice(0, 8).map((m, idx) => (
-                <div key={idx} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <div key={idx} className="rounded border border-white/10 bg-white/5 px-3 py-2">
                   {m.memory_id ? <div className="font-mono text-[11px] text-white/50">{m.memory_id}</div> : null}
                   <div className="line-clamp-3 whitespace-pre-wrap text-xs text-white/80">{m.text || '—'}</div>
                   <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/60">
@@ -648,7 +648,7 @@ export function CrtInspector(props: {
             <div className="text-xs font-semibold tracking-wide text-white/60">Prompt memories</div>
             <div className="mt-2 space-y-2">
               {(meta?.prompt_memories ?? []).slice(0, 8).map((m, idx) => (
-                <div key={idx} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <div key={idx} className="rounded border border-white/10 bg-white/5 px-3 py-2">
                   {m.memory_id ? <div className="font-mono text-[11px] text-white/50">{m.memory_id}</div> : null}
                   <div className="line-clamp-3 whitespace-pre-wrap text-xs text-white/80">{m.text || '—'}</div>
                   <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-white/60">
@@ -667,7 +667,7 @@ export function CrtInspector(props: {
           {(meta as any)?.gaslighting_detected && (meta as any)?.gaslighting_citation ? (
             <div className="mt-4">
               <div className="text-xs font-semibold tracking-wide text-orange-400">⚠️ Gaslighting Detection</div>
-              <div className="mt-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-3 py-2">
+              <div className="mt-2 rounded border border-orange-500/30 bg-orange-500/10 px-3 py-2">
                 <div className="whitespace-pre-wrap text-xs text-orange-200">{(meta as any).gaslighting_citation}</div>
               </div>
             </div>
@@ -678,7 +678,7 @@ export function CrtInspector(props: {
               <div className="text-xs font-semibold tracking-wide text-cyan-400">📝 LLM Claims Extracted</div>
               <div className="mt-2 space-y-2">
                 {(meta as any).llm_claims.map((claim: any, idx: number) => (
-                  <div key={idx} className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-3 py-2">
+                  <div key={idx} className="rounded border border-cyan-500/30 bg-cyan-500/10 px-3 py-2">
                     <div className="text-[11px] font-medium text-cyan-200">{claim.slot}</div>
                     <div className="mt-1 text-xs text-white/90">Value: {claim.value}</div>
                     <div className="mt-1 text-[11px] text-white/60">Trust: {claim.trust.toFixed(2)} | Source: {claim.source}</div>
@@ -693,7 +693,7 @@ export function CrtInspector(props: {
               <div className="text-xs font-semibold tracking-wide text-amber-400">⚠️ LLM Contradictions</div>
               <div className="mt-2 space-y-2">
                 {(meta as any).llm_disclosures.map((disclosure: string, idx: number) => (
-                  <div key={idx} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                  <div key={idx} className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2">
                     <div className="whitespace-pre-wrap text-xs text-amber-200">{disclosure}</div>
                   </div>
                 ))}
