@@ -72,7 +72,7 @@ chat_logs_save.md
 .sse_multi_cache.json
 
 # Documentation output
-docs/
+
 *.cache
 
 # Frontend
