@@ -290,14 +290,21 @@ def _run_verification(
     has_hallucination = False
 
     # Collect hallucinated facts
-    for slot, fact in (getattr(report, 'hallucinations', None) or getattr(report, 'hallucinated_facts', None) or {}).items():
+    raw_hallu = getattr(report, 'hallucinations', None) or getattr(report, 'hallucinated_facts', None) or []
+    if isinstance(raw_hallu, dict):
+        items = raw_hallu.items()
+    elif isinstance(raw_hallu, list):
+        items = [(str(i), h) for i, h in enumerate(raw_hallu)]
+    else:
+        items = []
+    for slot, fact in items:
         value = fact.value if hasattr(fact, "value") else str(fact)
         has_hallucination = True
         findings.append({
             "claim": f"{slot}: {value}",
-            "slot": slot,
+            "slot": slot if not slot.isdigit() else "unknown",
             "issue_type": "hallucination",
-            "details": f"Claimed '{value}' for {slot} but no supporting memory found",
+            "details": f"Claimed '{value}' but no supporting memory found",
         })
 
     # Collect contradictions — apply CRT second-pass filter
