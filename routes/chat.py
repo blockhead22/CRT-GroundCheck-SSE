@@ -2900,6 +2900,46 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "local") or "local").strip()
         print(f"[MODEL_SELECT] generation_mode={_generation_mode}, uid={uid}, _uid_gen={_uid_gen}")
 
+        # --- Escalation policy: may promote local → cloud for this request ---
+        _escalation_decision = None
+        try:
+            from personal_agent.escalation_policy import get_escalation_policy
+            _esc_policy = get_escalation_policy()
+            # Rough token estimate: ~4 chars per token
+            _token_est = len(effective_message) // 4
+            if recent_history:
+                for _h in recent_history[-6:]:
+                    _token_est += len(str(_h.get("content", ""))) // 4
+            _pc_mems = result.get("retrieved_memories") or result.get("prompt_memories") or []
+            for _m in (_pc_mems[:10] if isinstance(_pc_mems, list) else []):
+                _token_est += len(str(_m.get("text", ""))) // 4
+
+            _escalation_decision = _esc_policy.decide(
+                query=effective_message,
+                generation_mode=_generation_mode,
+                context_token_estimate=_token_est,
+                gate_boost=getattr(engine, '_last_behavioral_directives', {}).get('gate_boost', 0.0) if hasattr(engine, '_last_behavioral_directives') else 0.0,
+            )
+            result["escalation"] = _escalation_decision.to_dict()
+
+            # Promote local → cloud if escalation says so
+            # But respect "local_only" escalation policy — never promote
+            _user_esc_policy = str(
+                _auth_gen.get_user_setting(_uid_gen, "cloud_escalation_policy", "conservative")
+            ).lower().strip()
+            if (
+                _generation_mode == "local"
+                and _escalation_decision.start_tier != "local"
+                and _user_esc_policy != "local_only"
+            ):
+                _promoted_tier = _escalation_decision.start_tier
+                _generation_mode = f"cloud_{_promoted_tier}"
+                print(f"[ESCALATION] Promoted generation_mode local → {_generation_mode} (reason: {_escalation_decision.reason})")
+            elif _generation_mode == "local" and _escalation_decision.start_tier != "local" and _user_esc_policy == "local_only":
+                print(f"[ESCALATION] Promotion blocked by local_only policy (would have been: {_escalation_decision.start_tier})")
+        except Exception as _esc_err:
+            print(f"[ESCALATION] Policy check failed: {_esc_err}")
+
         if _generation_mode in ("cloud_openai", "cloud_claude"):
             from personal_agent.cloud_features import get_cloud_feature_service
             _primary_cloud_svc = get_cloud_feature_service()
@@ -2997,8 +3037,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         result["gates_passed"] = True
                         result["gate_reason"] = "cloud_primary_override"
                     print(f"[CLOUD_PRIMARY] Success -- {len(_cloud_primary_answer)} chars via {_provider}")
+                    try:
+                        _esc_policy.record_success(_provider)
+                    except Exception:
+                        pass
                 else:
                     print(f"[CLOUD_PRIMARY] {_provider} returned None, keeping local answer")
+                    try:
+                        _esc_policy.record_failure(_provider, "returned_none")
+                    except Exception:
+                        pass
             else:
                 print("[CLOUD_PRIMARY] Cloud service not initialized, using local")
     except Exception as _gen_mode_err:
@@ -3030,12 +3078,24 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     if _is_llm_error or _is_gate_fail_empty:
         _fallback_reason = "LLM error" if _is_llm_error else f"gate fail ({result.get('gate_reason', 'empty')})"
         print(f"[CLOUD_GEN] Local generation failed ({_fallback_reason}): {_raw_answer[:120]}")
+        # Record local failure for circuit breaker
+        try:
+            _esc_policy.record_failure("local", "timeout" if "timeout" in _raw_answer.lower() else "error")
+        except Exception:
+            pass
         try:
             import auth as _auth_cg
             _uid_cg = int(uid) if uid else 1
             _cloud_gen_enabled = str(
                 _auth_cg.get_user_setting(_uid_cg, "cloud_generation_fallback", "true")
             ).lower() in ("true", "1", "yes", "on")
+            # Respect escalation policy — "local_only" blocks cloud fallback
+            _esc_policy_setting = str(
+                _auth_cg.get_user_setting(_uid_cg, "cloud_escalation_policy", "conservative")
+            ).lower().strip()
+            if _esc_policy_setting == "local_only":
+                _cloud_gen_enabled = False
+                print("[CLOUD_GEN] Cloud fallback blocked by escalation policy (local_only)")
             if _cloud_gen_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_gen_svc = get_cloud_feature_service()
@@ -3069,9 +3129,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             result["gates_passed"] = True
                             result["gate_reason"] = "cloud_fallback_recovery"
                         print(f"[CLOUD_GEN] Fallback succeeded — {len(_cloud_answer)} chars")
+                        try:
+                            _esc_policy.record_success("openai")
+                        except Exception:
+                            pass
                     else:
                         # OpenAI failed — escalate to Claude (Tier 2)
                         print("[CLOUD_GEN] OpenAI returned None, escalating to Claude (Tier 2)")
+                        try:
+                            _esc_policy.record_failure("openai", "returned_none")
+                        except Exception:
+                            pass
                         _claude_answer = _cloud_gen_svc.generate_response_claude(
                             user_message=effective_message,
                             retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
@@ -3085,14 +3153,30 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                 result["gates_passed"] = True
                                 result["gate_reason"] = "cloud_fallback_recovery"
                             print(f"[CLOUD_GEN] Claude fallback succeeded — {len(_claude_answer)} chars")
+                            try:
+                                _esc_policy.record_success("claude")
+                            except Exception:
+                                pass
                         else:
                             print("[CLOUD_GEN] Claude also returned None, keeping local error")
+                            try:
+                                _esc_policy.record_failure("claude", "returned_none")
+                            except Exception:
+                                pass
                 else:
                     print("[CLOUD_GEN] Cloud service not initialized")
             else:
                 print("[CLOUD_GEN] Cloud generation fallback disabled by user setting")
         except Exception as _cg_err:
             print(f"[CLOUD_GEN] Fallback error: {_cg_err}")
+    else:
+        # No LLM error and no gate-fail-empty → local generation succeeded
+        _gen_source = result.get("generation_source", "")
+        if not _gen_source or _gen_source == "local":
+            try:
+                _esc_policy.record_success("local")
+            except Exception:
+                pass
 
     control_state.mark(
         "generate",
@@ -3694,6 +3778,13 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _cloud_gen_enabled2 = str(
                     _auth_cg2.get_user_setting(_uid_cg2, "cloud_generation_fallback", "true")
                 ).lower() in ("true", "1", "yes", "on")
+                # Respect escalation policy — "local_only" blocks cloud fallback
+                _esc_policy_setting2 = str(
+                    _auth_cg2.get_user_setting(_uid_cg2, "cloud_escalation_policy", "conservative")
+                ).lower().strip()
+                if _esc_policy_setting2 == "local_only":
+                    _cloud_gen_enabled2 = False
+                    print("[CLOUD_GEN] Late cloud fallback blocked by escalation policy (local_only)")
                 if _cloud_gen_enabled2:
                     from personal_agent.cloud_features import get_cloud_feature_service
                     _cloud_gen_svc2 = get_cloud_feature_service()

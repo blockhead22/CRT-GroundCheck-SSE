@@ -188,6 +188,23 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         },
     },
 
+    # Escalation policy: smart tier routing with circuit breaker.
+    # Decides when to skip local Ollama and route directly to cloud based on
+    # recent failure history and query characteristics.
+    "escalation_policy": {
+        "enabled": True,
+        "circuit_breaker": {
+            "trip_threshold": 3,            # consecutive failures before skip
+            "window_seconds": 600,          # 10 min failure window
+            "cooldown_local_seconds": 300,  # 5 min cooldown for local
+            "cooldown_cloud_seconds": 120,  # 2 min cooldown for cloud tiers
+        },
+        "query_routing": {
+            "token_threshold_for_cloud": 6000,  # estimated tokens
+            "gate_boost_threshold": 0.10,       # from reflection loop
+        },
+    },
+
     # Optional handoff from CRT to a local OpenClaw gateway/CLI for longer
     # research or tool-heavy work. This is conservative by default.
     "openclaw_handoff": {

@@ -49,9 +49,17 @@ Closed the gap between reflection observing and reflection acting.
 - Information density reduction in lower panels
 - Consolidate duplicate API calls on page load
 
-### 5. Remaining Bug Fixes
+### 5a. ~~Escalation Policy~~ ✅ SHIPPED (Session 5)
+Smart tier routing with circuit breaker. Prevents eating 300s Ollama timeouts repeatedly.
+- `personal_agent/escalation_policy.py` — EscalationPolicy with per-tier circuit breaker (3 failures → 5m cooldown)
+- Query-aware routing: token budget estimate > 6000 → skip local; reflection gate_boost > 0.10 → skip local
+- Wired into `routes/chat.py`: decide() before generation, record_success/failure at all outcomes
+- Configurable via `runtime_config.py` escalation_policy block
+- In-memory state, no DB — resets on restart
+
+### 5b. Remaining Bug Fixes
 - "Who is building this system?" should pull creator context from memories
-- Ollama timeouts on follow-up "Explain more" (context budget too large)
+- ~~Ollama timeouts on follow-up "Explain more"~~ — mitigated by escalation policy circuit breaker
 - Trust re-boost still fighting demotions on some cited memories (edge cases)
 - Typo-resilient slot matching ("favortie" vs "favorite")
 - Only demote user-sourced memories, not Aether's narrative memories
