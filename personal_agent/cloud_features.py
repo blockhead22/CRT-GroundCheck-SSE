@@ -263,7 +263,12 @@ class CloudFeatureService:
             result = self.cookie.complete(system, prompt, max_tokens=max_tokens)
             latency = int((time.time() - t0) * 1000)
             raw_content = getattr(result, "content", "") or ""
-            if result.error:
+            # Ignore JSON parse errors — complete() calls try_parse_json()
+            # which sets error on non-JSON text, but we want raw text here.
+            _is_json_parse_err = result.error and "JSON parse" in str(result.error)
+            if _is_json_parse_err and raw_content.strip():
+                print(f"[CLOUD_CLAUDE] Ignoring JSON parse error for text generation ({feature})")
+            elif result.error:
                 usage_logger.log(
                     provider="claude_subscription", feature=feature,
                     model="claude-sonnet-4-5", prompt=full_prompt,

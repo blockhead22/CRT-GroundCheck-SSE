@@ -51,6 +51,8 @@ export function Composer(props: {
   onSend: (text: string) => void
   onResearch?: (query: string) => void
   researching?: boolean
+  diagnosticsOpen?: boolean
+  onToggleDiagnostics?: () => void
 }) {
   const [text, setText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -311,6 +313,26 @@ export function Composer(props: {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Diagnostics toggle */}
+          {props.onToggleDiagnostics && (
+            <button
+              onClick={props.onToggleDiagnostics}
+              className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-mono transition-all hover:bg-white/[0.06]"
+              style={{
+                borderColor: props.diagnosticsOpen ? 'rgba(212,132,92,0.3)' : 'rgba(240,235,225,0.08)',
+                background: props.diagnosticsOpen ? 'rgba(212,132,92,0.1)' : 'rgba(22,20,16,0.6)',
+                color: props.diagnosticsOpen ? 'var(--accent)' : 'rgba(240,235,225,0.35)',
+              }}
+              title="Toggle diagnostics console"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 17 10 11 4 5" />
+                <line x1="12" y1="19" x2="20" y2="19" />
+              </svg>
+              <span className="tracking-wider uppercase text-[9px]">Log</span>
+            </button>
+          )}
         </div>
 
         {/* Main input container */}

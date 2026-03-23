@@ -9,6 +9,7 @@ from .contradictions import router as contradictions_router
 from .copilot import router as copilot_router
 from .jobs import router as jobs_router
 from .learning import router as learning_router
+from .logs import router as logs_router, install_log_handler
 from .memory import router as memory_router
 from .misc import router as misc_router
 from .notifications import router as notifications_router
@@ -19,6 +20,7 @@ from .threads import router as threads_router
 
 def register_routes(app: FastAPI) -> None:
     """Register modular routers on the app."""
+    install_log_handler()
     app.include_router(auth_router)
     app.include_router(chat_router)
     app.include_router(memory_router)
@@ -32,3 +34,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(skills_router)
     app.include_router(agent_router)
     app.include_router(misc_router)
+    app.include_router(logs_router)

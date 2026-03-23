@@ -27,6 +27,7 @@ import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
 import { SettingsPage } from './pages/SettingsPage'
 import { V2Page } from './pages/V2Page'
+import { DiagnosticsDrawer } from './components/chat/DiagnosticsDrawer'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -35,6 +36,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showLogin, setShowLogin] = useState(false)
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   
   // URL-synced navigation
   const navigate = useNavigate()
@@ -892,6 +894,8 @@ export default function App() {
                       streamPhase={streamPhase}
                       intentPreview={intentPreview}
                       agentThinkingState={agentThinkingState}
+                      diagnosticsOpen={diagnosticsOpen}
+                      onToggleDiagnostics={() => setDiagnosticsOpen((v) => !v)}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
@@ -939,6 +943,8 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <DiagnosticsDrawer open={diagnosticsOpen} onClose={() => setDiagnosticsOpen(false)} />
 
       <InspectorLightbox
         open={navActive === 'chat' && Boolean(selectedMessageId)}

@@ -279,6 +279,8 @@ class CookieProvider(CloudProvider):
                 timeout=120,
             )
 
+            print(f"[COOKIE_DEBUG] HTTP {resp.status_code}, body length={len(resp.text)}, first 300 chars: {resp.text[:300]}")
+
             # Parse SSE response (Anthropic Messages API format)
             full_text = ""
             for line in resp.text.split("\n"):

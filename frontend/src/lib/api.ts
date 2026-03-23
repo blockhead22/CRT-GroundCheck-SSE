@@ -2021,3 +2021,58 @@ export async function getEpistemicTimeline(
     `/api/thread/${encodeURIComponent(threadId)}/epistemic-timeline${qs ? '?' + qs : ''}`
   )
 }
+
+// ── Live log stream ─────────────────────────────────────────
+export interface LogEntry {
+  ts: number
+  level: string
+  logger: string
+  msg: string
+  type?: string // keepalive
+}
+
+export function streamLogs(opts?: {
+  level?: string
+  onEntry: (entry: LogEntry) => void
+  onError?: (err: Error) => void
+}): AbortController {
+  const ctrl = new AbortController()
+  const base = getEffectiveApiBaseUrl()
+  const level = opts?.level ?? 'INFO'
+  const url = `${base}/api/logs/stream?level=${encodeURIComponent(level)}`
+
+  ;(async () => {
+    try {
+      const headers: Record<string, string> = { Accept: 'text/event-stream' }
+      const token = getAuthToken()
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      const res = await fetch(url, { signal: ctrl.signal, headers })
+      if (!res.ok || !res.body) throw new Error(`Log stream failed: ${res.status}`)
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const entry: LogEntry = JSON.parse(line.slice(6))
+            if (entry.type === 'keepalive') continue
+            opts?.onEntry(entry)
+          } catch { /* skip malformed */ }
+        }
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') opts?.onError?.(err)
+    }
+  })()
+
+  return ctrl
+}

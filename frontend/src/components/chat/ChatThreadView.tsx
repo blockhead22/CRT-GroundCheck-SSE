@@ -152,6 +152,8 @@ export function ChatThreadView(props: {
   intentPreview?: { intent: string; slots: string[]; label: string } | null
   agentThinkingState?: AgentThinkingState | null
   onRated?: (msgId: string, rating: MessageRating, category?: string) => void
+  diagnosticsOpen?: boolean
+  onToggleDiagnostics?: () => void
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -190,10 +192,7 @@ export function ChatThreadView(props: {
     }
   }, [props.thread.messages.length, props.streamingResponse, props.isThinking, theaterMode])
 
-  // Enter theater mode when first message arrives
-  useEffect(() => {
-    if (!empty) setTheaterMode(true)
-  }, [empty])
+  // Stay in history mode by default — user can switch to theater manually
 
   // Reset on thread change
   useEffect(() => {
@@ -717,6 +716,8 @@ export function ChatThreadView(props: {
           onResearch={props.onResearch}
           researching={props.researching}
           disabled={props.typing}
+          diagnosticsOpen={props.diagnosticsOpen}
+          onToggleDiagnostics={props.onToggleDiagnostics}
         />
       </div>
     </div>
