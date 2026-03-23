@@ -19,7 +19,6 @@ import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
 import { LoopsPage } from './pages/LoopsPage'
 import { JournalPage } from './pages/JournalPage'
-import { ShowcasePage } from './pages/ShowcasePage'
 import { CopilotPage } from './pages/CopilotPage'
 import { LiveFeedPage } from './pages/LiveFeedPage'
 import { TelemetryPage } from './pages/TelemetryPage'
@@ -41,7 +40,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live', 'telemetry', 'settings', 'v2']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -830,8 +829,8 @@ export default function App() {
       {/* Mood indicator badge (for debugging - shows current mood) */}
       {currentMood && <MoodIndicator mood={currentMood} />}
       
-      <div className="mx-auto h-full max-w-[1480px] px-2 py-2 sm:px-4 sm:py-4 lg:py-6 relative z-10">
-        <div className="flex h-full min-h-0 gap-2 sm:gap-3 lg:gap-5">
+      <div className="h-full relative z-10">
+        <div className="flex h-full min-h-0">
           <Sidebar
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
@@ -857,7 +856,7 @@ export default function App() {
             onShowLogin={() => setShowLogin(true)}
           />
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 sm:gap-3 lg:gap-4">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <Topbar
               onToggleSidebarMobile={() => setSidebarOpen((v) => !v)}
               title="CRT"
@@ -918,8 +917,6 @@ export default function App() {
                   <LoopsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'journal' ? (
                   <JournalPage threadId={selectedThread?.id ?? 'default'} />
-                ) : navActive === 'showcase' ? (
-                  <ShowcasePage />
                 ) : navActive === 'copilot' ? (
                   <CopilotPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'live' ? (

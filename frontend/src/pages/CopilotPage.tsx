@@ -312,7 +312,7 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
 }
 
-function MemoryGraph({ memories }: { memories: CopilotMemory[] }) {
+function MemoryGraph({ memories, hero = false }: { memories: CopilotMemory[]; hero?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hovered, setHovered] = useState<CopilotMemory | null>(null)
@@ -588,14 +588,14 @@ function MemoryGraph({ memories }: { memories: CopilotMemory[] }) {
   }
 
   return (
-    <div ref={containerRef} className="relative rounded border border-white/10 bg-[#0d0d1a] overflow-hidden">
-      <div className="absolute top-3 left-4 text-[10px] uppercase tracking-wider text-white/30 z-10 font-medium">
+    <div ref={containerRef} className={`relative overflow-hidden ${hero ? 'w-full h-full bg-[#0a0a0f]' : 'rounded border border-white/10 bg-[#0d0d1a]'}`}>
+      <div className="absolute top-3 left-4 text-[10px] uppercase tracking-wider text-white/20 z-10 font-medium">
         Memory Graph — {memories.length} facts
       </div>
       <canvas
         ref={canvasRef}
         className="w-full"
-        style={{ height: '500px', cursor: hovered ? 'pointer' : 'default' }}
+        style={{ height: hero ? '100%' : '500px', cursor: hovered ? 'pointer' : 'default' }}
         onMouseMove={handleMouseMove}
         onMouseLeave={() => { setHovered(null); hoveredIdRef.current = null }}
       />
@@ -2072,7 +2072,7 @@ function MemoryCard({ memory, expanded, onToggle, onDelete, onCorrect, threadId 
 // ---------------------------------------------------------------------------
 
 type SortOrder = 'newest' | 'oldest' | 'trust_high' | 'trust_low'
-type Tab = 'memories' | 'profile' | 'graph' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights' | 'personality' | 'activity'
+type Tab = 'memories' | 'profile' | 'accuracy' | 'factchecks' | 'trust' | 'sessions' | 'insights' | 'personality' | 'activity'
 
 const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname)
 
@@ -2199,7 +2199,6 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
   const tabItems: Array<{ id: Tab; label: string; icon: string }> = [
     { id: 'memories', label: 'Memories', icon: '🧠' },
     { id: 'profile', label: 'Profile', icon: '👤' },
-    { id: 'graph', label: 'Graph', icon: '🕸' },
     { id: 'accuracy', label: 'Accuracy', icon: '📊' },
     { id: 'factchecks', label: 'Fact Checks', icon: '🔍' },
     { id: 'trust', label: 'Trust & Decay', icon: '⚖️' },
@@ -2210,9 +2209,21 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
   ]
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="relative h-full overflow-y-auto">
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
+      {/* Hero graph — always visible, sits behind content */}
+      <div className="sticky top-0 z-0 w-full" style={{ height: '320px', marginBottom: '-320px' }}>
+        <MemoryGraph memories={memories} hero />
+        {/* Gradient fade so content slides over cleanly */}
+        <div className="absolute inset-x-0 bottom-0 h-32 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent, #141210)' }} />
+      </div>
+
+      {/* Scrollable content — slides over graph */}
+      <div className="relative z-10 mt-[280px]" style={{ background: '#141210' }}>
+
+      {/* Header */}
       <div className="flex flex-col gap-4 border-b border-white/10 p-4 sm:p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -2279,7 +2290,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="">
         {tab === 'memories' && (
           <div className="flex flex-col gap-0">
             <div className="flex flex-wrap items-center gap-2 border-b border-white/5 px-4 py-3 sm:px-6">
@@ -2364,12 +2375,6 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
           </div>
         )}
 
-        {tab === 'graph' && (
-          <div className="p-4 sm:p-6">
-            <MemoryGraph memories={memories} />
-          </div>
-        )}
-
         {tab === 'accuracy' && (
           <div className="p-4 sm:p-6">
             <AccuracyTracker accuracy={accuracy} />
@@ -2412,6 +2417,7 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
           </div>
         )}
       </div>
+      </div>{/* end scrollable content */}
     </div>
   )
 }

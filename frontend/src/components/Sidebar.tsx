@@ -9,7 +9,6 @@ const nav: Array<{ id: NavId; label: string; icon: string; standalone?: boolean 
   { id: 'live', label: 'Live', icon: '◉' },
   { id: 'loops', label: 'Loops', icon: 'L' },
   { id: 'journal', label: 'Journal', icon: 'J' },
-  { id: 'showcase', label: 'Showcase', icon: '✨' },
   { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
   { id: 'jobs', label: 'Jobs', icon: '☷' },
   { id: 'settings', label: 'Settings', icon: '⚙' },
@@ -55,7 +54,7 @@ export function Sidebar(props: {
   }
 
   const sidebarContent = (
-    <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
+    <div className="flex h-full w-full flex-col glass-panel">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded accent-button text-white shadow-[0_0_20px_rgba(212,132,92,0.3)]">
@@ -262,7 +261,7 @@ export function Sidebar(props: {
             className="fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[320px] p-3 lg:hidden"
           >
             {/* Render content directly instead of recursive Sidebar call */}
-            <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
+            <div className="flex h-full w-full flex-col glass-panel">
               <div className="flex items-center justify-between px-4 py-4">
                 <div className="flex items-center gap-2">
                   <div className="grid h-9 w-9 place-items-center rounded accent-button text-white">

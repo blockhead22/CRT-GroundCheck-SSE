@@ -32,7 +32,7 @@ export function Topbar(props: {
     props.apiStatus === 'connected' ? 'Online' : props.apiStatus === 'disconnected' ? 'Offline' : '...'
 
   return (
-    <div className="relative flex items-center justify-between rounded-[28px] glass-panel px-3 py-2 sm:px-5 sm:py-2.5" style={{ zIndex: 100 }}>
+    <div className="relative flex items-center justify-between glass-panel px-3 sm:px-5 h-[80px]" style={{ zIndex: 100 }}>
       {/* Left: Menu + Title */}
       <div className="flex items-center gap-2 sm:gap-3">
         <button
