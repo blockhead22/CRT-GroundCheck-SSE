@@ -1901,3 +1901,52 @@ def send_email_digest(req: EmailDigestRequest) -> EmailDigestResponse:
         error=None,
     )
 
+
+# ---------------------------------------------------------------------------
+# Cloud Usage Summary
+# ---------------------------------------------------------------------------
+
+
+@router.get("/api/cloud-usage/summary")
+def cloud_usage_summary(
+    since: Optional[float] = Query(None, description="Unix timestamp lower bound"),
+    uid: Optional[int] = Query(None, description="Filter by user ID"),
+):
+    """Return aggregated cloud API usage stats for dashboard widgets.
+
+    Query params:
+        since: Unix timestamp — only include calls after this time.
+        uid: Filter to a specific user.
+
+    Returns JSON with total_calls, latency, token estimates,
+    breakdowns by call_type and provider.
+    """
+    try:
+        from personal_agent.cloud_usage_tracker import get_cloud_usage_tracker
+        tracker = get_cloud_usage_tracker()
+        summary = tracker.get_usage_summary(since_ts=since, uid=uid)
+        return summary
+    except Exception as exc:
+        logger.warning("[CLOUD-USAGE] Summary endpoint error: %s", exc)
+        return {"total_calls": 0, "error": str(exc)}
+
+
+@router.get("/api/cloud-usage/recent")
+def cloud_usage_recent(
+    limit: int = Query(50, ge=1, le=500),
+    call_type: Optional[str] = Query(None),
+):
+    """Return recent cloud API call records for debugging.
+
+    Query params:
+        limit: Max rows (1-500, default 50).
+        call_type: Filter by call type (e.g. "generation_fallback").
+    """
+    try:
+        from personal_agent.cloud_usage_tracker import get_cloud_usage_tracker
+        tracker = get_cloud_usage_tracker()
+        return tracker.get_recent_calls(limit=limit, call_type=call_type)
+    except Exception as exc:
+        logger.warning("[CLOUD-USAGE] Recent endpoint error: %s", exc)
+        return []
+
