@@ -350,6 +350,18 @@ def reinforce_memory(
             conn.close()
             return False
 
+        # Skip reinforcement for memories demoted by slot exclusivity
+        try:
+            _demoted_row = conn.execute(
+                "SELECT 1 FROM memory_events WHERE memory_id = ? AND event_type = 'slot_exclusivity_demoted' LIMIT 1",
+                (memory_id,),
+            ).fetchone()
+            if _demoted_row:
+                conn.close()
+                return False
+        except Exception:
+            pass  # memory_events table may not exist in all schemas
+
         crt = _get_crt_math()
         if crt is not None and row["text"] and context_text:
             new_trust = _compute_drift_aware_boost(

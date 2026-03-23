@@ -2878,10 +2878,27 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                             f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
                                             f"norm: {_ex_norm}"
                                         )
-                                    # Store cloud-classified fact in memory_facts for future lookups
+                                    # Clean up stale memory_facts and record demotion events
                                     try:
                                         _conn_store = engine.memory._get_connection()
                                         _cur_store = _conn_store.cursor()
+                                        # Delete old fact entries for this slot that don't match new value
+                                        _cur_store.execute(
+                                            "DELETE FROM memory_facts WHERE slot = ? AND LOWER(normalized) != ?",
+                                            (_cloud_slot, _new_val_norm),
+                                        )
+                                        _deleted_facts = _cur_store.rowcount
+                                        # Record demotion events so reinforce_memory() skips these
+                                        for _dem_id in _demoted_ids:
+                                            try:
+                                                engine.memory.record_memory_event(
+                                                    memory_id=_dem_id,
+                                                    event_type="slot_exclusivity_demoted",
+                                                    actor="cloud_slot",
+                                                    reason=f"superseded: {_cloud_slot}={_new_val_norm}",
+                                                )
+                                            except Exception:
+                                                pass
                                         # Find the most recent memory matching this text
                                         _cur_store.execute("""
                                             SELECT memory_id FROM memories
@@ -2894,9 +2911,11 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                                 "INSERT OR REPLACE INTO memory_facts (memory_id, slot, value, normalized) VALUES (?, ?, ?, ?)",
                                                 (_new_mem_row[0], _cloud_slot, str(_cloud_value), _new_val_norm),
                                             )
-                                            _conn_store.commit()
                                             print(f"[SLOT_EXCLUSIVITY] Stored fact: {_cloud_slot}={_new_val_norm} for {_new_mem_row[0]}")
+                                        _conn_store.commit()
                                         _conn_store.close()
+                                        if _deleted_facts:
+                                            print(f"[SLOT_EXCLUSIVITY] Cleaned {_deleted_facts} stale fact entries for {_cloud_slot}")
                                     except Exception as _sf_err:
                                         print(f"[SLOT_EXCLUSIVITY] Fact store error (non-fatal): {_sf_err}")
                                 except Exception as _slot_ex_err:

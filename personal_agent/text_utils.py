@@ -18,6 +18,19 @@ from typing import Optional, Tuple
 
 _THINKING_TAG_RE = re.compile(r"</?think(?:ing)?>", re.IGNORECASE)
 _THINK_BLOCK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL | re.IGNORECASE)
+_THINKING_BLOCK_RE = re.compile(r"<thinking>(.*?)</thinking>", re.DOTALL | re.IGNORECASE)
+# Heuristic: qwen sometimes dumps reasoning without tags — detect and strip
+# Patterns like "Wait, the user's...", "So maybe the original...", "Let me think..."
+_REASONING_LEAK_RE = re.compile(
+    r"(?:^|\n)"
+    r"(?:Wait,? |So (?:maybe|perhaps|the)|Let me (?:think|check|re-read)|"
+    r"Hmm,? |The user'?s (?:correction|original|stored|message)|"
+    r"But (?:the correction|in this case|wait)|"
+    r"Maybe the original answer|"
+    r"Or maybe the user)"
+    r".*?(?=\n[A-Z]|\n\n|\Z)",
+    re.DOTALL | re.IGNORECASE,
+)
 _THREAD_ID_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 _WS_RE = re.compile(r"\s+")
 
@@ -39,10 +52,18 @@ def strip_thinking_tags(text: str) -> str:
 
 
 def strip_think_blocks(text: str) -> str:
-    """Remove entire ``<think>…</think>`` blocks (tags + content)."""
+    """Remove entire ``<think>…</think>`` blocks (tags + content).
+
+    Also strips ``<thinking>…</thinking>`` blocks and heuristic
+    reasoning leaks from models like qwen that sometimes dump
+    internal reasoning without tags.
+    """
     if not text:
         return ""
-    return _THINK_BLOCK_RE.sub("", text).strip()
+    result = _THINK_BLOCK_RE.sub("", text)
+    result = _THINKING_BLOCK_RE.sub("", result)
+    result = _REASONING_LEAK_RE.sub("", result)
+    return result.strip()
 
 
 def extract_think_content(text: str) -> Tuple[str, str]:
