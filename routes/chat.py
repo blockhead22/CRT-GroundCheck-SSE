@@ -1191,6 +1191,40 @@ def _is_self_referential_question(text: str) -> bool:
         "your personality",
         "your identity",
         "your name",
+        # Contradiction handling patterns
+        "why are contradictions",
+        "how are contradictions",
+        "how do contradictions",
+        "why do you preserve contradictions",
+        "preserve contradictions",
+        "contradiction handling",
+        "contradictions important",
+        "contradictions work",
+        # System / architecture / design / pipeline patterns
+        "the system you run",
+        "the system you operate",
+        "system you run",
+        "system you operate",
+        "what is your architecture",
+        "what is the crt pipeline",
+        "your design",
+        "about your design",
+        "tell me about your design",
+        "how were you built",
+        "what makes you different",
+        "why were you created",
+        "what is your purpose",
+        "how does verification work",
+        "what is groundcheck",
+        "what are your subsystems",
+        # Memory / trust / compression / verification patterns
+        "how does your memory work",
+        "how do you handle trust",
+        "how does compression work",
+        "what is the heartbeat",
+        "how do you learn from mistakes",
+        # Expand trigger in self-referential context
+        "explain more",
     )
     if any(p in t for p in self_patterns):
         return True
@@ -1198,7 +1232,9 @@ def _is_self_referential_question(text: str) -> bool:
     if addressed_to_aether and any(
         w in t for w in ("work", "gating", "memory", "contradict", "trust", "belief", "broken", "problem", "wrong",
                          "heartbeat", "compress", "reflect", "thinking", "new with", "pipeline", "system",
-                         "architecture", "learn", "improve", "personality", "identity", "yourself")
+                         "architecture", "learn", "improve", "personality", "identity", "yourself",
+                         "design", "built", "created", "purpose", "different", "verification", "groundcheck",
+                         "subsystem", "mistake")
     ):
         return True
     # Casual greetings addressed to Aether: "Hello Aether, how are things today?"
@@ -2781,9 +2817,21 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         or _raw_answer.startswith("[LLM error:")
         or _raw_answer.startswith("[Model '")
         or _raw_answer.startswith("[No LLM available")
+        or _raw_answer.startswith("[Cloud LLM error:")
     )
-    if _is_llm_error:
-        print(f"[CLOUD_GEN] Local LLM error detected: {_raw_answer[:120]}")
+    # Also catch gate-fail with empty/error responses — the engine returned
+    # "No memories available" (or similar) before cloud had a chance to help.
+    _is_gate_fail_empty = (
+        not _is_llm_error
+        and not result.get("gates_passed", True)
+        and (
+            not _raw_answer.strip()
+            or str(result.get("gate_reason") or "") == "No memories available"
+        )
+    )
+    if _is_llm_error or _is_gate_fail_empty:
+        _fallback_reason = "LLM error" if _is_llm_error else f"gate fail ({result.get('gate_reason', 'empty')})"
+        print(f"[CLOUD_GEN] Local generation failed ({_fallback_reason}): {_raw_answer[:120]}")
         try:
             import auth as _auth_cg
             _uid_cg = int(uid) if uid else 1
@@ -2818,9 +2866,29 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     if _cloud_answer:
                         result["answer"] = _cloud_answer
                         result["generation_source"] = "cloud_fallback"
+                        # Clear gate-fail state — cloud provided a valid answer
+                        if _is_gate_fail_empty:
+                            result["gates_passed"] = True
+                            result["gate_reason"] = "cloud_fallback_recovery"
                         print(f"[CLOUD_GEN] Fallback succeeded — {len(_cloud_answer)} chars")
                     else:
-                        print("[CLOUD_GEN] Cloud generation returned None, keeping local error")
+                        # OpenAI failed — escalate to Claude (Tier 2)
+                        print("[CLOUD_GEN] OpenAI returned None, escalating to Claude (Tier 2)")
+                        _claude_answer = _cloud_gen_svc.generate_response_claude(
+                            user_message=effective_message,
+                            retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
+                            conversation_history=_cg_history,
+                            self_model_snapshot=_cg_self_model,
+                        )
+                        if _claude_answer:
+                            result["answer"] = _claude_answer
+                            result["generation_source"] = "claude_fallback"
+                            if _is_gate_fail_empty:
+                                result["gates_passed"] = True
+                                result["gate_reason"] = "cloud_fallback_recovery"
+                            print(f"[CLOUD_GEN] Claude fallback succeeded — {len(_claude_answer)} chars")
+                        else:
+                            print("[CLOUD_GEN] Claude also returned None, keeping local error")
                 else:
                     print("[CLOUD_GEN] Cloud service not initialized")
             else:
@@ -3446,8 +3514,22 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             result["generation_source"] = "cloud_fallback"
                             print(f"[CLOUD_GEN] Late fallback succeeded — {len(_cg2_answer)} chars")
                         else:
-                            print("[CLOUD_GEN] Late cloud generation returned None")
-                            final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
+                            # OpenAI failed — escalate to Claude (Tier 2)
+                            print("[CLOUD_GEN] Late OpenAI returned None, escalating to Claude (Tier 2)")
+                            _cg2_claude = _cloud_gen_svc2.generate_response_claude(
+                                user_message=effective_message,
+                                retrieved_memories=_cg2_memories,
+                                conversation_history=recent_history or None,
+                            )
+                            if _cg2_claude:
+                                final_answer = _cg2_claude
+                                if greeting_text:
+                                    final_answer = f"{greeting_text}\n\n{final_answer}"
+                                result["generation_source"] = "claude_fallback"
+                                print(f"[CLOUD_GEN] Late Claude fallback succeeded — {len(_cg2_claude)} chars")
+                            else:
+                                print("[CLOUD_GEN] Late Claude also returned None")
+                                final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
                     else:
                         final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
                 else:

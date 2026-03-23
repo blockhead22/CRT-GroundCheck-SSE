@@ -1925,6 +1925,12 @@ export type CloudSettings = {
   cloud_escalation_policy: string
   cloud_confidence_threshold: string
   cloud_daily_limit_multiplier: string
+  // Claude (Tier 2/3) settings
+  cloud_claude_enabled: string
+  cloud_claude_generation: string
+  cloud_claude_reflection: string
+  cloud_claude_daily_limit: string
+  cloud_claude_max_tokens: string
   [key: string]: string
 }
 
@@ -1932,8 +1938,15 @@ export type CloudUsage = {
   slot_classification?: { calls: number; est_tokens: number }
   nli_contradiction?: { calls: number; est_tokens: number }
   reflection_validation?: { calls: number; est_tokens: number }
+  claude_generation?: { calls: number; est_tokens: number }
+  claude_reflection?: { calls: number; est_tokens: number }
   total_cost_est?: number
   daily_limits?: Record<string, { used: number; limit: number }>
+  // Claude-specific aggregate metrics
+  claude_calls_today?: number
+  claude_daily_limit?: number
+  claude_tokens_today?: number
+  claude_available?: boolean
 }
 
 export async function getCloudSettings(): Promise<CloudSettings> {

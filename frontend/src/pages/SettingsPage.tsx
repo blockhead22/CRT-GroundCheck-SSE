@@ -122,14 +122,17 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
-    const newVal = value ? 'on' : 'off'
+    // Claude settings use true/false, OpenAI settings use on/off
+    const isClaude = key.startsWith('cloud_claude_')
+    const newVal = isClaude ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
+    const oldVal = isClaude ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })
     setCloudSaving(true)
     try {
       await updateCloudSettings({ [key]: newVal })
     } catch (e) {
       console.error('Cloud setting update failed:', e)
-      setCloudSettingsState({ ...cloudSettings, [key]: value ? 'off' : 'on' })
+      setCloudSettingsState({ ...cloudSettings, [key]: oldVal })
     } finally {
       setCloudSaving(false)
     }
@@ -164,6 +167,22 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
       setCloudSaving(false)
     }
   }
+
+  async function handleCloudNumberInput(key: string, value: string) {
+    if (!cloudSettings) return
+    setCloudSettingsState({ ...cloudSettings, [key]: value })
+    setCloudSaving(true)
+    try {
+      await updateCloudSettings({ [key]: value })
+    } catch (e) {
+      console.error('Cloud setting update failed:', e)
+    } finally {
+      setCloudSaving(false)
+    }
+  }
+
+  // Claude master toggle state for disabling sub-toggles
+  const claudeEnabled = cloudSettings?.cloud_claude_enabled === 'true' || cloudSettings?.cloud_claude_enabled === 'on'
 
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'profile', label: 'Profile' },
@@ -328,6 +347,99 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 )}
               </div>
 
+              {/* Claude (Tier 2) Section */}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Claude (Tier 2)</div>
+                <p className="mb-4 text-xs text-white/40">
+                  Use Claude via cookie session for high-quality generation fallback and reflection validation.
+                  {cloudUsage?.claude_available === false && (
+                    <span className="ml-1 text-amber-400/80">Cookie session not configured (CLAUDE_SESSION_COOKIE not set).</span>
+                  )}
+                  {cloudUsage?.claude_available === true && (
+                    <span className="ml-1 text-green-400/80">Cookie session active.</span>
+                  )}
+                </p>
+
+                {cloudSettings ? (
+                  <div className="space-y-1">
+                    <Toggle
+                      label="Enable Claude"
+                      description="Master toggle for all Claude features"
+                      checked={claudeEnabled}
+                      onChange={(v) => handleCloudToggle('cloud_claude_enabled', v)}
+                    />
+                    <div className={claudeEnabled ? '' : 'opacity-40 pointer-events-none'}>
+                      <Toggle
+                        label="Use for generation fallback"
+                        description="Escalate to Claude when OpenAI fails or returns low confidence"
+                        checked={cloudSettings.cloud_claude_generation === 'true' || cloudSettings.cloud_claude_generation === 'on'}
+                        onChange={(v) => handleCloudToggle('cloud_claude_generation', v)}
+                      />
+                      <Toggle
+                        label="Use for reflection validation"
+                        description="Use Claude for epistemic audits of self-model updates"
+                        checked={cloudSettings.cloud_claude_reflection === 'true' || cloudSettings.cloud_claude_reflection === 'on'}
+                        onChange={(v) => handleCloudToggle('cloud_claude_reflection', v)}
+                      />
+
+                      {/* Daily call limit */}
+                      <div className="pt-3">
+                        <label className="mb-1.5 block text-sm text-white/70">Daily Call Limit</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={cloudSettings.cloud_claude_daily_limit || '20'}
+                          onChange={(e) => {
+                            if (!cloudSettings) return
+                            setCloudSettingsState({ ...cloudSettings, cloud_claude_daily_limit: e.target.value })
+                          }}
+                          onBlur={(e) => handleCloudNumberInput('cloud_claude_daily_limit', e.target.value)}
+                          className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                        />
+                        <p className="mt-1 text-xs text-white/40">Maximum Claude calls per day (all features combined)</p>
+                      </div>
+
+                      {/* Max tokens per call */}
+                      <div className="pt-3">
+                        <label className="mb-1.5 block text-sm text-white/70">Max Tokens per Call</label>
+                        <input
+                          type="number"
+                          min="256"
+                          max="8192"
+                          step="256"
+                          value={cloudSettings.cloud_claude_max_tokens || '4096'}
+                          onChange={(e) => {
+                            if (!cloudSettings) return
+                            setCloudSettingsState({ ...cloudSettings, cloud_claude_max_tokens: e.target.value })
+                          }}
+                          onBlur={(e) => handleCloudNumberInput('cloud_claude_max_tokens', e.target.value)}
+                          className="w-full rounded-xl glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                        />
+                        <p className="mt-1 text-xs text-white/40">Maximum tokens per Claude API call</p>
+                      </div>
+                    </div>
+
+                    {/* Claude usage display */}
+                    {cloudUsage && (cloudUsage.claude_calls_today != null || cloudUsage.claude_generation) && (
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="text-xs text-white/50 mb-1">Today's Claude Usage</div>
+                        <div className="flex justify-between text-xs text-white/60">
+                          <span>Calls</span>
+                          <span>{cloudUsage.claude_calls_today ?? 0} / {cloudUsage.claude_daily_limit ?? 20}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-white/60">
+                          <span>Estimated tokens</span>
+                          <span>~{cloudUsage.claude_tokens_today ?? 0}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading Claude settings...</p>
+                )}
+              </div>
+
               {/* Usage Display */}
               {cloudUsage !== null && (
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
@@ -355,6 +467,18 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       <div className="flex justify-between">
                         <span>Reflection Validation</span>
                         <span>{cloudUsage.reflection_validation.calls} calls / ~{cloudUsage.reflection_validation.est_tokens} tokens</span>
+                      </div>
+                    )}
+                    {cloudUsage.claude_generation && (
+                      <div className="flex justify-between">
+                        <span>Claude Generation</span>
+                        <span>{cloudUsage.claude_generation.calls} calls / ~{cloudUsage.claude_generation.est_tokens} tokens</span>
+                      </div>
+                    )}
+                    {cloudUsage.claude_reflection && (
+                      <div className="flex justify-between">
+                        <span>Claude Reflection</span>
+                        <span>{cloudUsage.claude_reflection.calls} calls / ~{cloudUsage.claude_reflection.est_tokens} tokens</span>
                       </div>
                     )}
                     {cloudUsage.total_cost_est != null && (
