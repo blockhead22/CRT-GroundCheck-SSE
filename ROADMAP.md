@@ -1,5 +1,28 @@
 # CRT/Aether Roadmap
-Last updated: March 22, 2026
+Last updated: March 23, 2026
+
+## Completed — Session 5 (March 23)
+- [x] Escalation policy enforcement — `local_only` blocks all cloud fallback paths (primary + late-stage + promotion)
+- [x] Console log cleanup — standardized `[GENERATION]`, `[GOVERNANCE]`, `[REQUEST_SUMMARY]` prefixes; removed redundant debug lines
+- [x] Frontend pill cards — color-coded generation source (Local/GPT/Claude/Fallback) + ☁ Governance badge on messages
+- [x] Cloud usage tracking DB — `cloud_usage_log` table with full metadata per cloud call; `/api/cloud-usage/summary` endpoint
+- [x] `result["generation_source"]` always set (was missing on local success path)
+- [x] Self-awareness copy tone pass — reflection prompts reframed from self-flagellation to governed calibration
+- [x] "Who built you?" context gap — added creator/builder patterns to self-referential routing
+- [x] ReasoningInference double load fix — engine cache race condition (TOCTOU) fixed with lock-during-creation
+- [x] ViLT test harness built — SFT vs ViLT A/B comparison across user profiles (results pending)
+- [x] Belief classifier package — `packages/belief_classifier/` with XGBoost contradiction resolver (testing pending)
+- [x] Full subsystem audit — catalogued 16 active + 11 dormant systems in AI_round2, 73 files in D:\CRT
+
+## Completed — Session 4 (March 22 overnight + March 23 morning)
+- [x] Cloud bypass toggle — raw model access with CRT skip
+- [x] Advanced settings dropdown — chevron opens side card with Bypass CRT and Enable Tooling toggles
+- [x] Claude cookie fix — fresh session cookie, SSE parsing working
+- [x] Gate override fix — cloud answers no longer hidden by local gate failure
+- [x] Claude identity prompt rewrite — product integration framing
+- [x] CRT name fix — "Contradiction-aware Reconciliation and Trust" in system prompt
+- [x] Username persistence fix — stopwords + frontend race condition guard
+- [x] set_profile_facts 500 fix — replaced broken import with direct engine call
 
 ## Completed — Session 3 (March 22 evening)
 - [x] Slot-level exclusivity at ingestion
@@ -30,19 +53,20 @@ Closed the gap between reflection observing and reflection acting.
 - 7 domain categories (temporal, names, numerical, preference, recency, recall, accuracy) with keyword matching
 - Narrow, auditable, reversible — biases future handling without rewriting history
 
-### 2. Train XGBoost Classifiers (AFTER reflection loop)
-- Generate training data from the live contradiction ledger
-- Train belief classifier (REFINEMENT / REVISION / TEMPORAL / CONFLICT)
-- Train policy classifier (OVERRIDE / PRESERVE / ASK_USER)
-- Drop pkl files at personal_agent/ml_models/xgboost.pkl and policy_xgboost.pkl
-- "Better classifiers on top of an open cognitive loop mostly make the system more precise at noticing things it still cannot metabolize" — GPT
+### 2. ~~Train XGBoost Classifiers~~ 🔧 IN PROGRESS (Session 5)
+Built as standalone package at `packages/belief_classifier/` — same isolation pattern as GroundCheck.
+- Belief classifier: REFINEMENT / REVISION / TEMPORAL / CONFLICT
+- Policy classifier: OVERRIDE / PRESERVE / ASK_USER
+- Auto-labeler for semi-supervised training from ledger exports
+- Synthetic data generator for bootstrapping when real data is sparse
+- Benchmark script: classifier decisions vs "preserve everything" baseline
+- Testing and integration pending
 
-### 3. Self-Awareness Copy Tone Pass
-- Reframe from self-flagellation to governed adaptation
-- "Trust is eroding" → "3 corrections applied — trust recalibrating"
-- "Insufficient data to identify strengths" → "Calibrating — 2 sessions of baseline data collected"
-- One lead insight per checkpoint, expandable supporting detail
-- Frame as the system WORKING, not the system FAILING
+### 3. ~~Self-Awareness Copy Tone Pass~~ ✅ SHIPPED (Session 5)
+- Heartbeat reflection prompt reframed: "self-assessment" → "calibration check"
+- "Gate failures" → "Gate interventions"; "Negative feedback" → "User corrections"
+- Evidence framed as the system working as designed, not failing
+- "Insufficient data" → "Insufficient data — calibrating"
 
 ### 4. Copilot Page Polish
 - Visual hierarchy improvements
@@ -58,12 +82,13 @@ Smart tier routing with circuit breaker. Prevents eating 300s Ollama timeouts re
 - In-memory state, no DB — resets on restart
 
 ### 5b. Remaining Bug Fixes
-- "Who is building this system?" should pull creator context from memories
+- ~~"Who is building this system?" should pull creator context~~ ✅ FIXED (Session 5) — added creator/builder patterns to self-referential routing
 - ~~Ollama timeouts on follow-up "Explain more"~~ — mitigated by escalation policy circuit breaker
 - Trust re-boost still fighting demotions on some cited memories (edge cases)
 - Typo-resilient slot matching ("favortie" vs "favorite")
 - Only demote user-sourced memories, not Aether's narrative memories
-- ReasoningInference model loading multiple times at startup
+- ~~ReasoningInference model loading multiple times at startup~~ ✅ FIXED (Session 5) — engine cache TOCTOU race condition; creation now holds lock
+- Cookie leak — Claude cookie calls firing when Claude toggled off (identified, not yet fixed)
 
 ## Next Two Weeks (March 29 - April 11) — Ship It
 
@@ -108,10 +133,12 @@ Smart tier routing with circuit breaker. Prevents eating 300s Ollama timeouts re
 - Maintains epistemic state across delegations
 - Trust scores propagate to sub-agent outputs
 
-### ViLT Integration into Live Pipeline
-- Hot-swap qwen3 for ViLT-finetuned model on fact-heavy queries
-- Trained models exist (Qwen 1.5B, 3B) but aren't serving
-- A/B testing framework: ViLT vs base model on same queries
+### ViLT Integration into Live Pipeline — 🔧 TESTING (Session 5)
+- Test harness built: SFT vs ViLT A/B comparison across 3 user profiles
+- Trust-weighted contradiction loss amplifies gradient on high-trust fact violations
+- Existing trained models: SmolLM-135M (88% acc), Qwen 1.5B, Qwen 3B
+- Next: heartbeat trigger for ViLT batch when persistent blindspot detected
+- Closes the reflection loop at the weight level (prompt hedging = fast path, ViLT = permanent fix)
 
 ### Dynamic Slot Discovery
 - Replace hardcoded EXCLUSIVE_SLOTS list

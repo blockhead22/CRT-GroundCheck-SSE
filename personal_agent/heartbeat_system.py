@@ -527,31 +527,34 @@ class HeartbeatScheduler:
     # Self-reflection pass (personality / self-awareness)
     # ------------------------------------------------------------------
 
-    _SELF_REFLECTION_PROMPT = """You are Aether performing a private self-assessment.
+    _SELF_REFLECTION_PROMPT = """You are Aether performing a private calibration check.
+
+This is routine self-governance — reviewing recent data to adjust your operating parameters.
+Frame findings as system calibration, not self-judgment. You are working as designed.
 
 Evidence from recent interactions:
 
-Gate failures (things you tried to say but were blocked): {gate_fails}
-Negative feedback from user (what you got wrong): {negative_feedback}
-Open unresolved contradictions: {open_contradictions}
-Recent trust movements (memories that changed): {trust_deltas}
-Current self-model:
+Gate interventions (responses that were filtered or adjusted): {gate_fails}
+User corrections (adjustments the user requested): {negative_feedback}
+Unresolved contradictions in memory: {open_contradictions}
+Trust score movements (memories that shifted): {trust_deltas}
+Current operating state:
 {current_self_model}
 
 Based on this evidence, produce a JSON object with ONLY these keys:
 {{
-  "uncertainty_domains": "<topics where you frequently make errors>",
-  "correction_pattern": "<pattern in your mistakes — e.g. over-stating recency, confusing similar names>",
-  "trust_trajectory": "<one sentence on whether trust is rising, stable, or eroding and why>",
-  "known_blindspots": "<structural weaknesses you've noticed — be specific>",
-  "growing_confidence": "<areas where you've been consistently accurate and reinforced>",
-  "user_relationship": "<one sentence on the interaction style and what the user values>",
-  "response_style": "<current calibration — verbosity, tone, hedging level>",
-  "summary": "<2-sentence honest self-assessment>",
+  "uncertainty_domains": "<topics where accuracy is still calibrating — what needs more data>",
+  "correction_pattern": "<pattern in recent adjustments — e.g. over-stating recency, confusing similar names>",
+  "trust_trajectory": "<one sentence: trust rising/stable/recalibrating, with cause>",
+  "known_blindspots": "<specific structural gaps to compensate for — not failures, just current limits>",
+  "growing_confidence": "<areas with consistent accuracy — what's working well>",
+  "user_relationship": "<one sentence on interaction style and what the user values>",
+  "response_style": "<current calibration notes — verbosity, tone, hedging level>",
+  "summary": "<2-sentence status update framed as the system working, not failing>",
   "notable_events": ["<event1>", "<event2>"]
 }}
 
-Be honest and specific. If you have no evidence for a field, say so briefly.
+Be specific and evidence-based. If no evidence exists for a field, say "Insufficient data — calibrating."
 Output ONLY valid JSON, nothing else."""
 
     def _run_self_reflection(self, thread_id: str) -> None:

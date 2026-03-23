@@ -1150,41 +1150,45 @@ def create_app() -> FastAPI:
             if engine is not None:
                 return engine
 
-        # Use shared DBs or per-thread isolation
-        if _shared_memory_enabled:
-            memory_db = "personal_agent/crt_memory_shared.db"
-            ledger_db = "personal_agent/crt_ledger_shared.db"
-            logger.info(f"[API] Thread {tid} using shared memory databases")
-        else:
-            memory_db = f"personal_agent/crt_memory_{tid}.db"
-            ledger_db = f"personal_agent/crt_ledger_{tid}.db"
-        
-        # Initialize engine and inject LLM client for hybrid extraction
-        llm_client = get_llm_client()
-        engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=llm_client)
-        setattr(engine, "thread_id", tid)
-        try:
-            engine.ledger.default_thread_id = tid
-        except Exception:
-            pass
-        
-        # Enable LLM extraction in FactStore if client is available
-        if llm_client is not None and hasattr(engine, 'memory') and hasattr(engine.memory, 'set_llm_client'):
+            # Hold the lock during creation to prevent double-init race.
+            # This means the first request for a thread blocks others, but
+            # subsequent requests hit the cache and return immediately.
+
+            # Use shared DBs or per-thread isolation
+            if _shared_memory_enabled:
+                memory_db = "personal_agent/crt_memory_shared.db"
+                ledger_db = "personal_agent/crt_ledger_shared.db"
+                logger.info(f"[API] Thread {tid} using shared memory databases")
+            else:
+                memory_db = f"personal_agent/crt_memory_{tid}.db"
+                ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+
+            # Initialize engine and inject LLM client for hybrid extraction
+            llm_client = get_llm_client()
+            engine = CRTEnhancedRAG(memory_db=memory_db, ledger_db=ledger_db, llm_client=llm_client)
+            setattr(engine, "thread_id", tid)
             try:
-                engine.memory.set_llm_client(llm_client)
-                logger.info(f"[API] Enabled hybrid LLM extraction for thread {tid}")
+                engine.ledger.default_thread_id = tid
+            except Exception:
+                pass
+
+            # Enable LLM extraction in FactStore if client is available
+            if llm_client is not None and hasattr(engine, 'memory') and hasattr(engine.memory, 'set_llm_client'):
+                try:
+                    engine.memory.set_llm_client(llm_client)
+                    logger.info(f"[API] Enabled hybrid LLM extraction for thread {tid}")
+                except Exception as e:
+                    logger.warning(f"[API] Failed to enable LLM extraction for thread {tid}: {e}")
+
+            # Seed self-knowledge into this thread's memory (idempotent)
+            try:
+                from scripts.seed_self_knowledge import seed_self_knowledge
+                seed_self_knowledge(engine.memory)
             except Exception as e:
-                logger.warning(f"[API] Failed to enable LLM extraction for thread {tid}: {e}")
-        
-        # Seed self-knowledge into this thread's memory (idempotent)
-        try:
-            from scripts.seed_self_knowledge import seed_self_knowledge
-            seed_self_knowledge(engine.memory)
-        except Exception as e:
-            logger.debug(f"[API] Self-knowledge seed for {tid}: {e}")
-        
-        with _engines_lock:
+                logger.debug(f"[API] Self-knowledge seed for {tid}: {e}")
+
             engines[tid] = engine
+
         with _turn_lock:
             turn_counters[tid] = 0  # Initialize turn counter
         return engine

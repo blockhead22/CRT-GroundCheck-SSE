@@ -4652,6 +4652,11 @@ class CRTEnhancedRAG:
             "your identity", "what are you like", "describe yourself",
             "your beliefs", "your values", "your principles",
             "to you",
+            # Creator/builder queries — ensure system retrieves builder context
+            "who made you", "who built you", "who created you",
+            "who develops you", "who is building", "who designed you",
+            "made by", "built by", "created by", "developed by",
+            "your creator", "your developer", "your builder",
         ))
         
         try:
