@@ -6,20 +6,20 @@ type StepMeta = { icon: string; tooltip: string; color: string }
 export function classifyStatus(s: string): StepMeta {
   const l = s.toLowerCase()
   if (l.includes('reading context'))            return { icon: '◎', tooltip: 'Loading conversation history, user profile, and active session context', color: '#F0EBE1' }
-  if (l.includes('searching memory'))           return { icon: '◈', tooltip: 'Querying trust-weighted memory store — retrieving relevant facts and past assertions', color: '#e8843a' }
-  if (l.includes('checking contradict'))        return { icon: '⚡', tooltip: 'Cross-referencing new claims against stored facts to detect conflicts or drift', color: '#e05c20' }
+  if (l.includes('searching memory'))           return { icon: '◈', tooltip: 'Querying trust-weighted memory store — retrieving relevant facts and past assertions', color: '#E0A080' }
+  if (l.includes('checking contradict'))        return { icon: '⚡', tooltip: 'Cross-referencing new claims against stored facts to detect conflicts or drift', color: '#D47058' }
   if (l.includes('accessing tools'))            return { icon: '▷', tooltip: 'Preparing tool access — code interpreter, search, or external API calls', color: '#d4a84b' }
-  if (l.includes('running agent'))              return { icon: '⟳', tooltip: 'Spawning a sub-agent to handle complex multi-step reasoning or task execution', color: '#e8843a' }
+  if (l.includes('running agent'))              return { icon: '⟳', tooltip: 'Spawning a sub-agent to handle complex multi-step reasoning or task execution', color: '#E0A080' }
   if (l.includes('analyzing'))                  return { icon: '◇', tooltip: 'Parsing intent and mapping query against retrieved context and user facts', color: '#F0EBE1' }
   if (l.includes('reasoning'))                  return { icon: '◇', tooltip: 'Applying chain-of-thought reasoning over retrieved context to form an answer', color: '#F0EBE1' }
-  if (l.includes('planning'))                   return { icon: '≡', tooltip: 'Structuring the response approach — deciding what to include and in what order', color: '#e8843a' }
+  if (l.includes('planning'))                   return { icon: '≡', tooltip: 'Structuring the response approach — deciding what to include and in what order', color: '#E0A080' }
   if (l.includes('verif'))                      return { icon: '⬡', tooltip: 'Running GroundCheck verification — checking response against stored memory for accuracy', color: '#d4a84b' }
   if (l.includes('drafting'))                   return { icon: '✦', tooltip: 'Generating the final response text based on the verified plan', color: '#F0EBE1' }
   if (l.includes('gate'))                       return { icon: '⬡', tooltip: `Gate check result — ${s}`, color: '#d4a84b' }
-  if (l.match(/\d+ mem/))                       return { icon: '◈', tooltip: 'Retrieved memory items used to ground this response', color: '#e8843a' }
-  if (l.includes('agent activated'))            return { icon: '⟳', tooltip: 'Agent was invoked — check agent trace for step details', color: '#e8843a' }
-  if (l.includes('contradict') && l.includes('detect')) return { icon: '⚡', tooltip: 'A contradiction was detected between new input and existing memories', color: '#e05c20' }
-  if (l.includes('belief') || l.includes('explanation')) return { icon: '◉', tooltip: 'Response type: grounded in stored beliefs with confidence scoring', color: '#e8843a' }
+  if (l.match(/\d+ mem/))                       return { icon: '◈', tooltip: 'Retrieved memory items used to ground this response', color: '#E0A080' }
+  if (l.includes('agent activated'))            return { icon: '⟳', tooltip: 'Agent was invoked — check agent trace for step details', color: '#E0A080' }
+  if (l.includes('contradict') && l.includes('detect')) return { icon: '⚡', tooltip: 'A contradiction was detected between new input and existing memories', color: '#D47058' }
+  if (l.includes('belief') || l.includes('explanation')) return { icon: '◉', tooltip: 'Response type: grounded in stored beliefs with confidence scoring', color: '#E0A080' }
   return { icon: '·', tooltip: s, color: '#a09880' }
 }
 
@@ -52,9 +52,9 @@ export function PipelineTrace({
           className="h-full rounded-full"
           style={{
             background: streaming
-              ? 'linear-gradient(90deg, #c95f28, #e8843a)'
+              ? 'linear-gradient(90deg, #D4845C, #E0A080)'
               : 'rgba(106,191,123,0.5)',
-            boxShadow: streaming ? '0 0 8px rgba(201,95,40,0.4)' : 'none',
+            boxShadow: streaming ? '0 0 8px rgba(212,132,92,0.4)' : 'none',
           }}
           initial={{ width: '0%' }}
           animate={{ width: progressPct }}
@@ -75,7 +75,7 @@ export function PipelineTrace({
                 <span
                   key={i}
                   className="h-[4px] w-[4px] rounded-full animate-bounce inline-block"
-                  style={{ background: '#e8843a', opacity: 0.7, animationDelay: `${d}s`, animationDuration: '0.75s' }}
+                  style={{ background: '#E0A080', opacity: 0.7, animationDelay: `${d}s`, animationDuration: '0.75s' }}
                 />
               ))}
             </span>

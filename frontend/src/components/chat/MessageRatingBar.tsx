@@ -230,7 +230,7 @@ export function MessageRatingBar({
                   const affected = affectedMemories.find((a) => a.memory_id === m.memory_id)
                   return (
                     <div key={m.memory_id} className="flex items-start gap-2">
-                      <span className="font-mono flex-shrink-0" style={{ color: '#e8843a' }}>
+                      <span className="font-mono flex-shrink-0" style={{ color: '#E0A080' }}>
                         T:{(m.trust ?? 0).toFixed(2)}
                         {affected && (
                           <span style={{ color: '#fb7185' }}>

@@ -95,7 +95,7 @@ export function Topbar(props: {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="grid h-9 w-9 place-items-center rounded-full accent-button text-sm font-semibold text-white shadow-[0_0_16px_rgba(201,95,40,0.25)] hover:shadow-[0_0_20px_rgba(201,95,40,0.35)] transition-all cursor-pointer"
+            className="grid h-9 w-9 place-items-center rounded-full accent-button text-sm font-semibold text-white shadow-[0_0_16px_rgba(212,132,92,0.25)] hover:shadow-[0_0_20px_rgba(212,132,92,0.35)] transition-all cursor-pointer"
             aria-label="User settings"
           >
             {initial}

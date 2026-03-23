@@ -68,7 +68,7 @@ function shortUrl(url: string): string {
 // ── Route chip colour ─────────────────────────────────────────────────────
 
 function routeColor(route?: string) {
-  if (route === 'task') return { bg: 'rgba(232,132,58,0.15)', color: '#e8843a', border: 'rgba(232,132,58,0.3)' }
+  if (route === 'task') return { bg: 'rgba(224,160,128,0.15)', color: '#E0A080', border: 'rgba(224,160,128,0.3)' }
   return { bg: 'rgba(240,235,225,0.08)', color: '#a09880', border: 'rgba(240,235,225,0.12)' }
 }
 
@@ -79,7 +79,7 @@ function StepIcon({ status, active }: { status?: AgentStep['status'] | 'pending'
     <span className="inline-flex gap-[2px] items-center">
       {[0, 0.15, 0.3].map((d, i) => (
         <span key={i} className="h-[3px] w-[3px] rounded-full animate-bounce inline-block"
-          style={{ background: '#e8843a', opacity: 0.8, animationDelay: `${d}s`, animationDuration: '0.7s' }} />
+          style={{ background: '#E0A080', opacity: 0.8, animationDelay: `${d}s`, animationDuration: '0.7s' }} />
       ))}
     </span>
   )
@@ -198,7 +198,7 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
         {/* Live indicator */}
         {isActive && (
           <span className="ml-auto h-[6px] w-[6px] rounded-full animate-ping flex-shrink-0"
-            style={{ background: '#e8843a', opacity: 0.5 }} />
+            style={{ background: '#E0A080', opacity: 0.5 }} />
         )}
       </div>
 
@@ -314,7 +314,7 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
                 >
                   <div
                     className="rounded px-2 py-1 text-[10px] font-mono line-clamp-6 whitespace-pre-wrap break-words"
-                    style={{ background: 'rgba(0,0,0,0.2)', color: '#5a5445', borderLeft: '2px solid rgba(232,132,58,0.25)' }}
+                    style={{ background: 'rgba(0,0,0,0.2)', color: '#5a5445', borderLeft: '2px solid rgba(224,160,128,0.25)' }}
                   >
                     {state.draftingThinking}
                   </div>
@@ -355,7 +355,7 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
                 >
                   <div
                     className="rounded px-2 py-2 text-[10px] font-mono whitespace-pre-wrap break-words max-h-64 overflow-y-auto"
-                    style={{ background: 'rgba(0,0,0,0.25)', color: '#5a5445', borderLeft: '2px solid rgba(232,132,58,0.2)' }}
+                    style={{ background: 'rgba(0,0,0,0.25)', color: '#5a5445', borderLeft: '2px solid rgba(224,160,128,0.2)' }}
                   >
                     {state.draftingThinking}
                   </div>

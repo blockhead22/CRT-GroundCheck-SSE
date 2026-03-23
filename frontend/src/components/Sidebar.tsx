@@ -57,7 +57,7 @@ export function Sidebar(props: {
     <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-2xl accent-button text-white shadow-[0_0_20px_rgba(201,95,40,0.3)]">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl accent-button text-white shadow-[0_0_20px_rgba(212,132,92,0.3)]">
             <span className="text-sm font-bold tracking-wide">Q</span>
           </div>
           <div>
@@ -126,7 +126,7 @@ export function Sidebar(props: {
                   <motion.div
                     layoutId="sidebar-active-bar"
                     className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
-                    style={{ background: '#c95f28', boxShadow: '0 0 8px rgba(201,95,40,0.5)' }}
+                    style={{ background: '#D4845C', boxShadow: '0 0 8px rgba(212,132,92,0.5)' }}
                     transition={{ type: 'spring', stiffness: 350, damping: 30 }}
                   />
                 )}
@@ -134,7 +134,7 @@ export function Sidebar(props: {
                   className={
                     'grid h-8 w-8 place-items-center rounded-lg text-xs transition-all duration-200 ' +
                     (isActive
-                      ? 'bg-[rgba(201,95,40,0.15)] text-[#e8843a] shadow-[0_0_12px_rgba(201,95,40,0.25)] border border-[rgba(201,95,40,0.3)]'
+                      ? 'bg-[rgba(212,132,92,0.15)] text-[#E0A080] shadow-[0_0_12px_rgba(212,132,92,0.25)] border border-[rgba(212,132,92,0.3)]'
                       : 'border border-white/[0.06] bg-white/[0.03] text-white/40 group-hover:text-white/60 group-hover:border-white/10')
                   }
                 >
@@ -174,7 +174,7 @@ export function Sidebar(props: {
                     className={
                       'group rounded-2xl px-3.5 py-3 text-left transition-all duration-200 ' +
                       (selected
-                        ? 'bg-white/[0.08] border border-[#c95f28]/20 shadow-[0_0_16px_rgba(201,95,40,0.08)]'
+                        ? 'bg-white/[0.08] border border-[#D4845C]/20 shadow-[0_0_16px_rgba(212,132,92,0.08)]'
                         : 'bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1]')
                     }
                   >

@@ -402,12 +402,27 @@ python scripts/vilt_chat.py --facts data/my_facts.json
 - GroundCheck: sub-2ms post-generation semantic verification
 - Mid-stream verification: fact-checks during generation
 - 3-tier cloud routing: local, OpenAI, Claude with seamless timeout recovery
+- Cloud-only generation mode: model selector lets users choose Local, GPT-4o, or Claude as primary generator
 - Self-referential routing: 70+ patterns, grounded in self-model
 - Heartbeat loop: trust decay, memory compression, self-reflection
 - Adaptive compression: significance-scored tier system
 - Settings dashboard: profile, cloud toggles, known facts, usage tracking
 - LLM tool loop: iterative agentic execution with checkpoint confirmation
 - Governed memory: authority levels, channel routing, provenance tracking
+
+### Session 3 (March 22, 2026)
+
+- **Slot-level exclusivity enforcement at ingestion** — exclusive slots (`favorite_color`, `name`, `birthday`) now allow only one active value. Old values are demoted to 0.4x trust with `superseded` provenance, not deleted.
+- **Cloud generation fallback** — local timeout cascades to OpenAI, then Claude. The CRT pipeline (memory, contradictions, verification, trust) stays local regardless of which generator produces the response.
+- **Cloud-only generation mode** — model selector in chat UI lets users swap between Local, GPT-4o, and Claude as primary generator. Selection persists via settings.
+- **Claude Tier 2 fully configured** — cookie provider, settings toggles, daily limits, and token tracking all wired end-to-end.
+- **Greeting gate bypass** — greetings no longer fire `contradiction_disclosure`, eliminating false positives on simple hellos.
+- **Trust re-boost blocked on demoted memories** — once a memory is demoted via slot exclusivity, it cannot regain trust through re-boost.
+- **Name persistence chain fixed** — resolved 4 bugs: double-FACT wrapping, `display_name` not reaching the LLM, no deterministic injection, and profile propagation failure.
+- **Self-referential routing expanded** — 70+ patterns now recognized, up from ~40.
+- **Cloud fallback catches gate failures** — if local generation fails at the gate level, cloud fallback engages instead of returning an error.
+- **Health poll intervals reduced** — health checks moved from 5s to 15s, copilot polls from 2s to 5s, cutting idle network traffic significantly.
+- **Generic opener removed** — all prompt templates no longer include a canned opening line, producing more natural responses.
 
 ### Not Yet Complete
 
@@ -427,6 +442,8 @@ python scripts/vilt_chat.py --facts data/my_facts.json
 | **B.5: Agentic Execution** | In Progress | Tool loop, self-reflection, visible reasoning, checkpointed actions |
 | **C: Library Extraction** | Planned | Extract groundcheck, crt-ledger, crt-trust, crt-gates as standalone packages |
 | **D: Launch** | Planned | PyPI publish, landing page, hosted API option |
+
+See [ROADMAP.md](ROADMAP.md) for the full planning document with weekly priorities and long-term architecture goals.
 
 ---
 

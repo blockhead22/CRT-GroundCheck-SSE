@@ -66,7 +66,7 @@ function CodePanel({ code, language }: { code: string; language?: string }) {
         className="flex items-center justify-between px-4 py-2"
         style={{ background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid rgba(240,235,225,0.04)' }}
       >
-        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: '#e8843a' }}>
+        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: '#E0A080' }}>
           {language || 'code'}
         </span>
         <button
@@ -148,7 +148,7 @@ const docsMdComponents = {
     const isBlock = Boolean(language) || codeText.includes('\n')
     if (!isBlock) {
       return (
-        <code className="rounded px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(201,95,40,0.1)', color: '#e8a86a' }}>
+        <code className="rounded px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.1)', color: '#E8C8A0' }}>
           {children}
         </code>
       )
@@ -157,7 +157,7 @@ const docsMdComponents = {
   },
   blockquote({ children }: { children?: React.ReactNode }) {
     return (
-      <blockquote className="my-4 pl-4 py-2 pr-4" style={{ borderLeft: '3px solid rgba(201,95,40,0.35)', color: 'rgba(240,235,225,0.55)' }}>
+      <blockquote className="my-4 pl-4 py-2 pr-4" style={{ borderLeft: '3px solid rgba(212,132,92,0.35)', color: 'rgba(240,235,225,0.55)' }}>
         {children}
       </blockquote>
     )
@@ -183,7 +183,7 @@ const docsMdComponents = {
   },
   a({ children, href }: { children?: React.ReactNode; href?: string }) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-[#e8843a]" style={{ color: '#e8a86a', textDecorationColor: 'rgba(232,132,58,0.3)' }}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 transition-colors hover:text-[#E0A080]" style={{ color: '#E8C8A0', textDecorationColor: 'rgba(224,160,128,0.3)' }}>
         {children}
       </a>
     )
@@ -325,7 +325,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
           {/* Grouped sections */}
           {SECTIONS.map((section) => (
             <div key={section.heading} className="mb-5">
-              <div className="text-[11px] font-semibold uppercase tracking-wider mb-2 px-2" style={{ color: '#e8843a' }}>
+              <div className="text-[11px] font-semibold uppercase tracking-wider mb-2 px-2" style={{ color: '#E0A080' }}>
                 {section.heading}
               </div>
               <div className="flex flex-col gap-px">
@@ -368,7 +368,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                                       ? 'text-white/90 bg-white/[0.06]'
                                       : 'text-white/35 hover:text-white/60 hover:bg-white/[0.03]')
                                   }
-                                  style={d.id === activeDocId ? { borderLeft: '2px solid #c95f28', marginLeft: '-1px' } : {}}
+                                  style={d.id === activeDocId ? { borderLeft: '2px solid #D4845C', marginLeft: '-1px' } : {}}
                                 >
                                   {d.title}
                                 </button>
@@ -456,10 +456,10 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                 >
                   {/* Title */}
                   <h1 className="text-[32px] font-bold text-white mb-3 leading-tight">{title || '—'}</h1>
-                  <div className="h-px mb-8" style={{ background: 'linear-gradient(90deg, rgba(201,95,40,0.4) 0%, transparent 50%)' }} />
+                  <div className="h-px mb-8" style={{ background: 'linear-gradient(90deg, rgba(212,132,92,0.4) 0%, transparent 50%)' }} />
 
                   {error && (
-                    <div className="rounded-xl p-4 mb-6 text-sm" style={{ border: '1px solid rgba(224,92,32,0.2)', background: 'rgba(224,92,32,0.06)', color: '#fb7185' }}>
+                    <div className="rounded-xl p-4 mb-6 text-sm" style={{ border: '1px solid rgba(212,112,88,0.2)', background: 'rgba(212,112,88,0.06)', color: '#fb7185' }}>
                       {error}
                     </div>
                   )}

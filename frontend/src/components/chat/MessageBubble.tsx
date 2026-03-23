@@ -59,7 +59,7 @@ const mdComponents = {
     const isBlock = Boolean(language) || codeText.includes('\n')
     if (!isBlock) {
       return (
-        <code className="rounded-md px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(201,95,40,0.12)', color: '#e8a86a' }}>
+        <code className="rounded-md px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.12)', color: '#E8C8A0' }}>
           {children}
         </code>
       )
@@ -68,7 +68,7 @@ const mdComponents = {
   },
   blockquote({ children }: { children?: React.ReactNode }) {
     return (
-      <blockquote className="my-3 pl-4 italic" style={{ borderLeft: '2px solid rgba(232,132,58,0.35)', color: 'rgba(240,235,225,0.55)' }}>
+      <blockquote className="my-3 pl-4 italic" style={{ borderLeft: '2px solid rgba(224,160,128,0.35)', color: 'rgba(240,235,225,0.55)' }}>
         {children}
       </blockquote>
     )
@@ -84,7 +84,7 @@ const mdComponents = {
   },
   a({ children, href }: { children?: React.ReactNode; href?: string }) {
     return (
-      <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2" style={{ color: '#e8843a', textDecorationColor: 'rgba(232,132,58,0.4)' }}>
+      <a href={href} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2" style={{ color: '#E0A080', textDecorationColor: 'rgba(224,160,128,0.4)' }}>
         {children}
       </a>
     )
@@ -192,9 +192,9 @@ export function MessageBubble(props: {
           <div
             className="rounded-2xl px-5 py-3.5 text-[14.5px] leading-relaxed"
             style={{
-              background: 'linear-gradient(135deg, #c95f28 0%, #b05424 100%)',
+              background: 'linear-gradient(135deg, #D4845C 0%, #B87050 100%)',
               color: 'var(--user-bubble-fg)',
-              boxShadow: '0 2px 8px rgba(201,95,40,0.3), 0 8px 24px rgba(201,95,40,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
+              boxShadow: '0 2px 8px rgba(212,132,92,0.3), 0 8px 24px rgba(212,132,92,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
             }}
           >
             {props.msg.text}
@@ -226,13 +226,13 @@ export function MessageBubble(props: {
         ].join(' ')}
         style={{
           background: props.selected
-            ? 'rgba(201,95,40,0.06)'
+            ? 'rgba(212,132,92,0.06)'
             : 'rgba(29,27,22,0.5)',
           border: props.selected
-            ? '1px solid rgba(201,95,40,0.2)'
+            ? '1px solid rgba(212,132,92,0.2)'
             : '1px solid rgba(240,235,225,0.04)',
           boxShadow: props.selected
-            ? '0 0 24px rgba(201,95,40,0.1), 0 2px 8px rgba(0,0,0,0.15)'
+            ? '0 0 24px rgba(212,132,92,0.1), 0 2px 8px rgba(0,0,0,0.15)'
             : '0 1px 4px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.02)',
           ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
           ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
@@ -243,8 +243,8 @@ export function MessageBubble(props: {
         {profileUpdates.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
             {profileUpdates.map((u, i) => (
-              <span key={`${u.slot}-${i}`} className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px]" style={{ border: '1px solid rgba(232,132,58,0.2)', background: 'rgba(201,95,40,0.08)', color: 'rgba(240,235,225,0.7)' }}>
-                <span className="font-mono" style={{ color: '#e8843a' }}>{u.slot}</span>
+              <span key={`${u.slot}-${i}`} className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px]" style={{ border: '1px solid rgba(224,160,128,0.2)', background: 'rgba(212,132,92,0.08)', color: 'rgba(240,235,225,0.7)' }}>
+                <span className="font-mono" style={{ color: '#E0A080' }}>{u.slot}</span>
                 <span style={{ color: 'rgba(240,235,225,0.3)' }}>·</span>
                 <span>{(u.old || '—')} → {(u.new || '—')}</span>
               </span>
@@ -269,12 +269,12 @@ export function MessageBubble(props: {
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.18 }}
               className="mt-3 overflow-hidden rounded-xl px-3 py-2.5 text-[11px]"
-              style={{ border: '1px solid rgba(224,92,32,0.2)', background: 'rgba(224,92,32,0.06)' }}
+              style={{ border: '1px solid rgba(212,112,88,0.2)', background: 'rgba(212,112,88,0.06)' }}
             >
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="font-mono font-semibold" style={{ color: '#e05c20' }}>WHY BLOCKED</span>
+                <span className="font-mono font-semibold" style={{ color: '#D47058' }}>WHY BLOCKED</span>
                 {meta.gate_debug.trigger && (
-                  <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(224,92,32,0.12)', color: '#e8843a' }}>{meta.gate_debug.trigger}</span>
+                  <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(212,112,88,0.12)', color: '#E0A080' }}>{meta.gate_debug.trigger}</span>
                 )}
                 {meta.gate_debug.slot && (
                   <span className="rounded px-1.5 py-0.5 font-mono" style={{ background: 'rgba(240,235,225,0.06)', color: '#a09880' }}>slot: {meta.gate_debug.slot}</span>
@@ -311,7 +311,7 @@ export function MessageBubble(props: {
                   <div className="font-mono" style={{ color: '#5a5445' }}>conflicting memories</div>
                   {(meta.gate_debug.conflicting_memories ?? []).map((m, i) => (
                     <div key={i} className="flex items-start gap-2 font-mono">
-                      <span style={{ color: '#e8843a' }}>T:{m.trust.toFixed(2)}</span>
+                      <span style={{ color: '#E0A080' }}>T:{m.trust.toFixed(2)}</span>
                       <span className="line-clamp-1" style={{ color: 'rgba(240,235,225,0.45)' }}>{m.text}</span>
                     </div>
                   ))}
@@ -322,7 +322,7 @@ export function MessageBubble(props: {
                 {meta.gate_debug.memory_align != null && <span>memory {meta.gate_debug.memory_align.toFixed(2)}</span>}
                 {meta.gate_debug.grounding != null && <span>grounding {meta.gate_debug.grounding.toFixed(2)}</span>}
                 {meta.gate_debug.hard_conflicts != null && meta.gate_debug.hard_conflicts > 0 && (
-                  <span style={{ color: '#e05c20' }}>{meta.gate_debug.hard_conflicts} hard conflict(s)</span>
+                  <span style={{ color: '#D47058' }}>{meta.gate_debug.hard_conflicts} hard conflict(s)</span>
                 )}
               </div>
               {/* Action row — accept claim if a ledger entry exists */}
@@ -398,10 +398,10 @@ export function MessageBubble(props: {
             <summary className="cursor-pointer hover:text-white/60 transition-colors font-mono">
               ↑↓{(meta!.retrieved_memories as any[]).length} memories cited
             </summary>
-            <div className="mt-1.5 pl-3 flex flex-col gap-1" style={{ borderLeft: '1px solid rgba(232,132,58,0.15)' }}>
+            <div className="mt-1.5 pl-3 flex flex-col gap-1" style={{ borderLeft: '1px solid rgba(224,160,128,0.15)' }}>
               {(meta!.retrieved_memories as any[]).slice(0, 5).map((mem: any, i: number) => (
                 <div key={i} className="flex items-start gap-2">
-                  <span className="font-mono flex-shrink-0" style={{ color: '#e8843a' }}>
+                  <span className="font-mono flex-shrink-0" style={{ color: '#E0A080' }}>
                     T:{typeof mem.trust === 'number' ? mem.trust.toFixed(2) : '?'}
                   </span>
                   <span className="truncate" style={{ color: 'rgba(240,235,225,0.5)' }}>
@@ -433,13 +433,13 @@ export function MessageBubble(props: {
 
         {/* X-ray mode */}
         {props.xrayMode && meta?.xray && (
-          <div className="mt-3 rounded-xl px-3 py-3 text-[11px]" style={{ border: '1px solid rgba(232,132,58,0.15)', background: 'rgba(201,95,40,0.06)' }}>
-            <div className="mb-2 font-semibold tracking-wide" style={{ color: '#e8843a' }}>X-RAY</div>
+          <div className="mt-3 rounded-xl px-3 py-3 text-[11px]" style={{ border: '1px solid rgba(224,160,128,0.15)', background: 'rgba(212,132,92,0.06)' }}>
+            <div className="mb-2 font-semibold tracking-wide" style={{ color: '#E0A080' }}>X-RAY</div>
             {(meta.xray.memories_used ?? []).length > 0 && (
               <div className="space-y-1">
                 {(meta.xray.memories_used ?? []).map((m, i) => (
                   <div key={i} className="flex items-start gap-2" style={{ color: 'rgba(240,235,225,0.5)' }}>
-                    <span className="font-mono flex-shrink-0" style={{ color: '#e8843a' }}>T:{m.trust.toFixed(2)}</span>
+                    <span className="font-mono flex-shrink-0" style={{ color: '#E0A080' }}>T:{m.trust.toFixed(2)}</span>
                     <span className="line-clamp-1">{m.text}</span>
                   </div>
                 ))}
@@ -473,7 +473,7 @@ export function MessageBubble(props: {
           {meta?.generation_source && meta.generation_source !== 'local' && (
             <span
               className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-              style={{ background: 'rgba(201,95,40,0.1)', color: 'rgba(201,95,40,0.7)', border: '1px solid rgba(201,95,40,0.15)' }}
+              style={{ background: 'rgba(212,132,92,0.1)', color: 'rgba(212,132,92,0.7)', border: '1px solid rgba(212,132,92,0.15)' }}
               title={`Generated by ${meta.generation_source === 'cloud_openai' ? 'OpenAI' : meta.generation_source === 'cloud_claude' ? 'Claude' : meta.generation_source}`}
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -524,7 +524,7 @@ export function MessageBubble(props: {
                 <button
                   onClick={(e) => { e.stopPropagation(); props.onOpenAgentPanel?.(props.msg.id) }}
                   className="rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors hover:opacity-80"
-                  style={{ background: 'rgba(232,132,58,0.18)', color: '#e8843a' }}
+                  style={{ background: 'rgba(224,160,128,0.18)', color: '#E0A080' }}
                 >
                   agent trace
                 </button>

@@ -40,13 +40,13 @@ function ThinkingPreview({ content }: { content: string }) {
       initial={{ opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       className="mb-3 overflow-hidden rounded-xl border px-3 py-2 text-[11px] leading-relaxed"
-      style={{ borderColor: 'rgba(232,132,58,0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-muted)' }}
+      style={{ borderColor: 'rgba(224,160,128,0.15)', background: 'rgba(0,0,0,0.2)', color: 'var(--text-muted)' }}
     >
       <button
         onClick={() => setExpanded(v => !v)}
         className="w-full text-left flex items-center gap-2 mb-1"
       >
-        <span className="font-mono text-[10px]" style={{ color: '#e8843a' }}>
+        <span className="font-mono text-[10px]" style={{ color: '#E0A080' }}>
           {expanded ? '▼' : '▶'} thinking
         </span>
         <span className="text-[10px] font-mono" style={{ color: '#5a5445' }}>
@@ -329,9 +329,9 @@ export function ChatThreadView(props: {
                   onClick={() => setTheaterMode(mode === 'theater')}
                   className="rounded-full px-4 py-1 text-[10px] font-mono uppercase tracking-widest"
                   animate={{
-                    background: active ? 'rgba(201,95,40,0.9)' : 'transparent',
+                    background: active ? 'rgba(212,132,92,0.9)' : 'transparent',
                     color: active ? '#F0EBE1' : '#5a5445',
-                    boxShadow: active ? '0 0 12px rgba(201,95,40,0.3)' : '0 0 0 transparent',
+                    boxShadow: active ? '0 0 12px rgba(212,132,92,0.3)' : '0 0 0 transparent',
                   }}
                   transition={{ duration: 0.2 }}
                 >
@@ -490,7 +490,7 @@ export function ChatThreadView(props: {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(201,95,40,0.35)_transparent]"
+            className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(212,132,92,0.35)_transparent]"
           >
             <div className="mx-auto w-full px-4 py-8 md:px-10" style={{ maxWidth: '860px' }}>
 
@@ -506,7 +506,7 @@ export function ChatThreadView(props: {
                   <div className="relative">
                     <div
                       className="absolute inset-0 -z-10 blur-[80px] opacity-20"
-                      style={{ background: 'radial-gradient(ellipse at center, rgba(201,95,40,0.5) 0%, transparent 70%)' }}
+                      style={{ background: 'radial-gradient(ellipse at center, rgba(212,132,92,0.5) 0%, transparent 70%)' }}
                     />
                     <motion.div
                       className="font-display md:text-8xl lg:text-9xl"

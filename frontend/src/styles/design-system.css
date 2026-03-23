@@ -111,7 +111,7 @@
   --shadow-card-hover: 0 2px 4px rgba(0,0,0,0.16), 0 8px 24px rgba(0,0,0,0.12);
   --shadow-elevated: 0 4px 12px rgba(0,0,0,0.2), 0 16px 40px rgba(0,0,0,0.15);
   --shadow-panel: 0 0 1px rgba(0,0,0,0.3), 0 8px 32px rgba(0,0,0,0.25);
-  --shadow-glow-accent: 0 0 24px rgba(201,95,40,0.15);
+  --shadow-glow-accent: 0 0 24px rgba(212,132,92,0.15);
   --shadow-inset-subtle: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 

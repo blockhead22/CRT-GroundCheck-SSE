@@ -155,7 +155,7 @@ export function Composer(props: {
             >
               <span className="flex items-center gap-1.5">
                 {generationMode !== 'local' && (
-                  <span style={{ color: 'rgba(201,95,40,0.7)' }}>
+                  <span style={{ color: 'rgba(212,132,92,0.7)' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
                     </svg>
@@ -196,7 +196,7 @@ export function Composer(props: {
                       onClick={() => handleModelSelect(opt.value)}
                       className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/[0.06]"
                       style={{
-                        color: generationMode === opt.value ? 'rgba(201,95,40,0.9)' : 'rgba(240,235,225,0.6)',
+                        color: generationMode === opt.value ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.6)',
                       }}
                     >
                       <span className="flex-shrink-0">{opt.icon}</span>
@@ -218,10 +218,10 @@ export function Composer(props: {
         <motion.div
           animate={{
             boxShadow: focused
-              ? '0 0 0 1px rgba(201,95,40,0.3), 0 8px 32px rgba(0,0,0,0.4), 0 0 48px rgba(201,95,40,0.06)'
+              ? '0 0 0 1px rgba(212,132,92,0.3), 0 8px 32px rgba(0,0,0,0.4), 0 0 48px rgba(212,132,92,0.06)'
               : '0 2px 12px rgba(0,0,0,0.2), 0 1px 4px rgba(0,0,0,0.15)',
             borderColor: focused
-              ? 'rgba(201,95,40,0.25)'
+              ? 'rgba(212,132,92,0.25)'
               : 'rgba(240,235,225,0.06)',
           }}
           transition={{ duration: 0.2 }}
@@ -283,7 +283,7 @@ export function Composer(props: {
                 aria-label="Send"
                 className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all ${
                   canSend && !isDisabled
-                    ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(201,95,40,0.35)]'
+                    ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(212,132,92,0.35)]'
                     : 'bg-white/[0.04] text-white/15 cursor-not-allowed'
                 }`}
               >
