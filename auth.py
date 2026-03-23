@@ -466,6 +466,12 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "cloud_escalation_policy": "conservative",
     "cloud_confidence_threshold": "0.8",
     "cloud_daily_limit_multiplier": "1.0",
+    # Claude (Tier 2/3) settings
+    "cloud_claude_enabled": "false",
+    "cloud_claude_generation": "true",
+    "cloud_claude_reflection": "true",
+    "cloud_claude_daily_limit": "20",
+    "cloud_claude_max_tokens": "4096",
 }
 
 

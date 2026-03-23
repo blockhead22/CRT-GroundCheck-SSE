@@ -37,6 +37,9 @@ class CloudFeatureService:
         "slot_classification": 10,
         "nli_contradiction": 10,
         "reflection_validation": 3,
+        "cloud_generation": 50,
+        "claude_generation": 20,
+        "claude_reflection": 10,
     }
 
     def __init__(
@@ -57,6 +60,9 @@ class CloudFeatureService:
             "slot_classification": {"calls": 0, "est_tokens": 0},
             "nli_contradiction": {"calls": 0, "est_tokens": 0},
             "reflection_validation": {"calls": 0, "est_tokens": 0},
+            "cloud_generation": {"calls": 0, "est_tokens": 0},
+            "claude_generation": {"calls": 0, "est_tokens": 0},
+            "claude_reflection": {"calls": 0, "est_tokens": 0},
             "total_cost_est": 0.0,
         }
 
@@ -66,6 +72,9 @@ class CloudFeatureService:
             "slot_classification": 0,
             "nli_contradiction": 0,
             "reflection_validation": 0,
+            "cloud_generation": 0,
+            "claude_generation": 0,
+            "claude_reflection": 0,
         }
         self._daily_counts_date: str = str(date.today())
         self._limit_multiplier: float = 1.0
@@ -236,6 +245,186 @@ class CloudFeatureService:
             logger.warning("[CLOUD] Cookie call failed: %s", e)
             return None
 
+    def _call_cookie_text(
+        self, system: str, prompt: str, max_tokens: int = 4096, *, feature: str = "unknown",
+    ) -> Optional[str]:
+        """Call the Cookie (Claude session) provider and return raw text (not JSON-parsed).
+
+        Used for generation tasks where the response is free-form text, not structured JSON.
+        """
+        if not self._cookie_available():
+            print(f"[CLOUD_CLAUDE] Cookie provider not available for {feature}")
+            return None
+        usage_logger = get_cloud_usage_logger()
+        full_prompt = f"{system}\n{prompt}"
+        t0 = time.time()
+        raw_content: str = ""
+        try:
+            result = self.cookie.complete(system, prompt, max_tokens=max_tokens)
+            latency = int((time.time() - t0) * 1000)
+            raw_content = getattr(result, "content", "") or ""
+            if result.error:
+                usage_logger.log(
+                    provider="claude_subscription", feature=feature,
+                    model="claude-sonnet-4-5", prompt=full_prompt,
+                    response=raw_content, latency_ms=latency,
+                    success=False, error_message=str(result.error),
+                )
+                print(f"[CLOUD_CLAUDE] Cookie call failed for {feature}: {result.error}")
+                return None
+            if not raw_content.strip():
+                usage_logger.log(
+                    provider="claude_subscription", feature=feature,
+                    model="claude-sonnet-4-5", prompt=full_prompt,
+                    response="", latency_ms=latency,
+                    success=False, error_message="Empty response",
+                )
+                print(f"[CLOUD_CLAUDE] Empty response for {feature}")
+                return None
+            # Estimate tokens: word count * 1.3
+            est_tokens = int(len(raw_content.split()) * 1.3)
+            usage_logger.log(
+                provider="claude_subscription", feature=feature,
+                model="claude-sonnet-4-5", prompt=full_prompt,
+                response=raw_content, latency_ms=latency, success=True,
+            )
+            print(f"[CLOUD_CLAUDE] {feature} response ({latency}ms, ~{est_tokens} tokens): {repr(raw_content)[:150]}")
+            return raw_content.strip()
+        except Exception as e:
+            latency = int((time.time() - t0) * 1000)
+            usage_logger.log(
+                provider="claude_subscription", feature=feature,
+                model="claude-sonnet-4-5", prompt=full_prompt,
+                response=raw_content, latency_ms=latency,
+                success=False, error_message=str(e),
+            )
+            print(f"[CLOUD_CLAUDE] Cookie call FAILED for {feature}: {e}")
+            return None
+
+    def _check_claude_daily_limit(self, feature: str = "claude_generation") -> bool:
+        """Check the user-configured daily limit for all Claude features combined."""
+        self._reset_daily_if_needed()
+        # Sum all Claude feature counts
+        claude_total = (
+            self._daily_counts.get("claude_generation", 0)
+            + self._daily_counts.get("claude_reflection", 0)
+        )
+        # Try to read user-configured limit (falls back to 20)
+        try:
+            import auth as _auth
+            limit = int(_auth.get_user_setting(1, "cloud_claude_daily_limit", "20") or "20")
+        except Exception:
+            limit = 20
+        if claude_total >= limit:
+            print(f"[CLOUD_CLAUDE] Daily limit reached: {claude_total}/{limit}")
+            return False
+        return True
+
+    def generate_response_claude(
+        self,
+        user_message: str,
+        retrieved_memories: Optional[List[Dict[str, Any]]] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        self_model_snapshot: Optional[Dict[str, Any]] = None,
+        max_tokens: int = 4096,
+    ) -> Optional[str]:
+        """Generate a conversational response via Claude cookie provider (Tier 2).
+
+        This is the high-quality fallback for response generation when OpenAI
+        fails or produces low-confidence results. The CRT control plane
+        (memory governance, trust scoring, contradiction detection, gate checks)
+        still runs locally — cloud is just the vocal cords.
+
+        Returns the response text on success, or None if unavailable/limit exceeded.
+        """
+        # Check master toggle
+        try:
+            import auth as _auth
+            _uid = 1
+            _enabled = str(_auth.get_user_setting(_uid, "cloud_claude_enabled", "false")).lower() in ("true", "1", "yes", "on")
+            if not _enabled:
+                print("[CLOUD_CLAUDE] Claude is disabled (cloud_claude_enabled=false)")
+                return None
+            _gen_enabled = str(_auth.get_user_setting(_uid, "cloud_claude_generation", "true")).lower() in ("true", "1", "yes", "on")
+            if not _gen_enabled:
+                print("[CLOUD_CLAUDE] Claude generation disabled (cloud_claude_generation=false)")
+                return None
+            # Read user-configured max tokens
+            _user_max_tokens = int(_auth.get_user_setting(_uid, "cloud_claude_max_tokens", "4096") or "4096")
+            max_tokens = min(max_tokens, _user_max_tokens)
+        except Exception as e:
+            print(f"[CLOUD_CLAUDE] Settings check error: {e}")
+
+        if not self._check_claude_daily_limit("claude_generation"):
+            return None
+        if not self._cookie_available():
+            print("[CLOUD_CLAUDE] Cookie provider not available")
+            return None
+
+        # Build compact system prompt with CRT identity essentials
+        system_parts = [
+            "You are Aether, a personal AI assistant built on the CRT (Contradiction-aware Reconciliation and Trust) framework.",
+            "Core principles:",
+            "- You preserve contradictions honestly instead of silently overwriting memories.",
+            "- You maintain belief/speech separation: what you believe (high-trust facts) vs what you say (may include uncertainty).",
+            "- If you don't have data for something, say so. Don't make up capabilities you don't have.",
+            "- Speak as yourself in first person. Be conversational, warm, and concise.",
+        ]
+
+        # Inject retrieved memories with trust scores
+        if retrieved_memories:
+            mem_lines = []
+            for mem in (retrieved_memories or [])[:8]:
+                text = (mem.get("text") or "").strip()
+                trust = mem.get("trust")
+                if text:
+                    trust_tag = f" [trust={trust:.2f}]" if trust is not None else ""
+                    mem_lines.append(f"- {text[:200]}{trust_tag}")
+            if mem_lines:
+                system_parts.append("\nRelevant memories about the user:")
+                system_parts.extend(mem_lines)
+
+        # Inject self-model snapshot if available
+        if self_model_snapshot:
+            traits = self_model_snapshot.get("traits") or self_model_snapshot.get("top_facts") or []
+            if traits and isinstance(traits, list):
+                trait_lines = [f"- {t}" for t in traits[:5] if isinstance(t, str)]
+                if trait_lines:
+                    system_parts.append("\nYour self-model (what you know about yourself):")
+                    system_parts.extend(trait_lines)
+
+        system_prompt = "\n".join(system_parts)
+
+        # Build the prompt string
+        messages_for_prompt: List[Dict[str, str]] = []
+        if conversation_history:
+            for turn in conversation_history[-6:]:
+                role = turn.get("role", "user")
+                content = (turn.get("content") or "").strip()
+                if content and role in ("user", "assistant"):
+                    messages_for_prompt.append({"role": role, "content": content[:500]})
+        messages_for_prompt.append({"role": "user", "content": user_message})
+
+        prompt_text = "\n".join(
+            f"{'User' if m['role'] == 'user' else 'Aether'}: {m['content']}"
+            for m in messages_for_prompt
+        )
+
+        raw = self._call_cookie_text(
+            system_prompt, prompt_text, max_tokens=max_tokens, feature="claude_generation",
+        )
+
+        if raw:
+            # Estimate tokens for tracking
+            est_tokens = int(len(raw.split()) * 1.3)
+            self._track_usage("claude_generation", est_tokens=est_tokens, cost=0.0)
+            self._record_daily_call("claude_generation")
+            print(f"[CLOUD_CLAUDE] Generation success — {len(raw)} chars, ~{est_tokens} tokens")
+            return raw
+
+        print("[CLOUD_CLAUDE] Generation returned None")
+        return None
+
     def _track_usage(self, feature: str, est_tokens: int = 200, cost: float = 0.0) -> None:
         bucket = self.usage.get(feature)
         if bucket and isinstance(bucket, dict):
@@ -344,6 +533,132 @@ class CloudFeatureService:
 
         logger.debug("[CLOUD] Reflection validation unavailable (no provider)")
         return None
+
+    # ------------------------------------------------------------------
+    # Feature 4: Cloud Response Generation (fallback)
+    # ------------------------------------------------------------------
+
+    def generate_response(
+        self,
+        user_message: str,
+        retrieved_memories: Optional[List[Dict[str, Any]]] = None,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        self_model_snapshot: Optional[Dict[str, Any]] = None,
+    ) -> Optional[str]:
+        """Generate a conversational response via OpenAI when local LLM is unavailable.
+
+        This is the cloud fallback for response generation. The CRT control plane
+        (memory governance, trust scoring, contradiction detection, gate checks)
+        still runs locally — cloud is just the vocal cords.
+
+        Returns the response text on success, or None if unavailable/limit exceeded.
+        """
+        if not self._check_daily_limit("cloud_generation"):
+            print("[CLOUD_GEN] Daily limit reached for cloud_generation")
+            return None
+        if not self._openai_available():
+            print("[CLOUD_GEN] OpenAI client not available")
+            return None
+
+        # Build compact system prompt with CRT identity essentials
+        system_parts = [
+            "You are Aether, a personal AI assistant built on the CRT (Contradiction-aware Reconciliation and Trust) framework.",
+            "Core principles:",
+            "- You preserve contradictions honestly instead of silently overwriting memories.",
+            "- You maintain belief/speech separation: what you believe (high-trust facts) vs what you say (may include uncertainty).",
+            "- If you don't have data for something, say so. Don't make up capabilities you don't have.",
+            "- Speak as yourself in first person. Be conversational, warm, and concise.",
+        ]
+
+        # Inject retrieved memories with trust scores
+        if retrieved_memories:
+            mem_lines = []
+            for mem in (retrieved_memories or [])[:8]:
+                text = (mem.get("text") or "").strip()
+                trust = mem.get("trust")
+                if text:
+                    trust_tag = f" [trust={trust:.2f}]" if trust is not None else ""
+                    mem_lines.append(f"- {text[:200]}{trust_tag}")
+            if mem_lines:
+                system_parts.append("\nRelevant memories about the user:")
+                system_parts.extend(mem_lines)
+
+        # Inject self-model snapshot if available
+        if self_model_snapshot:
+            traits = self_model_snapshot.get("traits") or self_model_snapshot.get("top_facts") or []
+            if traits and isinstance(traits, list):
+                trait_lines = [f"- {t}" for t in traits[:5] if isinstance(t, str)]
+                if trait_lines:
+                    system_parts.append("\nYour self-model (what you know about yourself):")
+                    system_parts.extend(trait_lines)
+
+        system_prompt = "\n".join(system_parts)
+
+        # Build messages array
+        messages_for_prompt: List[Dict[str, str]] = []
+
+        # Include recent conversation history for continuity
+        if conversation_history:
+            for turn in conversation_history[-6:]:
+                role = turn.get("role", "user")
+                content = (turn.get("content") or "").strip()
+                if content and role in ("user", "assistant"):
+                    messages_for_prompt.append({"role": role, "content": content[:500]})
+
+        # Add the current user message
+        messages_for_prompt.append({"role": "user", "content": user_message})
+
+        # Build the prompt string for the OpenAI client
+        # The _call_openai helper expects system + prompt separately and parses JSON,
+        # so we call the raw openai.generate directly for text generation.
+        prompt_text = "\n".join(
+            f"{'User' if m['role'] == 'user' else 'Aether'}: {m['content']}"
+            for m in messages_for_prompt
+        )
+
+        usage_logger = get_cloud_usage_logger()
+        full_prompt = f"{system_prompt}\n{prompt_text}"
+        t0 = time.time()
+        raw: Optional[str] = None
+
+        try:
+            raw = self.openai.generate(
+                prompt=prompt_text,
+                system=system_prompt,
+                max_tokens=800,
+                temperature=0.7,
+                model="gpt-4o-mini",
+            )
+            latency = int((time.time() - t0) * 1000)
+            print(f"[CLOUD_GEN] OpenAI response ({latency}ms): {repr(raw)[:150]}")
+
+            if not raw or raw.startswith("[Cloud LLM"):
+                usage_logger.log(
+                    provider="openai", feature="cloud_generation", model="gpt-4o-mini",
+                    prompt=full_prompt, response=raw or "", latency_ms=latency,
+                    success=False, error_message="Empty or placeholder response",
+                )
+                return None
+
+            # Track usage
+            self._track_usage("cloud_generation", est_tokens=600, cost=0.0003)
+            self._record_daily_call("cloud_generation")
+            usage_logger.log(
+                provider="openai", feature="cloud_generation", model="gpt-4o-mini",
+                prompt=full_prompt, response=raw, latency_ms=latency, success=True,
+            )
+            print(f"[CLOUD_GEN] Success — {len(raw)} chars, {latency}ms")
+            return raw.strip()
+
+        except Exception as e:
+            latency = int((time.time() - t0) * 1000)
+            usage_logger.log(
+                provider="openai", feature="cloud_generation", model="gpt-4o-mini",
+                prompt=full_prompt, response=raw or "", latency_ms=latency,
+                success=False, error_message=str(e),
+            )
+            print(f"[CLOUD_GEN] OpenAI call FAILED: {e}")
+            return None
 
     # ------------------------------------------------------------------
     # Convenience

@@ -238,6 +238,12 @@ def auth_update_settings(
         "cloud_escalation_policy",
         "cloud_confidence_threshold",
         "cloud_daily_limit_multiplier",
+        # Claude (Tier 2/3) settings
+        "cloud_claude_enabled",
+        "cloud_claude_generation",
+        "cloud_claude_reflection",
+        "cloud_claude_daily_limit",
+        "cloud_claude_max_tokens",
     }
 
     updated = {}
@@ -251,7 +257,7 @@ def auth_update_settings(
 
 @router.get("/cloud-usage")
 def auth_cloud_usage(authorization: Optional[str] = Header(None)):
-    """Return CloudFeatureService usage stats."""
+    """Return CloudFeatureService usage stats including Claude metrics."""
     _get_user_from_token(authorization)  # auth check
 
     try:
@@ -259,7 +265,29 @@ def auth_cloud_usage(authorization: Optional[str] = Header(None)):
         svc = get_cloud_feature_service()
         if svc is None:
             return {"ok": True, "usage": {}, "message": "Cloud features not initialized"}
-        return {"ok": True, "usage": svc.get_usage_summary()}
+        usage = svc.get_usage_summary()
+        # Add Claude-specific metrics
+        daily = svc.get_daily_counts()
+        claude_gen = daily.get("claude_generation", {"used": 0, "limit": 0})
+        claude_ref = daily.get("claude_reflection", {"used": 0, "limit": 0})
+        claude_calls_today = claude_gen.get("used", 0) + claude_ref.get("used", 0)
+        claude_gen_bucket = svc.usage.get("claude_generation", {})
+        claude_ref_bucket = svc.usage.get("claude_reflection", {})
+        claude_tokens_today = (
+            (claude_gen_bucket.get("est_tokens", 0) if isinstance(claude_gen_bucket, dict) else 0)
+            + (claude_ref_bucket.get("est_tokens", 0) if isinstance(claude_ref_bucket, dict) else 0)
+        )
+        # Read configured daily limit from user settings
+        try:
+            user = _get_user_from_token(authorization)
+            claude_daily_limit = int(auth_module.get_user_setting(user.id, "cloud_claude_daily_limit", "20") or "20")
+        except Exception:
+            claude_daily_limit = 20
+        usage["claude_calls_today"] = claude_calls_today
+        usage["claude_daily_limit"] = claude_daily_limit
+        usage["claude_tokens_today"] = claude_tokens_today
+        usage["claude_available"] = svc._cookie_available()
+        return {"ok": True, "usage": usage}
     except Exception as e:
         return {"ok": True, "usage": {}, "message": str(e)}
 

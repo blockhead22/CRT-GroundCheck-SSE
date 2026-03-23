@@ -2769,6 +2769,65 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         kind=req.kind,
     )
     _mark("engine_query_done")
+
+    # ====== CLOUD GENERATION FALLBACK ======
+    # If local LLM returned an error (timeout, connection refused, etc.),
+    # fall back to cloud generation instead of leaking the error to the user.
+    # The CRT control plane stays local — cloud is just the vocal cords.
+    _raw_answer = str(result.get("answer") or "")
+    _is_llm_error = (
+        _raw_answer.startswith("[Ollama error:")
+        or _raw_answer.startswith("[Ollama connection error:")
+        or _raw_answer.startswith("[LLM error:")
+        or _raw_answer.startswith("[Model '")
+        or _raw_answer.startswith("[No LLM available")
+    )
+    if _is_llm_error:
+        print(f"[CLOUD_GEN] Local LLM error detected: {_raw_answer[:120]}")
+        try:
+            import auth as _auth_cg
+            _uid_cg = int(uid) if uid else 1
+            _cloud_gen_enabled = str(
+                _auth_cg.get_user_setting(_uid_cg, "cloud_generation_fallback", "true")
+            ).lower() in ("true", "1", "yes", "on")
+            if _cloud_gen_enabled:
+                from personal_agent.cloud_features import get_cloud_feature_service
+                _cloud_gen_svc = get_cloud_feature_service()
+                if _cloud_gen_svc is not None:
+                    print("[CLOUD_GEN] Falling back to OpenAI after local timeout")
+                    # Gather context for the cloud prompt
+                    _cg_memories = result.get("retrieved_memories") or result.get("prompt_memories") or []
+                    _cg_history = recent_history or None
+                    # Try to get self-model snapshot
+                    _cg_self_model = None
+                    try:
+                        from personal_agent.self_model import get_self_model
+                        _sm = get_self_model()
+                        if _sm:
+                            _cg_self_model = {
+                                "top_facts": [str(f) for f in (_sm.get_top_facts(5) or [])],
+                            }
+                    except Exception:
+                        pass
+                    _cloud_answer = _cloud_gen_svc.generate_response(
+                        user_message=effective_message,
+                        retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
+                        conversation_history=_cg_history,
+                        self_model_snapshot=_cg_self_model,
+                    )
+                    if _cloud_answer:
+                        result["answer"] = _cloud_answer
+                        result["generation_source"] = "cloud_fallback"
+                        print(f"[CLOUD_GEN] Fallback succeeded — {len(_cloud_answer)} chars")
+                    else:
+                        print("[CLOUD_GEN] Cloud generation returned None, keeping local error")
+                else:
+                    print("[CLOUD_GEN] Cloud service not initialized")
+            else:
+                print("[CLOUD_GEN] Cloud generation fallback disabled by user setting")
+        except Exception as _cg_err:
+            print(f"[CLOUD_GEN] Fallback error: {_cg_err}")
+
     control_state.mark(
         "generate",
         "draft_ready",
@@ -3340,10 +3399,66 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     if greeting_text:
         final_answer = f"{greeting_text}\n\n{final_answer}"
 
-    # Strip LLM error strings that leak from Ollama client
-    if final_answer.startswith("[Ollama error:") or final_answer.startswith("[LLM error:") or final_answer.startswith("[Model '"):
-        logger.warning("[CHAT] LLM error string leaked into response: %s", final_answer[:120])
-        final_answer = "I ran into a problem generating a response. The model may not be available — try again in a moment."
+    # Strip LLM error strings that leak from Ollama client — try cloud fallback first
+    _leaked_error = (
+        final_answer.startswith("[Ollama error:")
+        or final_answer.startswith("[Ollama connection error:")
+        or final_answer.startswith("[LLM error:")
+        or final_answer.startswith("[Model '")
+        or final_answer.startswith("[No LLM available")
+    )
+    # Also catch errors buried after a greeting prefix
+    if not _leaked_error and greeting_text and "\n\n" in final_answer:
+        _after_greeting = final_answer.split("\n\n", 1)[1] if "\n\n" in final_answer else ""
+        _leaked_error = (
+            _after_greeting.startswith("[Ollama error:")
+            or _after_greeting.startswith("[Ollama connection error:")
+            or _after_greeting.startswith("[LLM error:")
+            or _after_greeting.startswith("[Model '")
+            or _after_greeting.startswith("[No LLM available")
+        )
+    if _leaked_error:
+        print(f"[CLOUD_GEN] LLM error string leaked into final_answer: {final_answer[:120]}")
+        # Try cloud fallback if not already attempted
+        _already_cloud = result.get("generation_source") == "cloud_fallback"
+        if not _already_cloud:
+            try:
+                import auth as _auth_cg2
+                _uid_cg2 = int(uid) if uid else 1
+                _cloud_gen_enabled2 = str(
+                    _auth_cg2.get_user_setting(_uid_cg2, "cloud_generation_fallback", "true")
+                ).lower() in ("true", "1", "yes", "on")
+                if _cloud_gen_enabled2:
+                    from personal_agent.cloud_features import get_cloud_feature_service
+                    _cloud_gen_svc2 = get_cloud_feature_service()
+                    if _cloud_gen_svc2 is not None:
+                        print("[CLOUD_GEN] Falling back to OpenAI after leaked error string")
+                        _cg2_memories = retrieved_mems or []
+                        _cg2_answer = _cloud_gen_svc2.generate_response(
+                            user_message=effective_message,
+                            retrieved_memories=_cg2_memories,
+                            conversation_history=recent_history or None,
+                        )
+                        if _cg2_answer:
+                            final_answer = _cg2_answer
+                            if greeting_text:
+                                final_answer = f"{greeting_text}\n\n{final_answer}"
+                            result["generation_source"] = "cloud_fallback"
+                            print(f"[CLOUD_GEN] Late fallback succeeded — {len(_cg2_answer)} chars")
+                        else:
+                            print("[CLOUD_GEN] Late cloud generation returned None")
+                            final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
+                    else:
+                        final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
+                else:
+                    final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
+            except Exception as _cg2_err:
+                print(f"[CLOUD_GEN] Late fallback error: {_cg2_err}")
+                final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
+        else:
+            # Cloud fallback was already attempted but still leaked — use generic message
+            logger.warning("[CHAT] LLM error string leaked into response: %s", final_answer[:120])
+            final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
 
     # Strip generic AI assistant intros / boilerplate (model ignoring FORMAT RULES)
     import re as _re
@@ -3559,6 +3674,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         "model_override": model_override,
         "product_mode": ((runtime_config.get("product_mode") or {}).get("mode") if isinstance(runtime_config, dict) else None),
         "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
+        "generation_source": result.get("generation_source"),
         "groundcheck_bridge": groundcheck_bridge_meta,
         "gate_debug": result.get("gate_debug") or None,
     }
