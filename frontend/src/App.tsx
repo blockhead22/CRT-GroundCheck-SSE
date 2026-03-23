@@ -269,6 +269,7 @@ export default function App() {
 
   useEffect(() => {
     // Best-effort: load profile slots (including name) for the active thread.
+    // BUT: never overwrite if the user has an explicit display_name in auth.
     const tid = selectedThread?.id ?? selectedThreadId
     let mounted = true
 
@@ -278,7 +279,10 @@ export default function App() {
         const raw = (p?.name || p?.slots?.name || '').trim()
         if (!mounted) return
         setProfileHasName(Boolean(raw))
-        setUserName(raw || 'User')
+        // Auth display_name takes priority — don't let CRT profile overwrite it
+        if (!authUser?.display_name) {
+          setUserName(raw || 'User')
+        }
       } catch (_e) {
         // Keep existing name on error.
       }
@@ -288,7 +292,7 @@ export default function App() {
     return () => {
       mounted = false
     }
-  }, [selectedThread?.id, selectedThreadId])
+  }, [selectedThread?.id, selectedThreadId, authUser?.display_name])
 
   useEffect(() => {
     // Show tutorial on first visit
@@ -931,7 +935,8 @@ export default function App() {
                       getProfile(tid).then((p) => {
                         const raw = (p?.name || p?.slots?.name || '').trim()
                         setProfileHasName(Boolean(raw))
-                        if (raw) setUserName(raw)
+                        // Only use CRT profile name if auth display_name isn't set
+                        if (raw && !authUser?.display_name) setUserName(raw)
                       }).catch(() => {})
                     }}
                   />

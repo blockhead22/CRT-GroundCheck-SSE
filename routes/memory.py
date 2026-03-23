@@ -277,24 +277,26 @@ class _SetFactsRequest(BaseModel):
 
 
 @router.post("/api/profile/set_facts")
-def set_profile_facts(req: _SetFactsRequest):
+def set_profile_facts(req: _SetFactsRequest, request: Request):
     """Batch-set profile facts via CRT memory system."""
     if not req.facts:
         return {"ok": True, "stored": 0}
 
-    from routes.models import ChatSendRequest
-    from crt_api import chat_send
+    engine = _get_engine(request, req.thread_id or "default")
+
+    if not hasattr(engine, "fact_store") or engine.fact_store is None:
+        logger.warning("[PROFILE] No fact_store available on engine")
+        return {"ok": False, "error": "fact_store not available"}
 
     stored = 0
     for slot, value in req.facts.items():
         if not isinstance(value, str) or not value.strip():
             continue
         try:
-            fact_req = ChatSendRequest(
-                thread_id=req.thread_id,
-                message=f"FACT: {slot} = {value.strip()}",
+            engine.fact_store.process_input(
+                f"FACT: {slot} = {value.strip()}",
+                thread_id=req.thread_id or "default",
             )
-            chat_send(fact_req)
             stored += 1
         except Exception as e:
             logger.warning("[PROFILE] Failed to store fact %s: %s", slot, e)

@@ -225,7 +225,7 @@ def test_stream_think_fallback_no_thinking_still_completes(monkeypatch: pytest.M
 def test_architecture_detector_ignores_about_me_memory_submission():
     msg = (
         'Here is an about me "Nick Block is a web developer, filmmaker, and print shop maker. '
-        "He's also developing CRT (Cognitive Reflective Transformer) under Aeteros.\""
+        "He's also developing CRT (Contradiction-aware Reconciliation and Trust) under Aeteros.\""
     )
     assert chat_routes._is_architecture_explanation_request(msg) is False
 

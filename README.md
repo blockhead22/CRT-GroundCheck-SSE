@@ -15,7 +15,7 @@ LLM output is vocal cords, not truth. Memory is the source of belief.
 
 Most AI assistants with "memory" do key-value storage that silently overwrites on update. Tell it you work at Google, then later say Microsoft, and the old fact vanishes without a trace. No contradiction surfaced. No audit trail. No way to know why the answer changed.
 
-CRT (Cognitive Reflective Transformer) governs the gap between what the model says and what it actually knows. The generator is commodity — local or cloud, swappable. The memory governance and truth-preserving control structure around generation is the product.
+CRT (Contradiction-aware Reconciliation and Trust) governs the gap between what the model says and what it actually knows. The generator is commodity — local or cloud, swappable. The memory governance and truth-preserving control structure around generation is the product.
 
 Aether is the personal assistant built on CRT.
 

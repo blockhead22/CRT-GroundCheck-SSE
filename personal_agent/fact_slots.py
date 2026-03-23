@@ -770,7 +770,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     name_pat_title = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
     
     # Conjunctions/words that should NOT be part of a name when followed by pronouns/verbs
-    _NAME_BOUNDARY_WORDS = {"but", "and", "or", "so", "yet", "for", "nor", "said", "says", "told", "you", "i", "he", "she", "they", "we", "it"}
+    _NAME_BOUNDARY_WORDS = {"but", "and", "or", "so", "yet", "for", "nor", "said", "says", "told", "you", "i", "he", "she", "they", "we", "it",
+                             "remember", "recall", "right", "though", "please", "already", "actually", "btw", "okay", "ok", "lol", "haha",
+                             "thanks", "thank", "hey", "hi", "hello", "from", "here", "there", "now", "then", "also", "too", "just"}
     
     def _clean_name_value(raw_name: str) -> str:
         """Remove trailing conjunctions and pronouns from name matches."""
