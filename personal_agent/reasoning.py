@@ -94,6 +94,7 @@ class ReasoningEngine:
         """
         self.llm = llm_client
         self.reasoning_traces = []  # Internal log
+        self._last_behavioral_directives = {}  # Set by _build_quick_prompt from reflection loop
         self.dnnt = None
         self.dnnt_enabled = str(os.getenv("CRT_DNNT_ENABLED", "true")).strip().lower() in {
             "1", "true", "yes", "y", "on"
@@ -1509,6 +1510,7 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
 
         # ------------------------------------------------------------------
         # Self-model reinjection: give the LLM awareness of its own state
+        # + behavioral directives from reflection-to-behavior loop
         # ------------------------------------------------------------------
         try:
             from personal_agent.self_model import get_self_model, SELF_MODEL_SLOTS
@@ -1536,7 +1538,23 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
                     + "\n".join(_sm_lines)
                     + "\n\n"
                 )
+
+            # Behavioral directives — reflection acting on generation
+            _directives = _sm.get_behavioral_directives(query=query)
+            _hedge_lines = _directives.get("hedge_instructions", [])
+            _correction = _directives.get("correction_note")
+            if _hedge_lines or _correction:
+                prompt += "[BEHAVIORAL CALIBRATION — apply these adjustments to your response]\n"
+                if _correction:
+                    prompt += f"- Correction pattern detected: {_correction[:150]}. Adjust accordingly.\n"
+                for _h in _hedge_lines:
+                    prompt += f"- CAUTION: {_h}\n"
+                prompt += "\n"
+
+            # Stash directives on self for gate threshold adjustment downstream
+            self._last_behavioral_directives = _directives
         except Exception:
+            self._last_behavioral_directives = {}
             pass  # Self-model unavailable — proceed without it
 
         # Detect provenance queries — user is asking HOW/WHY we know something

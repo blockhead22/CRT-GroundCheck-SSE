@@ -525,69 +525,77 @@ class CRTMath:
         response_type: str,
         grounding_score: float = 1.0,
         contradiction_severity: str = "none",
+        blindspot_gate_boost: float = 0.0,
     ) -> Tuple[bool, str]:
         """
         Gradient gates with response-type awareness (v2).
-        
+
         Key improvements over v1:
         1. Different thresholds for factual/explanatory/conversational
         2. Grounding score (0-1) instead of binary check
         3. Contradiction severity levels (blocking/note/none)
-        
+        4. Adaptive thresholds via blindspot_gate_boost from reflection loop
+
         Response types:
         - factual: Strict gates for factual claims (What is my X?)
         - explanatory: Relaxed gates for synthesis/explanation (How/Why questions)
         - conversational: Minimal gates for chat/acknowledgment
-        
+
         Args:
             intent_align: Intent alignment score (0-1)
             memory_align: Memory alignment score (0-1)
             response_type: "factual" | "explanatory" | "conversational"
             grounding_score: How well grounded in memory (0-1)
             contradiction_severity: "blocking" | "note" | "none"
-        
+            blindspot_gate_boost: Additive threshold raise (0.0-0.15) from
+                self-model behavioral directives. When the query touches a
+                known blindspot domain, thresholds are raised so the system
+                demands higher alignment before passing gates.
+
         Returns:
             (passed, reason)
         """
+        # Clamp boost to safe range
+        boost = max(0.0, min(blindspot_gate_boost, 0.15))
+        boost_note = f" +boost={boost:.2f}" if boost > 0 else ""
+
         # Blocking contradictions always fail
         if contradiction_severity == "blocking":
             return False, "contradiction_fail"
-        
-        # Response-type specific thresholds
+
+        # Response-type specific thresholds (boosted by reflection awareness)
         if response_type == "factual":
-            # Factual gates - lowered thresholds for short fact extraction
-            if intent_align < 0.35:
-                return False, f"factual_intent_fail (align={intent_align:.3f} < 0.35)"
-            if memory_align < 0.35:
-                return False, f"factual_memory_fail (align={memory_align:.3f} < 0.35)"
-            # Only check grounding if answer is long (>50 chars)
-            # Short answers are likely direct fact extractions
-            # Lowered from 0.4 to 0.30 to reduce false rejections with ML classifier
-            if grounding_score < 0.30:
-                return False, f"factual_grounding_fail (score={grounding_score:.3f} < 0.30)"
-        
+            t_intent = 0.35 + boost
+            t_memory = 0.35 + boost
+            t_ground = 0.30 + boost
+            if intent_align < t_intent:
+                return False, f"factual_intent_fail (align={intent_align:.3f} < {t_intent:.2f}{boost_note})"
+            if memory_align < t_memory:
+                return False, f"factual_memory_fail (align={memory_align:.3f} < {t_memory:.2f}{boost_note})"
+            if grounding_score < t_ground:
+                return False, f"factual_grounding_fail (score={grounding_score:.3f} < {t_ground:.2f}{boost_note})"
+
         elif response_type == "explanatory":
-            # Relaxed gates for explanations/synthesis.
-            # Threshold lowered from 0.4 → 0.35 (intent) and 0.25 → 0.18 (memory):
-            # qwen2.5-coder uses verbose markdown output that dilutes cosine alignment
-            # scores vs the terse llama3.2 output these were calibrated against.
-            if intent_align < 0.35:
-                return False, f"explanatory_intent_fail (align={intent_align:.3f} < 0.35)"
-            if memory_align < 0.18:
-                return False, f"explanatory_memory_fail (align={memory_align:.3f} < 0.18)"
-            if grounding_score < 0.20:
-                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < 0.20)"
-        
+            t_intent = 0.35 + boost
+            t_memory = 0.18 + boost
+            t_ground = 0.20 + boost
+            if intent_align < t_intent:
+                return False, f"explanatory_intent_fail (align={intent_align:.3f} < {t_intent:.2f}{boost_note})"
+            if memory_align < t_memory:
+                return False, f"explanatory_memory_fail (align={memory_align:.3f} < {t_memory:.2f}{boost_note})"
+            if grounding_score < t_ground:
+                return False, f"explanatory_grounding_fail (score={grounding_score:.3f} < {t_ground:.2f}{boost_note})"
+
         else:  # conversational
-            # Minimal gates for chat/acknowledgment
-            if intent_align < 0.3:
-                return False, f"conversational_intent_fail (align={intent_align:.3f} < 0.3)"
+            t_intent = 0.3 + boost
+            if intent_align < t_intent:
+                return False, f"conversational_intent_fail (align={intent_align:.3f} < {t_intent:.2f}{boost_note})"
             # No memory/grounding requirements for conversational
-        
+
         # Non-blocking contradictions pass but add metadata
         if contradiction_severity == "note":
             return True, "gates_passed_with_contradiction_note"
-        
+
         return True, "gates_passed"
     
     # ========================================================================

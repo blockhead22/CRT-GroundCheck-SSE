@@ -22,12 +22,13 @@ Last updated: March 22, 2026
 
 ## This Week (March 23-28) — Priority: Close the Loop
 
-### 1. Reflection-to-Behavior Loop (TOP PRIORITY — per GPT recommendation)
-Close the gap between reflection observing and reflection acting.
-- Start small: reflection output adjusts trust thresholds, adds blindspot flags, modifies routing preference for question classes, creates temporary caution tags on slots/domains
-- Define exactly what reflection is ALLOWED to change — bias future handling, not rewrite history
-- Keep it narrow, auditable, reversible
-- "Train the classifiers later. First make the system capable of being changed by what it learns." — GPT
+### 1. ~~Reflection-to-Behavior Loop~~ ✅ SHIPPED (Session 5)
+Closed the gap between reflection observing and reflection acting.
+- `self_model.get_behavioral_directives(query)` parses blindspots/uncertainty/correction slots into domain-specific caution flags
+- Prompt injection expanded: BEHAVIORAL CALIBRATION block with hedging instructions injected when query touches weak domain
+- Adaptive gate thresholds: `blindspot_gate_boost` (0.0–0.15) raises alignment bars on blindspot queries
+- 7 domain categories (temporal, names, numerical, preference, recency, recall, accuracy) with keyword matching
+- Narrow, auditable, reversible — biases future handling without rewriting history
 
 ### 2. Train XGBoost Classifiers (AFTER reflection loop)
 - Generate training data from the live contradiction ledger

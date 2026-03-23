@@ -3835,6 +3835,22 @@ class CRTEnhancedRAG:
             user_text = (user_query or "").strip()
         usage_trace_id = self.new_usage_trace_id()
 
+        # Reflection-to-behavior: compute gate boost from self-model blindspots
+        _blindspot_gate_boost = 0.0
+        try:
+            from personal_agent.self_model import get_self_model
+            _sm = get_self_model()
+            _directives = _sm.get_behavioral_directives(query=user_text)
+            _blindspot_gate_boost = _directives.get("gate_boost", 0.0)
+            if _blindspot_gate_boost > 0:
+                logger.info(
+                    "[REFLECTION_LOOP] Blindspot gate boost=%.2f for domains=%s",
+                    _blindspot_gate_boost,
+                    _directives.get("caution_domains", []),
+                )
+        except Exception as exc:
+            logger.debug("[REFLECTION_LOOP] gate boost computation failed: %s", exc)
+
         # High-risk prompt types should be treated as instructions even if they do not
         # look like questions (multi-paragraph prompt injection often starts as declarative).
         is_memory_citation = self._is_memory_citation_request(user_text)
@@ -5155,6 +5171,7 @@ class CRTEnhancedRAG:
                             response_type=response_type_pred,
                             grounding_score=grounding_score,
                             contradiction_severity=contradiction_severity,
+                            blindspot_gate_boost=_blindspot_gate_boost,
                         )
                         
                         # Log gate event
@@ -5295,6 +5312,7 @@ class CRTEnhancedRAG:
                             response_type=response_type_pred,
                             grounding_score=grounding_score,
                             contradiction_severity=contradiction_severity,
+                            blindspot_gate_boost=_blindspot_gate_boost,
                         )
                         
                         # Log gate event
@@ -5766,6 +5784,7 @@ class CRTEnhancedRAG:
             response_type=response_type_pred,
             grounding_score=grounding_score,
             contradiction_severity=contradiction_severity,
+            blindspot_gate_boost=_blindspot_gate_boost,
         )
 
         # General knowledge bypass: don't penalize for low memory/intent/grounding

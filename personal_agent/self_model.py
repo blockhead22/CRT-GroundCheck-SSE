@@ -285,6 +285,98 @@ class SelfModel:
         """Return all slots as a dict {slot: value}."""
         return {slot: self.read_slot(slot) for slot in SELF_MODEL_SLOTS}
 
+    # ------------------------------------------------------------------
+    # Behavioral directives — reflection → action
+    # ------------------------------------------------------------------
+
+    # Domain keywords that map blindspot/uncertainty text to query domains
+    _DOMAIN_KEYWORDS: Dict[str, List[str]] = {
+        "temporal": ["time", "when", "date", "ago", "recently", "last", "year", "month",
+                     "week", "day", "timeline", "history", "before", "after", "since"],
+        "names": ["name", "who", "person", "people", "called", "named", "confusing",
+                  "similar-sounding"],
+        "numerical": ["number", "count", "how many", "how much", "percentage", "ratio",
+                      "score", "total", "amount", "statistic"],
+        "preference": ["favorite", "favourite", "prefer", "like", "dislike", "love",
+                       "hate", "best", "worst", "opinion"],
+        "recency": ["latest", "newest", "most recent", "current", "now", "today",
+                    "updated", "changed"],
+        "recall": ["memory", "recall", "remember", "forgot", "forget", "degradation",
+                   "cognitive load"],
+        "accuracy": ["accuracy", "factual", "confident", "over-stat", "complex topics",
+                     "contradiction"],
+    }
+
+    # Hedging instructions per domain
+    _DOMAIN_HEDGES: Dict[str, str] = {
+        "temporal": "Cite explicit dates/timeframes. Say 'around' or 'approximately' for uncertain timestamps.",
+        "names": "Double-check name references against stored memories before stating them.",
+        "numerical": "Hedge numerical claims with 'approximately' unless you have exact data.",
+        "preference": "Confirm preference values against stored memories; preferences may have changed.",
+        "recency": "Flag whether your information may be outdated. Qualify with 'as of [date]' when possible.",
+        "recall": "Verify claims against stored memories before stating them. If unsure, say so.",
+        "accuracy": "Hedge confident-sounding claims. Use 'I believe' or 'based on what I have' instead of absolutes.",
+    }
+
+    def get_behavioral_directives(self, query: str = "") -> Dict[str, Any]:
+        """Parse actionable slots into behavioral flags for the generation pipeline.
+
+        Returns:
+            {
+                "caution_domains": ["temporal", "names", ...],
+                "hedge_instructions": ["Cite explicit dates...", ...],
+                "gate_boost": float,  # additive threshold raise (0.0-0.15)
+                "correction_note": str | None,
+            }
+        """
+        directives: Dict[str, Any] = {
+            "caution_domains": [],
+            "hedge_instructions": [],
+            "gate_boost": 0.0,
+            "correction_note": None,
+        }
+
+        # Read the 3 actionable slots
+        blindspots = (self.read_slot("known_blindspots") or "").lower()
+        uncertainty = (self.read_slot("uncertainty_domains") or "").lower()
+        correction = (self.read_slot("correction_pattern") or "").strip()
+
+        if correction:
+            directives["correction_note"] = correction
+
+        # Combine blindspot + uncertainty text for domain matching
+        awareness_text = f"{blindspots} {uncertainty}"
+        if not awareness_text.strip():
+            return directives
+
+        # Detect which domains the system knows it's weak in
+        weak_domains: List[str] = []
+        for domain, keywords in self._DOMAIN_KEYWORDS.items():
+            if any(kw in awareness_text for kw in keywords):
+                weak_domains.append(domain)
+
+        if not weak_domains:
+            return directives
+
+        # If a query is provided, check if it touches a weak domain
+        query_lower = query.lower()
+        active_domains: List[str] = []
+        for domain in weak_domains:
+            domain_kws = self._DOMAIN_KEYWORDS[domain]
+            if not query_lower or any(kw in query_lower for kw in domain_kws):
+                active_domains.append(domain)
+
+        if active_domains:
+            directives["caution_domains"] = active_domains
+            directives["hedge_instructions"] = [
+                self._DOMAIN_HEDGES[d] for d in active_domains
+                if d in self._DOMAIN_HEDGES
+            ]
+            # Gate boost: 0.05 per active weak domain, capped at 0.15
+            directives["gate_boost"] = min(len(active_domains) * 0.05, 0.15)
+
+        return directives
+
     def get_top_facts(self, n: int = 3) -> List[str]:
         """Return top-n trust-weighted self-model fact strings for prompt injection.
 
