@@ -2,19 +2,40 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { ChatThread, NavId } from '../types'
 import type { AuthUser } from '../lib/api'
 
-const nav: Array<{ id: NavId; label: string; icon: string; standalone?: boolean }> = [
-  { id: 'chat', label: 'Chat', icon: '✦' },
-  { id: 'dashboard', label: 'Dashboard', icon: '▦' },
-  { id: 'copilot', label: 'Aether', icon: '◈' },
-  { id: 'live', label: 'Live', icon: '◉' },
-  { id: 'loops', label: 'Loops', icon: 'L' },
-  { id: 'journal', label: 'Journal', icon: 'J' },
-  { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
-  { id: 'jobs', label: 'Jobs', icon: '☷' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
-  { id: 'v2', label: 'V2', icon: '▸' },
-  { id: 'docs', label: 'Docs', icon: '≣', standalone: true },
+type NavItem = { id: NavId; label: string; icon: string; standalone?: boolean }
+type NavSection = { heading: string; items: NavItem[] }
+
+const navSections: NavSection[] = [
+  {
+    heading: 'Core',
+    items: [
+      { id: 'chat', label: 'Chat', icon: '✦' },
+      { id: 'copilot', label: 'Aether', icon: '◈' },
+      { id: 'live', label: 'Live', icon: '◉' },
+    ],
+  },
+  {
+    heading: 'Tools',
+    items: [
+      { id: 'dashboard', label: 'Dashboard', icon: '▦' },
+      { id: 'loops', label: 'Loops', icon: 'L' },
+      { id: 'journal', label: 'Journal', icon: 'J' },
+      { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
+      { id: 'jobs', label: 'Jobs', icon: '☷' },
+    ],
+  },
+  {
+    heading: 'System',
+    items: [
+      { id: 'settings', label: 'Settings', icon: '⚙' },
+      { id: 'v2', label: 'V2', icon: '▸' },
+      { id: 'docs', label: 'Docs', icon: '≣', standalone: true },
+    ],
+  },
 ]
+
+// Flat list for mobile grid
+const navFlat: NavItem[] = navSections.flatMap((s) => s.items)
 
 export function Sidebar(props: {
   open: boolean
@@ -88,79 +109,99 @@ export function Sidebar(props: {
       </div>
 
       <div className="mt-4 px-2 overflow-y-auto flex-1">
-        <div className="px-3 pb-2 text-xs font-semibold tracking-wide text-white/60">Navigation</div>
-        {/* Mobile: Grid layout for quick access */}
-        <div className={`${props.isMobile ? 'grid grid-cols-4 gap-2 px-1' : 'flex flex-col gap-1'}`}>
-          {nav.map((item) => {
-            const isActive = item.id === props.navActive
-            return props.isMobile ? (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id, item.standalone)}
-                className={
-                  'flex flex-col items-center justify-center gap-1 rounded p-3 text-center transition ' +
-                  (isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 active:bg-white/15')
-                }
-              >
-                <span
-                  className={
-                    'grid h-10 w-10 place-items-center rounded border border-white/10 bg-white/5 text-base ' +
-                    (isActive ? 'text-violet-200' : 'text-white/50')
-                  }
+        {/* Desktop: Grouped sections with docs-style headers */}
+        {!props.isMobile && (
+          <div className="flex flex-col">
+            {navSections.map((section) => (
+              <div key={section.heading} className="mb-4">
+                <div
+                  className="px-3 pb-1.5 text-[11px] font-semibold uppercase tracking-wider"
+                  style={{ color: '#E0A080' }}
                 >
-                  {item.icon}
-                </span>
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </button>
-            ) : (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id, item.standalone)}
-                className={
-                  'group relative flex items-center gap-3 rounded px-3 py-2 text-left text-sm transition-all duration-200 ' +
-                  (isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/[0.07] hover:text-white/90')
-                }
-              >
-                {/* Active accent bar */}
-                {isActive && (
-                  <motion.div
-                    layoutId="sidebar-active-bar"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
-                    style={{ background: '#D4845C', boxShadow: '0 0 8px rgba(212,132,92,0.5)' }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 30 }}
-                  />
-                )}
-                <span
-                  className={
-                    'grid h-8 w-8 place-items-center rounded text-xs transition-all duration-200 ' +
-                    (isActive
-                      ? 'bg-[rgba(212,132,92,0.15)] text-[#E0A080] shadow-[0_0_12px_rgba(212,132,92,0.25)] border border-[rgba(212,132,92,0.3)]'
-                      : 'border border-white/[0.06] bg-white/[0.03] text-white/40 group-hover:text-white/60 group-hover:border-white/10')
-                  }
-                >
-                  {item.icon}
-                </span>
-                <span className="font-medium">{item.label}</span>
-              </button>
-            )
-          })}
-        </div>
+                  {section.heading}
+                </div>
+                <div className="flex flex-col gap-px">
+                  {section.items.map((item) => {
+                    const isActive = item.id === props.navActive
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => handleNavClick(item.id, item.standalone)}
+                        className={
+                          'group relative flex items-center gap-3 rounded-r-lg px-3 py-2 text-left text-[13px] transition-all duration-200 ' +
+                          (isActive
+                            ? 'text-white/90 bg-white/[0.06]'
+                            : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]')
+                        }
+                        style={isActive ? { borderLeft: '2px solid #D4845C', marginLeft: '-1px' } : { marginLeft: '1px' }}
+                      >
+                        <span
+                          className={
+                            'text-xs transition-all duration-200 ' +
+                            (isActive ? 'text-[#E0A080]' : 'text-white/30 group-hover:text-white/50')
+                          }
+                        >
+                          {item.icon}
+                        </span>
+                        <span className="font-medium">{item.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div className="mt-4 px-2">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-semibold tracking-wide text-white/60">Recent chats</div>
-            <button 
+        {/* Mobile: Grid layout for quick access */}
+        {props.isMobile && (
+          <div className="grid grid-cols-4 gap-2 px-1">
+            {navFlat.map((item) => {
+              const isActive = item.id === props.navActive
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id, item.standalone)}
+                  className={
+                    'flex flex-col items-center justify-center gap-1 rounded p-3 text-center transition ' +
+                    (isActive ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 active:bg-white/15')
+                  }
+                >
+                  <span
+                    className={
+                      'grid h-10 w-10 place-items-center rounded border border-white/10 bg-white/5 text-base ' +
+                      (isActive ? 'text-violet-200' : 'text-white/50')
+                    }
+                  >
+                    {item.icon}
+                  </span>
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        <div className="mt-2 px-2" style={{ borderTop: '1px solid rgba(240,235,225,0.05)', paddingTop: '12px' }}>
+          <div className="flex items-center justify-between mb-2">
+            <div
+              className="text-[11px] font-semibold uppercase tracking-wider px-1"
+              style={{ color: '#5a5445' }}
+            >
+              Recent chats
+            </div>
+            <button
               onClick={() => {
                 props.onNewThread()
                 if (props.isMobile) props.onClose()
-              }} 
-              className="rounded bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+              }}
+              className="rounded px-2.5 py-1 text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.04] transition-all"
             >
               + New
             </button>
           </div>
 
-          <div className="mt-2 flex flex-col gap-2 pb-4">
+          <div className="flex flex-col gap-px pb-4">
             {props.threads
               .filter((t) => (props.search ? t.title.toLowerCase().includes(props.search.toLowerCase()) : true))
               .slice(0, props.isMobile ? 5 : 8)
@@ -172,16 +213,17 @@ export function Sidebar(props: {
                     key={t.id}
                     onClick={() => handleThreadSelect(t.id)}
                     className={
-                      'group rounded px-3.5 py-3 text-left transition-all duration-200 ' +
+                      'group rounded-r-lg px-3 py-2.5 text-left transition-all duration-200 ' +
                       (selected
-                        ? 'bg-white/[0.08] border border-[#D4845C]/20 shadow-[0_0_16px_rgba(212,132,92,0.08)]'
-                        : 'bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1]')
+                        ? 'text-white/90 bg-white/[0.06]'
+                        : 'text-white/35 hover:text-white/60 hover:bg-white/[0.03]')
                     }
+                    style={selected ? { borderLeft: '2px solid #D4845C', marginLeft: '-1px' } : { marginLeft: '1px' }}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-white/90">{t.title}</div>
-                        <div className="text-[11px] text-white/30 mt-1">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
+                        <div className="truncate text-[13px] font-medium">{t.title}</div>
+                        <div className="text-[11px] text-white/25 mt-0.5">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
                       </div>
                       <div className={`flex flex-none items-center gap-1 ${props.isMobile ? 'opacity-100' : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100'}`}>
                         <button
@@ -190,7 +232,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onRequestRenameThread(t.id)
                           }}
-                          className="rounded bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          className="rounded p-1.5 text-[11px] text-white/30 hover:bg-white/[0.06] hover:text-white/50 transition-colors"
                           aria-label="Rename chat"
                           title="Rename"
                         >
@@ -202,7 +244,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onDeleteThread(t.id)
                           }}
-                          className="rounded bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          className="rounded p-1.5 text-[11px] text-white/30 hover:bg-white/[0.06] hover:text-white/50 transition-colors"
                           aria-label="Delete chat"
                           title="Delete"
                         >
@@ -298,7 +340,7 @@ export function Sidebar(props: {
                 <div className="px-3 pb-2 text-xs font-semibold tracking-wide text-white/60">Navigation</div>
                 {/* Mobile: Grid layout for quick access */}
                 <div className="grid grid-cols-4 gap-2 px-1">
-                  {nav.map((item) => {
+                  {navFlat.map((item) => {
                     const isActive = item.id === props.navActive
                     return (
                       <button

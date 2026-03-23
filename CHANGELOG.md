@@ -1,38 +1,41 @@
 # CRT/Aether Changelog
 
 All notable changes to the CRT (Cognitive Reflective Trust) / Aether project.
-Organized by development session. Categories: Feature, Fix, Polish, Infra, Docs, Test.
+Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
-## Session 6 — March 23, 2026 (evening, in progress)
+## v1.6 — March 23, 2026
 
-Identity hardening, belief classifier integration, profile authority cleanup, pipeline trace improvements.
+Identity hardening, belief classifier integration, pipeline trace, 5 bug fixes, profile authority cleanup.
 
 ### Feature
+- Pipeline trace — real SSE status events via contextvar queue replacing fake heartbeat cycling; `stream_checkpoint` and `stream_stopped` handlers wired in frontend; PipelineTrace component updated with generating/classifying-slots classifications
 - Belief classifier wired into contradiction ledger — XGBoost `ContradictionResolver` drives type/policy decisions during `record_contradiction()`, falling back to rule-based classification when models are absent
-- Profile settings: Agent Name field — users can rename the AI agent from Settings; `agent_name` stored in auth settings alongside `preferred_nickname`
-- Preferred nickname stored as auth setting — no longer inferred from conversation; `preferred_nickname` and `agent_name` added to `CLOUD_SETTING_DEFAULTS`
-- Profile name authority chain — `/api/memory/profile` now reads `auth.display_name` as canonical source, syncing memory slots to match
+- Profile settings UI — Display Name, Preferred Nickname, Agent Name fields in Settings; all explicit user-controlled, not inferred
+- Changelog and Roadmap buttons wired in Docs page; sessions renamed to versions (v1.0–v1.6)
 
 ### Fix
-- Name extraction disabled — conversation-inferred names produced garbage ("Nick remember"); auto-extraction gated behind `_EXTRACT_NAMES_FROM_CONVERSATION = False` flag; names now sourced exclusively from Settings > Profile
-- Name value cleanup — trailing stopwords ("remember", "please", "thanks") stripped from extracted name values
-- Profile save logic hardened — display name propagates to parent even when auth session is absent; settings save only changed fields
+- Cookie leak — Claude Tier 2 fallback now checks `cloud_claude_enabled` before calling (both primary and late fallback paths)
+- Typo-resilient slot matching — "favortie", "favorit", "favourte" all match via expanded regex
+- Memory demotion filter — skips `model_output`/`system`/`tool_receipt` source kinds; only user-sourced memories get demoted on exclusive slot conflict
+- Adversarial identity probes — builder/creator questions route through self-referential with memory-grounded context injection
+- auto_fact_checker crash — `hallucinations` list vs dict type mismatch (`AttributeError: 'list' object has no attribute 'items'`)
+- Name extraction disabled — conversation-inferred names produced garbage ("Nick remember", "high", "gonna quick run"); gated behind `_EXTRACT_NAMES_FROM_CONVERSATION = False`; names sourced exclusively from Settings > Profile
+- Profile name authority chain — `/api/memory/profile` reads `auth.display_name` as canonical source
+- Stale profile data cleaned — "Nick remember" and other garbage purged from `user_profile_multi`
 
 ### Polish
-- ShowcasePage removed (466 lines) — dead page pruned from frontend routing
-- Frontend launch config added (`.claude/launch.json`) for dev server startup
-- Copilot page cleanup — simplified imports and layout
+- Removed fake keyword-based pipeline hints (analyzing query, searching memory duplicates)
 
 ### Docs
-- `docs/INDEX.md` — organized documentation index with category groupings
-- 25 documentation files added/reorganized under `docs/` — architecture, cloud routing, compression, configuration, memory lifecycle, quick start, request lifecycle, self model, testing methods/patterns, anti-patterns, three laws, what makes CRT different, adversarial stress test report, CRT white paper, ViLT technical writeup, plus 5 archived docs and 4 specs
-- `judgments_2026-03-23.jsonl` — evaluation judgments logged
+- `CHANGELOG.md` — comprehensive changelog from git history covering v1.0 through v1.6
+- `ROADMAP.md` — restructured into DONE/IN PROGRESS/NEXT/PARKED sections with version labels
+- `docs/INDEX.md` — organized documentation index
 
 ---
 
-## Session 5 — March 23, 2026 (morning/afternoon)
+## v1.5 — March 23, 2026 (morning/afternoon)
 
 Major subsystem audit, escalation policy, ViLT testing, belief classifier package, observability improvements.
 
@@ -73,7 +76,7 @@ Major subsystem audit, escalation policy, ViLT testing, belief classifier packag
 
 ---
 
-## Session 4 — March 22, 2026 (evening through March 23 early morning)
+## v1.4 — March 22, 2026 (evening through March 23 early morning)
 
 Cloud integration, design system overhaul, settings pages, memory compression, anthropic client, advanced settings UI.
 
@@ -136,7 +139,7 @@ Cloud integration, design system overhaul, settings pages, memory compression, a
 
 ---
 
-## Session 3 — March 21, 2026
+## v1.3 — March 21, 2026
 
 Massive feature session: 17 backend + 3 frontend commits. Self-reflection, tool loop, broad recall, service routing, compression lab.
 
@@ -183,7 +186,7 @@ Massive feature session: 17 backend + 3 frontend commits. Self-reflection, tool 
 
 ---
 
-## Session 2 — March 6-20, 2026
+## v1.2 — March 6-20, 2026
 
 Foundation building: eval harness, correction surface UI, personality/reflection systems, Telegram integration, hybrid LLM routing, frontend overhaul.
 
@@ -251,7 +254,7 @@ Foundation building: eval harness, correction surface UI, personality/reflection
 
 ---
 
-## Session 1 — January 3 - 14, 2026
+## v1.0 — January 3 - 14, 2026
 
 Project genesis: SSE engine, CRT core, GroundCheck integration, frontend app, VILT experiments, stress testing.
 

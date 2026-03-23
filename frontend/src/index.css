@@ -38,9 +38,9 @@ body {
   --surface-3:   #28241e;   /* elevated surface */
   --surface-4:   #322d24;   /* hover/active */
 
-  /* Borders — warm charcoal */
-  --border:      #3a3428;
-  --border-soft: #2a2620;
+  /* Borders — warm charcoal (lighter-touch, docs-style) */
+  --border:      rgba(240,235,225,0.08);
+  --border-soft: rgba(240,235,225,0.05);
 
   /* Text — warm cream */
   --text:        #F0EBE1;   /* cream — primary */
@@ -67,9 +67,9 @@ body {
 
   /* Composer */
   --composer-bg:    #1a1714;
-  --composer-border:#3a3428;
+  --composer-border: rgba(240,235,225,0.06);
 
-  --panel-border: #3a3428;
+  --panel-border: rgba(240,235,225,0.06);
 }
 
 /* ─── Typography ─────────────────────────────────────── */

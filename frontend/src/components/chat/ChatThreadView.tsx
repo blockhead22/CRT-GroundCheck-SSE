@@ -489,7 +489,7 @@ export function ChatThreadView(props: {
             transition={{ duration: 0.2 }}
             className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin] [scrollbar-color:rgba(212,132,92,0.35)_transparent]"
           >
-            <div className="mx-auto w-full px-4 py-8 md:px-10" style={{ maxWidth: '860px' }}>
+            <div className="mx-auto w-full px-5 py-8 md:px-10" style={{ maxWidth: '780px' }}>
 
               {/* Empty state */}
               {empty && (
@@ -541,7 +541,7 @@ export function ChatThreadView(props: {
 
               {/* Message history — staggered entrance */}
               {!empty && (
-                <div className="flex flex-col gap-5">
+                <div className="flex flex-col gap-6">
                   {props.thread.messages.map((m, idx) => (
                     <motion.div
                       key={m.id}

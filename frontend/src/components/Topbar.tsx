@@ -32,25 +32,32 @@ export function Topbar(props: {
     props.apiStatus === 'connected' ? 'Online' : props.apiStatus === 'disconnected' ? 'Offline' : '...'
 
   return (
-    <div className="relative flex items-center justify-between glass-panel px-3 sm:px-5 h-[80px]" style={{ zIndex: 100 }}>
+    <div
+      className="relative flex items-center justify-between px-3 sm:px-5 h-[56px] flex-shrink-0"
+      style={{
+        zIndex: 100,
+        borderBottom: '1px solid rgba(240,235,225,0.06)',
+        background: 'rgba(14,13,11,0.8)',
+      }}
+    >
       {/* Left: Menu + Title */}
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={props.onToggleSidebarMobile}
-          className="rounded bg-white/[0.04] p-2.5 text-lg text-white/50 hover:bg-white/[0.08] hover:text-white/70 active:bg-white/[0.12] transition-all"
+          className="rounded p-2 text-base text-white/40 hover:bg-white/[0.06] hover:text-white/60 transition-all"
           aria-label="Toggle menu"
           title="Toggle menu"
         >
           ☰
         </button>
         <div className="flex items-center gap-2.5">
-          <div className="text-sm font-semibold text-white font-display tracking-wider sm:text-base">{props.title}</div>
-          <span className="hidden rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] text-white/30 font-mono sm:inline">v1.2</span>
+          <div className="text-sm font-semibold text-white/90 font-display tracking-wider">{props.title}</div>
+          <span className="hidden rounded-full bg-white/[0.05] px-2 py-0.5 text-[10px] text-white/30 font-mono sm:inline">v1.6</span>
           <span
             title={props.apiBaseUrl ? `API: ${props.apiBaseUrl}` : 'API: (same origin)'}
-            className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] text-white/40"
+            className="inline-flex items-center gap-1.5 text-[11px] text-white/35"
           >
-            <span className={`h-1.5 w-1.5 rounded-full ${statusColor} ${props.apiStatus === 'connected' ? 'shadow-[0_0_6px_rgba(52,211,153,0.5)]' : ''}`} />
+            <span className={`h-1.5 w-1.5 rounded-full ${statusColor}`} />
             <span className="hidden xs:inline">{statusLabel}</span>
           </span>
         </div>
@@ -58,11 +65,14 @@ export function Topbar(props: {
 
       {/* Center: Search (hidden on mobile) */}
       <div className="hidden min-w-0 flex-1 justify-center px-4 md:flex">
-        <div className="flex w-full max-w-[360px] items-center gap-2 rounded glass-field px-4 py-2">
-          <span className="text-white/30 text-sm">⌕</span>
+        <div
+          className="flex w-full max-w-[320px] items-center gap-2 rounded px-3.5 py-1.5"
+          style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(240,235,225,0.06)' }}
+        >
+          <span className="text-white/25 text-sm">⌕</span>
           <input
             placeholder="Search"
-            className="w-full bg-transparent text-sm text-white/80 placeholder:text-white/25 focus:outline-none"
+            className="w-full bg-transparent text-[13px] text-white/70 placeholder:text-white/20 focus:outline-none"
           />
         </div>
       </div>
@@ -71,21 +81,22 @@ export function Topbar(props: {
       <div className="flex items-center gap-3">
         {/* API Base URL input (desktop only) */}
         <div className="hidden items-center gap-2 xl:flex">
-          <span className="text-[10px] text-white/25 font-mono tracking-wide">API</span>
+          <span className="text-[10px] text-white/20 font-mono tracking-wide">API</span>
           <input
             value={props.apiBaseUrl}
             onChange={(e) => props.onChangeApiBaseUrl(e.target.value)}
             placeholder="(same origin)"
-            className="w-[180px] rounded glass-field px-3 py-1.5 text-xs text-white/60 placeholder:text-white/20 focus:outline-none font-mono"
+            className="w-[180px] rounded px-3 py-1 text-xs text-white/50 placeholder:text-white/15 focus:outline-none font-mono"
+            style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(240,235,225,0.05)' }}
           />
         </div>
 
         {/* Subtle divider */}
-        <div className="hidden xl:block h-6 w-px bg-white/[0.06]" />
+        <div className="hidden xl:block h-4 w-px bg-white/[0.06]" />
 
         {/* User info (hidden on small screens) */}
         <div className="hidden min-w-0 flex-col items-end sm:flex">
-          <div className="max-w-[160px] truncate text-sm font-medium text-white/80 lg:max-w-[200px]">{props.userName || 'User'}</div>
+          <div className="max-w-[160px] truncate text-[13px] font-medium text-white/70 lg:max-w-[200px]">{props.userName || 'User'}</div>
         </div>
 
         {/* User avatar */}
@@ -95,7 +106,7 @@ export function Topbar(props: {
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="grid h-9 w-9 place-items-center rounded-full accent-button text-sm font-semibold text-white shadow-[0_0_16px_rgba(212,132,92,0.25)] hover:shadow-[0_0_20px_rgba(212,132,92,0.35)] transition-all cursor-pointer"
+            className="grid h-8 w-8 place-items-center rounded-full accent-button text-xs font-semibold text-white transition-all cursor-pointer"
             aria-label="User settings"
           >
             {initial}

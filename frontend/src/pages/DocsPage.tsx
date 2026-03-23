@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getDoc, listDocs } from '../lib/api'
 
-type DocTab = 'architecture' | 'faq' | 'functional_spec' | 'reference' | 'guide'
+type DocTab = 'architecture' | 'faq' | 'functional_spec' | 'reference' | 'guide' | 'changelog' | 'roadmap'
 
 const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: string }> }> = [
   {
@@ -17,6 +17,13 @@ const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: strin
     heading: 'API Reference',
     items: [
       { id: 'reference', label: 'Endpoints' },
+    ],
+  },
+  {
+    heading: 'Project',
+    items: [
+      { id: 'changelog' as DocTab, label: 'Changelog' },
+      { id: 'roadmap' as DocTab, label: 'Roadmap' },
     ],
   },
 ]
@@ -232,6 +239,8 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
   const filtered = useMemo(() => {
     if (tab === 'reference') return docs.filter((d) => d.kind === 'reference')
     if (tab === 'guide') return docs.filter((d) => d.kind === 'guide')
+    if (tab === 'changelog') return docs.filter((d) => d.id === 'changelog')
+    if (tab === 'roadmap') return docs.filter((d) => d.id === 'roadmap')
     return docs.filter((d) => d.id === tab)
   }, [docs, tab])
 
@@ -306,8 +315,8 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-4 text-[13px]">
-          <a href="#" className="text-white/40 hover:text-white/70 transition-colors hidden sm:block">Changelog</a>
-          <a href="#" className="text-white/40 hover:text-white/70 transition-colors hidden sm:block">Roadmap</a>
+          <button onClick={() => { setTab('changelog' as DocTab); setActiveDocId('changelog') }} className={`transition-colors hidden sm:block ${tab === 'changelog' ? 'text-white/90' : 'text-white/40 hover:text-white/70'}`}>Changelog</button>
+          <button onClick={() => { setTab('roadmap' as DocTab); setActiveDocId('roadmap') }} className={`transition-colors hidden sm:block ${tab === 'roadmap' ? 'text-white/90' : 'text-white/40 hover:text-white/70'}`}>Roadmap</button>
           <a href="#" className="text-white/40 hover:text-white/70 transition-colors hidden md:block">API Status</a>
         </div>
       </div>

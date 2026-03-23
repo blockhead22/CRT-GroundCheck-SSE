@@ -1,108 +1,181 @@
 # CRT/Aether Roadmap
-Last updated: March 23, 2026 (end of Session 6)
+Last updated: March 23, 2026 (v1.6)
 
-## Completed — Session 6 (March 23 evening)
-- [x] Pipeline trace with real statuses — OpenClaw-style thinking out loud
-- [x] auto_fact_checker crash fix
-- [x] Cookie leak fix — Claude cookie calls no longer fire when Claude toggled off
-- [x] Typo-resilient slot matching ("favortie" vs "favorite")
-- [x] Memory demotion filter — skip model_output/system sources
-- [x] Adversarial identity probes — builder/creator questions routed correctly
-- [x] Belief classifier wired into contradiction lifecycle
-- [x] Name extraction disabled — names sourced from settings only
+---
+
+## DONE
+
+### v1.6 (March 23 evening)
+- [x] Pipeline trace — real SSE status events replacing fake heartbeats (OpenClaw-style thinking out loud)
+- [x] Belief classifier wired into contradiction ledger — XGBoost drives type/policy during `record_contradiction()`
+- [x] Cookie leak fix — Claude Tier 2 checks `cloud_claude_enabled` before calling
+- [x] Typo-resilient slot matching — "favortie", "favorit" etc now match
+- [x] Memory demotion filter — skips model_output/system/tool_receipt sources
+- [x] Adversarial identity probes — builder questions route through self-referential with memory lookup
+- [x] auto_fact_checker crash fix — hallucinations list/dict mismatch
+- [x] Name extraction disabled — names sourced from Settings > Profile, not conversation inference
+- [x] Profile name authority chain — `auth.display_name` is canonical; memory slots sync to match
 - [x] Profile settings UI — Display Name, Preferred Nickname, Agent Name fields
-- [x] Stale profile data cleanup
+- [x] Stale profile data cleanup — "Nick remember" and other garbage names purged
+- [x] Changelog/Roadmap buttons wired in Docs page
+- [x] Sessions renamed to versions (v1.0–v1.6)
+- [x] `docs/INDEX.md` documentation index
 
-## Completed — Session 5 (March 23 morning/afternoon)
-- [x] Escalation policy enforcement — `local_only` blocks all cloud fallback paths (primary + late-stage + promotion)
-- [x] Console log cleanup — standardized `[GENERATION]`, `[GOVERNANCE]`, `[REQUEST_SUMMARY]` prefixes; removed redundant debug lines
-- [x] Frontend pill cards — color-coded generation source (Local/GPT/Claude/Fallback) + governance badge
-- [x] Cloud usage tracking DB — `cloud_usage_log` table with full metadata per cloud call; `/api/cloud-usage/summary` endpoint
-- [x] `result["generation_source"]` always set (was missing on local success path)
-- [x] Self-awareness copy tone pass — reflection prompts reframed from self-flagellation to governed calibration
-- [x] "Who built you?" context gap — added creator/builder patterns to self-referential routing
-- [x] ReasoningInference double load fix — engine cache race condition (TOCTOU) fixed with lock-during-creation
-- [x] ViLT test harness built — SFT baseline: 10% to 75% accuracy, 85% GC pass, 2 hallucinations in 200 steps
-- [x] Belief classifier package — `packages/belief_classifier/` with XGBoost contradiction resolver, 26 tests passing
-- [x] Full subsystem audit — catalogued 16 active + 11 dormant systems; triage: 6 keep, 13 ignore, 4 merge
-- [x] Doc cleanup — removed 7 dead entries from doc_map, fixed ViLT writeup date, archived IMPLEMENTATION_PLAN.md
-- [x] Reflection-to-behavior loop — `self_model.get_behavioral_directives()` with domain-specific caution flags
-- [x] Adaptive gate thresholds — `blindspot_gate_boost` (0.0-0.15) raises alignment bars on blindspot queries
+### v1.5 (March 23 morning/afternoon)
+- [x] Escalation policy — `local_only` blocks all cloud fallback; per-tier circuit breaker (3 failures -> 5m cooldown)
+- [x] Query-aware routing — token budget > 6000 skips local; gate_boost > 0.10 skips local
+- [x] Belief classifier package — `packages/belief_classifier/` with XGBoost resolver, auto-labeler, synthetic generator
+- [x] Reflection-to-behavior loop — `self_model.get_behavioral_directives()` with 7 domain categories
+- [x] Adaptive gate thresholds — `blindspot_gate_boost` (0.0-0.15)
+- [x] Frontend pill cards — generation source badges + governance indicator
+- [x] Cloud usage tracking DB + `/api/cloud-usage/summary`
+- [x] ViLT test harness — SFT baseline: 75% accuracy, 85% GC pass
+- [x] Self-awareness copy tone pass — reflection prompts reframed
+- [x] Console log cleanup — standardized prefixes
+- [x] `generation_source` always set
+- [x] ReasoningInference double-load fix (TOCTOU race)
+- [x] "Who built you?" self-referential routing
+- [x] Full subsystem audit — 16 active + 11 dormant catalogued
+- [x] Doc cleanup — 7 dead entries removed, archives organized
+- [x] ROADMAP.md created
 
-## Completed — Session 4 (March 22 overnight + March 23 morning)
-- [x] Cloud bypass toggle — raw model access with CRT skip
-- [x] Advanced settings dropdown — chevron opens side card with Bypass CRT and Enable Tooling toggles
-- [x] Claude cookie fix — fresh session cookie, SSE parsing working
-- [x] Gate override fix — cloud answers no longer hidden by local gate failure
-- [x] Claude identity prompt rewrite — product integration framing
-- [x] CRT name fix — "Contradiction-aware Reconciliation and Trust" in system prompt
-- [x] Username persistence fix — stopwords + frontend race condition guard
-- [x] set_profile_facts 500 fix — replaced broken import with direct engine call
-
-## Completed — Session 3 (March 22 evening)
-- [x] Slot-level exclusivity at ingestion
-- [x] Fix gate on greetings
-- [x] Wire reflection reinjection into system prompt
-- [x] Block trust re-boost on demoted memories
-- [x] Clean stale memory_facts on demotion
-- [x] Fix auto_fact_checker crash
-- [x] Think leak heuristic stripping
-- [x] Cloud generation fallback (local -> OpenAI -> Claude)
-- [x] Cloud-only generation mode with model selector UI
+### v1.4 (March 22 evening - March 23 early morning)
+- [x] Cloud generation fallback chain (local -> OpenAI -> Claude)
+- [x] Cloud bypass toggle + advanced settings dropdown
+- [x] Cloud-only generation mode with model selector
 - [x] Claude Tier 2 settings + frontend toggles
-- [x] Name persistence chain (4 bugs fixed)
-- [x] Health poll spam reduced
-- [x] 30+ self-referential patterns added
+- [x] Claude cookie provider + SSE parsing
+- [x] Settings page full rewrite (profile, cloud, model toggles, usage stats)
+- [x] Anthropic client + rate limiter
+- [x] Memory compression (tier-based, 482 lines)
+- [x] Cloud features module (315 lines) + usage logger (358 lines)
+- [x] Stream verifier (244 lines)
+- [x] Diagnostics drawer frontend
+- [x] 30+ self-referential patterns
+- [x] Slot-level exclusivity at ingestion
 - [x] Cloud fallback catches gate failures
-- [x] Claude cookie provider configured
-- [x] README rewritten
+- [x] Claude cookie fix, gate override fix, username persistence fix
+- [x] Name persistence chain (4 bugs)
+- [x] Block trust re-boost on demoted memories
+- [x] Think leak stripping
+- [x] Frontend glassmorphism overhaul (48 components)
+- [x] Claude identity prompt rewrite
 - [x] Generic opener removed
+- [x] Gate bypass on greetings
+- [x] Reflection reinjection into system prompt
+- [x] Cloud provider test harness
+- [x] README rewritten
 
-## This Week (March 24-28) — Priority: Polish and Ship
+### v1.3 (March 21)
+- [x] LLM tool loop — iterative agent execution replacing curl parser
+- [x] Think-out-loud + chained tool calls
+- [x] Smart skill section extraction
+- [x] `chat_with_tools` via HybridLLMClient
+- [x] Self-reflection loop in heartbeat (7 self-model slots)
+- [x] Self-referential question routing
+- [x] Broad memory recall with LLM synthesis
+- [x] Self-correction SSE event
+- [x] Recency awareness for identity questions
+- [x] Service continuation detection (Layer 4)
+- [x] Intent-aware endpoint selection
+- [x] Compression lab (volatility-gated tiers, CogniSeed, 31/31 tests)
+- [x] Checkpoint layer + model routing (qwen3:14b)
+- [x] Gate fail message accuracy
+- [x] Fuzzy service name matching
+- [x] Self-reflection DB write fixes + Aether identity anchor
+- [x] Frontend: expandable thinking, inline agent reasoning, 5 visibility improvements
 
-### 1. XGBoost Classifier Integration Testing
-Belief classifier package exists at `packages/belief_classifier/` — needs live pipeline integration testing.
-- Run classifier against real contradiction ledger data
-- Validate REFINEMENT / REVISION / TEMPORAL / CONFLICT categorization accuracy
-- Wire policy classifier output into resolution endpoint
-- Benchmark: classifier decisions vs "preserve everything" baseline on real data
+### v1.2 (March 6-20)
+- [x] Eval harness (4 scenarios, 5 baselines, runner, metrics, report)
+- [x] Correction surface UI (ContradictionDrawer, ResolutionCard, TrustDeltaStrip, MessageRatingBar)
+- [x] Telemetry page + backend
+- [x] Pipeline trace component
+- [x] Agent loop + runtime config
+- [x] Thinking loop extensions
+- [x] Active learning feedback priority
+- [x] Hybrid LLM routing
+- [x] Telegram integration (bot, live feed, observability)
+- [x] DNNT micro-transformer, background learner, TrustGate
+- [x] Frontend glassmorphism foundation
+- [x] 7 new test files
+- [x] Python bumped to 3.13
 
-### 2. Copilot Page Polish
-- Visual hierarchy improvements
-- Information density reduction in lower panels
-- Consolidate duplicate API calls on page load
+### v1.0 (January 3-14)
+- [x] CRT core math, trust decay, contradiction detection
+- [x] GroundCheck integration
+- [x] CRT API + React frontend
+- [x] VILT proof of concept (SmolLM-135M: 88% acc, Qwen 1.5B: 88% acc)
+- [x] DNNT First Light
+- [x] Full stress test suite
+- [x] SSE white paper
 
-### 3. Remaining Bug Fixes
-- Trust re-boost still fighting demotions on some cited memories (edge cases)
-- Only demote user-sourced memories, not Aether's narrative memories
+---
 
-## Next Two Weeks (March 29 - April 11) — Ship It
+## IN PROGRESS
 
-### GroundCheck Standalone
-- Sync to standalone repo
-- PyPI publish
-- Clean API, minimal dependencies
-- Documentation
+### Belief Classifier Integration (Session 5-6)
+- [x] Package built at `packages/belief_classifier/`
+- [x] Wired into `crt_ledger.record_contradiction()` with rule-based fallback
+- [ ] Train on real ledger data (currently using synthetic bootstrap)
+- [ ] Validate classifier accuracy against manual contradiction labels
+- [ ] Add confidence threshold — fall back to rules when classifier confidence < 0.6
 
-### Demo Video (5 min)
-- Show favorite color correction flow (contradictions, trust scoring, slot exclusivity)
-- Show mid-stream verification (catching contradiction during generation)
-- Show self-referential routing ("how do you work?" gives grounded architecture answer)
-- Side-by-side with ChatGPT blindly overwriting memory
-- Show cloud fallback (local timeout leads to seamless OpenAI catch)
+### ViLT Integration (Session 5)
+- [x] Test harness built — SFT vs ViLT A/B comparison, 3 user profiles
+- [x] SFT baseline: 75% accuracy, 85% GC pass
+- [ ] ViLT comparison run (started, not completed)
+- [ ] Heartbeat trigger for ViLT batch on persistent blindspot detection
 
-### Settings Dashboard Polish
-- Auth on copilot endpoints (currently unauthenticated)
-- Cookie refresh button for Claude session
-- Clean up 3 deprecation warnings (on_event to lifespan, schema validation)
+### Copilot Page Polish (Session 4-6)
+- [x] Basic layout and thread explorer
+- [ ] Visual hierarchy improvements
+- [ ] Information density reduction in lower panels
+- [ ] Consolidate duplicate API calls on page load
 
-### Multi-User Scaffolding
-- Add user_id column to user_profile_multi table
-- Scope copilot endpoints by authenticated user
-- Each user gets own memory space, self-model, contradiction ledger
-- Login/registration flow
+---
 
-## April+ — The Bigger Picture
+## NEXT (prioritized)
+
+### 1. Bug Fixes — Quick Wins
+- [ ] Cookie leak — Claude cookie calls fire when Claude toggled off (identified Session 5)
+- [ ] Trust re-boost edge cases — still fighting demotions on some cited memories
+- [ ] Only demote user-sourced memories, not Aether's narrative memories
+- [ ] Typo-resilient slot matching — "favortie" vs "favorite" (non-name slots)
+- [ ] 3 deprecation warnings — `on_event` -> `lifespan`, schema validation
+
+### 2. Settings Dashboard Polish
+- [ ] Auth on copilot endpoints (currently unauthenticated)
+- [ ] Cookie refresh button for Claude session
+- [ ] Clean up deprecation warnings
+
+### 3. Demo Video (5 min)
+- [ ] Favorite color correction flow (contradictions, trust scoring, slot exclusivity)
+- [ ] Mid-stream verification (catching contradiction during generation)
+- [ ] Self-referential routing ("how do you work?" -> grounded answer)
+- [ ] Side-by-side with ChatGPT blindly overwriting memory
+- [ ] Cloud fallback (local timeout -> seamless OpenAI catch)
+
+### 4. GroundCheck Standalone
+- [ ] Sync to standalone repo
+- [ ] PyPI publish
+- [ ] Clean API, minimal dependencies
+- [ ] Documentation
+
+### 5. Multi-User Scaffolding
+- [ ] Add `user_id` column to `user_profile_multi` table
+- [ ] Scope copilot endpoints by authenticated user
+- [ ] Each user gets own memory space, self-model, contradiction ledger
+- [ ] Login/registration flow
+
+---
+
+## PARKED (April+)
+
+### ViLT Live Pipeline
+- Trust-weighted contradiction loss amplifies gradient on high-trust fact violations
+- Existing trained models: SmolLM-135M (88% acc), Qwen 1.5B, Qwen 3B
+- Heartbeat trigger for ViLT batch when persistent blindspot detected
+- Closes the reflection loop at the weight level (prompt hedging = fast, ViLT = permanent)
 
 ### Synthesis Response Type
 - Worldview and identity questions answered from compressed belief trajectories
@@ -118,36 +191,30 @@ Belief classifier package exists at `packages/belief_classifier/` — needs live
 - Aether delegates subtasks to specialized agents
 - Maintains epistemic state across delegations
 - Trust scores propagate to sub-agent outputs
-
-### ViLT Integration into Live Pipeline
-- Test harness built (Session 5): SFT vs ViLT A/B comparison across 3 user profiles
-- Trust-weighted contradiction loss amplifies gradient on high-trust fact violations
-- Existing trained models: SmolLM-135M (88% acc), Qwen 1.5B, Qwen 3B
-- Next: heartbeat trigger for ViLT batch when persistent blindspot detected
-- Closes the reflection loop at the weight level (prompt hedging = fast path, ViLT = permanent fix)
+- Protocol ABCs: MemoryAgent, LedgerAgent, LearningAgent, ReflectionAgent
 
 ### Dynamic Slot Discovery
-- Replace hardcoded EXCLUSIVE_SLOTS list
+- Replace hardcoded `EXCLUSIVE_SLOTS` list
 - System learns which slots are exclusive from contradiction patterns
-- "Every time someone updates favorite_color, the old value gets contradicted" = exclusive
 
 ### Reflection Compression
 - Continuous data source: 24 entries/day, 8,760/year
 - Compressed reflection histories produce behavioral trajectories
-- "I was bad at X for a week, adjusted, got better" — that's where emergence lives
 
-## Architecture Principles (from GPT review)
+---
 
-### Things to Watch:
-1. **Self-referential drift** — keep self-descriptions anchored to observable state, not polished mythology
-2. **Tier contamination** — cloud outputs must pass through local trust/contradiction machinery. Never harden into belief without local verification
-3. **Promotion logic** — don't over-promote the latest value just because it arrived most recently. Earned current belief, not successful ingestion
-4. **Confidence misuse** — only auto-demote on exclusive slots when cloud confidence clears a threshold or utterance has strong correction language
+## Architecture Principles
 
-### Design Laws:
+### Design Laws
 1. The mouth should never outweigh the self
 2. Contradictions are preserved unless resolution is earned
 3. Structure should emerge, not be hardcoded
 
-### The Pitch:
+### Things to Watch
+1. **Self-referential drift** — keep self-descriptions anchored to observable state
+2. **Tier contamination** — cloud outputs must pass through local trust/contradiction machinery
+3. **Promotion logic** — don't over-promote the latest value just because it arrived recently
+4. **Confidence misuse** — only auto-demote on exclusive slots when confidence clears a threshold
+
+### The Pitch
 "The moat is not the generator. It's the memory governance and truth-preserving control structure around generation."

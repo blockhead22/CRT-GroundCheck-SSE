@@ -2,7 +2,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useCallback } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import Editor from '@monaco-editor/react'
 import type { ChatMessage, MessageRating } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
@@ -13,35 +12,62 @@ import { TrustDeltaStrip } from './TrustDeltaStrip'
 import { ContradictionDrawer } from './ContradictionDrawer'
 import { resolveContradiction } from '../../lib/api'
 
-function MonacoBlock({ code, language }: { code: string; language?: string }) {
-  const lines = code.split('\n').length
-  const height = `${Math.max(100, Math.min(320, lines * 18 + 32))}px`
+function CodeBlock({ code, language }: { code: string; language?: string }) {
+  const [copied, setCopied] = useState(false)
+  const lines = code.split('\n')
+
+  function handleCopy() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
   return (
-    <div className="my-3 overflow-hidden rounded border border-white/10 bg-black/40">
-      <Editor
-        height={height}
-        defaultLanguage={language || 'plaintext'}
-        value={code}
-        theme="vs-dark"
-        options={{
-          readOnly: true,
-          minimap: { enabled: false },
-          fontSize: 13,
-          lineNumbers: 'on',
-          wordWrap: 'on',
-          scrollBeyondLastLine: false,
-          renderLineHighlight: 'none',
-          contextmenu: false,
-          scrollbar: { vertical: 'auto', horizontal: 'auto' },
-        }}
-      />
+    <div className="my-3 rounded overflow-hidden" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-4 py-2"
+        style={{ background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid rgba(240,235,225,0.04)' }}
+      >
+        <span className="text-[10px] font-mono uppercase tracking-wider" style={{ color: '#5a5445' }}>
+          {language || 'code'}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="text-[10px] font-mono px-2 py-0.5 rounded transition-all hover:bg-white/[0.06]"
+          style={{ color: copied ? '#6abf7b' : '#5a5445' }}
+        >
+          {copied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      {/* Code with line numbers */}
+      <div className="overflow-x-auto" style={{ background: 'rgba(0,0,0,0.35)' }}>
+        <table className="w-full">
+          <tbody>
+            {lines.map((line, i) => (
+              <tr key={i} className="hover:bg-white/[0.02]">
+                <td
+                  className="select-none text-right px-3 py-0 text-[12px] font-mono align-top"
+                  style={{ color: '#332e22', width: '1%', whiteSpace: 'nowrap', userSelect: 'none' }}
+                >
+                  {i + 1}
+                </td>
+                <td className="px-3 py-0 text-[13px] font-mono whitespace-pre" style={{ color: '#F0EBE1' }}>
+                  {line || ' '}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
 const mdComponents = {
   p({ children }: { children?: React.ReactNode }) {
-    return <p className="mb-3 last:mb-0 leading-[1.8]">{children}</p>
+    return <p className="mb-4 last:mb-0 text-[15px] leading-[1.85]" style={{ color: 'rgba(240,235,225,0.85)' }}>{children}</p>
   },
   ul({ children }: { children?: React.ReactNode }) {
     return <ul className="mb-3 space-y-1.5 pl-5">{children}</ul>
@@ -64,7 +90,7 @@ const mdComponents = {
         </code>
       )
     }
-    return <MonacoBlock code={codeText} language={language} />
+    return <CodeBlock code={codeText} language={language} />
   },
   blockquote({ children }: { children?: React.ReactNode }) {
     return (
@@ -227,13 +253,13 @@ export function MessageBubble(props: {
         style={{
           background: props.selected
             ? 'rgba(212,132,92,0.06)'
-            : 'rgba(29,27,22,0.5)',
+            : 'rgba(29,27,22,0.4)',
           border: props.selected
             ? '1px solid rgba(212,132,92,0.2)'
-            : '1px solid rgba(240,235,225,0.04)',
+            : '1px solid rgba(240,235,225,0.05)',
           boxShadow: props.selected
             ? '0 0 24px rgba(212,132,92,0.1), 0 2px 8px rgba(0,0,0,0.15)'
-            : '0 1px 4px rgba(0,0,0,0.1), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.02)',
+            : '0 1px 3px rgba(0,0,0,0.08)',
           ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
           ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
           ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)', background: 'rgba(251,146,60,0.04)' } : {}),
