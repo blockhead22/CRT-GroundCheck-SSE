@@ -68,7 +68,7 @@ export function DemoModeLightbox(props: { open: boolean; onClose: () => void; on
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-2xl rounded-sm border border-white/20 bg-slate-900/95 p-6 shadow-lg"
+            className="relative w-full max-w-2xl rounded border border-white/20 bg-slate-900/95 p-6 shadow-lg"
           >
             {/* Header */}
             <div className="mb-6 flex items-start justify-between">
@@ -91,7 +91,7 @@ export function DemoModeLightbox(props: { open: boolean; onClose: () => void; on
               {DEMO_TURNS.map((turn) => (
                 <div
                   key={turn.id}
-                  className="rounded-sm border border-white/10 bg-white/5 p-4 transition-all hover:border-white/20 hover:bg-white/10"
+                  className="rounded border border-white/10 bg-white/5 p-4 transition-all hover:border-white/20 hover:bg-white/10"
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <div>
@@ -101,21 +101,21 @@ export function DemoModeLightbox(props: { open: boolean; onClose: () => void; on
                     <div className="flex gap-2">
                       <button
                         onClick={() => copyToClipboard(turn.message, turn.id)}
-                        className="rounded-sm border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
+                        className="rounded border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
                         title="Copy to clipboard"
                       >
                         {copiedId === turn.id ? '✓ Copied' : '📋 Copy'}
                       </button>
                       <button
                         onClick={() => sendTurn(turn.message)}
-                        className="rounded-sm border border-violet-500/30 bg-violet-500/20 px-3 py-1.5 text-xs text-violet-200 hover:bg-violet-500/30"
+                        className="rounded border border-violet-500/30 bg-violet-500/20 px-3 py-1.5 text-xs text-violet-200 hover:bg-violet-500/30"
                         title="Send this message"
                       >
                         ▶ Send
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 rounded-sm bg-black/20 p-3">
+                  <div className="mt-2 rounded bg-black/20 p-3">
                     <code className="text-xs text-emerald-300">{turn.message}</code>
                   </div>
                 </div>
@@ -123,7 +123,7 @@ export function DemoModeLightbox(props: { open: boolean; onClose: () => void; on
             </div>
 
             {/* Footer */}
-            <div className="mt-6 rounded-sm border border-amber-500/20 bg-amber-500/10 p-4">
+            <div className="mt-6 rounded border border-amber-500/20 bg-amber-500/10 p-4">
               <div className="flex items-start gap-3">
                 <span className="text-lg">💡</span>
                 <div className="text-xs text-amber-200">

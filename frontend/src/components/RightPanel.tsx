@@ -21,7 +21,7 @@ export function RightPanel(props: {
   }, [props.selectedMessage])
 
   return (
-    <div className="flex h-[calc(100vh-3rem)] w-[340px] flex-none flex-col overflow-hidden rounded-sm border border-white/10 bg-white/5 shadow-soft">
+    <div className="flex h-[calc(100vh-3rem)] w-[340px] flex-none flex-col overflow-hidden rounded border border-white/10 bg-white/5 shadow-soft">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <div className="text-sm font-semibold text-white">{tab === 'history' ? 'History' : 'Inspector'}</div>
         <div className="flex items-center gap-2">
@@ -68,14 +68,14 @@ export function RightPanel(props: {
                     key={t.id}
                     onClick={() => props.onSelectThread(t.id)}
                     className={
-                      'w-full rounded-sm border px-3 py-3 text-left transition ' +
+                      'w-full rounded border px-3 py-3 text-left transition ' +
                       (selected
                         ? 'border-violet-500/60 bg-violet-500/10'
                         : 'border-white/10 bg-white/5 hover:bg-white/10')
                     }
                   >
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5 grid h-5 w-5 place-items-center rounded-sm border border-white/10 bg-white/5">
+                      <div className="mt-0.5 grid h-5 w-5 place-items-center rounded border border-white/10 bg-white/5">
                         <span className={selected ? 'text-violet-300' : 'text-white/40'}>✓</span>
                       </div>
                       <div className="min-w-0 flex-1">

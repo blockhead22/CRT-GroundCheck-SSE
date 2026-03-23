@@ -25,7 +25,7 @@ export function ComparisonView(props: ComparisonViewProps) {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="overflow-hidden rounded-sm border border-red-500/30 bg-red-500/5"
+          className="overflow-hidden rounded border border-red-500/30 bg-red-500/5"
         >
           <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-3">
             <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-300">Regular AI</div>
@@ -33,17 +33,17 @@ export function ComparisonView(props: ComparisonViewProps) {
           </div>
 
           <div className="p-4">
-            <div className="mb-3 rounded-sm bg-black/20 p-3">
+            <div className="mb-3 rounded bg-black/20 p-3">
               <div className="mb-1 text-xs text-white/40">Query:</div>
               <div className="text-sm text-white/80">{props.userQuery}</div>
             </div>
 
-            <div className="mb-4 rounded-sm bg-black/30 p-3">
+            <div className="mb-4 rounded bg-black/30 p-3">
               <div className="mb-1 text-xs text-white/40">Response:</div>
               <div className="text-sm text-white">{props.regularResponse}</div>
             </div>
 
-            <div className="space-y-2 rounded-sm border border-red-500/30 bg-red-500/10 p-3">
+            <div className="space-y-2 rounded border border-red-500/30 bg-red-500/10 p-3">
               <div className="text-xs font-semibold text-red-300">Issues:</div>
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2 text-xs text-red-300">
@@ -72,7 +72,7 @@ export function ComparisonView(props: ComparisonViewProps) {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="overflow-hidden rounded-sm border border-green-500/30 bg-green-500/5"
+          className="overflow-hidden rounded border border-green-500/30 bg-green-500/5"
         >
           <div className="border-b border-green-500/30 bg-green-500/10 px-4 py-3">
             <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-green-300">CRT Enhanced</div>
@@ -80,22 +80,22 @@ export function ComparisonView(props: ComparisonViewProps) {
           </div>
 
           <div className="p-4">
-            <div className="mb-3 rounded-sm bg-black/20 p-3">
+            <div className="mb-3 rounded bg-black/20 p-3">
               <div className="mb-1 text-xs text-white/40">Query:</div>
               <div className="text-sm text-white/80">{props.userQuery}</div>
             </div>
 
-            <div className="mb-4 rounded-sm border border-green-500/30 bg-black/30 p-3">
+            <div className="mb-4 rounded border border-green-500/30 bg-black/30 p-3">
               <div className="mb-1 text-xs text-white/40">Response:</div>
               <div className="text-sm text-white">{props.crtResponse}</div>
             </div>
 
             {props.contradictions && props.contradictions.length > 0 && (
-              <div className="mb-4 rounded-sm border border-orange-500/30 bg-orange-500/10 p-3">
+              <div className="mb-4 rounded border border-orange-500/30 bg-orange-500/10 p-3">
                 <div className="mb-2 text-xs font-semibold text-orange-300">Contradictions Detected:</div>
                 <div className="space-y-2">
                   {props.contradictions.map((c, i) => (
-                    <div key={i} className="rounded-sm bg-black/30 p-2 text-xs">
+                    <div key={i} className="rounded bg-black/30 p-2 text-xs">
                       <div className="mb-1 font-medium text-white/80">Slot: {c.slot}</div>
                       <div className="text-white/60">
                         <div>Old: {c.oldValue}</div>
@@ -107,7 +107,7 @@ export function ComparisonView(props: ComparisonViewProps) {
               </div>
             )}
 
-            <div className="space-y-2 rounded-sm border border-green-500/30 bg-green-500/10 p-3">
+            <div className="space-y-2 rounded border border-green-500/30 bg-green-500/10 p-3">
               <div className="text-xs font-semibold text-green-300">Benefits:</div>
               <div className="space-y-1.5">
                 <div className="flex items-start gap-2 text-xs text-green-300">

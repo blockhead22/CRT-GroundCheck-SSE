@@ -107,7 +107,7 @@ function TaskingSection({ tasking }: { tasking?: TaskingMeta }) {
       {isOpen ? (
         <div className="px-3 pb-3 text-[11px] text-cyan-100">
           {skipped ? (
-            <div className="rounded-sm bg-black/20 p-2 text-cyan-200/70">
+            <div className="rounded bg-black/20 p-2 text-cyan-200/70">
               Tasking loop skipped ({skipped}).
             </div>
           ) : null}
@@ -131,7 +131,7 @@ function TaskingSection({ tasking }: { tasking?: TaskingMeta }) {
               <div className="font-semibold text-cyan-200">Plan</div>
               <ul className="mt-1 space-y-1">
                 {tasks.map((t) => (
-                  <li key={t.task_id} className="rounded-sm bg-black/20 px-2 py-1 border border-white/5">
+                  <li key={t.task_id} className="rounded bg-black/20 px-2 py-1 border border-white/5">
                     <div className="flex items-center gap-2">
                       <div className="font-mono text-cyan-200">{t.task_id}</div>
                       {t.status ? (
@@ -201,7 +201,7 @@ function PipelineSection({ statuses, draft }: { statuses: string[]; draft?: stri
               <div className="font-semibold text-sky-200">Steps</div>
               <ul className="mt-1 space-y-1">
                 {statuses.map((s, i) => (
-                  <li key={`${s}-${i}`} className="rounded-sm bg-black/20 px-2 py-1">{s}</li>
+                  <li key={`${s}-${i}`} className="rounded bg-black/20 px-2 py-1">{s}</li>
                 ))}
               </ul>
             </div>
@@ -209,7 +209,7 @@ function PipelineSection({ statuses, draft }: { statuses: string[]; draft?: stri
           {hasDraft ? (
             <div className="mt-3">
               <div className="font-semibold text-sky-200">Draft (live stream)</div>
-              <div className="mt-1 rounded-sm bg-black/20 px-2 py-2 text-white/70 whitespace-pre-wrap">{draft}</div>
+              <div className="mt-1 rounded bg-black/20 px-2 py-2 text-white/70 whitespace-pre-wrap">{draft}</div>
             </div>
           ) : null}
         </div>
@@ -369,7 +369,7 @@ function ThinkingSection({ thinking, traceId, threadId }: { thinking?: string | 
           transition={{ duration: 0.2 }}
           className="px-3 pb-3"
         >
-          <div className="max-h-64 overflow-y-auto rounded-sm bg-black/30 p-3 text-[11px] text-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
+          <div className="max-h-64 overflow-y-auto rounded bg-black/30 p-3 text-[11px] text-amber-200/80 whitespace-pre-wrap font-mono leading-relaxed">
             {isLoading ? (
               <span className="text-amber-300/60 animate-pulse">Loading thinking content...</span>
             ) : loadError ? (

@@ -2791,6 +2791,88 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         channel=req.channel,
     )
 
+    # ====== BYPASS CRT MODE ======
+    # When bypass_crt is enabled and a cloud model is selected, skip the
+    # entire CRT pipeline (memory, contradiction detection, gates, trust)
+    # and send the user message directly to the raw cloud model.
+    _bypass_crt = False
+    try:
+        import auth as _auth_bypass
+        _uid_bypass = int(uid) if uid else 1
+        _bypass_crt = str(
+            _auth_bypass.get_user_setting(_uid_bypass, "bypass_crt", "false")
+        ).lower() in ("true", "1", "yes", "on")
+        _bypass_gen_mode = str(
+            _auth_bypass.get_user_setting(_uid_bypass, "generation_mode", "local") or "local"
+        ).strip()
+    except Exception as _bp_err:
+        print(f"[BYPASS_CRT] Settings check failed: {_bp_err}")
+        _bypass_gen_mode = "local"
+
+    if _bypass_crt and _bypass_gen_mode in ("cloud_openai", "cloud_claude"):
+        print(f"[BYPASS_CRT] Raw cloud mode — skipping CRT pipeline, model={_bypass_gen_mode}")
+        control_state.mark("generate", "drafting", detail="bypass_crt_raw")
+        try:
+            from personal_agent.cloud_features import get_cloud_feature_service
+            import auth as _auth_bp2
+            _bp_svc = get_cloud_feature_service()
+            _bp_provider = "openai" if _bypass_gen_mode == "cloud_openai" else "claude"
+            _bp_model_key = "cloud_model_openai" if _bp_provider == "openai" else "cloud_model_claude"
+            _bp_model_default = "gpt-4o-mini" if _bp_provider == "openai" else "claude-sonnet-4-20250514"
+            _bp_cloud_model = str(_auth_bp2.get_user_setting(_uid_bypass, _bp_model_key, _bp_model_default) or _bp_model_default)
+
+            # Build minimal prompt with conversation history (no CRT context)
+            _bp_prompt_parts = []
+            if recent_history:
+                for _turn in recent_history[-6:]:
+                    _role = _turn.get("role", "user")
+                    _content = (_turn.get("content") or "").strip()
+                    if _content and _role in ("user", "assistant"):
+                        _bp_prompt_parts.append(f"{'User' if _role == 'user' else 'Aether'}: {_content[:500]}")
+            _bp_prompt_parts.append(f"User: {effective_message}")
+            _bp_prompt = "\n".join(_bp_prompt_parts)
+
+            _bp_system = "You are Aether, a personal AI assistant. Respond naturally and helpfully."
+
+            _bp_answer = None
+            if _bp_svc is not None:
+                _bp_answer = _bp_svc.generate_full_response(
+                    prompt=_bp_prompt,
+                    system_prompt=_bp_system,
+                    provider=_bp_provider,
+                    model=_bp_cloud_model,
+                    max_tokens=4096,
+                )
+            if _bp_answer:
+                print(f"[BYPASS_CRT] Raw response — {len(_bp_answer)} chars via {_bp_provider}")
+                try:
+                    session_db.record_query(
+                        thread_id=req.thread_id,
+                        query_text=req.message,
+                        response_text=_bp_answer,
+                        detected_slot="bypass_crt",
+                    )
+                except Exception:
+                    pass
+                control_state.mark("generate", "draft_ready", detail="bypass_crt_done")
+                control_state.mark("decide", "ready", detail="bypass_crt")
+                control_state.mark("learn", "recorded", detail="bypass_crt")
+                return _chat_response(
+                    answer=_bp_answer,
+                    response_type="bypass",
+                    gates_passed=True,
+                    gate_reason="bypass_crt_raw",
+                    metadata={
+                        "generation_source": f"bypass_{_bp_provider}",
+                        "cloud_model": _bp_cloud_model,
+                        "bypass_crt": True,
+                    },
+                )
+            else:
+                print("[BYPASS_CRT] Cloud returned None, falling through to CRT pipeline")
+        except Exception as _bp_gen_err:
+            print(f"[BYPASS_CRT] Raw generation failed: {_bp_gen_err}, falling through to CRT")
+
     control_state.mark("generate", "drafting", detail="engine_query")
     result = engine.query(
         user_query=query_with_continuity,

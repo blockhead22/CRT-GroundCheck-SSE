@@ -476,6 +476,9 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "generation_mode": "local",
     "cloud_model_openai": "gpt-4o-mini",
     "cloud_model_claude": "claude-sonnet-4-20250514",
+    # Advanced settings
+    "bypass_crt": "false",
+    "enable_tooling": "false",
 }
 
 

@@ -184,7 +184,7 @@ export function ContradictionDrawer({
               </div>
               <button
                 onClick={onClose}
-                className="rounded-sm px-2 py-1 text-[11px] transition-opacity hover:opacity-70"
+                className="rounded px-2 py-1 text-[11px] transition-opacity hover:opacity-70"
                 style={{ color: 'rgba(240,235,225,0.3)', border: '1px solid rgba(240,235,225,0.08)' }}
               >
                 close

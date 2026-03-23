@@ -294,14 +294,14 @@ export function JournalPage(props: { threadId: string }) {
         ) : null}
 
         {emptyState ? (
-          <div className="rounded-sm glass-card px-4 py-6 text-sm text-white/60">
+          <div className="rounded glass-card px-4 py-6 text-sm text-white/60">
             No journal entries yet. The reflection/personality loops will append here as they run.
           </div>
         ) : null}
 
         <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
           <div className="space-y-3">
-            <div className="rounded-sm glass-card px-4 py-4">
+            <div className="rounded glass-card px-4 py-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Topics</div>
               {topicIndex.length === 0 ? (
                 <div className="mt-2 text-xs text-white/50">Topics will appear after reflections run.</div>
@@ -336,7 +336,7 @@ export function JournalPage(props: { threadId: string }) {
               )}
             </div>
 
-            <div className="rounded-sm glass-card px-4 py-4">
+            <div className="rounded glass-card px-4 py-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Threads</div>
               <div className="mt-3 space-y-2">
                 {rootEntries.length === 0 ? (
@@ -388,12 +388,12 @@ export function JournalPage(props: { threadId: string }) {
 
           <div className="space-y-3">
             {!selectedRootId ? (
-              <div className="rounded-sm glass-card px-4 py-6 text-sm text-white/60">
+              <div className="rounded glass-card px-4 py-6 text-sm text-white/60">
                 Select a thread to view its journal conversation.
               </div>
             ) : (
               <>
-                <div className="rounded-sm glass-card px-4 py-4">
+                <div className="rounded glass-card px-4 py-4">
                   <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Thread</div>
                   <div className="mt-3 space-y-3">
                     {threadEntries.map((entry) => {
@@ -412,7 +412,7 @@ export function JournalPage(props: { threadId: string }) {
                       const entryLabel = (entry.entry_type || 'note').replace(/_/g, ' ')
 
                       return (
-                        <div key={entry.id} className="rounded-sm border border-white/10 bg-white/5 px-4 py-4">
+                        <div key={entry.id} className="rounded border border-white/10 bg-white/5 px-4 py-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="text-sm font-semibold text-white">{entry.title}</div>
@@ -454,7 +454,7 @@ export function JournalPage(props: { threadId: string }) {
                   </div>
                 </div>
 
-                <div className="rounded-sm glass-card px-4 py-4">
+                <div className="rounded glass-card px-4 py-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="text-xs font-semibold uppercase tracking-wide text-white/50">Add a comment</div>
                     {replyTargetId ? (

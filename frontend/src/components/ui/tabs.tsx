@@ -26,7 +26,7 @@ export function Tabs({
 export function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('inline-flex h-10 items-center justify-center rounded-sm bg-white/5 p-1', className)}
+      className={cn('inline-flex h-10 items-center justify-center rounded bg-white/5 p-1', className)}
       {...props}
     />
   )
@@ -42,7 +42,7 @@ export function TabsTrigger({
   return (
     <button
       className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium transition-all',
+        'inline-flex items-center justify-center whitespace-nowrap rounded px-3 py-1.5 text-sm font-medium transition-all',
         active ? 'bg-white/10 text-white shadow-sm' : 'text-white/60 hover:text-white/80',
         className,
       )}

@@ -74,7 +74,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative mx-4 w-full max-w-3xl rounded-sm border border-white/10 bg-gradient-to-br from-gray-900/95 to-gray-800/95 p-8 shadow-lg"
+          className="relative mx-4 w-full max-w-3xl rounded border border-white/10 bg-gradient-to-br from-gray-900/95 to-gray-800/95 p-8 shadow-lg"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Progress Bar */}
@@ -105,7 +105,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                 className="space-y-6"
               >
                 <div className="text-center">
-                  <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-sm bg-gradient-to-br from-violet-500 to-purple-600 text-4xl shadow-lg">
+                  <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded bg-gradient-to-br from-violet-500 to-purple-600 text-4xl shadow-lg">
                     🧠
                   </div>
                   <h2 className="mb-2 bg-gradient-to-r from-violet-300 via-purple-200 to-white bg-clip-text text-4xl font-bold text-transparent">
@@ -114,7 +114,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                   <p className="text-xl text-white/80">The AI Memory That Never Lies</p>
                 </div>
 
-                <div className="space-y-4 rounded-sm bg-white/5 p-6">
+                <div className="space-y-4 rounded bg-white/5 p-6">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded border border-red-500/30 bg-red-500/10 p-4">
                       <div className="mb-2 text-sm font-semibold text-red-300">Traditional AI</div>
@@ -167,7 +167,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                   <p className="text-white/70">Let's start by telling CRT where you work.</p>
                 </div>
 
-                <div className="rounded-sm border border-blue-500/30 bg-blue-500/10 p-6">
+                <div className="rounded border border-blue-500/30 bg-blue-500/10 p-6">
                   <div className="mb-3 text-sm font-semibold text-blue-300">Try This:</div>
                   <div className="mb-4 rounded bg-black/30 p-4 font-mono text-sm text-white">
                     I work at Microsoft
@@ -218,7 +218,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                   <p className="text-white/70">Now let's change where you work and see what CRT does.</p>
                 </div>
 
-                <div className="rounded-sm border border-orange-500/30 bg-orange-500/10 p-6">
+                <div className="rounded border border-orange-500/30 bg-orange-500/10 p-6">
                   <div className="mb-3 text-sm font-semibold text-orange-300">Try This:</div>
                   <div className="mb-4 rounded bg-black/30 p-4 font-mono text-sm text-white">
                     I work at Amazon now
@@ -269,7 +269,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                   <p className="text-white/70">Ask CRT where you work and see the magic happen.</p>
                 </div>
 
-                <div className="rounded-sm border border-green-500/30 bg-green-500/10 p-6">
+                <div className="rounded border border-green-500/30 bg-green-500/10 p-6">
                   <div className="mb-3 text-sm font-semibold text-green-300">Try This:</div>
                   <div className="mb-4 rounded bg-black/30 p-4 font-mono text-sm text-white">Where do I work?</div>
                   <button
@@ -321,7 +321,7 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                   <p className="text-white/70">See the full contradiction history in the audit trail.</p>
                 </div>
 
-                <div className="rounded-sm border border-purple-500/30 bg-purple-500/10 p-6">
+                <div className="rounded border border-purple-500/30 bg-purple-500/10 p-6">
                   <div className="mb-3 text-sm font-semibold text-purple-300">Contradiction Ledger:</div>
                   <div className="space-y-3 rounded bg-black/30 p-4">
                     <div className="border-l-4 border-orange-500 pl-3">
@@ -393,21 +393,21 @@ export function WelcomeTutorial(props: WelcomeTutorialProps) {
                   <p className="text-lg text-white/70">Start using CRT's honest AI memory in your chats.</p>
                 </div>
 
-                <div className="mx-auto max-w-md space-y-3 rounded-sm bg-white/5 p-6">
+                <div className="mx-auto max-w-md space-y-3 rounded bg-white/5 p-6">
                   <div className="flex items-center gap-3 text-left">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-green-500/20 text-green-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-green-500/20 text-green-400">
                       ✓
                     </div>
                     <div className="text-sm text-white/80">Contradictions are tracked</div>
                   </div>
                   <div className="flex items-center gap-3 text-left">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-green-500/20 text-green-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-green-500/20 text-green-400">
                       ✓
                     </div>
                     <div className="text-sm text-white/80">Disclosures are enforced</div>
                   </div>
                   <div className="flex items-center gap-3 text-left">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-green-500/20 text-green-400">
+                    <div className="flex h-8 w-8 items-center justify-center rounded bg-green-500/20 text-green-400">
                       ✓
                     </div>
                     <div className="text-sm text-white/80">Full audit trail available</div>

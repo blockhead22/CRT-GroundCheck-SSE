@@ -49,7 +49,7 @@ export function InspectorLightbox(props: {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.99 }}
             transition={{ duration: 0.18 }}
-            className="relative w-full max-w-[820px] overflow-hidden rounded-sm shadow-[0_20px_70px_rgba(0,0,0,0.65)]"
+            className="relative w-full max-w-[820px] overflow-hidden rounded shadow-[0_20px_70px_rgba(0,0,0,0.65)]"
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">

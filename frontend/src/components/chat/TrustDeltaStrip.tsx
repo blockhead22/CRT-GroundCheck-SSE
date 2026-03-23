@@ -13,7 +13,7 @@ function TrustPill({ item }: { item: TrustDeltaItem }) {
       initial={{ opacity: 0, scale: 0.85, y: 4 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="group/pill relative flex items-center gap-1.5 rounded-sm px-2 py-1 cursor-default"
+      className="group/pill relative flex items-center gap-1.5 rounded px-2 py-1 cursor-default"
       style={{ border: `1px solid ${color}25`, background: `${color}08` }}
       title={item.reason || undefined}
     >
@@ -25,7 +25,7 @@ function TrustPill({ item }: { item: TrustDeltaItem }) {
       </span>
       {/* Hover tooltip with full trust values */}
       <div
-        className="pointer-events-none absolute bottom-full left-0 mb-1 hidden rounded-sm px-2 py-1.5 text-[10px] whitespace-nowrap group-hover/pill:block z-50"
+        className="pointer-events-none absolute bottom-full left-0 mb-1 hidden rounded px-2 py-1.5 text-[10px] whitespace-nowrap group-hover/pill:block z-50"
         style={{ background: 'rgba(18,17,16,0.95)', border: '1px solid rgba(240,235,225,0.08)', color: 'rgba(240,235,225,0.7)' }}
       >
         <span className="font-mono">{item.old_trust.toFixed(3)} → {item.new_trust.toFixed(3)}</span>
@@ -88,7 +88,7 @@ export function TrustDeltaStrip({
         {!expanded && hidden > 0 && (
           <button
             onClick={() => setExpanded(true)}
-            className="rounded-sm px-2 py-1 text-[10px] transition-opacity hover:opacity-70"
+            className="rounded px-2 py-1 text-[10px] transition-opacity hover:opacity-70"
             style={{ border: '1px solid rgba(240,235,225,0.08)', background: 'rgba(240,235,225,0.03)', color: 'rgba(240,235,225,0.3)' }}
           >
             +{hidden} more

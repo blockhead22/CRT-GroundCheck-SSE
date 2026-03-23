@@ -48,7 +48,7 @@ export function LoginScreen(props: {
         <div className="glass-panel rounded-[28px] p-6 sm:p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-sm accent-button mb-4">
+            <div className="inline-flex items-center justify-center h-16 w-16 rounded accent-button mb-4">
               <span className="text-2xl font-bold text-white">Q</span>
             </div>
             <h1 className="text-2xl font-bold text-white font-display">CRT</h1>

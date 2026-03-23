@@ -102,7 +102,7 @@ function ToolCallDetail({ step }: { step: AgentStep }) {
       className="overflow-hidden ml-6 mt-1"
     >
       <div
-        className="rounded-sm px-3 py-2 text-[10px] font-mono space-y-1"
+        className="rounded px-3 py-2 text-[10px] font-mono space-y-1"
         style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(240,235,225,0.06)' }}
       >
         {/* Input */}
@@ -158,7 +158,7 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className="mb-4 rounded-sm overflow-hidden"
+      className="mb-4 rounded overflow-hidden"
       style={{
         border: '1px solid rgba(240,235,225,0.06)',
         background: 'rgba(14,13,11,0.6)',

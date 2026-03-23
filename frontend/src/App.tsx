@@ -26,6 +26,7 @@ import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
 import { SettingsPage } from './pages/SettingsPage'
+import { V2Page } from './pages/V2Page'
 import { quickActions, seedThreads } from './lib/seed'
 import { loadChatStateFromStorage, saveChatStateToStorage } from './lib/chatStorage'
 
@@ -38,7 +39,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live', 'telemetry', 'settings']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'showcase', 'copilot', 'live', 'telemetry', 'settings', 'v2']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -911,6 +912,8 @@ export default function App() {
                   <LiveFeedPage />
                 ) : navActive === 'telemetry' ? (
                   <TelemetryPage threadId={selectedThread?.id} />
+                ) : navActive === 'v2' ? (
+                  <V2Page />
                 ) : navActive === 'settings' ? (
                   <SettingsPage
                     authUser={authUser}

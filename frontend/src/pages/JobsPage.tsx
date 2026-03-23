@@ -258,7 +258,7 @@ export function JobsPage(props: { threadId: string }) {
         <div className="flex h-full min-h-0">
           <div className="w-[380px] flex-none border-r border-white/10 p-5">
             <div className="text-xs font-semibold tracking-wide text-white/60">Worker</div>
-            <div className="mt-3 rounded-sm border border-white/10 bg-white/5 p-4">
+            <div className="mt-3 rounded border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm font-semibold text-white">Status</div>
                 <button
@@ -285,7 +285,7 @@ export function JobsPage(props: { threadId: string }) {
             </div>
 
             <div className="mt-6 text-xs font-semibold tracking-wide text-white/60">Enqueue</div>
-            <div className="mt-3 rounded-sm border border-white/10 bg-white/5 p-4">
+            <div className="mt-3 rounded border border-white/10 bg-white/5 p-4">
               <div className="text-sm font-semibold text-white">New job</div>
               {template ? (
                 <div className="mt-1 text-xs text-white/60">{template.title} — {template.subtitle}</div>
@@ -322,7 +322,7 @@ export function JobsPage(props: { threadId: string }) {
                     <div className="text-xs font-semibold text-white/70">Payload (JSON)</div>
                     <button
                       onClick={() => template && setPayloadText(JSON.stringify(template.payload(props.threadId), null, 2))}
-                      className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                      className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
                     >
                       Reset
                     </button>
@@ -351,7 +351,7 @@ export function JobsPage(props: { threadId: string }) {
             </div>
 
             {error ? (
-              <div className="mt-4 rounded-sm border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+              <div className="mt-4 rounded border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
                 {error}
               </div>
             ) : null}
@@ -375,7 +375,7 @@ export function JobsPage(props: { threadId: string }) {
                         key={j.id}
                         onClick={() => setSelectedJobId(j.id)}
                         className={
-                          'w-full rounded-sm border px-3 py-3 text-left transition ' +
+                          'w-full rounded border px-3 py-3 text-left transition ' +
                           (active ? 'border-violet-400/40 bg-white/10' : 'border-white/10 bg-white/5 hover:bg-white/10')
                         }
                       >
@@ -399,7 +399,7 @@ export function JobsPage(props: { threadId: string }) {
                   })}
 
                   {!jobs.length ? (
-                    <div className="rounded-sm border border-white/10 bg-white/5 p-4 text-sm text-white/60">
+                    <div className="rounded border border-white/10 bg-white/5 p-4 text-sm text-white/60">
                       No jobs found.
                     </div>
                   ) : null}
@@ -420,12 +420,12 @@ export function JobsPage(props: { threadId: string }) {
                 </div>
 
                 {!selected ? (
-                  <div className="mt-4 rounded-sm border border-white/10 bg-white/5 p-6 text-sm text-white/60">
+                  <div className="mt-4 rounded border border-white/10 bg-white/5 p-6 text-sm text-white/60">
                     Select a job to inspect events and artifacts.
                   </div>
                 ) : (
                   <div className="mt-4 space-y-4">
-                    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+                    <div className="rounded border border-white/10 bg-white/5 p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="truncate text-lg font-semibold text-white">{selected.job.type}</div>
@@ -467,7 +467,7 @@ export function JobsPage(props: { threadId: string }) {
                       </div>
                     </div>
 
-                    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+                    <div className="rounded border border-white/10 bg-white/5 p-4">
                       <div className="text-sm font-semibold text-white">Events</div>
                       <div className="mt-3 space-y-2">
                         {(selected.events || []).map((e, idx) => (
@@ -478,7 +478,7 @@ export function JobsPage(props: { threadId: string }) {
                             </div>
                             <div className="mt-1 text-[11px] text-white/60">level: {e.level}</div>
                             {e.data ? (
-                              <pre className="mt-2 overflow-auto rounded-sm border border-white/10 bg-black/20 p-2 text-[11px] text-white/70">
+                              <pre className="mt-2 overflow-auto rounded border border-white/10 bg-black/20 p-2 text-[11px] text-white/70">
                                 {JSON.stringify(e.data, null, 2)}
                               </pre>
                             ) : null}
@@ -490,7 +490,7 @@ export function JobsPage(props: { threadId: string }) {
                       </div>
                     </div>
 
-                    <div className="rounded-sm border border-white/10 bg-white/5 p-4">
+                    <div className="rounded border border-white/10 bg-white/5 p-4">
                       <div className="text-sm font-semibold text-white">Artifacts</div>
                       <div className="mt-3 space-y-2">
                         {(selected.artifacts || []).map((a, idx) => (
@@ -504,7 +504,7 @@ export function JobsPage(props: { threadId: string }) {
                             <div className="mt-2">
                               <button
                                 onClick={() => safeCopy(a.path)}
-                                className="rounded-sm border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
+                                className="rounded border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/70 hover:bg-white/10"
                               >
                                 Copy path
                               </button>

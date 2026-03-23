@@ -9,7 +9,7 @@ type Props = {
   onProfileUpdated: () => void
 }
 
-type SettingsTab = 'profile' | 'cloud' | 'facts' | 'account'
+type SettingsTab = 'profile' | 'cloud' | 'advanced' | 'facts' | 'account'
 
 const ESCALATION_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
@@ -139,10 +139,10 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
-    // Claude settings use true/false, OpenAI settings use on/off
-    const isClaude = key.startsWith('cloud_claude_')
-    const newVal = isClaude ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
-    const oldVal = isClaude ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
+    // Claude settings and advanced settings use true/false, OpenAI settings use on/off
+    const useTrueFalse = key.startsWith('cloud_claude_') || key === 'bypass_crt' || key === 'enable_tooling'
+    const newVal = useTrueFalse ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
+    const oldVal = useTrueFalse ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })
     setCloudSaving(true)
     try {
@@ -204,6 +204,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'profile', label: 'Profile' },
     { id: 'cloud', label: 'Cloud' },
+    { id: 'advanced', label: 'Advanced' },
     { id: 'facts', label: 'Known Facts' },
     { id: 'account', label: 'Account' },
   ]
@@ -217,7 +218,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
           <div className="mt-1 text-sm text-white/60">Manage your profile, cloud features, and account</div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-sm border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded border border-white/10 bg-white/5 p-1">
             {tabs.map((t) => (
               <button
                 key={t.id}
@@ -239,7 +240,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
         <div className="mx-auto max-w-2xl space-y-6">
           {tab === 'profile' && (
             <>
-              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
                 <div className="mb-4 text-xs font-medium uppercase tracking-wide text-white/50">Profile</div>
 
                 <div className="space-y-4">
@@ -279,7 +280,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
           {tab === 'cloud' && (
             <>
-              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
                 <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Cloud Features</div>
                 <p className="mb-4 text-xs text-white/40">
                   Enable cloud LLM verification for higher-accuracy CRT operations. Calls use gpt-4o-mini (Tier 1) or Claude (Tier 2).
@@ -365,7 +366,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
               </div>
 
               {/* Claude (Tier 2) Section */}
-              <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
                 <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Claude (Tier 2)</div>
                 <p className="mb-4 text-xs text-white/40">
                   Use Claude via cookie session for high-quality generation fallback and reflection validation.
@@ -459,7 +460,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
               {/* Usage Display */}
               {cloudUsage !== null && (
-                <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
+                <div className="rounded border border-white/10 bg-white/[0.03] p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-xs font-medium uppercase tracking-wide text-white/50">Usage (this session)</div>
                     <button
@@ -521,14 +522,50 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
             </>
           )}
 
+          {tab === 'advanced' && (
+            <>
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Advanced Settings</div>
+                <p className="mb-4 text-xs text-white/40">
+                  These settings control CRT pipeline behavior and model capabilities. Changes take effect on the next message.
+                </p>
+
+                {cloudSettings ? (
+                  <div className="space-y-1">
+                    <Toggle
+                      label="Bypass CRT Loop"
+                      description="Skip memory retrieval, contradiction detection, gates, and trust scoring. Sends messages directly to the selected cloud model with no CRT wrapping."
+                      checked={cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on'}
+                      onChange={(v) => handleCloudToggle('bypass_crt', v)}
+                    />
+                    {(cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on') && (
+                      <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
+                        CRT bypass is active. Responses will not use memories, contradiction checking, or trust scoring. Select a cloud model in the Cloud tab to use this mode.
+                      </div>
+                    )}
+
+                    <Toggle
+                      label="Enable Tooling"
+                      description="Allow the model to use tools and function calls during generation."
+                      checked={cloudSettings.enable_tooling === 'true' || cloudSettings.enable_tooling === 'on'}
+                      onChange={(v) => handleCloudToggle('enable_tooling', v)}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading advanced settings...</p>
+                )}
+              </div>
+            </>
+          )}
+
           {tab === 'facts' && (
-            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
+            <div className="rounded border border-white/10 bg-white/[0.03] p-6">
               <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Known Facts</div>
 
               {Object.keys(slots).length > 0 ? (
                 <div className="mb-4 space-y-1.5">
                   {Object.entries(slots).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-2 rounded-sm bg-white/5 px-3 py-2 text-sm">
+                    <div key={key} className="flex items-center gap-2 rounded bg-white/5 px-3 py-2 text-sm">
                       <span className="font-medium text-white/70">{key}</span>
                       <span className="text-white/30">=</span>
                       <span className="text-white/90">{val}</span>
@@ -570,14 +607,14 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
           )}
 
           {tab === 'account' && (
-            <div className="rounded-sm border border-white/10 bg-white/[0.03] p-6">
+            <div className="rounded border border-white/10 bg-white/[0.03] p-6">
               <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Account</div>
               <div className="space-y-2 text-sm text-white/60">
-                <div className="flex items-center gap-3 rounded-sm bg-white/5 px-4 py-3">
+                <div className="flex items-center gap-3 rounded bg-white/5 px-4 py-3">
                   <span className="text-white/40">Username</span>
                   <span className="text-white/80">{authUser?.username || '\u2014'}</span>
                 </div>
-                <div className="flex items-center gap-3 rounded-sm bg-white/5 px-4 py-3">
+                <div className="flex items-center gap-3 rounded bg-white/5 px-4 py-3">
                   <span className="text-white/40">User ID</span>
                   <span className="font-mono text-xs text-white/80">{authUser?.id || '\u2014'}</span>
                 </div>

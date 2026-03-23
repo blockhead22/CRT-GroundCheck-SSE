@@ -51,7 +51,7 @@ export function ProfileNameLightbox(props: {
             animate={{ y: 0, scale: 1, opacity: 1 }}
             exit={{ y: 12, scale: 0.98, opacity: 0 }}
             transition={{ duration: 0.18 }}
-            className="w-full max-w-[520px] overflow-hidden rounded-sm border border-white/10 bg-[#0B0D12] shadow-lg"
+            className="w-full max-w-[520px] overflow-hidden rounded border border-white/10 bg-[#0B0D12] shadow-lg"
           >
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <div>

@@ -58,7 +58,7 @@ export function Topbar(props: {
 
       {/* Center: Search (hidden on mobile) */}
       <div className="hidden min-w-0 flex-1 justify-center px-4 md:flex">
-        <div className="flex w-full max-w-[360px] items-center gap-2 rounded-sm glass-field px-4 py-2">
+        <div className="flex w-full max-w-[360px] items-center gap-2 rounded glass-field px-4 py-2">
           <span className="text-white/30 text-sm">⌕</span>
           <input
             placeholder="Search"

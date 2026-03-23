@@ -128,7 +128,7 @@ export function ShowcasePage() {
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-sm px-4 py-2 text-sm font-medium transition ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded px-4 py-2 text-sm font-medium transition ${
                 activeSection === section.id
                   ? 'bg-violet-600 text-white shadow-lg'
                   : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/80'
@@ -210,7 +210,7 @@ export function ShowcasePage() {
                   <div className="mb-3 text-xs text-red-400">{error}</div>
                   <button
                     onClick={fetchData}
-                    className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                    className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
                     Retry
                   </button>
@@ -235,7 +235,7 @@ export function ShowcasePage() {
                       </div>
                       <div className="space-y-3">
                         {contradictions.slice(0, 3).map((c) => (
-                          <div key={c.ledger_id} className="rounded-sm border border-white/10 bg-black/20 p-3">
+                          <div key={c.ledger_id} className="rounded border border-white/10 bg-black/20 p-3">
                             <div className="mb-2 flex items-center justify-between">
                               <span className="font-mono text-xs text-white/50">
                                 {c.contradiction_id || c.ledger_id}
@@ -298,7 +298,7 @@ export function ShowcasePage() {
                   <div className="mb-3 text-xs text-red-400">{error}</div>
                   <button
                     onClick={fetchData}
-                    className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                    className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
                     Retry
                   </button>
@@ -348,7 +348,7 @@ export function ShowcasePage() {
                   <div className="mb-3 text-xs text-red-400">{error}</div>
                   <button
                     onClick={fetchData}
-                    className="rounded-sm bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                    className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
                   >
                     Retry
                   </button>

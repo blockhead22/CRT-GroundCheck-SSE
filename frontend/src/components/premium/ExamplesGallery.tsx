@@ -136,11 +136,11 @@ export function ExamplesGallery(props: ExamplesGalleryProps) {
               whileHover={{ y: -4, scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => props.onLoadExample?.(scenario)}
-              className={`group relative overflow-hidden rounded-sm border border-${categoryColor}-500/30 bg-${categoryColor}-500/5 p-6 text-left shadow-lg transition hover:shadow-xl`}
+              className={`group relative overflow-hidden rounded border border-${categoryColor}-500/30 bg-${categoryColor}-500/5 p-6 text-left shadow-lg transition hover:shadow-xl`}
             >
               {/* Icon */}
               <div
-                className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded-sm bg-${categoryColor}-500/20 text-3xl`}
+                className={`mb-4 inline-flex h-14 w-14 items-center justify-center rounded bg-${categoryColor}-500/20 text-3xl`}
               >
                 {scenario.icon}
               </div>
@@ -206,7 +206,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
       <motion.div
         initial={{ y: 20 }}
         animate={{ y: 0 }}
-        className="mx-4 w-full max-w-2xl rounded-sm border border-white/10 bg-gradient-to-br from-gray-900/95 to-gray-800/95 shadow-lg"
+        className="mx-4 w-full max-w-2xl rounded border border-white/10 bg-gradient-to-br from-gray-900/95 to-gray-800/95 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -215,7 +215,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
         >
           <div className="flex items-center gap-4">
             <div
-              className={`flex h-16 w-16 items-center justify-center rounded-sm bg-${categoryColor}-500/20 text-4xl`}
+              className={`flex h-16 w-16 items-center justify-center rounded bg-${categoryColor}-500/20 text-4xl`}
             >
               {props.scenario.icon}
             </div>
@@ -244,7 +244,7 @@ export function ScenarioViewer(props: ScenarioViewerProps) {
                 className={`flex ${step.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-sm px-4 py-3 ${
+                  className={`max-w-[85%] rounded px-4 py-3 ${
                     step.type === 'user'
                       ? 'bg-violet-600/20 text-white'
                       : 'border border-white/10 bg-white/5 text-white/90'

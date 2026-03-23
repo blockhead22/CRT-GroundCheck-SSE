@@ -79,7 +79,7 @@ export function UserSettingsPanel(props: {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ duration: 0.15 }}
-          className="absolute right-0 top-[calc(100%+8px)] w-[380px] overflow-hidden rounded-sm glass-panel border border-white/10 shadow-lg"
+          className="absolute right-0 top-[calc(100%+8px)] w-[380px] overflow-hidden rounded glass-panel border border-white/10 shadow-lg"
           style={{ zIndex: 9999 }}
         >
           {/* Header */}
@@ -99,7 +99,7 @@ export function UserSettingsPanel(props: {
           <div className="border-b border-white/10 bg-white/5 p-4">
             <div className="text-xs font-medium uppercase tracking-wide text-white/50">Current Model</div>
             <div className="mt-2 flex items-center gap-2 rounded border border-white/10 bg-white/5 p-3">
-              <div className="grid h-8 w-8 place-items-center rounded-sm bg-gradient-to-br from-violet-500 to-purple-600 text-sm">
+              <div className="grid h-8 w-8 place-items-center rounded bg-gradient-to-br from-violet-500 to-purple-600 text-sm">
                 {currentModel.isReasoning ? '🧠' : '🤖'}
               </div>
               <div className="min-w-0 flex-1">
@@ -136,7 +136,7 @@ export function UserSettingsPanel(props: {
                     <div className="flex items-start gap-3">
                       <div
                         className={`
-                        grid h-10 w-10 flex-shrink-0 place-items-center rounded-sm text-base transition-all
+                        grid h-10 w-10 flex-shrink-0 place-items-center rounded text-base transition-all
                         ${
                           isSelected
                             ? 'bg-gradient-to-br from-violet-500 to-purple-600'

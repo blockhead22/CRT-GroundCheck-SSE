@@ -1939,6 +1939,9 @@ export type CloudSettings = {
   cloud_claude_reflection: string
   cloud_claude_daily_limit: string
   cloud_claude_max_tokens: string
+  // Advanced settings
+  bypass_crt: string
+  enable_tooling: string
   [key: string]: string
 }
 

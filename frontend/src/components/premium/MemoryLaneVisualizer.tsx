@@ -42,7 +42,7 @@ export function MemoryLaneVisualizer(props: MemoryLaneVisualizerProps) {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
-          className="overflow-hidden rounded-sm border border-green-500/30 bg-gradient-to-br from-green-500/5 to-emerald-500/5"
+          className="overflow-hidden rounded border border-green-500/30 bg-gradient-to-br from-green-500/5 to-emerald-500/5"
         >
           <div className="border-b border-green-500/30 bg-green-500/10 px-4 py-3">
             <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-green-300">
@@ -119,7 +119,7 @@ export function MemoryLaneVisualizer(props: MemoryLaneVisualizerProps) {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
-          className="overflow-hidden rounded-sm border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-indigo-500/5"
+          className="overflow-hidden rounded border border-blue-500/30 bg-gradient-to-br from-blue-500/5 to-indigo-500/5"
         >
           <div className="border-b border-blue-500/30 bg-blue-500/10 px-4 py-3">
             <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-blue-300">
@@ -194,7 +194,7 @@ export function MemoryLaneVisualizer(props: MemoryLaneVisualizerProps) {
                       <div className="mt-2 border-t border-blue-500/20 pt-2">
                         <button
                           onClick={() => props.onPromoteMemory?.(memory.id)}
-                          className="w-full rounded-sm bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
+                          className="w-full rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-blue-700"
                         >
                           Promote to Stable →
                         </button>

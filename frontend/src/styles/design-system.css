@@ -66,13 +66,13 @@
   --glow-error: none;
   --glow-info: none;
   
-  /* Border Radius — IDE-sharp */
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-xl: 4px;
-  --radius-2xl: 6px;
-  --radius-full: 9999px;   /* Avatars only */
+  /* Border Radius — moderate */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-full: 9999px;
   
   /* Animation Timing */
   --duration-fast: 150ms;

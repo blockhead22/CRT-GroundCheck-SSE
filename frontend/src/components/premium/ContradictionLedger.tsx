@@ -75,7 +75,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
           <div className="mt-4 flex gap-2">
             <button
               onClick={() => setFilter('all')}
-              className={`flex-1 rounded-sm px-3 py-2 text-xs font-medium transition ${
+              className={`flex-1 rounded px-3 py-2 text-xs font-medium transition ${
                 filter === 'all'
                   ? 'bg-violet-600 text-white'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
@@ -85,7 +85,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
             </button>
             <button
               onClick={() => setFilter('disclosed')}
-              className={`flex-1 rounded-sm px-3 py-2 text-xs font-medium transition ${
+              className={`flex-1 rounded px-3 py-2 text-xs font-medium transition ${
                 filter === 'disclosed'
                   ? 'bg-green-600 text-white'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
@@ -95,7 +95,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
             </button>
             <button
               onClick={() => setFilter('pending')}
-              className={`flex-1 rounded-sm px-3 py-2 text-xs font-medium transition ${
+              className={`flex-1 rounded px-3 py-2 text-xs font-medium transition ${
                 filter === 'pending'
                   ? 'bg-orange-600 text-white'
                   : 'border border-white/10 bg-white/5 text-white/60 hover:bg-white/10'
@@ -128,7 +128,7 @@ export function ContradictionLedger(props: ContradictionLedgerProps) {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -30 }}
                     transition={{ delay: index * 0.05 }}
-                    className="animate-ledgerEntryAppear rounded-sm border border-white/10 bg-white/5 p-4 shadow-lg"
+                    className="animate-ledgerEntryAppear rounded border border-white/10 bg-white/5 p-4 shadow-lg"
                   >
                     {/* Entry Header */}
                     <div className="mb-3 flex items-start justify-between">

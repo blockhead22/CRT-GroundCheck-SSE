@@ -113,7 +113,7 @@ function StreamingMessage({
                 const codeText = String(children ?? '').replace(/\n$/, '')
                 const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '')
                 if (!match && !codeText.includes('\n')) {
-                  return <code className="rounded-sm bg-white/8 px-1.5 py-0.5 font-mono text-[0.88em]" style={{ color: 'var(--accent-6)' }}>{children}</code>
+                  return <code className="rounded bg-white/8 px-1.5 py-0.5 font-mono text-[0.88em]" style={{ color: 'var(--accent-6)' }}>{children}</code>
                 }
                 return <pre className="my-2 overflow-x-auto rounded border border-white/10 bg-black/40 p-4 text-sm text-white/80 font-mono">{codeText}</pre>
               },
@@ -671,7 +671,7 @@ export function ChatThreadView(props: {
                       ) : (
                         <div className="space-y-2">
                           {contradictions.map((c) => (
-                            <div key={c.ledger_id} className="rounded-sm border border-white/8 bg-white/3 p-3">
+                            <div key={c.ledger_id} className="rounded border border-white/8 bg-white/3 p-3">
                               <div className="font-semibold text-rose-200/80 text-[11px] mb-1">
                                 {(c.slot || c.contradiction_type || 'Contradiction').toUpperCase()}
                               </div>

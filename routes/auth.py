@@ -248,6 +248,9 @@ def auth_update_settings(
         "generation_mode",
         "cloud_model_openai",
         "cloud_model_claude",
+        # Advanced settings
+        "bypass_crt",
+        "enable_tooling",
     }
 
     updated = {}

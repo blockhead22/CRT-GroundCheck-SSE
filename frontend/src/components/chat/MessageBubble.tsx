@@ -59,7 +59,7 @@ const mdComponents = {
     const isBlock = Boolean(language) || codeText.includes('\n')
     if (!isBlock) {
       return (
-        <code className="rounded-sm px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.12)', color: '#E8C8A0' }}>
+        <code className="rounded px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.12)', color: '#E8C8A0' }}>
           {children}
         </code>
       )
@@ -190,7 +190,7 @@ export function MessageBubble(props: {
       >
         <div className="group max-w-[72%]">
           <div
-            className="rounded-sm px-5 py-3.5 text-[14.5px] leading-relaxed"
+            className="rounded px-5 py-3.5 text-[14.5px] leading-relaxed"
             style={{
               background: 'linear-gradient(135deg, #D4845C 0%, #B87050 100%)',
               color: 'var(--user-bubble-fg)',
@@ -218,7 +218,7 @@ export function MessageBubble(props: {
     >
       <div
         className={[
-          'rounded-sm px-5 py-4 transition-all duration-200',
+          'rounded px-5 py-4 transition-all duration-200',
           props.selected ? '' : '',
           localRating === 'down' ? 'border-l-2' : '',
           localRating === 'up' ? 'border-l-2' : '',

@@ -10,7 +10,7 @@ export function QuickCards(props: { actions: QuickAction[]; onPick: (a: QuickAct
           whileHover={{ y: -2 }}
           whileTap={{ scale: 0.99 }}
           onClick={() => props.onPick(a)}
-          className="group rounded-sm glass-card p-4 text-left hover:bg-white/10"
+          className="group rounded glass-card p-4 text-left hover:bg-white/10"
         >
           <div className="flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded bg-white/10 text-white/80">

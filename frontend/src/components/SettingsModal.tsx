@@ -183,14 +183,14 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="w-full max-w-[520px] max-h-[85vh] overflow-y-auto rounded-sm glass-panel border border-white/10 shadow-lg"
+            className="w-full max-w-[520px] max-h-[85vh] overflow-y-auto rounded glass-panel border border-white/10 shadow-lg"
           >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-6 py-4">
               <h2 className="text-lg font-semibold text-white">Settings</h2>
               <button
                 onClick={onClose}
-                className="grid h-8 w-8 place-items-center rounded-sm text-white/60 hover:bg-white/10 hover:text-white transition-all"
+                className="grid h-8 w-8 place-items-center rounded text-white/60 hover:bg-white/10 hover:text-white transition-all"
               >
                 &times;
               </button>
@@ -367,7 +367,7 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
               {Object.keys(slots).length > 0 ? (
                 <div className="mb-4 space-y-1.5">
                   {Object.entries(slots).map(([key, val]) => (
-                    <div key={key} className="flex items-center gap-2 rounded-sm bg-white/5 px-3 py-2 text-sm">
+                    <div key={key} className="flex items-center gap-2 rounded bg-white/5 px-3 py-2 text-sm">
                       <span className="font-medium text-white/70">{key}</span>
                       <span className="text-white/30">=</span>
                       <span className="text-white/90">{val}</span>

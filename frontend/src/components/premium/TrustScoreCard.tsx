@@ -47,7 +47,7 @@ export function TrustScoreCard(props: TrustScoreCardProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -2 }}
-      className={`overflow-hidden rounded-sm border ${
+      className={`overflow-hidden rounded border ${
         props.superseded
           ? 'border-white/10 bg-white/5 opacity-70'
           : `border-${color}-500/30 bg-${color}-500/5`
@@ -134,7 +134,7 @@ export function TrustScoreCard(props: TrustScoreCardProps) {
                     style={{ minHeight: '4px' }}
                   />
                   {/* Tooltip */}
-                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded-sm bg-black/90 px-2 py-1 text-xs text-white/90 shadow-lg group-hover:block">
+                  <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-black/90 px-2 py-1 text-xs text-white/90 shadow-lg group-hover:block">
                     <div>{(point.trust * 100).toFixed(0)}%</div>
                     {point.event && <div className="text-white/60">{point.event}</div>}
                   </div>

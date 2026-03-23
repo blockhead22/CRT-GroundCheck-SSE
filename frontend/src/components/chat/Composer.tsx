@@ -58,6 +58,9 @@ export function Composer(props: {
   const [generationMode, setGenerationMode] = useState<GenerationMode>('local')
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
+  const [bypassCrt, setBypassCrt] = useState(false)
+  const [enableTooling, setEnableTooling] = useState(false)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const selectorRef = useRef<HTMLDivElement>(null)
 
   const canSend = text.trim().length > 0
@@ -70,6 +73,8 @@ export function Composer(props: {
         if (mode && ['local', 'cloud_openai', 'cloud_claude'].includes(mode)) {
           setGenerationMode(mode)
         }
+        setBypassCrt(settings.bypass_crt === 'true' || settings.bypass_crt === 'on')
+        setEnableTooling(settings.enable_tooling === 'true' || settings.enable_tooling === 'on')
         setSettingsLoaded(true)
       })
       .catch(() => {
@@ -82,6 +87,7 @@ export function Composer(props: {
     function handleClick(e: MouseEvent) {
       if (selectorRef.current && !selectorRef.current.contains(e.target as Node)) {
         setModelSelectorOpen(false)
+        setAdvancedOpen(false)
       }
     }
     if (modelSelectorOpen) {
@@ -132,6 +138,19 @@ export function Composer(props: {
     }
   }
 
+  async function handleAdvancedToggle(key: 'bypass_crt' | 'enable_tooling', value: boolean) {
+    const newVal = value ? 'true' : 'false'
+    if (key === 'bypass_crt') setBypassCrt(value)
+    if (key === 'enable_tooling') setEnableTooling(value)
+    try {
+      await updateCloudSettings({ [key]: newVal })
+    } catch (err) {
+      console.warn(`[Composer] Failed to persist ${key}:`, err)
+      if (key === 'bypass_crt') setBypassCrt(!value)
+      if (key === 'enable_tooling') setEnableTooling(!value)
+    }
+  }
+
   const isDisabled = props.disabled || props.researching
   const activeModel = MODEL_OPTIONS.find((m) => m.value === generationMode) ?? MODEL_OPTIONS[0]
 
@@ -162,7 +181,7 @@ export function Composer(props: {
                   </span>
                 )}
                 {activeModel.icon}
-                <span>{activeModel.shortLabel}</span>
+                <span>{activeModel.shortLabel}{bypassCrt ? ' (Raw)' : ''}</span>
               </span>
               <svg
                 width="8" height="8" viewBox="0 0 24 24" fill="none"
@@ -206,6 +225,88 @@ export function Composer(props: {
                       )}
                     </button>
                   ))}
+
+                  {/* Advanced row — chevron opens side card */}
+                  <div
+                    className="border-t mt-1"
+                    style={{ borderColor: 'rgba(240,235,225,0.06)' }}
+                  >
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setAdvancedOpen(!advancedOpen) }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide transition-colors hover:bg-white/[0.06]"
+                      style={{ color: 'rgba(240,235,225,0.3)' }}
+                    >
+                      <span className="flex-1">Advanced</span>
+                      <svg
+                        width="8" height="8" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                        style={{ transform: advancedOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
+                      >
+                        <polyline points="9 6 15 12 9 18" />
+                      </svg>
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Advanced side card — appears to the right of dropdown */}
+            <AnimatePresence>
+              {modelSelectorOpen && advancedOpen && (
+                <motion.div
+                  initial={{ opacity: 0, x: -4, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -4, scale: 0.95 }}
+                  transition={{ duration: 0.12 }}
+                  className="absolute top-full z-50 mt-1 w-[200px] overflow-hidden rounded border"
+                  style={{
+                    left: '188px',
+                    borderColor: 'rgba(240,235,225,0.08)',
+                    background: 'rgba(18,16,12,0.95)',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <div className="px-3 pt-2.5 pb-1">
+                    <div className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                      Advanced
+                    </div>
+                  </div>
+
+                  <div className="px-3 pb-2.5 space-y-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAdvancedToggle('bypass_crt', !bypassCrt) }}
+                      className="flex w-full items-center gap-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-white/[0.06] rounded px-1"
+                      style={{ color: 'rgba(240,235,225,0.6)' }}
+                    >
+                      <span
+                        className="flex-shrink-0 h-3.5 w-7 rounded-full relative transition-colors"
+                        style={{ background: bypassCrt ? 'rgba(212,132,92,0.6)' : 'rgba(240,235,225,0.1)' }}
+                      >
+                        <span
+                          className="absolute top-[2px] h-2.5 w-2.5 rounded-full bg-white shadow transition-transform"
+                          style={{ left: bypassCrt ? '13px' : '2px' }}
+                        />
+                      </span>
+                      <span className="flex-1 font-medium">Bypass CRT</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleAdvancedToggle('enable_tooling', !enableTooling) }}
+                      className="flex w-full items-center gap-2.5 py-1.5 text-left text-[12px] transition-colors hover:bg-white/[0.06] rounded px-1"
+                      style={{ color: 'rgba(240,235,225,0.6)' }}
+                    >
+                      <span
+                        className="flex-shrink-0 h-3.5 w-7 rounded-full relative transition-colors"
+                        style={{ background: enableTooling ? 'rgba(212,132,92,0.6)' : 'rgba(240,235,225,0.1)' }}
+                      >
+                        <span
+                          className="absolute top-[2px] h-2.5 w-2.5 rounded-full bg-white shadow transition-transform"
+                          style={{ left: enableTooling ? '13px' : '2px' }}
+                        />
+                      </span>
+                      <span className="flex-1 font-medium">Tooling</span>
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -226,7 +327,7 @@ export function Composer(props: {
           className="relative overflow-hidden border"
           style={{
             background: 'var(--surface)',
-            borderRadius: '3px',
+            borderRadius: '8px',
           }}
         >
           <textarea

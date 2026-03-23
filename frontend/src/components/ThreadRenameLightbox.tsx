@@ -33,7 +33,7 @@ export function ThreadRenameLightbox(props: {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ duration: 0.18 }}
-            className="w-full max-w-[520px] rounded-sm border border-white/10 bg-[#0b0b10]/95 p-4 shadow-card"
+            className="w-full max-w-[520px] rounded border border-white/10 bg-[#0b0b10]/95 p-4 shadow-card"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -58,7 +58,7 @@ export function ThreadRenameLightbox(props: {
                   if (e.key === 'Enter' && canSubmit) props.onSubmit(title.trim())
                 }}
                 placeholder="Thread title"
-                className="w-full rounded-sm border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
+                className="w-full rounded border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none"
                 autoFocus
               />
             </div>

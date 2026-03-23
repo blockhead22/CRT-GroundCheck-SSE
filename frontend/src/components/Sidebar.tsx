@@ -13,6 +13,7 @@ const nav: Array<{ id: NavId; label: string; icon: string; standalone?: boolean 
   { id: 'telemetry', label: 'Telemetry', icon: '⬡' },
   { id: 'jobs', label: 'Jobs', icon: '☷' },
   { id: 'settings', label: 'Settings', icon: '⚙' },
+  { id: 'v2', label: 'V2', icon: '▸' },
   { id: 'docs', label: 'Docs', icon: '≣', standalone: true },
 ]
 
@@ -57,7 +58,7 @@ export function Sidebar(props: {
     <div className="flex h-full w-full flex-col rounded-[28px] glass-panel">
       <div className="flex items-center justify-between px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-sm accent-button text-white shadow-[0_0_20px_rgba(212,132,92,0.3)]">
+          <div className="grid h-10 w-10 place-items-center rounded accent-button text-white shadow-[0_0_20px_rgba(212,132,92,0.3)]">
             <span className="text-sm font-bold tracking-wide">Q</span>
           </div>
           <div>
@@ -104,7 +105,7 @@ export function Sidebar(props: {
               >
                 <span
                   className={
-                    'grid h-10 w-10 place-items-center rounded-sm border border-white/10 bg-white/5 text-base ' +
+                    'grid h-10 w-10 place-items-center rounded border border-white/10 bg-white/5 text-base ' +
                     (isActive ? 'text-violet-200' : 'text-white/50')
                   }
                 >
@@ -132,7 +133,7 @@ export function Sidebar(props: {
                 )}
                 <span
                   className={
-                    'grid h-8 w-8 place-items-center rounded-sm text-xs transition-all duration-200 ' +
+                    'grid h-8 w-8 place-items-center rounded text-xs transition-all duration-200 ' +
                     (isActive
                       ? 'bg-[rgba(212,132,92,0.15)] text-[#E0A080] shadow-[0_0_12px_rgba(212,132,92,0.25)] border border-[rgba(212,132,92,0.3)]'
                       : 'border border-white/[0.06] bg-white/[0.03] text-white/40 group-hover:text-white/60 group-hover:border-white/10')
@@ -154,7 +155,7 @@ export function Sidebar(props: {
                 props.onNewThread()
                 if (props.isMobile) props.onClose()
               }} 
-              className="rounded-sm bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+              className="rounded bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
             >
               + New
             </button>
@@ -172,7 +173,7 @@ export function Sidebar(props: {
                     key={t.id}
                     onClick={() => handleThreadSelect(t.id)}
                     className={
-                      'group rounded-sm px-3.5 py-3 text-left transition-all duration-200 ' +
+                      'group rounded px-3.5 py-3 text-left transition-all duration-200 ' +
                       (selected
                         ? 'bg-white/[0.08] border border-[#D4845C]/20 shadow-[0_0_16px_rgba(212,132,92,0.08)]'
                         : 'bg-white/[0.03] border border-white/[0.05] hover:bg-white/[0.06] hover:border-white/[0.1]')
@@ -190,7 +191,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onRequestRenameThread(t.id)
                           }}
-                          className="rounded-sm bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          className="rounded bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
                           aria-label="Rename chat"
                           title="Rename"
                         >
@@ -202,7 +203,7 @@ export function Sidebar(props: {
                             e.stopPropagation()
                             props.onDeleteThread(t.id)
                           }}
-                          className="rounded-sm bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
+                          className="rounded bg-white/[0.06] p-1.5 text-[11px] text-white/50 hover:bg-white/10 hover:text-white/70 transition-colors"
                           aria-label="Delete chat"
                           title="Delete"
                         >
@@ -311,7 +312,7 @@ export function Sidebar(props: {
                       >
                         <span
                           className={
-                            'grid h-10 w-10 place-items-center rounded-sm border border-white/10 bg-white/5 text-base ' +
+                            'grid h-10 w-10 place-items-center rounded border border-white/10 bg-white/5 text-base ' +
                             (isActive ? 'text-violet-200' : 'text-white/50')
                           }
                         >
@@ -343,7 +344,7 @@ export function Sidebar(props: {
                             props.onLogout?.()
                             props.onClose()
                           }}
-                          className="w-full rounded-sm bg-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+                          className="w-full rounded bg-white/10 px-3 py-2 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
                         >
                           Logout
                         </button>
@@ -356,7 +357,7 @@ export function Sidebar(props: {
                             props.onShowLogin?.()
                             props.onClose()
                           }}
-                          className="w-full rounded-sm accent-button px-3 py-2 text-xs font-medium text-white"
+                          className="w-full rounded accent-button px-3 py-2 text-xs font-medium text-white"
                         >
                           Login / Register
                         </button>
@@ -383,7 +384,7 @@ export function Sidebar(props: {
                     value={props.apiBaseUrl || ''}
                     onChange={(e) => props.onChangeApiBaseUrl?.(e.target.value)}
                     placeholder="API URL (e.g. http://192.168.1.91:8123)"
-                    className="w-full rounded-sm glass-field px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
+                    className="w-full rounded glass-field px-3 py-2 text-xs text-white/80 placeholder:text-white/30 focus:outline-none"
                   />
                 </div>
               </div>
@@ -396,7 +397,7 @@ export function Sidebar(props: {
                         props.onNewThread()
                         props.onClose()
                       }} 
-                      className="rounded-sm bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
+                      className="rounded bg-white/10 px-3 py-1 text-xs text-white/70 hover:bg-white/15 active:bg-white/20"
                     >
                       + New
                     </button>
@@ -430,7 +431,7 @@ export function Sidebar(props: {
                                     e.stopPropagation()
                                     props.onRequestRenameThread(t.id)
                                   }}
-                                  className="rounded-sm border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
+                                  className="rounded border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
                                   aria-label="Rename chat"
                                   title="Rename"
                                 >
@@ -442,7 +443,7 @@ export function Sidebar(props: {
                                     e.stopPropagation()
                                     props.onDeleteThread(t.id)
                                   }}
-                                  className="rounded-sm border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
+                                  className="rounded border border-white/10 bg-white/5 p-2 text-[11px] text-white/70 hover:bg-white/10 active:bg-white/15"
                                   aria-label="Delete chat"
                                   title="Delete"
                                 >

@@ -193,7 +193,7 @@ const docsMdComponents = {
   },
   table({ children }: { children?: React.ReactNode }) {
     return (
-      <div className="my-5 overflow-x-auto rounded-sm" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
+      <div className="my-5 overflow-x-auto rounded" style={{ border: '1px solid rgba(240,235,225,0.06)' }}>
         <table className="w-full text-sm">{children}</table>
       </div>
     )
@@ -287,7 +287,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
           {onBackToApp && (
             <button
               onClick={onBackToApp}
-              className="flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-[13px] transition-all hover:bg-white/[0.06]"
+              className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[13px] transition-all hover:bg-white/[0.06]"
               style={{ color: '#a09880' }}
             >
               <span>←</span>
@@ -297,7 +297,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
           {onBackToApp && <div className="h-4 w-px bg-white/[0.08]" />}
           <div className="flex items-center gap-2">
             <div
-              className="grid h-7 w-7 place-items-center rounded-sm text-xs font-bold text-white"
+              className="grid h-7 w-7 place-items-center rounded text-xs font-bold text-white"
               style={{ background: 'var(--accent)' }}
             >
               ⬡
@@ -339,7 +339,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                         <button
                           onClick={() => setTab(item.id)}
                           className={
-                            'w-full flex items-center justify-between rounded-sm px-2 py-1.5 text-[13px] text-left transition-all ' +
+                            'w-full flex items-center justify-between rounded px-2 py-1.5 text-[13px] text-left transition-all ' +
                             (isSectionActive ? 'text-white/90' : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]')
                           }
                         >
@@ -382,7 +382,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                       key={item.id}
                       onClick={() => setTab(item.id)}
                       className={
-                        'w-full rounded-sm px-2 py-1.5 text-[13px] text-left transition-all ' +
+                        'w-full rounded px-2 py-1.5 text-[13px] text-left transition-all ' +
                         (isActive
                           ? 'text-white/90 bg-white/[0.06]'
                           : 'text-white/45 hover:text-white/70 hover:bg-white/[0.03]')
@@ -407,7 +407,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                   <button
                     key={`${h.id}-${i}`}
                     onClick={() => scrollToHeading(h.id)}
-                    className="text-left text-[12px] rounded-sm px-2 py-1 transition-colors hover:bg-white/[0.04] truncate"
+                    className="text-left text-[12px] rounded px-2 py-1 transition-colors hover:bg-white/[0.04] truncate"
                     style={{
                       paddingLeft: `${(h.level - 1) * 10 + 8}px`,
                       color: h.level === 1 ? 'rgba(240,235,225,0.5)' : 'rgba(240,235,225,0.3)',
@@ -494,7 +494,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
                   key={i}
                   onClick={() => setCodeTab(i)}
                   className={
-                    'rounded-sm px-3 py-1 text-[11px] font-mono transition-all ' +
+                    'rounded px-3 py-1 text-[11px] font-mono transition-all ' +
                     (codeTab === i
                       ? 'text-white/90 bg-white/[0.08]'
                       : 'text-white/30 hover:text-white/60 hover:bg-white/[0.04]')
