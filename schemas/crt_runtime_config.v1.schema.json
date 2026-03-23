@@ -145,6 +145,16 @@
         "observability_authority": { "type": "string", "enum": ["local"] }
       }
     },
+    "escalation_policy": {
+      "type": "object",
+      "description": "Smart tier routing with circuit breaker for generation fallback.",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "circuit_breaker": { "type": "object" },
+        "query_routing": { "type": "object" }
+      }
+    },
     "generation_stack": {
       "type": "object",
       "additionalProperties": false,
@@ -158,6 +168,23 @@
             "enabled": { "type": "boolean" },
             "default_model": { "type": "string", "minLength": 1 }
           }
+        },
+        "anthropic": {
+          "type": "object",
+          "description": "Anthropic Claude provider config.",
+          "additionalProperties": true,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "model": { "type": "string" },
+            "api_key_env": { "type": "string" },
+            "timeout_seconds": { "type": "number" },
+            "rate_limits": { "type": "object" }
+          }
+        },
+        "model_roles": {
+          "type": "object",
+          "description": "Maps task roles (fast, reasoning, tool_loop, answer) to model identifiers.",
+          "additionalProperties": { "type": "string" }
         },
         "cloud": {
           "type": "object",

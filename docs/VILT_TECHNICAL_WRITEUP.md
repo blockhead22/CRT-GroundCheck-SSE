@@ -1,6 +1,6 @@
 # VILT: Verification-In-the-Loop Training
 
-## Technical Write-Up — June 2025
+## Technical Write-Up — February 2026
 
 ---
 

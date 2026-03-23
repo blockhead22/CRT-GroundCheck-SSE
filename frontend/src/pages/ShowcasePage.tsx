@@ -409,8 +409,8 @@ export function ShowcasePage() {
                 </div>
                 <div className="text-sm text-white/70">
                   For detailed integration guides with LangChain, LlamaIndex, and custom RAG pipelines, see:{' '}
-                  <a href="/docs/integration" className="text-violet-400 hover:underline">
-                    docs/integration/
+                  <a href="/docs/quick_start" className="text-violet-400 hover:underline">
+                    docs/quick_start
                   </a>
                 </div>
               </div>

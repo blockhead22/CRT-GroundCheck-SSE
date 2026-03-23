@@ -858,6 +858,12 @@ class SyncChatResponse(BaseModel):
 
 
 def create_app() -> FastAPI:
+    # NOTE: on_event("startup"/"shutdown") is deprecated in favor of lifespan.
+    # Full migration deferred — startup references 10+ objects created mid-function.
+    # Suppress the deprecation warning for now.
+    import warnings
+    warnings.filterwarnings("ignore", message=".*on_event is deprecated.*", category=DeprecationWarning)
+
     app = FastAPI(title="CRT API", version="0.9-beta")
 
     runtime_cfg = get_runtime_config()
@@ -1087,15 +1093,8 @@ def create_app() -> FastAPI:
         "quick_start": {"title": "Quick Start Guide", "kind": "guide", "path": docs_dir / "QUICK_START.md"},
         "testing_patterns": {"title": "Testing Patterns", "kind": "guide", "path": docs_dir / "TESTING_PATTERNS.md"},
         "anti_patterns": {"title": "What NOT to Do", "kind": "guide", "path": docs_dir / "ANTI_PATTERNS.md"},
-        # Convenience reference docs (same list as Streamlit dashboard).
-        "how_it_works": {"title": "How It Works", "kind": "reference", "path": root / "HOW_IT_WORKS.md"},
-        "project_summary": {"title": "Project Summary", "kind": "reference", "path": root / "PROJECT_SUMMARY.md"},
-        "crt_quick_reference": {"title": "CRT Quick Reference", "kind": "reference", "path": root / "CRT_QUICK_REFERENCE.md"},
-        "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": root / "CRT_WHITEPAPER.md"},
-        "crt_chat_gui_setup": {"title": "CRT Chat GUI Setup", "kind": "reference", "path": root / "CRT_CHAT_GUI_SETUP.md"},
-        "crt_dashboard_guide": {"title": "CRT Dashboard Guide", "kind": "reference", "path": root / "CRT_DASHBOARD_GUIDE.md"},
-        "multi_agent_user_guide": {"title": "Multi-Agent User Guide", "kind": "reference", "path": root / "MULTI_AGENT_USER_GUIDE.md"},
-        "rag_start_here": {"title": "RAG Start Here", "kind": "reference", "path": root / "RAG_START_HERE.md"},
+        # Convenience reference docs.
+        "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": docs_dir / "CRT_WHITE_PAPER.md"},
     }
 
     # Initialize shared LLM client for all threads (lazy initialization)

@@ -64,7 +64,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
     // Load cloud settings
     getCloudSettings().then(setCloudSettingsState).catch(() => {})
-    getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
+    getCloudUsage().then(setCloudUsage).catch(() => {})
   }, [threadId, authUser])
 
   // POLLING FIX: cloud-usage interval raised from 10s to 30s; pauses when tab is hidden
@@ -74,7 +74,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     function start() {
       if (interval) return
       interval = setInterval(() => {
-        getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
+        getCloudUsage().then(setCloudUsage).catch(() => {})
       }, 30000)
     }
     function stop() {
@@ -464,7 +464,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-xs font-medium uppercase tracking-wide text-white/50">Usage (this session)</div>
                     <button
-                      onClick={() => getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})}
+                      onClick={() => getCloudUsage().then(setCloudUsage).catch(() => {})}
                       className="text-xs text-blue-400 hover:text-blue-300"
                     >refresh</button>
                   </div>

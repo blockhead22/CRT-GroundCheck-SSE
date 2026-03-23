@@ -1,5 +1,5 @@
 # CRT/Aether Roadmap
-Last updated: March 23, 2026
+Last updated: March 23, 2026 (end of Session 5)
 
 ## Completed — Session 5 (March 23)
 - [x] Escalation policy enforcement — `local_only` blocks all cloud fallback paths (primary + late-stage + promotion)
@@ -10,9 +10,10 @@ Last updated: March 23, 2026
 - [x] Self-awareness copy tone pass — reflection prompts reframed from self-flagellation to governed calibration
 - [x] "Who built you?" context gap — added creator/builder patterns to self-referential routing
 - [x] ReasoningInference double load fix — engine cache race condition (TOCTOU) fixed with lock-during-creation
-- [x] ViLT test harness built — SFT vs ViLT A/B comparison across user profiles (results pending)
-- [x] Belief classifier package — `packages/belief_classifier/` with XGBoost contradiction resolver (testing pending)
-- [x] Full subsystem audit — catalogued 16 active + 11 dormant systems in AI_round2, 73 files in D:\CRT
+- [x] ViLT test harness built — SFT baseline: 10% → 75% accuracy, 85% GC pass, 2 hallucinations in 200 steps (35 min). ViLT comparison run in progress.
+- [x] Belief classifier package — `packages/belief_classifier/` with XGBoost contradiction resolver, 26 tests passing
+- [x] Full subsystem audit — catalogued 16 active + 11 dormant systems in AI_round2, 73 files in D:\CRT. Triage: 6 keep, 13 ignore, 4 merge.
+- [x] Doc cleanup — removed 7 dead entries from doc_map, fixed ViLT writeup date, fixed ShowcasePage broken link, archived IMPLEMENTATION_PLAN.md
 
 ## Completed — Session 4 (March 22 overnight + March 23 morning)
 - [x] Cloud bypass toggle — raw model access with CRT skip

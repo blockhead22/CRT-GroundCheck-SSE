@@ -330,12 +330,13 @@ python tools/agent_adversarial_driver.py --url http://127.0.0.1:8123 --mode auto
 
 ## ViLT Experiments
 
-| Model | Trainable Params | Steps | Accuracy | Notes |
-|---|---|---|---|---|
-| DNNT v2.2 | 6.2M | 200 | 62% | Capacity ceiling, mode collapse |
-| DNNT v3 | 6.2M | 500 | 62% | Anti-gaming fixes applied, capacity bottleneck persisted |
-| SmolLM-135M + LoRA | 1.8M (1.4%) | 200 | 88% | No mode collapse. 0.52 GB VRAM. |
-| Qwen2.5-1.5B + LoRA | 4.4M (0.28%) | 200 | 88% | GC pass 62% to 75%. 3.05 GB VRAM. |
+| Model | Trainable Params | Steps | Accuracy | GC Pass | Notes |
+|---|---|---|---|---|---|
+| DNNT v2.2 | 6.2M | 200 | 62% | — | Capacity ceiling, mode collapse |
+| DNNT v3 | 6.2M | 500 | 62% | — | Anti-gaming fixes applied, capacity bottleneck persisted |
+| SmolLM-135M + LoRA | 1.8M (1.4%) | 200 | 88% | — | No mode collapse. 0.52 GB VRAM. |
+| Qwen2.5-1.5B + LoRA | 4.4M (0.28%) | 200 | 88% | 75% | GC pass 62% to 75%. 3.05 GB VRAM. |
+| SmolLM-135M SFT baseline (Session 5) | 1.8M (1.4%) | 200 | 75% | 85% | 16 facts, 246 queries, 35 min on RTX 3060. Hallucinations: 2/20. |
 
 ```bash
 # Train ViLT
@@ -395,40 +396,45 @@ python scripts/vilt_chat.py --facts data/my_facts.json
 
 ## Current Status (March 2026)
 
-### Working
+### Working (16 Active Subsystems)
 
 - Memory governance: trust-weighted storage, belief/speech separation, slot-level exclusivity
 - Contradiction ledger: detection, preservation, disclosure, user-driven resolution
 - GroundCheck: sub-2ms post-generation semantic verification
 - Mid-stream verification: fact-checks during generation
 - 3-tier cloud routing: local, OpenAI, Claude with seamless timeout recovery
+- Escalation policy: `local_only` enforced — generation stays local, cloud governance (slot/NLI) runs independently
 - Cloud-only generation mode: model selector lets users choose Local, GPT-4o, or Claude as primary generator
 - Self-referential routing: 70+ patterns, grounded in self-model
-- Heartbeat loop: trust decay, memory compression, self-reflection
+- Heartbeat loop: trust decay, memory compression, self-reflection, behavioral directives
+- Reflection-to-behavior loop: blindspot flags modify gate thresholds and prompt calibration
 - Adaptive compression: significance-scored tier system
 - Settings dashboard: profile, cloud toggles, known facts, usage tracking
+- Cloud usage tracking: every cloud API call logged with metadata in SQLite
 - LLM tool loop: iterative agentic execution with checkpoint confirmation
 - Governed memory: authority levels, channel routing, provenance tracking
+- Frontend observability: generation source pills (Local/GPT/Claude/Fallback) + cloud governance badges on messages
 
-### Session 3 (March 22, 2026)
+### Session 5 (March 23, 2026)
 
-- **Slot-level exclusivity enforcement at ingestion** — exclusive slots (`favorite_color`, `name`, `birthday`) now allow only one active value. Old values are demoted to 0.4x trust with `superseded` provenance, not deleted.
-- **Cloud generation fallback** — local timeout cascades to OpenAI, then Claude. The CRT pipeline (memory, contradictions, verification, trust) stays local regardless of which generator produces the response.
-- **Cloud-only generation mode** — model selector in chat UI lets users swap between Local, GPT-4o, and Claude as primary generator. Selection persists via settings.
-- **Claude Tier 2 fully configured** — cookie provider, settings toggles, daily limits, and token tracking all wired end-to-end.
-- **Greeting gate bypass** — greetings no longer fire `contradiction_disclosure`, eliminating false positives on simple hellos.
-- **Trust re-boost blocked on demoted memories** — once a memory is demoted via slot exclusivity, it cannot regain trust through re-boost.
-- **Name persistence chain fixed** — resolved 4 bugs: double-FACT wrapping, `display_name` not reaching the LLM, no deterministic injection, and profile propagation failure.
-- **Self-referential routing expanded** — 70+ patterns now recognized, up from ~40.
-- **Cloud fallback catches gate failures** — if local generation fails at the gate level, cloud fallback engages instead of returning an error.
-- **Health poll intervals reduced** — health checks moved from 5s to 15s, copilot polls from 2s to 5s, cutting idle network traffic significantly.
-- **Generic opener removed** — all prompt templates no longer include a canned opening line, producing more natural responses.
+- **Escalation policy enforcement** — `local_only` blocks all cloud fallback paths. Generation and governance are independently configurable: local generation + cloud slot classification/NLI is a supported mode.
+- **ViLT test harness + SFT baseline** — built A/B comparison framework. SFT baseline on SmolLM-135M: 10% → 75% accuracy in 200 steps (35 min on RTX 3060). GC pass rate: 85%. ViLT comparison run pending.
+- **Belief classifier package** — standalone XGBoost package at `packages/belief_classifier/`. Classifies contradictions as REFINEMENT/REVISION/TEMPORAL/CONFLICT, recommends OVERRIDE/PRESERVE/ASK_USER policy. 26 tests passing.
+- **Cloud usage tracking DB** — `cloud_usage_log` table with full metadata per call. `/api/cloud-usage/summary` endpoint for future dashboards.
+- **Console log cleanup** — standardized `[GENERATION]`, `[GOVERNANCE]`, `[REQUEST_SUMMARY]` prefixes. One-line summary per request.
+- **Frontend pill cards** — color-coded generation source + cloud governance badges on every message.
+- **Reflection-to-behavior loop** — behavioral directives from self-model blindspots inject hedging and raise gate thresholds on weak domains.
+- **Self-awareness tone pass** — reflection prompts reframed from self-flagellation to governed calibration.
+- **"Who built you?" fix** — creator/builder context now pulled from self-referential patterns.
+- **ReasoningInference double load fix** — engine cache race condition resolved with lock-during-creation.
+- **Full subsystem audit** — catalogued 16 active + 11 dormant systems. Triage: 6 keep, 13 ignore, 4 merge.
 
 ### Not Yet Complete
 
-- **XGBoost classifiers**: Not yet trained. Heuristic fallback is active and functional but less precise.
-- **Reflection-to-behavior loop**: Stores reflections but does not yet act on them. The loop is not closed.
+- **ViLT integration**: SFT baseline proven (75% acc), ViLT comparison run in progress. Heartbeat trigger not yet wired.
+- **XGBoost classifiers**: Package built, needs training on real ledger data before integration.
 - **Blindside resistance**: Identity wipe attacks succeed 3/5 times in adversarial testing.
+- **Remaining bugs**: typo-resilient slot matching, memory demotion source filter, cookie leak when Claude toggled off.
 - **Library extraction (Phase C)**: GroundCheck, crt-ledger, crt-trust, crt-gates not yet published as standalone packages.
 
 ---
