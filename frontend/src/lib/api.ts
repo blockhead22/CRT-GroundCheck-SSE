@@ -450,6 +450,8 @@ export type StreamCallbacks = {
   onPhaseEnd?: (phase: string) => void
   onToken?: (token: string) => void
   onCorrection?: (content: string) => void
+  onStreamCheckpoint?: (content: string, metadata?: Record<string, unknown>) => void
+  onStreamStopped?: (content: string, metadata?: Record<string, unknown>) => void
   onDone?: (content: string, metadata?: Record<string, unknown>) => void
   onError?: (error: string) => void
 }
@@ -620,6 +622,15 @@ export async function streamFromCrtApi(args: {
                 break
               case 'correction':
                 args.callbacks.onCorrection?.(event.content)
+                break
+              case 'stream_checkpoint':
+                args.callbacks.onStreamCheckpoint?.(event.content, event.metadata)
+                // Also emit as a status so PipelineTrace picks it up
+                args.callbacks.onStatus?.(`⬡ ${event.content}`)
+                break
+              case 'stream_stopped':
+                args.callbacks.onStreamStopped?.(event.content, event.metadata)
+                args.callbacks.onStatus?.(`⚡ ${event.content}`)
                 break
               case 'done':
                 args.callbacks.onDone?.(event.content, event.metadata)

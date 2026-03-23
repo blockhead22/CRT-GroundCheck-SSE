@@ -8,9 +8,11 @@ Contains:
 
 from __future__ import annotations
 
+import contextvars
 import json
 import logging
 import os
+import queue as _queue_mod
 import re
 import sqlite3
 import threading
@@ -54,6 +56,20 @@ from personal_agent.scheduled_tasks import schedule_reminder, extract_reminder_f
 from personal_agent.fact_slots import extract_fact_slots
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Pipeline status queue — allows chat_send stages to push real-time status
+# events that the SSE generator can yield to the frontend.
+# ---------------------------------------------------------------------------
+_pipeline_status_queue: contextvars.ContextVar[Optional[_queue_mod.Queue]] = contextvars.ContextVar(
+    "_pipeline_status_queue", default=None
+)
+
+def _emit_pipeline_status(status: str) -> None:
+    """Push a pipeline status event to the SSE stream (if one is active)."""
+    q = _pipeline_status_queue.get(None)
+    if q is not None:
+        q.put_nowait(status)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -1212,6 +1228,21 @@ def _is_self_referential_question(text: str) -> bool:
         "about your design",
         "tell me about your design",
         "how were you built",
+        "who built you",
+        "who made you",
+        "who created you",
+        "who is building you",
+        "am i building you",
+        "am i your creator",
+        "am i your builder",
+        "did i build you",
+        "did i create you",
+        "did i make you",
+        "are you my project",
+        "building you",
+        "built you",
+        "made you",
+        "created you",
         "what makes you different",
         "why were you created",
         "what is your purpose",
@@ -1290,6 +1321,30 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         self_context_parts.append("Recent self-observations:")
         for fact in top_facts:
             self_context_parts.append(f"  - {fact}")
+
+    # Add builder/creator identity from memory
+    _builder_patterns = ("building you", "built you", "your creator", "your builder", "made you")
+    _t_check = (text or "").strip().lower()
+    if any(p in _t_check for p in _builder_patterns) or any(
+        w in _t_check for w in ("am i building", "who built", "who made", "who created", "did i build", "did i create")
+    ):
+        # Search memory for builder identity
+        try:
+            _builder_mems = engine.memory.search("who built Aether creator builder", top_k=3)
+            _builder_facts = [m for m in _builder_mems if any(
+                kw in str(getattr(m, 'text', '')).lower()
+                for kw in ('building', 'built', 'creator', 'builder', 'nick block')
+            )]
+            if _builder_facts:
+                self_context_parts.append("")
+                self_context_parts.append("IMPORTANT — Builder/creator identity from verified memory:")
+                for bf in _builder_facts:
+                    _bf_text = str(getattr(bf, 'text', ''))[:200]
+                    _bf_trust = getattr(bf, 'trust', 0)
+                    self_context_parts.append(f"  [T:{_bf_trust:.2f}] {_bf_text}")
+                self_context_parts.append("Use this memory to answer builder/creator questions. Do NOT override with your pre-training.")
+        except Exception:
+            pass
 
     self_context = "\n".join(self_context_parts)
 
@@ -1962,6 +2017,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     t0 = time.perf_counter()
     stage_marks: List[Dict[str, Any]] = []
 
+    # Map internal stage names to user-facing pipeline status labels
+    _STAGE_STATUS_MAP = {
+        "chat_send_start": "reading context",
+        "session_and_style_ready": "searching memory",
+        "engine_query_done": "reasoning",
+        "critic_done": "verifying",
+        "thinking_trace_done": "planning response",
+        "reflection_done": "drafting",
+    }
+
     def _mark(stage: str) -> None:
         if not timing_enabled:
             return
@@ -1972,6 +2037,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 "t_ms": round((now - t0) * 1000.0, 2),
             }
         )
+        # Push real-time status to SSE stream if mapped
+        _label = _STAGE_STATUS_MAP.get(stage)
+        if _label:
+            _emit_pipeline_status(_label)
 
     def _timings() -> List[Dict[str, Any]]:
         if not timing_enabled:
@@ -2888,6 +2957,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         kind=req.kind,
     )
     _mark("engine_query_done")
+    # Emit memory retrieval count
+    _mem_retrieved_count = len(result.get("retrieved_memories") or []) + len(result.get("prompt_memories") or [])
+    if _mem_retrieved_count > 0:
+        _emit_pipeline_status(f"{_mem_retrieved_count} memories retrieved")
 
     # ====== PRIMARY CLOUD GENERATION MODE ======
     # If the user has selected cloud as their PRIMARY generator, replace the
@@ -2903,6 +2976,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _uid_gen = int(uid) if uid else 1
         _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "local") or "local").strip()
         print(f"[GENERATION] mode_select: generation_mode={_generation_mode}, uid={_uid_gen}")
+        _emit_pipeline_status(f"generating ({_generation_mode})")
 
         # --- Escalation policy: may promote local → cloud for this request ---
         _escalation_decision = None
@@ -3181,7 +3255,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         except Exception:
                             pass
                     else:
-                        # OpenAI failed — escalate to Claude (Tier 2)
+                        # OpenAI failed — escalate to Claude (Tier 2) if enabled
                         print("[GENERATION] fallback: OpenAI returned None, escalating to Claude (Tier 2)")
                         try:
                             _esc_policy.record_failure("openai", "returned_none")
@@ -3199,56 +3273,63 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             )
                         except Exception:
                             pass
-                        _t_cfb = time.perf_counter()
-                        _claude_answer = _cloud_gen_svc.generate_response_claude(
-                            user_message=effective_message,
-                            retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
-                            conversation_history=_cg_history,
-                            self_model_snapshot=_cg_self_model,
-                        )
-                        _lat_cfb = int((time.perf_counter() - _t_cfb) * 1000)
-                        if _claude_answer:
-                            result["answer"] = _claude_answer
-                            result["generation_source"] = "cloud_fallback_claude"
-                            _gen_tracking["gen"] = "cloud_fallback_claude"
-                            if _is_gate_fail_empty:
-                                result["gates_passed"] = True
-                                result["gate_reason"] = "cloud_fallback_recovery"
-                            print(f"[GENERATION] fallback: Claude succeeded, {len(_claude_answer)} chars")
-                            try:
-                                _esc_policy.record_success("claude")
-                            except Exception:
-                                pass
-                            try:
-                                _track_cloud_call(
-                                    call_type="generation_fallback_claude",
-                                    provider="claude_cookie", model="claude-sonnet",
-                                    latency_ms=_lat_cfb, success=True,
-                                    thread_id=req.thread_id, uid=int(uid) if uid else None,
-                                    output_text=_claude_answer,
-                                    escalation_reason=_fallback_reason,
-                                    user_message=effective_message,
-                                )
-                            except Exception:
-                                pass
+                        # Check if Claude is enabled before calling
+                        _claude_enabled = str(
+                            _auth_cg.get_user_setting(_uid_cg, "cloud_claude_enabled", "false")
+                        ).lower() in ("true", "1", "yes", "on")
+                        if not _claude_enabled:
+                            print("[GENERATION] fallback: Claude disabled by user setting, skipping Tier 2")
                         else:
-                            print("[GENERATION] fallback: Claude also returned None, keeping local error")
-                            try:
-                                _esc_policy.record_failure("claude", "returned_none")
-                            except Exception:
-                                pass
-                            try:
-                                _track_cloud_call(
-                                    call_type="generation_fallback_claude",
-                                    provider="claude_cookie", model="claude-sonnet",
-                                    latency_ms=_lat_cfb, success=False,
-                                    thread_id=req.thread_id, uid=int(uid) if uid else None,
-                                    error_type="returned_none",
-                                    escalation_reason=_fallback_reason,
-                                    user_message=effective_message,
-                                )
-                            except Exception:
-                                pass
+                            _t_cfb = time.perf_counter()
+                            _claude_answer = _cloud_gen_svc.generate_response_claude(
+                                user_message=effective_message,
+                                retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
+                                conversation_history=_cg_history,
+                                self_model_snapshot=_cg_self_model,
+                            )
+                            _lat_cfb = int((time.perf_counter() - _t_cfb) * 1000)
+                            if _claude_answer:
+                                result["answer"] = _claude_answer
+                                result["generation_source"] = "cloud_fallback_claude"
+                                _gen_tracking["gen"] = "cloud_fallback_claude"
+                                if _is_gate_fail_empty:
+                                    result["gates_passed"] = True
+                                    result["gate_reason"] = "cloud_fallback_recovery"
+                                print(f"[GENERATION] fallback: Claude succeeded, {len(_claude_answer)} chars")
+                                try:
+                                    _esc_policy.record_success("claude")
+                                except Exception:
+                                    pass
+                                try:
+                                    _track_cloud_call(
+                                        call_type="generation_fallback_claude",
+                                        provider="claude_cookie", model="claude-sonnet",
+                                        latency_ms=_lat_cfb, success=True,
+                                        thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                        output_text=_claude_answer,
+                                        escalation_reason=_fallback_reason,
+                                        user_message=effective_message,
+                                    )
+                                except Exception:
+                                    pass
+                            else:
+                                print("[GENERATION] fallback: Claude also returned None, keeping local error")
+                                try:
+                                    _esc_policy.record_failure("claude", "returned_none")
+                                except Exception:
+                                    pass
+                                try:
+                                    _track_cloud_call(
+                                        call_type="generation_fallback_claude",
+                                        provider="claude_cookie", model="claude-sonnet",
+                                        latency_ms=_lat_cfb, success=False,
+                                        thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                        error_type="returned_none",
+                                        escalation_reason=_fallback_reason,
+                                        user_message=effective_message,
+                                    )
+                                except Exception:
+                                    pass
                 else:
                     print("[GENERATION] fallback: cloud service not initialized")
             else:
@@ -3288,6 +3369,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc = get_cloud_feature_service()
                 print(f"[GOVERNANCE] slot_classify: no local slots, cloud_enabled={_cloud_slot_enabled}, cloud_svc={_cloud_svc is not None}")
+                _emit_pipeline_status("classifying slots")
                 if _cloud_svc is not None:
                     # Gather existing slot names from memory for context
                     _existing_slots = []
@@ -3364,11 +3446,26 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                     _fact_rows = _cur_ex.fetchall()
                                     _conn_ex.close()
                                     print(f"[GOVERNANCE] slot_exclusivity: text_search={len(_text_rows)} rows, facts_table={len(_fact_rows)} rows")
+                                    # Only demote user-sourced memories, not Aether's narrative
+                                    _SKIP_DEMOTION_SOURCES = {'model_output', 'system', 'tool_receipt'}
+                                    def _should_skip_demotion(mem_id: str) -> bool:
+                                        try:
+                                            _conn_sk = engine.memory._get_connection()
+                                            _cur_sk = _conn_sk.cursor()
+                                            _cur_sk.execute("SELECT source_kind FROM memories WHERE memory_id = ?", (mem_id,))
+                                            _row_sk = _cur_sk.fetchone()
+                                            _conn_sk.close()
+                                            return (_row_sk[0] or 'principal') in _SKIP_DEMOTION_SOURCES if _row_sk else False
+                                        except Exception:
+                                            return False
                                     # Demote from text search (catches entries not in memory_facts)
                                     _demoted_ids = set()
                                     for _ex_mem_id, _ex_text, _ex_trust in _text_rows:
                                         if _new_val_norm in str(_ex_text).lower():
                                             continue  # Contains the new value — same side
+                                        if _should_skip_demotion(_ex_mem_id):
+                                            print(f"[GOVERNANCE] slot_exclusivity: SKIPPED {_ex_mem_id} (non-user source)")
+                                            continue
                                         _demoted = float(_ex_trust) * 0.4
                                         engine.memory._update_memory_trust(_ex_mem_id, _demoted)
                                         _demoted_ids.add(_ex_mem_id)
@@ -3382,6 +3479,9 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                         if _ex_mem_id in _demoted_ids:
                                             continue
                                         if str(_ex_norm).strip().lower() == _new_val_norm:
+                                            continue
+                                        if _should_skip_demotion(_ex_mem_id):
+                                            print(f"[GOVERNANCE] slot_exclusivity: SKIPPED {_ex_mem_id} (non-user source)")
                                             continue
                                         _demoted = float(_ex_trust) * 0.4
                                         engine.memory._update_memory_trust(_ex_mem_id, _demoted)
@@ -3523,6 +3623,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _critic_confidence = float((critic_meta or {}).get("confidence") or 0.0)
         _critic_verdict_str = str((critic_meta or {}).get("verdict") or "")
         print(f"[GOVERNANCE] nli: critic verdict={_critic_verdict_str}, confidence={_critic_confidence}")
+        _emit_pipeline_status("checking contradictions")
         if _critic_verdict_str == "soft_fail" and 0.4 <= _critic_confidence <= 0.7:
             import auth as _auth_mod_nli
             _uid_int_nli = int(uid) if uid else 1
@@ -3958,36 +4059,43 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         except Exception:
                             pass
                         else:
-                            # OpenAI failed — escalate to Claude (Tier 2)
-                            print("[GENERATION] late_fallback: OpenAI returned None, escalating to Claude (Tier 2)")
-                            _t_late_c = time.perf_counter()
-                            _cg2_claude = _cloud_gen_svc2.generate_response_claude(
-                                user_message=effective_message,
-                                retrieved_memories=_cg2_memories,
-                                conversation_history=recent_history or None,
-                            )
-                            _lat_late_c = int((time.perf_counter() - _t_late_c) * 1000)
-                            if _cg2_claude:
-                                final_answer = _cg2_claude
-                                if greeting_text:
-                                    final_answer = f"{greeting_text}\n\n{final_answer}"
-                                result["generation_source"] = "cloud_fallback_claude"
-                                print(f"[GENERATION] late_fallback: Claude succeeded, {len(_cg2_claude)} chars")
-                            try:
-                                _track_cloud_call(
-                                    call_type="generation_fallback_claude",
-                                    provider="claude_cookie", model="claude-sonnet",
-                                    latency_ms=_lat_late_c, success=True,
-                                    thread_id=req.thread_id, uid=int(uid) if uid else None,
-                                    output_text=_cg2_claude,
-                                    escalation_reason="leaked_error_string",
-                                    user_message=effective_message,
-                                )
-                            except Exception:
-                                pass
-                            else:
-                                print("[GENERATION] late_fallback: Claude also returned None")
+                            # OpenAI failed — escalate to Claude (Tier 2) if enabled
+                            _claude_enabled2 = str(
+                                _auth_cg2.get_user_setting(_uid_cg2, "cloud_claude_enabled", "false")
+                            ).lower() in ("true", "1", "yes", "on")
+                            if not _claude_enabled2:
+                                print("[GENERATION] late_fallback: Claude disabled by user setting, skipping Tier 2")
                                 final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
+                            else:
+                                print("[GENERATION] late_fallback: OpenAI returned None, escalating to Claude (Tier 2)")
+                                _t_late_c = time.perf_counter()
+                                _cg2_claude = _cloud_gen_svc2.generate_response_claude(
+                                    user_message=effective_message,
+                                    retrieved_memories=_cg2_memories,
+                                    conversation_history=recent_history or None,
+                                )
+                                _lat_late_c = int((time.perf_counter() - _t_late_c) * 1000)
+                                if _cg2_claude:
+                                    final_answer = _cg2_claude
+                                    if greeting_text:
+                                        final_answer = f"{greeting_text}\n\n{final_answer}"
+                                    result["generation_source"] = "cloud_fallback_claude"
+                                    print(f"[GENERATION] late_fallback: Claude succeeded, {len(_cg2_claude)} chars")
+                                try:
+                                    _track_cloud_call(
+                                        call_type="generation_fallback_claude",
+                                        provider="claude_cookie", model="claude-sonnet",
+                                        latency_ms=_lat_late_c, success=True,
+                                        thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                        output_text=_cg2_claude,
+                                        escalation_reason="leaked_error_string",
+                                        user_message=effective_message,
+                                    )
+                                except Exception:
+                                    pass
+                                if not _cg2_claude:
+                                    print("[GENERATION] late_fallback: Claude also returned None")
+                                    final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
                     else:
                         final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
                 else:
@@ -4608,24 +4716,16 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             except Exception as _ipe:
                 logger.debug("[STREAM] intent pre-pass failed: %s", _ipe)
 
-            yield _phase('plan', 'Retrieving memory')
-            yield _status('searching memory')
+            yield _phase('plan', 'Processing')
 
-            # Hint at what type of processing will happen
-            if any(w in q_lower for w in ('contradict', 'conflict', 'remember', 'told you', 'said')):
-                yield _status('checking contradictions')
-            elif any(w in q_lower for w in ('code', 'python', 'function', 'script', 'write', 'build')):
-                yield _status('accessing tools')
-            elif any(w in q_lower for w in ('research', 'search', 'find', 'look up')):
-                yield _status('running agent')
-            else:
-                yield _status('analyzing query')
-
-            # ── Run pipeline in background, emit heartbeats while waiting ─
+            # ── Run pipeline in background, emit real status events ──────
             result_q: _queue.Queue = _queue.Queue()
             err_q: _queue.Queue = _queue.Queue()
+            status_q: _queue.Queue = _queue.Queue()
 
             def _run():
+                # Set the pipeline status queue so _emit_pipeline_status works
+                _pipeline_status_queue.set(status_q)
                 try:
                     result_q.put(_run_shared_chat_pipeline(req, request))
                 except Exception as exc:
@@ -4634,16 +4734,34 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             t = threading.Thread(target=_run, daemon=True)
             t.start()
 
-            _heartbeats = ['reasoning', 'planning response', 'verifying', 'drafting']
-            _hb_idx = 0
-            _last_hb = _time.monotonic()
-            _hb_max = len(_heartbeats) * 2  # cap at 2 full cycles
+            _last_status_t = _time.monotonic()
+            _fallback_idx = 0
+            _fallback_statuses = ['reasoning', 'planning response', 'verifying', 'drafting']
             while t.is_alive():
+                # Drain any real pipeline status events
+                _got_real = False
+                try:
+                    while True:
+                        _ps = status_q.get_nowait()
+                        yield _status(_ps)
+                        _last_status_t = _time.monotonic()
+                        _got_real = True
+                except _queue_mod.Empty:
+                    pass
+                # If no real status in 2.5s, emit a fallback heartbeat
+                if not _got_real and _time.monotonic() - _last_status_t > 2.5:
+                    if _fallback_idx < len(_fallback_statuses):
+                        yield _status(_fallback_statuses[_fallback_idx])
+                        _fallback_idx += 1
+                        _last_status_t = _time.monotonic()
                 _time.sleep(0.05)
-                if _time.monotonic() - _last_hb > 1.4 and _hb_idx < _hb_max:
-                    yield _status(_heartbeats[_hb_idx % len(_heartbeats)])
-                    _hb_idx += 1
-                    _last_hb = _time.monotonic()
+
+            # Drain any remaining status events after thread completes
+            try:
+                while True:
+                    yield _status(status_q.get_nowait())
+            except _queue_mod.Empty:
+                pass
 
             t.join()
 

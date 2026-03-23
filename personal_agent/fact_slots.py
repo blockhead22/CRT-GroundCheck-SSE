@@ -1181,8 +1181,9 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # Examples:
     # - "My favorite color is orange."
     # - "My favourite colour is light blue."
+    # - "My favortie color is orange." (common typos)
     m = re.search(
-        r"\bmy\s+favou?rite\s+colou?r\s+is\s+([^\n\r;,!\?]{2,60})",
+        r"\bmy\s+fav(?:ou?rite|ortie|orite|ourite|rite)\s+colou?r\s+is\s+([^\n\r;,!\?]{2,60})",
         text,
         flags=re.IGNORECASE,
     )
@@ -1212,7 +1213,7 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
     # - "My favourite book is 1984"
     if "favorite_color" not in facts:  # Don't override specific patterns
         m = re.search(
-            r"\bmy\s+favou?rite\s+([a-z_]+)\s+is\s+([^\n\r;,!\?]{2,60})",
+            r"\bmy\s+fav(?:ou?rite|ortie|orite|ourite|rite)\s+([a-z_]+)\s+is\s+([^\n\r;,!\?]{2,60})",
             text,
             flags=re.IGNORECASE,
         )

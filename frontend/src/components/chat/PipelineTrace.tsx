@@ -15,6 +15,8 @@ export function classifyStatus(s: string): StepMeta {
   if (l.includes('planning'))                   return { icon: '≡', tooltip: 'Structuring the response approach — deciding what to include and in what order', color: '#E0A080' }
   if (l.includes('verif'))                      return { icon: '⬡', tooltip: 'Running GroundCheck verification — checking response against stored memory for accuracy', color: '#d4a84b' }
   if (l.includes('drafting'))                   return { icon: '✦', tooltip: 'Generating the final response text based on the verified plan', color: '#F0EBE1' }
+  if (l.includes('generating'))                 return { icon: '✦', tooltip: `Model generation — ${s}`, color: '#F0EBE1' }
+  if (l.includes('classifying slot'))           return { icon: '⬡', tooltip: 'Classifying user input for personal fact slots (name, location, etc.)', color: '#d4a84b' }
   if (l.includes('gate'))                       return { icon: '⬡', tooltip: `Gate check result — ${s}`, color: '#d4a84b' }
   if (l.match(/\d+ mem/))                       return { icon: '◈', tooltip: 'Retrieved memory items used to ground this response', color: '#E0A080' }
   if (l.includes('agent activated'))            return { icon: '⟳', tooltip: 'Agent was invoked — check agent trace for step details', color: '#E0A080' }
