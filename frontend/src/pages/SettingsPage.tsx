@@ -41,6 +41,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   const [tab, setTab] = useState<SettingsTab>('profile')
   const [displayName, setDisplayName] = useState('')
   const [nickname, setNickname] = useState('')
+  const [agentName, setAgentName] = useState('Aether')
   const [slots, setSlots] = useState<Record<string, string>>({})
   const [newFactKey, setNewFactKey] = useState('')
   const [newFactValue, setNewFactValue] = useState('')
@@ -58,12 +59,15 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     setSaved(false)
 
     getProfile(threadId).then((p) => {
-      setNickname(p.slots?.nickname || p.slots?.preferred_name || '')
       setSlots(p.slots || {})
     }).catch(() => {})
 
-    // Load cloud settings
-    getCloudSettings().then(setCloudSettingsState).catch(() => {})
+    // Load cloud settings (includes preferred_nickname and agent_name)
+    getCloudSettings().then((cs) => {
+      setCloudSettingsState(cs)
+      if (cs?.preferred_nickname) setNickname(cs.preferred_nickname)
+      if (cs?.agent_name) setAgentName(cs.agent_name)
+    }).catch(() => {})
     getCloudUsage().then(setCloudUsage).catch(() => {})
   }, [threadId, authUser])
 
@@ -95,20 +99,33 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   async function handleSave() {
     setSaving(true)
     try {
-      if (displayName.trim() && displayName.trim() !== authUser?.display_name) {
-        const res = await updateAuthProfile({ display_name: displayName.trim() })
-        if (res.ok) onDisplayNameChanged(displayName.trim())
+      if (displayName.trim()) {
+        // Try auth update first (if logged in), fall back to profile-only
+        try {
+          const res = await updateAuthProfile({ display_name: displayName.trim() })
+          if (res.ok) onDisplayNameChanged(displayName.trim())
+        } catch {
+          // No auth session — still update via profile name
+        }
+        // Always propagate to parent regardless of auth
+        onDisplayNameChanged(displayName.trim())
       }
 
-      const factsToSet: Record<string, string> = {}
-      if (nickname.trim()) factsToSet.nickname = nickname.trim()
+      // Save nickname and agent name as auth settings (not memory facts)
+      const settingsToSave: Record<string, string> = {}
+      if (nickname.trim() !== (cloudSettings?.preferred_nickname || '')) {
+        settingsToSave.preferred_nickname = nickname.trim()
+      }
+      if (agentName.trim() !== (cloudSettings?.agent_name || 'Aether')) {
+        settingsToSave.agent_name = agentName.trim()
+      }
+      if (Object.keys(settingsToSave).length > 0) {
+        await updateCloudSettings(settingsToSave)
+        setCloudSettingsState((prev) => prev ? { ...prev, ...settingsToSave } : prev)
+      }
 
       if (displayName.trim()) {
         await setProfileName({ threadId, name: displayName.trim() })
-      }
-
-      if (Object.keys(factsToSet).length > 0) {
-        await setProfileFacts(threadId, factsToSet)
       }
 
       onProfileUpdated()
@@ -260,10 +277,21 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     <input
                       value={nickname}
                       onChange={(e) => setNickname(e.target.value)}
-                      placeholder="What should Aether call you?"
+                      placeholder="What should the agent call you?"
                       className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
                     />
-                    <p className="mt-1 text-xs text-white/40">Aether will use this name when talking to you</p>
+                    <p className="mt-1 text-xs text-white/40">The agent will use this name when talking to you</p>
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-sm text-white/70">Agent Name</label>
+                    <input
+                      value={agentName}
+                      onChange={(e) => setAgentName(e.target.value)}
+                      placeholder="Aether"
+                      className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Your AI agent's name — shown in chat and system prompts</p>
                   </div>
                 </div>
 

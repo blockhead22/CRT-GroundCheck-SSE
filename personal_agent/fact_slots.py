@@ -749,23 +749,29 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         is_count_suffix = slot.endswith("_count") and len(slot) > 6
         
         # Accept if it's a core slot OR a recognized dynamic pattern
-        if (is_core_slot or is_favorite or is_preference or 
-            is_my_prefix or is_name_suffix or is_type_suffix or 
+        if (is_core_slot or is_favorite or is_preference or
+            is_my_prefix or is_name_suffix or is_type_suffix or
             is_status_suffix or is_count_suffix) and value_raw:
+            # Clean name values — strip trailing stopwords like "remember", "please"
+            if slot == "name":
+                _name_stop = {"remember", "recall", "please", "thanks", "okay", "ok",
+                              "btw", "lol", "haha", "right", "though", "actually"}
+                _name_tokens = value_raw.split()
+                while len(_name_tokens) > 1 and _name_tokens[-1].lower() in _name_stop:
+                    _name_tokens.pop()
+                value_raw = " ".join(_name_tokens)
             facts[slot] = ExtractedFact(slot, value_raw, _norm_text(value_raw))
             return facts
 
-    # Name
-    # Examples:
-    # - "My name is Sarah."
-    # - "Yes, I'm Sarah"
-    # - "Call me Sarah"
-    # - "Nick not Ben" (short correction)
-    # Allow multi-token names (e.g., "Nick Block"), but keep it conservative.
-    # For "I'm ..." specifically, require a name-like token to avoid false positives
-    # like "I'm glad you asked".
-    # CRITICAL: Name patterns should NOT greedily consume conjunctions + pronouns.
-    # "My name is nick but you said sarah" should extract "nick", not "nick but you".
+    # ──────────────────────────────────────────────────────────────────────
+    # NAME EXTRACTION DISABLED (Session 6, March 2026)
+    # Names should be set explicitly via Settings → Profile, not inferred
+    # from conversation. Auto-extraction produced garbage like "Nick remember".
+    # The auth.display_name field is the canonical source of truth.
+    # ──────────────────────────────────────────────────────────────────────
+    # Legacy patterns kept but gated behind a flag for future reference.
+    _EXTRACT_NAMES_FROM_CONVERSATION = False
+
     name_pat = r"([A-Za-z][A-Za-z'-]{1,40}(?:\s+[A-Za-z][A-Za-z'-]{1,40}){0,2})"
     name_pat_title = r"([A-Z][A-Za-z'-]{1,40}(?:\s+[A-Z][A-Za-z'-]{1,40}){0,2})"
     
@@ -1536,6 +1542,12 @@ def extract_fact_slots(text: str) -> Dict[str, ExtractedFact]:
         if m:
             employer = m.group(1).strip().rstrip(",.")
             facts["employer"] = ExtractedFact("employer", employer, _norm_text(employer))
+
+    # Strip name/assistant_name if auto-extraction is disabled.
+    # Names should come from auth.display_name, not conversation inference.
+    if not _EXTRACT_NAMES_FROM_CONVERSATION:
+        facts.pop("name", None)
+        facts.pop("assistant_name", None)
 
     return facts
 

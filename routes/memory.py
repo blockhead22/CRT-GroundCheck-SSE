@@ -207,7 +207,20 @@ def get_profile(request: Request, thread_id: str = Query(default="default"), aut
         for slot, fact in (engine.get_effective_user_facts(thread_id=tid) or {}).items()
         if str((fact or {}).get("value") or "").strip()
     }
-    name = slots.get("name")
+    # Canonical name: auth display_name > memory-extracted name slot
+    name = None
+    if uid:
+        try:
+            import auth as _auth_profile
+            _user = _auth_profile.get_user_by_id(int(uid))
+            name = (_user or {}).get("display_name") or None
+        except Exception:
+            pass
+    if not name:
+        name = slots.get("name")
+    # Don't expose stale name slot in profile if auth has a display_name
+    if name and slots.get("name") and name != slots.get("name"):
+        slots["name"] = name  # Sync slot to match auth
     return ProfileResponse(thread_id=tid, name=name, slots=slots)
 
 

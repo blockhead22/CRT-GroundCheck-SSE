@@ -1095,6 +1095,9 @@ def create_app() -> FastAPI:
         "anti_patterns": {"title": "What NOT to Do", "kind": "guide", "path": docs_dir / "ANTI_PATTERNS.md"},
         # Convenience reference docs.
         "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": docs_dir / "CRT_WHITE_PAPER.md"},
+        # Project-level docs served from repo root.
+        "changelog": {"title": "Changelog", "kind": "meta", "path": root / "CHANGELOG.md"},
+        "roadmap": {"title": "Roadmap", "kind": "meta", "path": root / "ROADMAP.md"},
     }
 
     # Initialize shared LLM client for all threads (lazy initialization)

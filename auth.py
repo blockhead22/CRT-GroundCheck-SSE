@@ -479,6 +479,9 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     # Advanced settings
     "bypass_crt": "false",
     "enable_tooling": "false",
+    # Profile — explicit user-controlled identity fields
+    "preferred_nickname": "",
+    "agent_name": "Aether",
 }
 
 

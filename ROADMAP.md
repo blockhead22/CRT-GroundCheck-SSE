@@ -1,19 +1,33 @@
 # CRT/Aether Roadmap
-Last updated: March 23, 2026 (end of Session 5)
+Last updated: March 23, 2026 (end of Session 6)
 
-## Completed — Session 5 (March 23)
+## Completed — Session 6 (March 23 evening)
+- [x] Pipeline trace with real statuses — OpenClaw-style thinking out loud
+- [x] auto_fact_checker crash fix
+- [x] Cookie leak fix — Claude cookie calls no longer fire when Claude toggled off
+- [x] Typo-resilient slot matching ("favortie" vs "favorite")
+- [x] Memory demotion filter — skip model_output/system sources
+- [x] Adversarial identity probes — builder/creator questions routed correctly
+- [x] Belief classifier wired into contradiction lifecycle
+- [x] Name extraction disabled — names sourced from settings only
+- [x] Profile settings UI — Display Name, Preferred Nickname, Agent Name fields
+- [x] Stale profile data cleanup
+
+## Completed — Session 5 (March 23 morning/afternoon)
 - [x] Escalation policy enforcement — `local_only` blocks all cloud fallback paths (primary + late-stage + promotion)
 - [x] Console log cleanup — standardized `[GENERATION]`, `[GOVERNANCE]`, `[REQUEST_SUMMARY]` prefixes; removed redundant debug lines
-- [x] Frontend pill cards — color-coded generation source (Local/GPT/Claude/Fallback) + ☁ Governance badge on messages
+- [x] Frontend pill cards — color-coded generation source (Local/GPT/Claude/Fallback) + governance badge
 - [x] Cloud usage tracking DB — `cloud_usage_log` table with full metadata per cloud call; `/api/cloud-usage/summary` endpoint
 - [x] `result["generation_source"]` always set (was missing on local success path)
 - [x] Self-awareness copy tone pass — reflection prompts reframed from self-flagellation to governed calibration
 - [x] "Who built you?" context gap — added creator/builder patterns to self-referential routing
 - [x] ReasoningInference double load fix — engine cache race condition (TOCTOU) fixed with lock-during-creation
-- [x] ViLT test harness built — SFT baseline: 10% → 75% accuracy, 85% GC pass, 2 hallucinations in 200 steps (35 min). ViLT comparison run in progress.
+- [x] ViLT test harness built — SFT baseline: 10% to 75% accuracy, 85% GC pass, 2 hallucinations in 200 steps
 - [x] Belief classifier package — `packages/belief_classifier/` with XGBoost contradiction resolver, 26 tests passing
-- [x] Full subsystem audit — catalogued 16 active + 11 dormant systems in AI_round2, 73 files in D:\CRT. Triage: 6 keep, 13 ignore, 4 merge.
-- [x] Doc cleanup — removed 7 dead entries from doc_map, fixed ViLT writeup date, fixed ShowcasePage broken link, archived IMPLEMENTATION_PLAN.md
+- [x] Full subsystem audit — catalogued 16 active + 11 dormant systems; triage: 6 keep, 13 ignore, 4 merge
+- [x] Doc cleanup — removed 7 dead entries from doc_map, fixed ViLT writeup date, archived IMPLEMENTATION_PLAN.md
+- [x] Reflection-to-behavior loop — `self_model.get_behavioral_directives()` with domain-specific caution flags
+- [x] Adaptive gate thresholds — `blindspot_gate_boost` (0.0-0.15) raises alignment bars on blindspot queries
 
 ## Completed — Session 4 (March 22 overnight + March 23 morning)
 - [x] Cloud bypass toggle — raw model access with CRT skip
@@ -33,7 +47,7 @@ Last updated: March 23, 2026 (end of Session 5)
 - [x] Clean stale memory_facts on demotion
 - [x] Fix auto_fact_checker crash
 - [x] Think leak heuristic stripping
-- [x] Cloud generation fallback (local → OpenAI → Claude)
+- [x] Cloud generation fallback (local -> OpenAI -> Claude)
 - [x] Cloud-only generation mode with model selector UI
 - [x] Claude Tier 2 settings + frontend toggles
 - [x] Name persistence chain (4 bugs fixed)
@@ -44,52 +58,23 @@ Last updated: March 23, 2026 (end of Session 5)
 - [x] README rewritten
 - [x] Generic opener removed
 
-## This Week (March 23-28) — Priority: Close the Loop
+## This Week (March 24-28) — Priority: Polish and Ship
 
-### 1. ~~Reflection-to-Behavior Loop~~ ✅ SHIPPED (Session 5)
-Closed the gap between reflection observing and reflection acting.
-- `self_model.get_behavioral_directives(query)` parses blindspots/uncertainty/correction slots into domain-specific caution flags
-- Prompt injection expanded: BEHAVIORAL CALIBRATION block with hedging instructions injected when query touches weak domain
-- Adaptive gate thresholds: `blindspot_gate_boost` (0.0–0.15) raises alignment bars on blindspot queries
-- 7 domain categories (temporal, names, numerical, preference, recency, recall, accuracy) with keyword matching
-- Narrow, auditable, reversible — biases future handling without rewriting history
+### 1. XGBoost Classifier Integration Testing
+Belief classifier package exists at `packages/belief_classifier/` — needs live pipeline integration testing.
+- Run classifier against real contradiction ledger data
+- Validate REFINEMENT / REVISION / TEMPORAL / CONFLICT categorization accuracy
+- Wire policy classifier output into resolution endpoint
+- Benchmark: classifier decisions vs "preserve everything" baseline on real data
 
-### 2. ~~Train XGBoost Classifiers~~ 🔧 IN PROGRESS (Session 5)
-Built as standalone package at `packages/belief_classifier/` — same isolation pattern as GroundCheck.
-- Belief classifier: REFINEMENT / REVISION / TEMPORAL / CONFLICT
-- Policy classifier: OVERRIDE / PRESERVE / ASK_USER
-- Auto-labeler for semi-supervised training from ledger exports
-- Synthetic data generator for bootstrapping when real data is sparse
-- Benchmark script: classifier decisions vs "preserve everything" baseline
-- Testing and integration pending
-
-### 3. ~~Self-Awareness Copy Tone Pass~~ ✅ SHIPPED (Session 5)
-- Heartbeat reflection prompt reframed: "self-assessment" → "calibration check"
-- "Gate failures" → "Gate interventions"; "Negative feedback" → "User corrections"
-- Evidence framed as the system working as designed, not failing
-- "Insufficient data" → "Insufficient data — calibrating"
-
-### 4. Copilot Page Polish
+### 2. Copilot Page Polish
 - Visual hierarchy improvements
 - Information density reduction in lower panels
 - Consolidate duplicate API calls on page load
 
-### 5a. ~~Escalation Policy~~ ✅ SHIPPED (Session 5)
-Smart tier routing with circuit breaker. Prevents eating 300s Ollama timeouts repeatedly.
-- `personal_agent/escalation_policy.py` — EscalationPolicy with per-tier circuit breaker (3 failures → 5m cooldown)
-- Query-aware routing: token budget estimate > 6000 → skip local; reflection gate_boost > 0.10 → skip local
-- Wired into `routes/chat.py`: decide() before generation, record_success/failure at all outcomes
-- Configurable via `runtime_config.py` escalation_policy block
-- In-memory state, no DB — resets on restart
-
-### 5b. Remaining Bug Fixes
-- ~~"Who is building this system?" should pull creator context~~ ✅ FIXED (Session 5) — added creator/builder patterns to self-referential routing
-- ~~Ollama timeouts on follow-up "Explain more"~~ — mitigated by escalation policy circuit breaker
+### 3. Remaining Bug Fixes
 - Trust re-boost still fighting demotions on some cited memories (edge cases)
-- Typo-resilient slot matching ("favortie" vs "favorite")
 - Only demote user-sourced memories, not Aether's narrative memories
-- ~~ReasoningInference model loading multiple times at startup~~ ✅ FIXED (Session 5) — engine cache TOCTOU race condition; creation now holds lock
-- Cookie leak — Claude cookie calls firing when Claude toggled off (identified, not yet fixed)
 
 ## Next Two Weeks (March 29 - April 11) — Ship It
 
@@ -102,14 +87,14 @@ Smart tier routing with circuit breaker. Prevents eating 300s Ollama timeouts re
 ### Demo Video (5 min)
 - Show favorite color correction flow (contradictions, trust scoring, slot exclusivity)
 - Show mid-stream verification (catching contradiction during generation)
-- Show self-referential routing ("how do you work?" → grounded architecture answer)
+- Show self-referential routing ("how do you work?" gives grounded architecture answer)
 - Side-by-side with ChatGPT blindly overwriting memory
-- Show cloud fallback (local timeout → seamless OpenAI catch)
+- Show cloud fallback (local timeout leads to seamless OpenAI catch)
 
 ### Settings Dashboard Polish
 - Auth on copilot endpoints (currently unauthenticated)
 - Cookie refresh button for Claude session
-- Clean up 3 deprecation warnings (on_event → lifespan, schema validation)
+- Clean up 3 deprecation warnings (on_event to lifespan, schema validation)
 
 ### Multi-User Scaffolding
 - Add user_id column to user_profile_multi table
@@ -134,8 +119,8 @@ Smart tier routing with circuit breaker. Prevents eating 300s Ollama timeouts re
 - Maintains epistemic state across delegations
 - Trust scores propagate to sub-agent outputs
 
-### ViLT Integration into Live Pipeline — 🔧 TESTING (Session 5)
-- Test harness built: SFT vs ViLT A/B comparison across 3 user profiles
+### ViLT Integration into Live Pipeline
+- Test harness built (Session 5): SFT vs ViLT A/B comparison across 3 user profiles
 - Trust-weighted contradiction loss amplifies gradient on high-trust fact violations
 - Existing trained models: SmolLM-135M (88% acc), Qwen 1.5B, Qwen 3B
 - Next: heartbeat trigger for ViLT batch when persistent blindspot detected

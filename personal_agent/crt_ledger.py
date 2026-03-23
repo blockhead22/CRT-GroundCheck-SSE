@@ -17,11 +17,14 @@ Philosophy:
 
 import sqlite3
 import json
+import logging
 import numpy as np
 from typing import List, Dict, Optional, Tuple, Any
 from datetime import datetime
 from dataclasses import dataclass
 import time
+
+_logger = logging.getLogger(__name__)
 
 from .crt_core import CRTMath, CRTConfig, MemorySource
 from .fact_slots import extract_fact_slots, create_simple_fact
@@ -650,6 +653,65 @@ class ContradictionLedger:
         Just create ledger entry preserving both memories.
         """
         # Classify the contradiction type (use provided or auto-detect)
+        # Try belief classifier first (XGBoost, if trained), fall back to rules
+        _belief_classifier_used = False
+        if contradiction_type is None and old_text and new_text:
+            try:
+                import sys, os
+                _bc_pkg_dir = os.path.join(os.path.dirname(__file__), "..", "packages", "belief_classifier")
+                if _bc_pkg_dir not in sys.path:
+                    sys.path.insert(0, _bc_pkg_dir)
+                from belief_classifier import ContradictionResolver, ContradictionPair as BCPair
+                _bc_model_dir = os.path.join(_bc_pkg_dir, "models")
+                _bc_belief_path = os.path.join(_bc_model_dir, "belief_model.pkl")
+                _bc_policy_path = os.path.join(_bc_model_dir, "policy_model.pkl")
+                if os.path.exists(_bc_belief_path) and os.path.exists(_bc_policy_path):
+                    _resolver = ContradictionResolver(
+                        belief_model_path=_bc_belief_path,
+                        policy_model_path=_bc_policy_path,
+                    )
+                    if _resolver.is_trained:
+                        # Build a ContradictionPair for the classifier
+                        _sim = 0.5
+                        if old_vector is not None and new_vector is not None:
+                            _sim = float(self.crt_math.similarity(old_vector, new_vector))
+                        # Extract slot info
+                        _old_facts = self._extract_all_facts(old_text) or {}
+                        _new_facts = self._extract_all_facts(new_text) or {}
+                        _shared = set(_old_facts.keys()) & set(_new_facts.keys())
+                        _slot = list(_shared)[0] if _shared else None
+                        _bc_pair = BCPair(
+                            old_text=old_text,
+                            new_text=new_text,
+                            old_trust=drift_mean,  # approximate
+                            new_trust=max(0.5, drift_mean + confidence_delta),
+                            old_timestamp=time.time() - 86400,  # approximate
+                            new_timestamp=time.time(),
+                            slot_name=_slot,
+                            is_exclusive_slot=bool(_slot),
+                            similarity_score=_sim,
+                            thread_id=thread_id,
+                        )
+                        _belief, _b_conf, _policy, _p_conf = _resolver.resolve(_bc_pair)
+                        # Map belief type to contradiction type
+                        _type_map = {
+                            "refinement": ContradictionType.REFINEMENT,
+                            "revision": ContradictionType.REVISION,
+                            "temporal": ContradictionType.TEMPORAL,
+                            "conflict": ContradictionType.CONFLICT,
+                        }
+                        contradiction_type = _type_map.get(str(_belief.value), ContradictionType.CONFLICT)
+                        suggested_policy = str(_policy.value)
+                        _belief_classifier_used = True
+                        _logger.info(
+                            "[BELIEF_CLASSIFIER] type=%s (%.2f), policy=%s (%.2f)",
+                            _belief.value, _b_conf, _policy.value, _p_conf,
+                        )
+            except ImportError:
+                pass  # belief_classifier package not installed
+            except Exception as _bc_err:
+                _logger.debug("[BELIEF_CLASSIFIER] Failed (non-fatal): %s", _bc_err)
+
         if contradiction_type is None:
             if old_text and new_text:
                 contradiction_type = self._classify_contradiction(
@@ -657,7 +719,7 @@ class ContradictionLedger:
                 )
             else:
                 contradiction_type = ContradictionType.CONFLICT  # Default
-        
+
         # Extract affected slots from both memories
         affects_slots_set = set()
         if old_text and new_text:
