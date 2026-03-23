@@ -256,7 +256,8 @@ export default function App() {
       }
     }
     void ping()
-    const id = window.setInterval(() => void ping(), 5000)
+    // POLLING FIX: /health interval raised from 5s to 15s to reduce log noise
+    const id = window.setInterval(() => void ping(), 15000)
     return () => {
       mounted = false
       window.clearInterval(id)

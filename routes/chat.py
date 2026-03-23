@@ -2806,6 +2806,101 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     )
     _mark("engine_query_done")
 
+    # ====== PRIMARY CLOUD GENERATION MODE ======
+    # If the user has selected cloud as their PRIMARY generator, replace the
+    # local LLM answer with a cloud-generated one. The full CRT pipeline
+    # (memory retrieval, trust scoring, contradiction detection, gate checks,
+    # NLI verification, slot classification) has already run via engine.query().
+    # We just swap the vocal cords — the control plane stays intact.
+    try:
+        import auth as _auth_gen
+        _uid_gen = int(uid) if uid else 1
+        _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "local") or "local").strip()
+        print(f"[MODEL_SELECT] generation_mode={_generation_mode}, uid={uid}, _uid_gen={_uid_gen}")
+
+        if _generation_mode in ("cloud_openai", "cloud_claude"):
+            from personal_agent.cloud_features import get_cloud_feature_service
+            _primary_cloud_svc = get_cloud_feature_service()
+            if _primary_cloud_svc is not None:
+                _provider = "openai" if _generation_mode == "cloud_openai" else "claude"
+                _model_key = "cloud_model_openai" if _provider == "openai" else "cloud_model_claude"
+                _model_default = "gpt-4o-mini" if _provider == "openai" else "claude-sonnet-4-20250514"
+                _cloud_model = str(_auth_gen.get_user_setting(_uid_gen, _model_key, _model_default) or _model_default)
+
+                # Build the same rich context the local LLM would see
+                _pc_memories = result.get("retrieved_memories") or result.get("prompt_memories") or []
+                _pc_history = recent_history or None
+                _pc_self_model = None
+                try:
+                    from personal_agent.self_model import get_self_model
+                    _sm = get_self_model()
+                    if _sm:
+                        _pc_self_model = {
+                            "top_facts": [str(f) for f in (_sm.get_top_facts(5) or [])],
+                        }
+                except Exception:
+                    pass
+
+                # Build system prompt with CRT identity + retrieved context
+                _pc_sys_parts = [
+                    "You are Aether, a personal AI assistant built on the CRT (Contradiction-aware Reconciliation and Trust) framework.",
+                    "Core principles:",
+                    "- You preserve contradictions honestly instead of silently overwriting memories.",
+                    "- You maintain belief/speech separation: what you believe (high-trust facts) vs what you say (may include uncertainty).",
+                    "- If you don't have data for something, say so. Don't make up capabilities you don't have.",
+                    "- Speak as yourself in first person. Be conversational, warm, and concise.",
+                ]
+                if _pc_memories:
+                    _mem_lines = []
+                    for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
+                        _mt = (_m.get("text") or "").strip()
+                        _mtr = _m.get("trust")
+                        if _mt:
+                            _trust_tag = f" [trust={_mtr:.2f}]" if _mtr is not None else ""
+                            _mem_lines.append(f"- {_mt[:250]}{_trust_tag}")
+                    if _mem_lines:
+                        _pc_sys_parts.append("\nRelevant memories about the user:")
+                        _pc_sys_parts.extend(_mem_lines)
+                if _pc_self_model:
+                    _traits = _pc_self_model.get("top_facts") or []
+                    if _traits:
+                        _trait_lines = [f"- {t}" for t in _traits[:5] if isinstance(t, str)]
+                        if _trait_lines:
+                            _pc_sys_parts.append("\nYour self-model (what you know about yourself):")
+                            _pc_sys_parts.extend(_trait_lines)
+
+                _pc_system = "\n".join(_pc_sys_parts)
+
+                # Build prompt with conversation history
+                _pc_prompt_parts = []
+                if _pc_history:
+                    for _turn in _pc_history[-6:]:
+                        _role = _turn.get("role", "user")
+                        _content = (_turn.get("content") or "").strip()
+                        if _content and _role in ("user", "assistant"):
+                            _pc_prompt_parts.append(f"{'User' if _role == 'user' else 'Aether'}: {_content[:500]}")
+                _pc_prompt_parts.append(f"User: {effective_message}")
+                _pc_prompt = "\n".join(_pc_prompt_parts)
+
+                print(f"[CLOUD_PRIMARY] Using {_provider} ({_cloud_model}) as primary generator")
+                _cloud_primary_answer = _primary_cloud_svc.generate_full_response(
+                    prompt=_pc_prompt,
+                    system_prompt=_pc_system,
+                    provider=_provider,
+                    model=_cloud_model,
+                    max_tokens=4096,
+                )
+                if _cloud_primary_answer:
+                    result["answer"] = _cloud_primary_answer
+                    result["generation_source"] = _generation_mode
+                    print(f"[CLOUD_PRIMARY] Success -- {len(_cloud_primary_answer)} chars via {_provider}")
+                else:
+                    print(f"[CLOUD_PRIMARY] {_provider} returned None, keeping local answer")
+            else:
+                print("[CLOUD_PRIMARY] Cloud service not initialized, using local")
+    except Exception as _gen_mode_err:
+        print(f"[CLOUD_PRIMARY] Generation mode check failed: {_gen_mode_err}")
+
     # ====== CLOUD GENERATION FALLBACK ======
     # If local LLM returned an error (timeout, connection refused, etc.),
     # fall back to cloud generation instead of leaking the error to the user.

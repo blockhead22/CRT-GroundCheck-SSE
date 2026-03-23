@@ -94,7 +94,7 @@ class GreetingSystem:
     
     # Default templates (can be overridden via config)
     DEFAULT_TEMPLATES = {
-        "new_user": "Hello! I'm your AI assistant. I'm here to help you with questions and tasks.",
+        "new_user": "Hey! I'm Aether. What's on your mind?",
         "returning_minutes": "Welcome back!",
         "returning_hours": "Welcome back! It's been {time_delta} since we last chatted.",
         "returning_days": "Hey {name}! It's been {time_delta}. Good to see you again!",
@@ -126,14 +126,29 @@ class GreetingSystem:
         self.style = self.config.get("style", "time_based")
     
     def get_user_name(self) -> Optional[str]:
-        """Get user's name from profile."""
+        """Get user's name from profile. Prefers nickname, falls back to first name."""
         try:
+            # Prefer nickname / preferred_name for friendlier greeting
+            nick_fact = self.user_profile.get_fact("nickname") or self.user_profile.get_fact("preferred_name")
+            if nick_fact and nick_fact.value:
+                return nick_fact.value
+
             fact = self.user_profile.get_fact("name")
             if fact and fact.value:
                 # Return first name only for friendlier greeting
                 return fact.value.split()[0]
         except Exception as e:
             logger.debug(f"[GREETING] Could not get user name: {e}")
+
+        # Fallback: try auth DB display_name
+        try:
+            import auth as auth_module
+            user = auth_module.get_user_by_id(1)
+            if user and getattr(user, "display_name", None):
+                return user.display_name.split()[0]
+        except Exception:
+            pass
+
         return None
     
     def should_show_greeting(self, thread_id: str) -> bool:
@@ -219,7 +234,7 @@ class GreetingSystem:
         
         # New user (never interacted)
         if message_count == 0 or last_active == 0:
-            template = self.templates.get("new_user", "Hello! I'm your AI assistant.")
+            template = self.templates.get("new_user", "Hey! I'm Aether. What's on your mind?")
             return self._format_template(template, user_name=user_name)
         
         # Calculate time since last interaction

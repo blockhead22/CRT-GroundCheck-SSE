@@ -661,6 +661,116 @@ class CloudFeatureService:
             return None
 
     # ------------------------------------------------------------------
+    # Primary Cloud Generation (user-selected generation mode)
+    # ------------------------------------------------------------------
+
+    def generate_full_response(
+        self,
+        prompt: str,
+        system_prompt: str,
+        provider: str = "openai",
+        model: Optional[str] = None,
+        max_tokens: int = 4096,
+    ) -> Optional[str]:
+        """Generate a full conversational response via cloud provider.
+
+        This is the PRIMARY generation path when the user selects cloud mode
+        (not a fallback). The caller is responsible for building the full CRT
+        system prompt with retrieved memories, trust scores, identity, etc.
+
+        Args:
+            prompt: The user-facing prompt text (conversation turns).
+            system_prompt: Full CRT system prompt with context, memories, identity.
+            provider: "openai" or "claude".
+            model: Model override (e.g. "gpt-4o-mini", "claude-sonnet-4-20250514").
+            max_tokens: Max response tokens.
+
+        Returns:
+            Response text on success, or None on failure.
+        """
+        feature = "cloud_generation" if provider == "openai" else "claude_generation"
+
+        if provider == "openai":
+            if not self._check_daily_limit("cloud_generation"):
+                print("[CLOUD_PRIMARY] OpenAI daily limit reached")
+                return None
+            if not self._openai_available():
+                print("[CLOUD_PRIMARY] OpenAI client not available")
+                return None
+
+            usage_logger = get_cloud_usage_logger()
+            resolved_model = model or "gpt-4o-mini"
+            full_prompt = f"{system_prompt}\n{prompt}"
+            t0 = time.time()
+            raw: Optional[str] = None
+
+            try:
+                raw = self.openai.generate(
+                    prompt=prompt,
+                    system=system_prompt,
+                    max_tokens=max_tokens,
+                    temperature=0.7,
+                    model=resolved_model,
+                )
+                latency = int((time.time() - t0) * 1000)
+                print(f"[CLOUD_PRIMARY] OpenAI ({resolved_model}) response ({latency}ms): {repr(raw)[:150]}")
+
+                if not raw or raw.startswith("[Cloud LLM"):
+                    usage_logger.log(
+                        provider="openai", feature=feature, model=resolved_model,
+                        prompt=full_prompt, response=raw or "", latency_ms=latency,
+                        success=False, error_message="Empty or placeholder response",
+                    )
+                    return None
+
+                est_tokens = int(len(raw.split()) * 1.3)
+                self._track_usage("cloud_generation", est_tokens=est_tokens, cost=0.0)
+                self._record_daily_call("cloud_generation")
+                usage_logger.log(
+                    provider="openai", feature=feature, model=resolved_model,
+                    prompt=full_prompt, response=raw, latency_ms=latency, success=True,
+                )
+                print(f"[CLOUD_PRIMARY] OpenAI success -- {len(raw)} chars, {latency}ms")
+                return raw.strip()
+
+            except Exception as e:
+                latency = int((time.time() - t0) * 1000)
+                usage_logger.log(
+                    provider="openai", feature=feature, model=resolved_model,
+                    prompt=full_prompt, response=raw or "", latency_ms=latency,
+                    success=False, error_message=str(e),
+                )
+                print(f"[CLOUD_PRIMARY] OpenAI call FAILED: {e}")
+                return None
+
+        elif provider == "claude":
+            if not self._check_claude_daily_limit("claude_generation"):
+                print("[CLOUD_PRIMARY] Claude daily limit reached")
+                return None
+            if not self._cookie_available():
+                print("[CLOUD_PRIMARY] Claude cookie not available")
+                return None
+
+            resolved_model = model or "claude-sonnet-4-20250514"
+            raw = self._call_cookie_text(
+                system_prompt, prompt, max_tokens=max_tokens, feature="claude_generation",
+            )
+
+            if raw:
+                est_tokens = int(len(raw.split()) * 1.3)
+                self._track_usage("claude_generation", est_tokens=est_tokens, cost=0.0)
+                self._record_daily_call("claude_generation")
+                print(f"[CLOUD_PRIMARY] Claude success -- {len(raw)} chars, ~{est_tokens} tokens")
+                return raw
+
+            print("[CLOUD_PRIMARY] Claude returned None")
+            return None
+
+        else:
+            print(f"[CLOUD_PRIMARY] Unknown provider: {provider}")
+            return None
+
+    # ------------------------------------------------------------------
     # Convenience
     # ------------------------------------------------------------------
 

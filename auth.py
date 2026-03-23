@@ -472,6 +472,10 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "cloud_claude_reflection": "true",
     "cloud_claude_daily_limit": "20",
     "cloud_claude_max_tokens": "4096",
+    # Primary generation mode: "local" | "cloud_openai" | "cloud_claude"
+    "generation_mode": "local",
+    "cloud_model_openai": "gpt-4o-mini",
+    "cloud_model_claude": "claude-sonnet-4-20250514",
 }
 
 

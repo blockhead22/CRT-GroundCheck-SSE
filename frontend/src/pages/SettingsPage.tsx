@@ -67,12 +67,29 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
   }, [threadId, authUser])
 
-  // Auto-refresh cloud usage every 10s
+  // POLLING FIX: cloud-usage interval raised from 10s to 30s; pauses when tab is hidden
   useEffect(() => {
-    const interval = setInterval(() => {
-      getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
-    }, 10000)
-    return () => clearInterval(interval)
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    function start() {
+      if (interval) return
+      interval = setInterval(() => {
+        getCloudUsage().then((data) => setCloudUsage(data?.usage ?? data)).catch(() => {})
+      }, 30000)
+    }
+    function stop() {
+      if (interval) { clearInterval(interval); interval = null }
+    }
+    function onVisibility() {
+      if (document.hidden) stop(); else start()
+    }
+
+    if (!document.hidden) start()
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [])
 
   async function handleSave() {

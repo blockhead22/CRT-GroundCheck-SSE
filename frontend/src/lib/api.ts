@@ -227,9 +227,13 @@ export async function sendToCrtApi(args: {
 
   let res: Response
   try {
+    const token = getAuthToken()
     res = await fetch(`${base}/api/chat/send`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     })
   } catch (_e) {
@@ -479,9 +483,13 @@ export async function streamFromCrtApi(args: {
 
   let res: Response
   try {
+    const token = getAuthToken()
     res = await fetch(`${base}/api/chat/stream`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(payload),
     })
   } catch (_e) {
@@ -686,7 +694,7 @@ export async function getProfile(threadId: string): Promise<ProfileResponse> {
 export async function setProfileName(args: { threadId: string; name: string }): Promise<ChatSendResponse> {
   return postJson<ChatSendResponse>('/api/profile/set_name', {
     thread_id: args.threadId,
-    message: `FACT: name = ${args.name}`,
+    message: args.name,
   })
 }
 

@@ -2089,7 +2089,8 @@ export function CopilotPage({ threadId = 'default' }: { threadId?: string }) {
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest')
 
   const [live, setLive] = useState(true)
-  const [pollInterval] = useState(2000)
+  // POLLING FIX: copilot memory poll raised from 2s to 5s
+  const [pollInterval] = useState(5000)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
   const [newCount, setNewCount] = useState(0)

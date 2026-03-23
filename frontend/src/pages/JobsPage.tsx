@@ -153,7 +153,8 @@ export function JobsPage(props: { threadId: string }) {
   useEffect(() => {
     setError(null)
     void refresh().catch((e) => setError(e instanceof Error ? e.message : String(e)))
-    const id = window.setInterval(() => void refresh().catch(() => {}), 2500)
+    // POLLING FIX: jobs refresh raised from 2.5s to 5s
+    const id = window.setInterval(() => void refresh().catch(() => {}), 5000)
     return () => window.clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter])

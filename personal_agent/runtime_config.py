@@ -96,7 +96,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         # - {name_suffix}: ", Name" or "" if unknown (for natural suffixes)
         # - {time_delta}: Human-readable time since last interaction (e.g., "2 hours", "3 days")
         "templates": {
-            "new_user": "Hello! I'm your AI assistant. I'm here to help you with questions and tasks.",
+            "new_user": "Hey! I'm Aether. What's on your mind?",
             "returning_minutes": "Welcome back!",
             "returning_hours": "Welcome back! It's been {time_delta} since we last chatted.",
             "returning_days": "Hey {name}! It's been {time_delta}. Good to see you again!",

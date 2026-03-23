@@ -242,13 +242,30 @@ def set_profile_name(req: ChatSendRequest, request: Request):
         text = req.message.strip() if req.message else ""
         if not text:
             return {"ok": False, "error": "No name provided"}
+        # Strip FACT wrapper if frontend already wrapped it (backward compat)
+        if text.upper().startswith("FACT:"):
+            _match = _re.match(r"(?i)FACT:\s*name\s*=\s*(.+)", text)
+            if _match:
+                text = _match.group(1).strip()
+        name_value = text
         engine.memory.store_memory(
-            text=f"FACT: name = {text}",
+            text=f"FACT: name = {name_value}",
             confidence=1.0,
             source=MemorySource.USER,
             context={"thread_id": req.thread_id or "default", "kind": "identity"},
         )
-        return {"ok": True, "name": text}
+        # Also update global user profile so name propagates across threads
+        try:
+            from personal_agent.user_profile import GlobalUserProfile
+            profile = GlobalUserProfile()
+            profile.update_from_text(
+                f"My name is {name_value}",
+                thread_id=req.thread_id or "default",
+            )
+            print(f"[PROFILE] Global profile updated with name: {name_value}")
+        except Exception as profile_err:
+            print(f"[PROFILE] Failed to update global profile: {profile_err}")
+        return {"ok": True, "name": name_value}
     except Exception as e:
         logger.error(f"[PROFILE] Failed to set name: {e}")
         return {"ok": False, "error": str(e)}

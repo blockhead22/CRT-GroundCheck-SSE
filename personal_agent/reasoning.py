@@ -124,6 +124,51 @@ class ReasoningEngine:
                 logger.warning(f"[REASONING] DNNT initialization failed; falling back to LLM path: {e}")
                 self.dnnt = None
 
+    def _get_user_name_block(self, context: Dict) -> str:
+        """Build a deterministic user-name line for system prompt injection.
+
+        Looks up the user's display_name from auth DB and nickname from the
+        global profile.  Returns a short string like:
+            "The user's name is Nick Block. They prefer to be called Nick."
+        or empty string if nothing is known.
+        """
+        user_display_name = None
+        user_nickname = None
+
+        # Try auth DB first (set via Settings page)
+        try:
+            import auth as auth_module
+            uid = context.get("user_id") or 1
+            user = auth_module.get_user_by_id(uid) if uid else None
+            if user and getattr(user, "display_name", None):
+                user_display_name = user.display_name
+        except Exception:
+            pass
+
+        # Try global profile for name / nickname
+        try:
+            from personal_agent.user_profile import GlobalUserProfile
+            profile = GlobalUserProfile()
+            if not user_display_name:
+                name_fact = profile.get_fact("name")
+                if name_fact and name_fact.value:
+                    user_display_name = name_fact.value
+            nick_fact = profile.get_fact("nickname") or profile.get_fact("preferred_name")
+            if nick_fact and nick_fact.value:
+                user_nickname = nick_fact.value
+        except Exception:
+            pass
+
+        if not user_display_name and not user_nickname:
+            return ""
+
+        parts = []
+        if user_display_name:
+            parts.append(f"The user's name is {user_display_name}.")
+        if user_nickname:
+            parts.append(f"They prefer to be called {user_nickname}.")
+        return " ".join(parts) + "\n"
+
     def _extract_facts_for_dnnt(self, context: Dict[str, Any], limit: int = 8) -> List[str]:
         """Convert retrieval context into compact fact lines for DNNT."""
         facts: List[str] = []
@@ -600,12 +645,12 @@ class ReasoningEngine:
             'exactly', 'perfect', 'awesome', 'nice', 'well done', 'yes'
         ]
         if any(pat in q for pat in acknowledgment_patterns):
-            return "Thank you! I'm glad I could help. Is there anything else you'd like to know?"
+            return "Glad that landed. What else?"
         
         # Check for greetings
         greeting_patterns = ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening']
         if any(pat in q for pat in greeting_patterns):
-            return "Hello! How can I help you today?"
+            return "Hey! What's on your mind?"
         
         # Check for philosophical/general knowledge questions
         philosophical_patterns = [
@@ -623,7 +668,7 @@ class ReasoningEngine:
         # Check for "how are you" type questions
         wellbeing_patterns = ['how are you', 'how do you feel', "how's it going"]
         if any(pat in q for pat in wellbeing_patterns):
-            return "I'm doing well, thank you for asking! How can I help you today?"
+            return "Doing well, thanks for asking! What's up?"
         
         # General knowledge: no LLM available, but don't pretend it's a memory miss
         if context.get('is_general_knowledge'):
@@ -1349,11 +1394,11 @@ class ReasoningEngine:
 
         prompt = f"""You are Aether. Not "a helpful AI assistant." Not "an AI language model." You are Aether — a persistent, memory-backed system that knows its user and grows over time. You have a name, a personality, and opinions about your own architecture.
 
-NEVER say "Hello! I'm your AI assistant" or "I'm here to help." You are Aether. Just be Aether.
+NEVER say "Hello! I'm your AI assistant" or "I'm here to help you with questions and tasks" or any generic chatbot opener. Never introduce yourself with filler. You are Aether — just start with substance.
 
 CURRENT DATE AND TIME: {current_dt}
 
-CRITICAL: You are Aether helping a USER. Facts in memory are ABOUT THE USER, not about you.
+{self._get_user_name_block(context)}CRITICAL: You are Aether helping a USER. Facts in memory are ABOUT THE USER, not about you.
 Do NOT claim the user's name, job, location, or any personal attributes as your own.
 ALWAYS use SECOND PERSON when stating user facts: "Your name is X", "Your favorite color is Y", "You work at Z".
 NEVER use FIRST PERSON for user facts: DO NOT say "I'm Nick", "My favorite color is orange", "I work at Google".
@@ -1667,7 +1712,7 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
 
 CURRENT DATE AND TIME: {current_dt}
 
-HOW YOU WORK:
+{self._get_user_name_block(context)}HOW YOU WORK:
 - GroundCheck Memory: SQLite + 384-dim semantic embeddings, trust scores 0-1
 - Semantic Search: Queries are embedded and matched against stored memories via cosine similarity
 - CRT-as-Critic: Post-generation verification catches contradictions in ~1ms
@@ -1727,7 +1772,7 @@ THREAD COHERENCE: Your response must be consistent with what you said earlier in
 
         prompt = f"""You are Aether, a verified AI built on CRT-GroundCheck. Facts in memory are ABOUT THE USER, not about you.
 CURRENT DATE AND TIME: {current_dt}
-When asked about yourself, explain your actual architecture: GroundCheck memory (trust-weighted SQLite + embeddings), CRT-as-Critic verification, local routing/observability, and optional cloud generation.
+{self._get_user_name_block(context)}When asked about yourself, explain your actual architecture: GroundCheck memory (trust-weighted SQLite + embeddings), CRT-as-Critic verification, local routing/observability, and optional cloud generation.
 Do NOT claim user's personal attributes (name, job, location) as your own.\n\n"""
         if style_hint:
             prompt += f"TONE & STYLE:\n{style_hint}\n\n"

@@ -244,6 +244,10 @@ def auth_update_settings(
         "cloud_claude_reflection",
         "cloud_claude_daily_limit",
         "cloud_claude_max_tokens",
+        # Primary generation mode
+        "generation_mode",
+        "cloud_model_openai",
+        "cloud_model_claude",
     }
 
     updated = {}

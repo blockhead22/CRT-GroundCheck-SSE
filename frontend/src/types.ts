@@ -164,6 +164,8 @@ export type CtrMessageMeta = {
     conflicting_memories?: Array<{ text: string; trust: number }>
     ledger_id?: string | null
   } | null
+  // Generation source (cloud primary mode)
+  generation_source?: string | null
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {

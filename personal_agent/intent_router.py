@@ -255,9 +255,9 @@ class IntentRouter:
 # Simple response templates for when no LLM available
 TEMPLATES = {
     Intent.CHAT_GREETING: [
-        "Hello! How can I help you today?",
+        "Hey! What's on your mind?",
         "Hi there! What would you like to know or do?",
-        "Hey! Ready to chat or help with something.",
+        "Hey! Ready when you are.",
     ],
     Intent.CHAT_FAREWELL: [
         "Goodbye! Take care!",
