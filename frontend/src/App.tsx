@@ -579,6 +579,9 @@ export default function App() {
                   reflection_scorecard: (metadata as any)?.reflection_scorecard ?? null,
                   correction_applied: (metadata as any)?.correction_applied ?? false,
                   correction_text: (metadata as any)?.correction_text ?? null,
+                  generation_source: (metadata?.generation_source as string) || null,
+                  escalation: (metadata as any)?.escalation ?? null,
+                  cloud_governance_used: (metadata as any)?.cloud_governance_used ?? false,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
@@ -654,6 +657,9 @@ export default function App() {
             xray: res.metadata?.xray ?? null,
             personality_profile: (res.metadata as any)?.personality_profile ?? null,
             reflection_scorecard: (res.metadata as any)?.reflection_scorecard ?? null,
+            generation_source: (res.metadata as any)?.generation_source ?? null,
+            escalation: (res.metadata as any)?.escalation ?? null,
+            cloud_governance_used: (res.metadata as any)?.cloud_governance_used ?? false,
           },
         }
         upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

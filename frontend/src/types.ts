@@ -166,6 +166,14 @@ export type CtrMessageMeta = {
   } | null
   // Generation source (cloud primary mode)
   generation_source?: string | null
+  // Escalation decision from backend
+  escalation?: {
+    start_tier?: string | null
+    skip_tiers?: string[] | null
+    reason?: string | null
+  } | null
+  // Whether cloud governance (slot classification, NLI) was used
+  cloud_governance_used?: boolean | null
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {

@@ -146,7 +146,7 @@ class CloudFeatureService:
         """Call the OpenAI-compatible client and parse JSON response."""
         _avail = self._openai_available()
         if not _avail:
-            print(f"[CLOUD_SLOT] OpenAI not available: client={self.openai is not None}, is_available={getattr(self.openai, 'is_available', 'N/A') if self.openai else 'no client'}")
+            print(f"[GOVERNANCE] slot_openai: not available (client={self.openai is not None})")
             return None
         usage_logger = get_cloud_usage_logger()
         full_prompt = f"{system}\n{prompt}"
@@ -161,7 +161,7 @@ class CloudFeatureService:
                 model="gpt-4o-mini",
             )
             latency = int((time.time() - t0) * 1000)
-            print(f"[CLOUD_SLOT] OpenAI raw response ({latency}ms): {repr(raw)[:200]}")
+            print(f"[GOVERNANCE] slot_openai: response ({latency}ms): {repr(raw)[:200]}")
             if not raw or raw.startswith("[Cloud LLM"):
                 usage_logger.log(
                     provider="openai", feature=feature, model="gpt-4o-mini",
@@ -188,7 +188,7 @@ class CloudFeatureService:
                 prompt=full_prompt, response=raw or "", latency_ms=latency,
                 success=False, error_message=str(e),
             )
-            print(f"[CLOUD_SLOT] OpenAI call FAILED: {e}")
+            print(f"[GOVERNANCE] slot_openai: call failed: {e}")
             return None
 
     def _call_cookie(
@@ -458,16 +458,16 @@ class CloudFeatureService:
             return None
 
         system, prompt = slot_classification_prompt(statement, existing_slots)
-        print(f"[CLOUD_SLOT] Calling OpenAI for: {statement[:60]}")
+        print(f"[GOVERNANCE] slot_classify: calling OpenAI for: {statement[:60]}")
         result = self._call_openai(system, prompt, feature="slot_classification")
 
         if result is not None:
             self._track_usage("slot_classification", est_tokens=250, cost=0.000075)
             self._record_daily_call("slot_classification")
-            print(f"[CLOUD_SLOT] Result: contains_fact={result.get('contains_fact')}, slot={result.get('slot_name', 'none')}")
+            print(f"[GOVERNANCE] slot_classify: result contains_fact={result.get('contains_fact')}, slot={result.get('slot_name', 'none')}")
             return result
 
-        print("[CLOUD_SLOT] No provider available")
+        print("[GOVERNANCE] slot_classify: no provider available")
         return None
 
     # ------------------------------------------------------------------
@@ -562,10 +562,10 @@ class CloudFeatureService:
         Returns the response text on success, or None if unavailable/limit exceeded.
         """
         if not self._check_daily_limit("cloud_generation"):
-            print("[CLOUD_GEN] Daily limit reached for cloud_generation")
+            print("[GENERATION] fallback_openai: daily limit reached")
             return None
         if not self._openai_available():
-            print("[CLOUD_GEN] OpenAI client not available")
+            print("[GENERATION] fallback_openai: client not available")
             return None
 
         # Build system prompt — architectural framing, not roleplay
@@ -641,7 +641,7 @@ class CloudFeatureService:
                 model="gpt-4o-mini",
             )
             latency = int((time.time() - t0) * 1000)
-            print(f"[CLOUD_GEN] OpenAI response ({latency}ms): {repr(raw)[:150]}")
+            print(f"[GENERATION] fallback_openai: response ({latency}ms): {repr(raw)[:150]}")
 
             if not raw or raw.startswith("[Cloud LLM"):
                 usage_logger.log(
@@ -658,7 +658,7 @@ class CloudFeatureService:
                 provider="openai", feature="cloud_generation", model="gpt-4o-mini",
                 prompt=full_prompt, response=raw, latency_ms=latency, success=True,
             )
-            print(f"[CLOUD_GEN] Success — {len(raw)} chars, {latency}ms")
+            print(f"[GENERATION] fallback_openai: success, {len(raw)} chars, {latency}ms")
             return raw.strip()
 
         except Exception as e:
@@ -668,7 +668,7 @@ class CloudFeatureService:
                 prompt=full_prompt, response=raw or "", latency_ms=latency,
                 success=False, error_message=str(e),
             )
-            print(f"[CLOUD_GEN] OpenAI call FAILED: {e}")
+            print(f"[GENERATION] fallback_openai: call failed: {e}")
             return None
 
     # ------------------------------------------------------------------
@@ -703,10 +703,10 @@ class CloudFeatureService:
 
         if provider == "openai":
             if not self._check_daily_limit("cloud_generation"):
-                print("[CLOUD_PRIMARY] OpenAI daily limit reached")
+                print("[GENERATION] cloud_primary_openai: daily limit reached")
                 return None
             if not self._openai_available():
-                print("[CLOUD_PRIMARY] OpenAI client not available")
+                print("[GENERATION] cloud_primary_openai: client not available")
                 return None
 
             usage_logger = get_cloud_usage_logger()
@@ -724,7 +724,7 @@ class CloudFeatureService:
                     model=resolved_model,
                 )
                 latency = int((time.time() - t0) * 1000)
-                print(f"[CLOUD_PRIMARY] OpenAI ({resolved_model}) response ({latency}ms): {repr(raw)[:150]}")
+                print(f"[GENERATION] cloud_primary_openai: response ({resolved_model}, {latency}ms): {repr(raw)[:150]}")
 
                 if not raw or raw.startswith("[Cloud LLM"):
                     usage_logger.log(
@@ -741,7 +741,7 @@ class CloudFeatureService:
                     provider="openai", feature=feature, model=resolved_model,
                     prompt=full_prompt, response=raw, latency_ms=latency, success=True,
                 )
-                print(f"[CLOUD_PRIMARY] OpenAI success -- {len(raw)} chars, {latency}ms")
+                print(f"[GENERATION] cloud_primary_openai: success, {len(raw)} chars, {latency}ms")
                 return raw.strip()
 
             except Exception as e:
@@ -751,15 +751,15 @@ class CloudFeatureService:
                     prompt=full_prompt, response=raw or "", latency_ms=latency,
                     success=False, error_message=str(e),
                 )
-                print(f"[CLOUD_PRIMARY] OpenAI call FAILED: {e}")
+                print(f"[GENERATION] cloud_primary_openai: call failed: {e}")
                 return None
 
         elif provider == "claude":
             if not self._check_claude_daily_limit("claude_generation"):
-                print("[CLOUD_PRIMARY] Claude daily limit reached")
+                print("[GENERATION] cloud_primary_claude: daily limit reached")
                 return None
             if not self._cookie_available():
-                print("[CLOUD_PRIMARY] Claude cookie not available")
+                print("[GENERATION] cloud_primary_claude: cookie not available")
                 return None
 
             resolved_model = model or "claude-sonnet-4-20250514"
@@ -771,14 +771,14 @@ class CloudFeatureService:
                 est_tokens = int(len(raw.split()) * 1.3)
                 self._track_usage("claude_generation", est_tokens=est_tokens, cost=0.0)
                 self._record_daily_call("claude_generation")
-                print(f"[CLOUD_PRIMARY] Claude success -- {len(raw)} chars, ~{est_tokens} tokens")
+                print(f"[GENERATION] cloud_primary_claude: success, {len(raw)} chars, ~{est_tokens} tokens")
                 return raw
 
-            print("[CLOUD_PRIMARY] Claude returned None")
+            print("[GENERATION] cloud_primary_claude: returned None")
             return None
 
         else:
-            print(f"[CLOUD_PRIMARY] Unknown provider: {provider}")
+            print(f"[GENERATION] cloud_primary: unknown provider: {provider}")
             return None
 
     # ------------------------------------------------------------------

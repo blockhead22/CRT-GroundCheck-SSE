@@ -38,6 +38,7 @@ from .models import (
 )
 
 from personal_agent.runtime_config import get_runtime_config
+from personal_agent.cloud_usage_tracker import log_cloud_call as _track_cloud_call
 from personal_agent.db_utils import get_thread_session_db
 from personal_agent.greeting_system import get_time_based_greeting
 from personal_agent.active_learning import get_active_learning_coordinator
@@ -2894,11 +2895,14 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     # (memory retrieval, trust scoring, contradiction detection, gate checks,
     # NLI verification, slot classification) has already run via engine.query().
     # We just swap the vocal cords — the control plane stays intact.
+    _gen_phase_t0 = time.perf_counter()
+    _gen_tracking = {"gen": "local", "slots": "none", "nli": "none", "escalation": "none"}
+    _escalation_decision = None
     try:
         import auth as _auth_gen
         _uid_gen = int(uid) if uid else 1
         _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "local") or "local").strip()
-        print(f"[MODEL_SELECT] generation_mode={_generation_mode}, uid={uid}, _uid_gen={_uid_gen}")
+        print(f"[GENERATION] mode_select: generation_mode={_generation_mode}, uid={_uid_gen}")
 
         # --- Escalation policy: may promote local → cloud for this request ---
         _escalation_decision = None
@@ -2934,11 +2938,13 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             ):
                 _promoted_tier = _escalation_decision.start_tier
                 _generation_mode = f"cloud_{_promoted_tier}"
-                print(f"[ESCALATION] Promoted generation_mode local → {_generation_mode} (reason: {_escalation_decision.reason})")
+                print(f"[ESCALATION] promoted: local -> {_generation_mode} (reason: {_escalation_decision.reason})")
+                _gen_tracking["escalation"] = f"promoted_{_escalation_decision.start_tier}"
             elif _generation_mode == "local" and _escalation_decision.start_tier != "local" and _user_esc_policy == "local_only":
-                print(f"[ESCALATION] Promotion blocked by local_only policy (would have been: {_escalation_decision.start_tier})")
+                print(f"[ESCALATION] blocked: local_only policy (would have been: {_escalation_decision.start_tier})")
+                _gen_tracking["escalation"] = "blocked_local_only"
         except Exception as _esc_err:
-            print(f"[ESCALATION] Policy check failed: {_esc_err}")
+            print(f"[ESCALATION] error: {_esc_err}")
 
         if _generation_mode in ("cloud_openai", "cloud_claude"):
             from personal_agent.cloud_features import get_cloud_feature_service
@@ -3019,7 +3025,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _pc_prompt_parts.append(f"User: {effective_message}")
                 _pc_prompt = "\n".join(_pc_prompt_parts)
 
-                print(f"[CLOUD_PRIMARY] Using {_provider} ({_cloud_model}) as primary generator")
+                print(f"[GENERATION] cloud_primary: using {_provider} ({_cloud_model})")
+                _t_primary = time.perf_counter()
                 _cloud_primary_answer = _primary_cloud_svc.generate_full_response(
                     prompt=_pc_prompt,
                     system_prompt=_pc_system,
@@ -3027,30 +3034,55 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     model=_cloud_model,
                     max_tokens=4096,
                 )
+                _lat_primary = int((time.perf_counter() - _t_primary) * 1000)
                 if _cloud_primary_answer:
                     result["answer"] = _cloud_primary_answer
                     result["generation_source"] = _generation_mode
+                    _gen_tracking["gen"] = _generation_mode
                     # Cloud succeeded — clear any local gate failure so the
                     # cloud answer actually gets shown to the user.
                     if not result.get("gates_passed", True):
-                        print(f"[CLOUD_PRIMARY] Clearing local gate failure ({result.get('gate_reason')}) — cloud provided valid answer")
+                        print(f"[GENERATION] cloud_primary: cleared local gate failure ({result.get('gate_reason')})")
                         result["gates_passed"] = True
                         result["gate_reason"] = "cloud_primary_override"
-                    print(f"[CLOUD_PRIMARY] Success -- {len(_cloud_primary_answer)} chars via {_provider}")
+                    print(f"[GENERATION] cloud_primary: success, {len(_cloud_primary_answer)} chars via {_provider}")
                     try:
                         _esc_policy.record_success(_provider)
                     except Exception:
                         pass
+                    try:
+                        _track_cloud_call(
+                            call_type=f"generation_primary_{_provider}",
+                            provider=_provider, model=_cloud_model,
+                            latency_ms=_lat_primary, success=True,
+                            thread_id=req.thread_id, uid=int(uid) if uid else None,
+                            input_text=_pc_prompt, output_text=_cloud_primary_answer,
+                            escalation_reason=str((result.get("escalation") or {}).get("reason", "")),
+                            user_message=effective_message,
+                        )
+                    except Exception:
+                        pass
                 else:
-                    print(f"[CLOUD_PRIMARY] {_provider} returned None, keeping local answer")
+                    print(f"[GENERATION] cloud_primary: {_provider} returned None, keeping local answer")
                     try:
                         _esc_policy.record_failure(_provider, "returned_none")
                     except Exception:
                         pass
+                    try:
+                        _track_cloud_call(
+                            call_type=f"generation_primary_{_provider}",
+                            provider=_provider, model=_cloud_model,
+                            latency_ms=_lat_primary, success=False,
+                            thread_id=req.thread_id, uid=int(uid) if uid else None,
+                            input_text=_pc_prompt, error_type="returned_none",
+                            user_message=effective_message,
+                        )
+                    except Exception:
+                        pass
             else:
-                print("[CLOUD_PRIMARY] Cloud service not initialized, using local")
+                print("[GENERATION] cloud_primary: cloud service not initialized, using local")
     except Exception as _gen_mode_err:
-        print(f"[CLOUD_PRIMARY] Generation mode check failed: {_gen_mode_err}")
+        print(f"[GENERATION] error: generation mode check failed: {_gen_mode_err}")
 
     # ====== CLOUD GENERATION FALLBACK ======
     # If local LLM returned an error (timeout, connection refused, etc.),
@@ -3077,7 +3109,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     )
     if _is_llm_error or _is_gate_fail_empty:
         _fallback_reason = "LLM error" if _is_llm_error else f"gate fail ({result.get('gate_reason', 'empty')})"
-        print(f"[CLOUD_GEN] Local generation failed ({_fallback_reason}): {_raw_answer[:120]}")
+        print(f"[GENERATION] fallback: local failed ({_fallback_reason}): {_raw_answer[:120]}")
         # Record local failure for circuit breaker
         try:
             _esc_policy.record_failure("local", "timeout" if "timeout" in _raw_answer.lower() else "error")
@@ -3095,12 +3127,12 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             ).lower().strip()
             if _esc_policy_setting == "local_only":
                 _cloud_gen_enabled = False
-                print("[CLOUD_GEN] Cloud fallback blocked by escalation policy (local_only)")
+                print("[GENERATION] fallback: blocked by escalation policy (local_only)")
             if _cloud_gen_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_gen_svc = get_cloud_feature_service()
                 if _cloud_gen_svc is not None:
-                    print("[CLOUD_GEN] Falling back to OpenAI after local timeout")
+                    print("[GENERATION] fallback: trying OpenAI after local failure")
                     # Gather context for the cloud prompt
                     _cg_memories = result.get("retrieved_memories") or result.get("prompt_memories") or []
                     _cg_history = recent_history or None
@@ -3115,63 +3147,120 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             }
                     except Exception:
                         pass
+                    _t_fb = time.perf_counter()
                     _cloud_answer = _cloud_gen_svc.generate_response(
                         user_message=effective_message,
                         retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
                         conversation_history=_cg_history,
                         self_model_snapshot=_cg_self_model,
                     )
+                    _lat_fb = int((time.perf_counter() - _t_fb) * 1000)
                     if _cloud_answer:
                         result["answer"] = _cloud_answer
                         result["generation_source"] = "cloud_fallback"
+                        _gen_tracking["gen"] = "cloud_fallback"
                         # Clear gate-fail state — cloud provided a valid answer
                         if _is_gate_fail_empty:
                             result["gates_passed"] = True
                             result["gate_reason"] = "cloud_fallback_recovery"
-                        print(f"[CLOUD_GEN] Fallback succeeded — {len(_cloud_answer)} chars")
+                        print(f"[GENERATION] fallback: OpenAI succeeded, {len(_cloud_answer)} chars")
                         try:
                             _esc_policy.record_success("openai")
                         except Exception:
                             pass
+                        try:
+                            _track_cloud_call(
+                                call_type="generation_fallback",
+                                provider="openai", model="gpt-4o-mini",
+                                latency_ms=_lat_fb, success=True,
+                                thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                output_text=_cloud_answer,
+                                escalation_reason=_fallback_reason,
+                                user_message=effective_message,
+                            )
+                        except Exception:
+                            pass
                     else:
                         # OpenAI failed — escalate to Claude (Tier 2)
-                        print("[CLOUD_GEN] OpenAI returned None, escalating to Claude (Tier 2)")
+                        print("[GENERATION] fallback: OpenAI returned None, escalating to Claude (Tier 2)")
                         try:
                             _esc_policy.record_failure("openai", "returned_none")
                         except Exception:
                             pass
+                        try:
+                            _track_cloud_call(
+                                call_type="generation_fallback",
+                                provider="openai", model="gpt-4o-mini",
+                                latency_ms=_lat_fb, success=False,
+                                thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                error_type="returned_none",
+                                escalation_reason=_fallback_reason,
+                                user_message=effective_message,
+                            )
+                        except Exception:
+                            pass
+                        _t_cfb = time.perf_counter()
                         _claude_answer = _cloud_gen_svc.generate_response_claude(
                             user_message=effective_message,
                             retrieved_memories=_cg_memories if isinstance(_cg_memories, list) else [],
                             conversation_history=_cg_history,
                             self_model_snapshot=_cg_self_model,
                         )
+                        _lat_cfb = int((time.perf_counter() - _t_cfb) * 1000)
                         if _claude_answer:
                             result["answer"] = _claude_answer
-                            result["generation_source"] = "claude_fallback"
+                            result["generation_source"] = "cloud_fallback_claude"
+                            _gen_tracking["gen"] = "cloud_fallback_claude"
                             if _is_gate_fail_empty:
                                 result["gates_passed"] = True
                                 result["gate_reason"] = "cloud_fallback_recovery"
-                            print(f"[CLOUD_GEN] Claude fallback succeeded — {len(_claude_answer)} chars")
+                            print(f"[GENERATION] fallback: Claude succeeded, {len(_claude_answer)} chars")
                             try:
                                 _esc_policy.record_success("claude")
                             except Exception:
                                 pass
+                            try:
+                                _track_cloud_call(
+                                    call_type="generation_fallback_claude",
+                                    provider="claude_cookie", model="claude-sonnet",
+                                    latency_ms=_lat_cfb, success=True,
+                                    thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                    output_text=_claude_answer,
+                                    escalation_reason=_fallback_reason,
+                                    user_message=effective_message,
+                                )
+                            except Exception:
+                                pass
                         else:
-                            print("[CLOUD_GEN] Claude also returned None, keeping local error")
+                            print("[GENERATION] fallback: Claude also returned None, keeping local error")
                             try:
                                 _esc_policy.record_failure("claude", "returned_none")
                             except Exception:
                                 pass
+                            try:
+                                _track_cloud_call(
+                                    call_type="generation_fallback_claude",
+                                    provider="claude_cookie", model="claude-sonnet",
+                                    latency_ms=_lat_cfb, success=False,
+                                    thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                    error_type="returned_none",
+                                    escalation_reason=_fallback_reason,
+                                    user_message=effective_message,
+                                )
+                            except Exception:
+                                pass
                 else:
-                    print("[CLOUD_GEN] Cloud service not initialized")
+                    print("[GENERATION] fallback: cloud service not initialized")
             else:
-                print("[CLOUD_GEN] Cloud generation fallback disabled by user setting")
+                print("[GENERATION] fallback: cloud generation fallback disabled by user setting")
         except Exception as _cg_err:
-            print(f"[CLOUD_GEN] Fallback error: {_cg_err}")
+            print(f"[GENERATION] fallback_error: {_cg_err}")
     else:
         # No LLM error and no gate-fail-empty → local generation succeeded
         _gen_source = result.get("generation_source", "")
+        if not _gen_source:
+            result["generation_source"] = "local"
+            _gen_tracking["gen"] = "local"
         if not _gen_source or _gen_source == "local":
             try:
                 _esc_policy.record_success("local")
@@ -3189,18 +3278,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     # If local fact extraction couldn't classify a slot, try cloud classification.
     try:
         _local_slots = result.get("slots_extracted") or result.get("facts") or {}
-        print(f"[CLOUD_DEBUG] Local slots: {bool(_local_slots)}, uid: {uid}")
         if not _local_slots or (isinstance(_local_slots, dict) and not _local_slots):
             import auth as _auth_mod
             _uid_int = int(uid) if uid else 1
             _cloud_slot_enabled = str(
                 _auth_mod.get_user_setting(_uid_int, "cloud_slot_classification", "false")
             ).lower() in ("true", "1", "yes", "on")
-            print(f"[CLOUD_DEBUG] Slot classification enabled: {_cloud_slot_enabled}")
             if _cloud_slot_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc = get_cloud_feature_service()
-                print(f"[CLOUD_DEBUG] Cloud service: {_cloud_svc is not None}")
+                print(f"[GOVERNANCE] slot_classify: no local slots, cloud_enabled={_cloud_slot_enabled}, cloud_svc={_cloud_svc is not None}")
                 if _cloud_svc is not None:
                     # Gather existing slot names from memory for context
                     _existing_slots = []
@@ -3210,30 +3297,46 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         ) or []
                     except Exception:
                         pass
+                    _t_slot = time.perf_counter()
                     _cloud_result = _cloud_svc.classify_slot(
                         effective_message, _existing_slots
                     )
-                    print(f"[CLOUD_SLOT_FLOW] cloud_result={_cloud_result}")
+                    _lat_slot = int((time.perf_counter() - _t_slot) * 1000)
+                    try:
+                        _track_cloud_call(
+                            call_type="slot_classification",
+                            provider="openai", model="gpt-4o-mini",
+                            latency_ms=_lat_slot,
+                            success=_cloud_result is not None,
+                            thread_id=req.thread_id, uid=int(uid) if uid else None,
+                            error_type=None if _cloud_result else "returned_none",
+                            user_message=effective_message,
+                        )
+                    except Exception:
+                        pass
+                    if _cloud_result:
+                        result["cloud_governance_used"] = True
                     if _cloud_result and _cloud_result.get("contains_fact"):
                         _cloud_slot = _cloud_result.get("slot_name")
                         _cloud_value = _cloud_result.get("value")
-                        print(f"[CLOUD_SLOT_FLOW] contains_fact=True, slot={_cloud_slot}, value={_cloud_value}")
+                        print(f"[GOVERNANCE] slot_classify: detected slot={_cloud_slot}, value={_cloud_value}")
+                        _gen_tracking["slots"] = f"cloud({_cloud_slot})"
                         if _cloud_slot and _cloud_value:
                             try:
                                 result.setdefault("slots_extracted", {})
                                 if isinstance(result["slots_extracted"], dict):
                                     result["slots_extracted"][_cloud_slot] = _cloud_value
                             except Exception as _se_err:
-                                print(f"[CLOUD_SLOT_FLOW] slots_extracted error: {_se_err}")
+                                print(f"[GOVERNANCE] slot_classify: slots_extracted error: {_se_err}")
                             # --- Cloud-driven slot exclusivity demotion ---
-                            print(f"[SLOT_EXCLUSIVITY] Entering demotion check for {_cloud_slot}={_cloud_value}")
+                            print(f"[GOVERNANCE] slot_exclusivity: Entering demotion check for {_cloud_slot}={_cloud_value}")
                             _EXCLUSIVE_SLOTS = {
                                 "favorite_color", "name", "first_name", "last_name",
                                 "birthday", "birth_date", "legal_name", "primary_city",
                                 "city", "employer", "job_title", "nickname",
                             }
                             _is_exclusive = _cloud_result.get("exclusive", _cloud_slot in _EXCLUSIVE_SLOTS)
-                            print(f"[SLOT_EXCLUSIVITY] exclusive={_is_exclusive}")
+                            print(f"[GOVERNANCE] slot_exclusivity: exclusive={_is_exclusive}")
                             if _is_exclusive:
                                 try:
                                     _new_val_norm = str(_cloud_value).strip().lower()
@@ -3260,7 +3363,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                     """, (_cloud_slot,))
                                     _fact_rows = _cur_ex.fetchall()
                                     _conn_ex.close()
-                                    print(f"[SLOT_EXCLUSIVITY] text_search={len(_text_rows)} rows, facts_table={len(_fact_rows)} rows")
+                                    print(f"[GOVERNANCE] slot_exclusivity: text_search={len(_text_rows)} rows, facts_table={len(_fact_rows)} rows")
                                     # Demote from text search (catches entries not in memory_facts)
                                     _demoted_ids = set()
                                     for _ex_mem_id, _ex_text, _ex_trust in _text_rows:
@@ -3270,7 +3373,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                         engine.memory._update_memory_trust(_ex_mem_id, _demoted)
                                         _demoted_ids.add(_ex_mem_id)
                                         print(
-                                            f"[SLOT_EXCLUSIVITY] DEMOTED {_ex_mem_id} "
+                                            f"[GOVERNANCE] slot_exclusivity: DEMOTED {_ex_mem_id} "
                                             f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
                                             f"text: {str(_ex_text)[:60]}"
                                         )
@@ -3283,7 +3386,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                         _demoted = float(_ex_trust) * 0.4
                                         engine.memory._update_memory_trust(_ex_mem_id, _demoted)
                                         print(
-                                            f"[SLOT_EXCLUSIVITY] DEMOTED {_ex_mem_id} "
+                                            f"[GOVERNANCE] slot_exclusivity: DEMOTED {_ex_mem_id} "
                                             f"(trust {float(_ex_trust):.3f} -> {_demoted:.3f}) "
                                             f"norm: {_ex_norm}"
                                         )
@@ -3320,21 +3423,21 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                                 "INSERT OR REPLACE INTO memory_facts (memory_id, slot, value, normalized) VALUES (?, ?, ?, ?)",
                                                 (_new_mem_row[0], _cloud_slot, str(_cloud_value), _new_val_norm),
                                             )
-                                            print(f"[SLOT_EXCLUSIVITY] Stored fact: {_cloud_slot}={_new_val_norm} for {_new_mem_row[0]}")
+                                            print(f"[GOVERNANCE] slot_exclusivity: Stored fact: {_cloud_slot}={_new_val_norm} for {_new_mem_row[0]}")
                                         _conn_store.commit()
                                         _conn_store.close()
                                         if _deleted_facts:
-                                            print(f"[SLOT_EXCLUSIVITY] Cleaned {_deleted_facts} stale fact entries for {_cloud_slot}")
+                                            print(f"[GOVERNANCE] slot_exclusivity: Cleaned {_deleted_facts} stale fact entries for {_cloud_slot}")
                                     except Exception as _sf_err:
-                                        print(f"[SLOT_EXCLUSIVITY] Fact store error (non-fatal): {_sf_err}")
+                                        print(f"[GOVERNANCE] slot_exclusivity: Fact store error (non-fatal): {_sf_err}")
                                 except Exception as _slot_ex_err:
                                     import traceback
-                                    print(f"[SLOT_EXCLUSIVITY] Error: {_slot_ex_err}")
+                                    print(f"[GOVERNANCE] slot_exclusivity: Error: {_slot_ex_err}")
                                     traceback.print_exc()
                     else:
-                        print(f"[CLOUD_SLOT_FLOW] No fact detected or no result")
+                        print("[GOVERNANCE] slot_classify: no fact detected")
     except Exception as _cloud_slot_err:
-        logger.warning("[CLOUD_SLOT] Cloud slot classification failed (non-fatal): %s", _cloud_slot_err)
+        logger.warning("[GOVERNANCE] slot_classify: cloud classification failed (non-fatal): %s", _cloud_slot_err)
 
     # ====== CRT-AS-CRITIC: Post-generation verification ======
     # Verify the draft answer against stored memories using GroundCheck (~1ms).
@@ -3419,7 +3522,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     try:
         _critic_confidence = float((critic_meta or {}).get("confidence") or 0.0)
         _critic_verdict_str = str((critic_meta or {}).get("verdict") or "")
-        print(f"[CLOUD_NLI] Critic verdict: {_critic_verdict_str}, confidence: {_critic_confidence}")
+        print(f"[GOVERNANCE] nli: critic verdict={_critic_verdict_str}, confidence={_critic_confidence}")
         if _critic_verdict_str == "soft_fail" and 0.4 <= _critic_confidence <= 0.7:
             import auth as _auth_mod_nli
             _uid_int_nli = int(uid) if uid else 1
@@ -3434,23 +3537,61 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     _contradictions = (critic_meta or {}).get("contradictions") or []
                     _fact_a = effective_message
                     _fact_b = _contradictions[0] if _contradictions else str(result.get("answer", ""))[:200]
+                    _t_nli = time.perf_counter()
                     _nli_result = _cloud_svc_nli.check_contradiction(_fact_a, _fact_b)
+                    _lat_nli = int((time.perf_counter() - _t_nli) * 1000)
+                    try:
+                        _track_cloud_call(
+                            call_type="nli_contradiction",
+                            provider="openai", model="gpt-4o-mini",
+                            latency_ms=_lat_nli,
+                            success=_nli_result is not None,
+                            thread_id=req.thread_id, uid=int(uid) if uid else None,
+                            error_type=None if _nli_result else "returned_none",
+                            user_message=effective_message,
+                        )
+                    except Exception:
+                        pass
                     if _nli_result:
+                        result["cloud_governance_used"] = True
                         _nli_relation = str(_nli_result.get("relation") or "").lower()
                         if _nli_relation == "contradiction":
                             # Cloud confirms contradiction — upgrade to hard fail
                             result["gates_passed"] = False
                             result["gate_reason"] = "cloud_nli_contradiction"
                             result["contradiction_detected"] = True
-                            print("[CLOUD_NLI] Cloud confirmed contradiction — upgraded to hard fail")
+                            print("[GOVERNANCE] nli: cloud confirmed contradiction, upgraded to hard fail")
+                            _gen_tracking["nli"] = "cloud(contradiction)"
                         elif _nli_relation in ("entailment", "neutral"):
                             # Cloud says no contradiction — upgrade to pass
                             result["gates_passed"] = True
                             result.pop("gate_reason", None)
                             result["contradiction_detected"] = False
-                            print("[CLOUD_NLI] Cloud cleared contradiction — upgraded to pass")
+                            print("[GOVERNANCE] nli: cloud cleared contradiction, upgraded to pass")
+                            _gen_tracking["nli"] = "cloud(pass)"
     except Exception as _cloud_nli_err:
-        logger.warning("[CLOUD_NLI] Cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
+        logger.warning("[GOVERNANCE] nli_error: cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
+
+    # ── Request summary ─────────────────────────────────────────────────────
+    try:
+        _gen_latency_ms = round((time.perf_counter() - _gen_phase_t0) * 1000)
+        # Update nli tracking from local critic if cloud NLI didn't run
+        if _gen_tracking["nli"] == "none" and critic_meta:
+            _cv = str((critic_meta or {}).get("verdict") or "")
+            _gen_tracking["nli"] = f"local({_cv})" if _cv else "local(skip)"
+        _escalation_mode = _gen_tracking.get("escalation", "none")
+        if _escalation_mode == "none" and _escalation_decision is not None:
+            _escalation_mode = "local_only"
+            _gen_tracking["escalation"] = _escalation_mode
+        print(
+            f"[REQUEST_SUMMARY] gen={_gen_tracking['gen']}, "
+            f"slots={_gen_tracking['slots']}, "
+            f"nli={_gen_tracking['nli']}, "
+            f"escalation={_gen_tracking['escalation']}, "
+            f"latency={_gen_latency_ms}ms"
+        )
+    except Exception as _summary_err:
+        print(f"[REQUEST_SUMMARY] error: {_summary_err}")
 
     # ── Gate telemetry emission ──────────────────────────────────────────────
     try:
@@ -3768,9 +3909,9 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             or _after_greeting.startswith("[No LLM available")
         )
     if _leaked_error:
-        print(f"[CLOUD_GEN] LLM error string leaked into final_answer: {final_answer[:120]}")
+        print(f"[GENERATION] late_fallback: LLM error leaked into final_answer: {final_answer[:120]}")
         # Try cloud fallback if not already attempted
-        _already_cloud = result.get("generation_source") == "cloud_fallback"
+        _already_cloud = result.get("generation_source") in ("cloud_fallback", "cloud_fallback_claude")
         if not _already_cloud:
             try:
                 import auth as _auth_cg2
@@ -3784,47 +3925,75 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 ).lower().strip()
                 if _esc_policy_setting2 == "local_only":
                     _cloud_gen_enabled2 = False
-                    print("[CLOUD_GEN] Late cloud fallback blocked by escalation policy (local_only)")
+                    print("[GENERATION] late_fallback: blocked by escalation policy (local_only)")
                 if _cloud_gen_enabled2:
                     from personal_agent.cloud_features import get_cloud_feature_service
                     _cloud_gen_svc2 = get_cloud_feature_service()
                     if _cloud_gen_svc2 is not None:
-                        print("[CLOUD_GEN] Falling back to OpenAI after leaked error string")
+                        print("[GENERATION] late_fallback: trying OpenAI after leaked error string")
                         _cg2_memories = retrieved_mems or []
+                        _t_late = time.perf_counter()
                         _cg2_answer = _cloud_gen_svc2.generate_response(
                             user_message=effective_message,
                             retrieved_memories=_cg2_memories,
                             conversation_history=recent_history or None,
                         )
+                        _lat_late = int((time.perf_counter() - _t_late) * 1000)
                         if _cg2_answer:
                             final_answer = _cg2_answer
                             if greeting_text:
                                 final_answer = f"{greeting_text}\n\n{final_answer}"
                             result["generation_source"] = "cloud_fallback"
-                            print(f"[CLOUD_GEN] Late fallback succeeded — {len(_cg2_answer)} chars")
+                            print(f"[GENERATION] late_fallback: OpenAI succeeded, {len(_cg2_answer)} chars")
+                        try:
+                            _track_cloud_call(
+                                call_type="generation_fallback",
+                                provider="openai", model="gpt-4o-mini",
+                                latency_ms=_lat_late, success=True,
+                                thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                output_text=_cg2_answer,
+                                escalation_reason="leaked_error_string",
+                                user_message=effective_message,
+                            )
+                        except Exception:
+                            pass
                         else:
                             # OpenAI failed — escalate to Claude (Tier 2)
-                            print("[CLOUD_GEN] Late OpenAI returned None, escalating to Claude (Tier 2)")
+                            print("[GENERATION] late_fallback: OpenAI returned None, escalating to Claude (Tier 2)")
+                            _t_late_c = time.perf_counter()
                             _cg2_claude = _cloud_gen_svc2.generate_response_claude(
                                 user_message=effective_message,
                                 retrieved_memories=_cg2_memories,
                                 conversation_history=recent_history or None,
                             )
+                            _lat_late_c = int((time.perf_counter() - _t_late_c) * 1000)
                             if _cg2_claude:
                                 final_answer = _cg2_claude
                                 if greeting_text:
                                     final_answer = f"{greeting_text}\n\n{final_answer}"
-                                result["generation_source"] = "claude_fallback"
-                                print(f"[CLOUD_GEN] Late Claude fallback succeeded — {len(_cg2_claude)} chars")
+                                result["generation_source"] = "cloud_fallback_claude"
+                                print(f"[GENERATION] late_fallback: Claude succeeded, {len(_cg2_claude)} chars")
+                            try:
+                                _track_cloud_call(
+                                    call_type="generation_fallback_claude",
+                                    provider="claude_cookie", model="claude-sonnet",
+                                    latency_ms=_lat_late_c, success=True,
+                                    thread_id=req.thread_id, uid=int(uid) if uid else None,
+                                    output_text=_cg2_claude,
+                                    escalation_reason="leaked_error_string",
+                                    user_message=effective_message,
+                                )
+                            except Exception:
+                                pass
                             else:
-                                print("[CLOUD_GEN] Late Claude also returned None")
+                                print("[GENERATION] late_fallback: Claude also returned None")
                                 final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
                     else:
                         final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
                 else:
                     final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
             except Exception as _cg2_err:
-                print(f"[CLOUD_GEN] Late fallback error: {_cg2_err}")
+                print(f"[GENERATION] late_fallback_error: {_cg2_err}")
                 final_answer = "I ran into a problem generating a response. The model may not be available -- try again in a moment."
         else:
             # Cloud fallback was already attempted but still leaked — use generic message
@@ -4046,6 +4215,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         "product_mode": ((runtime_config.get("product_mode") or {}).get("mode") if isinstance(runtime_config, dict) else None),
         "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
         "generation_source": result.get("generation_source"),
+        "escalation": result.get("escalation"),
+        "cloud_governance_used": result.get("cloud_governance_used", False),
         "groundcheck_bridge": groundcheck_bridge_meta,
         "gate_debug": result.get("gate_debug") or None,
     }
