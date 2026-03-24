@@ -393,41 +393,16 @@ class OllamaClient:
                 if (self._client is not None and hasattr(self._client, "chat"))
                 else ollama.chat  # type: ignore[union-attr]
             )
-            # Ollama's Pydantic model may reject string arguments in tool calls,
-            # so we try the native client first, then fall back to raw HTTP
-            try:
-                response = chat_fn(
-                    model=selected_model,
-                    messages=messages,
-                    tools=tools,
-                    options={
-                        "num_predict": self._effective_num_predict(max_tokens, selected_model),
-                        "temperature": temperature,
-                        "repeat_penalty": 1.15,
-                    },
-                )
-            except Exception as _pydantic_err:
-                # Pydantic validation failed on tool_calls — use raw HTTP
-                print(f"[OLLAMA] Native client failed ({_pydantic_err}), falling back to raw HTTP")
-                import requests as _req
-
-                def _to_dict(obj):
-                    """Convert Pydantic models / dataclasses to plain dicts."""
-                    if isinstance(obj, dict):
-                        return {k: _to_dict(v) for k, v in obj.items()}
-                    if isinstance(obj, (list, tuple)):
-                        return [_to_dict(v) for v in obj]
-                    if hasattr(obj, "model_dump"):
-                        return obj.model_dump()
-                    if hasattr(obj, "dict"):
-                        return obj.dict()
-                    return obj
-
+            # When tools are provided, use raw httpx to avoid Ollama's Pydantic
+            # model rejecting string arguments in tool_calls (ollama v0.6.x bug).
+            # For non-tool calls, use the native client as normal.
+            if tools:
+                import httpx
                 _base = "http://localhost:11434"
                 _payload = {
                     "model": selected_model,
-                    "messages": _to_dict(messages if isinstance(messages, list) else list(messages)),
-                    "tools": _to_dict(tools) if tools else [],
+                    "messages": messages,
+                    "tools": tools,
                     "stream": False,
                     "options": {
                         "num_predict": self._effective_num_predict(max_tokens, selected_model),
@@ -435,13 +410,21 @@ class OllamaClient:
                         "repeat_penalty": 1.15,
                     },
                 }
-                try:
-                    _resp = _req.post(f"{_base}/api/chat", json=_payload, timeout=120)
-                    _resp.raise_for_status()
-                    response = _resp.json()  # raw dict, no Pydantic
-                except Exception as _http_err:
-                    print(f"[OLLAMA] Raw HTTP fallback also failed: {_http_err}")
-                    raise _pydantic_err from _http_err
+                _resp = httpx.post(f"{_base}/api/chat", json=_payload, timeout=120.0)
+                if _resp.status_code != 200:
+                    print(f"[OLLAMA] Tool call HTTP {_resp.status_code}: {_resp.text[:500]}")
+                _resp.raise_for_status()
+                response = _resp.json()  # raw dict, bypasses Pydantic entirely
+            else:
+                response = chat_fn(
+                    model=selected_model,
+                    messages=messages,
+                    options={
+                        "num_predict": self._effective_num_predict(max_tokens, selected_model),
+                        "temperature": temperature,
+                        "repeat_penalty": 1.15,
+                    },
+                )
 
             msg = (
                 response.message
