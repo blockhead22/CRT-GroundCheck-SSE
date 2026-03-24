@@ -158,6 +158,9 @@ export function ChatThreadView(props: {
   pendingCheckpoint?: { message: string; metadata: Record<string, unknown> } | null
   onCheckpointRespond?: (text: string) => void
   onStopGeneration?: () => void
+  proactiveSuggestion?: { trigger: string; suggestion: string; action: string } | null
+  onProactiveSuggestionClick?: (action: string) => void
+  onDismissProactiveSuggestion?: () => void
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -726,6 +729,45 @@ export function ChatThreadView(props: {
               onRespond={props.onCheckpointRespond ?? props.onSend}
             />
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Proactive suggestion pill (Sprint 4) */}
+      <AnimatePresence>
+        {props.proactiveSuggestion && !showActionCard && !isStreaming && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-1.5 mx-auto"
+            style={{ maxWidth: '760px' }}
+          >
+            <span
+              className="text-[11px] font-mono"
+              style={{ color: 'rgba(212,132,92,0.6)' }}
+            >
+              Aether suggests:
+            </span>
+            <button
+              onClick={() => props.onProactiveSuggestionClick?.(props.proactiveSuggestion!.action)}
+              className="text-[11px] font-mono px-2.5 py-0.5 rounded-full transition-all hover:bg-white/[0.06]"
+              style={{
+                color: 'rgba(212,132,92,0.85)',
+                border: '1px solid rgba(212,132,92,0.2)',
+                background: 'rgba(212,132,92,0.06)',
+              }}
+            >
+              {props.proactiveSuggestion.suggestion}
+            </button>
+            <button
+              onClick={() => props.onDismissProactiveSuggestion?.()}
+              className="text-[10px] px-1 opacity-40 hover:opacity-80 transition-opacity"
+              style={{ color: 'rgba(240,235,225,0.5)' }}
+            >
+              dismiss
+            </button>
+          </motion.div>
         )}
       </AnimatePresence>
 

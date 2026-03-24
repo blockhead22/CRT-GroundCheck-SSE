@@ -706,7 +706,13 @@ def _check_inline_contradiction(
                 if slot == "name" and names_look_equivalent(old_val, new_val):
                     continue
                 # For exclusive slots: different value = contradiction, no NLP needed
-                is_exclusive = slot in _EXCLUSIVE_SLOTS or slot.startswith("favorite_")
+                # Sprint 6: dynamic slot type lookup with fallback to legacy list
+                try:
+                    from personal_agent.slot_discovery import get_slot_type, SlotType as _SlotType
+                    _dyn_type = get_slot_type(slot)
+                    is_exclusive = _dyn_type == _SlotType.EXCLUSIVE or (_dyn_type == _SlotType.UNKNOWN and (slot in _EXCLUSIVE_SLOTS or slot.startswith("favorite_")))
+                except Exception:
+                    is_exclusive = slot in _EXCLUSIVE_SLOTS or slot.startswith("favorite_")
                 if is_exclusive:
                     info = (
                         f"slot={slot!r} old={old_val!r} new={new_val!r} "

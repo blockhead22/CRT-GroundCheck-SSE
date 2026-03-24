@@ -192,6 +192,11 @@ export type CtrMessageMeta = {
   } | null
   // File references from agent file tools
   referenced_files?: Array<{ path: string; type: 'file' | 'dir' }>
+  // Sprint 4 — commitment notification metadata
+  notification_type?: string | null
+  commitment_id?: string | null
+  priority?: string | null
+  consequence?: string | null
 }
 
 export type MessageRating = 'up' | 'down'

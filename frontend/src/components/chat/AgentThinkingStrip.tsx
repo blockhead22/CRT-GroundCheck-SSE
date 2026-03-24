@@ -27,6 +27,7 @@ export type AgentThinkingState = {
   route?: string
   slots?: Record<string, unknown>
   confidence?: number
+  source?: string  // "regex" | "embedding" | "embedding_multi" | "embedding_ambiguous" | "fallback"
   // Set once plan_ready fires
   plan?: AgentPlanStep[]
   // Accumulate as tool events arrive
@@ -181,6 +182,17 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
           <span className="rounded-full px-2 py-0.5 text-[10px] font-mono"
             style={{ background: 'rgba(240,235,225,0.05)', color: '#7a7060', border: '1px solid rgba(240,235,225,0.08)' }}>
             {state.route}
+          </span>
+        )}
+
+        {state.source && (
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-mono"
+            style={{
+              background: state.source === 'embedding' ? 'rgba(100,180,255,0.08)' : 'rgba(240,235,225,0.04)',
+              color: state.source === 'embedding' ? '#6ab4ff' : '#5a5445',
+              border: `1px solid ${state.source === 'embedding' ? 'rgba(100,180,255,0.15)' : 'rgba(240,235,225,0.06)'}`,
+            }}>
+            {state.source}
           </span>
         )}
 

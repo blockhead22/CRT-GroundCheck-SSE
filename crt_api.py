@@ -18,7 +18,7 @@ from personal_agent.text_utils import (
 
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi import Query
 from fastapi import BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -1262,6 +1262,44 @@ def create_app() -> FastAPI:
 
     # Route modules (strangler pattern): endpoints move out of this file incrementally.
     register_routes(app)
+
+    # ── SSE notification stream (Sprint 4 — commitment notifications) ────
+    @app.get("/api/notifications/stream")
+    async def notification_stream(request: Request):
+        """SSE endpoint for real-time commitment notifications.
+
+        Clients connect and receive commitment_notification events as they fire.
+        """
+        import asyncio as _asyncio
+        from personal_agent.notifications import register_sse_connection, unregister_sse_connection
+
+        queue = register_sse_connection("default")
+
+        async def _event_generator():
+            try:
+                # Send keepalive immediately
+                yield f"data: {json.dumps({'type': 'connected', 'content': 'notification stream active'})}\n\n"
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    try:
+                        event = await _asyncio.wait_for(queue.get(), timeout=30.0)
+                        yield f"data: {json.dumps(event)}\n\n"
+                    except _asyncio.TimeoutError:
+                        # Send keepalive
+                        yield f"data: {json.dumps({'type': 'keepalive', 'content': ''})}\n\n"
+            finally:
+                unregister_sse_connection(queue, "default")
+
+        return StreamingResponse(
+            _event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     @app.on_event("startup")
     def _startup() -> None:

@@ -432,7 +432,7 @@ export type StreamCallbacks = {
   onStatus?: (content: string) => void
   onIntentPreview?: (intent: string, slots: string[], label: string) => void
   // Agentic task route events
-  onIntentClassified?: (intent: string, route: string, slots: Record<string, unknown>, confidence: number) => void
+  onIntentClassified?: (intent: string, route: string, slots: Record<string, unknown>, confidence: number, source?: string) => void
   onPlanReady?: (steps: Array<{ tool: string; input: Record<string, unknown> }>) => void
   onToolStart?: (toolName: string, input: Record<string, unknown>, stepIndex: number) => void
   onToolResult?: (step: AgentStep) => void
@@ -549,12 +549,13 @@ export async function streamFromCrtApi(args: {
                 break
               }
               case 'intent_classified': {
-                const meta = event.metadata as { intent?: string; route?: string; slots?: Record<string, unknown>; confidence?: number } | undefined
+                const meta = event.metadata as { intent?: string; route?: string; slots?: Record<string, unknown>; confidence?: number; source?: string } | undefined
                 args.callbacks.onIntentClassified?.(
                   meta?.intent ?? '',
                   meta?.route ?? 'conversational',
                   meta?.slots ?? {},
                   meta?.confidence ?? 0,
+                  meta?.source,
                 )
                 break
               }

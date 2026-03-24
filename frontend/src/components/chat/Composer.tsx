@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getCloudSettings, updateCloudSettings } from '../../lib/api'
+import { ClaudeLogo } from '../icons/ClaudeLogo'
+import { OpenAILogo } from '../icons/OpenAILogo'
 
 type GenerationMode = 'local' | 'cloud_openai' | 'cloud_claude'
 
@@ -22,26 +24,13 @@ const MODEL_OPTIONS: { value: GenerationMode; label: string; shortLabel: string;
     value: 'cloud_openai',
     label: 'GPT-4o Mini',
     shortLabel: 'GPT-4o',
-    icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z" />
-        <path d="M2 17l10 5 10-5" />
-        <path d="M2 12l10 5 10-5" />
-      </svg>
-    ),
+    icon: <OpenAILogo size={12} color="currentColor" />,
   },
   {
     value: 'cloud_claude',
     label: 'Claude Sonnet',
     shortLabel: 'Claude',
-    icon: (
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-        <line x1="9" y1="9" x2="9.01" y2="9" />
-        <line x1="15" y1="9" x2="15.01" y2="9" />
-      </svg>
-    ),
+    icon: <ClaudeLogo size={12} color="currentColor" />,
   },
 ]
 
@@ -119,28 +108,16 @@ export function Composer(props: {
     if (type === 'file') {
       fileInputRef.current?.click()
     } else {
-      // Use File System Access API to pick a folder without reading all files
-      if ('showDirectoryPicker' in window) {
-        ;(window as any).showDirectoryPicker({ mode: 'read' })
-          .then((handle: any) => {
-            const name = handle.name as string
-            setAttachedPaths((prev) =>
-              prev.some((p) => p.path === name) ? prev : [...prev, { path: name, type: 'dir' }]
-            )
-            textareaRef.current?.focus()
-          })
-          .catch(() => { /* user cancelled */ })
-      } else {
-        // Fallback: manual entry
-        const path = window.prompt('Enter folder path:')
-        if (path) {
-          const normalized = path.replace(/\\/g, '/')
-          setAttachedPaths((prev) =>
-            prev.some((p) => p.path === normalized) ? prev : [...prev, { path: normalized, type: 'dir' }]
-          )
-        }
-        textareaRef.current?.focus()
+      // Browser APIs can't return full filesystem paths (security sandbox),
+      // so we use a direct path input for folder targeting.
+      const path = window.prompt('Enter folder path (e.g. D:/lumi or C:/projects/my-app):')
+      if (path) {
+        const normalized = path.replace(/\\/g, '/')
+        setAttachedPaths((prev) =>
+          prev.some((p) => p.path === normalized) ? prev : [...prev, { path: normalized, type: 'dir' }]
+        )
       }
+      textareaRef.current?.focus()
     }
   }
 

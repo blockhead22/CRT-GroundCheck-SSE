@@ -7,6 +7,7 @@ import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
 import { FilePill } from '../ui/FilePill'
 import { ClaudeLogo } from '../icons/ClaudeLogo'
+import { OpenAILogo } from '../icons/OpenAILogo'
 import { PipelineTrace } from './PipelineTrace'
 import { MessageRatingBar } from './MessageRatingBar'
 import { ContradictionResolutionCard } from './ContradictionResolutionCard'
@@ -157,6 +158,7 @@ export function MessageBubble(props: {
   const isAssistant = !isUser
 
   const responseType = (meta?.response_type ?? '').toLowerCase()
+  const isNotification = responseType === 'notification'
   const isBelief = responseType === 'belief'
   const isExplanation = responseType === 'explanation'
   const gatesPassed = meta?.gates_passed
@@ -258,22 +260,44 @@ export function MessageBubble(props: {
           localRating === 'down' ? 'border-l-2' : '',
           localRating === 'up' ? 'border-l-2' : '',
           gatesFailed && !localRating ? 'border-l-2' : '',
+          isNotification ? 'border-l-[3px]' : '',
         ].join(' ')}
         style={{
-          background: props.selected
-            ? 'rgba(212,132,92,0.06)'
-            : 'rgba(29,27,22,0.4)',
-          border: props.selected
-            ? '1px solid rgba(212,132,92,0.2)'
-            : '1px solid rgba(240,235,225,0.05)',
+          background: isNotification
+            ? 'rgba(212,132,92,0.05)'
+            : props.selected
+              ? 'rgba(212,132,92,0.06)'
+              : 'rgba(29,27,22,0.4)',
+          border: isNotification
+            ? '1px solid rgba(212,132,92,0.15)'
+            : props.selected
+              ? '1px solid rgba(212,132,92,0.2)'
+              : '1px solid rgba(240,235,225,0.05)',
           boxShadow: props.selected
             ? '0 0 24px rgba(212,132,92,0.1), 0 2px 8px rgba(0,0,0,0.15)'
             : '0 1px 3px rgba(0,0,0,0.08)',
+          ...(isNotification ? { borderLeftColor: 'rgba(212,132,92,0.6)' } : {}),
           ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
           ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
           ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)', background: 'rgba(251,146,60,0.04)' } : {}),
         }}
       >
+        {/* Notification header (Sprint 4) */}
+        {isNotification && (
+          <div className="flex items-center gap-2 mb-2 text-[11px] font-mono" style={{ color: 'rgba(212,132,92,0.7)' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+              <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+            </svg>
+            <span className="uppercase tracking-wider">Aether Reminder</span>
+            {meta?.priority === 'high' || meta?.priority === 'critical' ? (
+              <span className="rounded px-1.5 py-0.5" style={{ background: 'rgba(212,132,92,0.15)', color: 'rgba(212,132,92,0.9)' }}>
+                {meta.priority}
+              </span>
+            ) : null}
+          </div>
+        )}
+
         {/* Profile updates */}
         {profileUpdates.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -512,11 +536,11 @@ export function MessageBubble(props: {
                 case 'local':
                   return { label: 'Local', bg: 'rgba(52,211,153,0.12)', color: '#34d399', border: 'rgba(52,211,153,0.2)' }
                 case 'cloud_openai':
-                  return { label: 'GPT-4o', bg: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: 'rgba(96,165,250,0.2)' }
+                  return { label: 'GPT-4o', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'openai' }
                 case 'cloud_claude':
                   return { label: 'Claude', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
                 case 'cloud_fallback':
-                  return { label: 'Fallback: GPT', bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: 'rgba(251,146,60,0.2)' }
+                  return { label: 'Fallback: GPT', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'openai' }
                 case 'claude_fallback':
                 case 'cloud_fallback_claude':
                   return { label: 'Fallback: Claude', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
@@ -525,6 +549,9 @@ export function MessageBubble(props: {
                     const provider = src.replace('bypass_', '')
                     if (provider.includes('claude')) {
                       return { label: `Bypass: Claude`, bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
+                    }
+                    if (provider.includes('openai') || provider.includes('gpt')) {
+                      return { label: `Bypass: GPT`, bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'openai' }
                     }
                     return { label: `Bypass: ${provider}`, bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: 'rgba(251,146,60,0.2)' }
                   }
@@ -538,6 +565,7 @@ export function MessageBubble(props: {
                 title={`Generation: ${src}`}
               >
                 {'icon' in pill && pill.icon === 'claude' && <ClaudeLogo size={10} />}
+                {'icon' in pill && pill.icon === 'openai' && <OpenAILogo size={10} color="#ffffff" />}
                 {pill.label}
               </span>
             )

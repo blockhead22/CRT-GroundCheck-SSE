@@ -780,9 +780,22 @@ class ContradictionLedger:
         
         conn.commit()
         conn.close()
-        
+
+        # Sprint 6: Notify slot discovery of the new contradiction (non-blocking)
+        if affects_slots_set and summary:
+            try:
+                from personal_agent.slot_discovery import on_contradiction_recorded as _sd_notify
+                _resolution = suggested_policy or "ask_user"
+                # Parse old/new values from summary if possible (format: "slot: type - old -> new")
+                for _affected_slot in affects_slots_set:
+                    _old_v = old_text[:60] if old_text else ""
+                    _new_v = new_text[:60] if new_text else ""
+                    _sd_notify(_affected_slot, _old_v, _new_v, _resolution)
+            except Exception as _sd_err:
+                logger.debug(f"[SLOT_DISCOVERY] Failed to notify slot discovery: {_sd_err}")
+
         return entry
-    
+
     def create_semantic_anchor(
         self,
         entry: ContradictionEntry,

@@ -61,6 +61,21 @@ export default function App() {
     const loaded = loadChatStateFromStorage()
     return loaded.threads.length ? loaded.threads : seedThreads()
   })
+
+  // Pinned thread IDs — persisted to localStorage
+  const [pinnedThreadIds, setPinnedThreadIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('crt_pinned_threads')
+      return raw ? JSON.parse(raw) : []
+    } catch { return [] }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('crt_pinned_threads', JSON.stringify(pinnedThreadIds)) } catch {}
+  }, [pinnedThreadIds])
+
+  const togglePinThread = useCallback((id: string) => {
+    setPinnedThreadIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
+  }, [])
   const [selectedThreadId, setSelectedThreadId] = useState<string>(() => {
     const loaded = loadChatStateFromStorage()
     if (loaded.selectedThreadId) return loaded.selectedThreadId
@@ -123,6 +138,13 @@ export default function App() {
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{
     message: string
     metadata: Record<string, unknown>
+  } | null>(null)
+
+  // Sprint 4 — proactive suggestion from done metadata
+  const [proactiveSuggestion, setProactiveSuggestion] = useState<{
+    trigger: string
+    suggestion: string
+    action: string
   } | null>(null)
 
   const selectedThread = useMemo(
@@ -230,6 +252,68 @@ export default function App() {
 
     checkAuth()
   }, [])
+
+  // Sprint 4 — notification SSE stream for commitment reminders
+  useEffect(() => {
+    const base = getEffectiveApiBaseUrl()
+    let es: EventSource | null = null
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null
+
+    function connect() {
+      try {
+        es = new EventSource(`${base}/api/notifications/stream`)
+        es.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            if (data.type === 'commitment_notification') {
+              // Show browser notification
+              if (Notification.permission === 'granted') {
+                new Notification('Aether Reminder', {
+                  body: data.content,
+                  icon: '/favicon.ico',
+                })
+              }
+              // Inject as system message in active thread
+              const notifMsg = {
+                id: newId('m'),
+                role: 'assistant' as const,
+                text: `🔔 **Reminder:** ${data.content}`,
+                createdAt: Date.now(),
+                crt: {
+                  response_type: 'notification',
+                  notification_type: 'commitment',
+                  commitment_id: data.metadata?.commitment_id,
+                  priority: data.metadata?.priority,
+                  consequence: data.metadata?.consequence,
+                },
+              }
+              setThreads(prev => prev.map(t =>
+                t.id === selectedThreadId
+                  ? { ...t, messages: [...t.messages, notifMsg], updatedAt: Date.now() }
+                  : t
+              ))
+            }
+          } catch { /* ignore parse errors */ }
+        }
+        es.onerror = () => {
+          es?.close()
+          // Retry in 10s
+          retryTimeout = setTimeout(connect, 10000)
+        }
+      } catch { /* EventSource not available */ }
+    }
+
+    // Request notification permission on first load
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+
+    connect()
+    return () => {
+      es?.close()
+      if (retryTimeout) clearTimeout(retryTimeout)
+    }
+  }, [selectedThreadId])
 
   // Sync threads to server when logged in
   useEffect(() => {
@@ -414,8 +498,8 @@ export default function App() {
             onIntentPreview: (intent, slots, label) => {
               setIntentPreview({ intent, slots, label })
             },
-            onIntentClassified: (intent, route, slots, confidence) => {
-              const next = { intent, route, slots, confidence, toolSteps: [] }
+            onIntentClassified: (intent, route, slots, confidence, source) => {
+              const next = { intent, route, slots, confidence, source, toolSteps: [] }
               agentThinkingRef.current = next
               setAgentThinkingState(next)
             },
@@ -617,6 +701,14 @@ export default function App() {
               finalBufferRef.current = ''
               setIntentPreview(null)
               setAgentThinkingState(null)
+
+              // Sprint 4 — capture proactive suggestion from done metadata
+              const ps = (metadata as any)?.proactive_suggestion
+              if (ps && ps.suggestion) {
+                setProactiveSuggestion({ trigger: ps.trigger, suggestion: ps.suggestion, action: ps.action })
+              } else {
+                setProactiveSuggestion(null)
+              }
               agentThinkingRef.current = null
             },
             onError: (error) => {
@@ -930,6 +1022,8 @@ export default function App() {
             onNewThread={newThread}
             onDeleteThread={deleteThread}
             onRequestRenameThread={openRename}
+            pinnedThreadIds={pinnedThreadIds}
+            onTogglePinThread={togglePinThread}
             apiStatus={apiStatus}
             apiBaseUrl={apiBaseUrl}
             onChangeApiBaseUrl={setApiBaseUrl}
@@ -990,6 +1084,21 @@ export default function App() {
                       pendingCheckpoint={pendingCheckpoint}
                       onCheckpointRespond={handleCheckpointRespond}
                       onStopGeneration={handleStopGeneration}
+                      proactiveSuggestion={proactiveSuggestion}
+                      onProactiveSuggestionClick={(action) => {
+                        // Send the suggestion action as a chat message
+                        if (action === 'create_commitment') {
+                          handleSend('Yes, set a reminder for that')
+                        } else if (action === 'project_scan') {
+                          handleSend('Yes, check the project status')
+                        } else if (action === 'trip_research') {
+                          handleSend('Yes, look that up for me')
+                        } else {
+                          handleSend(`Yes, ${proactiveSuggestion?.suggestion || 'go ahead'}`)
+                        }
+                        setProactiveSuggestion(null)
+                      }}
+                      onDismissProactiveSuggestion={() => setProactiveSuggestion(null)}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

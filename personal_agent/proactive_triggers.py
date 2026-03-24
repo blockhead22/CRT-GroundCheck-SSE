@@ -321,3 +321,87 @@ class AgenticChatMode:
     def disable_auto_mode(self):
         """Disable autonomous agent execution (manual triggers only)."""
         self.auto_mode = False
+
+
+# ---------------------------------------------------------------------------
+# User-facing proactive pattern detection (Sprint 4)
+# ---------------------------------------------------------------------------
+# These detect conversational patterns in user messages and suggest actions
+# the user might want — distinct from the LLM confidence triggers above.
+# ---------------------------------------------------------------------------
+
+import re as _re
+from dataclasses import field as _field
+
+PROACTIVE_PATTERNS = [
+    {
+        "name": "trip_planning",
+        "keywords": ["planning a trip", "going to", "traveling to", "vacation to", "flying to"],
+        "suggestion": "Want me to look up routes, lodging, or flights?",
+        "tools": ["maps", "weather", "lodging"],
+        "action": "trip_research",
+    },
+    {
+        "name": "health_concern",
+        "keywords": ["feeling sick", "headache", "not feeling well", "doctor"],
+        "suggestion": "Want me to set a reminder to follow up on that?",
+        "tools": ["create_commitment"],
+        "action": "create_commitment",
+    },
+    {
+        "name": "deadline_mention",
+        "keywords": ["due by", "deadline", "due date", "need to finish by", "submit by"],
+        "suggestion": "Want me to set a reminder for that deadline?",
+        "tools": ["create_commitment"],
+        "action": "create_commitment",
+    },
+    {
+        "name": "project_mention",
+        "keywords": ["working on", "my project", "my site", "my app", "my repo"],
+        "suggestion": "Want me to check the status of that project?",
+        "tools": ["project_scan"],
+        "action": "project_scan",
+    },
+]
+
+
+@dataclass
+class ProactiveSuggestion:
+    """A proactive suggestion to surface to the user."""
+    name: str
+    suggestion: str
+    action: str
+    tools: list = _field(default_factory=list)
+
+
+def check_proactive_patterns(
+    user_message: str,
+    response_text: str = "",
+) -> Optional[ProactiveSuggestion]:
+    """Check user message against proactive patterns.
+
+    Returns a ProactiveSuggestion if a pattern matches AND the response
+    doesn't already address it, or None.
+    """
+    msg_lower = user_message.lower()
+
+    for pattern in PROACTIVE_PATTERNS:
+        for keyword in pattern["keywords"]:
+            if keyword in msg_lower:
+                # Check the response doesn't already address this
+                if pattern["action"] == "create_commitment":
+                    # If response already mentions reminder/commitment, skip
+                    if _re.search(r"\breminder|commitment|scheduled\b", response_text, _re.IGNORECASE):
+                        continue
+                elif pattern["action"] == "project_scan":
+                    if _re.search(r"\bgit\s+status|project\s+status|commit\b", response_text, _re.IGNORECASE):
+                        continue
+
+                return ProactiveSuggestion(
+                    name=pattern["name"],
+                    suggestion=pattern["suggestion"],
+                    action=pattern["action"],
+                    tools=pattern.get("tools", []),
+                )
+
+    return None

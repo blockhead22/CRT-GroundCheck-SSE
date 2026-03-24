@@ -1215,23 +1215,37 @@ class CRTMemorySystem:
                 return existing_mem
             # Fallthrough: if the row vanished between check and fetch, insert normally
 
-        # --- Slot-level exclusivity: demote old values for exclusive slots ---
+        # --- Slot-level behavior: handle exclusive/additive/temporal slots dynamically ---
+        # Sprint 6: replaced hardcoded EXCLUSIVE_SLOTS with learned slot types.
         # This runs AFTER text-based dedup (which only catches near-identical text)
         # to handle cases like "favorite color is green" vs "favorite color is orange".
-        EXCLUSIVE_SLOTS = {
-            "favorite_color", "name", "first_name", "last_name", "birthday",
-            "birth_date", "legal_name", "primary_city", "city", "employer",
-            "job_title", "nickname",
-        }
         _corrective_phrases = ("not ", "actually", "always has been", "never was")
         _has_corrective_language = any(p in text.lower() for p in _corrective_phrases)
         try:
             from .fact_slots import extract_fact_slots as _efs
+            from .slot_discovery import get_slot_type, on_fact_stored, SlotType
             _new_slots = _efs(text)
+            _discovery_db = None  # Use default discovery DB path
             for _slot_name, _slot_fact in _new_slots.items():
-                if _slot_name not in EXCLUSIVE_SLOTS:
-                    continue
+                _slot_type = get_slot_type(_slot_name, db_path=_discovery_db)
                 _new_val_norm = str(getattr(_slot_fact, "normalized", getattr(_slot_fact, "value", _slot_fact))).strip().lower()
+
+                if _slot_type == SlotType.ADDITIVE:
+                    # Multiple values coexist — no demotion needed
+                    logger.debug(
+                        "[SLOT_DISCOVERY] Slot %s is ADDITIVE — keeping all values",
+                        _slot_name,
+                    )
+                    continue
+
+                if _slot_type == SlotType.UNKNOWN:
+                    # Not enough data — default to exclusive for safety
+                    logger.debug(
+                        "[SLOT_DISCOVERY] Slot %s is UNKNOWN — defaulting to exclusive behavior",
+                        _slot_name,
+                    )
+
+                # EXCLUSIVE, TEMPORAL, HIERARCHICAL, or UNKNOWN → demote old values
                 # Query memory_facts for existing entries with same slot but different value
                 _conn_ex = self._get_connection()
                 _cur_ex = _conn_ex.cursor()
@@ -1246,8 +1260,14 @@ class CRTMemorySystem:
                 for _ex_mem_id, _ex_norm, _ex_trust in _existing_rows:
                     if str(_ex_norm).strip().lower() == _new_val_norm:
                         continue  # Same value — not a conflict
-                    # Demote the old memory's trust (Law 2: don't hard-delete, just demote)
-                    _demoted_trust = float(_ex_trust) * 0.4
+
+                    if _slot_type == SlotType.TEMPORAL:
+                        # Archive: lighter demotion — old value was true in the past
+                        _demoted_trust = float(_ex_trust) * 0.6
+                    else:
+                        # Exclusive/unknown: stronger demotion
+                        _demoted_trust = float(_ex_trust) * 0.4
+
                     self._update_memory_trust(_ex_mem_id, _demoted_trust)
                     self.record_memory_event(
                         memory_id=_ex_mem_id,
@@ -1256,6 +1276,7 @@ class CRTMemorySystem:
                         reason=f"superseded by new memory: {_slot_name}={_new_val_norm}",
                         metadata={
                             "slot": _slot_name,
+                            "slot_type": _slot_type.value,
                             "old_value": str(_ex_norm),
                             "new_value": _new_val_norm,
                             "old_trust": float(_ex_trust),
@@ -1263,12 +1284,18 @@ class CRTMemorySystem:
                         },
                     )
                     logger.info(
-                        "[SLOT_EXCLUSIVITY] Demoted %s for slot %s: %s -> %s (trust %.3f -> %.3f)",
-                        _ex_mem_id, _slot_name, _ex_norm, _new_val_norm,
+                        "[SLOT_EXCLUSIVITY] Demoted %s for slot %s (%s): %s -> %s (trust %.3f -> %.3f)",
+                        _ex_mem_id, _slot_name, _slot_type.value, _ex_norm, _new_val_norm,
                         float(_ex_trust), _demoted_trust,
                     )
+
+                # Notify slot discovery of the new fact (non-blocking)
+                try:
+                    on_fact_stored(_slot_name, _new_val_norm, confidence, db_path=_discovery_db)
+                except Exception:
+                    pass
         except Exception as _slot_ex_err:
-            logger.debug(f"[SLOT_EXCLUSIVITY] Slot exclusivity check failed (non-fatal): {_slot_ex_err}")
+            logger.debug(f"[SLOT_EXCLUSIVITY] Slot behavior check failed (non-fatal): {_slot_ex_err}")
 
         # Corrective language trust boost: if user is explicitly correcting a value,
         # start the new memory at 0.90 instead of the default 0.70.

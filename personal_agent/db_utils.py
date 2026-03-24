@@ -2174,11 +2174,12 @@ class ThreadSessionDB:
 
     # ── Agentic checkpoint storage (in-memory, ephemeral) ──────────────
 
-    def store_pending_checkpoint(self, thread_id: str, intent_data: dict, checkpoint_tier: str) -> None:
+    def store_pending_checkpoint(self, thread_id: str, intent_data: dict, checkpoint_tier: str, metadata: dict = None) -> None:
         """Store a pending agentic checkpoint awaiting user confirmation."""
         self._pending_checkpoints[thread_id] = {
             "intent": intent_data,
             "checkpoint_tier": checkpoint_tier,
+            "metadata": metadata or {},
         }
 
     def get_pending_checkpoint(self, thread_id: str) -> Optional[dict]:

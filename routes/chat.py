@@ -3442,12 +3442,18 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                 print(f"[GOVERNANCE] slot_classify: slots_extracted error: {_se_err}")
                             # --- Cloud-driven slot exclusivity demotion ---
                             print(f"[GOVERNANCE] slot_exclusivity: Entering demotion check for {_cloud_slot}={_cloud_value}")
-                            _EXCLUSIVE_SLOTS = {
+                            # Sprint 6: dynamic slot type lookup with legacy fallback
+                            _EXCLUSIVE_SLOTS_LEGACY = {
                                 "favorite_color", "name", "first_name", "last_name",
                                 "birthday", "birth_date", "legal_name", "primary_city",
                                 "city", "employer", "job_title", "nickname",
                             }
-                            _is_exclusive = _cloud_result.get("exclusive", _cloud_slot in _EXCLUSIVE_SLOTS)
+                            try:
+                                from personal_agent.slot_discovery import get_slot_type as _gst, SlotType as _ST
+                                _dyn_slot_type = _gst(_cloud_slot)
+                                _is_exclusive = _cloud_result.get("exclusive", _dyn_slot_type == _ST.EXCLUSIVE or (_dyn_slot_type == _ST.UNKNOWN and _cloud_slot in _EXCLUSIVE_SLOTS_LEGACY))
+                            except Exception:
+                                _is_exclusive = _cloud_result.get("exclusive", _cloud_slot in _EXCLUSIVE_SLOTS_LEGACY)
                             print(f"[GOVERNANCE] slot_exclusivity: exclusive={_is_exclusive}")
                             if _is_exclusive:
                                 try:
@@ -4591,47 +4597,81 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 _pending_cp = _session_db.get_pending_checkpoint(req.thread_id)
                 _user_confirmed = False
                 if _pending_cp:
-                    _confirmation = _parse_confirm(req.message)
-                    if _confirmation is True:
-                        # User confirmed — re-use stored intent, mark confirmed
-                        _cp_data = _pending_cp["intent"]
+                    # Check if this is a disambiguation response (user selected an intent type)
+                    _cp_source = _pending_cp.get("intent", {}).get("source", "")
+                    _cp_suggested = [
+                        a.get("value", "") for a in
+                        (_pending_cp.get("metadata", {}) or {}).get("suggested_actions", [])
+                    ]
+                    _msg_stripped = req.message.strip().lower()
+                    if _cp_source in ("embedding_ambiguous",) and _msg_stripped in _cp_suggested:
+                        # User disambiguated — create a TaskIntent for the chosen type
+                        _chosen_intent = _msg_stripped
+                        _route = "conversational" if _chosen_intent == "conversational" else "task"
                         _task_intent = TaskIntent(
-                            route=_cp_data["route"],
-                            intent_type=_cp_data["intent_type"],
-                            slots=_cp_data.get("slots", {}),
-                            confidence=_cp_data.get("confidence", 0.9),
-                            reason=_cp_data.get("reason", ""),
+                            route=_route,
+                            intent_type=_chosen_intent,
+                            slots={},
+                            confidence=0.95,
+                            reason="user_disambiguated",
+                            source="embedding_ambiguous",
                         )
                         _user_confirmed = True
                         _session_db.clear_pending_checkpoint(req.thread_id)
-                        logger.info("[STREAM] User confirmed agentic checkpoint")
-                    elif _confirmation is False:
-                        # User denied — emit cancellation and return immediately.
-                        # Do NOT fall through to CRT (which would process "stop"
-                        # as a regular conversational query).
-                        _cancelled_intent = _pending_cp.get("intent", {})
-                        _session_db.clear_pending_checkpoint(req.thread_id)
-                        _session_db.clear_pending_task(req.thread_id)
-                        logger.info("[STREAM] User denied agentic checkpoint — emitting cancellation")
-                        yield _sse({
-                            "type": "task_cancelled",
-                            "content": "Task cancelled. What would you like to do instead?",
-                            "metadata": {
-                                "cancelled_intent": _cancelled_intent.get("intent_type", ""),
-                                "cancelled_service": _cancelled_intent.get("slots", {}).get("service", ""),
-                            },
-                        })
-                        yield _sse({
-                            "type": "done",
-                            "content": "Task cancelled. What would you like to do instead?",
-                            "metadata": {"task_cancelled": True},
-                        })
-                        return
+                        logger.info(f"[STREAM] User disambiguated: {_chosen_intent}")
+
+                        # Record correction for learning
+                        try:
+                            from personal_agent.task_agent import _get_semantic_router
+                            _sr = _get_semantic_router()
+                            if _sr:
+                                _original = _pending_cp.get("intent", {}).get("intent_type", "ambiguous")
+                                _sr.record_correction(
+                                    req.message, _original, _chosen_intent, "user_disambiguate"
+                                )
+                        except Exception:
+                            pass
+
                     else:
-                        # Ambiguous — treat as new message, clear stale checkpoint
-                        _session_db.clear_pending_checkpoint(req.thread_id)
-                        _task_intent = _classify_intent(req.message, active_task=_active_task)
-                        logger.info("[STREAM] Ambiguous checkpoint response — reclassifying")
+                        _confirmation = _parse_confirm(req.message)
+                        if _confirmation is True:
+                            # User confirmed — re-use stored intent, mark confirmed
+                            _cp_data = _pending_cp["intent"]
+                            _task_intent = TaskIntent(
+                                route=_cp_data["route"],
+                                intent_type=_cp_data["intent_type"],
+                                slots=_cp_data.get("slots", {}),
+                                confidence=_cp_data.get("confidence", 0.9),
+                                reason=_cp_data.get("reason", ""),
+                            )
+                            _user_confirmed = True
+                            _session_db.clear_pending_checkpoint(req.thread_id)
+                            logger.info("[STREAM] User confirmed agentic checkpoint")
+                        elif _confirmation is False:
+                            # User denied — emit cancellation and return immediately.
+                            _cancelled_intent = _pending_cp.get("intent", {})
+                            _session_db.clear_pending_checkpoint(req.thread_id)
+                            _session_db.clear_pending_task(req.thread_id)
+                            logger.info("[STREAM] User denied agentic checkpoint — emitting cancellation")
+                            yield _sse({
+                                "type": "task_cancelled",
+                                "content": "Task cancelled. What would you like to do instead?",
+                                "metadata": {
+                                    "cancelled_intent": _cancelled_intent.get("intent_type", ""),
+                                    "cancelled_service": _cancelled_intent.get("slots", {}).get("service", ""),
+                                },
+                            })
+                            yield _sse({
+                                "type": "done",
+                                "content": "Task cancelled. What would you like to do instead?",
+                                "metadata": {"task_cancelled": True},
+                            })
+                            return
+                        else:
+                            # Ambiguous — treat as new message, clear stale checkpoint
+                            _session_db.clear_pending_checkpoint(req.thread_id)
+                            _task_intent = _classify_intent(req.message, active_task=_active_task)
+                            logger.info("[STREAM] Ambiguous checkpoint response — reclassifying")
                 else:
                     _task_intent = _classify_intent(req.message, active_task=_active_task)
 
@@ -4681,8 +4721,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     "slots": _task_intent.slots,
                                     "confidence": _task_intent.confidence,
                                     "reason": _task_intent.reason,
+                                    "source": getattr(_task_intent, "source", "regex"),
                                 },
                                 checkpoint_tier=_cp_tier,
+                                metadata=_event.get("metadata"),
                             )
                             break  # Stop — wait for user's next message
 
@@ -4920,6 +4962,19 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 yield f"data: {json.dumps({'type': 'correction', 'content': correction_text})}\n\n"
                 metadata["correction_applied"] = True
                 metadata["correction_text"] = correction_text
+
+            # ── Proactive pattern suggestions (Sprint 4) ─────────────────
+            try:
+                from personal_agent.proactive_triggers import check_proactive_patterns
+                _proactive = check_proactive_patterns(req.message, answer)
+                if _proactive:
+                    metadata["proactive_suggestion"] = {
+                        "trigger": _proactive.name,
+                        "suggestion": _proactive.suggestion,
+                        "action": _proactive.action,
+                    }
+            except Exception as _pt_err:
+                logger.debug("[STREAM] Proactive pattern check failed: %s", _pt_err)
 
             yield f"data: {json.dumps({'type': 'done', 'content': answer, 'metadata': metadata})}\n\n"
 

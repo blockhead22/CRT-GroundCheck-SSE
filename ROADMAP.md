@@ -7,6 +7,7 @@ Last updated: March 24, 2026 (v1.9)
 
 ### v1.9 (March 24)
 - [x] File write tool — `write_file()`, `apply_edit()`, `generate_diff()` with path validation and unified diff preview
+- [x] Content generation tool — LLM generates file content from descriptions (e.g. "create an HTML file with flat CSS theme"), then writes it
 - [x] Shell execution tool — `execute_command()` with blocked command safety list, `execute_git()` wrapper
 - [x] Action receipts — `ActionReceipt` dataclass, SQLite `action_receipts` table, `GET /api/action-receipts` endpoint
 - [x] Git tool — commit, push, branch ops via `git_exec`, gated by high-tier checkpoint
@@ -20,7 +21,11 @@ Last updated: March 24, 2026 (v1.9)
 - [x] `referenced_files` metadata field in message type for structured file references
 - [x] Composer + button — attachment menu (file picker, folder picker, working dir, manual path entry)
 - [x] Attached path pills — removable pills in top bar, prepended to message on send
+- [x] `[dir:]` / `[file:]` prefix parsing — intent classifier extracts attached path references for file operations
 - [x] Backslash path normalization — Windows `\` paths matched and normalized to `/` in intent classifier
+- [x] Full path folder picker — replaced browser API (name only) with direct path prompt for absolute paths
+- [x] Typo-tolerant file write regex — catches "gnerate", "genrate", etc.
+- [x] Claude/OpenAI brand logos in model selector with uniform `currentColor` styling
 - [x] File read tool — read files, list directories, gated by allowed paths
 - [x] Project scanner — git status, branch, recent commits, file tree via subprocess
 - [x] Allowed paths config — `GET/PUT /api/settings/allowed-paths`, enforced on all file ops
@@ -101,25 +106,59 @@ Last updated: March 24, 2026 (v1.9)
 
 ---
 
-## IN PROGRESS — Personal Assistant Layer (v2.0+)
+## IN PROGRESS — Personal Assistant & Intelligence Layer (v2.0+)
 
 ### Sprint 4: Proactive & Scheduled Actions ← NEXT
 - [ ] Commitment governance — reminders/scheduled tasks as commitments with status/deadline/consequence
-- [ ] Notification delivery — Twilio SMS or Telegram push for reminders
-- [ ] Proactive triggers — trip planning, contextual auto-suggestions based on conversation
-- [ ] Heartbeat resource management — dynamic model loading/unloading based on system state
-- [ ] Time-aware commitments — "remind me at 10:30" creates a commitment, heartbeat fires it
+- [ ] Time-aware heartbeat — scans for due commitments each tick, fires notifications
+- [ ] Natural language time parsing — "at 10:30pm", "every weekday at 9am", "in 5 minutes"
+- [ ] Notification delivery — browser Web Notifications via SSE + system message injection in chat
+- [ ] Proactive triggers — pattern detection (trip planning, deadlines, health) fires contextual suggestions
+- [ ] Heartbeat resource management — kill/restart ollama based on gaming/idle detection
 
-### Sprint 5: External Integrations & Personal Assistant
-- [ ] Weather skill — skill.md for weather API, first non-social external tool
-- [ ] Calendar/scheduling skill — read/create events
-- [ ] Maps/directions skill — route planning, lodging, points of interest
-- [ ] Email/messaging skill — read inbox, draft replies (gated, never auto-send)
-- [ ] Multi-skill orchestration — "I'm planning a trip" triggers flight + hotel + maps in parallel
+### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
+Skill.md files + credentials through existing pipeline. Add as needed:
+- [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
+
+### Sprint 6: Dynamic Slot Discovery
+- [ ] Mine contradiction ledger for slot exclusivity patterns — which slots always resolve to one value vs. coexist
+- [ ] Replace hardcoded `EXCLUSIVE_SLOTS` list with learned slot behavior model
+- [ ] Slot type classifier — exclusive (favorite_color), additive (hobby), temporal (location), hierarchical (role)
+- [ ] Feedback loop — new contradictions auto-classified with resolution policy based on learned patterns
+- [ ] Slot confidence scores — how certain is the system that a slot is exclusive vs. additive
+
+### Sprint 7: Intent Router (replace keyword routing)
+- [ ] ML-based intent classifier replacing regex patterns in `classify_intent()`
+- [ ] Multi-intent detection — "check my system and read the package.json" routes to two tools
+- [ ] Ambiguity handling — low-confidence intents trigger clarification instead of wrong routing
+- [ ] Intent embeddings — semantic similarity to intent prototypes instead of keyword matching
+- [ ] Graceful fallback — unknown intents route to conversational with explanation, not silent failure
+
+### Sprint 8: Sub-Agent Interface + Delegation Protocol
+- [ ] Agent protocol ABCs — MemoryAgent, ToolAgent, ReflectionAgent, LearningAgent
+- [ ] Delegation — Aether breaks complex requests into subtasks, assigns to specialized agents
+- [ ] Trust propagation — sub-agent outputs inherit trust scores from their source data
+- [ ] Agent receipts — every sub-agent action logged through the same receipt system
+- [ ] Parallel execution — independent subtasks run concurrently with result aggregation
+- [ ] "Plan a trip" → flight agent + hotel agent + maps agent → results merged through CRT governance
+
+### Sprint 9: Synthesis Responses
+- [ ] Worldview questions answered from compressed belief trajectories, not individual fact recall
+- [ ] "What do I care about?" — patterns across hundreds of memories distilled into thematic summary
+- [ ] "How have I changed?" — temporal belief trajectory analysis showing opinion/preference drift
+- [ ] Synthesis confidence — how representative is the summary vs. cherry-picked memories
+- [ ] Contradiction-aware synthesis — surfaces unresolved tensions in the user's belief system
+
+### Sprint 10: Volatility-Gated Context Window
+- [ ] High-volatility memories get more context budget during retrieval
+- [ ] Dynamic context allocation based on query relevance + memory uncertainty
+- [ ] Volatile facts surfaced proactively — "you recently changed your mind about X, using the new value"
+- [ ] Context compression — stable high-trust facts compressed, volatile low-trust facts preserved in full
+- [ ] Budget-aware retrieval — total context window managed as a resource, not unlimited
 
 ---
 
-## BACKLOG (prioritized but not blocking)
+## BACKLOG (do whenever, not blocking)
 
 ### Productization
 - [ ] Auto-login / default session on localhost (uid=1)
@@ -133,32 +172,7 @@ Last updated: March 24, 2026 (v1.9)
 
 ### Frontend Polish
 - [ ] Copilot page visual hierarchy + API dedup
-- [ ] Code page (dedicated project/file interface)
-
----
-
-## PARKED (future capability expansions)
-
-### Synthesis Response Type
-- Worldview questions answered from compressed belief trajectories
-- "What do I care about?" from patterns across hundreds of memories
-
-### Volatility-Gated Context Window
-- High-volatility memories get more context budget
-- Dynamic context allocation based on query relevance + memory uncertainty
-
-### Sub-Agent Interface
-- Aether delegates subtasks to specialized agents
-- Trust scores propagate to sub-agent outputs
-- Protocol ABCs: MemoryAgent, LedgerAgent, LearningAgent, ReflectionAgent
-
-### Dynamic Slot Discovery
-- Replace hardcoded `EXCLUSIVE_SLOTS` list
-- System learns which slots are exclusive from contradiction patterns
-
-### Intent Router (replace keyword routing)
-- ML-based intent classification replacing regex patterns
-- Handles ambiguous intents, multi-intent messages
+- [ ] Code page (dedicated project/file interface with syntax highlighting)
 
 ---
 

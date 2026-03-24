@@ -68,6 +68,7 @@ class HeartbeatLLMExecutor:
             self.thread_session_db_path = None
         self.ledger_db_path = str(ledger_db_path) if ledger_db_path else None
         self.memory_db_path = str(memory_db_path) if memory_db_path else None
+        self._resources_reduced: bool = False
 
     def _default_personal_agent_dir(self) -> Path:
         return Path(__file__).resolve().parent
@@ -1191,8 +1192,96 @@ Reason carefully. If unsure, reply with action=none.
                 },
             })
             logger.info(f"[HEARTBEAT] {detail}")
+
+            # ── Resource management: act on gaming/idle triggers ──────────
+            import subprocess
+            if gaming_detected and not self._resources_reduced:
+                try:
+                    subprocess.run(
+                        ["taskkill", "/F", "/IM", "ollama.exe"],
+                        capture_output=True, timeout=10,
+                    )
+                    self._resources_reduced = True
+                    logger.info("[HEARTBEAT] Resources reduced — ollama killed for gaming")
+                    actions_taken.append({
+                        "action": "resource_management",
+                        "trigger": "gaming_detected",
+                        "detail": "resource_management: killed ollama for gaming, switching to API-only mode",
+                    })
+                except Exception as rm_e:
+                    logger.debug(f"[HEARTBEAT] Resource reduction failed: {rm_e}")
+
+            elif flags.get("idle") and self._resources_reduced:
+                try:
+                    subprocess.Popen(
+                        ["ollama", "serve"],
+                        creationflags=0x00000008,  # DETACHED_PROCESS
+                    )
+                    self._resources_reduced = False
+                    logger.info("[HEARTBEAT] Resources restored — ollama restarted")
+                    actions_taken.append({
+                        "action": "resource_management",
+                        "trigger": "idle_detected",
+                        "detail": "resource_management: restored ollama after gaming session ended",
+                    })
+                except Exception as rm_e:
+                    logger.debug(f"[HEARTBEAT] Resource restore failed: {rm_e}")
+
         except Exception as e:
             logger.debug(f"[HEARTBEAT] System snapshot skipped: {e}")
+
+        # --- 2c. Commitment scanner (Sprint 4) ---
+        try:
+            from personal_agent.commitments import (
+                get_pending_commitments, fire_commitment,
+                get_missed_commitments, get_stale_commitments,
+                format_timestamp,
+            )
+            from personal_agent.notifications import emit_commitment_notification_sync
+
+            # Check for due commitments (60s lookahead)
+            due_commitments = get_pending_commitments(
+                before_timestamp=time.time() + 60,
+            )
+            for commitment in due_commitments:
+                fired = fire_commitment(commitment.commitment_id)
+                if fired:
+                    # Emit notification to active SSE connections
+                    emit_commitment_notification_sync(fired)
+                    actions_taken.append({
+                        "action": "fired_commitment",
+                        "detail": f"fired_commitment: {fired.description}",
+                        "commitment_id": fired.commitment_id,
+                        "intent": fired.intent,
+                        "recurrence": fired.recurrence,
+                        "fire_count": fired.fire_count,
+                    })
+                    logger.info("[HEARTBEAT] Fired commitment: %s", fired.intent)
+
+            # Check for missed commitments
+            missed = get_missed_commitments()
+            for mc in missed:
+                actions_taken.append({
+                    "action": "missed_commitment",
+                    "detail": f"missed_commitment: {mc.description} (was due {format_timestamp(mc.next_fire_at) if mc.next_fire_at else 'unknown'})",
+                    "commitment_id": mc.commitment_id,
+                    "intent": mc.intent,
+                })
+                logger.warning("[HEARTBEAT] Missed commitment: %s", mc.intent)
+
+            # Check for stale commitments (fired 3+ times without ack)
+            stale = get_stale_commitments(fire_count_threshold=3)
+            for sc in stale:
+                actions_taken.append({
+                    "action": "stale_commitment",
+                    "detail": f"stale_commitment: {sc.intent} fired {sc.fire_count} times without response — review needed",
+                    "commitment_id": sc.commitment_id,
+                    "fire_count": sc.fire_count,
+                })
+                logger.info("[HEARTBEAT] Stale commitment: %s (fired %d times)", sc.intent, sc.fire_count)
+
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Commitment scan skipped: {e}")
 
         # --- 3. Memory Stats ---
         try:
@@ -1254,7 +1343,32 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Mention check skipped: {e}")
 
-        # --- 7. Self-reflection pass (update self-model from evidence) ---
+        # --- 7. Slot discovery pass (learn slot behavior from contradiction patterns) ---
+        try:
+            memory_db_path = self._resolve_memory_db_path(thread_id)
+            if memory_db_path and Path(memory_db_path).exists():
+                from personal_agent.slot_discovery import run_discovery_pass, _get_db_path
+                _ledger_db_path = str(Path(memory_db_path).parent / f"crt_ledger_{sanitize_thread_id(thread_id)}.db")
+                if not Path(_ledger_db_path).exists():
+                    _ledger_db_path = str(Path(memory_db_path).parent / "crt_ledger.db")
+                discovery_result = run_discovery_pass(
+                    memory_db_path=memory_db_path,
+                    ledger_db_path=_ledger_db_path if Path(_ledger_db_path).exists() else None,
+                    discovery_db_path=_get_db_path(memory_db_path),
+                )
+                new_cls = discovery_result.get("new_classifications", [])
+                if new_cls:
+                    actions_taken.append({
+                        "action": "slot_discovery",
+                        "detail": f"Slot discovery reclassified {len(new_cls)} slots",
+                        "reclassified": new_cls,
+                    })
+                    for slot, new_type in new_cls:
+                        logger.info(f"[SLOT_DISCOVERY] Heartbeat reclassified '{slot}' as {new_type}")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Slot discovery pass skipped: {e}")
+
+        # --- 8. Self-reflection pass (update self-model from evidence) ---
         try:
             from personal_agent.heartbeat_system import run_self_reflection_now
             sr_result = run_self_reflection_now(thread_id)
@@ -1268,6 +1382,23 @@ Reason carefully. If unsure, reply with action=none.
                 logger.info(f"[HEARTBEAT] Self-reflection: updated {updated_slots} slots")
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Self-reflection skipped: {e}")
+
+        # --- 9. Intent router self-improvement (review corrections) ---
+        try:
+            from personal_agent.task_agent import _get_semantic_router
+            from personal_agent.semantic_intent_router import review_corrections as _review_intent_corrections
+            _sr = _get_semantic_router()
+            if _sr and _sr._corrections_db_path:
+                new_protos = _review_intent_corrections(_sr._corrections_db_path, _sr)
+                if new_protos:
+                    actions_taken.append({
+                        "action": "intent_router_improvement",
+                        "detail": f"Auto-added {len(new_protos)} intent prototypes from corrections",
+                        "prototypes": [{"intent": it, "phrase": ph} for it, ph in new_protos],
+                    })
+                    logger.info(f"[HEARTBEAT] Intent router: auto-added {len(new_protos)} prototypes")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Intent router improvement skipped: {e}")
 
         elapsed = _time.time() - start
         summary = "; ".join(a["detail"] for a in actions_taken) if actions_taken else "Heartbeat OK, no actions needed"

@@ -192,7 +192,8 @@ _FILE_WRITE_RE = re.compile(
     r"modify\s+(the\s+)?file|change\s+the\s+code\s+in|add\s+a\s+line\s+to|"
     r"write\s+(a\s+)?file|overwrite|append\s+to|"
     r"create\s+(a\s+)?(new\s+)?file\s+in|make\s+(a\s+)?file|"
-    r"create\s+(a\s+)?[\w.-]+\.(?:py|tsx?|jsx?|json|md|txt|ya?ml|toml|rs|go|css|html|cfg|ini|sh|bat))\b",
+    r"(?:create|g[en]*e?r?a?te|make|build)\s+(a\s+)?[\w.-]+\.(?:py|tsx?|jsx?|json|md|txt|ya?ml|toml|rs|go|css|html|cfg|ini|sh|bat)|"
+    r"g[en]*e?r?a?te\s+(a\s+)?file)\b",
     re.IGNORECASE,
 )
 
@@ -217,6 +218,37 @@ _GIT_ACTION_RE = re.compile(
     r"git\s+branch|git\s+stash|git\s+add|git\s+reset|git\s+rebase|"
     r"commit\s+changes|push\s+to\s+(remote|origin|github|upstream)|"
     r"create\s+(a\s+)?branch|checkout\s+branch)\b",
+    re.IGNORECASE,
+)
+
+
+# Sprint 4 — Commitment / reminder patterns
+_COMMITMENT_RE = re.compile(
+    r"\b(remind\s+me|reminder|set\s+a\s+reminder|schedule|"
+    r"don'?t\s+let\s+me\s+forget|alert\s+me|notify\s+me|"
+    r"remind\s+me\s+to)\b",
+    re.IGNORECASE,
+)
+
+_COMMITMENT_TIME_RE = re.compile(
+    r"\b(every\s+day\s+at|every\s+night\s+at|every\s+weekday|"
+    r"at\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)?|"
+    r"in\s+\d+\s+(?:minutes?|hours?|mins?)|"
+    r"tomorrow|tonight|every\s+\d*\s*(?:hours?|minutes?))\b",
+    re.IGNORECASE,
+)
+
+_LIST_COMMITMENTS_RE = re.compile(
+    r"\b(what\s+are\s+my\s+reminders|show\s+(?:my\s+)?(?:reminders|commitments)|"
+    r"what(?:'s|\s+is)\s+scheduled|list\s+(?:my\s+)?(?:reminders|commitments)|"
+    r"my\s+reminders|active\s+reminders)\b",
+    re.IGNORECASE,
+)
+
+_CANCEL_COMMITMENT_RE = re.compile(
+    r"\b(cancel\s+(?:the\s+)?reminder|stop\s+reminding|"
+    r"remove\s+(?:the\s+)?(?:reminder|commitment)|"
+    r"delete\s+(?:the\s+)?reminder)\b",
     re.IGNORECASE,
 )
 
@@ -407,11 +439,12 @@ def sync_skill_cache() -> List[str]:
 
 @dataclass
 class TaskIntent:
-    route: Literal["task", "conversational"]
-    intent_type: str  # url_fetch | imperative_task | service_action | task_continuation | conversational
+    route: Literal["task", "conversational", "clarify"]
+    intent_type: str  # url_fetch | imperative_task | service_action | task_continuation | conversational | multi_intent | ambiguous
     slots: Dict[str, Any] = field(default_factory=dict)
     confidence: float = 0.9
     reason: str = ""
+    source: str = "regex"  # "regex" | "embedding" | "embedding_multi" | "embedding_ambiguous" | "fallback"
 
 
 # ---------------------------------------------------------------------------
@@ -515,11 +548,42 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
         }
 
     # ── Layer 1+2 read-only tools — no confirmation needed ──────────────
-    if intent.intent_type in ("system_info", "file_read", "dir_list", "project_scan"):
+    if intent.intent_type in ("system_info", "file_read", "dir_list", "project_scan", "list_commitments"):
         return {
             "checkpoint_tier": "none",
             "checkpoint_message": "",
             "requires_confirmation": False,
+        }
+
+    # ── Commitment create/cancel — medium tier confirmation ──────────────
+    if intent.intent_type == "create_commitment":
+        # Parse the time and intent for the confirmation message
+        try:
+            from personal_agent.time_parser import extract_reminder_intent
+            from personal_agent.commitments import format_timestamp
+            parsed = extract_reminder_intent(intent.slots.get("raw_message", ""))
+            desc_parts = [f"Set reminder: {parsed.get('intent', 'reminder')}"]
+            if parsed.get("deadline"):
+                desc_parts.append(f", {format_timestamp(parsed['deadline'])}")
+            if parsed.get("recurrence"):
+                desc_parts.append(f", {parsed['recurrence']}")
+            desc_parts.append(". Go ahead?")
+            msg = "".join(desc_parts)
+        except Exception:
+            msg = "Set a reminder. Go ahead?"
+        return {
+            "checkpoint_tier": "medium",
+            "checkpoint_message": msg,
+            "requires_confirmation": True,
+        }
+
+    if intent.intent_type == "cancel_commitment":
+        search = intent.slots.get("search_term", "")
+        msg = f"Cancel reminder{(' for ' + search) if search else ''}. Go ahead?"
+        return {
+            "checkpoint_tier": "medium",
+            "checkpoint_message": msg,
+            "requires_confirmation": True,
         }
 
     # ── Layer 3-4 write/exec tools — ALWAYS require confirmation ────────
@@ -626,6 +690,40 @@ def classify_intent(
             slots={},
             confidence=0.95,
             reason="system_info_query",
+        )
+
+    # ── 1b-commit. Commitment / reminder intents (Sprint 4) ─────────────
+    if _LIST_COMMITMENTS_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="list_commitments",
+            slots={},
+            confidence=0.90,
+            reason="list_commitments_query",
+        )
+
+    if _CANCEL_COMMITMENT_RE.search(message):
+        # Extract search term — everything after "cancel/stop/remove ... reminder"
+        _cancel_match = re.search(
+            r"\b(?:cancel|stop|remove|delete)\s+(?:the\s+)?(?:reminder|commitment)\s*(?:for\s+|about\s+)?(.+)?",
+            message, re.IGNORECASE,
+        )
+        search_term = _cancel_match.group(1).strip() if _cancel_match and _cancel_match.group(1) else ""
+        return TaskIntent(
+            route="task",
+            intent_type="cancel_commitment",
+            slots={"search_term": search_term},
+            confidence=0.90,
+            reason="cancel_commitment_pattern",
+        )
+
+    if _COMMITMENT_RE.search(message) or _COMMITMENT_TIME_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="create_commitment",
+            slots={"raw_message": message},
+            confidence=0.92,
+            reason="commitment_pattern",
         )
 
     # ── 1b2. Git action — "git commit", "git push" etc. (before project_scan) ──
@@ -938,6 +1036,160 @@ def classify_intent(
     )
 
 
+# Keep reference to the regex classifier as the private/legacy version
+_classify_intent_regex = classify_intent
+
+
+# ---------------------------------------------------------------------------
+# Semantic Intent Router — hybrid embedding + regex (Sprint 7)
+# ---------------------------------------------------------------------------
+
+_semantic_router = None  # Lazy-loaded SemanticIntentRouter
+
+
+def _get_semantic_router():
+    """Lazy-load the SemanticIntentRouter. Returns None if model unavailable."""
+    global _semantic_router
+    if _semantic_router is not None:
+        return _semantic_router
+    try:
+        from personal_agent.embeddings import get_encoder
+        from personal_agent.semantic_intent_router import SemanticIntentRouter
+        engine = get_encoder()
+        _semantic_router = SemanticIntentRouter(engine)
+        # Initialize corrections DB alongside the main CRT database
+        db_path = os.path.join(os.path.dirname(__file__), "..", "data", "intent_corrections.db")
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        _semantic_router.init_corrections_db(db_path)
+        logger.info("[INTENT_ROUTER] SemanticIntentRouter initialized")
+        return _semantic_router
+    except Exception as e:
+        logger.warning(f"[INTENT_ROUTER] Could not initialize SemanticIntentRouter: {e}")
+        return None
+
+
+def classify_intent_hybrid(
+    message: str,
+    active_task: Optional[Dict[str, Any]] = None,
+    attached_paths: Optional[List[str]] = None,
+) -> TaskIntent:
+    """
+    Hybrid intent classifier — runs both regex and embedding classifiers.
+    During transition, prefers regex when confident; uses embedding to fill gaps.
+    """
+    # 1. Always run regex first (existing behavior)
+    regex_result = _classify_intent_regex(message, active_task)
+
+    # 2. Try to run embedding classifier
+    router = _get_semantic_router()
+    if router is None:
+        # Model not available — fall back to regex only
+        return regex_result
+
+    embedding_scores = router.classify(message, attached_paths)
+    top_embedding = embedding_scores[0] if embedding_scores else None
+
+    # 3. Decision logic
+    if regex_result and regex_result.confidence >= 0.90 and regex_result.intent_type != "conversational":
+        # Regex is very confident on a tool intent — use it, but log embedding for comparison
+        emb_info = f"{top_embedding.intent_type}({top_embedding.confidence:.2f})" if top_embedding else "none"
+        logger.info(
+            f"[INTENT_ROUTER] message='{message[:60]}' "
+            f"regex={regex_result.intent_type}({regex_result.confidence:.2f}) "
+            f"embedding={emb_info} final={regex_result.intent_type} source=regex"
+        )
+
+        # If embedding strongly disagrees, flag for review
+        if (top_embedding and
+                top_embedding.intent_type != regex_result.intent_type and
+                top_embedding.confidence > 0.8):
+            logger.warning(
+                f"[INTENT_ROUTER] Disagreement: regex={regex_result.intent_type}, "
+                f"embedding={top_embedding.intent_type}"
+            )
+
+        regex_result.source = "regex"
+        return regex_result
+
+    # 4. Regex didn't match a tool or low confidence — check embedding
+    if top_embedding and top_embedding.confidence >= 0.65:
+        intent_type = top_embedding.intent_type
+        route = "task" if intent_type != "conversational" else "conversational"
+        logger.info(
+            f"[INTENT_ROUTER] message='{message[:60]}' "
+            f"regex={regex_result.intent_type}({regex_result.confidence:.2f}) "
+            f"embedding={intent_type}({top_embedding.confidence:.2f}) "
+            f"final={intent_type} source=embedding"
+        )
+        return TaskIntent(
+            route=route,
+            intent_type=intent_type,
+            confidence=top_embedding.confidence,
+            slots=regex_result.slots if regex_result else {},
+            reason=f"embedding_match",
+            source="embedding",
+        )
+
+    # 5. Neither confident — check for multi-intent
+    multi = router.detect_multi_intent(embedding_scores)
+    if len(multi) > 1:
+        logger.info(
+            f"[INTENT_ROUTER] Multi-intent detected: "
+            + ", ".join(f"{m.intent_type}({m.confidence:.2f})" for m in multi)
+        )
+        return TaskIntent(
+            route="task",
+            intent_type="multi_intent",
+            confidence=multi[0].confidence,
+            slots={"intents": [{"type": m.intent_type, "confidence": m.confidence} for m in multi]},
+            reason="embedding_multi_intent",
+            source="embedding_multi",
+        )
+
+    # 6. Ambiguous — clarify
+    if top_embedding and top_embedding.is_ambiguous:
+        logger.info(
+            f"[INTENT_ROUTER] Ambiguous: top={top_embedding.intent_type}({top_embedding.confidence:.2f})"
+        )
+        return TaskIntent(
+            route="clarify",
+            intent_type="ambiguous",
+            confidence=top_embedding.confidence,
+            slots={"candidates": [{"type": s.intent_type, "confidence": s.confidence} for s in embedding_scores[:3]]},
+            reason="embedding_ambiguous",
+            source="embedding_ambiguous",
+        )
+
+    # 7. Nothing matched well — use regex result or fallback to conversational
+    logger.info(
+        f"[INTENT_ROUTER] message='{message[:60]}' "
+        f"regex={regex_result.intent_type}({regex_result.confidence:.2f}) "
+        f"embedding={top_embedding.intent_type if top_embedding else 'none'}"
+        f"({top_embedding.confidence:.2f if top_embedding else 0}) "
+        f"final=conversational source=fallback"
+    )
+    return TaskIntent(
+        route="conversational",
+        intent_type="conversational",
+        confidence=0.5,
+        slots={},
+        reason="no_confident_match",
+        source="fallback",
+    )
+
+
+# Override the module-level classify_intent to use hybrid
+def classify_intent(
+    message: str,
+    active_task: Optional[Dict[str, Any]] = None,
+) -> TaskIntent:
+    """
+    Primary intent classifier — hybrid regex + embedding.
+    Replaces the old regex-only classify_intent.
+    """
+    return classify_intent_hybrid(message, active_task)
+
+
 # ---------------------------------------------------------------------------
 # HTTP tools (1.1)
 # ---------------------------------------------------------------------------
@@ -1149,6 +1401,46 @@ class CRTTaskAgent:
         if intent is None:
             intent = classify_intent(message, active_task=active_task)
 
+        # ── 0a. CLARIFY: Ambiguous embedding classification ───────────────
+        if intent.route == "clarify" and not user_confirmed:
+            _intent_labels = {
+                "system_info": "Check system status",
+                "file_read": "Read a file",
+                "file_write": "Create/edit a file",
+                "dir_list": "List directory contents",
+                "project_scan": "Scan project/repo",
+                "shell_exec": "Run a command",
+                "git_action": "Git operation",
+                "skill_install": "Install a skill",
+                "service_action": "Service query",
+                "create_commitment": "Set a reminder",
+                "list_commitments": "List reminders",
+                "cancel_commitment": "Cancel a reminder",
+                "broad_recall": "Recall memories",
+                "self_referential": "About me (Aether)",
+                "url_fetch": "Fetch a URL",
+                "conversational": "Just chat",
+            }
+            candidates = intent.slots.get("candidates", [])
+            suggested_actions = [
+                {"label": _intent_labels.get(c["type"], c["type"]), "value": c["type"]}
+                for c in candidates
+            ]
+            suggested_actions.append({"label": "Just chat", "value": "conversational"})
+            yield {
+                "type": "agent_checkpoint",
+                "content": f"I'm not sure what you'd like me to do. Could you clarify?",
+                "metadata": {
+                    "requires_confirmation": True,
+                    "checkpoint_tier": "low",
+                    "suggested_actions": suggested_actions,
+                    "intent": intent.intent_type,
+                    "confidence": intent.confidence,
+                    "source": getattr(intent, "source", "embedding_ambiguous"),
+                },
+            }
+            return
+
         # ── 0. CHECKPOINT: Inform user before entering agentic mode ────────
         if not user_confirmed:
             gate = gate_task_intent(intent)
@@ -1176,13 +1468,14 @@ class CRTTaskAgent:
         # ── 1. Emit intent ────────────────────────────────────────────────
         yield {
             "type": "intent_classified",
-            "content": f"intent: {intent.intent_type}  route: {intent.route}",
+            "content": f"intent: {intent.intent_type}  route: {intent.route}  source: {getattr(intent, 'source', 'regex')}",
             "metadata": {
                 "intent": intent.intent_type,
                 "route": intent.route,
                 "slots": intent.slots,
                 "confidence": intent.confidence,
                 "reason": intent.reason,
+                "source": getattr(intent, "source", "regex"),
             },
         }
 
@@ -1420,6 +1713,18 @@ class CRTTaskAgent:
                 "No actions were taken."
             )
             yield {"type": "token", "content": answer}
+        elif intent.intent_type in ("create_commitment", "list_commitments", "cancel_commitment"):
+            # Deterministic answers for commitment tools — use tool output directly
+            _c_step = next(
+                (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
+                None,
+            )
+            if _c_step:
+                answer = str(_c_step.output_preview or "Done.")
+            else:
+                _err_step = next((s for s in steps if s.status == "error"), None)
+                answer = f"Failed: {_err_step.error}" if _err_step else "Action failed."
+            yield {"type": "token", "content": answer}
         elif intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
             # Deterministic answers for read-only tools — never let the LLM
             # summarize file/system content (it hallucinates).
@@ -1489,10 +1794,10 @@ class CRTTaskAgent:
             yield {"type": "token", "content": answer}
         elif intent.intent_type in ("file_write", "shell_exec", "git_action"):
             # Deterministic answers for write/exec tools — show actual results
-            _tool_map = {"file_write": "file_write", "shell_exec": "shell_exec", "git_action": "git_exec"}
-            _w_tool = _tool_map.get(intent.intent_type, intent.intent_type)
+            _tool_map = {"file_write": ("file_write", "generate_content"), "shell_exec": ("shell_exec",), "git_action": ("git_exec",)}
+            _w_tools = _tool_map.get(intent.intent_type, (intent.intent_type,))
             _w_step = next(
-                (s for s in steps if s.tool_name == _w_tool and s.status == "ok"),
+                (s for s in steps if s.tool_name in _w_tools and s.status == "ok"),
                 None,
             )
             if _w_step and isinstance(_w_step.output, dict):
@@ -2528,6 +2833,54 @@ RULES:
         if intent.intent_type == "system_info":
             plan.append({"tool": "system_info", "input": {}})
 
+        elif intent.intent_type == "create_commitment":
+            # Parse time and intent from the raw message
+            try:
+                from personal_agent.time_parser import extract_reminder_intent
+                raw_msg = intent.slots.get("raw_message", message)
+                parsed = extract_reminder_intent(raw_msg)
+                intent_text = parsed.get("intent", raw_msg)
+                deadline = parsed.get("deadline")
+                recurrence = parsed.get("recurrence")
+
+                # Infer priority/consequence from context
+                priority = "medium"
+                consequence = None
+                msg_lower = raw_msg.lower()
+                if any(w in msg_lower for w in ("med", "medication", "medicine", "pill", "drug")):
+                    consequence = "health"
+                    priority = "high"
+                elif any(w in msg_lower for w in ("doctor", "appointment", "dentist", "checkup")):
+                    consequence = "health"
+                    priority = "high"
+                elif any(w in msg_lower for w in ("deadline", "submit", "deliver", "deploy", "release")):
+                    consequence = "work"
+                    priority = "high"
+                elif any(w in msg_lower for w in ("call", "text", "message", "email", "reply")):
+                    consequence = "social"
+
+                plan.append({"tool": "create_commitment", "input": {
+                    "intent": intent_text,
+                    "description": intent_text,
+                    "deadline": deadline,
+                    "recurrence": recurrence,
+                    "priority": priority,
+                    "consequence": consequence,
+                }})
+            except Exception:
+                plan.append({"tool": "create_commitment", "input": {
+                    "intent": message,
+                    "description": message,
+                }})
+
+        elif intent.intent_type == "list_commitments":
+            plan.append({"tool": "list_commitments", "input": {}})
+
+        elif intent.intent_type == "cancel_commitment":
+            plan.append({"tool": "cancel_commitment", "input": {
+                "search_term": intent.slots.get("search_term", ""),
+            }})
+
         elif intent.intent_type == "file_read":
             path = intent.slots.get("path", "")
             plan.append({"tool": "file_read", "input": {"path": path}})
@@ -2575,9 +2928,23 @@ RULES:
                         content = "Hello, World!\n"
                     else:
                         content = f"# {fname}\n"
-            # Always read the file first to get current state for diff
-            plan.append({"tool": "file_read", "input": {"path": path}})
-            plan.append({"tool": "file_write", "input": {"path": path, "content": content}})
+            # Detect if "content" is actually a description needing LLM generation
+            # (e.g. "flat style css theme centered" vs literal "hello world")
+            _fname = path.rsplit("/", 1)[-1] if "/" in path else path
+            _ext = _fname.rsplit(".", 1)[-1].lower() if "." in _fname else ""
+            _is_code_file = _ext in ("html", "css", "js", "jsx", "ts", "tsx", "py", "json", "yaml", "yml", "toml", "rs", "go", "sh", "bat")
+            _content_is_description = (
+                _is_code_file
+                and len(content.split()) > 4
+                and not content.strip().startswith(("<", "{", "#!", "import ", "from ", "def ", "class ", "function "))
+            )
+            if _content_is_description:
+                # Content is a description — use LLM to generate the actual file content
+                plan.append({"tool": "generate_content", "input": {"path": path, "description": content, "raw_message": intent.slots.get("raw_message", message)}})
+            else:
+                # Always read the file first to get current state for diff
+                plan.append({"tool": "file_read", "input": {"path": path}})
+                plan.append({"tool": "file_write", "input": {"path": path, "content": content}})
 
         elif intent.intent_type == "shell_exec":
             command = intent.slots.get("command", "")
@@ -2677,6 +3044,21 @@ RULES:
             if not plan:
                 plan.append({"tool": "llm_respond", "input": {"message": message, "context": at}})
 
+        # Multi-intent: build combined plan from sub-intents
+        if intent.intent_type == "multi_intent" and not plan:
+            sub_intents = intent.slots.get("intents", [])
+            for si in sub_intents:
+                sub_intent = TaskIntent(
+                    route="task",
+                    intent_type=si["type"],
+                    confidence=si["confidence"],
+                    slots=intent.slots,
+                    reason="multi_intent_sub",
+                    source=getattr(intent, "source", "embedding_multi"),
+                )
+                sub_plan = self._build_plan(sub_intent, message, active_task)
+                plan.extend(sub_plan)
+
         if not plan:
             plan.append({"tool": "llm_respond", "input": {"message": message}})
 
@@ -2740,7 +3122,16 @@ RULES:
     ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
         """Execute one step, verify result, retry once on failure. Yields nothing, returns the result event."""
 
-        if tool == "fetch_url":
+        if tool == "create_commitment":
+            return self._run_create_commitment(step, inp, step_index, thread_id)
+
+        elif tool == "list_commitments":
+            return self._run_list_commitments(step, inp, step_index)
+
+        elif tool == "cancel_commitment":
+            return self._run_cancel_commitment(step, inp, step_index)
+
+        elif tool == "fetch_url":
             return (yield from self._run_fetch_url(step, inp, step_index))
 
         elif tool == "http_post":
@@ -2781,6 +3172,9 @@ RULES:
 
         elif tool == "git_exec":
             return self._run_git_exec(step, inp, step_index, thread_id)
+
+        elif tool == "generate_content":
+            return (yield from self._run_generate_content(step, inp, step_index, thread_id))
 
         else:
             # execute_instructions / llm_respond — resolved in LLM call
@@ -3190,6 +3584,161 @@ RULES:
             }
 
     # ------------------------------------------------------------------
+    # Commitment tools (Sprint 4)
+    # ------------------------------------------------------------------
+
+    def _run_create_commitment(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Dict[str, Any]:
+        """Create a commitment / reminder."""
+        import time as _time
+        t0 = _time.time()
+        try:
+            from personal_agent.commitments import create_commitment, format_timestamp
+            c = create_commitment(
+                thread_id=thread_id,
+                intent=inp.get("intent", ""),
+                description=inp.get("description", inp.get("intent", "")),
+                deadline=inp.get("deadline"),
+                recurrence=inp.get("recurrence"),
+                priority=inp.get("priority", "medium"),
+                consequence=inp.get("consequence"),
+            )
+            duration_ms = round((_time.time() - t0) * 1000)
+            next_fire = format_timestamp(c.next_fire_at) if c.next_fire_at else "none"
+            text = (
+                f"Reminder set: {c.description}. "
+                f"Next fire: {next_fire}. "
+                f"Recurrence: {c.recurrence or 'one-time'}."
+            )
+            step.output = c.to_dict()
+            step.output_preview = text
+            step.duration_ms = duration_ms
+            step.status = "ok"
+            step.verified = True
+            logger.info("[COMMITMENTS] Created via agent: %s", c.intent)
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "create_commitment",
+                    "status": "ok",
+                    "step_index": step_index,
+                    "commitment": c.to_dict(),
+                },
+            }
+        except Exception as e:
+            logger.warning("[COMMITMENTS] Create failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ Failed to create reminder: {e}",
+                "metadata": {"tool_name": "create_commitment", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    def _run_list_commitments(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """List active commitments."""
+        import time as _time
+        t0 = _time.time()
+        try:
+            from personal_agent.commitments import get_all_commitments, format_timestamp
+            commitments = get_all_commitments(status="pending")
+            duration_ms = round((_time.time() - t0) * 1000)
+
+            if not commitments:
+                text = "No active reminders."
+            else:
+                lines = ["Active reminders:\n"]
+                for c in commitments:
+                    next_fire = format_timestamp(c.next_fire_at) if c.next_fire_at else "—"
+                    rec = c.recurrence or "one-time"
+                    prio = f" [{c.priority}]" if c.priority != "medium" else ""
+                    lines.append(f"  • {c.description} — next: {next_fire}, {rec}{prio}")
+                text = "\n".join(lines)
+
+            step.output = [c.to_dict() for c in commitments]
+            step.output_preview = text[:500]
+            step.duration_ms = duration_ms
+            step.status = "ok"
+            step.verified = True
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "list_commitments",
+                    "status": "ok",
+                    "step_index": step_index,
+                    "count": len(commitments),
+                },
+            }
+        except Exception as e:
+            logger.warning("[COMMITMENTS] List failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ Failed to list reminders: {e}",
+                "metadata": {"tool_name": "list_commitments", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    def _run_cancel_commitment(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """Cancel a commitment by fuzzy search."""
+        import time as _time
+        t0 = _time.time()
+        try:
+            from personal_agent.commitments import search_commitments, cancel_commitment
+            search_term = inp.get("search_term", "")
+            matches = search_commitments(search_term) if search_term else []
+
+            if not matches:
+                # Try listing all pending and cancel the most recent
+                from personal_agent.commitments import get_all_commitments
+                all_pending = get_all_commitments(status="pending")
+                if all_pending:
+                    matches = all_pending[:1]
+
+            if not matches:
+                step.status = "ok"
+                step.output = None
+                return {
+                    "type": "tool_result",
+                    "content": "No matching reminders found to cancel.",
+                    "metadata": {"tool_name": "cancel_commitment", "status": "ok", "step_index": step_index},
+                }
+
+            cancelled = cancel_commitment(matches[0].commitment_id)
+            duration_ms = round((_time.time() - t0) * 1000)
+            text = f"Cancelled reminder: {cancelled.description}" if cancelled else "Failed to cancel."
+            step.output = cancelled.to_dict() if cancelled else None
+            step.output_preview = text
+            step.duration_ms = duration_ms
+            step.status = "ok"
+            step.verified = True
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "cancel_commitment",
+                    "status": "ok",
+                    "step_index": step_index,
+                },
+            }
+        except Exception as e:
+            logger.warning("[COMMITMENTS] Cancel failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ Failed to cancel reminder: {e}",
+                "metadata": {"tool_name": "cancel_commitment", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
     # File tools (Layer 2 — read-only)
     # ------------------------------------------------------------------
 
@@ -3305,6 +3854,119 @@ RULES:
                 "type": "tool_result",
                 "content": f"✗ project scan failed: {e}",
                 "metadata": {"tool_name": "project_scan", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # LLM content generation → file write (Layer 3)
+    # ------------------------------------------------------------------
+
+    def _run_generate_content(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        """Use LLM to generate file content from a description, then write it."""
+        path = inp.get("path", "")
+        description = inp.get("description", "")
+        raw_message = inp.get("raw_message", "")
+        fname = path.rsplit("/", 1)[-1] if "/" in path else path
+        ext = fname.rsplit(".", 1)[-1].lower() if "." in fname else ""
+
+        yield {"type": "status", "content": f"generating {fname} content"}
+
+        # Build a focused prompt for content generation
+        prompt = (
+            f"Generate the complete file content for '{fname}'.\n"
+            f"User request: {raw_message}\n"
+            f"Description: {description}\n\n"
+            f"RULES:\n"
+            f"- Output ONLY the raw file content, no markdown fences, no explanation.\n"
+            f"- The output will be written directly to '{fname}'.\n"
+            f"- Make it complete and functional.\n"
+        )
+
+        generated = ""
+        if self._llm is not None and hasattr(self._llm, "chat"):
+            try:
+                fast_model = os.getenv("CRT_MODEL_FAST") or "role:fast"
+                generated = self._llm.chat(
+                    [
+                        {"role": "system", "content": "You are a code generator. Output only raw file content. No markdown fences. No explanations."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=4000,
+                    temperature=0.3,
+                    model=fast_model,
+                )
+                # Strip markdown fences if the LLM wraps them anyway
+                generated = generated.strip()
+                if generated.startswith("```"):
+                    lines = generated.split("\n")
+                    # Remove first and last fence lines
+                    if lines[0].startswith("```"):
+                        lines = lines[1:]
+                    if lines and lines[-1].strip() == "```":
+                        lines = lines[:-1]
+                    generated = "\n".join(lines)
+            except Exception as e:
+                logger.warning("[GENERATE_CONTENT] LLM failed: %s", e)
+
+        if not generated:
+            step.status = "error"
+            step.error = "LLM content generation failed or unavailable"
+            return {
+                "type": "tool_result",
+                "content": f"✗ could not generate content for {fname}",
+                "metadata": {"tool_name": "generate_content", "status": "error", "step_index": step_index},
+            }
+
+        # Now write the generated content
+        from personal_agent.file_tools import write_file
+        from personal_agent.action_receipts import create_receipt, log_receipt
+
+        result = write_file(path, generated)
+        has_error = "error" in result
+
+        step.output = result
+        step.status = "error" if has_error else "ok"
+        step.error = result.get("error") if has_error else None
+        step.verified = not has_error
+
+        if not has_error:
+            written = result.get("written_bytes", 0)
+            created = result.get("created", False)
+            diff_preview = result.get("diff_preview", "")
+            action_desc = f"generated and {'created' if created else 'wrote'} {fname} ({written} bytes)"
+            step.output_preview = action_desc
+
+            receipt = create_receipt(
+                tool_name="file_write",
+                action=action_desc,
+                target=path,
+                result="success",
+                reversible=not created and result.get("previous_content") is not None,
+                reverse_action="restore from previous content" if not created else None,
+                details={"written_bytes": written, "created": created, "generated": True},
+            )
+            log_receipt(receipt, thread_id)
+
+            logger.info("[GENERATE_CONTENT] %s — %d bytes generated and written", path, written)
+            return {
+                "type": "tool_result",
+                "content": f"✓ {action_desc}",
+                "metadata": {
+                    "tool_name": "generate_content",
+                    "status": "ok",
+                    "step_index": step_index,
+                    "written_bytes": written,
+                    "created": created,
+                    "receipt_id": receipt.receipt_id,
+                    "generated_preview": generated[:500],
+                },
+            }
+        else:
+            return {
+                "type": "tool_result",
+                "content": f"✗ write failed: {result.get('error')}",
+                "metadata": {"tool_name": "generate_content", "status": "error", "error": step.error, "step_index": step_index},
             }
 
     # ------------------------------------------------------------------
