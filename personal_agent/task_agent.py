@@ -2203,6 +2203,268 @@ class CRTTaskAgent:
                 pass
 
     # ------------------------------------------------------------------
+    # Async orchestrated execution (Sprint 8)
+    # ------------------------------------------------------------------
+
+    async def run_stream_async(
+        self,
+        message: str,
+        thread_id: str,
+        intent: Optional[TaskIntent] = None,
+        active_task: Optional[Dict[str, Any]] = None,
+        user_confirmed: bool = False,
+    ):
+        """Async version of run_stream. Uses orchestrator for parallel sub-agent execution.
+
+        Yields SSE event dicts, same format as run_stream(). Used for multi-intent
+        or complex tasks that benefit from parallel execution. Single-intent tasks
+        should still use the sync run_stream() for simplicity.
+        """
+        import asyncio
+        from personal_agent.sub_agents import (
+            SubTask, OrchestrationContext, build_agent_registry,
+        )
+        from personal_agent.orchestrator import TaskOrchestrator
+
+        if intent is None:
+            intent = classify_intent(message, active_task=active_task)
+
+        # ── 0a. CLARIFY: same as sync path ──────────────────────────────
+        if intent.route == "clarify" and not user_confirmed:
+            _intent_labels = {
+                "system_info": "Check system status",
+                "file_read": "Read a file",
+                "file_write": "Create/edit a file",
+                "dir_list": "List directory contents",
+                "project_scan": "Scan project/repo",
+                "shell_exec": "Run a command",
+                "git_action": "Git operation",
+                "skill_install": "Install a skill",
+                "service_action": "Service query",
+                "create_commitment": "Set a reminder",
+                "list_commitments": "List reminders",
+                "cancel_commitment": "Cancel a reminder",
+                "desktop_action": "Control desktop",
+                "broad_recall": "Recall memories",
+                "self_referential": "About me (Aether)",
+                "url_fetch": "Fetch a URL",
+                "conversational": "Just chat",
+            }
+            candidates = intent.slots.get("candidates", [])
+            suggested_actions = [
+                {"label": _intent_labels.get(c["type"], c["type"]), "value": c["type"]}
+                for c in candidates
+            ]
+            suggested_actions.append({"label": "Just chat", "value": "conversational"})
+            yield {
+                "type": "agent_checkpoint",
+                "content": "I'm not sure what you'd like me to do. Could you clarify?",
+                "metadata": {
+                    "requires_confirmation": True,
+                    "checkpoint_tier": "low",
+                    "suggested_actions": suggested_actions,
+                    "intent": intent.intent_type,
+                    "confidence": intent.confidence,
+                    "source": getattr(intent, "source", "embedding_ambiguous"),
+                },
+            }
+            return
+
+        # ── 0. CHECKPOINT: gate check (same as sync) ────────────────────
+        if not user_confirmed:
+            gate = gate_task_intent(intent)
+            if gate["checkpoint_tier"] != "none":
+                _cp_meta = {
+                    "intent": intent.intent_type,
+                    "checkpoint_tier": gate["checkpoint_tier"],
+                    "requires_confirmation": gate["requires_confirmation"],
+                    "auto_proceed_seconds": None,
+                    "slots": intent.slots,
+                    "confidence": intent.confidence,
+                }
+                for _k in ("command", "target_path", "diff_preview"):
+                    if _k in gate:
+                        _cp_meta[_k] = gate[_k]
+                yield {
+                    "type": "agent_checkpoint",
+                    "content": gate["checkpoint_message"],
+                    "metadata": _cp_meta,
+                }
+                return
+
+        # ── 1. Emit intent ──────────────────────────────────────────────
+        yield {
+            "type": "intent_classified",
+            "content": f"intent: {intent.intent_type}  route: {intent.route}  source: {getattr(intent, 'source', 'regex')}",
+            "metadata": {
+                "intent": intent.intent_type,
+                "route": intent.route,
+                "slots": intent.slots,
+                "confidence": intent.confidence,
+                "reason": intent.reason,
+                "source": getattr(intent, "source", "regex"),
+            },
+        }
+
+        # ── 1b. TRIAGE + ACKNOWLEDGMENT ─────────────────────────────────
+        _triage = triage_message(message, intent)
+        if _triage.acknowledgment:
+            yield {
+                "type": "task_acknowledged",
+                "content": _triage.acknowledgment,
+                "metadata": {
+                    "estimated_steps": _triage.estimated_steps,
+                    "tools": _triage.tools_needed,
+                    "requires_planning": _triage.requires_planning,
+                    "category": _triage.category,
+                    "orchestrated": True,
+                },
+            }
+
+        # ── 2. Decompose into subtasks ──────────────────────────────────
+        registry = build_agent_registry(llm_client=self._llm)
+        orchestrator = TaskOrchestrator(registry)
+        subtasks = orchestrator.decompose(message, _triage)
+
+        logger.info(
+            "[TASK_AGENT_ASYNC] Decomposed into %d subtask(s): %s",
+            len(subtasks),
+            ", ".join(f"{t.task_id}:{t.intent_type}" for t in subtasks),
+        )
+
+        # Inject thread_id into slots for receipt logging
+        for st in subtasks:
+            st.slots["_thread_id"] = thread_id
+
+        # ── 3. Execute via orchestrator ─────────────────────────────────
+        event_queue: asyncio.Queue = asyncio.Queue()
+        ctx = OrchestrationContext(
+            thread_id=thread_id,
+            memory=self._memory,
+            llm_client=self._llm,
+            session_db=self._session_db,
+            results={},
+            event_queue=event_queue,
+        )
+
+        # Run orchestrator as a background task, stream events as they arrive
+        orch_task = asyncio.create_task(orchestrator.execute(subtasks, ctx))
+
+        while not orch_task.done() or not event_queue.empty():
+            try:
+                event = await asyncio.wait_for(event_queue.get(), timeout=0.15)
+                yield event
+            except asyncio.TimeoutError:
+                continue
+            except Exception:
+                break
+
+        # Get orchestration result
+        try:
+            orch_result = orch_task.result()
+        except Exception as _orch_err:
+            logger.error("[TASK_AGENT_ASYNC] Orchestration failed: %s", _orch_err)
+            yield {
+                "type": "token",
+                "content": f"Orchestration failed: {_orch_err}",
+            }
+            yield {
+                "type": "task_done",
+                "content": f"Orchestration failed: {_orch_err}",
+                "metadata": {"error": str(_orch_err), "response_type": "task", "gates_passed": False},
+            }
+            return
+
+        # ── 4. Generate answer from orchestration results ───────────────
+        answer = self._generate_answer_from_orchestration(message, orch_result, intent)
+        yield {"type": "token", "content": answer}
+
+        # ── 5. Write facts ──────────────────────────────────────────────
+        facts_written = self._write_facts(
+            thread_id, intent, None, {}, None, answer=answer,
+        )
+
+        # ── 6. Done ─────────────────────────────────────────────────────
+        _done_meta: Dict[str, Any] = {
+            "answer": answer,
+            "steps": [
+                {
+                    "task_id": r.task_id,
+                    "agent_name": r.agent_name,
+                    "status": r.status,
+                    "duration_ms": r.duration_ms,
+                    "output_preview": r.output_preview,
+                    "propagated_trust": r.propagated_trust,
+                }
+                for r in orch_result.results
+            ],
+            "facts_written": facts_written,
+            "intent": {
+                "route": intent.route,
+                "intent_type": intent.intent_type,
+                "slots": intent.slots,
+                "confidence": intent.confidence,
+            },
+            "orchestration_id": orch_result.orchestration_id,
+            "merged_trust": orch_result.merged_trust,
+            "parallel_count": orch_result.parallel_count,
+            "pipeline_statuses": [
+                f"orchestration: {len(orch_result.results)} subtasks",
+                *(f"{r.agent_name}: {r.status}" for r in orch_result.results),
+            ],
+            "gates_passed": True,
+            "gate_reason": "task_route_orchestrated",
+            "response_type": "task",
+            "confidence": orch_result.merged_trust,
+        }
+        yield {
+            "type": "task_done",
+            "content": answer,
+            "metadata": _done_meta,
+        }
+
+        if orch_result.all_ok and self._session_db is not None:
+            try:
+                self._session_db.clear_pending_task(thread_id)
+            except Exception:
+                pass
+
+    def _generate_answer_from_orchestration(
+        self,
+        message: str,
+        orch_result,
+        intent: TaskIntent,
+    ) -> str:
+        """Build a deterministic answer from orchestration results."""
+        from personal_agent.sub_agents import OrchestratorResult
+        assert isinstance(orch_result, OrchestratorResult)
+
+        parts = []
+        for r in orch_result.results:
+            if r.status == "ok":
+                parts.append(f"**{r.agent_name}** — {r.output_preview}")
+            else:
+                parts.append(f"**{r.agent_name}** — failed: {r.output_preview}")
+
+        if not parts:
+            return "No subtasks were executed."
+
+        if len(parts) == 1:
+            # Single subtask — return its output directly
+            r = orch_result.results[0]
+            if r.status == "ok" and r.output_preview:
+                return r.output_preview
+            return parts[0]
+
+        # Multiple subtasks — combine
+        summary = f"Completed {len(orch_result.results)} subtasks"
+        if orch_result.parallel_count > 1:
+            summary += f" ({orch_result.parallel_count} in parallel)"
+        summary += f" in {orch_result.total_duration_ms:.0f}ms.\n\n"
+        summary += "\n\n".join(parts)
+        return summary
+
+    # ------------------------------------------------------------------
     # Phase-2 re-planner: content → concrete tool calls
     # ------------------------------------------------------------------
 
