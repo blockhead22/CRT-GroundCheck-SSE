@@ -203,13 +203,28 @@ Last updated: March 24, 2026 (v2.5)
 Skill.md files + credentials through existing pipeline. Add as needed:
 - [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
 
-### Sprint 8: Sub-Agent Interface + Delegation Protocol ← NEXT
-- [ ] Agent protocol ABCs — MemoryAgent, ToolAgent, ReflectionAgent, LearningAgent
-- [ ] Delegation — Aether breaks complex requests into subtasks, assigns to specialized agents
-- [ ] Trust propagation — sub-agent outputs inherit trust scores from their source data
-- [ ] Agent receipts — every sub-agent action logged through the same receipt system
-- [ ] Parallel execution — independent subtasks run concurrently with result aggregation
-- [ ] "Plan a trip" → flight agent + hotel agent + maps agent → results merged through CRT governance
+### Sprint 8: Sub-Agent Interface + Delegation Protocol (v2.6, March 24) ← DONE
+- [x] **SubAgent ABC** — `personal_agent/sub_agents.py`: abstract base with `execute()`, `can_handle()`, trust computation, receipt logging
+- [x] **8 concrete agents** — SystemInfoAgent, FileAgent, ShellAgent, GitAgent, WebFetchAgent, DesktopToolAgent, GenerationAgent, CommitmentAgent. Each wraps existing tool functions via `asyncio.to_thread()`
+- [x] **SubTask/SubTaskResult dataclasses** — dependency graph edges (`depends_on`, `input_from`), trust metadata (`confidence`, `source_trust`, `propagated_trust`)
+- [x] **TaskOrchestrator** — `personal_agent/orchestrator.py`: decomposes multi-intent requests into dependency graph, runs independent subtasks in parallel via `asyncio.gather()`, chains dependent ones sequentially
+- [x] **Dependency detection** — sequential language markers ("then", "after that"), structural rules (generate→write, fetch→respond)
+- [x] **Trust propagation** — `propagated_trust = min(confidence, source_trust)`, merged via weakest-link across all branches. Per-agent confidence: SystemInfo=0.95, File_read=0.95, Shell=0.85, Desktop=0.80, WebFetch=0.70, Generation=0.60
+- [x] **Agent receipts** — `action_receipts.py` extended with `agent_name` and `orchestration_id` columns. `log_orchestration_receipt()` ties sub-agent receipts together
+- [x] **`run_stream_async()`** — async generator on CRTTaskAgent, mirrors sync path but uses orchestrator. Events stream via `asyncio.Queue`
+- [x] **Async bridge in chat.py** — multi_intent tasks spawn background thread with dedicated event loop, events bridge to sync SSE generator via thread-safe queue. Single-intent tasks use existing sync path (zero overhead)
+- [x] **4 new SSE events** — `orchestration_start`, `subtask_start`, `subtask_done`, `orchestration_done` with full metadata
+- [x] **Frontend orchestration UI** — AgentThinkingStrip shows subtask rows with agent names, live status (pending/running/ok/error), duration, and merged trust score. Parallel subtasks animate independently
+- [x] **App.tsx orchestration callbacks** — `onOrchestrationStart`, `onSubtaskStart`, `onSubtaskDone`, `onOrchestrationDone` wire into `agentThinkingState.orchestration`
+
+### Side Model Tap (v2.7, March 24) ← DONE
+- [x] **SideModelTap** — `personal_agent/side_model_tap.py`: lightweight gpt-4o-mini side-channel for situational awareness. Three triggers:
+- [x] **Clarify tap** — fires when intent classifier returns conversational with low confidence (<0.75). Asks "does this need clarification?" before routing. Emits `side_tap` SSE event
+- [x] **Post-task suggest tap** — fires after task_done. Passes completed task + open tasks to side model, gets natural follow-up suggestion. Embedded in done event metadata
+- [x] **Reconnect tap** — fires before conversational pipeline when user idle >5 minutes. Generates context-aware welcome-back with open task summary
+- [x] **Cloud integration** — reuses `CloudFeatureService._call_openai()` with 3 new daily limit categories (clarify: 20, suggest: 20, reconnect: 10)
+- [x] **Graceful degradation** — returns None when cloud unavailable, pipeline continues unchanged
+- [x] **`get_last_message_ts()`** on ThreadSessionDB for idle detection
 
 ### Sprint 9: Synthesis Responses ✅ (v2.5)
 - [x] Worldview questions answered from compressed belief trajectories, not individual fact recall

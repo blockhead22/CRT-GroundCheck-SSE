@@ -21,6 +21,23 @@ import type { AgentStep } from '../../lib/api'
 
 export type AgentPlanStep = { tool: string; input: Record<string, unknown> }
 
+export type OrchestrationSubtask = {
+  taskId: string
+  agentName: string
+  intentType: string
+  dependsOn: string[]
+  status: 'pending' | 'running' | 'ok' | 'error'
+  durationMs?: number
+  outputPreview?: string
+}
+
+export type OrchestrationState = {
+  subtasks: OrchestrationSubtask[]
+  mergedTrust?: number
+  allOk?: boolean
+  done?: boolean
+}
+
 export type AgentThinkingState = {
   // Set once intent_classified fires
   intent?: string
@@ -44,6 +61,8 @@ export type AgentThinkingState = {
   draftingThinking?: string
   // Set once task_done fires
   done?: boolean
+  // Sprint 8: orchestration state for multi-agent tasks
+  orchestration?: OrchestrationState
 }
 
 // ── Helper: domain from URL ───────────────────────────────────────────────
@@ -227,6 +246,68 @@ export function AgentThinkingStrip({ state }: { state: AgentThinkingState }) {
                 ) : null}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Orchestration subtasks (Sprint 8) — shown for multi-agent tasks */}
+        {state.orchestration && (
+          <div className="flex flex-col gap-[2px] mb-1">
+            <div className="flex items-center gap-2 text-[10px] font-mono px-1 py-[2px]" style={{ color: '#5a5445' }}>
+              <span className="w-3 text-center" style={{ color: '#E0A080' }}>⟐</span>
+              <span>orchestrating {state.orchestration.subtasks.length} subtask{state.orchestration.subtasks.length !== 1 ? 's' : ''}</span>
+              {state.orchestration.done && state.orchestration.mergedTrust !== undefined && (
+                <span className="ml-auto" style={{ color: '#5a5445' }}>
+                  trust: {(state.orchestration.mergedTrust * 100).toFixed(0)}%
+                </span>
+              )}
+            </div>
+            {state.orchestration.subtasks.map((st) => {
+              const isRunning = st.status === 'running'
+              const isDone = st.status === 'ok' || st.status === 'error'
+              return (
+                <div key={st.taskId} className="flex items-center gap-2 text-[11px] font-mono px-1 py-[2px] ml-2">
+                  <span className="w-3 text-center flex-shrink-0">
+                    {isRunning ? (
+                      <span className="inline-flex gap-[2px] items-center">
+                        {[0, 0.15, 0.3].map((d, i) => (
+                          <span key={i} className="h-[3px] w-[3px] rounded-full animate-bounce inline-block"
+                            style={{ background: '#E0A080', opacity: 0.8, animationDelay: `${d}s`, animationDuration: '0.7s' }} />
+                        ))}
+                      </span>
+                    ) : st.status === 'ok' ? (
+                      <span style={{ color: '#6abf7b' }}>✓</span>
+                    ) : st.status === 'error' ? (
+                      <span style={{ color: '#fb7185' }}>✗</span>
+                    ) : (
+                      <span style={{ color: '#3d3626' }}>○</span>
+                    )}
+                  </span>
+                  <span style={{
+                    color: isRunning ? '#F0EBE1' : isDone ? '#a09880' : '#3d3626',
+                  }}>
+                    {st.agentName}
+                  </span>
+                  <span className="truncate max-w-[180px]" style={{ color: '#5a5445' }}>
+                    {st.intentType}
+                  </span>
+                  {st.status === 'ok' && st.durationMs != null && (
+                    <span className="ml-auto text-[10px] flex-shrink-0" style={{ color: '#5a5445' }}>
+                      {st.durationMs < 1000 ? `${st.durationMs.toFixed(0)}ms` : `${(st.durationMs / 1000).toFixed(1)}s`}
+                    </span>
+                  )}
+                  {st.status === 'error' && (
+                    <span className="ml-auto text-[10px] flex-shrink-0" style={{ color: '#fb7185' }}>
+                      failed
+                    </span>
+                  )}
+                  {st.dependsOn.length > 0 && st.status === 'pending' && (
+                    <span className="ml-auto text-[10px] flex-shrink-0" style={{ color: '#3d3626' }}>
+                      waiting
+                    </span>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
 

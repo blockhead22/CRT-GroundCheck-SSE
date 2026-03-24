@@ -394,6 +394,10 @@ export type StreamEventType =
   | 'validate_result'
   | 'task_done'
   | 'task_acknowledged'
+  | 'orchestration_start'
+  | 'subtask_start'
+  | 'subtask_done'
+  | 'orchestration_done'
   | 'agent_checkpoint'
   | 'task_cancelled'
   | 'agent_thinking_token'
@@ -440,6 +444,11 @@ export type StreamCallbacks = {
   onValidateResult?: (conflicts: unknown[], gate: string) => void
   onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
   onTaskAcknowledged?: (message: string, metadata: Record<string, unknown>) => void
+  // Orchestration events (Sprint 8)
+  onOrchestrationStart?: (subtaskCount: number, subtasks: Array<{ task_id: string; intent_type: string; agent_name: string; depends_on: string[] }>) => void
+  onSubtaskStart?: (taskId: string, agentName: string, intentType: string) => void
+  onSubtaskDone?: (taskId: string, agentName: string, status: string, durationMs: number, outputPreview: string) => void
+  onOrchestrationDone?: (mergedTrust: number, allOk: boolean, metadata: Record<string, unknown>) => void
   onAgentCheckpoint?: (message: string, metadata: Record<string, unknown>) => void
   onTaskCancelled?: (message: string) => void
   onAgentThinkingToken?: (token: string, step: string) => void
@@ -589,6 +598,26 @@ export async function streamFromCrtApi(args: {
               case 'task_acknowledged': {
                 const meta = event.metadata as Record<string, unknown> | undefined
                 args.callbacks.onTaskAcknowledged?.(event.content, meta ?? {})
+                break
+              }
+              case 'orchestration_start': {
+                const meta = event.metadata as { subtask_count?: number; subtasks?: Array<{ task_id: string; intent_type: string; agent_name: string; depends_on: string[] }> } | undefined
+                args.callbacks.onOrchestrationStart?.(meta?.subtask_count ?? 0, meta?.subtasks ?? [])
+                break
+              }
+              case 'subtask_start': {
+                const meta = event.metadata as { task_id?: string; agent_name?: string; intent_type?: string } | undefined
+                args.callbacks.onSubtaskStart?.(meta?.task_id ?? '', meta?.agent_name ?? '', meta?.intent_type ?? '')
+                break
+              }
+              case 'subtask_done': {
+                const meta = event.metadata as { task_id?: string; agent_name?: string; status?: string; duration_ms?: number; output_preview?: string } | undefined
+                args.callbacks.onSubtaskDone?.(meta?.task_id ?? '', meta?.agent_name ?? '', meta?.status ?? 'ok', meta?.duration_ms ?? 0, meta?.output_preview ?? '')
+                break
+              }
+              case 'orchestration_done': {
+                const meta = event.metadata as { merged_trust?: number; all_ok?: boolean } & Record<string, unknown> | undefined
+                args.callbacks.onOrchestrationDone?.(meta?.merged_trust ?? 0, meta?.all_ok ?? false, meta ?? {})
                 break
               }
               case 'agent_checkpoint': {

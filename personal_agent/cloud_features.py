@@ -40,6 +40,9 @@ class CloudFeatureService:
         "cloud_generation": 50,
         "claude_generation": 20,
         "claude_reflection": 10,
+        "side_tap_clarify": 20,
+        "side_tap_suggest": 20,
+        "side_tap_reconnect": 10,
     }
 
     def __init__(
@@ -63,6 +66,9 @@ class CloudFeatureService:
             "cloud_generation": {"calls": 0, "est_tokens": 0},
             "claude_generation": {"calls": 0, "est_tokens": 0},
             "claude_reflection": {"calls": 0, "est_tokens": 0},
+            "side_tap_clarify": {"calls": 0, "est_tokens": 0},
+            "side_tap_suggest": {"calls": 0, "est_tokens": 0},
+            "side_tap_reconnect": {"calls": 0, "est_tokens": 0},
             "total_cost_est": 0.0,
         }
 
@@ -75,6 +81,9 @@ class CloudFeatureService:
             "cloud_generation": 0,
             "claude_generation": 0,
             "claude_reflection": 0,
+            "side_tap_clarify": 0,
+            "side_tap_suggest": 0,
+            "side_tap_reconnect": 0,
         }
         self._daily_counts_date: str = str(date.today())
         self._limit_multiplier: float = 1.0

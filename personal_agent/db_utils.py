@@ -553,6 +553,18 @@ class ThreadSessionDB:
         
         return self.get_or_create_session(thread_id)
     
+    def get_last_message_ts(self, thread_id: str) -> Optional[float]:
+        """Return the last_active timestamp for this thread, or None."""
+        conn = self._get_connection()
+        row = conn.execute(
+            "SELECT last_active FROM thread_sessions WHERE thread_id = ?",
+            (thread_id,),
+        ).fetchone()
+        conn.close()
+        if row is None:
+            return None
+        return row["last_active"] if isinstance(row, dict) else row[0]
+
     def mark_greeting_shown(self, thread_id: str):
         """Mark that greeting has been shown for this session."""
         conn = self._get_connection()

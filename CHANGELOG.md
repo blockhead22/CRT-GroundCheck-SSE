@@ -5,6 +5,45 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.7 — March 24, 2026
+
+Side Model Tap — lightweight LLM side-channel for situational awareness. A gpt-4o-mini "quick tap" that fires at three moments: ambiguous input (clarify before routing), post-task completion (suggest next step from context), and reconnect after idle (welcome back with open task context). Runs in ~150ms, doesn't block the main pipeline, and degrades gracefully when cloud is unavailable.
+
+### Feature
+- **SideModelTap** (`personal_agent/side_model_tap.py`) — singleton class with three public methods: `clarify()`, `suggest_next()`, `reconnect()`. Each makes a single gpt-4o-mini call with a focused system prompt and returns structured JSON
+- **Clarify tap** — fires when intent classifier returns conversational with confidence < 0.75. Asks the side model if the message needs clarification before routing. Emits `side_tap` SSE event with the question
+- **Post-task suggest tap** — fires after every task_done event. Passes completed task metadata + open tasks to the side model, gets back a natural follow-up suggestion. Embedded in the `done` event metadata as `side_tap.message`
+- **Reconnect tap** — fires before the conversational pipeline when `last_active` is >5 minutes old. Generates a context-aware welcome-back message referencing open tasks. Emits `side_tap` SSE event
+- **`get_last_message_ts()`** — new method on `ThreadSessionDB` to read idle duration from the existing `last_active` column
+
+### Infra
+- **New file**: `personal_agent/side_model_tap.py` (270 lines)
+- **CloudFeatureService** — 3 new daily limit categories: `side_tap_clarify` (20/day), `side_tap_suggest` (20/day), `side_tap_reconnect` (10/day)
+- **New SSE event type**: `side_tap` with `tap_action` metadata field (clarify | suggest | reconnect)
+
+---
+
+## v2.6 — March 24, 2026
+
+Sub-agent interface + delegation protocol (Sprint 8). Aether can now decompose multi-intent requests into independent subtasks and run them in parallel via specialized sub-agents. Each agent wraps existing tool functions, carries trust metadata through the execution chain, and logs receipts tied to a parent orchestration. The frontend shows real-time orchestration progress with per-agent status tracking.
+
+### Feature
+- **SubAgent protocol** (`personal_agent/sub_agents.py`) — abstract base class with async `execute()`, trust computation, receipt logging. 8 concrete agents: SystemInfoAgent, FileAgent, ShellAgent, GitAgent, WebFetchAgent, DesktopToolAgent, GenerationAgent, CommitmentAgent
+- **TaskOrchestrator** (`personal_agent/orchestrator.py`) — decomposes multi-intent messages into a dependency graph. Independent subtasks run concurrently via `asyncio.gather()`. Dependent subtasks chain sequentially with output piping
+- **Dependency detection** — sequential language markers ("then", "after that") make tasks chain. Structural rules: generate_content → file_write, url_fetch → service_action
+- **Trust propagation** — CRT weakest-link model: `propagated_trust = min(confidence, source_trust)`. Orchestration merged trust = minimum across all branches. Per-agent confidence constants from 0.95 (SystemInfo) down to 0.60 (Generation)
+- **`run_stream_async()`** — async generator on CRTTaskAgent using the orchestrator. Events stream via `asyncio.Queue` to the caller
+- **Async bridge** — multi_intent tasks in chat.py spawn a background thread with its own event loop. Events bridge to the sync SSE generator via thread-safe queue. Single-intent tasks use existing sync path with zero overhead
+- **4 new SSE events** — `orchestration_start` (subtask manifest), `subtask_start` (agent begins), `subtask_done` (agent finishes with duration + status), `orchestration_done` (merged trust + completion stats)
+- **Orchestration UI** — AgentThinkingStrip shows subtask rows: agent name, intent type, live status indicator (pending ○ / running ⟳ / ok ✓ / error ✗), duration, and merged trust percentage on completion
+- **Agent receipts** — `action_receipts` table extended with `agent_name` and `orchestration_id` columns. `log_orchestration_receipt()` creates parent receipt tying all sub-agent receipts together
+
+### Infra
+- **New files**: `personal_agent/sub_agents.py` (480 lines), `personal_agent/orchestrator.py` (260 lines)
+- **Schema migration**: `action_receipts.db` auto-adds `agent_name` and `orchestration_id` columns on startup
+
+---
+
 ## v2.5 — March 24, 2026
 
 Belief synthesis + volatility-gated context (Sprints 9 & 10). The intelligence layer that makes Aether understand the *shape* of what it knows about you — not just individual facts, but themes, trajectories, and tensions.

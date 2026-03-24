@@ -146,6 +146,9 @@ _SYSTEM_INFO_RE = re.compile(
     r"how(?:'s|\s+is)\s+(my\s+)?(system|computer|machine|pc|rig)|"
     r"what(?:'s|\s+is|\s+am\s+i)\s+(my\s+)?(system|computer|running|using)|"
     r"what\s+am\s+i\s+running|"
+    r"what\s+(?:\w+\s+)*(?:processes?|apps?|programs?)\s+(?:are\s+)?running|"
+    r"(?:show|list|check)\s+(?:me\s+)?(?:what\s+)?(?:processes?|apps?|programs?)\s+(?:are\s+)?running|"
+    r"(?:show|list|check)\s+(?:me\s+)?(?:the\s+)?(?:running|active)\s+(?:processes?|apps?|programs?)|"
     r"top\s+processes|task\s+manager|resource\s+monitor|"
     r"check\s+(my\s+)?(system|cpu|gpu|ram|memory|disk))\b",
     re.IGNORECASE,
@@ -579,12 +582,33 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
         }
 
     # ── Layer 1+2 read-only tools — no confirmation needed ──────────────
-    if intent.intent_type in ("system_info", "file_read", "dir_list", "project_scan", "list_commitments"):
+    _READ_ONLY_INTENTS = {"system_info", "file_read", "dir_list", "project_scan", "list_commitments"}
+    if intent.intent_type in _READ_ONLY_INTENTS:
         return {
             "checkpoint_tier": "none",
             "checkpoint_message": "",
             "requires_confirmation": False,
         }
+
+    # ── Multi-intent: gate only if ANY sub-intent requires confirmation ──
+    if intent.intent_type == "multi_intent":
+        sub_intents = intent.slots.get("intents", [])
+        _needs_gate = any(
+            si.get("type") not in _READ_ONLY_INTENTS and si.get("type") != "git_action"
+            for si in sub_intents
+        )
+        # git_action in read-only context (status, diff, log) doesn't need gate
+        _git_subs = [si for si in sub_intents if si.get("type") == "git_action"]
+        for _gs in _git_subs:
+            _git_args = intent.slots.get("args", [])
+            if isinstance(_git_args, list) and any(a in ("push", "commit", "reset", "rebase", "merge") for a in _git_args):
+                _needs_gate = True
+        if not _needs_gate:
+            return {
+                "checkpoint_tier": "none",
+                "checkpoint_message": "",
+                "requires_confirmation": False,
+            }
 
     # ── Commitment create/cancel — medium tier confirmation ──────────────
     if intent.intent_type == "create_commitment":

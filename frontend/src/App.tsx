@@ -551,6 +551,60 @@ export default function App() {
               // Start pulse animation on input area
               setTaskWorking(true)
             },
+            // Sprint 8: Orchestration callbacks
+            onOrchestrationStart: (_count, subtasks) => {
+              setAgentThinkingState((prev) => {
+                const orch = {
+                  subtasks: subtasks.map((st) => ({
+                    taskId: st.task_id,
+                    agentName: st.agent_name,
+                    intentType: st.intent_type,
+                    dependsOn: st.depends_on,
+                    status: 'pending' as const,
+                  })),
+                }
+                const next = prev ? { ...prev, orchestration: orch } : { toolSteps: [], orchestration: orch }
+                agentThinkingRef.current = next
+                return next
+              })
+            },
+            onSubtaskStart: (taskId, agentName, _intentType) => {
+              setAgentThinkingState((prev) => {
+                if (!prev?.orchestration) return prev
+                const updated = prev.orchestration.subtasks.map((st) =>
+                  st.taskId === taskId ? { ...st, status: 'running' as const, agentName: agentName || st.agentName } : st
+                )
+                const next = { ...prev, orchestration: { ...prev.orchestration, subtasks: updated } }
+                agentThinkingRef.current = next
+                return next
+              })
+            },
+            onSubtaskDone: (taskId, agentName, status, durationMs, outputPreview) => {
+              setAgentThinkingState((prev) => {
+                if (!prev?.orchestration) return prev
+                const updated = prev.orchestration.subtasks.map((st) =>
+                  st.taskId === taskId
+                    ? { ...st, status: (status === 'ok' ? 'ok' : 'error') as 'ok' | 'error', durationMs, outputPreview, agentName: agentName || st.agentName }
+                    : st
+                )
+                const next = { ...prev, orchestration: { ...prev.orchestration, subtasks: updated } }
+                agentThinkingRef.current = next
+                return next
+              })
+            },
+            onOrchestrationDone: (mergedTrust, allOk, _meta) => {
+              setAgentThinkingState((prev) => {
+                if (!prev?.orchestration) return prev
+                const next = {
+                  ...prev,
+                  orchestration: { ...prev.orchestration, mergedTrust, allOk, done: true },
+                  drafting: true,
+                  pendingReasoning: '',
+                }
+                agentThinkingRef.current = next
+                return next
+              })
+            },
             onTaskDone: (_answer, _steps, _meta) => {
               // Stop pulse animation
               setTaskWorking(false)

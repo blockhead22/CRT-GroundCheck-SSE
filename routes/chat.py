@@ -786,11 +786,14 @@ _CAPABILITY_REROUTE_PATTERNS = [
     # System info queries
     (
         _re_mod.compile(
-            r"\b(what(?:'s| is| are)?\s+(?:apps?|programs?|processes?|windows?)\s+(?:are\s+)?(?:open|running|active))"
+            r"(?:what(?:'s| is| are)?\s+(?:\w+\s+)*(?:apps?|programs?|processes?|windows?)\s+(?:are\s+)?(?:open|running|active))"
             r"|(?:which\s+(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:open|running|active))"
+            r"|(?:(?:show|list|check)\s+(?:me\s+)?(?:what\s+)?(?:processes?|apps?|programs?)\s+(?:are\s+)?(?:running|open|active))"
+            r"|(?:(?:show|list|check)\s+(?:me\s+)?(?:the\s+)?(?:running|active|open)\s+(?:processes?|apps?|programs?))"
             r"|(?:(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:open|running|active)\??)"
-            r"|(?:(?:how(?:'s| is)?\s+my\s+(?:system|computer|pc|machine|cpu|ram|gpu|memory|disk)))"
-            r"|(?:(?:check|show|what(?:'s)?)\s+(?:my\s+)?(?:system|cpu|ram|gpu|memory|disk)\s*(?:status|usage|info)?)",
+            r"|(?:how(?:'s| is)?\s+my\s+(?:system|computer|pc|machine|cpu|ram|gpu|memory|disk))"
+            r"|(?:(?:check|show|what(?:'s)?)\s+(?:my\s+)?(?:system|cpu|ram|gpu|memory|disk)\s*(?:status|usage|info)?)"
+            r"|(?:top\s+processes|task\s+manager|resource\s+monitor)",
             _re_mod.IGNORECASE,
         ),
         "system_info",
@@ -808,26 +811,79 @@ _CAPABILITY_REROUTE_PATTERNS = [
 ]
 
 
+# Additional patterns for multi-intent compound detection
+_COMPOUND_INTENT_PATTERNS = [
+    (_re_mod.compile(r"\bgit\s+(status|diff|log|branch|commit|push|pull|stash)", _re_mod.IGNORECASE), "git_action"),
+    (_re_mod.compile(r"\b(?:list|show|check)\s+(?:the\s+)?(?:files?|directory|folder|dir)\b", _re_mod.IGNORECASE), "dir_list"),
+    (_re_mod.compile(r"\b(?:read|open|show\s+me)\s+(?:the\s+)?(?:file|contents?\s+of)\b", _re_mod.IGNORECASE), "file_read"),
+    (_re_mod.compile(r"\b(?:uncommitted|modified|staged)\s+(?:git\s+)?(?:changes?|files?)", _re_mod.IGNORECASE), "git_action"),
+    (_re_mod.compile(r"\bgit\s+(?:changes?|uncommitted|modified|staged)", _re_mod.IGNORECASE), "git_action"),
+]
+
+# Extract git subcommand from message for compound detection
+def _extract_git_args(message: str) -> list:
+    """Extract git args from a natural language message."""
+    m = _re_mod.search(r"\bgit\s+(status|diff|log|branch|commit|push|pull|stash)\b", message, _re_mod.IGNORECASE)
+    if m:
+        return [m.group(1).lower()]
+    # "uncommitted changes" → git status
+    if _re_mod.search(r"\b(uncommitted|modified|staged)\s+(changes?|files?)", message, _re_mod.IGNORECASE):
+        return ["status"]
+    if _re_mod.search(r"\bgit\s+changes?", message, _re_mod.IGNORECASE):
+        return ["status"]
+    return ["status"]  # default to status for safety
+
+
 def _capability_reroute(message: str, current_intent) -> "Optional[TaskIntent]":
     """Check if a conversational message should actually route to a tool.
 
     Returns a new TaskIntent if re-routing is needed, None otherwise.
+    Also detects multi-intent compound messages (e.g. "show processes and check git status").
     """
     from personal_agent.task_agent import TaskIntent
 
     msg = message.strip()
+
+    # First pass: collect all matching intents (primary + compound)
+    matched_intents = []
     for pattern, intent_type, slots_fn in _CAPABILITY_REROUTE_PATTERNS:
         if pattern.search(msg):
             _slots = slots_fn(msg) if callable(slots_fn) else dict(slots_fn)
-            return TaskIntent(
-                route="task",
-                intent_type=intent_type,
-                confidence=0.85,
-                slots=_slots,
-                reason="capability_reroute",
-                source="capability_reroute",
-            )
-    return None
+            matched_intents.append({"type": intent_type, "confidence": 0.85, "slots": _slots})
+
+    # Check compound patterns too
+    for pattern, intent_type in _COMPOUND_INTENT_PATTERNS:
+        if pattern.search(msg):
+            # Don't duplicate if already matched from primary patterns
+            if not any(m["type"] == intent_type for m in matched_intents):
+                matched_intents.append({"type": intent_type, "confidence": 0.80})
+
+    if not matched_intents:
+        return None
+
+    # Single match — return as single intent
+    if len(matched_intents) == 1:
+        m = matched_intents[0]
+        return TaskIntent(
+            route="task",
+            intent_type=m["type"],
+            confidence=m["confidence"],
+            slots=m.get("slots", {}),
+            reason="capability_reroute",
+            source="capability_reroute",
+        )
+
+    # Multiple matches — return as multi_intent for orchestration
+    return TaskIntent(
+        route="task",
+        intent_type="multi_intent",
+        confidence=matched_intents[0]["confidence"],
+        slots={
+            "intents": [{"type": m["type"], "confidence": m["confidence"]} for m in matched_intents],
+        },
+        reason="capability_reroute_multi",
+        source="capability_reroute",
+    )
 
 
 def _route_model_for_request(
@@ -4751,6 +4807,90 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 except Exception as _rre:
                     logger.debug("[STREAM] capability re-route check failed: %s", _rre)
 
+            # ── COMPOUND INTENT UPGRADE (Sprint 8) ────────────────────────
+            # If the classifier returned a single task intent but the message
+            # contains additional tool-worthy clauses, upgrade to multi_intent
+            # so the orchestrator can run them in parallel.
+            if (
+                _task_intent is not None
+                and _task_intent.route == "task"
+                and _task_intent.intent_type != "multi_intent"
+                and _task_intent.intent_type != "task_continuation"
+            ):
+                try:
+                    _extra_intents = []
+                    for _cp, _ci in _COMPOUND_INTENT_PATTERNS:
+                        if _cp.search(req.message) and _ci != _task_intent.intent_type:
+                            if not any(e["type"] == _ci for e in _extra_intents):
+                                _extra_intents.append({"type": _ci, "confidence": 0.80})
+                    if _extra_intents:
+                        # Build merged slots — include original slots plus extracted args
+                        _merged_slots = dict(_task_intent.slots)
+                        # Extract git args if any sub-intent is git_action
+                        if any(e["type"] == "git_action" for e in _extra_intents) or _task_intent.intent_type == "git_action":
+                            _merged_slots["args"] = _extract_git_args(req.message)
+                            _merged_slots["cwd"] = "D:/AI_round2"
+                        _all_intents = [
+                            {"type": _task_intent.intent_type, "confidence": _task_intent.confidence},
+                            *_extra_intents,
+                        ]
+                        _merged_slots["intents"] = _all_intents
+                        logger.info(
+                            "[STREAM] Compound upgrade: %s + %s → multi_intent",
+                            _task_intent.intent_type,
+                            ", ".join(e["type"] for e in _extra_intents),
+                        )
+                        _task_intent = TaskIntent(
+                            route="task",
+                            intent_type="multi_intent",
+                            confidence=_task_intent.confidence,
+                            slots=_merged_slots,
+                            reason="compound_upgrade",
+                            source="compound_upgrade",
+                        )
+                except Exception as _cue:
+                    logger.debug("[STREAM] compound upgrade check failed: %s", _cue)
+
+            # ── SIDE MODEL TAP: Clarify ambiguous input ─────────────────
+            # If the classifier fell to conversational but confidence is low,
+            # ask the side model if clarification is needed before proceeding.
+            if (
+                _task_intent is not None
+                and _task_intent.route == "conversational"
+                and _task_intent.confidence < 0.75
+            ):
+                try:
+                    from personal_agent.side_model_tap import get_side_tap as _get_tap
+                    from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs
+                    _tap = _get_tap(cloud_service=_get_cfs())
+                    _open_tasks = []
+                    try:
+                        _open_tasks = [_active_task] if _active_task else []
+                    except Exception:
+                        pass
+                    _tap_result = _tap.clarify(
+                        message=req.message,
+                        open_tasks=_open_tasks,
+                        classifier_confidence=_task_intent.confidence,
+                    )
+                    if _tap_result is not None:
+                        logger.info(
+                            "[STREAM] Side tap clarify: %s (confidence=%.2f, latency=%dms)",
+                            _tap_result.message[:60], _tap_result.confidence, _tap_result.latency_ms,
+                        )
+                        yield _sse({
+                            "type": "side_tap",
+                            "content": _tap_result.message,
+                            "metadata": {
+                                "tap_action": "clarify",
+                                "confidence": _tap_result.confidence,
+                                "latency_ms": _tap_result.latency_ms,
+                                **_tap_result.metadata,
+                            },
+                        })
+                except Exception as _tap_err:
+                    logger.debug("[STREAM] Side tap clarify failed: %s", _tap_err)
+
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":
                 try:
@@ -4765,48 +4905,140 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         session_db=_session_db,
                     )
 
+                    # ── Sprint 8: Pick sync vs async orchestrated path ────
+                    # Multi-intent tasks use the async orchestrator for
+                    # parallel sub-agent execution. Single-intent tasks
+                    # use the existing sync path (no overhead).
+                    _use_orchestrator = (
+                        _task_intent.intent_type == "multi_intent"
+                    )
+
                     _checkpoint_hit = False
                     _task_steps: list = []
                     _task_answer = ""
                     _task_meta: dict = {}
 
-                    for _event in _agent.run_stream(
-                        req.message, req.thread_id, _task_intent,
-                        active_task=_active_task, user_confirmed=_user_confirmed,
-                    ):
-                        if _event["type"] in ("agent_checkpoint", "agent_checkpoint_write"):
-                            # ── CHECKPOINT: Emit to user, pause execution ──
-                            yield _sse(_event)
-                            _checkpoint_hit = True
-                            _cp_tier = (
-                                _event.get("metadata", {}).get("checkpoint_tier")
-                                or _event.get("metadata", {}).get("tier")
-                                or "tier_1"
-                            )
-                            _session_db.store_pending_checkpoint(
-                                thread_id=req.thread_id,
-                                intent_data={
-                                    "route": _task_intent.route,
-                                    "intent_type": _task_intent.intent_type,
-                                    "slots": _task_intent.slots,
-                                    "confidence": _task_intent.confidence,
-                                    "reason": _task_intent.reason,
-                                    "source": getattr(_task_intent, "source", "regex"),
-                                },
-                                checkpoint_tier=_cp_tier,
-                                metadata=_event.get("metadata"),
-                            )
-                            break  # Stop — wait for user's next message
+                    if _use_orchestrator:
+                        # ── ASYNC ORCHESTRATED PATH (Sprint 8) ────────────
+                        # Run the async generator on a dedicated event loop
+                        # in a background thread. Events stream back via a
+                        # thread-safe queue to this sync SSE generator.
+                        import asyncio as _asyncio
+                        import threading as _threading
+                        import queue as _sync_queue
 
-                        yield _sse(_event)
-                        if _event["type"] == "tool_result":
-                            _task_steps.append(_event.get("metadata", {}))
-                        elif _event["type"] == "task_done":
-                            _task_answer = _event.get("content", "")
-                            _task_meta = _event.get("metadata", {})
+                        _event_q: _sync_queue.Queue = _sync_queue.Queue()
+                        _orch_done = _threading.Event()
+                        _orch_error: list = []
+
+                        def _run_async_orchestrator():
+                            loop = _asyncio.new_event_loop()
+                            _asyncio.set_event_loop(loop)
+                            try:
+                                async def _inner():
+                                    async for evt in _agent.run_stream_async(
+                                        req.message, req.thread_id, _task_intent,
+                                        active_task=_active_task,
+                                        user_confirmed=_user_confirmed,
+                                    ):
+                                        _event_q.put(evt)
+                                loop.run_until_complete(_inner())
+                            except Exception as _ae:
+                                _orch_error.append(_ae)
+                                logger.error("[STREAM] Async orchestrator error: %s", _ae, exc_info=True)
+                            finally:
+                                _orch_done.set()
+                                loop.close()
+
+                        _orch_thread = _threading.Thread(
+                            target=_run_async_orchestrator, daemon=True,
+                        )
+                        _orch_thread.start()
+
+                        # Stream events from the queue to the SSE response
+                        while not _orch_done.is_set() or not _event_q.empty():
+                            try:
+                                _event = _event_q.get(timeout=0.2)
+                            except _sync_queue.Empty:
+                                continue
+
+                            if _event["type"] in ("agent_checkpoint", "agent_checkpoint_write"):
+                                yield _sse(_event)
+                                _checkpoint_hit = True
+                                _cp_tier = (
+                                    _event.get("metadata", {}).get("checkpoint_tier")
+                                    or "tier_1"
+                                )
+                                _session_db.store_pending_checkpoint(
+                                    thread_id=req.thread_id,
+                                    intent_data={
+                                        "route": _task_intent.route,
+                                        "intent_type": _task_intent.intent_type,
+                                        "slots": _task_intent.slots,
+                                        "confidence": _task_intent.confidence,
+                                        "reason": _task_intent.reason,
+                                        "source": getattr(_task_intent, "source", "regex"),
+                                    },
+                                    checkpoint_tier=_cp_tier,
+                                    metadata=_event.get("metadata"),
+                                )
+                                break
+
+                            yield _sse(_event)
+                            if _event["type"] == "tool_result":
+                                _task_steps.append(_event.get("metadata", {}))
+                            elif _event["type"] in ("subtask_done",):
+                                _task_steps.append(_event.get("metadata", {}))
+                            elif _event["type"] == "task_done":
+                                _task_answer = _event.get("content", "")
+                                _task_meta = _event.get("metadata", {})
+
+                        # Wait for thread to finish
+                        _orch_thread.join(timeout=5)
+
+                        if _orch_error and not _checkpoint_hit:
+                            _err_msg = f"Orchestration error: {_orch_error[0]}"
+                            yield _sse({"type": "error", "content": _err_msg})
+                            yield _sse({"type": "done", "content": _err_msg, "metadata": {"error": True}})
+                            return
+
+                    else:
+                        # ── SYNC PATH (existing behavior) ─────────────────
+                        for _event in _agent.run_stream(
+                            req.message, req.thread_id, _task_intent,
+                            active_task=_active_task, user_confirmed=_user_confirmed,
+                        ):
+                            if _event["type"] in ("agent_checkpoint", "agent_checkpoint_write"):
+                                yield _sse(_event)
+                                _checkpoint_hit = True
+                                _cp_tier = (
+                                    _event.get("metadata", {}).get("checkpoint_tier")
+                                    or _event.get("metadata", {}).get("tier")
+                                    or "tier_1"
+                                )
+                                _session_db.store_pending_checkpoint(
+                                    thread_id=req.thread_id,
+                                    intent_data={
+                                        "route": _task_intent.route,
+                                        "intent_type": _task_intent.intent_type,
+                                        "slots": _task_intent.slots,
+                                        "confidence": _task_intent.confidence,
+                                        "reason": _task_intent.reason,
+                                        "source": getattr(_task_intent, "source", "regex"),
+                                    },
+                                    checkpoint_tier=_cp_tier,
+                                    metadata=_event.get("metadata"),
+                                )
+                                break
+
+                            yield _sse(_event)
+                            if _event["type"] == "tool_result":
+                                _task_steps.append(_event.get("metadata", {}))
+                            elif _event["type"] == "task_done":
+                                _task_answer = _event.get("content", "")
+                                _task_meta = _event.get("metadata", {})
 
                     if _checkpoint_hit:
-                        # Emit a done event so the frontend knows the turn is over
                         yield _sse({
                             "type": "done",
                             "content": _event["content"],
@@ -4820,11 +5052,88 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         **_task_meta,
                         "tool_calls": _task_steps,
                     }
+
+                    # ── SIDE MODEL TAP: Post-task suggestion ────────────────
+                    try:
+                        from personal_agent.side_model_tap import get_side_tap as _get_tap_post
+                        from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs_post
+                        _tap_post = _get_tap_post(cloud_service=_get_cfs_post())
+                        _completed_info = {
+                            "intent_type": getattr(_task_intent, "intent_type", "unknown"),
+                            "answer": str(_task_answer)[:300],
+                        }
+                        _open_tasks_post = [_active_task] if _active_task else []
+                        _tap_suggest = _tap_post.suggest_next(
+                            completed_task=_completed_info,
+                            open_tasks=_open_tasks_post,
+                        )
+                        if _tap_suggest is not None:
+                            logger.info(
+                                "[STREAM] Side tap suggest: %s (latency=%dms)",
+                                _tap_suggest.message[:60], _tap_suggest.latency_ms,
+                            )
+                            _done_meta["side_tap"] = {
+                                "action": "suggest",
+                                "message": _tap_suggest.message,
+                                "suggested_action": _tap_suggest.metadata.get("suggested_action"),
+                                "latency_ms": _tap_suggest.latency_ms,
+                            }
+                    except Exception as _tap_post_err:
+                        logger.debug("[STREAM] Side tap suggest failed: %s", _tap_post_err)
+
                     yield _sse({"type": "done", "content": _task_answer, "metadata": _done_meta})
                     return
                 except Exception as _te:
                     logger.warning("[STREAM] TaskAgent failed, falling back to CRT pipeline: %s", _te)
                     # Fall through to CRT pipeline
+
+            # ── SIDE MODEL TAP: Reconnect after idle ────────────────────
+            # If the user has been idle for a while and there's open work,
+            # the side model generates a natural reconnection message.
+            try:
+                from personal_agent.side_model_tap import get_side_tap as _get_tap_recon
+                from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs_recon
+                _tap_recon = _get_tap_recon(cloud_service=_get_cfs_recon())
+                # Check idle time from session metadata
+                _last_msg_age = 0.0
+                try:
+                    _session_db_recon = get_thread_session_db()
+                    _last_ts = _session_db_recon.get_last_message_ts(req.thread_id)
+                    if _last_ts:
+                        _last_msg_age = time.time() - _last_ts
+                except Exception:
+                    pass
+                if _last_msg_age > 300:  # 5 minutes idle
+                    _open_tasks_recon = []
+                    try:
+                        _at = _session_db_recon.get_pending_task(req.thread_id)
+                        if _at:
+                            _open_tasks_recon = [_at]
+                    except Exception:
+                        pass
+                    _tap_reconnect = _tap_recon.reconnect(
+                        open_tasks=_open_tasks_recon,
+                        last_message_age_seconds=_last_msg_age,
+                    )
+                    if _tap_reconnect is not None:
+                        logger.info(
+                            "[STREAM] Side tap reconnect: %s (idle=%dm, latency=%dms)",
+                            _tap_reconnect.message[:60],
+                            int(_last_msg_age / 60),
+                            _tap_reconnect.latency_ms,
+                        )
+                        yield _sse({
+                            "type": "side_tap",
+                            "content": _tap_reconnect.message,
+                            "metadata": {
+                                "tap_action": "reconnect",
+                                "idle_minutes": int(_last_msg_age / 60),
+                                "latency_ms": _tap_reconnect.latency_ms,
+                                **_tap_reconnect.metadata,
+                            },
+                        })
+            except Exception as _tap_recon_err:
+                logger.debug("[STREAM] Side tap reconnect failed: %s", _tap_recon_err)
 
             # ── Intent pre-pass for conversational route ──────────────────
             try:

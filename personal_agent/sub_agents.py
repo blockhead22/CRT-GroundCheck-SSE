@@ -349,6 +349,18 @@ class GitAgent(SubAgent):
         try:
             from personal_agent.shell_tools import execute_git
             args = task.slots.get("args", [])
+            if isinstance(args, str):
+                args = args.split()
+            if not args:
+                # Try to extract git subcommand from the message
+                import re as _re
+                _m = _re.search(r"\bgit\s+(status|diff|log|branch|show|commit|push|pull|stash)\b", task.message, _re.IGNORECASE)
+                if _m:
+                    args = [_m.group(1).lower()]
+                elif _re.search(r"\b(uncommitted|modified|staged|changes)\b", task.message, _re.IGNORECASE):
+                    args = ["status"]
+                else:
+                    args = ["status"]  # safe default
             cwd = task.slots.get("cwd", "D:/AI_round2")
             result = await asyncio.to_thread(execute_git, args, cwd)
             duration = (time.monotonic() - t0) * 1000
