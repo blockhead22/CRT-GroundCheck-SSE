@@ -15,6 +15,12 @@ Last updated: March 24, 2026 (v1.9)
 - [x] Command preview in action card — `$ command` shown in code block before shell execution
 - [x] Deterministic responses for Layer 2 tools — file_read, dir_list, project_scan show actual content, not LLM summary
 - [x] Tool context carry-forward — recent tool output injected into conversational context for follow-up questions (120s window)
+- [x] FilePill component — interactive inline file path chips in chat messages (icon, tooltip, click-to-copy)
+- [x] Auto-detect file paths in messages — regex detection renders paths as FilePills in assistant messages
+- [x] `referenced_files` metadata field in message type for structured file references
+- [x] Composer + button — attachment menu (file picker, folder picker, working dir, manual path entry)
+- [x] Attached path pills — removable pills in top bar, prepended to message on send
+- [x] Backslash path normalization — Windows `\` paths matched and normalized to `/` in intent classifier
 - [x] File read tool — read files, list directories, gated by allowed paths
 - [x] Project scanner — git status, branch, recent commits, file tree via subprocess
 - [x] Allowed paths config — `GET/PUT /api/settings/allowed-paths`, enforced on all file ops

@@ -65,7 +65,11 @@ export function Composer(props: {
   const [bypassCrt, setBypassCrt] = useState(false)
   const [enableTooling, setEnableTooling] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false)
+  const [attachedPaths, setAttachedPaths] = useState<{ path: string; type: 'file' | 'dir' }[]>([])
   const selectorRef = useRef<HTMLDivElement>(null)
+  const attachRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const canSend = text.trim().length > 0
 
@@ -93,12 +97,76 @@ export function Composer(props: {
         setModelSelectorOpen(false)
         setAdvancedOpen(false)
       }
+      if (attachRef.current && !attachRef.current.contains(e.target as Node)) {
+        setAttachMenuOpen(false)
+      }
     }
-    if (modelSelectorOpen) {
+    if (modelSelectorOpen || attachMenuOpen) {
       document.addEventListener('mousedown', handleClick)
       return () => document.removeEventListener('mousedown', handleClick)
     }
-  }, [modelSelectorOpen])
+  }, [modelSelectorOpen, attachMenuOpen])
+
+  /** Add a file/folder path as an attached reference pill */
+  function insertPathReference(type: 'file' | 'folder' | 'working') {
+    setAttachMenuOpen(false)
+    if (type === 'working') {
+      const ref = 'D:/AI_round2'
+      setAttachedPaths((prev) => prev.some((p) => p.path === ref) ? prev : [...prev, { path: ref, type: 'dir' }])
+      textareaRef.current?.focus()
+      return
+    }
+    if (type === 'file') {
+      fileInputRef.current?.click()
+    } else {
+      // Use File System Access API to pick a folder without reading all files
+      if ('showDirectoryPicker' in window) {
+        ;(window as any).showDirectoryPicker({ mode: 'read' })
+          .then((handle: any) => {
+            const name = handle.name as string
+            setAttachedPaths((prev) =>
+              prev.some((p) => p.path === name) ? prev : [...prev, { path: name, type: 'dir' }]
+            )
+            textareaRef.current?.focus()
+          })
+          .catch(() => { /* user cancelled */ })
+      } else {
+        // Fallback: manual entry
+        const path = window.prompt('Enter folder path:')
+        if (path) {
+          const normalized = path.replace(/\\/g, '/')
+          setAttachedPaths((prev) =>
+            prev.some((p) => p.path === normalized) ? prev : [...prev, { path: normalized, type: 'dir' }]
+          )
+        }
+        textareaRef.current?.focus()
+      }
+    }
+  }
+
+  function removeAttachedPath(path: string) {
+    setAttachedPaths((prev) => prev.filter((p) => p.path !== path))
+  }
+
+  /** Handle file selection from the native picker */
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const newPaths: { path: string; type: 'file' | 'dir' }[] = []
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i]
+      const path = f.name.replace(/\\/g, '/')
+      if (!newPaths.some((p) => p.path === path)) {
+        newPaths.push({ path, type: 'file' })
+      }
+    }
+    setAttachedPaths((prev) => {
+      const existing = new Set(prev.map((p) => p.path))
+      return [...prev, ...newPaths.filter((p) => !existing.has(p.path))]
+    })
+    e.target.value = ''
+    textareaRef.current?.focus()
+  }
 
   // Auto-grow textarea
   useEffect(() => {
@@ -111,12 +179,19 @@ export function Composer(props: {
   const send = useCallback(() => {
     const t = text.trim()
     if (!t || props.disabled) return
-    props.onSend(t)
+    // Prepend attached path references so the LLM sees them
+    let fullMessage = t
+    if (attachedPaths.length > 0) {
+      const refs = attachedPaths.map((p) => `[${p.type}: ${p.path}]`).join(' ')
+      fullMessage = refs + ' ' + t
+    }
+    props.onSend(fullMessage)
     setText('')
+    setAttachedPaths([])
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
     }
-  }, [text, props])
+  }, [text, props, attachedPaths])
 
   const research = useCallback(() => {
     const t = text.trim()
@@ -177,8 +252,8 @@ export function Composer(props: {
         className="mx-auto w-full"
         style={{ maxWidth: '760px' }}
       >
-        {/* Model selector pill - above the input */}
-        <div className="mb-2 flex items-center justify-start" ref={selectorRef}>
+        {/* Model selector pill + attached paths - above the input */}
+        <div className="mb-2 flex items-center justify-start gap-1.5 flex-wrap" ref={selectorRef}>
           <div className="relative">
             <button
               onClick={() => setModelSelectorOpen(!modelSelectorOpen)}
@@ -348,7 +423,61 @@ export function Composer(props: {
               <span className="tracking-wider uppercase text-[9px]">Log</span>
             </button>
           )}
+
+          {/* Attached path pills */}
+          {attachedPaths.map((ap) => {
+            const name = ap.path.replace(/\\/g, '/').split('/').pop() || ap.path
+            return (
+              <div
+                key={ap.path}
+                className="flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-mono"
+                style={{
+                  borderColor: 'rgba(212,132,92,0.25)',
+                  background: 'rgba(212,132,92,0.08)',
+                  color: 'rgba(240,235,225,0.7)',
+                }}
+                title={ap.path}
+              >
+                <svg
+                  width="10" height="10" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ opacity: 0.5, flexShrink: 0 }}
+                >
+                  {ap.type === 'dir' ? (
+                    <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                  ) : (
+                    <>
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                    </>
+                  )}
+                </svg>
+                <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {name}
+                </span>
+                <button
+                  onClick={() => removeAttachedPath(ap.path)}
+                  className="flex items-center justify-center rounded-full hover:bg-white/10 transition-colors"
+                  style={{ width: '14px', height: '14px', flexShrink: 0 }}
+                  title="Remove"
+                >
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            )
+          })}
         </div>
+
+        {/* Hidden file inputs for native OS file picker */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={(e) => handleFileSelected(e)}
+        />
 
         {/* Main input container */}
         <motion.div
@@ -361,7 +490,7 @@ export function Composer(props: {
               : 'rgba(240,235,225,0.06)',
           }}
           transition={{ duration: 0.2 }}
-          className="relative overflow-hidden border"
+          className="relative border"
           style={{
             background: 'var(--surface)',
             borderRadius: '8px',
@@ -383,10 +512,123 @@ export function Composer(props: {
             spellCheck="false"
           />
 
-          {/* Bottom bar with hint + buttons */}
+          {/* Bottom bar with attach + hint + buttons */}
           <div className="flex items-center justify-between px-5 pb-3">
-            <div className="text-[10px] text-white/15 font-mono">
-              {props.typing ? 'Esc to stop' : canSend ? 'Enter to send' : ''}
+            <div className="flex items-center gap-2">
+              {/* + attach button */}
+              <div className="relative" ref={attachRef}>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => setAttachMenuOpen(!attachMenuOpen)}
+                  className="flex h-6 w-6 items-center justify-center rounded-full border transition-all hover:bg-white/[0.08]"
+                  style={{
+                    borderColor: attachMenuOpen ? 'rgba(212,132,92,0.3)' : 'rgba(240,235,225,0.08)',
+                    background: attachMenuOpen ? 'rgba(212,132,92,0.1)' : 'transparent',
+                    color: attachMenuOpen ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.3)',
+                  }}
+                  title="Attach file or folder reference"
+                >
+                  <svg
+                    width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transform: attachMenuOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.15s' }}
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </motion.button>
+
+                <AnimatePresence>
+                  {attachMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute bottom-full left-0 z-50 mb-2 min-w-[170px] overflow-hidden rounded-lg border"
+                      style={{
+                        borderColor: 'rgba(240,235,225,0.08)',
+                        background: 'rgba(18,16,12,0.95)',
+                        boxShadow: '0 -8px 32px rgba(0,0,0,0.5), 0 -2px 8px rgba(0,0,0,0.3)',
+                      }}
+                    >
+                      <div className="px-3 pt-2 pb-1">
+                        <div className="text-[9px] font-medium uppercase tracking-wider" style={{ color: 'rgba(240,235,225,0.25)' }}>
+                          Reference
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => insertPathReference('file')}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/[0.06]"
+                        style={{ color: 'rgba(240,235,225,0.7)' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        <span>Add file path</span>
+                      </button>
+
+                      <button
+                        onClick={() => insertPathReference('folder')}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/[0.06]"
+                        style={{ color: 'rgba(240,235,225,0.7)' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                        </svg>
+                        <span>Add folder path</span>
+                      </button>
+
+                      <div style={{ borderTop: '1px solid rgba(240,235,225,0.06)' }}>
+                        <button
+                          onClick={() => insertPathReference('working')}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/[0.06]"
+                          style={{ color: 'rgba(240,235,225,0.5)' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="2" y1="12" x2="22" y2="12" />
+                            <path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                          </svg>
+                          <span>Working directory</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setAttachMenuOpen(false)
+                            const path = window.prompt('Enter full path (file or folder):')
+                            if (path) {
+                              const normalized = path.replace(/\\/g, '/')
+                              const isDir = !normalized.includes('.') || normalized.endsWith('/')
+                              setAttachedPaths((prev) =>
+                                prev.some((p) => p.path === normalized)
+                                  ? prev
+                                  : [...prev, { path: normalized, type: isDir ? 'dir' : 'file' }]
+                              )
+                            }
+                            textareaRef.current?.focus()
+                          }}
+                          className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/[0.06]"
+                          style={{ color: 'rgba(240,235,225,0.5)' }}
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                            <polyline points="4 17 10 11 4 5" />
+                            <line x1="12" y1="19" x2="20" y2="19" />
+                          </svg>
+                          <span>Type path...</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div className="text-[10px] text-white/15 font-mono">
+                {props.typing ? 'Esc to stop' : canSend ? 'Enter to send' : ''}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {props.onResearch ? (

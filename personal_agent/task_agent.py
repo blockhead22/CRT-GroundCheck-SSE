@@ -179,8 +179,10 @@ _PROJECT_SCAN_RE = re.compile(
 )
 
 # File path detection (Windows drive letter paths — forward OR backslash — or common extensions)
+# Drive-letter paths: no spaces allowed (avoids eating "D:\lumi create" as one path).
+# Filenames with extensions: standalone names like "test.txt" or relative paths.
 _FILE_PATH_RE = re.compile(
-    r"[A-Za-z]:[/\\][\w./\\ -]+(?:\.\w+)?|"
+    r"[A-Za-z]:[/\\][\w./\\-]+|"
     r"[\w./\\-]+\.(?:py|tsx?|jsx?|json|md|ya?ml|toml|rs|go|css|html|txt|cfg|ini|sh|bat)\b",
 )
 
@@ -189,7 +191,14 @@ _FILE_WRITE_RE = re.compile(
     r"\b(write\s+to|create\s+(a\s+)?file|edit\s+(the\s+)?file|update\s+(the\s+)?file|save\s+to|"
     r"modify\s+(the\s+)?file|change\s+the\s+code\s+in|add\s+a\s+line\s+to|"
     r"write\s+(a\s+)?file|overwrite|append\s+to|"
-    r"create\s+(a\s+)?(new\s+)?file\s+in|make\s+(a\s+)?file)\b",
+    r"create\s+(a\s+)?(new\s+)?file\s+in|make\s+(a\s+)?file|"
+    r"create\s+(a\s+)?[\w.-]+\.(?:py|tsx?|jsx?|json|md|txt|ya?ml|toml|rs|go|css|html|cfg|ini|sh|bat))\b",
+    re.IGNORECASE,
+)
+
+# Attached path reference prefix from Composer: [dir: path] or [file: path]
+_ATTACHED_REF_RE = re.compile(
+    r"\[(?P<type>dir|file):\s*(?P<path>[^\]]+)\]",
     re.IGNORECASE,
 )
 
@@ -572,6 +581,15 @@ def classify_intent(
     active_task: Optional[Dict[str, Any]] = None,
 ) -> TaskIntent:
     """Fast pattern-based classifier. Checks active task context first."""
+
+    # ── 0. Parse attached path references [dir: path] [file: path] ──────
+    _attached_refs = _ATTACHED_REF_RE.findall(message)
+    _attached_paths = [{"path": p.strip(), "type": t.lower()} for t, p in _attached_refs]
+    # Strip the [dir:...] [file:...] prefixes from the message for pattern matching
+    _clean_message = _ATTACHED_REF_RE.sub("", message).strip()
+    if _attached_paths:
+        message = _clean_message  # use cleaned message for all downstream matching
+
     msg_lower = message.lower().strip()
     url_match = _URL_RE.search(message)
 
@@ -648,32 +666,37 @@ def classify_intent(
 
     # ── 1b4. File write — "write to", "create file", "edit file" etc. ───
     if _FILE_WRITE_RE.search(message):
+        # Find ALL filenames with extensions in the full message
+        _all_filenames = re.findall(
+            r"\b([\w.-]+\.(?:py|tsx?|jsx?|json|md|txt|ya?ml|toml|rs|go|css|html|cfg|ini|sh|bat))\b",
+            message, re.IGNORECASE,
+        )
         path_match = _FILE_PATH_RE.search(message)
-        if path_match:
-            raw_path = path_match.group(0).replace("\\", "/")
-            # Strip surrounding quotes
-            raw_path = raw_path.strip("\"'")
-            # Trim trailing noise: "with", "containing", etc. that got captured
+
+        # Build the path: prefer attached dir ref + filename, then path_match
+        raw_path = ""
+        _attached_dir = next((a["path"] for a in _attached_paths if a["type"] == "dir"), "")
+        if _attached_dir and _all_filenames:
+            # Attached directory + detected filename
+            raw_path = _attached_dir.rstrip("/\\") + "/" + _all_filenames[-1]
+        elif path_match:
+            raw_path = path_match.group(0).replace("\\", "/").strip("\"'")
             raw_path = re.split(r"\s+(?:with|containing|that|and)\s+", raw_path)[0].strip()
-            # Find ALL filenames with extensions in the full message
-            _all_filenames = re.findall(
-                r"\b([\w.-]+\.(?:py|tsx?|jsx?|json|md|txt|ya?ml|toml|rs|go|css|html|cfg|ini|sh|bat))\b",
-                message, re.IGNORECASE,
-            )
-            # If a filename was found and the raw_path looks like a directory (no ext),
-            # combine them: dir + filename
-            if _all_filenames:
-                _last_filename = _all_filenames[-1]
-                if not re.search(r"\.\w+$", raw_path):
-                    # raw_path is a directory — append the filename
-                    raw_path = raw_path.rstrip("/\\") + "/" + _last_filename
-                # else: raw_path already has an extension, use as-is
+            if _all_filenames and not re.search(r"\.\w+$", raw_path):
+                raw_path = raw_path.rstrip("/\\") + "/" + _all_filenames[-1]
+        elif _all_filenames:
+            # Just a filename, no directory — use working dir or attached dir
+            base = _attached_dir or "D:/AI_round2"
+            raw_path = base.rstrip("/\\") + "/" + _all_filenames[-1]
+
+        if raw_path:
             return TaskIntent(
                 route="task",
                 intent_type="file_write",
                 slots={
                     "path": raw_path,
                     "raw_message": message,
+                    "attached_paths": _attached_paths,
                 },
                 confidence=0.90,
                 reason="file_write_pattern",
@@ -2521,14 +2544,25 @@ RULES:
             path = intent.slots.get("path", "")
             content = intent.slots.get("content", "")
             # Extract content from the raw message if not explicitly provided.
-            # Patterns: "with content X", "containing X", "with X", "simple X"
             if not content:
                 raw = intent.slots.get("raw_message", message)
-                # Try "with (a )?(simple )?" content description
+                # Try: "with X as the content/contents" → X is the content
                 _content_match = re.search(
-                    r"\bwith\s+(?:a\s+)?(?:simple\s+)?(?:content\s+)?['\"]?(.+?)['\"]?\s*$",
+                    r"\bwith\s+['\"]?(.+?)['\"]?\s+as\s+(?:the\s+)?content",
                     raw, re.IGNORECASE,
                 )
+                if not _content_match:
+                    # Try: "with content X" / "containing X"
+                    _content_match = re.search(
+                        r"\b(?:with\s+content|containing)\s+['\"]?(.+?)['\"]?\s*$",
+                        raw, re.IGNORECASE,
+                    )
+                if not _content_match:
+                    # Try: "with (a )?(simple )? X" (generic fallback)
+                    _content_match = re.search(
+                        r"\bwith\s+(?:a\s+)?(?:simple\s+)?['\"]?(.+?)['\"]?\s*$",
+                        raw, re.IGNORECASE,
+                    )
                 if _content_match:
                     _extracted = _content_match.group(1).strip().strip("'\"")
                     # If it looks like a filename, it's not content — generate default

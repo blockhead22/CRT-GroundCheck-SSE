@@ -18,7 +18,8 @@
       "Skill(claude-api:*)",
       "WebSearch",
       "mcp__mcp-registry__search_mcp_registry",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:upload.wikimedia.org)"
     ]
   }
 }

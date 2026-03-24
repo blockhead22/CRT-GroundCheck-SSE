@@ -5,12 +5,17 @@ import remarkGfm from 'remark-gfm'
 import type { ChatMessage, MessageRating } from '../../types'
 import { formatTime } from '../../lib/time'
 import { CitationViewer } from '../CitationViewer'
+import { FilePill } from '../ui/FilePill'
+import { ClaudeLogo } from '../icons/ClaudeLogo'
 import { PipelineTrace } from './PipelineTrace'
 import { MessageRatingBar } from './MessageRatingBar'
 import { ContradictionResolutionCard } from './ContradictionResolutionCard'
 import { TrustDeltaStrip } from './TrustDeltaStrip'
 import { ContradictionDrawer } from './ContradictionDrawer'
 import { resolveContradiction } from '../../lib/api'
+
+/** Detect if text looks like a file or directory path */
+const FILE_PATH_RE = /^[A-Za-z]:[/\\][\w./\\ -]+(?:\.\w+)?$|^[\w./\\-]+\.(?:py|tsx?|jsx?|json|md|ya?ml|toml|rs|go|css|html|txt|cfg|ini|sh|bat)$/
 
 function CodeBlock({ code, language }: { code: string; language?: string }) {
   const [copied, setCopied] = useState(false)
@@ -84,6 +89,10 @@ const mdComponents = {
     const language = match ? match[1] : undefined
     const isBlock = Boolean(language) || codeText.includes('\n')
     if (!isBlock) {
+      // Check if inline code looks like a file path → render as FilePill
+      if (FILE_PATH_RE.test(codeText)) {
+        return <FilePill path={codeText} size="sm" />
+      }
       return (
         <code className="rounded px-1.5 py-0.5 font-mono text-[0.88em]" style={{ background: 'rgba(212,132,92,0.12)', color: '#E8C8A0' }}>
           {children}
@@ -505,15 +514,18 @@ export function MessageBubble(props: {
                 case 'cloud_openai':
                   return { label: 'GPT-4o', bg: 'rgba(96,165,250,0.12)', color: '#60a5fa', border: 'rgba(96,165,250,0.2)' }
                 case 'cloud_claude':
-                  return { label: 'Claude', bg: 'rgba(168,85,247,0.12)', color: '#a855f7', border: 'rgba(168,85,247,0.2)' }
+                  return { label: 'Claude', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
                 case 'cloud_fallback':
                   return { label: 'Fallback: GPT', bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: 'rgba(251,146,60,0.2)' }
                 case 'claude_fallback':
                 case 'cloud_fallback_claude':
-                  return { label: 'Fallback: Claude', bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: 'rgba(251,146,60,0.2)' }
+                  return { label: 'Fallback: Claude', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
                 default:
                   if (src.startsWith('bypass_')) {
                     const provider = src.replace('bypass_', '')
+                    if (provider.includes('claude')) {
+                      return { label: `Bypass: Claude`, bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
+                    }
                     return { label: `Bypass: ${provider}`, bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: 'rgba(251,146,60,0.2)' }
                   }
                   return { label: src, bg: 'rgba(240,235,225,0.06)', color: 'rgba(240,235,225,0.5)', border: 'rgba(240,235,225,0.1)' }
@@ -525,6 +537,7 @@ export function MessageBubble(props: {
                 style={{ background: pill.bg, color: pill.color, border: `1px solid ${pill.border}` }}
                 title={`Generation: ${src}`}
               >
+                {'icon' in pill && pill.icon === 'claude' && <ClaudeLogo size={10} />}
                 {pill.label}
               </span>
             )

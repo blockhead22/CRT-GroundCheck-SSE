@@ -190,6 +190,8 @@ export type CtrMessageMeta = {
       status: string
     }>
   } | null
+  // File references from agent file tools
+  referenced_files?: Array<{ path: string; type: 'file' | 'dir' }>
 }
 
 export type MessageRating = 'up' | 'down'

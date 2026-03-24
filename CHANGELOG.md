@@ -7,7 +7,7 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ## v1.9 — March 24, 2026
 
-Action execution layer (Sprint 3). Aether can now write files, run shell commands, and execute git operations — all gated by checkpoint confirmation with diff/command preview in the action card. Every action logged as a receipt to SQLite.
+Action execution layer (Sprint 3) + file reference UI. Aether can now write files, run shell commands, and execute git operations — all gated by checkpoint confirmation with diff/command preview in the action card. Every action logged as a receipt to SQLite. File paths in agent responses render as interactive pills.
 
 ### Feature
 - **File write tool** — `write_file()` and `apply_edit()` in `file_tools.py`. Path validation against allowed paths, reads existing content for diff before writing. Returns diff preview via `difflib.unified_diff`
@@ -18,6 +18,12 @@ Action execution layer (Sprint 3). Aether can now write files, run shell command
 - **Diff viewer in action card** — `ActionCard.tsx` renders syntax-highlighted unified diff (green additions, red removals, blue hunk headers) in a `<pre>` block above Yes/No buttons when `checkpointMeta.diff_preview` is present
 - **Command preview in action card** — shell/git commands shown as `$ command` in a `<code>` block before execution
 - **Tool context carry-forward** — when a conversational follow-up arrives within 120s of a completed tool task, recent tool output is injected into generation context. Fixes hallucinated responses to follow-up questions
+- **FilePill component** (`frontend/src/components/ui/FilePill.tsx`) — interactive inline chip for file paths: file/folder icon, shortened filename, full path tooltip on hover, click-to-copy. Terracotta accent, matches warm dark theme
+- **Auto-detect file paths in messages** — `MessageBubble.tsx` post-processes assistant messages to render file paths (`D:/path/file.ext`, backtick-wrapped paths) as clickable FilePill components instead of plain text
+- **`referenced_files` metadata field** — `CtrMessageMeta` extended with optional `referenced_files` array for structured file references from agent tool results
+- **Composer + button** — attachment menu in bottom-left of chat input with: Add file path (native OS file picker), Add folder path (File System Access API `showDirectoryPicker`), Working directory shortcut, Type path manual entry
+- **Attached path pills** — selected files/folders appear as removable pills in the top bar next to LOG button, prepended as `[file: path]` / `[dir: path]` when message is sent
+- **Backslash path normalization** — `_FILE_PATH_RE` regex now matches Windows backslash paths (`D:\path\file`), auto-normalized to forward slashes in intent classifier
 
 ### Fix
 - **Deterministic responses for Layer 2 tools** — `file_read`, `dir_list`, `project_scan` now show actual file/directory content in structured format instead of passing through LLM (which hallucinated file contents)
