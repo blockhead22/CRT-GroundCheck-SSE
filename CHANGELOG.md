@@ -5,6 +5,68 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.2 — March 25, 2026
+
+Semantic intent router (Sprint 7). Replaces fragile regex-based intent classification with embedding similarity against 140+ prototype phrases. Hybrid routing preserves all existing regex as fallback while the embedding model fills gaps — semantic equivalents, typos, multi-intent messages, and ambiguous queries now route correctly.
+
+### Feature
+- **Semantic intent router** (`personal_agent/semantic_intent_router.py`) — `SemanticIntentRouter` class using `all-MiniLM-L6-v2` (already loaded for memory search). 16 intent types with 5-13 prototype phrases each. Classifies via cosine similarity against centroids + individual phrase matching
+- **Hybrid routing** — `classify_intent_hybrid()` in task_agent: regex at >= 0.90 confidence wins, embedding fills gaps below. Logs both results for comparison, warns on disagreements
+- **Multi-intent detection** — `detect_multi_intent()` identifies compound messages ("check my system and read the config") where top 2+ intents are close in confidence. Plan builder creates combined plans
+- **Ambiguity handling** — confidence between 0.45-0.75 triggers clarification via action card with candidate intents as buttons. User clicks to disambiguate
+- **Intent correction learning** — `intent_corrections.db` tracks misclassifications. `record_correction()` fires on user disambiguation and task success/failure. `_apply_learned_corrections()` adjusts future scores based on similar past corrections
+- **Heartbeat self-improvement** — every 20th tick, `review_corrections()` auto-adds prototype phrases from 3+ repeated corrections to the same intent
+- **Intent debug API** (`routes/intents.py`) — `GET /api/intents/classify?message=...` (debug), `/prototypes` (list/add/remove), `/corrections` (history), `/stats` (accuracy metrics)
+- **Lazy loading** — router initializes on first classification, graceful fallback to regex if embedding model unavailable
+- **Source chip** — `AgentThinkingStrip.tsx` shows blue badge when embedding router classified the intent
+
+### Test
+- External test lab: 97% accuracy across clear, semantic, typo, multi-intent, and conversational categories
+
+---
+
+## v2.1 — March 25, 2026
+
+Dynamic slot discovery (Sprint 6). The system's third design law — "structure should emerge, not be hardcoded" — now ships in code. Replaces the hardcoded `EXCLUSIVE_SLOTS` list with a learned model that discovers slot behavior from contradiction and fact patterns.
+
+### Feature
+- **Slot discovery module** (`personal_agent/slot_discovery.py`) — `SlotType` enum (EXCLUSIVE, ADDITIVE, TEMPORAL, HIERARCHICAL, UNKNOWN), `SlotProfile` dataclass with evidence tracking
+- **Slot classification** — `classify_slot()` analyzes contradiction resolution history and concurrent value patterns. EXCLUSIVE: always override. ADDITIVE: multiple values coexist. TEMPORAL: values change over time. HIERARCHICAL: containment relationships
+- **Confidence scoring** — `compute_slot_confidence()` based on evidence volume and consistency. 1 contradiction = 0.3, 4+ consistent = 0.85, 10+ = 0.95
+- **Dynamic lookup** — `get_slot_type()` replaces all hardcoded `EXCLUSIVE_SLOTS` checks in `crt_memory.py`, `routes/chat.py`, `routes/memory.py`. Learned profiles → seed lists → UNKNOWN fallback chain
+- **Resolution policy engine** — `suggest_resolution_policy()` recommends override/preserve/archive/merge/ask_user based on learned type
+- **Event hooks** — `on_contradiction_recorded()`, `on_fact_stored()`, `on_contradiction_resolved()` fire on every relevant action, incrementally updating slot profiles
+- **Counter-evidence tracking** — when user resolves differently than suggested (e.g. "Keep Both" on an EXCLUSIVE slot), classification confidence decreases
+- **Heartbeat discovery pass** — periodic `run_discovery_pass()` does full batch analysis from ledger
+- **Slot lineage logging** — `slot_discovery_log` table with audit trail: old_type → new_type, trigger, evidence, timestamp
+- **Slot discovery API** (`routes/slot_discovery.py`) — profiles CRUD, manual override, trigger analysis, stats
+- **TEMPORAL demotion** — temporal slots get 0.6x demotion vs 0.4x for exclusive (old values were true, just not current)
+
+### Fix
+- **Seed lists preserved** — `_SEED_EXCLUSIVE` and `_SEED_ADDITIVE` remain as fallback for slots without enough contradiction data to classify
+
+---
+
+## v2.0 — March 24-25, 2026
+
+Proactive & scheduled actions (Sprint 4). Aether goes from reactive to proactive. Commitments system for reminders and scheduled tasks, browser notifications, proactive conversation triggers, and heartbeat resource management.
+
+### Feature
+- **Commitment governance** (`personal_agent/commitments.py`) — `Commitment` dataclass with intent, status (pending/fired/done/missed/cancelled), deadline, recurrence, priority, consequence. SQLite `commitments` table with full CRUD
+- **Natural language time parsing** (`personal_agent/time_parser.py`) — handles "at 10:30pm", "every weekday at 9am", "in 5 minutes", "tomorrow morning", "tonight", cron expressions. Zero external dependencies
+- **Commitment agent tools** — `create_commitment`, `list_commitments`, `cancel_commitment` intents with checkpoint gates (medium tier for create/cancel, no gate for list)
+- **Time-aware heartbeat** — commitment scanner added to heartbeat tick: checks for due commitments within 60s lookahead, fires notifications, updates status, computes next_fire_at for recurring
+- **Browser notifications** — `commitment_notification` SSE event type. Frontend shows `Notification` API popup + injects system message in active chat
+- **Proactive triggers** (`personal_agent/proactive_triggers.py`) — pattern detection: trip planning, deadline mentions, health concerns, project references. Fires contextual suggestions appended to response metadata
+- **Heartbeat resource management** — `_resources_reduced` state flag. Gaming detected (GPU > 90% + game process) → kill ollama. Idle detected → restart ollama. Dynamic API-only mode
+- **Deterministic commitment responses** — "Reminder set: {description}. Next fire: {time}. Recurrence: {pattern}." No LLM hallucination
+- **Commitment API** — `POST /api/commitments`, `GET /api/commitments`, `PUT /api/commitments/{id}/status`, `DELETE /api/commitments/{id}`, `GET /api/commitments/due`
+
+### Fix
+- **Commitment tool fallthrough** — commitment tools were falling through to LLM generation path instead of returning deterministic answers; added to the deterministic response chain in task_agent answer generation
+
+---
+
 ## v1.9 — March 24, 2026
 
 Action execution layer (Sprint 3) + file reference UI + content generation. Aether can now write files, generate code from descriptions, run shell commands, and execute git operations — all gated by checkpoint confirmation with diff/command preview in the action card. Every action logged as a receipt to SQLite. File paths in agent responses render as interactive pills.
