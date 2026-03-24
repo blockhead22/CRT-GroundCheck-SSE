@@ -1148,8 +1148,19 @@ def classify_intent_hybrid(
         # Model not available — fall back to regex only
         return regex_result
 
-    embedding_scores = router.classify(message, attached_paths)
-    top_embedding = embedding_scores[0] if embedding_scores else None
+    # Wrap the entire embedding path in try/except so regex results survive
+    # embedding failures (Sprint 12 fix — previously exceptions here killed
+    # the whole classification and chat.py:4678 set _task_intent = None).
+    try:
+        embedding_scores = router.classify(message, attached_paths)
+        top_embedding = embedding_scores[0] if embedding_scores else None
+    except Exception as _emb_err:
+        logger.error(
+            "[INTENT_ROUTER] Embedding classify() failed — falling back to regex: %s",
+            _emb_err, exc_info=True,
+        )
+        regex_result.source = "regex_fallback"
+        return regex_result
 
     # 3. Decision logic
     if regex_result and regex_result.confidence >= 0.90 and regex_result.intent_type != "conversational":
@@ -1197,7 +1208,11 @@ def classify_intent_hybrid(
         )
 
     # 5. Neither confident — check for multi-intent
-    multi = router.detect_multi_intent(embedding_scores)
+    try:
+        multi = router.detect_multi_intent(embedding_scores)
+    except Exception as _multi_err:
+        logger.error("[INTENT_ROUTER] detect_multi_intent failed: %s", _multi_err)
+        multi = []
     if len(multi) > 1:
         logger.info(
             f"[INTENT_ROUTER] Multi-intent detected: "
@@ -1254,6 +1269,173 @@ def classify_intent(
     Replaces the old regex-only classify_intent.
     """
     return classify_intent_hybrid(message, active_task)
+
+
+# ---------------------------------------------------------------------------
+# Task Triage Layer (Sprint 12)
+# ---------------------------------------------------------------------------
+
+import random as _random
+
+@dataclass
+class TriageResult:
+    """Result of the triage step between classification and execution."""
+    category: str          # "task", "question", "conversation", "clarification"
+    requires_planning: bool
+    intent: "TaskIntent"
+    acknowledgment: str    # natural-language message for the user
+    estimated_steps: int
+    tools_needed: List[str]
+
+
+# Template-based acknowledgment for low-latency responses.
+# Each intent type maps to a list of templates with {action_verb} placeholders.
+_ACK_TEMPLATES: Dict[str, List[str]] = {
+    "desktop_action": [
+        "On it \u2014 I'll handle that on your desktop. Give me a moment.",
+        "Let me take care of that. Working on your screen now.",
+        "I'm on it \u2014 taking control of the desktop for a sec.",
+    ],
+    "file_write": [
+        "I'll create that file for you. Let me draft it up.",
+        "Working on that file now \u2014 give me a moment.",
+    ],
+    "file_read": [
+        "Let me take a look at that file for you.",
+        "Reading that now \u2014 one sec.",
+    ],
+    "dir_list": [
+        "Let me check that directory for you.",
+        "Looking at those files now.",
+    ],
+    "shell_exec": [
+        "Running that command now \u2014 hang tight.",
+        "On it \u2014 executing that for you.",
+    ],
+    "git_action": [
+        "I'll handle that git operation for you.",
+        "Working on the repo now \u2014 one moment.",
+    ],
+    "url_fetch": [
+        "Let me fetch that for you. One moment.",
+        "Pulling that up now \u2014 hang tight.",
+    ],
+    "service_action": [
+        "Checking on that service for you now.",
+        "I'll look into that \u2014 give me a sec.",
+    ],
+    "system_info": [
+        "Let me check your system status.",
+        "Pulling up system info now.",
+    ],
+    "project_scan": [
+        "Scanning the project now \u2014 this might take a moment.",
+        "Let me take a look at the project structure.",
+    ],
+    "skill_install": [
+        "I'll set up that skill for you.",
+        "Installing that now \u2014 one moment.",
+    ],
+    "create_commitment": [
+        "I'll set that reminder for you.",
+        "Got it \u2014 creating that reminder now.",
+    ],
+    "broad_recall": [
+        "Let me search my memory for that.",
+        "Thinking back \u2014 give me a moment.",
+    ],
+}
+
+# Intent types that map to specific tool names
+_INTENT_TOOL_MAP: Dict[str, List[str]] = {
+    "desktop_action": ["desktop_action"],
+    "file_write": ["content_generation", "file_write"],
+    "file_read": ["file_read"],
+    "dir_list": ["dir_list"],
+    "shell_exec": ["shell_exec"],
+    "git_action": ["shell_exec"],
+    "url_fetch": ["fetch_url"],
+    "service_action": ["fetch_url", "http_post"],
+    "system_info": ["system_info"],
+    "project_scan": ["dir_list", "file_read"],
+    "skill_install": ["fetch_url", "file_write"],
+    "create_commitment": ["create_commitment"],
+    "broad_recall": ["memory_recall"],
+}
+
+
+def _generate_acknowledgment(intent: "TaskIntent", message: str) -> str:
+    """Generate a brief, natural acknowledgment for the task.
+
+    Uses templates for speed. Falls back to a generic message for
+    unknown intent types.
+    """
+    templates = _ACK_TEMPLATES.get(intent.intent_type, [])
+    if templates:
+        return _random.choice(templates)
+    # Generic fallback
+    return "Working on that for you \u2014 give me a moment."
+
+
+def triage_message(
+    message: str,
+    intent: "TaskIntent",
+) -> TriageResult:
+    """Pause-to-think step between classification and execution.
+
+    Determines: is this a task, question, or conversation?
+    Does it need planning? What tools? What should we tell the user?
+    """
+    # Conversational — no triage needed
+    if intent.route == "conversational":
+        return TriageResult(
+            category="conversation",
+            requires_planning=False,
+            intent=intent,
+            acknowledgment="",
+            estimated_steps=0,
+            tools_needed=[],
+        )
+
+    # Clarification — need user input
+    if intent.route == "clarify":
+        return TriageResult(
+            category="clarification",
+            requires_planning=False,
+            intent=intent,
+            acknowledgment="",
+            estimated_steps=0,
+            tools_needed=[],
+        )
+
+    # Multi-intent — needs decomposition
+    if intent.intent_type == "multi_intent":
+        sub_intents = intent.slots.get("intents", [])
+        all_tools = []
+        for si in sub_intents:
+            all_tools.extend(_INTENT_TOOL_MAP.get(si.get("type", ""), []))
+        return TriageResult(
+            category="task",
+            requires_planning=True,
+            intent=intent,
+            acknowledgment=_generate_acknowledgment(intent, message),
+            estimated_steps=max(len(sub_intents), 2),
+            tools_needed=list(dict.fromkeys(all_tools)),  # dedupe, preserve order
+        )
+
+    # Single tool intent
+    tools = _INTENT_TOOL_MAP.get(intent.intent_type, [])
+    # Desktop actions with compound requests ("open X and do Y") are multi-step
+    # but the ReAct loop handles them internally — still single tool dispatch.
+    needs_planning = intent.intent_type == "multi_intent" or len(tools) > 1
+    return TriageResult(
+        category="task",
+        requires_planning=needs_planning,
+        intent=intent,
+        acknowledgment=_generate_acknowledgment(intent, message),
+        estimated_steps=max(len(tools), 1),
+        tools_needed=tools,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1545,6 +1727,20 @@ class CRTTaskAgent:
                 "source": getattr(intent, "source", "regex"),
             },
         }
+
+        # ── 1b. TRIAGE + ACKNOWLEDGMENT (Sprint 12) ─────────────────────
+        _triage = triage_message(message, intent)
+        if _triage.acknowledgment:
+            yield {
+                "type": "task_acknowledged",
+                "content": _triage.acknowledgment,
+                "metadata": {
+                    "estimated_steps": _triage.estimated_steps,
+                    "tools": _triage.tools_needed,
+                    "requires_planning": _triage.requires_planning,
+                    "category": _triage.category,
+                },
+            }
 
         # ── 2. Build phase-1 plan ─────────────────────────────────────────
         phase1_plan = self._build_plan(intent, message, active_task)

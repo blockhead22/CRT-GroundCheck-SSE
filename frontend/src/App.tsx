@@ -129,6 +129,7 @@ export default function App() {
   const agentThinkingRef = useRef<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
   const finalBufferRef = useRef('')
   const streamAbortRef = useRef<AbortController | null>(null)
+  const [taskWorking, setTaskWorking] = useState(false)
   const inflightThreadRef = useRef<ChatThread | null>(null)
   
   // Mood background state
@@ -544,7 +545,15 @@ export default function App() {
                 return next
               })
             },
+            onTaskAcknowledged: (message, _meta) => {
+              // Render acknowledgment as a real streamed assistant message
+              setStreamingResponse(message)
+              // Start pulse animation on input area
+              setTaskWorking(true)
+            },
             onTaskDone: (_answer, _steps, _meta) => {
+              // Stop pulse animation
+              setTaskWorking(false)
               setAgentThinkingState((prev) => {
                 const next = prev ? { ...prev, drafting: true, pendingReasoning: '' } : prev
                 agentThinkingRef.current = next
@@ -701,6 +710,7 @@ export default function App() {
               finalBufferRef.current = ''
               setIntentPreview(null)
               setAgentThinkingState(null)
+              setTaskWorking(false)
 
               // Sprint 4 — capture proactive suggestion from done metadata
               const ps = (metadata as any)?.proactive_suggestion
@@ -733,6 +743,7 @@ export default function App() {
               streamStatusRef.current = []
               finalBufferRef.current = ''
               setIntentPreview(null)
+              setTaskWorking(false)
             },
           },
         })
@@ -1079,6 +1090,7 @@ export default function App() {
                       streamPhase={streamPhase}
                       intentPreview={intentPreview}
                       agentThinkingState={agentThinkingState}
+                      taskWorking={taskWorking}
                       diagnosticsOpen={diagnosticsOpen}
                       onToggleDiagnostics={() => setDiagnosticsOpen((v) => !v)}
                       pendingCheckpoint={pendingCheckpoint}

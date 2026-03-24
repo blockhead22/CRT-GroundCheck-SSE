@@ -5,6 +5,67 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.5 — March 24, 2026
+
+Belief synthesis + volatility-gated context (Sprints 9 & 10). The intelligence layer that makes Aether understand the *shape* of what it knows about you — not just individual facts, but themes, trajectories, and tensions.
+
+### Feature
+- **Belief synthesis engine** (`personal_agent/belief_synthesis.py`) — answers worldview questions from compressed belief trajectories. Three synthesis modes:
+  - **Thematic**: "What do I care about?" → clusters hundreds of memories into themes (career, technology, values, etc.) via agglomerative clustering on 384D embeddings
+  - **Trajectory**: "How have I changed?" → temporal belief analysis showing preference/opinion drift over time per slot, detects oscillation vs monotonic change
+  - **Contradiction-aware**: "What are my contradictions?" → surfaces unresolved tensions from the contradiction ledger, frames complexity as a feature
+- **Synthesis query classifier** — 25+ regex patterns across three categories. Replaces the old `_is_synthesis_query()` simple pattern matcher. Backward compatible with existing patterns
+- **Trust-weighted clustering** — cluster centroids weighted by memory trust scores. Cluster labels auto-generated from dominant fact slots or keywords
+- **Representativeness scoring** — measures how well synthesis covers the evidence corpus, penalized by contradiction density
+- **Deterministic fallback** — when cloud LLM unavailable, generates structured bullet-point summaries instead of prose
+- **Volatility-gated context** (`personal_agent/volatility_context.py`) — dynamic context budget allocation based on memory uncertainty:
+  - Volatile memories (V(t) > 0.6) always get full text in prompts
+  - Stable high-trust facts (τ > 0.85, V < 0.15) compressed to slot=value pairs
+  - Middle tier gets first-sentence summaries
+  - Budget overflow gracefully demotes lowest-priority allocations
+- **Proactive volatility alerts** — when user recently changed their mind about something (resolved contradiction in last 7 days), system proactively surfaces it: "You recently changed your mind about [slot]"
+- **Volatility re-ranking** — retrieved memories boosted by volatility in ranking, so uncertain facts get more attention
+- **Volatility annotations in prompts** — volatile/recently-changed memories tagged in the reasoning prompt so the LLM hedges appropriately
+
+### API
+- `POST /api/synthesis` — run thematic/trajectory/contradiction synthesis on full memory corpus
+- `GET /api/belief-trajectory/{slot}` — temporal trajectory for a specific fact slot
+- `GET /api/context-budget?query=...` — inspect context budget allocation for debugging
+- `GET /api/memory/{id}/volatility` — volatility profile for a single memory
+- `GET /api/volatile-memories` — list memories with V(t) above threshold
+
+### Integration
+- `crt_rag.py` synthesis detection upgraded from simple string matching to subtype classifier (thematic/trajectory/contradiction_aware)
+- Thematic synthesis uses k=30 retrieval (up from k=15) to gather broader belief landscape
+- `reasoning.py` prompt builder annotates volatile memories with [VOLATILE] / [RECENTLY CHANGED] tags
+- `memory_compression.py` gains `compute_volatility_from_item()` convenience wrapper
+- Synthesis results include structured metadata: cluster count, trajectory count, tension count, representativeness
+
+---
+
+## v2.4 — March 24, 2026
+
+Task triage & orchestration layer (Sprint 12). Adds a "pause to think" step between message classification and tool execution. The system now acknowledges tasks with a real natural-language message before working, and the UI pulses the input area to indicate activity. Fixes the silent routing failure where embedding errors killed the entire classification.
+
+### Feature
+- **Task triage layer** (`triage_message()` in `task_agent.py`) — determines task category, planning requirements, tool needs, and generates a natural acknowledgment before execution begins
+- **TriageResult dataclass** — structured triage output: category, requires_planning, estimated_steps, tools_needed, acknowledgment
+- **Task acknowledgment SSE event** — new `task_acknowledged` event emitted before task execution. Frontend renders it as a real assistant message bubble
+- **Template-based acknowledgments** — 13 intent types with natural templates ("On it — I'll handle that on your desktop. Give me a moment."). No cloud latency
+- **Composer pulse animation** — accent-colored box-shadow pulse on the input container while a task is executing. Stops when task completes or errors
+
+### Fix
+- **Silent routing failure** — `classify_intent_hybrid()` now wraps the embedding classification path in its own try/except. Previously, if `router.classify()` threw (VRAM conflict, model not loaded), the exception propagated up to `chat.py:4678` which set `_task_intent = None`, causing desktop_action requests to silently fall through to conversational. Now the regex result (e.g. `desktop_action` at 0.88 confidence) survives embedding failures
+- **Error logging upgrade** — intent classifier exception handler in chat.py promoted from `logger.warning` to `logger.error` so failures are impossible to miss in terminal output
+- **detect_multi_intent safety** — wrapped in its own try/except so multi-intent detection failures don't kill the classification
+
+### Polish
+- **Settings toggle accent color** — Toggle component now uses `var(--accent)` instead of hardcoded `bg-blue-500/80` for the active state
+- **Idle task input debounce** — Desktop settings idle task text input changed from `onChange` (PATCH per keystroke) to `onBlur` (single PATCH on blur)
+- **Nested button DOM warning** — Sidebar thread items changed from `<motion.button>` to `<motion.div role="button">` to eliminate `<button>` nested inside `<button>` React warnings. All three instances fixed (pinned, recent, mobile)
+
+---
+
 ## v2.3 — March 23, 2026
 
 Desktop control (Sprint 11). Cloud vision + local action loop. Aether can now see and control the user's desktop via a ReAct loop: screenshot → Claude vision analysis → execute action → verify → repeat. Memory-grounded — injects verified facts about the user's system so the vision model knows exact paths, preferences, and app locations.

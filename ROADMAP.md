@@ -1,9 +1,28 @@
 # CRT/Aether Roadmap
-Last updated: March 23, 2026 (v2.3)
+Last updated: March 24, 2026 (v2.5)
 
 ---
 
 ## DONE
+
+### v2.5 (March 24)
+- [x] Belief synthesis engine — `personal_agent/belief_synthesis.py`: thematic clustering, temporal trajectory analysis, contradiction-aware synthesis
+- [x] Synthesis query classifier — 25+ patterns across thematic, trajectory, and contradiction_aware categories
+- [x] Agglomerative clustering on 384D embeddings via scipy — trust-weighted centroids, auto-labeled clusters
+- [x] Belief trajectory builder — temporal slot analysis with drift computation and oscillation detection
+- [x] Tension detection — open contradictions from ledger + intra-cluster divergence
+- [x] Representativeness scoring — coverage × (1 - 0.3 × contradiction_density)
+- [x] LLM prose synthesis with deterministic fallback when cloud unavailable
+- [x] Volatility-gated context — `personal_agent/volatility_context.py`: dynamic context budget allocation
+- [x] V(t)-based priority scoring — volatile memories get more context budget, stable facts compressed to slot=value
+- [x] Three compression levels: full (raw text), summary (first sentence + slots), slot_only (just key=value)
+- [x] Budget overflow handling — graceful demotion of lowest-priority allocations
+- [x] Proactive volatility alerts — recently resolved contradictions surfaced as "[RECENT CHANGES]" in prompt
+- [x] Volatility re-ranking in retrieval — score × (1 + 0.5 × V(t)) boost for uncertain memories
+- [x] Volatility annotations in reasoning prompt — [VOLATILE] / [RECENTLY CHANGED] tags on uncertain facts
+- [x] `compute_volatility_from_item()` convenience wrapper in memory_compression.py
+- [x] Synthesis API — `POST /api/synthesis`, `GET /api/belief-trajectory/{slot}`
+- [x] Volatility API — `GET /api/context-budget`, `GET /api/memory/{id}/volatility`, `GET /api/volatile-memories`
 
 ### v2.3 (March 23)
 - [x] Desktop control module — `personal_agent/desktop_control.py`: pyautogui + mss + Pillow for screenshots, mouse, keyboard, window management
@@ -162,7 +181,20 @@ Last updated: March 23, 2026 (v2.3)
 
 ---
 
-## IN PROGRESS — Intelligence & Autonomy Layer (v2.3+)
+## IN PROGRESS — Intelligence & Autonomy Layer (v2.4+)
+
+### Sprint 12: Task Triage & Orchestration Layer (v2.4, March 24) ← DONE
+- [x] **Silent routing failure fix** — `classify_intent_hybrid()` now wraps embedding path in its own try/except; regex results survive embedding failures instead of dropping to conversational
+- [x] **Error logging upgrade** — chat.py intent classifier exception handler promoted from `warning` to `error` level
+- [x] **Task triage layer** — `triage_message()` function: pause-to-think step between classification and execution. Determines category (task/question/conversation/clarification), planning needs, tool requirements, and generates acknowledgment
+- [x] **TriageResult dataclass** — structured output with category, requires_planning, estimated_steps, tools_needed, acknowledgment
+- [x] **Task acknowledgment SSE event** — new `task_acknowledged` event type emitted before task execution begins. Contains natural-language message + metadata (estimated steps, tools, planning flag)
+- [x] **Template-based acknowledgments** — 13 intent types with 2-3 natural templates each. Sub-second latency, no cloud call needed
+- [x] **Frontend task_acknowledged handler** — renders acknowledgment as real assistant message bubble, starts pulse animation on input area
+- [x] **Composer pulse animation** — accent-colored box-shadow pulse (2s ease-in-out infinite) on input container while task is working. Stops on task_done/done/error
+- [x] **Settings toggle accent fix** — Toggle component uses `var(--accent)` instead of `bg-blue-500/80`
+- [x] **Idle task input debounce** — changed from onChange to onBlur to prevent PATCH request per keystroke
+- [x] **Nested button DOM fix** — Sidebar thread items changed from `motion.button` to `motion.div` with role="button" to eliminate `<button>` nested inside `<button>` console warnings
 
 ### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
 Skill.md files + credentials through existing pipeline. Add as needed:
@@ -176,19 +208,19 @@ Skill.md files + credentials through existing pipeline. Add as needed:
 - [ ] Parallel execution — independent subtasks run concurrently with result aggregation
 - [ ] "Plan a trip" → flight agent + hotel agent + maps agent → results merged through CRT governance
 
-### Sprint 9: Synthesis Responses
-- [ ] Worldview questions answered from compressed belief trajectories, not individual fact recall
-- [ ] "What do I care about?" — patterns across hundreds of memories distilled into thematic summary
-- [ ] "How have I changed?" — temporal belief trajectory analysis showing opinion/preference drift
-- [ ] Synthesis confidence — how representative is the summary vs. cherry-picked memories
-- [ ] Contradiction-aware synthesis — surfaces unresolved tensions in the user's belief system
+### Sprint 9: Synthesis Responses ✅ (v2.5)
+- [x] Worldview questions answered from compressed belief trajectories, not individual fact recall
+- [x] "What do I care about?" — patterns across hundreds of memories distilled into thematic summary
+- [x] "How have I changed?" — temporal belief trajectory analysis showing opinion/preference drift
+- [x] Synthesis confidence — how representative is the summary vs. cherry-picked memories
+- [x] Contradiction-aware synthesis — surfaces unresolved tensions in the user's belief system
 
-### Sprint 10: Volatility-Gated Context Window
-- [ ] High-volatility memories get more context budget during retrieval
-- [ ] Dynamic context allocation based on query relevance + memory uncertainty
-- [ ] Volatile facts surfaced proactively — "you recently changed your mind about X, using the new value"
-- [ ] Context compression — stable high-trust facts compressed, volatile low-trust facts preserved in full
-- [ ] Budget-aware retrieval — total context window managed as a resource, not unlimited
+### Sprint 10: Volatility-Gated Context Window ✅ (v2.5)
+- [x] High-volatility memories get more context budget during retrieval
+- [x] Dynamic context allocation based on query relevance + memory uncertainty
+- [x] Volatile facts surfaced proactively — "you recently changed your mind about X, using the new value"
+- [x] Context compression — stable high-trust facts compressed, volatile low-trust facts preserved in full
+- [x] Budget-aware retrieval — total context window managed as a resource, not unlimited
 
 ---
 

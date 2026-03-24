@@ -29,7 +29,8 @@ function Toggle({ label, checked, onChange, description }: {
       </div>
       <button
         onClick={() => onChange(!checked)}
-        className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors ${checked ? 'bg-blue-500/80' : 'bg-white/10'}`}
+        className={`relative flex-shrink-0 h-6 w-11 rounded-full transition-colors ${checked ? '' : 'bg-white/10'}`}
+        style={checked ? { backgroundColor: 'var(--accent)' } : undefined}
       >
         <span className={`block absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
@@ -658,8 +659,8 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                         </div>
                         <input
                           type="text"
-                          value={cloudSettings.desktop_idle_task || ''}
-                          onChange={(e) => handleCloudSelect('desktop_idle_task', e.target.value)}
+                          defaultValue={cloudSettings.desktop_idle_task || ''}
+                          onBlur={(e) => handleCloudSelect('desktop_idle_task', e.target.value)}
                           placeholder="e.g. organize downloads"
                           className="w-56 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
                         />

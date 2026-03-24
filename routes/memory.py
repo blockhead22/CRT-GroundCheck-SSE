@@ -1135,3 +1135,168 @@ def audit_judgments(
     except Exception as e:
         logger.warning(f"[AUDIT] Failed to read judgment log: {e}")
         return []
+
+
+# ============================================================================
+# Sprint 9: Belief Synthesis API
+# ============================================================================
+
+class SynthesisRequest(BaseModel):
+    query: str
+    thread_id: str = "default"
+
+
+@router.post("/api/synthesis")
+def run_synthesis(
+    body: SynthesisRequest,
+    request: Request,
+) -> Dict[str, Any]:
+    """Run belief synthesis: thematic, trajectory, or contradiction-aware.
+
+    Answers worldview questions from compressed belief trajectories.
+    """
+    from personal_agent.belief_synthesis import synthesize, classify_synthesis_query
+    from personal_agent.cloud_features import get_cloud_feature_service
+
+    engine: CRTEnhancedRAG = request.app.state.engine
+
+    synthesis_type = classify_synthesis_query(body.query)
+    if synthesis_type is None:
+        return {"error": "Not a synthesis query", "query": body.query}
+
+    # Load all user memories
+    try:
+        all_mems = [
+            m for m in engine.memory._load_all_memories()
+            if getattr(m, "source", None) in (MemorySource.USER, MemorySource.EXTERNAL)
+            and not getattr(m, "deprecated", False)
+        ]
+    except Exception as e:
+        logger.warning("[SYNTHESIS_API] Failed to load memories: %s", e)
+        all_mems = []
+
+    cloud = get_cloud_feature_service()
+    result = synthesize(
+        query=body.query,
+        memories=all_mems,
+        ledger=engine.ledger,
+        cloud_service=cloud,
+        thread_id=body.thread_id,
+    )
+    return result.to_dict()
+
+
+@router.get("/api/belief-trajectory/{slot}")
+def get_belief_trajectory(
+    slot: str,
+    request: Request,
+    thread_id: str = Query(default="default"),
+    min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
+) -> Dict[str, Any]:
+    """Get temporal belief trajectory for a specific slot."""
+    from personal_agent.belief_synthesis import build_belief_trajectory
+
+    engine: CRTEnhancedRAG = request.app.state.engine
+
+    try:
+        all_mems = [
+            m for m in engine.memory._load_all_memories()
+            if getattr(m, "source", None) in (MemorySource.USER, MemorySource.EXTERNAL)
+            and not getattr(m, "deprecated", False)
+            and getattr(m, "trust", 0) >= min_trust
+        ]
+    except Exception:
+        all_mems = []
+
+    traj = build_belief_trajectory(all_mems, slot)
+    if traj is None:
+        return {"slot": slot, "trajectory": None, "message": "Not enough data points"}
+    return {"slot": slot, "trajectory": traj.to_dict()}
+
+
+# ============================================================================
+# Sprint 10: Volatility Context API
+# ============================================================================
+
+@router.get("/api/context-budget")
+def get_context_budget(
+    request: Request,
+    query: str = Query(description="Query to compute budget for"),
+    thread_id: str = Query(default="default"),
+    total_budget: int = Query(default=6000, ge=1000, le=20000),
+) -> Dict[str, Any]:
+    """Compute and return context budget allocation for a query (debugging/introspection)."""
+    from personal_agent.volatility_context import allocate_context_budget
+
+    engine: CRTEnhancedRAG = request.app.state.engine
+
+    # Run retrieval
+    try:
+        retrieved = engine.retrieve(query, k=10, thread_id=thread_id)
+    except Exception:
+        retrieved = []
+
+    budget = allocate_context_budget(
+        query=query,
+        retrieved=retrieved,
+        total_budget=total_budget,
+        ledger=engine.ledger,
+        memory_system=engine.memory,
+    )
+    return budget.to_dict()
+
+
+@router.get("/api/memory/{memory_id}/volatility")
+def get_memory_volatility(
+    memory_id: str,
+    request: Request,
+) -> Dict[str, Any]:
+    """Get volatility profile for a single memory."""
+    from personal_agent.volatility_context import get_volatility_profile
+
+    engine: CRTEnhancedRAG = request.app.state.engine
+
+    mem = engine.memory.get_memory_by_id(memory_id)
+    if mem is None:
+        raise HTTPException(status_code=404, detail="Memory not found")
+
+    profile = get_volatility_profile(mem, engine.ledger, engine.memory)
+    return profile.to_dict()
+
+
+@router.get("/api/volatile-memories")
+def list_volatile_memories(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    limit: int = Query(default=10, ge=1, le=50),
+    min_volatility: float = Query(default=0.4, ge=0.0, le=1.0),
+) -> List[Dict[str, Any]]:
+    """List memories with high volatility (V(t) above threshold)."""
+    from personal_agent.volatility_context import compute_memory_volatility
+
+    engine: CRTEnhancedRAG = request.app.state.engine
+
+    try:
+        all_mems = [
+            m for m in engine.memory._load_all_memories()
+            if not getattr(m, "deprecated", False)
+        ]
+    except Exception:
+        return []
+
+    volatile = []
+    for mem in all_mems:
+        vol = compute_memory_volatility(mem, engine.ledger, engine.memory)
+        if vol >= min_volatility:
+            volatile.append({
+                "memory_id": mem.memory_id,
+                "text": mem.text[:200],
+                "trust": mem.trust,
+                "volatility": round(vol, 3),
+                "source": mem.source.value if hasattr(mem.source, "value") else str(mem.source),
+                "contradiction_count": getattr(mem, "contradiction_count", 0),
+            })
+
+    # Sort by volatility descending
+    volatile.sort(key=lambda x: x["volatility"], reverse=True)
+    return volatile[:limit]

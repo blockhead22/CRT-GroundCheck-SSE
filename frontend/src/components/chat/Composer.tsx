@@ -41,6 +41,7 @@ export function Composer(props: {
   onResearch?: (query: string) => void
   researching?: boolean
   typing?: boolean
+  taskWorking?: boolean
   onStop?: () => void
   diagnosticsOpen?: boolean
   onToggleDiagnostics?: () => void
@@ -459,14 +460,25 @@ export function Composer(props: {
         {/* Main input container */}
         <motion.div
           animate={{
-            boxShadow: focused
-              ? '0 0 0 1px rgba(212,132,92,0.3), 0 8px 32px rgba(0,0,0,0.4), 0 0 48px rgba(212,132,92,0.06)'
-              : '0 2px 12px rgba(0,0,0,0.2), 0 1px 4px rgba(0,0,0,0.15)',
-            borderColor: focused
-              ? 'rgba(212,132,92,0.25)'
-              : 'rgba(240,235,225,0.06)',
+            boxShadow: props.taskWorking
+              ? [
+                  '0 0 0 0 rgba(212,132,92,0.3)',
+                  '0 0 12px 4px rgba(212,132,92,0.15)',
+                  '0 0 0 0 rgba(212,132,92,0.3)',
+                ]
+              : focused
+                ? '0 0 0 1px rgba(212,132,92,0.3), 0 8px 32px rgba(0,0,0,0.4), 0 0 48px rgba(212,132,92,0.06)'
+                : '0 2px 12px rgba(0,0,0,0.2), 0 1px 4px rgba(0,0,0,0.15)',
+            borderColor: props.taskWorking
+              ? 'rgba(212,132,92,0.35)'
+              : focused
+                ? 'rgba(212,132,92,0.25)'
+                : 'rgba(240,235,225,0.06)',
           }}
-          transition={{ duration: 0.2 }}
+          transition={props.taskWorking
+            ? { duration: 2, ease: 'easeInOut', repeat: Infinity }
+            : { duration: 0.2 }
+          }
           className="relative border"
           style={{
             background: 'var(--surface)',

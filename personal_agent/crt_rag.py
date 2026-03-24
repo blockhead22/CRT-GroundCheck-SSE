@@ -4549,9 +4549,12 @@ class CRTEnhancedRAG:
         # are handled by the system prompt in reasoning.py — no hardcoded explanation needed.
         # The model draws from architecture memories and the HOW YOU WORK section.
         
-        # Use broader retrieval (k=15) for synthesis queries that need to gather multiple related facts
-        is_synthesis = self._is_synthesis_query(user_query)
-        retrieval_k = 15 if is_synthesis else 5
+        # Sprint 9: classify synthesis subtype for worldview / trajectory / contradiction queries
+        from .belief_synthesis import classify_synthesis_query as _classify_synthesis
+        _synthesis_type = _classify_synthesis(user_query)
+        is_synthesis = _synthesis_type is not None
+        # Thematic needs broadest retrieval (k=30); other synthesis k=15; default k=5
+        retrieval_k = 30 if _synthesis_type == "thematic" else 15 if is_synthesis else 5
 
         # Copilot GroundCheck context bridge  -  fetch MCP memories when asked
         _is_copilot_query = self._is_copilot_context_query(user_query)
@@ -4818,12 +4821,46 @@ class CRTEnhancedRAG:
                     inferred_slots,
                     thread_id=thread_id,
                 )
-            # For synthesis, use RAW memories not resolved docs - we want ALL facts, not just slotted ones
-            candidate_output = self._build_synthesis_answer(
-                user_query=user_query,
-                retrieved=retrieved,
-                thread_id=thread_id,
-            )
+
+            # Sprint 9: deep synthesis for worldview / trajectory / contradiction queries
+            if _synthesis_type in ("thematic", "trajectory", "contradiction_aware"):
+                from .belief_synthesis import synthesize as _belief_synthesize
+                from .cloud_features import get_cloud_feature_service
+
+                # Load ALL user memories for clustering (not just retrieved subset)
+                try:
+                    _all_mems = [
+                        m for m in self.memory._load_all_memories()
+                        if getattr(m, "source", None) in (MemorySource.USER, MemorySource.EXTERNAL)
+                        and not getattr(m, "deprecated", False)
+                    ]
+                except Exception:
+                    _all_mems = [m for m, _s in retrieved]
+
+                _cloud = get_cloud_feature_service()
+                _synth_result = _belief_synthesize(
+                    query=user_query,
+                    memories=_all_mems,
+                    ledger=self.ledger,
+                    cloud_service=_cloud,
+                    thread_id=thread_id,
+                )
+                candidate_output = _synth_result.summary_text
+                logger.info(
+                    "[SYNTHESIS] type=%s clusters=%d trajectories=%d tensions=%d repr=%.2f",
+                    _synth_result.synthesis_type,
+                    len(_synth_result.clusters),
+                    len(_synth_result.trajectories),
+                    len(_synth_result.unresolved_tensions),
+                    _synth_result.representativeness,
+                )
+            else:
+                # Legacy slot-specific synthesis (backward compatible)
+                candidate_output = self._build_synthesis_answer(
+                    user_query=user_query,
+                    retrieved=retrieved,
+                    thread_id=thread_id,
+                )
 
             # Synthesis answers cite facts directly, so they should pass gates
             self.memory.store_memory(
@@ -4836,6 +4873,17 @@ class CRTEnhancedRAG:
             )
 
             best_prior = retrieved[0][0] if retrieved else None
+
+            _synth_meta = {}
+            if _synthesis_type in ("thematic", "trajectory", "contradiction_aware"):
+                _synth_meta = {
+                    "synthesis_type": _synth_result.synthesis_type,
+                    "representativeness": _synth_result.representativeness,
+                    "cluster_count": len(_synth_result.clusters),
+                    "trajectory_count": len(_synth_result.trajectories),
+                    "tension_count": len(_synth_result.unresolved_tensions),
+                    "evidence_count": _synth_result.evidence_count,
+                }
 
             return {
                 'answer': candidate_output,
@@ -4865,6 +4913,7 @@ class CRTEnhancedRAG:
                 'heuristic_suggestions': [],
                 'best_prior_trust': best_prior.trust if best_prior else None,
                 'session_id': self.session_id,
+                'synthesis_meta': _synth_meta,
             }
 
         # Special-case: user asks to list/dump memories or memory ids.
@@ -5569,6 +5618,32 @@ class CRTEnhancedRAG:
         # Extract best prior belief
         best_prior = retrieved[0][0] if retrieved else None
 
+        # Sprint 10: Volatility-gated context — re-rank by volatility and allocate budget
+        _context_budget = None
+        _proactive_alerts = []
+        try:
+            from .volatility_context import rerank_by_volatility, allocate_context_budget
+            retrieved = rerank_by_volatility(retrieved, self.ledger, self.memory, boost_factor=0.5)
+            _context_budget = allocate_context_budget(
+                query=user_query,
+                retrieved=retrieved,
+                total_budget=6000,
+                ledger=self.ledger,
+                memory_system=self.memory,
+            )
+            _proactive_alerts = _context_budget.volatile_proactive
+            logger.info(
+                "[VOLATILITY_CTX] budget used=%d/%d allocs=%d full=%d summary=%d slot_only=%d alerts=%d",
+                _context_budget.used_chars, _context_budget.available_chars,
+                len(_context_budget.allocations),
+                sum(1 for a in _context_budget.allocations if a.compression_applied == "full"),
+                sum(1 for a in _context_budget.allocations if a.compression_applied == "summary"),
+                sum(1 for a in _context_budget.allocations if a.compression_applied == "slot_only"),
+                len(_proactive_alerts),
+            )
+        except Exception as _vol_err:
+            log_swallowed_exception("crt_rag.query.volatility_context", _vol_err)
+
         # Build a conflict-resolved memory view for prompting.
         # We keep raw retrieval for scoring/alignment, but present canonical facts
         # (latest, user-first) to reduce "snap back" to older contradictory text.
@@ -5614,6 +5689,28 @@ class CRTEnhancedRAG:
         except Exception as e:
             log_swallowed_exception("crt_rag.query.episodic_preferences", e)
             episodic_preferences = None
+
+        # Sprint 10: Inject proactive volatility alerts as extra context
+        if _proactive_alerts:
+            _alert_text = "\n".join(f"- {a}" for a in _proactive_alerts)
+            extra_context["volatility_alerts"] = (
+                "\n[RECENT BELIEF CHANGES]\n"
+                f"{_alert_text}\n"
+                "Mention these naturally if relevant to the user's question.\n"
+            )
+
+        # Sprint 10: Annotate prompt_docs with volatility info from budget allocations
+        if _context_budget and _context_budget.allocations:
+            _alloc_map = {a.memory_id: a for a in _context_budget.allocations}
+            for _doc in prompt_docs:
+                _mid = _doc.get('memory_id')
+                if _mid and _mid in _alloc_map:
+                    _alloc = _alloc_map[_mid]
+                    _doc['volatility'] = _alloc.volatility
+                    _doc['recently_changed'] = _alloc.recently_changed
+                    # Replace text with budget-compressed version if not full
+                    if _alloc.compression_applied != "full" and _alloc.text:
+                        _doc['text'] = _alloc.text
 
         # Inject extra_context blocks (from blindside, contradiction, name-history, etc.)
         # as synthetic retrieved docs so the reasoning prompt sees them.
@@ -6255,6 +6352,9 @@ class CRTEnhancedRAG:
             
             # Session
             'session_id': self.session_id,
+
+            # Sprint 10: Volatility context budget metadata
+            'context_budget': _context_budget.to_dict() if _context_budget else None,
 
             # Gate debug — structured explanation of why gates passed or failed
             'gate_debug': ({
@@ -7982,31 +8082,13 @@ class CRTEnhancedRAG:
 
     def _is_synthesis_query(self, text: str) -> bool:
         """True if the user asks to synthesize/summarize multiple facts.
-        
-        These queries need broader retrieval (higher k) to gather related facts.
-        Examples:
-        - "What do you know about my interests?"
-        - "What technologies am I into?"
-        - "Tell me what you remember about me"
+
+        Sprint 9: delegates to belief_synthesis.classify_synthesis_query() which
+        covers thematic, trajectory, and contradiction-aware patterns.
+        Keeps legacy patterns as fallback for backward compatibility.
         """
-        t = (text or "").strip().lower()
-        if not t:
-            return False
-        
-        # Pattern 1: "what do you know about X"
-        if "what do you know about" in t or "what do you remember about" in t:
-            return True
-        
-        # Pattern 2: Summary requests
-        if ("summarize" in t or "summary" in t or "tell me about" in t) and ("me" in t or "my" in t or "i" in t):
-            return True
-        
-        # Pattern 3: Category queries asking for multiple facts
-        if any(word in t for word in ["interests", "hobbies", "technologies", "skills", "languages", "preferences"]):
-            if any(word in t for word in ["what", "tell", "list", "show"]):
-                return True
-        
-        return False
+        from .belief_synthesis import classify_synthesis_query
+        return classify_synthesis_query(text) is not None
     
     def _detect_sentiment_contradiction(self, user_query: str, retrieved: List[Tuple[MemoryItem, float]]) -> Optional[str]:
         """Detect implicit contradictions in sentiment/intent within retrieved memories.

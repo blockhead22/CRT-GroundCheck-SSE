@@ -260,6 +260,39 @@ def compute_volatility(
     return float(min(1.0, v))
 
 
+def compute_volatility_from_item(
+    memory_item,
+    contradiction_count: Optional[int] = None,
+) -> float:
+    """Convenience wrapper: compute V(t) from a MemoryItem without manual field extraction.
+
+    Reads vector, compressed_vector, cogni_seed, contradiction_count, and access_count
+    from the item's attributes.  Falls back gracefully if fields are absent.
+    """
+    vec = getattr(memory_item, "vector", None)
+    comp_vec = getattr(memory_item, "compressed_vector", None)
+    seed_dict = getattr(memory_item, "cogni_seed", None)
+
+    seed = None
+    if seed_dict is not None and isinstance(seed_dict, dict):
+        try:
+            seed = CogniSeed.from_dict(seed_dict)
+        except Exception:
+            pass
+
+    if contradiction_count is None:
+        contradiction_count = getattr(memory_item, "contradiction_count", 0)
+    access_count = max(getattr(memory_item, "access_count", 1), 1)
+
+    return compute_volatility(
+        original_vector=vec,
+        compressed_vector=comp_vec,
+        cogni_seed=seed,
+        contradiction_count=contradiction_count,
+        access_count=access_count,
+    )
+
+
 def compute_throttle(volatility: float) -> float:
     """H(t) = H0 * e^(-s * V(t)).  High V → low H → stop compressing."""
     return THROTTLE_H0 * math.exp(-THROTTLE_S * volatility)

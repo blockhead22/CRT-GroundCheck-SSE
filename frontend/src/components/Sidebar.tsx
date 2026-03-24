@@ -232,12 +232,15 @@ export function Sidebar(props: {
                 {pinned.map((t) => {
                   const selected = t.id === props.selectedThreadId
                   return (
-                    <motion.button
+                    <motion.div
                       whileTap={{ scale: 0.98 }}
                       key={t.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleThreadSelect(t.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThreadSelect(t.id) }}
                       className={
-                        'group rounded-r-lg px-3 py-2.5 text-left transition-all duration-200 ' +
+                        'group cursor-pointer rounded-r-lg px-3 py-2.5 text-left transition-all duration-200 ' +
                         (selected
                           ? 'text-white/90 bg-white/[0.06]'
                           : 'text-white/35 hover:text-white/60 hover:bg-white/[0.03]')
@@ -279,7 +282,7 @@ export function Sidebar(props: {
                           </button>
                         </div>
                       </div>
-                    </motion.button>
+                    </motion.div>
                   )
                 })}
               </div>
@@ -314,12 +317,15 @@ export function Sidebar(props: {
               .map((t) => {
                 const selected = t.id === props.selectedThreadId
                 return (
-                  <motion.button
+                  <motion.div
                     whileTap={{ scale: 0.98 }}
                     key={t.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleThreadSelect(t.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThreadSelect(t.id) }}
                     className={
-                      'group rounded-r-lg px-3 py-2.5 text-left transition-all duration-200 ' +
+                      'group cursor-pointer rounded-r-lg px-3 py-2.5 text-left transition-all duration-200 ' +
                       (selected
                         ? 'text-white/90 bg-white/[0.06]'
                         : 'text-white/35 hover:text-white/60 hover:bg-white/[0.03]')
@@ -358,7 +364,7 @@ export function Sidebar(props: {
                         </button>
                       </div>
                     </div>
-                  </motion.button>
+                  </motion.div>
                 )
               })}
           </div>
@@ -557,12 +563,15 @@ export function Sidebar(props: {
                       .map((t) => {
                         const selected = t.id === props.selectedThreadId
                         return (
-                          <motion.button
+                          <motion.div
                             whileTap={{ scale: 0.98 }}
                             key={t.id}
+                            role="button"
+                            tabIndex={0}
                             onClick={() => handleThreadSelect(t.id)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleThreadSelect(t.id) }}
                             className={
-                              'group rounded border border-white/10 px-3 py-3 text-left active:bg-white/15 ' +
+                              'group cursor-pointer rounded border border-white/10 px-3 py-3 text-left active:bg-white/15 ' +
                               (selected ? 'bg-white/10' : 'bg-white/5 hover:bg-white/10')
                             }
                           >
@@ -598,7 +607,7 @@ export function Sidebar(props: {
                                 </button>
                               </div>
                             </div>
-                          </motion.button>
+                          </motion.div>
                         )
                       })}
                   </div>

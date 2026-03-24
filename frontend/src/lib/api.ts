@@ -393,6 +393,7 @@ export type StreamEventType =
   | 'tool_result'
   | 'validate_result'
   | 'task_done'
+  | 'task_acknowledged'
   | 'agent_checkpoint'
   | 'task_cancelled'
   | 'agent_thinking_token'
@@ -438,6 +439,7 @@ export type StreamCallbacks = {
   onToolResult?: (step: AgentStep) => void
   onValidateResult?: (conflicts: unknown[], gate: string) => void
   onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
+  onTaskAcknowledged?: (message: string, metadata: Record<string, unknown>) => void
   onAgentCheckpoint?: (message: string, metadata: Record<string, unknown>) => void
   onTaskCancelled?: (message: string) => void
   onAgentThinkingToken?: (token: string, step: string) => void
@@ -582,6 +584,11 @@ export async function streamFromCrtApi(args: {
               case 'task_done': {
                 const meta = event.metadata as { steps?: AgentStep[] } & Record<string, unknown> | undefined
                 args.callbacks.onTaskDone?.(event.content, meta?.steps ?? [], meta ?? {})
+                break
+              }
+              case 'task_acknowledged': {
+                const meta = event.metadata as Record<string, unknown> | undefined
+                args.callbacks.onTaskAcknowledged?.(event.content, meta ?? {})
                 break
               }
               case 'agent_checkpoint': {

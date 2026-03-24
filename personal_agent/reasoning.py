@@ -1589,6 +1589,13 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
                     source_str = f" (source: {source})" if source else ""
                     sim = mem.get('similarity')
                     sim_str = f" [similarity: {sim:.2f}]" if sim is not None else ""
+                    # Sprint 10: volatility annotation
+                    vol_str = ""
+                    vol = mem.get('volatility')
+                    if vol is not None and vol > 0.4:
+                        vol_str = " [VOLATILE]"
+                    elif mem.get('recently_changed'):
+                        vol_str = " [RECENTLY CHANGED]"
                     # Add timestamp for provenance queries
                     ts_str = ""
                     if _is_provenance_query:
@@ -1601,7 +1608,7 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
                                     ts_str = f" [stored: {str(ts)[:10]}]"
                             except Exception:
                                 ts_str = f" [stored: {ts}]"
-                    prompt += f"{i}. {mem['text']}{trust_str}{source_str}{sim_str}{ts_str}\n"
+                    prompt += f"{i}. {mem['text']}{trust_str}{source_str}{sim_str}{vol_str}{ts_str}\n"
                 prompt += "\n"
             
             if system_docs:
