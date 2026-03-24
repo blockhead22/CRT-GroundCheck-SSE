@@ -475,6 +475,7 @@ export async function streamFromCrtApi(args: {
   message: string
   phaseMode?: boolean
   callbacks: StreamCallbacks
+  signal?: AbortSignal
 }): Promise<void> {
   const base = getApiBaseUrlInternal()
   const payload: ChatSendRequest = {
@@ -493,8 +494,10 @@ export async function streamFromCrtApi(args: {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: args.signal,
     })
   } catch (_e) {
+    if (args.signal?.aborted) return
     const at = base ? base : '(same origin)'
     args.callbacks.onError?.(`CRT API unreachable at ${at}. Is the backend running?`)
     return
@@ -517,6 +520,7 @@ export async function streamFromCrtApi(args: {
 
   try {
     while (true) {
+      if (args.signal?.aborted) break
       const { done, value } = await reader.read()
       if (done) break
 

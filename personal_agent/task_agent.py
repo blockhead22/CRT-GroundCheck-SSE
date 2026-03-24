@@ -88,6 +88,13 @@ _KNOWLEDGE_QUESTION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Skill install patterns — "add skill from URL", "install skill.md", etc.
+_SKILL_INSTALL_RE = re.compile(
+    r"\b(add|install|register|load|import|connect|setup|set\s+up)\b"
+    r".{0,40}\b(skill|service|tool|integration)\b",
+    re.IGNORECASE,
+)
+
 # 1.3 — imperative store/save/update patterns (no URL required)
 _IMPERATIVE_TASK_RE = re.compile(
     r"\b(store\s+(this|the|my)|save\s+(this|the|my)|update\s+(your|my)\s+(credentials?|key|token|api)|"
@@ -130,6 +137,51 @@ _SERVICE_READ_RE = re.compile(
     r"any\s+new|whats\s+new|what(?:'?s|\s+are|\s+is)\s+new|"
     r"are\s+there|what(?:'?s|\s+are|\s+is)|updates?|notifications?)\b",
     re.IGNORECASE,
+)
+
+# 1.5 — system info / status queries
+_SYSTEM_INFO_RE = re.compile(
+    r"\b(system\s+(status|info|stats|health|resources?|state|usage|load|monitor)|"
+    r"(cpu|ram|memory|gpu|disk|vram)\s+(usage|status|stats|load|info|percent)|"
+    r"how(?:'s|\s+is)\s+(my\s+)?(system|computer|machine|pc|rig)|"
+    r"what(?:'s|\s+is|\s+am\s+i)\s+(my\s+)?(system|computer|running|using)|"
+    r"what\s+am\s+i\s+running|"
+    r"top\s+processes|task\s+manager|resource\s+monitor|"
+    r"check\s+(my\s+)?(system|cpu|gpu|ram|memory|disk))\b",
+    re.IGNORECASE,
+)
+
+# 2A — file read patterns
+_FILE_READ_RE = re.compile(
+    r"\b(read\s+(file|the\s+file)|show\s+me\s+(the\s+)?(file|contents)|"
+    r"what(?:'s|\s+is)\s+in\s+[A-Za-z]:|open\s+[A-Za-z]:|cat\s+|"
+    r"contents?\s+of|print\s+(the\s+)?file|display\s+(the\s+)?file)\b",
+    re.IGNORECASE,
+)
+
+# 2A — directory listing patterns
+_DIR_LIST_RE = re.compile(
+    r"\b(list\s+(the\s+)?(dir|directory|folder|files\s+in)|"
+    r"show\s+(the\s+)?(dir|directory|folder)|"
+    r"what(?:'s|\s+is)\s+in\s+(the\s+)?(dir|directory|folder)|"
+    r"\bls\b|dir\s+listing)\b",
+    re.IGNORECASE,
+)
+
+# 2B — project / git / repo patterns
+_PROJECT_SCAN_RE = re.compile(
+    r"\b(git\s+status|project\s+(status|scan|info|state)|"
+    r"any\s+changes\s+in|what(?:'s|\s+is)\s+the\s+status\s+of\s+(the\s+)?(project|repo)|"
+    r"check\s+(my\s+)?(repo|project|git)|uncommitted\s+changes|"
+    r"scan\s+(the\s+)?(project|repo|directory)|"
+    r"what\s+branch|recent\s+commits)\b",
+    re.IGNORECASE,
+)
+
+# File path detection (Windows drive letter paths or common extensions)
+_FILE_PATH_RE = re.compile(
+    r"[A-Za-z]:/[\w./ -]+(?:\.\w+)?|"
+    r"[\w./\\-]+\.(?:py|tsx?|jsx?|json|md|ya?ml|toml|rs|go|css|html|txt|cfg|ini|sh|bat)\b",
 )
 
 
@@ -380,10 +432,21 @@ def _describe_action(intent: "TaskIntent") -> str:
         svc = intent.slots.get("service", "a service")
         act = intent.slots.get("action", "interact with")
         return f"{act} the {svc} service"
+    elif intent.intent_type == "skill_install":
+        url = intent.slots.get("url", "a URL")
+        return f"install a new skill from {url}"
     elif intent.intent_type == "imperative_task":
         return "store/update credentials"
     elif intent.intent_type == "task_continuation":
         return "continue the previous task"
+    elif intent.intent_type == "system_info":
+        return "check system status"
+    elif intent.intent_type == "file_read":
+        return f"read file {intent.slots.get('path', '?')}"
+    elif intent.intent_type == "dir_list":
+        return f"list directory {intent.slots.get('path', '?')}"
+    elif intent.intent_type == "project_scan":
+        return f"scan project at {intent.slots.get('path', '?')}"
     return "execute a task"
 
 
@@ -403,6 +466,14 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
     - All task intents require confirmation — no auto-proceed.
     """
     if intent.route == "conversational":
+        return {
+            "checkpoint_tier": "none",
+            "checkpoint_message": "",
+            "requires_confirmation": False,
+        }
+
+    # ── Layer 1+2 read-only tools — no confirmation needed ──────────────
+    if intent.intent_type in ("system_info", "file_read", "dir_list", "project_scan"):
         return {
             "checkpoint_tier": "none",
             "checkpoint_message": "",
@@ -477,6 +548,77 @@ def classify_intent(
                 confidence=0.92,
                 reason="active_task_continuation",
             )
+
+    # ── 1b. System info — "how's my system", "check CPU" etc. ───────────
+    if _SYSTEM_INFO_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="system_info",
+            slots={},
+            confidence=0.95,
+            reason="system_info_query",
+        )
+
+    # ── 1c. Project scan — "git status", "check my repo" etc. ──────────
+    if _PROJECT_SCAN_RE.search(message):
+        path_match = _FILE_PATH_RE.search(message)
+        return TaskIntent(
+            route="task",
+            intent_type="project_scan",
+            slots={"path": path_match.group(0) if path_match else "D:/AI_round2"},
+            confidence=0.93,
+            reason="project_scan_query",
+        )
+
+    # ── 1d. File read — "read file", "show me", "cat" + path ────────────
+    if _FILE_READ_RE.search(message):
+        path_match = _FILE_PATH_RE.search(message)
+        if path_match:
+            return TaskIntent(
+                route="task",
+                intent_type="file_read",
+                slots={"path": path_match.group(0)},
+                confidence=0.93,
+                reason="file_read_query",
+            )
+
+    # ── 1e. Directory list — "ls", "list directory" + path ───────────────
+    if _DIR_LIST_RE.search(message):
+        path_match = _FILE_PATH_RE.search(message)
+        return TaskIntent(
+            route="task",
+            intent_type="dir_list",
+            slots={"path": path_match.group(0) if path_match else "D:/AI_round2"},
+            confidence=0.93,
+            reason="dir_list_query",
+        )
+
+    # ── 1f. Bare path with file extension → file_read ────────────────────
+    path_match = _FILE_PATH_RE.search(message)
+    if path_match and "." in path_match.group(0).split("/")[-1]:
+        # Message contains a file path with extension — likely wants to read it
+        lower = message.lower()
+        if any(v in lower for v in ("read", "show", "open", "what", "print", "display", "cat", "look", "contents")):
+            return TaskIntent(
+                route="task",
+                intent_type="file_read",
+                slots={"path": path_match.group(0)},
+                confidence=0.88,
+                reason="path_with_read_verb",
+            )
+
+    # ── 1g. Skill install — "add skill from URL" ────────────────────────
+    if url_match and _SKILL_INSTALL_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="skill_install",
+            slots={
+                "url": url_match.group(0),
+                "raw_message": message,
+            },
+            confidence=0.95,
+            reason="skill_install_with_url",
+        )
 
     # ── 2. URL with explicit action verb ─────────────────────────────────
     if _URL_ACTION_RE.search(message) or _BARE_URL_RE.match(message):
@@ -937,6 +1079,7 @@ class CRTTaskAgent:
                     fetched_content = step.output if isinstance(step.output, str) else fetched_content
                     # Track source URL so store_credential can save service metadata
                     task_context["source_url"] = inp.get("url", "")
+                    task_context["_fetched_content"] = fetched_content
                     # Cache skill content after successful fetch for service actions
                     if tool == "fetch_url" and intent.intent_type == "service_action":
                         _svc = intent.slots.get("service", "")
@@ -963,6 +1106,7 @@ class CRTTaskAgent:
         needs_replan = (
             replan_source
             and intent.intent_type in ("url_fetch", "service_action")
+            and intent.intent_type != "skill_install"
             and intent.slots.get("action") in ("follow_instructions", "write", "query")
         )
         replan_attempted_but_failed = False
@@ -975,6 +1119,7 @@ class CRTTaskAgent:
             # user intent to the correct write endpoint from docs. The deterministic
             # curl parser with intent-scored POST selection is more reliable.
             _used_llm_loop = False
+            action = intent.slots.get("action", "query")
             _skip_llm_for_write = (action == "write")
             if not _skip_llm_for_write and self._llm is not None and hasattr(self._llm, "chat_with_tools"):
                 try:
@@ -1091,6 +1236,24 @@ class CRTTaskAgent:
             # LLM tool loop already synthesized an answer — filter reasoning
             answer = self._filter_reasoning_from_content(llm_loop_final_content)
             yield {"type": "token", "content": answer}
+        elif intent.intent_type == "skill_install":
+            # Deterministic answer for skill installs — report what was installed
+            _install_step = next((s for s in steps if s.tool_name == "install_skill" and s.status == "ok"), None)
+            if _install_step:
+                _meta = _install_step.output_preview or ""
+                # Extract service name from the step output
+                _svc_name = ""
+                if "name=" in _meta:
+                    _svc_name = _meta.split("name=")[1].split(",")[0].strip()
+                answer = (
+                    f"Skill **{_svc_name or 'unknown'}** installed successfully. "
+                    f"Saved to `data/managed_skills/{_svc_name}/SKILL.md` and registered as a known service.\n\n"
+                    f"To use it, I'll need an API key. You can provide one by saying:\n"
+                    f'*"here is my {_svc_name} API key: your_key_here"*'
+                )
+            else:
+                answer = "Skill installation failed — check the steps above for details."
+            yield {"type": "token", "content": answer}
         elif intent.slots.get("_no_endpoint"):
             # Service recognized from credentials but no API endpoint stored.
             # Deterministic answer — never let the LLM hallucinate fake service data.
@@ -1116,7 +1279,7 @@ class CRTTaskAgent:
 
         # ── 7. Write facts through CRT memory ────────────────────────────
         facts_written = self._write_facts(
-            thread_id, intent, fetched_content, stored_credentials
+            thread_id, intent, fetched_content, stored_credentials, steps
         )
 
         # ── 8. Done ───────────────────────────────────────────────────────
@@ -1696,7 +1859,8 @@ RULES:
     _CURL_RE = re.compile(
         r"curl\s+"
         r"((?:(?:-[a-zA-Z]+|--\S+)\s+(?:\"[^\"]*\"|'[^']*'|\S+)\s+)*)"  # flags
-        r"(https?://[^\s'\"\\<>\]]+)",  # URL
+        r"[\"']?"                                                          # optional opening quote around URL
+        r"(https?://[^\s'\"\\<>\]]+)",                                     # URL
         re.IGNORECASE,
     )
     _DATA_RE = re.compile(
@@ -1755,7 +1919,7 @@ RULES:
         # (user message keywords, matching URL path fragments)
         (("search", "find", "look for", "discover", "interesting"), ("/search",)),
         (("feed", "timeline", "personali"), ("/feed",)),
-        (("thread", "post", "new post", "latest post", "browse", "trending", "hot", "rising", "new thread"),
+        (("thread", "post", "new post", "latest post", "browse", "trending", "hot", "rising", "new thread", "interesting"),
          ("/posts?", "/posts?sort=", "/submolts/")),
         (("submolt", "communit", "subreddit"), ("/submolts",)),
         (("comment", "reply", "replies", "discussion"), ("/comments",)),
@@ -1763,7 +1927,7 @@ RULES:
         (("profile", "account", "me", "my info", "karma", "status"), ("/agents/me", "/agents/status")),
         (("follow", "following", "follower"), ("/follow", "/feed?filter=following")),
         (("upvote", "downvote", "vote"), ("/upvote", "/downvote")),
-        (("update", "what's new", "whats new", "new on", "latest", "check"), ("/home", "/feed")),
+        (("update", "what's new", "whats new", "new on", "latest", "check"), ("/home", "/feed", "/posts")),
     ]
 
     def _score_endpoint_for_intent(self, url: str, message: str, section_context: str) -> int:
@@ -2066,12 +2230,33 @@ RULES:
     ) -> List[Dict[str, Any]]:
         plan: List[Dict[str, Any]] = []
 
-        if intent.intent_type == "url_fetch":
+        if intent.intent_type == "system_info":
+            plan.append({"tool": "system_info", "input": {}})
+
+        elif intent.intent_type == "file_read":
+            path = intent.slots.get("path", "")
+            plan.append({"tool": "file_read", "input": {"path": path}})
+
+        elif intent.intent_type == "dir_list":
+            path = intent.slots.get("path", "D:/AI_round2")
+            plan.append({"tool": "dir_list", "input": {"path": path}})
+
+        elif intent.intent_type == "project_scan":
+            path = intent.slots.get("path", "D:/AI_round2")
+            plan.append({"tool": "project_scan", "input": {"path": path}})
+
+        elif intent.intent_type == "url_fetch":
             url = intent.slots.get("url")
             if url:
                 plan.append({"tool": "fetch_url", "input": {"url": url}})
             # follow_instructions: phase 2 plan is built AFTER fetch, from content
             # No execute_instructions placeholder — that was a phantom step
+
+        elif intent.intent_type == "skill_install":
+            url = intent.slots.get("url")
+            if url:
+                plan.append({"tool": "fetch_url", "input": {"url": url}})
+                plan.append({"tool": "install_skill", "input": {"url": url}})
 
         elif intent.intent_type == "imperative_task":
             api_key = intent.slots.get("api_key")
@@ -2225,9 +2410,24 @@ RULES:
         elif tool == "load_cached_skill":
             return self._run_load_cached_skill(step, inp, step_index)
 
+        elif tool == "install_skill":
+            return self._run_install_skill(step, inp, step_index, thread_id, task_context=task_context)
+
         elif tool == "store_credential":
             # _run_store_credential is not a generator — call directly and return as generator value
             return self._run_store_credential(step, inp, step_index, thread_id, task_context=task_context)
+
+        elif tool == "system_info":
+            return self._run_system_info(step, inp, step_index)
+
+        elif tool == "file_read":
+            return self._run_file_read(step, inp, step_index)
+
+        elif tool == "dir_list":
+            return self._run_dir_list(step, inp, step_index)
+
+        elif tool == "project_scan":
+            return self._run_project_scan(step, inp, step_index)
 
         else:
             # execute_instructions / llm_respond — resolved in LLM call
@@ -2419,6 +2619,104 @@ RULES:
             "metadata": {"tool_name": "load_cached_skill", "status": "error", "step_index": step_index},
         }
 
+    def _run_install_skill(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+        task_context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Install a skill from fetched content: parse frontmatter, save locally, register service."""
+        url = inp.get("url", "")
+
+        # The fetched content comes from the prior fetch_url step via task_context
+        fetched_content = (task_context or {}).get("_fetched_content", "")
+
+        if not fetched_content:
+            step.status = "error"
+            step.error = "no fetched content to install"
+            return {
+                "type": "tool_result",
+                "content": "✗ no fetched content — fetch_url must run first",
+                "metadata": {"tool_name": "install_skill", "status": "error", "step_index": step_index},
+            }
+
+        # Parse YAML frontmatter
+        name = ""
+        api_base = ""
+        credential_key = ""
+        description = ""
+        if fetched_content.startswith("---"):
+            parts = fetched_content.split("---", 2)
+            if len(parts) >= 3:
+                import yaml
+                try:
+                    fm = yaml.safe_load(parts[1])
+                    if isinstance(fm, dict):
+                        name = fm.get("name", "")
+                        description = fm.get("description", "")
+                        meta = fm.get("metadata", "")
+                        if isinstance(meta, str):
+                            try:
+                                meta = json.loads(meta)
+                            except Exception:
+                                meta = {}
+                        if isinstance(meta, dict):
+                            api_base = meta.get("api_base", "")
+                except Exception:
+                    pass
+
+        if not name:
+            # Try to infer from URL: https://example.com/skill.md → "example"
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            hostname = parsed.hostname or ""
+            name = hostname.replace("www.", "").split(".")[0] if hostname else "unknown_skill"
+
+        # Default credential key from name
+        credential_key = f"{name}_api_key"
+
+        # Save to local cache
+        _cache_skill_content(name, fetched_content)
+
+        # Register in _KNOWN_SERVICES (runtime only — persists via credential store)
+        _KNOWN_SERVICES[name] = {
+            "skill_url": url,
+            "api_base": api_base,
+            "credential_key": credential_key,
+        }
+        # Rebuild the regex to include the new service
+        global _KNOWN_SERVICE_RE
+        _KNOWN_SERVICE_RE = re.compile(
+            r"\b(" + "|".join(re.escape(s) for s in _KNOWN_SERVICES) + r")\b",
+            re.IGNORECASE,
+        )
+
+        # Store skill URL and api_base in credential store for persistence across restarts
+        store_credential(f"{name}_skill_url", url, thread_id)
+        if api_base:
+            store_credential(f"{name}_api_base", api_base, thread_id)
+
+        step.output = f"Installed skill '{name}' from {url}"
+        step.output_preview = f"name={name}, api_base={api_base}, credential_key={credential_key}"
+        step.status = "ok"
+        step.verified = True
+
+        logger.info("[SKILL_INSTALL] Installed '%s' from %s (api_base=%s)", name, url, api_base)
+
+        return {
+            "type": "tool_result",
+            "content": f"✓ Installed skill '{name}' — saved to data/managed_skills/{name}/SKILL.md",
+            "metadata": {
+                "tool_name": "install_skill",
+                "service_name": name,
+                "description": description,
+                "api_base": api_base,
+                "credential_key": credential_key,
+                "skill_url": url,
+                "status": "ok",
+                "step_index": step_index,
+                "needs_api_key": True,
+            },
+        }
+
     def _run_store_credential(
         self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
         task_context: Optional[Dict[str, Any]] = None,
@@ -2488,6 +2786,172 @@ RULES:
                 "type": "tool_result",
                 "content": f"✗ store failed: {e}",
                 "metadata": {"tool_name": "store_credential", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # System info tool (Layer 1 — read-only)
+    # ------------------------------------------------------------------
+
+    def _run_system_info(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """Collect system snapshot and return formatted text for LLM."""
+        import time as _time
+        t0 = _time.time()
+        try:
+            from personal_agent.system_info import get_system_snapshot, format_snapshot_text
+            snapshot = get_system_snapshot()
+            text = format_snapshot_text(snapshot)
+            duration_ms = round((_time.time() - t0) * 1000)
+
+            step.output = snapshot
+            step.output_preview = text[:500]
+            step.byte_count = len(text)
+            step.duration_ms = duration_ms
+            step.status = "ok"
+            step.verified = True
+
+            logger.info("[SYSTEM_INFO] Tool returned %d chars in %dms", len(text), duration_ms)
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "system_info",
+                    "output_preview": step.output_preview,
+                    "byte_count": len(text),
+                    "duration_ms": duration_ms,
+                    "status": "ok",
+                    "verified": True,
+                    "step_index": step_index,
+                    "snapshot": snapshot,
+                },
+            }
+        except Exception as e:
+            logger.warning("[SYSTEM_INFO] Failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ system info failed: {e}",
+                "metadata": {"tool_name": "system_info", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # File tools (Layer 2 — read-only)
+    # ------------------------------------------------------------------
+
+    def _run_file_read(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """Read a file and return its content for LLM."""
+        try:
+            from personal_agent.file_tools import read_file, format_file_result
+            result = read_file(inp.get("path", ""))
+            text = format_file_result(result)
+            has_error = "error" in result
+
+            step.output = result
+            step.output_preview = text[:500]
+            step.byte_count = len(text)
+            step.status = "error" if has_error else "ok"
+            step.error = result.get("error") if has_error else None
+            step.verified = not has_error
+
+            logger.info("[FILE_TOOLS] file_read %s — %s", inp.get("path"), step.status)
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "file_read",
+                    "status": step.status,
+                    "step_index": step_index,
+                    **({"error": step.error} if step.error else {}),
+                },
+            }
+        except Exception as e:
+            logger.warning("[FILE_TOOLS] file_read failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ file read failed: {e}",
+                "metadata": {"tool_name": "file_read", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    def _run_dir_list(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """List a directory and return formatted result for LLM."""
+        try:
+            from personal_agent.file_tools import list_directory, format_dir_result
+            result = list_directory(inp.get("path", ""))
+            text = format_dir_result(result)
+            has_error = "error" in result
+
+            step.output = result
+            step.output_preview = text[:500]
+            step.byte_count = len(text)
+            step.status = "error" if has_error else "ok"
+            step.error = result.get("error") if has_error else None
+            step.verified = not has_error
+
+            logger.info("[FILE_TOOLS] dir_list %s — %s", inp.get("path"), step.status)
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "dir_list",
+                    "status": step.status,
+                    "step_index": step_index,
+                    **({"error": step.error} if step.error else {}),
+                },
+            }
+        except Exception as e:
+            logger.warning("[FILE_TOOLS] dir_list failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ dir list failed: {e}",
+                "metadata": {"tool_name": "dir_list", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    def _run_project_scan(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int,
+    ) -> Dict[str, Any]:
+        """Scan a project and return formatted result for LLM."""
+        try:
+            from personal_agent.file_tools import scan_project, format_project_result
+            result = scan_project(inp.get("path", ""))
+            text = format_project_result(result)
+            has_error = "error" in result
+
+            step.output = result
+            step.output_preview = text[:500]
+            step.byte_count = len(text)
+            step.status = "error" if has_error else "ok"
+            step.error = result.get("error") if has_error else None
+            step.verified = not has_error
+
+            logger.info("[FILE_TOOLS] project_scan %s — %s", inp.get("path"), step.status)
+            return {
+                "type": "tool_result",
+                "content": text,
+                "metadata": {
+                    "tool_name": "project_scan",
+                    "status": step.status,
+                    "step_index": step_index,
+                    **({"error": step.error} if step.error else {}),
+                },
+            }
+        except Exception as e:
+            logger.warning("[FILE_TOOLS] project_scan failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ project scan failed: {e}",
+                "metadata": {"tool_name": "project_scan", "status": "error", "error": str(e), "step_index": step_index},
             }
 
     # ------------------------------------------------------------------
@@ -2865,13 +3329,32 @@ RULES:
         intent: TaskIntent,
         fetched_content: Optional[str],
         stored_credentials: Dict[str, str],
+        steps: Optional[List[AgentStep]] = None,
     ) -> List[str]:
         facts: List[str] = []
         if self._memory is None:
             return facts
         try:
             from personal_agent.crt_memory import MemorySource
-            if fetched_content:
+            if intent.intent_type == "skill_install":
+                url = intent.slots.get("url", "")
+                # Find the service name from the install step
+                _svc = ""
+                for s in (steps or []):
+                    if s.tool_name == "install_skill" and s.output_preview:
+                        if "name=" in s.output_preview:
+                            _svc = s.output_preview.split("name=")[1].split(",")[0].strip()
+                        break
+                if not _svc:
+                    # Fallback: extract from _KNOWN_SERVICES changes
+                    from urllib.parse import urlparse
+                    parsed = urlparse(url)
+                    _svc = (parsed.hostname or "").replace("www.", "").split(".")[0]
+                text = f"FACT: Installed skill '{_svc}' from {url}. Aether can now interact with the {_svc} service."
+                self._memory.store_memory(text=text, confidence=0.95,
+                    source=MemorySource.USER, thread_id=thread_id, kind="fact")
+                facts.append(text)
+            elif fetched_content:
                 url = intent.slots.get("url", "URL")
                 text = f"Task: fetched {url} ({len(fetched_content)} chars)"
                 self._memory.store_memory(text=text, confidence=0.72,

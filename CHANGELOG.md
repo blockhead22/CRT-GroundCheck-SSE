@@ -5,6 +5,41 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v1.8 — March 24, 2026
+
+System awareness, stop generation, Sprint 1 complete. Aether can now see system state and the heartbeat reacts to it.
+
+### Feature
+- System info tool (`personal_agent/system_info.py`) — `psutil` wrapper: CPU, RAM, GPU (pynvml), disk, top 5 processes with game detection, active window (pygetwindow). Exposed as agent tool (Layer 1, no checkpoint gate) and API endpoint (`GET /api/system/status`)
+- `system_info` intent classifier — matches "system status", "cpu usage", "what am I running", etc. Routes to task agent at 0.95 confidence
+- Heartbeat system awareness — system snapshot sampled every heartbeat cycle; gaming detection (GPU > 85% + game process) and idle detection (CPU < 10%) logged in actions_taken for reflection context
+- Stop generation button — AbortController wired into `streamFromCrtApi()`, square stop icon replaces send button during streaming, Escape key shortcut, partial response finalized as assistant message with `gate_reason: 'stopped_by_user'`
+
+---
+
+## v1.7 — March 23, 2026 (evening)
+
+Action layer foundation, checkpoint-driven UX, moltbook pipeline validated, skill install pipeline.
+
+### Feature
+- Action card UI — checkpoint-driven floating quick-reply card (Yes / No / Custom) above composer; only appears when backend emits `agent_checkpoint` SSE event, not from text pattern matching
+- Silent checkpoint confirmation — button press sends response without rendering a user message bubble in chat history
+- `handleSend` accepts `{ silent: true }` option for invisible message dispatch
+- Moltbook end-to-end pipeline validated — skill.md → curl parser → credential injection → API call → result rendered through CRT governance
+- Skill.md template created (`data/managed_skills/_template/SKILL.md`) — reusable pattern for adding new services: site API, git ops, weather, etc. Follows curl parser format with proper credential injection hooks
+- **Skill install pipeline** — "add skill from URL" intent: fetches skill.md, parses YAML frontmatter, saves to `data/managed_skills/{name}/`, registers in `_KNOWN_SERVICES` at runtime, stores skill_url + api_base in credential store, rebuilds service regex. Falls back to URL hostname when frontmatter name is missing
+- `skill_install` intent classifier — regex matches add/install/register/connect + skill/service/tool + URL
+- Deterministic skill install response — reports what was installed, prompts for API key
+- Skill installs written as memory facts (T:0.95) — Aether remembers which skills are installed
+
+### Polish
+- Copilot page hero graph — sticky behind content, slides over on scroll
+- Sidebar flush-left with no rounded corners
+- Showcase page removed
+- Docs page Changelog/Roadmap buttons wired to backend `doc_map`
+
+---
+
 ## v1.6 — March 23, 2026
 
 Identity hardening, belief classifier integration, pipeline trace, 5 bug fixes, profile authority cleanup.

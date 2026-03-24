@@ -1862,6 +1862,62 @@ def set_heartbeat_md(req: "HeartbeatMDRequest"):
 
 
 # ============================================================================
+# System info endpoint (Layer 1 — read-only)
+# ============================================================================
+
+
+@router.get("/api/system/status")
+def get_system_status() -> dict:
+    """Return a point-in-time system snapshot (CPU, RAM, GPU, disk, processes)."""
+    from personal_agent.system_info import get_system_snapshot
+    return get_system_snapshot()
+
+
+# ============================================================================
+# File / project tools endpoints (Layer 2 — read-only)
+# ============================================================================
+
+
+@router.get("/api/files/read")
+def api_read_file(path: str) -> dict:
+    """Read a text file and return its content."""
+    from personal_agent.file_tools import read_file
+    return read_file(path)
+
+
+@router.get("/api/files/list")
+def api_list_directory(path: str) -> dict:
+    """List directory contents."""
+    from personal_agent.file_tools import list_directory
+    return list_directory(path)
+
+
+@router.get("/api/project/scan")
+def api_scan_project(path: str) -> dict:
+    """Scan a project directory (git status, type detection, directory listing)."""
+    from personal_agent.file_tools import scan_project
+    return scan_project(path)
+
+
+@router.get("/api/settings/allowed-paths")
+def api_get_allowed_paths() -> dict:
+    """Return the list of allowed file access paths."""
+    from personal_agent.file_tools import get_allowed_paths
+    return {"allowed_paths": get_allowed_paths()}
+
+
+@router.put("/api/settings/allowed-paths")
+def api_set_allowed_paths(body: dict) -> dict:
+    """Update allowed file access paths. Body: {"paths": ["D:/AI_round2", ...]}"""
+    from personal_agent.file_tools import set_allowed_paths
+    paths = body.get("paths", [])
+    if not isinstance(paths, list) or not paths:
+        raise HTTPException(status_code=400, detail="'paths' must be a non-empty list")
+    saved = set_allowed_paths(paths)
+    return {"allowed_paths": saved}
+
+
+# ============================================================================
 # Email digest endpoints
 # ============================================================================
 

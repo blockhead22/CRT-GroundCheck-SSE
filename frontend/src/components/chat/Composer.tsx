@@ -51,6 +51,8 @@ export function Composer(props: {
   onSend: (text: string) => void
   onResearch?: (query: string) => void
   researching?: boolean
+  typing?: boolean
+  onStop?: () => void
   diagnosticsOpen?: boolean
   onToggleDiagnostics?: () => void
 }) {
@@ -122,6 +124,19 @@ export function Composer(props: {
     props.onResearch(t)
     setText('')
   }, [text, props])
+
+  // Escape key to stop generation (global)
+  useEffect(() => {
+    if (!props.typing || !props.onStop) return
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        props.onStop?.()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [props.typing, props.onStop])
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -371,7 +386,7 @@ export function Composer(props: {
           {/* Bottom bar with hint + buttons */}
           <div className="flex items-center justify-between px-5 pb-3">
             <div className="text-[10px] text-white/15 font-mono">
-              {canSend ? 'Enter to send' : ''}
+              {props.typing ? 'Esc to stop' : canSend ? 'Enter to send' : ''}
             </div>
             <div className="flex items-center gap-2">
               {props.onResearch ? (
@@ -394,23 +409,50 @@ export function Composer(props: {
                 </motion.button>
               ) : null}
 
-              <motion.button
-                whileHover={canSend && !isDisabled ? { scale: 1.05 } : undefined}
-                whileTap={canSend && !isDisabled ? { scale: 0.95 } : undefined}
-                onClick={send}
-                disabled={isDisabled || !canSend}
-                aria-label="Send"
-                className={`flex h-8 w-8 items-center justify-center rounded transition-all ${
-                  canSend && !isDisabled
-                    ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(212,132,92,0.35)]'
-                    : 'bg-white/[0.04] text-white/15 cursor-not-allowed'
-                }`}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14" />
-                  <path d="M12 5l7 7-7 7" />
-                </svg>
-              </motion.button>
+              <AnimatePresence mode="wait">
+                {props.typing && props.onStop ? (
+                  <motion.button
+                    key="stop"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={props.onStop}
+                    aria-label="Stop generation"
+                    title="Stop generation (Esc)"
+                    className="flex h-8 w-8 items-center justify-center rounded bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(212,132,92,0.35)]"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                      <rect x="2" y="2" width="12" height="12" rx="1.5" />
+                    </svg>
+                  </motion.button>
+                ) : (
+                  <motion.button
+                    key="send"
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.8, opacity: 0 }}
+                    transition={{ duration: 0.15 }}
+                    whileHover={canSend && !isDisabled ? { scale: 1.05 } : undefined}
+                    whileTap={canSend && !isDisabled ? { scale: 0.95 } : undefined}
+                    onClick={send}
+                    disabled={isDisabled || !canSend}
+                    aria-label="Send"
+                    className={`flex h-8 w-8 items-center justify-center rounded transition-all ${
+                      canSend && !isDisabled
+                        ? 'bg-[var(--accent)] text-white hover:opacity-90 shadow-[0_0_16px_rgba(212,132,92,0.35)]'
+                        : 'bg-white/[0.04] text-white/15 cursor-not-allowed'
+                    }`}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="M12 5l7 7-7 7" />
+                    </svg>
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </motion.div>

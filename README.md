@@ -232,6 +232,7 @@ Server: `python crt_api.py` on `http://127.0.0.1:8123`
 | `/api/profile` | GET | Canonical effective personal profile |
 | `/api/thread/reset` | POST | Reset a thread's memory and ledger |
 | `/api/heartbeat/config` | GET/PUT | Configure proactive engagement |
+| `/api/system/status` | GET | System info snapshot (CPU, RAM, GPU, disk, processes) |
 
 ---
 
@@ -366,6 +367,7 @@ python scripts/vilt_chat.py --facts data/my_facts.json
 |   |-- hybrid_llm_client.py     #   Local-first generation with cloud escalation
 |   |-- anthropic_client.py      #   Anthropic API client
 |   |-- task_agent.py            #   LLM tool loop (iterative agentic execution)
+|   |-- system_info.py           #   System awareness (CPU, RAM, GPU, processes, active window)
 |   |-- memory_compression.py    #   Trust-aware compression lifecycle
 |   |-- two_tier_facts.py        #   Hard slots + open-world tuples
 |   |-- intent_router.py         #   Intent classification (15 types)
@@ -396,46 +398,50 @@ python scripts/vilt_chat.py --facts data/my_facts.json
 
 ## Current Status (March 2026)
 
-### Working (16 Active Subsystems)
+### Working (20+ Active Subsystems)
 
+**Core Governance**
 - Memory governance: trust-weighted storage, belief/speech separation, slot-level exclusivity
 - Contradiction ledger: detection, preservation, disclosure, user-driven resolution
 - GroundCheck: sub-2ms post-generation semantic verification
 - Mid-stream verification: fact-checks during generation
 - 3-tier cloud routing: local, OpenAI, Claude with seamless timeout recovery
-- Escalation policy: `local_only` enforced — generation stays local, cloud governance (slot/NLI) runs independently
-- Cloud-only generation mode: model selector lets users choose Local, GPT-4o, or Claude as primary generator
+- Escalation policy: `local_only` enforced — generation stays local, cloud governance runs independently
 - Self-referential routing: 70+ patterns, grounded in self-model
-- Heartbeat loop: trust decay, memory compression, self-reflection, behavioral directives
+- Heartbeat loop: trust decay, memory compression, self-reflection, behavioral directives, system state awareness
 - Reflection-to-behavior loop: blindspot flags modify gate thresholds and prompt calibration
 - Adaptive compression: significance-scored tier system
-- Settings dashboard: profile, cloud toggles, known facts, usage tracking
-- Cloud usage tracking: every cloud API call logged with metadata in SQLite
-- LLM tool loop: iterative agentic execution with checkpoint confirmation
 - Governed memory: authority levels, channel routing, provenance tracking
-- Frontend observability: generation source pills (Local/GPT/Claude/Fallback) + cloud governance badges on messages
 
-### Session 5 (March 23, 2026)
+**Agentic Tool Layer**
+- LLM tool loop: iterative agentic execution with checkpoint confirmation
+- Action card UI: checkpoint-driven quick-reply (Yes/No/Custom), sends silently without user bubble
+- Skill system: fetch skill.md from URL → parse → save → register → execute API calls with credential injection
+- Skill install pipeline: "add skill from URL" auto-discovers service name, saves locally, stores metadata in credential store
+- System info tool: CPU, RAM, GPU, disk, running processes, active window — Layer 1 read-only, no gate
+- Heartbeat system awareness: gaming/idle detection from process list and GPU usage
+- Stop generation: abort mid-stream, finalize partial response, Escape key shortcut
 
-- **Escalation policy enforcement** — `local_only` blocks all cloud fallback paths. Generation and governance are independently configurable: local generation + cloud slot classification/NLI is a supported mode.
-- **ViLT test harness + SFT baseline** — built A/B comparison framework. SFT baseline on SmolLM-135M: 10% → 75% accuracy in 200 steps (35 min on RTX 3060). GC pass rate: 85%. ViLT comparison run pending.
-- **Belief classifier package** — standalone XGBoost package at `packages/belief_classifier/`. Classifies contradictions as REFINEMENT/REVISION/TEMPORAL/CONFLICT, recommends OVERRIDE/PRESERVE/ASK_USER policy. 26 tests passing.
-- **Cloud usage tracking DB** — `cloud_usage_log` table with full metadata per call. `/api/cloud-usage/summary` endpoint for future dashboards.
-- **Console log cleanup** — standardized `[GENERATION]`, `[GOVERNANCE]`, `[REQUEST_SUMMARY]` prefixes. One-line summary per request.
-- **Frontend pill cards** — color-coded generation source + cloud governance badges on every message.
-- **Reflection-to-behavior loop** — behavioral directives from self-model blindspots inject hedging and raise gate thresholds on weak domains.
-- **Self-awareness tone pass** — reflection prompts reframed from self-flagellation to governed calibration.
-- **"Who built you?" fix** — creator/builder context now pulled from self-referential patterns.
-- **ReasoningInference double load fix** — engine cache race condition resolved with lock-during-creation.
-- **Full subsystem audit** — catalogued 16 active + 11 dormant systems. Triage: 6 keep, 13 ignore, 4 merge.
+**Frontend**
+- Glassmorphism dark theme with 48+ styled components
+- Pipeline trace: real SSE status events with live step tracking
+- Generation source pills (Local/GPT/Claude/Fallback) + governance badges
+- Settings dashboard: profile, cloud toggles, known facts, usage tracking
+- Agent thinking strip: collapsible reasoning, tool calls, step progress
 
-### Not Yet Complete
+### What's Next
 
-- **ViLT integration**: SFT baseline proven (75% acc), ViLT comparison run in progress. Heartbeat trigger not yet wired.
-- **XGBoost classifiers**: Package built, needs training on real ledger data before integration.
-- **Blindside resistance**: Identity wipe attacks succeed 3/5 times in adversarial testing.
-- **Remaining bugs**: typo-resilient slot matching, memory demotion source filter, cookie leak when Claude toggled off.
-- **Library extraction (Phase C)**: GroundCheck, crt-ledger, crt-trust, crt-gates not yet published as standalone packages.
+Building toward a personal AI that can **do things**, not just talk. The architecture (memory governance, contradiction tracking, trust evolution, checkpoint gates) is complete. Now wiring local system access through the same CRT control plane:
+
+| Sprint | Focus | Status |
+|--------|-------|--------|
+| 1. System Awareness | Read-only system info, heartbeat integration, stop button | **Done** |
+| 2. File & Project Awareness | Read files, git status, project scanner, code page | **Next** |
+| 3. Action Execution | Write files, shell commands, diffs in action card, action receipts | Planned |
+| 4. Proactive & Scheduled | Reminders, notifications, commitment governance | Planned |
+| 5. External Integrations | Weather, calendar, maps, email — multi-skill orchestration | Planned |
+
+See [ROADMAP.md](ROADMAP.md) for the full sprint breakdown.
 
 ---
 
@@ -445,11 +451,12 @@ python scripts/vilt_chat.py --facts data/my_facts.json
 |-------|--------|-------------|
 | **A: Natural Agent** | Complete | Natural responses, open-world fact learning, provenance-aware answers |
 | **B: Hybrid Routing** | Complete | Local/cloud generation with automatic escalation and redaction |
-| **B.5: Agentic Execution** | In Progress | Tool loop, self-reflection, visible reasoning, checkpointed actions |
-| **C: Library Extraction** | Planned | Extract groundcheck, crt-ledger, crt-trust, crt-gates as standalone packages |
-| **D: Launch** | Planned | PyPI publish, landing page, hosted API option |
+| **C: Agentic Execution** | Complete | Tool loop, self-reflection, visible reasoning, checkpointed actions, skill system |
+| **D: Local Access** | In Progress | System awareness, file/project tools, shell execution, action receipts |
+| **E: Personal Assistant** | Planned | Reminders, notifications, proactive triggers, multi-skill orchestration |
+| **F: Library Extraction** | Backlog | GroundCheck to PyPI, standalone packages |
 
-See [ROADMAP.md](ROADMAP.md) for the full planning document with weekly priorities and long-term architecture goals.
+See [ROADMAP.md](ROADMAP.md) for the full sprint breakdown with Layer access model.
 
 ---
 

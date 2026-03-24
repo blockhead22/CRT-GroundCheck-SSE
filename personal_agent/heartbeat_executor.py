@@ -1096,6 +1096,104 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Contradiction check skipped: {e}")
 
+        # --- 2b. System State Snapshot + Behavioral Triggers ---
+        system_snapshot = None
+        try:
+            from personal_agent.system_info import get_system_snapshot
+            system_snapshot = get_system_snapshot()
+            flags = system_snapshot.get("flags", {})
+            cpu_pct = system_snapshot.get("cpu", {}).get("percent", 0)
+            ram_pct = system_snapshot.get("ram", {}).get("percent", 0)
+            gpu_info = system_snapshot.get("gpu")
+            gpu_pct = gpu_info.get("gpu_percent", 0) if gpu_info else 0
+            top_procs = system_snapshot.get("top_processes", [])
+            active_win = system_snapshot.get("active_window")
+
+            summary_parts = [f"cpu={cpu_pct:.0f}%", f"ram={ram_pct:.0f}%"]
+            if gpu_info:
+                summary_parts.append(f"gpu={gpu_pct:.0f}%")
+
+            # ── Behavioral trigger: GAMING (GPU > 90% + game process) ────
+            gaming_detected = False
+            game_process_name = None
+            if gpu_pct > 90:
+                for p in top_procs:
+                    if p.get("is_game"):
+                        gaming_detected = True
+                        game_process_name = p.get("name", "unknown")
+                        break
+                # Also flag if any single process is eating >50% GPU
+                # (can't measure per-process GPU via psutil, but high GPU
+                #  + game in top procs is a strong enough signal)
+                if not gaming_detected and flags.get("gaming"):
+                    gaming_detected = True
+
+            if gaming_detected:
+                summary_parts.append("GAMING")
+                actions_taken.append({
+                    "action": "behavioral_trigger",
+                    "trigger": "gaming_detected",
+                    "detail": f"Gaming detected: GPU at {gpu_pct}%"
+                              + (f", process: {game_process_name}" if game_process_name else ""),
+                    "recommendation": "reduce_resources",
+                    "severity": "info",
+                    "gpu_percent": gpu_pct,
+                    "game_process": game_process_name,
+                })
+                logger.info(f"[HEARTBEAT] GAMING trigger: GPU={gpu_pct}% proc={game_process_name}")
+
+            # ── Behavioral trigger: HIGH LOAD (CPU > 90% or RAM > 90%) ───
+            elif cpu_pct > 90 or ram_pct > 90:
+                summary_parts.append("HIGH_LOAD")
+                bottleneck = []
+                if cpu_pct > 90:
+                    bottleneck.append(f"CPU={cpu_pct:.0f}%")
+                if ram_pct > 90:
+                    bottleneck.append(f"RAM={ram_pct:.0f}%")
+                actions_taken.append({
+                    "action": "behavioral_trigger",
+                    "trigger": "high_load",
+                    "detail": f"High load: {', '.join(bottleneck)}",
+                    "recommendation": "reduce_resources",
+                    "severity": "warning",
+                    "cpu_percent": cpu_pct,
+                    "ram_percent": ram_pct,
+                })
+                logger.info(f"[HEARTBEAT] HIGH_LOAD trigger: {', '.join(bottleneck)}")
+
+            # ── Behavioral trigger: IDLE (CPU < 10%, no GPU activity) ────
+            elif flags.get("idle"):
+                summary_parts.append("IDLE")
+                actions_taken.append({
+                    "action": "behavioral_trigger",
+                    "trigger": "idle_detected",
+                    "detail": f"System idle: CPU={cpu_pct:.0f}%, GPU={gpu_pct:.0f}%",
+                    "recommendation": "restore_resources",
+                    "severity": "info",
+                    "cpu_percent": cpu_pct,
+                    "gpu_percent": gpu_pct,
+                })
+                logger.info(f"[HEARTBEAT] IDLE trigger: CPU={cpu_pct:.0f}% GPU={gpu_pct:.0f}%")
+
+            detail = f"System: {', '.join(summary_parts)}"
+            actions_taken.append({
+                "action": "system_state_snapshot",
+                "detail": detail,
+                "snapshot_summary": {
+                    "cpu_percent": cpu_pct,
+                    "ram_percent": ram_pct,
+                    "gpu_percent": gpu_pct,
+                    "gaming": gaming_detected,
+                    "idle": flags.get("idle", False),
+                    "high_load": cpu_pct > 90 or ram_pct > 90,
+                    "active_window": active_win,
+                    "top_processes": [p.get("name") for p in top_procs[:3]],
+                },
+            })
+            logger.info(f"[HEARTBEAT] {detail}")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] System snapshot skipped: {e}")
+
         # --- 3. Memory Stats ---
         try:
             snapshot = self._get_memory_snapshot(thread_id)

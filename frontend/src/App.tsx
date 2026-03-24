@@ -113,9 +113,17 @@ export default function App() {
   // Ref mirrors state so onDone closure can read the latest value without stale capture
   const agentThinkingRef = useRef<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
   const finalBufferRef = useRef('')
+  const streamAbortRef = useRef<AbortController | null>(null)
+  const inflightThreadRef = useRef<ChatThread | null>(null)
   
   // Mood background state
   const [currentMood, setCurrentMood] = useState<MoodData | null>(null)
+
+  // Agent checkpoint state — when the task agent asks for confirmation
+  const [pendingCheckpoint, setPendingCheckpoint] = useState<{
+    message: string
+    metadata: Record<string, unknown>
+  } | null>(null)
 
   const selectedThread = useMemo(
     () => threads.find((t) => t.id === selectedThreadId) ?? threads[0],
@@ -319,8 +327,9 @@ export default function App() {
     }
   }, [isThinking])
 
-  async function handleSend(text: string) {
+  async function handleSend(text: string, opts?: { silent?: boolean }) {
     if (!selectedThread) return
+    const silent = opts?.silent ?? false
 
     const raw = text
     const trimmed = raw.trim()
@@ -335,7 +344,7 @@ export default function App() {
       'more details',
       'elaborate',
     ]
-    const wantsExpand = expandTriggers.some((t) => trimmed.toLowerCase() === t || trimmed.toLowerCase().startsWith(t + ' '))
+    const wantsExpand = !silent && expandTriggers.some((t) => trimmed.toLowerCase() === t || trimmed.toLowerCase().startsWith(t + ' '))
 
     const lastAssistant = [...selectedThread.messages].reverse().find((m) => m.role === 'assistant')
     const outgoingText = wantsExpand && lastAssistant?.text
@@ -354,23 +363,23 @@ export default function App() {
       : raw
 
     const now = Date.now()
-    const userMsg = { id: newId('m'), role: 'user' as const, text: raw, createdAt: now }
 
-    const shouldAutoTitle = !selectedThread.title || selectedThread.title === 'New chat'
-    const autoTitle = shouldAutoTitle
-        ? raw
-          .trim()
-          .replace(/^FACT:\s*/i, '')
-          .replace(/^PREF:\s*/i, '')
-          .slice(0, 48) || 'New chat'
-      : selectedThread.title
-
-    const withUser: ChatThread = {
-      ...selectedThread,
-      title: autoTitle,
-      updatedAt: now,
-      messages: [...selectedThread.messages, userMsg],
-    }
+    // Silent mode: don't show user bubble (used for checkpoint confirmations)
+    const withUser: ChatThread = silent
+      ? { ...selectedThread, updatedAt: now }
+      : (() => {
+          const userMsg = { id: newId('m'), role: 'user' as const, text: raw, createdAt: now }
+          const shouldAutoTitle = !selectedThread.title || selectedThread.title === 'New chat'
+          const autoTitle = shouldAutoTitle
+              ? raw.trim().replace(/^FACT:\s*/i, '').replace(/^PREF:\s*/i, '').slice(0, 48) || 'New chat'
+            : selectedThread.title
+          return {
+            ...selectedThread,
+            title: autoTitle,
+            updatedAt: now,
+            messages: [...selectedThread.messages, userMsg],
+          }
+        })()
 
     upsertThread(withUser)
     setTyping(true)
@@ -386,16 +395,21 @@ export default function App() {
     setIntentPreview(null)
     setAgentThinkingState(null)
     agentThinkingRef.current = null
+    setPendingCheckpoint(null)
 
     try {
       if (useStreaming) {
         // Use streaming API
         let thinkingContent = ''
-        
+        const abortController = new AbortController()
+        streamAbortRef.current = abortController
+        inflightThreadRef.current = withUser
+
         await streamFromCrtApi({
           threadId: withUser.id,
           message: outgoingText,
           phaseMode,
+          signal: abortController.signal,
           callbacks: {
             onIntentPreview: (intent, slots, label) => {
               setIntentPreview({ intent, slots, label })
@@ -453,10 +467,10 @@ export default function App() {
                 return next
               })
             },
-            onAgentCheckpoint: (message, _metadata) => {
-              // Checkpoint message becomes the streamed response for this turn.
-              // The user will respond with "yes"/"no" in their next message.
+            onAgentCheckpoint: (message, metadata) => {
+              // Show the checkpoint message as streamed response AND activate the action card
               setStreamingResponse(message)
+              setPendingCheckpoint({ message, metadata })
             },
             onTaskCancelled: (message) => {
               setStreamingResponse(message)
@@ -680,7 +694,63 @@ export default function App() {
       upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
     } finally {
       setTyping(false)
+      streamAbortRef.current = null
+      inflightThreadRef.current = null
     }
+  }
+
+  /** Stop the current SSE stream — finalize partial content as the assistant message */
+  function handleStopGeneration() {
+    const controller = streamAbortRef.current
+    const thread = inflightThreadRef.current
+    if (!controller || !thread) return
+
+    controller.abort()
+
+    // Finalize whatever has been streamed so far
+    const partial = (finalBufferRef.current || '').trim()
+    if (partial) {
+      const at = Date.now()
+      const capturedThinking = agentThinkingRef.current
+        ? { ...agentThinkingRef.current, done: true, drafting: false }
+        : null
+      const asstMsg = {
+        id: newId('m'),
+        role: 'assistant' as const,
+        text: partial,
+        createdAt: at,
+        agentThinking: capturedThinking,
+        crt: {
+          response_type: 'speech',
+          gates_passed: true,
+          gate_reason: 'stopped_by_user',
+        },
+      }
+      upsertThread({ ...thread, updatedAt: at, messages: [...thread.messages, asstMsg] })
+    }
+
+    // Clear all streaming state
+    setStreamingThinking('')
+    setStreamingResponse('')
+    setIsThinking(false)
+    setStreamPhase(null)
+    setStreamStatusLog([])
+    streamStatusRef.current = []
+    finalBufferRef.current = ''
+    setIntentPreview(null)
+    setAgentThinkingState(null)
+    agentThinkingRef.current = null
+    setPendingCheckpoint(null)
+    setTyping(false)
+    streamAbortRef.current = null
+    inflightThreadRef.current = null
+  }
+
+  /** Respond to an agent checkpoint without showing a user message bubble */
+  async function handleCheckpointRespond(text: string) {
+    if (!selectedThread) return
+    setPendingCheckpoint(null)
+    await handleSend(text, { silent: true })
   }
 
   function pickQuickAction(a: QuickAction) {
@@ -905,6 +975,9 @@ export default function App() {
                       agentThinkingState={agentThinkingState}
                       diagnosticsOpen={diagnosticsOpen}
                       onToggleDiagnostics={() => setDiagnosticsOpen((v) => !v)}
+                      pendingCheckpoint={pendingCheckpoint}
+                      onCheckpointRespond={handleCheckpointRespond}
+                      onStopGeneration={handleStopGeneration}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

@@ -8,6 +8,7 @@ import { Composer } from './Composer'
 import { listOpenContradictions, type ContradictionListItem } from '../../lib/api'
 import { PipelineTrace } from './PipelineTrace'
 import { AgentThinkingStrip, type AgentThinkingState } from './AgentThinkingStrip'
+import { ActionCard } from './ActionCard'
 
 // Adaptive font size for theater mode — shrinks as text grows
 function theaterFontSize(charCount: number): string {
@@ -154,6 +155,9 @@ export function ChatThreadView(props: {
   onRated?: (msgId: string, rating: MessageRating, category?: string) => void
   diagnosticsOpen?: boolean
   onToggleDiagnostics?: () => void
+  pendingCheckpoint?: { message: string; metadata: Record<string, unknown> } | null
+  onCheckpointRespond?: (text: string) => void
+  onStopGeneration?: () => void
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -298,6 +302,9 @@ export function ChatThreadView(props: {
     ? (props.streamingResponse ?? '')
     : (lastAssistant?.text ?? '')
   const theaterFontPx = theaterFontSize(theaterText.length)
+
+  // Show action card only when the backend has emitted an agent_checkpoint event
+  const showActionCard = !!props.pendingCheckpoint && !isStreaming && !showTyping
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -709,6 +716,19 @@ export function ChatThreadView(props: {
         )}
       </AnimatePresence>
 
+      {/* Action card — quick-reply buttons for agent checkpoint confirmations */}
+      <AnimatePresence>
+        {showActionCard && props.pendingCheckpoint && (
+          <div className="flex-shrink-0 mb-1">
+            <ActionCard
+              checkpointMessage={props.pendingCheckpoint.message}
+              checkpointMeta={props.pendingCheckpoint.metadata}
+              onRespond={props.onCheckpointRespond ?? props.onSend}
+            />
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Composer */}
       <div className="flex-shrink-0">
         <Composer
@@ -716,6 +736,8 @@ export function ChatThreadView(props: {
           onResearch={props.onResearch}
           researching={props.researching}
           disabled={props.typing}
+          typing={props.typing}
+          onStop={props.onStopGeneration}
           diagnosticsOpen={props.diagnosticsOpen}
           onToggleDiagnostics={props.onToggleDiagnostics}
         />
