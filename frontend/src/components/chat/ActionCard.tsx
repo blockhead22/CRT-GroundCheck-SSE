@@ -41,6 +41,19 @@ function deriveOptions(
   ]
 }
 
+/** Colorize a diff line for display */
+function DiffLine({ line }: { line: string }) {
+  let color = 'rgba(240,235,225,0.6)'
+  if (line.startsWith('+') && !line.startsWith('+++')) {
+    color = 'rgba(80,200,120,0.9)'
+  } else if (line.startsWith('-') && !line.startsWith('---')) {
+    color = 'rgba(240,80,80,0.9)'
+  } else if (line.startsWith('@@')) {
+    color = 'rgba(130,170,255,0.8)'
+  }
+  return <div style={{ color }}>{line || '\u00A0'}</div>
+}
+
 export function ActionCard(props: {
   checkpointMessage: string
   checkpointMeta?: Record<string, unknown>
@@ -49,6 +62,11 @@ export function ActionCard(props: {
   const [customMode, setCustomMode] = useState(false)
   const [customText, setCustomText] = useState('')
   const options = deriveOptions(props.checkpointMessage, props.checkpointMeta)
+
+  const meta = props.checkpointMeta
+  const diffPreview = (meta?.diff_preview as string) || ''
+  const command = (meta?.command as string) || ''
+  const targetPath = (meta?.target_path as string) || ''
 
   function sendCustom() {
     const t = customText.trim()
@@ -75,6 +93,49 @@ export function ActionCard(props: {
           boxShadow: '0 -4px 24px rgba(0,0,0,0.25), 0 0 48px rgba(212,132,92,0.04)',
         }}
       >
+        {/* Diff preview for file write actions */}
+        {diffPreview && (
+          <div className="mb-3">
+            {targetPath && (
+              <div
+                className="mb-1.5 text-[12px] font-mono"
+                style={{ color: 'rgba(240,235,225,0.5)' }}
+              >
+                {targetPath}
+              </div>
+            )}
+            <pre
+              className="overflow-x-auto rounded border p-2 text-[11px] font-mono leading-[1.4]"
+              style={{
+                background: 'rgba(0,0,0,0.3)',
+                borderColor: 'rgba(240,235,225,0.06)',
+                maxHeight: '240px',
+                overflowY: 'auto',
+              }}
+            >
+              {diffPreview.split('\n').map((line, i) => (
+                <DiffLine key={i} line={line} />
+              ))}
+            </pre>
+          </div>
+        )}
+
+        {/* Command preview for shell/git actions */}
+        {command && !diffPreview && (
+          <div className="mb-3">
+            <code
+              className="block rounded border px-3 py-2 text-[12px] font-mono"
+              style={{
+                background: 'rgba(0,0,0,0.3)',
+                borderColor: 'rgba(240,235,225,0.06)',
+                color: 'rgba(240,235,225,0.8)',
+              }}
+            >
+              $ {command}
+            </code>
+          </div>
+        )}
+
         {/* Quick reply buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           {options.map((opt) => (

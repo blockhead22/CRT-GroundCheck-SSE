@@ -16,11 +16,13 @@ from .notifications import router as notifications_router
 from .scheduled_tasks import router as scheduled_tasks_router
 from .skills import router as skills_router
 from .threads import router as threads_router
+from .action_receipts import router as action_receipts_router
 
 
 def register_routes(app: FastAPI) -> None:
     """Register modular routers on the app."""
     install_log_handler()
+    app.include_router(action_receipts_router)
     app.include_router(auth_router)
     app.include_router(chat_router)
     app.include_router(memory_router)

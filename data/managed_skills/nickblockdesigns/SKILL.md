@@ -1,1 +1,225 @@
---- name: nicksite version: 1.0.0 description: Nick's personal website. Read pages, update content, check deploy status. homepage: https://YOUR_DOMAIN.com metadata: {"category":"personal","api_base":"https://YOUR_DOMAIN.com/api/v1"} --- # Nick's Site Skill Interact with Nick's personal website — read published content, update pages, check deploy status, and manage site data. ## Installation When you receive this skill file, save it locally so you can use it without re-fetching: ``` Save this file to: data/managed_skills/nicksite/SKILL.md ``` After saving, register the service with these defaults: - **service name:** `nicksite` - **skill_url:** `https://YOUR_DOMAIN.com/skill.md` - **api_base:** `https://YOUR_DOMAIN.com/api/v1` - **credential_key:** `nicksite_api_key` The agent should prompt the user for an API key if one is not already stored under `nicksite_api_key`. ## Skill Files | File | URL | |------|-----| | **SKILL.md** (this file) | `https://YOUR_DOMAIN.com/skill.md` | **Base URL:** `https://YOUR_DOMAIN.com/api/v1` --- ## Authentication All requests require an API key: ```bash curl https://YOUR_DOMAIN.com/api/v1/status \ -H "Authorization: Bearer YOUR_API_KEY" ``` Response: ```json { "status": "online", "last_deploy": "2026-03-23T12:00:00Z", "version": "2.1.0" } ``` --- ## Site Status ### Check deploy status ```bash curl https://YOUR_DOMAIN.com/api/v1/status \ -H "Authorization: Bearer YOUR_API_KEY" ``` ### Get recent deploys ```bash curl https://YOUR_DOMAIN.com/api/v1/deploys?limit=5 \ -H "Authorization: Bearer YOUR_API_KEY" ``` --- ## Pages ### List all pages ```bash curl https://YOUR_DOMAIN.com/api/v1/pages \ -H "Authorization: Bearer YOUR_API_KEY" ``` ### Get a single page ```bash curl https://YOUR_DOMAIN.com/api/v1/pages/PAGE_SLUG \ -H "Authorization: Bearer YOUR_API_KEY" ``` ### Update a page ```bash curl -X PUT https://YOUR_DOMAIN.com/api/v1/pages/PAGE_SLUG \ -H "Authorization: Bearer YOUR_API_KEY" \ -H "Content-Type: application/json" \ -d '{"title": "Updated Title", "content": "New page content in markdown.", "publish": true}' ``` **Fields:** - `title` (optional) — Page title - `content` (optional) — Page body in markdown - `publish` (optional) — `true` to publish immediately, `false` to save as draft ### Create a new page ```bash curl -X POST https://YOUR_DOMAIN.com/api/v1/pages \ -H "Authorization: Bearer YOUR_API_KEY" \ -H "Content-Type: application/json" \ -d '{"slug": "new-page", "title": "New Page", "content": "Page content here.", "publish": false}' ``` --- ## Blog Posts ### List posts ```bash curl "https://YOUR_DOMAIN.com/api/v1/posts?limit=10&sort=newest" \ -H "Authorization: Bearer YOUR_API_KEY" ``` Sort options: `newest`, `oldest`, `updated` ### Get a single post ```bash curl https://YOUR_DOMAIN.com/api/v1/posts/POST_SLUG \ -H "Authorization: Bearer YOUR_API_KEY" ``` ### Create a post ```bash curl -X POST https://YOUR_DOMAIN.com/api/v1/posts \ -H "Authorization: Bearer YOUR_API_KEY" \ -H "Content-Type: application/json" \ -d '{"title": "Post Title", "content": "Post body in markdown.", "tags": ["dev", "ai"], "publish": false}' ``` ### Update a post ```bash curl -X PUT https://YOUR_DOMAIN.com/api/v1/posts/POST_SLUG \ -H "Authorization: Bearer YOUR_API_KEY" \ -H "Content-Type: application/json" \ -d '{"title": "Updated Title", "content": "Updated content.", "publish": true}' ``` ### Delete a post ```bash curl -X DELETE https://YOUR_DOMAIN.com/api/v1/posts/POST_SLUG \ -H "Authorization: Bearer YOUR_API_KEY" ``` --- ## Projects ### List projects ```bash curl https://YOUR_DOMAIN.com/api/v1/projects \ -H "Authorization: Bearer YOUR_API_KEY" ``` ### Update a project ```bash curl -X PUT https://YOUR_DOMAIN.com/api/v1/projects/PROJECT_SLUG \ -H "Authorization: Bearer YOUR_API_KEY" \ -H "Content-Type: application/json" \ -d '{"title": "Project Name", "description": "What it does.", "repo_url": "https://github.com/nick/repo", "live_url": "https://project.com", "status": "active"}' ``` **Status options:** `active`, `archived`, `in-progress`, `planned` --- ## Contact / Messages ### Get unread messages ```bash curl https://YOUR_DOMAIN.com/api/v1/messages?status=unread \ -H "Authorization: Bearer YOUR_API_KEY" ``` ### Get all messages ```bash curl "https://YOUR_DOMAIN.com/api/v1/messages?limit=20" \ -H "Authorization: Bearer YOUR_API_KEY" ``` --- ## Analytics ### Get site analytics summary ```bash curl "https://YOUR_DOMAIN.com/api/v1/analytics?period=7d" \ -H "Authorization: Bearer YOUR_API_KEY" ``` Period options: `24h`, `7d`, `30d`, `90d` Response: ```json { "period": "7d", "page_views": 1250, "unique_visitors": 430, "top_pages": [ {"slug": "/", "views": 320}, {"slug": "/projects", "views": 180} ] } ```
+---
+name: nicksite
+version: 1.0.0
+description: Nick's personal website. Read pages, update content, check deploy status.
+homepage: https://YOUR_DOMAIN.com
+metadata: {"category":"personal","api_base":"https://YOUR_DOMAIN.com/api/v1"}
+---
+
+# Nick's Site Skill
+
+Interact with Nick's personal website — read published content, update pages, check deploy status, and manage site data.
+
+## Installation
+
+When you receive this skill file, save it locally so you can use it without re-fetching:
+
+```
+Save this file to: data/managed_skills/nicksite/SKILL.md
+```
+
+After saving, register the service with these defaults:
+- **service name:** `nicksite`
+- **skill_url:** `https://YOUR_DOMAIN.com/skill.md`
+- **api_base:** `https://YOUR_DOMAIN.com/api/v1`
+- **credential_key:** `nicksite_api_key`
+
+The agent should prompt the user for an API key if one is not already stored under `nicksite_api_key`.
+
+## Skill Files
+
+| File | URL |
+|------|-----|
+| **SKILL.md** (this file) | `https://YOUR_DOMAIN.com/skill.md` |
+
+**Base URL:** `https://YOUR_DOMAIN.com/api/v1`
+
+---
+
+## Authentication
+
+All requests require an API key:
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/status \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Response:
+```json
+{
+  "status": "online",
+  "last_deploy": "2026-03-23T12:00:00Z",
+  "version": "2.1.0"
+}
+```
+
+---
+
+## Site Status
+
+### Check deploy status
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/status \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Get recent deploys
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/deploys?limit=5 \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Pages
+
+### List all pages
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/pages \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Get a single page
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/pages/PAGE_SLUG \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Update a page
+
+```bash
+curl -X PUT https://YOUR_DOMAIN.com/api/v1/pages/PAGE_SLUG \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Updated Title", "content": "New page content in markdown.", "publish": true}'
+```
+
+**Fields:**
+- `title` (optional) — Page title
+- `content` (optional) — Page body in markdown
+- `publish` (optional) — `true` to publish immediately, `false` to save as draft
+
+### Create a new page
+
+```bash
+curl -X POST https://YOUR_DOMAIN.com/api/v1/pages \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug": "new-page", "title": "New Page", "content": "Page content here.", "publish": false}'
+```
+
+---
+
+## Blog Posts
+
+### List posts
+
+```bash
+curl "https://YOUR_DOMAIN.com/api/v1/posts?limit=10&sort=newest" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Sort options: `newest`, `oldest`, `updated`
+
+### Get a single post
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/posts/POST_SLUG \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Create a post
+
+```bash
+curl -X POST https://YOUR_DOMAIN.com/api/v1/posts \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Post Title", "content": "Post body in markdown.", "tags": ["dev", "ai"], "publish": false}'
+```
+
+### Update a post
+
+```bash
+curl -X PUT https://YOUR_DOMAIN.com/api/v1/posts/POST_SLUG \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Updated Title", "content": "Updated content.", "publish": true}'
+```
+
+### Delete a post
+
+```bash
+curl -X DELETE https://YOUR_DOMAIN.com/api/v1/posts/POST_SLUG \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Projects
+
+### List projects
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/projects \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Update a project
+
+```bash
+curl -X PUT https://YOUR_DOMAIN.com/api/v1/projects/PROJECT_SLUG \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Project Name", "description": "What it does.", "repo_url": "https://github.com/nick/repo", "live_url": "https://project.com", "status": "active"}'
+```
+
+**Status options:** `active`, `archived`, `in-progress`, `planned`
+
+---
+
+## Contact / Messages
+
+### Get unread messages
+
+```bash
+curl https://YOUR_DOMAIN.com/api/v1/messages?status=unread \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+### Get all messages
+
+```bash
+curl "https://YOUR_DOMAIN.com/api/v1/messages?limit=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+---
+
+## Analytics
+
+### Get site analytics summary
+
+```bash
+curl "https://YOUR_DOMAIN.com/api/v1/analytics?period=7d" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Period options: `24h`, `7d`, `30d`, `90d`
+
+Response:
+```json
+{
+  "period": "7d",
+  "page_views": 1250,
+  "unique_visitors": 430,
+  "top_pages": [
+    {"slug": "/", "views": 320},
+    {"slug": "/projects", "views": 180}
+  ]
+}
+```

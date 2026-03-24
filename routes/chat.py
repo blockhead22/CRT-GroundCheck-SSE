@@ -2943,6 +2943,36 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         except Exception as _bp_gen_err:
             print(f"[BYPASS_CRT] Raw generation failed: {_bp_gen_err}, falling through to CRT")
 
+    # ── Inject recent tool result context for follow-up questions ────────
+    # If the user's last turn was a tool execution (system_info, file_read, etc.)
+    # and this message is a conversational follow-up, inject the tool output
+    # so the LLM can reference it.
+    try:
+        _recent_task = session_db.get_pending_task(req.thread_id)
+        if _recent_task and _recent_task.get("status") == "completed":
+            import time as _time_mod
+            _task_age = _time_mod.time() - (_recent_task.get("updated_at") or 0)
+            if _task_age < 120:  # within 2 minutes
+                _task_type = _recent_task.get("intent_type", "")
+                _completed_steps = _recent_task.get("steps_completed") or []
+                _tool_summaries = []
+                for _step in _completed_steps[-3:]:  # last 3 steps max
+                    _preview = _step.get("output_preview") or _step.get("output", "")
+                    if isinstance(_preview, str) and len(_preview) > 800:
+                        _preview = _preview[:800] + "..."
+                    if _preview:
+                        _tool_summaries.append(f"[{_step.get('tool_name', 'tool')}]: {_preview}")
+                if _tool_summaries:
+                    _context_block = (
+                        f"\n\n[Recent tool results from {_task_type} task — use this to answer follow-up questions]\n"
+                        + "\n".join(_tool_summaries)
+                    )
+                    query_with_continuity = query_with_continuity + _context_block
+                    logger.info("[STREAM] Injected recent %s tool context (%d chars) for follow-up",
+                                _task_type, len(_context_block))
+    except Exception as _rtc_err:
+        logger.debug("[STREAM] Recent tool context injection failed: %s", _rtc_err)
+
     control_state.mark("generate", "drafting", detail="engine_query")
     result = engine.query(
         user_query=query_with_continuity,

@@ -1,9 +1,23 @@
 # CRT/Aether Roadmap
-Last updated: March 24, 2026 (v1.8)
+Last updated: March 24, 2026 (v1.9)
 
 ---
 
 ## DONE
+
+### v1.9 (March 24)
+- [x] File write tool — `write_file()`, `apply_edit()`, `generate_diff()` with path validation and unified diff preview
+- [x] Shell execution tool — `execute_command()` with blocked command safety list, `execute_git()` wrapper
+- [x] Action receipts — `ActionReceipt` dataclass, SQLite `action_receipts` table, `GET /api/action-receipts` endpoint
+- [x] Git tool — commit, push, branch ops via `git_exec`, gated by high-tier checkpoint
+- [x] All Layer 3-4 tools require checkpoint confirmation — diff/command preview shown in action card
+- [x] Diff viewer in action card — syntax-highlighted unified diff (green/red/blue) rendered above Yes/No buttons
+- [x] Command preview in action card — `$ command` shown in code block before shell execution
+- [x] Deterministic responses for Layer 2 tools — file_read, dir_list, project_scan show actual content, not LLM summary
+- [x] Tool context carry-forward — recent tool output injected into conversational context for follow-up questions (120s window)
+- [x] File read tool — read files, list directories, gated by allowed paths
+- [x] Project scanner — git status, branch, recent commits, file tree via subprocess
+- [x] Allowed paths config — `GET/PUT /api/settings/allowed-paths`, enforced on all file ops
 
 ### v1.8 (March 24 early morning)
 - [x] System info tool — `psutil` wrapper: CPU, RAM, GPU, disk, running processes, active window
@@ -81,24 +95,9 @@ Last updated: March 24, 2026 (v1.8)
 
 ---
 
-## IN PROGRESS — Local Access & Agentic Layer (v1.9+)
+## IN PROGRESS — Personal Assistant Layer (v2.0+)
 
-### Sprint 2: File & Project Awareness (Layer 2 — read-only) ← NEXT
-- [ ] File read tool — read files, list directories, gated by allowed paths config
-- [ ] Project scanner — git status, branch, recent commits, file tree via subprocess
-- [ ] Project memory — "Nick's portfolio repo is at D:/projects/portfolio" stored as verified fact
-- [ ] Allowed paths config — `/api/settings/allowed-paths` GET/PUT, enforced on all file ops
-- [ ] Code page (frontend) — project tree viewer, file viewer with syntax highlighting
-
-### Sprint 3: Action Execution (Layer 3-4 — write, always gated)
-- [ ] File write tool — create/edit files, always checkpoint, show diff in action card before applying
-- [ ] Shell execution tool — run commands, always checkpoint, show exact command
-- [ ] Action receipts — every tool execution logged to ledger (action, target, result, reversible?)
-- [ ] Retry logic — tool failures → offer retry via action card
-- [ ] Git tool — commit, push, branch ops, gated by checkpoint
-- [ ] Diff viewer in action card — show proposed changes before user approves
-
-### Sprint 4: Proactive & Scheduled Actions
+### Sprint 4: Proactive & Scheduled Actions ← NEXT
 - [ ] Commitment governance — reminders/scheduled tasks as commitments with status/deadline/consequence
 - [ ] Notification delivery — Twilio SMS or Telegram push for reminders
 - [ ] Proactive triggers — trip planning, contextual auto-suggestions based on conversation

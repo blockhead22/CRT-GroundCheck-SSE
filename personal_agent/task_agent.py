@@ -178,17 +178,18 @@ _PROJECT_SCAN_RE = re.compile(
     re.IGNORECASE,
 )
 
-# File path detection (Windows drive letter paths or common extensions)
+# File path detection (Windows drive letter paths — forward OR backslash — or common extensions)
 _FILE_PATH_RE = re.compile(
-    r"[A-Za-z]:/[\w./ -]+(?:\.\w+)?|"
+    r"[A-Za-z]:[/\\][\w./\\ -]+(?:\.\w+)?|"
     r"[\w./\\-]+\.(?:py|tsx?|jsx?|json|md|ya?ml|toml|rs|go|css|html|txt|cfg|ini|sh|bat)\b",
 )
 
 # 3A — file write / edit patterns
 _FILE_WRITE_RE = re.compile(
-    r"\b(write\s+to|create\s+file|edit\s+file|update\s+file|save\s+to|"
+    r"\b(write\s+to|create\s+(a\s+)?file|edit\s+(the\s+)?file|update\s+(the\s+)?file|save\s+to|"
     r"modify\s+(the\s+)?file|change\s+the\s+code\s+in|add\s+a\s+line\s+to|"
-    r"write\s+file|overwrite|append\s+to)\b",
+    r"write\s+(a\s+)?file|overwrite|append\s+to|"
+    r"create\s+(a\s+)?(new\s+)?file\s+in|make\s+(a\s+)?file)\b",
     re.IGNORECASE,
 )
 
@@ -649,11 +650,29 @@ def classify_intent(
     if _FILE_WRITE_RE.search(message):
         path_match = _FILE_PATH_RE.search(message)
         if path_match:
+            raw_path = path_match.group(0).replace("\\", "/")
+            # Strip surrounding quotes
+            raw_path = raw_path.strip("\"'")
+            # Trim trailing noise: "with", "containing", etc. that got captured
+            raw_path = re.split(r"\s+(?:with|containing|that|and)\s+", raw_path)[0].strip()
+            # Find ALL filenames with extensions in the full message
+            _all_filenames = re.findall(
+                r"\b([\w.-]+\.(?:py|tsx?|jsx?|json|md|txt|ya?ml|toml|rs|go|css|html|cfg|ini|sh|bat))\b",
+                message, re.IGNORECASE,
+            )
+            # If a filename was found and the raw_path looks like a directory (no ext),
+            # combine them: dir + filename
+            if _all_filenames:
+                _last_filename = _all_filenames[-1]
+                if not re.search(r"\.\w+$", raw_path):
+                    # raw_path is a directory — append the filename
+                    raw_path = raw_path.rstrip("/\\") + "/" + _last_filename
+                # else: raw_path already has an extension, use as-is
             return TaskIntent(
                 route="task",
                 intent_type="file_write",
                 slots={
-                    "path": path_match.group(0),
+                    "path": raw_path,
                     "raw_message": message,
                 },
                 confidence=0.90,
@@ -2500,9 +2519,31 @@ RULES:
 
         elif intent.intent_type == "file_write":
             path = intent.slots.get("path", "")
+            content = intent.slots.get("content", "")
+            # Extract content from the raw message if not explicitly provided.
+            # Patterns: "with content X", "containing X", "with X", "simple X"
+            if not content:
+                raw = intent.slots.get("raw_message", message)
+                # Try "with (a )?(simple )?" content description
+                _content_match = re.search(
+                    r"\bwith\s+(?:a\s+)?(?:simple\s+)?(?:content\s+)?['\"]?(.+?)['\"]?\s*$",
+                    raw, re.IGNORECASE,
+                )
+                if _content_match:
+                    _extracted = _content_match.group(1).strip().strip("'\"")
+                    # If it looks like a filename, it's not content — generate default
+                    if not re.match(r"^[\w.-]+\.\w+$", _extracted):
+                        content = _extracted
+                # For "create file" with no explicit content, generate a placeholder
+                if not content:
+                    fname = path.rsplit("/", 1)[-1] if "/" in path else path
+                    if fname.endswith(".txt"):
+                        content = "Hello, World!\n"
+                    else:
+                        content = f"# {fname}\n"
             # Always read the file first to get current state for diff
             plan.append({"tool": "file_read", "input": {"path": path}})
-            plan.append({"tool": "file_write", "input": {"path": path, "content": intent.slots.get("content", ""), "raw_message": message}})
+            plan.append({"tool": "file_write", "input": {"path": path, "content": content}})
 
         elif intent.intent_type == "shell_exec":
             command = intent.slots.get("command", "")

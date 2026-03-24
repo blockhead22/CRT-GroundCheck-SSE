@@ -5,15 +5,40 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v1.9 — March 24, 2026
+
+Action execution layer (Sprint 3). Aether can now write files, run shell commands, and execute git operations — all gated by checkpoint confirmation with diff/command preview in the action card. Every action logged as a receipt to SQLite.
+
+### Feature
+- **File write tool** — `write_file()` and `apply_edit()` in `file_tools.py`. Path validation against allowed paths, reads existing content for diff before writing. Returns diff preview via `difflib.unified_diff`
+- **Shell execution tool** (`personal_agent/shell_tools.py`) — `execute_command()` with blocked command safety list (`rm -rf /`, `format`, `shutdown`, etc.), output truncation at 5000 chars. `execute_git()` wrapper for git operations
+- **Action receipts** (`personal_agent/action_receipts.py`) — `ActionReceipt` dataclass: receipt_id, tool_name, action, target, result, reversible, reverse_action, checkpoint_approved. Persisted to SQLite `action_receipts` table. `GET /api/action-receipts` endpoint
+- **Git tool** — commit, push, branch ops via `git_exec`, gated by high-tier checkpoint
+- **Checkpoint gate for Layer 3-4** — `file_write`, `shell_exec`, `git_action` intents all require confirmation with `checkpoint_tier: "high"`. Metadata passes diff_preview, command, and target_path to the action card
+- **Diff viewer in action card** — `ActionCard.tsx` renders syntax-highlighted unified diff (green additions, red removals, blue hunk headers) in a `<pre>` block above Yes/No buttons when `checkpointMeta.diff_preview` is present
+- **Command preview in action card** — shell/git commands shown as `$ command` in a `<code>` block before execution
+- **Tool context carry-forward** — when a conversational follow-up arrives within 120s of a completed tool task, recent tool output is injected into generation context. Fixes hallucinated responses to follow-up questions
+
+### Fix
+- **Deterministic responses for Layer 2 tools** — `file_read`, `dir_list`, `project_scan` now show actual file/directory content in structured format instead of passing through LLM (which hallucinated file contents)
+
+---
+
 ## v1.8 — March 24, 2026
 
-System awareness, stop generation, Sprint 1 complete. Aether can now see system state and the heartbeat reacts to it.
+System awareness, stop generation, file/project tools (Sprints 1-2). Aether can see system state, read files, scan projects, and the heartbeat reacts to system load.
 
 ### Feature
 - System info tool (`personal_agent/system_info.py`) — `psutil` wrapper: CPU, RAM, GPU (pynvml), disk, top 5 processes with game detection, active window (pygetwindow). Exposed as agent tool (Layer 1, no checkpoint gate) and API endpoint (`GET /api/system/status`)
 - `system_info` intent classifier — matches "system status", "cpu usage", "what am I running", etc. Routes to task agent at 0.95 confidence
 - Heartbeat system awareness — system snapshot sampled every heartbeat cycle; gaming detection (GPU > 85% + game process) and idle detection (CPU < 10%) logged in actions_taken for reflection context
 - Stop generation button — AbortController wired into `streamFromCrtApi()`, square stop icon replaces send button during streaming, Escape key shortcut, partial response finalized as assistant message with `gate_reason: 'stopped_by_user'`
+- **File read tool** (`personal_agent/file_tools.py`) — `read_file()`, `list_directory()` with allowed paths enforcement, `git_status()` via subprocess, `scan_project()` combining git + dir listing + project type detection
+- **Project scanner** — detects project type (node/python/rust/go), entry points, git branch/status/commits
+- **Allowed paths config** — `_ALLOWED_PATHS` with `GET/PUT /api/settings/allowed-paths`, persisted to `.file_tools_settings.json`
+- **File/project API endpoints** — `GET /api/files/read`, `/api/files/list`, `/api/project/scan`
+- **3 new agent tools** — `file_read`, `dir_list`, `project_scan` intents with regex classification, Layer 2 no-gate, plan builder, execute step dispatch
+- **Heartbeat behavioral triggers** — gaming (GPU > 90% + game process), high_load (CPU/RAM > 90%), idle (CPU < 10%) logged as `behavioral_trigger` actions
 
 ---
 
