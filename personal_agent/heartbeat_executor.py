@@ -1434,6 +1434,20 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Intent router improvement skipped: {e}")
 
+        # --- 10. Route pattern learning (v2.9) ---
+        try:
+            from personal_agent.route_learning import review_route_patterns as _review_routes
+            _new_patterns = _review_routes(llm_client=getattr(self, "llm_client", None))
+            if _new_patterns:
+                actions_taken.append({
+                    "action": "route_pattern_learning",
+                    "detail": f"Auto-generated {len(_new_patterns)} regex patterns from LLM-routed messages",
+                    "patterns": [{"intent": it, "pattern": pat} for it, pat in _new_patterns],
+                })
+                logger.info(f"[HEARTBEAT] Route learning: generated {len(_new_patterns)} new patterns")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Route pattern learning skipped: {e}")
+
         elapsed = _time.time() - start
         summary = "; ".join(a["detail"] for a in actions_taken) if actions_taken else "Heartbeat OK, no actions needed"
         

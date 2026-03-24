@@ -775,6 +775,65 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   <p className="text-sm text-white/40">Loading advanced settings...</p>
                 )}
               </div>
+
+              {/* Intent Routing (v2.9) */}
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Intent Routing</div>
+                <p className="mb-4 text-xs text-white/40">
+                  Controls how user messages are classified and routed to tools. Regex patterns are always tried first (instant, free). The LLM router handles novel phrasings that regex misses.
+                </p>
+
+                {cloudSettings ? (
+                  <div className="space-y-2">
+                    {[
+                      { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex → local LLM → cloud escalation. Best balance of speed, cost, and accuracy.' },
+                      { value: 'local_only', label: 'Local Only', desc: 'Regex + local LLM. No cloud calls for routing. Free but less accurate on novel requests.' },
+                      { value: 'cloud_only', label: 'Cloud Only', desc: 'Regex + cloud LLM. Most accurate, uses API tokens for classification.' },
+                    ].map((opt) => (
+                      <label
+                        key={opt.value}
+                        className={`flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                          (cloudSettings.routing_mode || 'hybrid') === opt.value
+                            ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/30'
+                            : 'bg-white/5 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="routing_mode"
+                          value={opt.value}
+                          checked={(cloudSettings.routing_mode || 'hybrid') === opt.value}
+                          onChange={() => handleCloudSelect('routing_mode', opt.value)}
+                          className="mt-0.5 accent-[var(--accent)]"
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-white/90">{opt.label}</div>
+                          <div className="text-xs text-white/40 mt-0.5">{opt.desc}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading routing settings...</p>
+                )}
+              </div>
+
+              {/* Response Synthesis (v2.9.1) */}
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Response Synthesis</div>
+                {cloudSettings ? (
+                  <>
+                    <Toggle
+                      label="Enable Response Synthesis"
+                      description="When enabled, the LLM interprets tool results and responds with context and analysis. When disabled, raw tool output is returned for speed."
+                      checked={cloudSettings.synthesis_enabled !== 'false'}
+                      onChange={(v) => handleCloudToggle('synthesis_enabled', v)}
+                    />
+                  </>
+                ) : (
+                  <p className="text-sm text-white/40">Loading synthesis settings...</p>
+                )}
+              </div>
             </>
           )}
 

@@ -58,6 +58,7 @@ Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliati
 | Document | Description |
 |----------|-------------|
 | [Quick Start](QUICK_START.md) | Installation, environment setup, frontend/backend startup, first conversation walkthrough |
+| [Requirements & Dependencies](REQUIREMENTS.md) | Python/Node packages, optional install groups, env vars, system tools, database files |
 | [CRT White Paper](CRT_WHITE_PAPER.md) | Theoretical foundations: trust math, contradiction theory, epistemic governance |
 | [Configuration](CONFIGURATION.md) | Runtime config reference, JSON schema, environment variables, product modes |
 

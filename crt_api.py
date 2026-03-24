@@ -1084,6 +1084,7 @@ def create_app() -> FastAPI:
         "index": {"title": "Documentation Index", "kind": "overview", "path": docs_dir / "INDEX.md"},
         # Getting started.
         "quick_start": {"title": "Quick Start Guide", "kind": "start", "path": docs_dir / "QUICK_START.md"},
+        "requirements": {"title": "Requirements & Dependencies", "kind": "start", "path": docs_dir / "REQUIREMENTS.md"},
         "configuration": {"title": "Configuration & Environment Variables", "kind": "start", "path": docs_dir / "CONFIGURATION.md"},
         "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "start", "path": docs_dir / "CRT_WHITE_PAPER.md"},
         # Core architecture.

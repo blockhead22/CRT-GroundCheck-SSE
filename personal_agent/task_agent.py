@@ -1160,65 +1160,164 @@ def classify_intent_hybrid(
     attached_paths: Optional[List[str]] = None,
 ) -> TaskIntent:
     """
-    Hybrid intent classifier — runs both regex and embedding classifiers.
-    During transition, prefers regex when confident; uses embedding to fill gaps.
+    Three-tier hybrid intent classifier (v2.9):
+      Tier 1: Regex patterns (instant, free)
+      Tier 2: LLM Router — local or cloud, based on routing_mode setting
+      Tier 3: Cloud LLM escalation (hybrid mode only)
+
+    Falls back to embedding classifier when LLM router is unavailable.
     """
     # 1. Always run regex first (existing behavior)
     regex_result = _classify_intent_regex(message, active_task)
 
-    # 2. Try to run embedding classifier
-    router = _get_semantic_router()
-    if router is None:
-        # Model not available — fall back to regex only
+    # Tier 1: Regex very confident on a tool intent → return immediately
+    if regex_result and regex_result.confidence >= 0.90 and regex_result.intent_type != "conversational":
+        regex_result.source = "regex"
+        logger.info(
+            "[INTENT_ROUTER] Tier1 regex hit: '%s' → %s (%.2f)",
+            message[:60], regex_result.intent_type, regex_result.confidence,
+        )
         return regex_result
 
-    # Wrap the entire embedding path in try/except so regex results survive
-    # embedding failures (Sprint 12 fix — previously exceptions here killed
-    # the whole classification and chat.py:4678 set _task_intent = None).
+    # Determine routing mode from user settings
+    _routing_mode = "hybrid"  # default
+    try:
+        from auth import get_user_settings as _gus
+        _settings = _gus(1)  # uid=1 single-user
+        _routing_mode = _settings.get("routing_mode", "hybrid")
+    except Exception:
+        pass
+
+    # Tier 2: LLM Router
+    llm_result = _try_llm_router(message, attached_paths, _routing_mode)
+
+    if llm_result is not None and llm_result.route == "task" and llm_result.confidence >= 0.70:
+        logger.info(
+            "[INTENT_ROUTER] Tier2 LLM hit: '%s' → %s (%.2f) source=%s",
+            message[:60], llm_result.intent_type, llm_result.confidence, llm_result.source,
+        )
+        _log_route_learning(message, llm_result)
+        return llm_result
+
+    # Tier 3: Cloud escalation (hybrid mode only, local LLM was uncertain)
+    if _routing_mode == "hybrid" and (llm_result is None or llm_result.confidence < 0.70):
+        cloud_result = _try_llm_router(message, attached_paths, "cloud_only")
+        if cloud_result is not None and cloud_result.route == "task" and cloud_result.confidence >= 0.60:
+            logger.info(
+                "[INTENT_ROUTER] Tier3 cloud escalation: '%s' → %s (%.2f)",
+                message[:60], cloud_result.intent_type, cloud_result.confidence,
+            )
+            _log_route_learning(message, cloud_result)
+            return cloud_result
+
+    # LLM router returned a conversational response with good confidence
+    if llm_result is not None and llm_result.intent_type == "conversational" and llm_result.confidence >= 0.70:
+        return llm_result
+
+    # Fallback: Embedding classifier (legacy, kept as safety net)
+    embedding_result = _try_embedding_classifier(message, regex_result, attached_paths)
+    if embedding_result is not None:
+        return embedding_result
+
+    # Final fallback — conversational
+    logger.info(
+        "[INTENT_ROUTER] All tiers exhausted for '%s' → conversational",
+        message[:60],
+    )
+    return TaskIntent(
+        route="conversational",
+        intent_type="conversational",
+        confidence=0.5,
+        slots={"raw_message": message},
+        reason="no_confident_match",
+        source="fallback",
+    )
+
+
+# ---------------------------------------------------------------------------
+# LLM Router helpers (v2.9)
+# ---------------------------------------------------------------------------
+
+_llm_local_router = None   # Lazy-loaded
+_llm_cloud_router = None   # Lazy-loaded
+
+
+def _get_llm_router(mode: str):
+    """Get or create an LLM intent router for the given mode."""
+    global _llm_local_router, _llm_cloud_router
+
+    if mode == "cloud_only":
+        if _llm_cloud_router is not None:
+            return _llm_cloud_router
+        try:
+            from personal_agent.llm_intent_router import create_cloud_router
+            # Cloud router needs a HybridLLMClient — try to get one
+            # For now, create_cloud_router(None) will return None if unavailable
+            _llm_cloud_router = create_cloud_router()
+            return _llm_cloud_router
+        except Exception as e:
+            logger.debug("[LLM_ROUTER] Cloud router init failed: %s", e)
+            return None
+    else:
+        # local_only or hybrid → use local router
+        if _llm_local_router is not None:
+            return _llm_local_router
+        try:
+            from personal_agent.llm_intent_router import create_local_router
+            _llm_local_router = create_local_router()
+            return _llm_local_router
+        except Exception as e:
+            logger.debug("[LLM_ROUTER] Local router init failed: %s", e)
+            return None
+
+
+def _try_llm_router(
+    message: str,
+    attached_paths: Optional[List[str]],
+    routing_mode: str,
+) -> Optional[TaskIntent]:
+    """Attempt LLM-based classification. Returns None on failure."""
+    try:
+        if routing_mode == "cloud_only":
+            router = _get_llm_router("cloud_only")
+        else:
+            router = _get_llm_router("local")
+
+        if router is None:
+            return None
+
+        return router.classify(
+            message,
+            attached_paths=attached_paths,
+        )
+    except Exception as e:
+        logger.warning("[LLM_ROUTER] classify() failed: %s", e)
+        return None
+
+
+def _try_embedding_classifier(
+    message: str,
+    regex_result: TaskIntent,
+    attached_paths: Optional[List[str]],
+) -> Optional[TaskIntent]:
+    """Legacy embedding classifier — used as fallback when LLM router is unavailable."""
+    router = _get_semantic_router()
+    if router is None:
+        return None
+
     try:
         embedding_scores = router.classify(message, attached_paths)
         top_embedding = embedding_scores[0] if embedding_scores else None
     except Exception as _emb_err:
         logger.error(
-            "[INTENT_ROUTER] Embedding classify() failed — falling back to regex: %s",
-            _emb_err, exc_info=True,
+            "[INTENT_ROUTER] Embedding classify() failed: %s", _emb_err, exc_info=True,
         )
-        regex_result.source = "regex_fallback"
-        return regex_result
+        return None
 
-    # 3. Decision logic
-    if regex_result and regex_result.confidence >= 0.90 and regex_result.intent_type != "conversational":
-        # Regex is very confident on a tool intent — use it, but log embedding for comparison
-        emb_info = f"{top_embedding.intent_type}({top_embedding.confidence:.2f})" if top_embedding else "none"
-        logger.info(
-            f"[INTENT_ROUTER] message='{message[:60]}' "
-            f"regex={regex_result.intent_type}({regex_result.confidence:.2f}) "
-            f"embedding={emb_info} final={regex_result.intent_type} source=regex"
-        )
-
-        # If embedding strongly disagrees, flag for review
-        if (top_embedding and
-                top_embedding.intent_type != regex_result.intent_type and
-                top_embedding.confidence > 0.8):
-            logger.warning(
-                f"[INTENT_ROUTER] Disagreement: regex={regex_result.intent_type}, "
-                f"embedding={top_embedding.intent_type}"
-            )
-
-        regex_result.source = "regex"
-        return regex_result
-
-    # 4. Regex didn't match a tool or low confidence — check embedding
+    # Embedding confident
     if top_embedding and top_embedding.confidence >= 0.65:
         intent_type = top_embedding.intent_type
         route = "task" if intent_type != "conversational" else "conversational"
-        logger.info(
-            f"[INTENT_ROUTER] message='{message[:60]}' "
-            f"regex={regex_result.intent_type}({regex_result.confidence:.2f}) "
-            f"embedding={intent_type}({top_embedding.confidence:.2f}) "
-            f"final={intent_type} source=embedding"
-        )
-        # Build slots — for desktop_action, the whole message is the task
         _slots = regex_result.slots if regex_result else {}
         if intent_type == "desktop_action" and "task_description" not in _slots:
             _slots["task_description"] = message
@@ -1227,21 +1326,16 @@ def classify_intent_hybrid(
             intent_type=intent_type,
             confidence=top_embedding.confidence,
             slots=_slots,
-            reason=f"embedding_match",
+            reason="embedding_match",
             source="embedding",
         )
 
-    # 5. Neither confident — check for multi-intent
+    # Multi-intent detection
     try:
         multi = router.detect_multi_intent(embedding_scores)
-    except Exception as _multi_err:
-        logger.error("[INTENT_ROUTER] detect_multi_intent failed: %s", _multi_err)
+    except Exception:
         multi = []
     if len(multi) > 1:
-        logger.info(
-            f"[INTENT_ROUTER] Multi-intent detected: "
-            + ", ".join(f"{m.intent_type}({m.confidence:.2f})" for m in multi)
-        )
         return TaskIntent(
             route="task",
             intent_type="multi_intent",
@@ -1251,11 +1345,8 @@ def classify_intent_hybrid(
             source="embedding_multi",
         )
 
-    # 6. Ambiguous — clarify
+    # Ambiguous
     if top_embedding and top_embedding.is_ambiguous:
-        logger.info(
-            f"[INTENT_ROUTER] Ambiguous: top={top_embedding.intent_type}({top_embedding.confidence:.2f})"
-        )
         return TaskIntent(
             route="clarify",
             intent_type="ambiguous",
@@ -1265,22 +1356,22 @@ def classify_intent_hybrid(
             source="embedding_ambiguous",
         )
 
-    # 7. Nothing matched well — use regex result or fallback to conversational
-    logger.info(
-        f"[INTENT_ROUTER] message='{message[:60]}' "
-        f"regex={regex_result.intent_type}({regex_result.confidence:.2f}) "
-        f"embedding={top_embedding.intent_type if top_embedding else 'none'}"
-        f"({top_embedding.confidence:.2f if top_embedding else 0}) "
-        f"final=conversational source=fallback"
-    )
-    return TaskIntent(
-        route="conversational",
-        intent_type="conversational",
-        confidence=0.5,
-        slots={},
-        reason="no_confident_match",
-        source="fallback",
-    )
+    return None
+
+
+def _log_route_learning(message: str, result: "TaskIntent") -> None:
+    """Log a successful LLM-routed classification to the learning DB."""
+    try:
+        from personal_agent.route_learning import get_route_learning_db
+        db = get_route_learning_db()
+        db.log_classification(
+            message=message,
+            intent_type=result.intent_type,
+            source=result.source,
+            confidence=result.confidence,
+        )
+    except Exception as e:
+        logger.debug("[ROUTE_LEARNING] log failed: %s", e)
 
 
 # Override the module-level classify_intent to use hybrid
@@ -1958,7 +2049,7 @@ class CRTTaskAgent:
             },
         }
 
-        # ── 6. Generate answer (streaming with thinking tokens) ───────────
+        # ── 6. Generate answer (synthesis or deterministic) ─────────────
         yield {"type": "status", "content": "drafting response"}
         if llm_loop_final_content:
             # LLM tool loop already synthesized an answer — filter reasoning
@@ -1969,7 +2060,6 @@ class CRTTaskAgent:
             _install_step = next((s for s in steps if s.tool_name == "install_skill" and s.status == "ok"), None)
             if _install_step:
                 _meta = _install_step.output_preview or ""
-                # Extract service name from the step output
                 _svc_name = ""
                 if "name=" in _meta:
                     _svc_name = _meta.split("name=")[1].split(",")[0].strip()
@@ -1983,16 +2073,12 @@ class CRTTaskAgent:
                 answer = "Skill installation failed — check the steps above for details."
             yield {"type": "token", "content": answer}
         elif intent.slots.get("_no_endpoint"):
-            # Service recognized from credentials but no API endpoint stored.
-            # Deterministic answer — never let the LLM hallucinate fake service data.
             service = intent.slots.get("service", "the service")
             answer = (
                 f"I have credentials for {service}, but I don't have the API endpoint stored yet. "
                 f"Give me the {service} URL or skill.md link and I can fetch it and interact with the service."
             )
         elif replan_attempted_but_failed:
-            # Never hand fetched content to the LLM when we couldn't build a plan —
-            # it will hallucinate a fake execution (narrate moltbook registration etc.)
             url = intent.slots.get("url", "the URL")
             answer = (
                 f"I fetched the content from {url} successfully, "
@@ -2000,155 +2086,62 @@ class CRTTaskAgent:
                 "No actions were taken."
             )
             yield {"type": "token", "content": answer}
-        elif intent.intent_type in ("create_commitment", "list_commitments", "cancel_commitment"):
-            # Deterministic answers for commitment tools — use tool output directly
-            _c_step = next(
-                (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
-                None,
-            )
-            if _c_step:
-                answer = str(_c_step.output_preview or "Done.")
-            else:
-                _err_step = next((s for s in steps if s.status == "error"), None)
-                answer = f"Failed: {_err_step.error}" if _err_step else "Action failed."
-            yield {"type": "token", "content": answer}
-        elif intent.intent_type == "desktop_action":
-            # Deterministic answer for desktop actions
-            _da_step = next(
-                (s for s in steps if s.tool_name == "desktop_action"),
-                None,
-            )
-            if _da_step and isinstance(_da_step.output, dict):
-                _da = _da_step.output
-                if _da.get("success"):
-                    answer = f"Desktop task completed in {_da.get('steps_taken', 0)} steps ({_da.get('total_duration_ms', 0):.0f}ms). {_da.get('task_summary', '')}"
-                else:
-                    answer = f"Desktop task failed after {_da.get('steps_taken', 0)} steps: {_da.get('error', 'unknown error')}"
-            else:
-                _err = next((s for s in steps if s.status == "error"), None)
-                answer = f"Desktop action failed: {_err.error}" if _err else "Desktop action failed."
-            yield {"type": "token", "content": answer}
-        elif intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
-            # Deterministic answers for read-only tools — never let the LLM
-            # summarize file/system content (it hallucinates).
-            # Use the actual tool output directly.
-            _ro_step = next(
-                (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
-                None,
-            )
-            if _ro_step:
-                # Structured deterministic answers — show actual tool output,
-                # never let the LLM summarize (it hallucinates file contents).
-                if intent.intent_type == "file_read" and isinstance(_ro_step.output, dict):
-                    _fr = _ro_step.output
-                    if "error" in _fr:
-                        answer = f"Error reading `{_fr.get('path', '?')}`: {_fr['error']}"
-                    else:
-                        _path = _fr.get("path", "?")
-                        _lines = _fr.get("lines", 0)
-                        _size = _fr.get("size_bytes", 0)
-                        _content = _fr.get("content", "")
-                        # Show first ~50 lines in a code block
-                        _content_lines = _content.splitlines()
-                        _preview = "\n".join(_content_lines[:50])
-                        _ext = _path.rsplit(".", 1)[-1] if "." in _path else ""
-                        answer = f"**{_path}** — {_lines} lines, {_size:,} bytes\n\n```{_ext}\n{_preview}\n```"
-                        if len(_content_lines) > 50:
-                            answer += f"\n\n*... ({len(_content_lines) - 50} more lines not shown)*"
-                elif intent.intent_type == "dir_list" and isinstance(_ro_step.output, dict):
-                    _dr = _ro_step.output
-                    if "error" in _dr:
-                        answer = f"Error listing `{_dr.get('path', '?')}`: {_dr['error']}"
-                    else:
-                        from personal_agent.file_tools import format_dir_result
-                        answer = f"**{_dr['path']}** — {_dr.get('total', 0)} entries\n\n```\n{format_dir_result(_dr)}\n```"
-                elif intent.intent_type == "project_scan" and isinstance(_ro_step.output, dict):
-                    _pr = _ro_step.output
-                    if "error" in _pr:
-                        answer = f"Project scan error: {_pr['error']}"
-                    else:
-                        _parts = [f"**Project: {_pr.get('path', '?')}**", f"- Type: {_pr.get('type', 'unknown')}"]
-                        if _pr.get("entry_point"):
-                            _parts.append(f"- Entry point: `{_pr['entry_point']}`")
-                        _git = _pr.get("git", {})
-                        if not _git.get("error"):
-                            _status = "clean" if _git.get("clean") else "dirty"
-                            _parts.append(f"- Branch: `{_git.get('branch', '?')}` ({_status})")
-                            if _git.get("modified"):
-                                _parts.append(f"- Modified: {', '.join(f'`{f}`' for f in _git['modified'])}")
-                            if _git.get("staged"):
-                                _parts.append(f"- Staged: {', '.join(f'`{f}`' for f in _git['staged'])}")
-                            if _git.get("untracked"):
-                                _parts.append(f"- Untracked: {', '.join(f'`{f}`' for f in _git['untracked'][:10])}")
-                            if _git.get("recent_commits"):
-                                _parts.append("- Recent commits:")
-                                for _c in _git["recent_commits"][:5]:
-                                    _parts.append(f"  - `{_c}`")
-                        answer = "\n".join(_parts)
-                elif intent.intent_type == "system_info":
-                    # Pass system data through LLM for natural response
-                    from personal_agent.system_info import format_snapshot_text
-                    _sys_data = format_snapshot_text(_ro_step.output) if isinstance(_ro_step.output, dict) else str(_ro_step.output_preview or "")
-                    _ro_step.output_preview = _sys_data  # ensure context builder can see it
-                    answer = yield from self._stream_generate_answer(
-                        message, _sys_data, intent, steps, stored_credentials, active_task
-                    )
-                else:
-                    answer = str(_ro_step.output_preview or "Tool completed.")
-            else:
-                # Tool failed — report the error deterministically
-                _err_step = next((s for s in steps if s.status == "error"), None)
-                answer = f"Tool failed: {_err_step.error}" if _err_step else "Tool execution failed — see steps above."
-            yield {"type": "token", "content": answer}
-        elif intent.intent_type in ("file_write", "shell_exec", "git_action"):
-            # Deterministic answers for write/exec tools — show actual results
-            _tool_map = {"file_write": ("file_write", "generate_content"), "shell_exec": ("shell_exec",), "git_action": ("git_exec",)}
-            _w_tools = _tool_map.get(intent.intent_type, (intent.intent_type,))
-            _w_step = next(
-                (s for s in steps if s.tool_name in _w_tools and s.status == "ok"),
-                None,
-            )
-            if _w_step and isinstance(_w_step.output, dict):
-                if intent.intent_type == "file_write":
-                    _wr = _w_step.output
-                    _path = _wr.get("path", "?")
-                    _bytes = _wr.get("written_bytes", 0)
-                    _created = _wr.get("created", False)
-                    _diff = _wr.get("diff_preview", "")
-                    answer = f"{'Created' if _created else 'Wrote'} {_bytes} bytes to `{_path}`."
-                    if _diff:
-                        answer += f"\n\n```diff\n{_diff}\n```"
-                elif intent.intent_type == "shell_exec":
-                    _sr = _w_step.output
-                    _cmd = _sr.get("command", "?")
-                    _exit = _sr.get("exit_code", -1)
-                    _stdout = _sr.get("stdout", "")
-                    # Truncate stdout for response (max 50 lines)
-                    _out_lines = _stdout.splitlines()[:50]
-                    _out_preview = "\n".join(_out_lines)
-                    answer = f"Ran `{_cmd}` — exit code {_exit}."
-                    if _out_preview:
-                        answer += f"\n\n```\n{_out_preview}\n```"
-                    if len(_stdout.splitlines()) > 50:
-                        answer += f"\n\n*... ({len(_stdout.splitlines()) - 50} more lines)*"
-                elif intent.intent_type == "git_action":
-                    _gr = _w_step.output
-                    _cmd = _gr.get("command", "?")
-                    _exit = _gr.get("exit_code", -1)
-                    _output = _gr.get("stdout", "") or _gr.get("stderr", "")
-                    answer = f"Executed `{_cmd}` — exit code {_exit}."
-                    if _output.strip():
-                        answer += f"\n\n```\n{_output[:500]}\n```"
-                else:
-                    answer = str(_w_step.output_preview or "Action completed.")
-            else:
-                _err_step = next((s for s in steps if s.status == "error"), None)
-                answer = f"Action failed: {_err_step.error}" if _err_step else "Action failed — see steps above."
-            yield {"type": "token", "content": answer}
         else:
-            answer = yield from self._stream_generate_answer(
-                message, fetched_content, intent, steps, stored_credentials, active_task
+            # ── Synthesis-or-deterministic response path (v2.9.1) ──────
+            _primary_tool = intent.intent_type
+            _ok_step = next(
+                (s for s in steps if s.status == "ok"),
+                None,
             )
+
+            # Check if synthesis is enabled and appropriate
+            _synth_answer = None
+            _synthesis_enabled = True
+            try:
+                from auth import get_user_settings as _gus_synth
+                _synth_settings = _gus_synth(1)
+                _synthesis_enabled = _synth_settings.get("synthesis_enabled", "true") != "false"
+            except Exception:
+                pass
+
+            if _synthesis_enabled and _ok_step and self._llm is not None:
+                try:
+                    from personal_agent.response_synthesis import ResponseSynthesizer
+                    _synthesizer = ResponseSynthesizer(self._llm)
+                    _tool_result = _ok_step.output if _ok_step else None
+                    if _synthesizer.should_synthesize(_ok_step.tool_name, message, _tool_result):
+                        yield {"type": "status", "content": "thinking about results"}
+                        _step_dicts = [
+                            {
+                                "tool_name": s.tool_name,
+                                "status": s.status,
+                                "output": s.output,
+                                "output_preview": s.output_preview,
+                                "error": s.error,
+                            }
+                            for s in steps
+                        ]
+                        _synth_answer = _synthesizer.synthesize(
+                            user_message=message,
+                            tool_name=_ok_step.tool_name,
+                            tool_results=_step_dicts,
+                        )
+                except Exception as _synth_err:
+                    logger.debug("[SYNTHESIS] Failed, falling back to deterministic: %s", _synth_err)
+
+            if _synth_answer:
+                answer = _synth_answer
+                yield {"type": "token", "content": answer}
+            else:
+                # Deterministic fallback — preserves all existing behavior
+                answer = self._format_deterministic_response(intent, steps, message)
+                if answer is not None:
+                    yield {"type": "token", "content": answer}
+                else:
+                    # Catch-all: LLM-generated answer via streaming
+                    answer = yield from self._stream_generate_answer(
+                        message, fetched_content, intent, steps, stored_credentials, active_task
+                    )
 
         # ── 7. Write facts through CRT memory ────────────────────────────
         facts_written = self._write_facts(
@@ -5196,6 +5189,143 @@ RULES:
         "i'll summarize",
         "i will summarize",
     )
+
+    def _format_deterministic_response(
+        self,
+        intent: TaskIntent,
+        steps: List[AgentStep],
+        message: str,
+    ) -> Optional[str]:
+        """Format deterministic responses for tools that don't use synthesis.
+
+        Returns None if no deterministic format is available (caller should
+        fall through to LLM generation).
+        """
+        if intent.intent_type in ("create_commitment", "list_commitments", "cancel_commitment"):
+            _c_step = next(
+                (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
+                None,
+            )
+            if _c_step:
+                return str(_c_step.output_preview or "Done.")
+            _err_step = next((s for s in steps if s.status == "error"), None)
+            return f"Failed: {_err_step.error}" if _err_step else "Action failed."
+
+        if intent.intent_type == "desktop_action":
+            _da_step = next(
+                (s for s in steps if s.tool_name == "desktop_action"),
+                None,
+            )
+            if _da_step and isinstance(_da_step.output, dict):
+                _da = _da_step.output
+                if _da.get("success"):
+                    return f"Desktop task completed in {_da.get('steps_taken', 0)} steps ({_da.get('total_duration_ms', 0):.0f}ms). {_da.get('task_summary', '')}"
+                return f"Desktop task failed after {_da.get('steps_taken', 0)} steps: {_da.get('error', 'unknown error')}"
+            _err = next((s for s in steps if s.status == "error"), None)
+            return f"Desktop action failed: {_err.error}" if _err else "Desktop action failed."
+
+        if intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
+            _ro_step = next(
+                (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
+                None,
+            )
+            if _ro_step:
+                if intent.intent_type == "file_read" and isinstance(_ro_step.output, dict):
+                    _fr = _ro_step.output
+                    if "error" in _fr:
+                        return f"Error reading `{_fr.get('path', '?')}`: {_fr['error']}"
+                    _path = _fr.get("path", "?")
+                    _lines = _fr.get("lines", 0)
+                    _size = _fr.get("size_bytes", 0)
+                    _content = _fr.get("content", "")
+                    _content_lines = _content.splitlines()
+                    _preview = "\n".join(_content_lines[:50])
+                    _ext = _path.rsplit(".", 1)[-1] if "." in _path else ""
+                    answer = f"**{_path}** — {_lines} lines, {_size:,} bytes\n\n```{_ext}\n{_preview}\n```"
+                    if len(_content_lines) > 50:
+                        answer += f"\n\n*... ({len(_content_lines) - 50} more lines not shown)*"
+                    return answer
+                elif intent.intent_type == "dir_list" and isinstance(_ro_step.output, dict):
+                    _dr = _ro_step.output
+                    if "error" in _dr:
+                        return f"Error listing `{_dr.get('path', '?')}`: {_dr['error']}"
+                    from personal_agent.file_tools import format_dir_result
+                    return f"**{_dr['path']}** — {_dr.get('total', 0)} entries\n\n```\n{format_dir_result(_dr)}\n```"
+                elif intent.intent_type == "project_scan" and isinstance(_ro_step.output, dict):
+                    _pr = _ro_step.output
+                    if "error" in _pr:
+                        return f"Project scan error: {_pr['error']}"
+                    _parts = [f"**Project: {_pr.get('path', '?')}**", f"- Type: {_pr.get('type', 'unknown')}"]
+                    if _pr.get("entry_point"):
+                        _parts.append(f"- Entry point: `{_pr['entry_point']}`")
+                    _git = _pr.get("git", {})
+                    if not _git.get("error"):
+                        _status = "clean" if _git.get("clean") else "dirty"
+                        _parts.append(f"- Branch: `{_git.get('branch', '?')}` ({_status})")
+                        if _git.get("modified"):
+                            _parts.append(f"- Modified: {', '.join(f'`{f}`' for f in _git['modified'])}")
+                        if _git.get("staged"):
+                            _parts.append(f"- Staged: {', '.join(f'`{f}`' for f in _git['staged'])}")
+                        if _git.get("untracked"):
+                            _parts.append(f"- Untracked: {', '.join(f'`{f}`' for f in _git['untracked'][:10])}")
+                        if _git.get("recent_commits"):
+                            _parts.append("- Recent commits:")
+                            for _c in _git["recent_commits"][:5]:
+                                _parts.append(f"  - `{_c}`")
+                    return "\n".join(_parts)
+                elif intent.intent_type == "system_info":
+                    # system_info uses LLM generation — return None to fall through
+                    return None
+                return str(_ro_step.output_preview or "Tool completed.")
+            _err_step = next((s for s in steps if s.status == "error"), None)
+            return f"Tool failed: {_err_step.error}" if _err_step else "Tool execution failed — see steps above."
+
+        if intent.intent_type in ("file_write", "shell_exec", "git_action"):
+            _tool_map = {"file_write": ("file_write", "generate_content"), "shell_exec": ("shell_exec",), "git_action": ("git_exec",)}
+            _w_tools = _tool_map.get(intent.intent_type, (intent.intent_type,))
+            _w_step = next(
+                (s for s in steps if s.tool_name in _w_tools and s.status == "ok"),
+                None,
+            )
+            if _w_step and isinstance(_w_step.output, dict):
+                if intent.intent_type == "file_write":
+                    _wr = _w_step.output
+                    _path = _wr.get("path", "?")
+                    _bytes = _wr.get("written_bytes", 0)
+                    _created = _wr.get("created", False)
+                    _diff = _wr.get("diff_preview", "")
+                    answer = f"{'Created' if _created else 'Wrote'} {_bytes} bytes to `{_path}`."
+                    if _diff:
+                        answer += f"\n\n```diff\n{_diff}\n```"
+                    return answer
+                elif intent.intent_type == "shell_exec":
+                    _sr = _w_step.output
+                    _cmd = _sr.get("command", "?")
+                    _exit = _sr.get("exit_code", -1)
+                    _stdout = _sr.get("stdout", "")
+                    _out_lines = _stdout.splitlines()[:50]
+                    _out_preview = "\n".join(_out_lines)
+                    answer = f"Ran `{_cmd}` — exit code {_exit}."
+                    if _out_preview:
+                        answer += f"\n\n```\n{_out_preview}\n```"
+                    if len(_stdout.splitlines()) > 50:
+                        answer += f"\n\n*... ({len(_stdout.splitlines()) - 50} more lines)*"
+                    return answer
+                elif intent.intent_type == "git_action":
+                    _gr = _w_step.output
+                    _cmd = _gr.get("command", "?")
+                    _exit = _gr.get("exit_code", -1)
+                    _output = _gr.get("stdout", "") or _gr.get("stderr", "")
+                    answer = f"Executed `{_cmd}` — exit code {_exit}."
+                    if _output.strip():
+                        answer += f"\n\n```\n{_output[:500]}\n```"
+                    return answer
+                return str(_w_step.output_preview or "Action completed.")
+            _err_step = next((s for s in steps if s.status == "error"), None)
+            return f"Action failed: {_err_step.error}" if _err_step else "Action failed — see steps above."
+
+        # No deterministic format available — caller should use LLM generation
+        return None
 
     def _filter_reasoning_from_content(self, text: str) -> str:
         """Strip internal reasoning paragraphs from tool loop output.

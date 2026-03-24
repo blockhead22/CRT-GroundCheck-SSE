@@ -360,6 +360,44 @@ export function SettingsModal({ isOpen, onClose, authUser, threadId, onDisplayNa
               )}
             </div>
 
+            {/* Intent Routing Section (v2.9) */}
+            <div className="border-b border-white/10 px-6 py-5">
+              <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Intent Routing</div>
+              <p className="mb-4 text-xs text-white/40">
+                Controls how user messages are classified and routed to tools.
+                Regex patterns are always tried first (instant, free).
+              </p>
+              <div className="space-y-2">
+                {[
+                  { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex → local LLM → cloud escalation. Best balance of speed, cost, and accuracy.' },
+                  { value: 'local_only', label: 'Local Only', desc: 'Regex + local LLM. No cloud calls for routing. Free but less accurate on novel requests.' },
+                  { value: 'cloud_only', label: 'Cloud Only', desc: 'Regex + cloud LLM. Most accurate, uses API tokens for classification.' },
+                ].map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                      (cloudSettings?.routing_mode || 'hybrid') === opt.value
+                        ? 'bg-blue-500/15 ring-1 ring-blue-500/30'
+                        : 'bg-white/5 hover:bg-white/8'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="routing_mode"
+                      value={opt.value}
+                      checked={(cloudSettings?.routing_mode || 'hybrid') === opt.value}
+                      onChange={() => handleCloudSelect('routing_mode', opt.value)}
+                      className="mt-0.5 accent-blue-500"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-white/90">{opt.label}</div>
+                      <div className="text-xs text-white/40 mt-0.5">{opt.desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             {/* Known Facts Section */}
             <div className="border-b border-white/10 px-6 py-5">
               <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Known Facts</div>

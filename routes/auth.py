@@ -266,6 +266,11 @@ def auth_update_settings(
         "desktop_idle_task",
         "desktop_require_confirmation",
         "desktop_vision_provider",
+        # Intent routing (Sprint 13 / v2.9)
+        "routing_mode",          # local_only | cloud_only | hybrid
+        "routing_llm_model",     # model override for routing LLM
+        # Response synthesis (v2.9.1)
+        "synthesis_enabled",     # true | false — LLM interprets tool results
     }
 
     updated = {}
