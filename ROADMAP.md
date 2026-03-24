@@ -1,12 +1,22 @@
 # CRT/Aether Roadmap
-Last updated: March 24, 2026 (v2.9.3)
+Last updated: March 24, 2026 (v3.0)
 
 ---
 
 ## DONE
 
-### v2.9.3 (March 24)
-- [x] Task Plan System — multi-step work plans that persist across messages and threads
+### v3.0 (March 24) — Browser Agent
+- [x] BrowserController — Playwright wrapper: navigation, DOM reading, actions, screenshots, persistent sessions
+- [x] BrowserAgent — ReAct loop (observe DOM → LLM decides → execute → verify), safety gates, rate limiting
+- [x] Two new tools: `web_browse` (layer 3, medium checkpoint) and `web_search` (layer 2, no checkpoint)
+- [x] DOM-first intelligence — structured DOM reading for 80% of tasks, vision fallback for complex layouts
+- [x] Safety gates — blocked domains (banking), blocked form fields (passwords/CC/SSN), confirmation for submissions
+- [x] 10 integration points in task_agent.py — full pipeline wiring
+- [x] Browser settings — 8 settings in Browser tab (enabled, headed/headless, engine, sessions, confirmations, max steps, domain allow/blocklist)
+- [x] SSE events — browser_start, browser_navigate, browser_action, browser_screenshot, browser_extract, browser_done, browser_error, browser_confirm
+- [x] Dependency: `playwright>=1.40.0`
+
+### v2.9.3 (March 24) — Task Plan System
 - [x] Plans database layer — 3 SQLite tables (`plans`, `plan_steps`, `thread_plan_links`) + 15 CRUD methods in ThreadSessionDB
 - [x] Plans REST API — `routes/plans.py`: 12 endpoints for plan/step CRUD, thread linking, reordering
 - [x] PlanEngine — `personal_agent/plan_engine.py`: LLM-powered plan generation, step advancement, user-input handling, progress summaries
@@ -17,19 +27,23 @@ Last updated: March 24, 2026 (v2.9.3)
 - [x] 3 new SSE event types: `plan_proposal`, `plan_update`, `plan_complete`
 - [x] 7 Pydantic models, 12 TypeScript API client functions, Plan/PlanStep types
 
-### v2.9.2 (March 24)
+### v2.9.2 (March 24) — Settings Expansion
 - [x] Full settings expansion — Heartbeat tab, Behavior tab, 20+ new setting keys wired end-to-end
 - [x] Fix: preferred_nickname and agent_name silently dropped by API whitelist
 - [x] Fix: 4 API-whitelisted keys had no UI controls
 
-### v2.9.1 (March 24)
-- [x] Response synthesis layer — LLM interprets tool results before responding
-- [x] ResponseSynthesizer class with synthesis_mode per tool, hallucination guards, deterministic fallback
+### v2.9.1 (March 24) — Response Synthesis
+- [x] ResponseSynthesizer — LLM interprets tool results before responding instead of dumping raw output
+- [x] synthesis_mode per tool (always/smart/on_request/never), hallucination guards, deterministic fallback
+- [x] Enhanced conversational prompt with dot-connecting and interpretation guidance
+- [x] Synthesis toggle in Advanced settings
 
-### v2.9 (March 24)
-- [x] Hybrid LLM intent router — 3-tier (regex → local LLM → cloud LLM) with self-improving route learning
-- [x] Tool registry with unified schema for all 17 tools
+### v2.9 (March 24) — Hybrid LLM Intent Router
+- [x] Three-tier classifier: regex (instant) → local LLM via Ollama (fast) → cloud LLM escalation (smart)
+- [x] Tool registry — unified ToolDefinition with OpenAI-compatible function schemas for 17 tools
+- [x] Route learning — SQLite log of LLM-routed classifications, auto-generates regex from clusters of 5+
 - [x] Routing mode selector in Settings (local_only / cloud_only / hybrid)
+- [x] Heartbeat integration — periodic pattern mining via review_route_patterns()
 
 ### v2.7 (March 24)
 - [x] Intuition Check — `personal_agent/intuition_check.py`: lightweight gpt-4o-mini side-channel for situational awareness
@@ -305,9 +319,36 @@ Last updated: March 24, 2026 (v2.9.3)
 
 ## IN PROGRESS
 
-### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
+### Stabilization (v3.0.x)
+Battle-test the new systems (routing, synthesis, plans, browser) with real usage. Fix edge cases, tune synthesis prompts, verify the learning loop generates patterns.
+- [ ] Routing edge cases — verify file_read, project_scan, web_browse all classify correctly from natural language
+- [ ] Synthesis prompt tuning — adjust depth/verbosity based on real usage feedback
+- [ ] Plan system validation — test plan creation, advancement, thread linking end-to-end
+- [ ] Browser agent validation — test navigation, form filling, search, safety gates on real sites
+- [ ] Local vision processing — replace Claude API dependency in desktop agent with local vision model (moondream2/Qwen2-VL via Ollama)
+
+### External Integrations (ad hoc, no dedicated sprint)
 Skill.md files + credentials through existing pipeline. Add as needed:
 - [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
+
+---
+
+## NEXT UP
+
+### v3.1 — Deeper Project/Code Intelligence
+Not an IDE extension — deeper file awareness using existing tools and embeddings.
+- [ ] Full repo indexing with local embeddings (all-MiniLM-L6-v2 already available)
+- [ ] Multi-file awareness — "find where this function is used"
+- [ ] Semantic code search — "show me the authentication logic"
+- [ ] Basic refactoring support — rename across files, extract function
+- [ ] Test generation — read a function, write a test for it
+
+### v3.2 — Persistence Hardening
+Make the agent survive restarts and pick up where it left off.
+- [ ] Plans survive server restart — reload active plans on boot
+- [ ] Active tasks resume — heartbeat picks up interrupted work
+- [ ] Cross-session context — "what was I working on yesterday?" with full reconstruction
+- [ ] Multi-day planning — goal decomposition across days via heartbeat planning pass
 
 ---
 
@@ -326,6 +367,12 @@ Skill.md files + credentials through existing pipeline. Add as needed:
 ### Frontend Polish
 - [ ] Copilot page visual hierarchy + API dedup
 - [ ] Code page (dedicated project/file interface with syntax highlighting)
+
+### Future (v4.0+)
+- [ ] Voice input/output (Whisper + local TTS)
+- [ ] Multi-channel expansion (beyond Telegram)
+- [ ] Skill marketplace — one-click install from GitHub
+- [ ] Multi-device sync
 
 ---
 

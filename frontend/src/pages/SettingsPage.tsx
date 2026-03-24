@@ -165,7 +165,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
-    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('intuition_check_') || key.startsWith('heartbeat_') || key.startsWith('background_') || key.startsWith('greeting_') || key.startsWith('conflict_') || key.startsWith('provenance_') || key === 'bypass_crt' || key === 'enable_tooling' || key === 'synthesis_enabled'
+    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('browser_') || key.startsWith('intuition_check_') || key.startsWith('heartbeat_') || key.startsWith('background_') || key.startsWith('greeting_') || key.startsWith('conflict_') || key.startsWith('provenance_') || key === 'bypass_crt' || key === 'enable_tooling' || key === 'synthesis_enabled'
     const newVal = useTrueFalse ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
     const oldVal = useTrueFalse ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })

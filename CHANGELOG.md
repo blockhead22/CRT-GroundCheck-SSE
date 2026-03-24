@@ -5,6 +5,32 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v3.0 — March 24, 2026
+
+Browser Agent — Playwright-based web automation with DOM-first intelligence. The agent can navigate websites, read page content, click links, fill forms, extract information, and perform web searches autonomously. Uses the same ReAct pattern as the desktop agent (observe → think → act → verify) but reads the DOM directly instead of relying on vision for most tasks. Full safety gates mirror the desktop system.
+
+### Feature
+- **BrowserController** (`personal_agent/browser_control.py`, ~400 lines) — Playwright wrapper: navigation, DOM reading (page text, links, form fields, interactive elements), actions (click, fill, select, scroll), screenshots, persistent browser context (cookies/sessions saved to `data/browser_profile/`)
+- **BrowserAgent** (`personal_agent/browser_agent.py`, ~500 lines) — ReAct loop: observe DOM state → LLM decides next action → execute via BrowserController → verify result. Safety gates: blocked domains (banking), blocked form fields (passwords/CC/SSN), confirmation for submissions/purchases, rate limiting (30 actions/min, 10 navigations/min, 5 submissions/min)
+- **Two new tools**: `web_browse` (open-ended browser tasks, layer 3, medium checkpoint) and `web_search` (quick search queries, layer 2, no checkpoint)
+- **DOM-first intelligence** — most tasks use structured DOM reading (text, selectors, form fields) instead of vision. Vision provider available as fallback for complex visual layouts
+- **Sync bridge** — async Playwright bridged to sync TaskAgent via `asyncio.to_thread()`, same pattern as desktop agent
+- **10 integration points in task_agent.py** — regex patterns, gate logic, classification, slot filling, acknowledgments, intent-tool mapping, plan building, execution dispatch, deterministic summaries, memory persistence
+- **Browser settings** — 8 settings in new Browser tab: enabled toggle, headed/headless mode, engine (chromium/firefox/webkit), session persistence, confirmation mode (all/submissions/never), max steps, domain allowlist, domain blocklist
+- **SSE events** — browser_start, browser_navigate, browser_action, browser_screenshot, browser_extract, browser_done, browser_error, browser_confirm
+
+### Infra
+- **New file**: `personal_agent/browser_control.py` (~400 lines)
+- **New file**: `personal_agent/browser_agent.py` (~500 lines)
+- **Modified file**: `personal_agent/tool_registry.py` — 2 new tools (web_browse, web_search)
+- **Modified file**: `personal_agent/task_agent.py` — 10 integration points (~200 lines added)
+- **Modified file**: `routes/auth.py` — 8 browser settings in whitelist
+- **Modified file**: `frontend/src/pages/SettingsPage.tsx` — Browser tab with all 8 settings
+- **Modified file**: `.gitignore` — `data/browser_profile/`
+- **New dependency**: `playwright>=1.40.0` + `playwright install chromium`
+
+---
+
 ## v2.9.3 — March 24, 2026
 
 Task Plan System — multi-step work plans that persist across messages and threads. Plans break complex requests into concrete steps, track progress, and advance automatically as tools execute. Three creation paths: user describes work (Aether structures it), complex request triggers a plan proposal, or manual creation via the Plans UI. Plans are linked to chat threads with a compact progress widget.
@@ -58,6 +84,54 @@ Full settings expansion — user-facing controls for every major subsystem. Reor
 - **Modified file**: `auth.py` — 20 new keys in `CLOUD_SETTING_DEFAULTS`
 - **Modified file**: `routes/auth.py` — 20 new keys in `allowed_keys` whitelist
 - **Rewritten file**: `frontend/src/pages/SettingsPage.tsx` — 8 tabs (Profile, Cloud, Desktop, Heartbeat, Behavior, Advanced, Facts, Account)
+
+---
+
+## v2.9.1 — March 24, 2026
+
+Response Synthesis Layer — the LLM now interprets tool results before responding instead of dumping raw output. When you say "read this file and tell me about it," the system reads the file AND thinks about what it found. Synthesis mode per tool (always/smart/on_request/never) so `git status` stays raw but `project_scan` gets intelligent interpretation. Hallucination guards constrain the LLM to only reference actual tool results.
+
+### Feature
+- **ResponseSynthesizer** (`personal_agent/response_synthesis.py`) — `should_synthesize()` decides per-request based on tool's synthesis_mode + user intent signals (keywords: "tell me about", "summarize", "explain", "what does this mean"). `synthesize()` runs LLM pass with tool results + user message, producing a natural response
+- **synthesis_mode field** on ToolDefinition — `"always"` (project_scan, memory_recall), `"smart"` (file_read, system_info, fetch_url), `"on_request"` (dir_list), `"never"` (shell_exec, git_exec, file_write, desktop_action, commitments, generate_content)
+- **TaskAgent rewired** — deterministic if/elif response chain replaced with synthesis-or-fallback path. Existing formatting moved to `_format_deterministic_response()` as fallback. If synthesis fails, falls through silently
+- **Synthesis toggle** — `synthesis_enabled` setting (boolean, default true) in Advanced tab. Allows user to disable synthesis and get raw tool output
+- **Enhanced conversational prompt** — dot-connecting guidance and interpretation nudge added to reasoning system prompt
+
+### Fix
+- **Windows emoji crash** — `_safe_print()` helper in chat.py catches `UnicodeEncodeError` on Windows console output
+
+### Infra
+- **New file**: `personal_agent/response_synthesis.py`
+- **Modified file**: `personal_agent/tool_registry.py` — `synthesis_mode` field on ToolDefinition
+- **Modified file**: `personal_agent/task_agent.py` — synthesis pass replaces deterministic chain
+- **Modified file**: `routes/auth.py` — `synthesis_enabled` in settings whitelist
+- **Modified file**: `frontend/src/pages/SettingsPage.tsx` — synthesis toggle in Advanced tab
+- **Modified file**: `personal_agent/reasoning.py` — enhanced conversational prompt
+- **Modified file**: `routes/chat.py` — `_safe_print()` for Windows
+
+---
+
+## v2.9 — March 24, 2026
+
+Hybrid LLM Intent Router — the system's "brain" for understanding what you want. Replaces rigid regex-only classification with a three-tier system: regex (instant, free) → local LLM via Ollama (fast, free) → cloud LLM escalation (smart, costs tokens). Self-improving: successful LLM-routed classifications are logged, and after enough similar patterns cluster, new regex rules are auto-generated so common requests graduate to the instant tier over time.
+
+### Feature
+- **Tool Registry** (`personal_agent/tool_registry.py`) — unified `ToolDefinition` dataclass with name, description, parameters, access_layer, checkpoint_tier, examples, intent_type. 17 tools registered. `to_llm_schema()` generates OpenAI-compatible function-calling schemas. `get_routing_schemas()` for LLM routing, `get_all_llm_schemas()` for full set
+- **LLMIntentRouter** (`personal_agent/llm_intent_router.py`) — sends user message + tool schemas to LLM for function-calling-based routing. System prompt constrains to tool selection only. `_build_slots()` normalizes tool arguments into TaskIntent format. File path extraction from `[file: X]` patterns, quoted paths, bare paths. Factory functions: `create_local_router()`, `create_cloud_router()`
+- **Three-tier hybrid classifier** in `classify_intent_hybrid()` — Tier 1: regex (confidence ≥ 0.90, instant). Tier 2: local LLM router (confidence ≥ 0.70, ~200ms). Tier 3: cloud escalation (hybrid mode only, confidence ≥ 0.60). Fallback: embedding classifier (legacy). Final: conversational
+- **Route Learning** (`personal_agent/route_learning.py`) — `RouteLearningDB` with SQLite tables `route_log` + `learned_patterns`. Logs every LLM-routed classification. `get_pattern_candidates()` finds clusters of 5+ similar messages. `generate_regex_from_examples()` uses LLM or heuristic to create regex patterns. `review_route_patterns()` called from heartbeat periodically
+- **Routing mode setting** — `routing_mode` (local_only / cloud_only / hybrid) in Settings > Advanced with radio buttons and descriptions
+- **Heartbeat integration** — step 10 in heartbeat_executor runs `review_route_patterns()` for periodic pattern mining
+
+### Infra
+- **New file**: `personal_agent/tool_registry.py`
+- **New file**: `personal_agent/llm_intent_router.py`
+- **New file**: `personal_agent/route_learning.py`
+- **Modified file**: `personal_agent/task_agent.py` — `classify_intent_hybrid()` rewritten with 3-tier flow
+- **Modified file**: `personal_agent/heartbeat_executor.py` — route pattern review step
+- **Modified file**: `routes/auth.py` — `routing_mode`, `routing_llm_model` in settings whitelist
+- **Modified file**: `frontend/src/components/SettingsModal.tsx` — Intent Routing section with radio buttons
 
 ---
 

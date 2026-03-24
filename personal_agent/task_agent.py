@@ -4494,6 +4494,7 @@ RULES:
             from personal_agent.browser_control import BrowserController
             from personal_agent.browser_agent import BrowserAgent, BrowserTaskResult
             from personal_agent.action_receipts import create_receipt, log_receipt
+            import asyncio
 
             # Read settings
             _max_steps = int(_settings.get("browser_max_steps", "20"))
@@ -4507,23 +4508,6 @@ RULES:
             _domain_blocklist = [d.strip() for d in _blocklist_raw.split("\n") if d.strip()] if _blocklist_raw else []
 
             persistent_dir = "data/browser_profile" if _persist else None
-
-            # Initialize components
-            controller = BrowserController(
-                headless=_headless,
-                persistent_context_dir=persistent_dir,
-                engine=_engine,
-            )
-
-            agent = BrowserAgent(
-                controller=controller,
-                vision=None,  # Vision fallback not wired yet
-                llm_client=self._llm,
-                max_steps=_max_steps,
-                confirm_mode=_confirm_mode,
-                domain_allowlist=_domain_allowlist,
-                domain_blocklist=_domain_blocklist,
-            )
 
             # Build memory context from verified facts
             memory_context = ""
@@ -4542,15 +4526,39 @@ RULES:
             # Execute — this blocks while the ReAct loop runs
             yield {"type": "status", "content": f"Opening browser: {task}"}
 
-            agent.launch_sync()
-            try:
-                result: BrowserTaskResult = agent.execute_task_sync(
-                    task=task,
-                    start_url=start_url,
-                    memory_context=memory_context,
+            # Playwright must be created and used within the same event loop,
+            # so we wrap everything in one async function run in a dedicated thread.
+            _llm_ref = self._llm
+
+            async def _do_browse():
+                ctrl = BrowserController(
+                    headless=_headless,
+                    persistent_context_dir=persistent_dir,
+                    engine=_engine,
                 )
-            finally:
-                agent.close_sync()
+                agent = BrowserAgent(
+                    controller=ctrl,
+                    vision=None,  # Vision fallback not wired yet
+                    llm_client=_llm_ref,
+                    max_steps=_max_steps,
+                    confirm_mode=_confirm_mode,
+                    domain_allowlist=_domain_allowlist,
+                    domain_blocklist=_domain_blocklist,
+                )
+                await ctrl.launch()
+                try:
+                    return await agent.execute_task(
+                        task=task,
+                        start_url=start_url,
+                        memory_context=memory_context,
+                    )
+                finally:
+                    await ctrl.close()
+
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _do_browse())
+                result: BrowserTaskResult = future.result(timeout=120)
 
             duration_ms = round((_time.time() - t0) * 1000)
 
@@ -4656,33 +4664,26 @@ RULES:
             _persist = _settings.get("browser_persist_sessions", "true") == "true"
             persistent_dir = "data/browser_profile" if _persist else None
 
-            controller = BrowserController(
-                headless=_headless,
-                persistent_context_dir=persistent_dir,
-                engine=_engine,
-            )
-
             yield {"type": "status", "content": f"Searching the web: {query}"}
 
             async def _do_search():
-                await controller.launch()
+                ctrl = BrowserController(
+                    headless=_headless,
+                    persistent_context_dir=persistent_dir,
+                    engine=_engine,
+                )
+                await ctrl.launch()
                 try:
-                    return await run_web_search(controller, query)
+                    return await run_web_search(ctrl, query)
                 finally:
-                    await controller.close()
+                    await ctrl.close()
 
-            # Run async search in sync context
-            try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    import concurrent.futures
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                        future = pool.submit(asyncio.run, _do_search())
-                        search_result = future.result(timeout=60)
-                else:
-                    search_result = loop.run_until_complete(_do_search())
-            except RuntimeError:
-                search_result = asyncio.run(_do_search())
+            # Run async search in a dedicated thread with its own event loop
+            # (Playwright must be started and used within the same event loop)
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                future = pool.submit(asyncio.run, _do_search())
+                search_result = future.result(timeout=60)
 
             duration_ms = round((_time.time() - t0) * 1000)
 

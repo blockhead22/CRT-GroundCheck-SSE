@@ -864,7 +864,7 @@ def create_app() -> FastAPI:
     import warnings
     warnings.filterwarnings("ignore", message=".*on_event is deprecated.*", category=DeprecationWarning)
 
-    app = FastAPI(title="CRT API", version="2.9.3")
+    app = FastAPI(title="CRT API", version="3.0.0")
 
     runtime_cfg = get_runtime_config()
     reflection_cfg = (runtime_cfg.get("reflection") or {}) if isinstance(runtime_cfg, dict) else {}
