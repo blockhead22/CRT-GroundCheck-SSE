@@ -107,7 +107,16 @@ export function Composer(props: {
       return
     }
     if (type === 'file') {
-      fileInputRef.current?.click()
+      // Browser file picker only returns filename (security sandbox strips path).
+      // Use a path prompt so the backend gets the full filesystem path.
+      const path = window.prompt('Enter file path (e.g. D:/AI_round2/docs/ACTION_EXECUTION.md):')
+      if (path) {
+        const normalized = path.replace(/\\/g, '/')
+        setAttachedPaths((prev) =>
+          prev.some((p) => p.path === normalized) ? prev : [...prev, { path: normalized, type: 'file' }]
+        )
+      }
+      textareaRef.current?.focus()
     } else {
       // Browser APIs can't return full filesystem paths (security sandbox),
       // so we use a direct path input for folder targeting.

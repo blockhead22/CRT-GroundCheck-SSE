@@ -414,6 +414,8 @@ export type StreamEventType =
   | 'plan_proposal'
   | 'plan_update'
   | 'plan_complete'
+  | 'agent_loop_start'
+  | 'agent_loop_complete'
   | 'done'
   | 'error'
 
@@ -455,6 +457,9 @@ export type StreamCallbacks = {
   onAgentCheckpoint?: (message: string, metadata: Record<string, unknown>) => void
   onTaskCancelled?: (message: string) => void
   onAgentThinkingToken?: (token: string, step: string) => void
+  // Agent Loop events (Sprint 14)
+  onAgentLoopStart?: (toolsAvailable: string[], maxIterations: number) => void
+  onAgentLoopComplete?: (toolsUsed: string[], iterations: number, totalDurationMs: number) => void
   // Thinking
   onThinkingStart?: () => void
   onThinkingToken?: (token: string) => void
@@ -641,6 +646,16 @@ export async function streamFromCrtApi(args: {
               case 'agent_thinking_token': {
                 const meta = event.metadata as { step?: string } | undefined
                 args.callbacks.onAgentThinkingToken?.(event.content, meta?.step ?? 'generate_answer')
+                break
+              }
+              case 'agent_loop_start': {
+                const meta = event.metadata as { tools_available?: string[]; max_iterations?: number } | undefined
+                args.callbacks.onAgentLoopStart?.(meta?.tools_available ?? [], meta?.max_iterations ?? 10)
+                break
+              }
+              case 'agent_loop_complete': {
+                const meta = event.metadata as { tools_used?: string[]; iterations?: number; total_duration_ms?: number } | undefined
+                args.callbacks.onAgentLoopComplete?.(meta?.tools_used ?? [], meta?.iterations ?? 0, meta?.total_duration_ms ?? 0)
                 break
               }
               case 'thinking_start':

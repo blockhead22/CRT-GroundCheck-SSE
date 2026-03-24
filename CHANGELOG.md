@@ -5,6 +5,31 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v3.1 — March 24, 2026
+
+Agentic Tool Loop — LLM-driven ReAct loop for the main chat pipeline. Replaces the classify-once-execute-blind pattern with a true iterative tool-calling loop where the LLM sees intermediate results and decides what to do next. The LLM calls tools, observes results, and repeats until the task is complete. Multi-step compound requests ("read this file and copy it to X") now work in a single user message without manual intervention.
+
+### Feature
+- **AgentToolLoop** (`personal_agent/agent_tool_loop.py`, ~530 lines) — core loop engine: sends conversation + tool definitions to the LLM, processes tool calls, appends results to context, repeats until LLM returns text or hits max iterations. Supports both local Ollama and cloud LLMs via `chat_with_tools()`. Yields SSE events in real-time for the frontend
+- **Checkpoint integration** — Layer 3+ tools (file_write, shell_exec, git_exec) still require user confirmation inside the loop. On checkpoint, the loop pauses, stores state in the session DB, and resumes on the next message after user confirms/denies. Denied actions are communicated back to the LLM so it can adapt
+- **Tool execution bridge** — unified `_execute_tool()` function that dispatches to the existing tool implementations (file_tools, shell_tools, web_tools, etc.) with action receipt logging
+- **Loop resume on confirmation** — when a user confirms a checkpoint from the agent loop, the system executes the confirmed tool, then continues the loop with the result in context. Supports chained checkpoints (tool A confirmed → tool B needs confirmation → etc.)
+- **Runtime config** — new `agent_loop` section: `enabled` (bool, default False), `model` (auto/local/cloud), `max_iterations` (1-25, default 10), `show_thinking` (bool, default True)
+- **Graceful fallback** — if the agent loop fails or is disabled, falls through to the legacy classify → plan → execute path automatically
+- **2 new SSE event types** — `agent_loop_start` (emits available tools + max iterations) and `agent_loop_complete` (emits tools used, iteration count, total duration)
+- **Frontend support** — new event types added to StreamEventType, StreamCallbacks, and event handler switch in api.ts. Agent loop events render using existing tool_start/tool_result/agent_checkpoint UI components
+
+### Infra
+- **New file**: `personal_agent/agent_tool_loop.py` (~530 lines)
+- **Modified file**: `routes/chat.py` — agent loop path inserted before legacy task route (~120 lines), checkpoint resume handler for agent loop state (~130 lines)
+- **Modified file**: `personal_agent/runtime_config.py` — new `agent_loop` config section with 4 settings
+- **Modified file**: `frontend/src/lib/api.ts` — 2 new event types, 2 new callbacks, 2 new event handler cases
+
+### Docs
+- **New file**: `docs/AGENT_LOOP.md` — architecture, configuration, SSE events, testing guide
+
+---
+
 ## v3.0 — March 24, 2026
 
 Browser Agent — Playwright-based web automation with DOM-first intelligence. The agent can navigate websites, read page content, click links, fill forms, extract information, and perform web searches autonomously. Uses the same ReAct pattern as the desktop agent (observe → think → act → verify) but reads the DOM directly instead of relying on vision for most tasks. Full safety gates mirror the desktop system.

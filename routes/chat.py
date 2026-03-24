@@ -4783,8 +4783,162 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     else:
                         _confirmation = _parse_confirm(req.message)
                         if _confirmation is True:
-                            # User confirmed — re-use stored intent, mark confirmed
                             _cp_data = _pending_cp["intent"]
+
+                            # ── Agent Loop checkpoint resume (Sprint 14) ──
+                            if _cp_data.get("_agent_loop"):
+                                _session_db.clear_pending_checkpoint(req.thread_id)
+                                logger.info("[STREAM] User confirmed agent loop checkpoint — resuming loop")
+                                try:
+                                    from personal_agent.agent_tool_loop import AgentToolLoop, _execute_tool
+                                    _get_llm_alr = request.app.state.get_llm_client
+                                    _llm_client_alr = _get_llm_alr()
+                                    _rt_cfg_alr = get_runtime_config()
+                                    _al_cfg_alr = _rt_cfg_alr.get("agent_loop", {})
+
+                                    _loop_state = _cp_data.get("_loop_state", {})
+                                    _pending_tool = _loop_state.get("tool_name", "")
+                                    _pending_args = _loop_state.get("tool_args", {})
+                                    _original_msg = _loop_state.get("message", req.message)
+
+                                    # Execute the confirmed tool first
+                                    yield _sse({
+                                        "type": "tool_start",
+                                        "content": f"▷ {_pending_tool}",
+                                        "metadata": {"tool_name": _pending_tool, "input": _pending_args, "step_index": 0},
+                                    })
+                                    _confirmed_result = _execute_tool(_pending_tool, _pending_args, req.thread_id)
+                                    yield _sse({
+                                        "type": "tool_result",
+                                        "content": _confirmed_result["content"][:500],
+                                        "metadata": {**_confirmed_result.get("metadata", {}), "status": _confirmed_result["status"], "step_index": 0},
+                                    })
+
+                                    # Now re-run the agent loop with the confirmed result already in context
+                                    _loop_alr = AgentToolLoop(
+                                        _llm_client_alr,
+                                        session_db=_session_db,
+                                        max_iterations=_al_cfg_alr.get("max_iterations", 10),
+                                        show_thinking=_al_cfg_alr.get("show_thinking", True),
+                                    )
+
+                                    # Build messages with the confirmed tool result already included
+                                    _resume_history = []
+                                    if 'recent_history' in dir():
+                                        _resume_history = recent_history
+                                    _resume_msgs = _loop_alr._build_messages(_original_msg, _resume_history)
+                                    import json as _json_alr
+                                    _resume_msgs.append({
+                                        "role": "assistant", "content": None,
+                                        "tool_calls": [{"id": "call_confirmed", "type": "function",
+                                                       "function": {"name": _pending_tool,
+                                                                   "arguments": _json_alr.dumps(_pending_args)}}],
+                                    })
+                                    _resume_msgs.append({
+                                        "role": "tool", "tool_call_id": "call_confirmed",
+                                        "content": _confirmed_result["content"][:4000],
+                                    })
+
+                                    # Continue the loop from where we left off
+                                    _alr_gen = _loop_alr.run.__wrapped__(_loop_alr, _original_msg, req.thread_id) if hasattr(_loop_alr.run, '__wrapped__') else None
+
+                                    # Simpler: just create a new loop with the augmented messages
+                                    _alr_answer = ""
+                                    _alr_steps = [_confirmed_result.get("metadata", {})]
+                                    _alr_schemas = _loop_alr._build_tool_schemas(None)
+
+                                    for _alr_iter in range(_al_cfg_alr.get("max_iterations", 10) - 1):
+                                        try:
+                                            _alr_resp = _llm_client_alr.chat_with_tools(
+                                                _resume_msgs, tools=_alr_schemas, max_tokens=2000, temperature=0.1,
+                                            )
+                                        except Exception as _alr_llm_err:
+                                            logger.error("[AGENT_LOOP_RESUME] LLM error: %s", _alr_llm_err)
+                                            yield _sse({"type": "token", "content": f"Error during continuation: {_alr_llm_err}"})
+                                            break
+
+                                        _alr_tcs = _alr_resp.get("tool_calls", [])
+                                        _alr_text = (_alr_resp.get("content") or "").strip()
+
+                                        if not _alr_tcs:
+                                            if _alr_text:
+                                                from personal_agent.text_utils import strip_thinking_tags
+                                                _alr_clean = strip_thinking_tags(_alr_text)
+                                                yield _sse({"type": "token", "content": _alr_clean})
+                                                _alr_answer = _alr_clean
+                                            break
+
+                                        for _alr_tc in _alr_tcs:
+                                            _alr_tn = _alr_tc.get("name", "")
+                                            _alr_ta = _alr_tc.get("arguments", {})
+                                            if isinstance(_alr_ta, str):
+                                                try:
+                                                    _alr_ta = _json_alr.loads(_alr_ta)
+                                                except Exception:
+                                                    _alr_ta = {}
+
+                                            from personal_agent.agent_tool_loop import _needs_checkpoint
+                                            if _needs_checkpoint(_alr_tn):
+                                                # Another checkpoint needed — store and pause
+                                                from personal_agent.agent_tool_loop import _describe_tool_action
+                                                yield _sse({
+                                                    "type": "agent_checkpoint",
+                                                    "content": f"I need to {_describe_tool_action(_alr_tn, _alr_ta)}. Go ahead?",
+                                                    "metadata": {
+                                                        "requires_confirmation": True,
+                                                        "checkpoint_tier": "medium",
+                                                        "tool_name": _alr_tn, "tool_args": _alr_ta,
+                                                        "intent": _alr_tn, "confidence": 0.95, "slots": _alr_ta,
+                                                    },
+                                                })
+                                                _session_db.store_pending_checkpoint(
+                                                    thread_id=req.thread_id,
+                                                    intent_data={
+                                                        "route": "task", "intent_type": _alr_tn,
+                                                        "slots": _alr_ta, "confidence": 0.95,
+                                                        "reason": "agent_loop_continuation",
+                                                        "source": "agent_loop",
+                                                        "_agent_loop": True,
+                                                        "_loop_state": {"message": _original_msg,
+                                                                       "tool_name": _alr_tn, "tool_args": _alr_ta},
+                                                    },
+                                                    checkpoint_tier="medium",
+                                                    metadata={"tool_name": _alr_tn, "tool_args": _alr_ta},
+                                                )
+                                                yield _sse({"type": "done", "content": "",
+                                                           "metadata": {"checkpoint_pending": True, "agent_loop": True}})
+                                                return
+
+                                            yield _sse({"type": "tool_start", "content": f"▷ {_alr_tn}",
+                                                       "metadata": {"tool_name": _alr_tn, "input": _alr_ta,
+                                                                    "step_index": len(_alr_steps)}})
+                                            _alr_res = _execute_tool(_alr_tn, _alr_ta, req.thread_id)
+                                            _alr_steps.append(_alr_res.get("metadata", {}))
+                                            yield _sse({"type": "tool_result", "content": _alr_res["content"][:500],
+                                                       "metadata": {**_alr_res.get("metadata", {}), "status": _alr_res["status"],
+                                                                    "step_index": len(_alr_steps) - 1}})
+
+                                            _resume_msgs.append({
+                                                "role": "assistant", "content": None,
+                                                "tool_calls": [{"id": f"call_r{_alr_iter}_{_alr_tn}", "type": "function",
+                                                               "function": {"name": _alr_tn,
+                                                                           "arguments": _json_alr.dumps(_alr_ta)}}],
+                                            })
+                                            _resume_msgs.append({
+                                                "role": "tool", "tool_call_id": f"call_r{_alr_iter}_{_alr_tn}",
+                                                "content": _alr_res["content"][:4000],
+                                            })
+
+                                    yield _sse({"type": "done", "content": _alr_answer,
+                                               "metadata": {"tool_calls": _alr_steps, "agent_loop": True,
+                                                            "response_type": "task", "gates_passed": True}})
+                                    return
+
+                                except Exception as _alr_err:
+                                    logger.warning("[STREAM] Agent loop resume failed: %s", _alr_err, exc_info=True)
+                                    # Fall through to legacy confirmation path
+
+                            # User confirmed — re-use stored intent, mark confirmed (legacy path)
                             _task_intent = TaskIntent(
                                 route=_cp_data["route"],
                                 intent_type=_cp_data["intent_type"],
@@ -4988,6 +5142,116 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 except Exception as _pe_err:
                     _safe_print(f"[PLAN] plan engine check failed: {_pe_err}")
                     logger.debug("[STREAM] Plan engine check failed: %s", _pe_err)
+
+            # ── AGENT TOOL LOOP PATH (Sprint 14) ──────────────────────────
+            # If agent_loop is enabled, use the LLM-driven agentic tool loop
+            # instead of the classify-once-execute-blind pattern. The LLM sees
+            # tool results and decides what to do next autonomously.
+            _agent_loop_enabled = False
+            try:
+                _rt_cfg = get_runtime_config()
+                _al_cfg = _rt_cfg.get("agent_loop", {})
+                _agent_loop_enabled = _al_cfg.get("enabled", False)
+            except Exception:
+                pass
+
+            if (
+                _agent_loop_enabled
+                and _task_intent is not None
+                and _task_intent.route == "task"
+                and not _user_confirmed  # Agent loop handles its own checkpoints
+            ):
+                try:
+                    from personal_agent.agent_tool_loop import AgentToolLoop
+
+                    _get_llm_al = request.app.state.get_llm_client
+                    _llm_client_al = _get_llm_al()
+                    _al_max_iter = _al_cfg.get("max_iterations", 10)
+                    _al_show_thinking = _al_cfg.get("show_thinking", True)
+
+                    _loop = AgentToolLoop(
+                        _llm_client_al,
+                        session_db=_session_db,
+                        max_iterations=_al_max_iter,
+                        show_thinking=_al_show_thinking,
+                    )
+
+                    _loop_gen = _loop.run(
+                        req.message,
+                        req.thread_id,
+                        conversation_history=recent_history if 'recent_history' in dir() else None,
+                    )
+
+                    _al_checkpoint_hit = False
+                    _al_answer = ""
+                    _al_steps: list = []
+                    _al_done = False
+
+                    try:
+                        _event = next(_loop_gen)
+                        while True:
+                            # Emit the event to SSE
+                            yield _sse(_event)
+
+                            if _event["type"] == "agent_checkpoint":
+                                # Store checkpoint for user confirmation on next message
+                                _al_checkpoint_hit = True
+                                _cp_tier = _event.get("metadata", {}).get("checkpoint_tier", "medium")
+                                _session_db.store_pending_checkpoint(
+                                    thread_id=req.thread_id,
+                                    intent_data={
+                                        "route": _task_intent.route,
+                                        "intent_type": _task_intent.intent_type,
+                                        "slots": _task_intent.slots,
+                                        "confidence": _task_intent.confidence,
+                                        "reason": _task_intent.reason,
+                                        "source": getattr(_task_intent, "source", "agent_loop"),
+                                        "_agent_loop": True,
+                                        "_loop_state": {
+                                            "message": req.message,
+                                            "tool_name": _event.get("metadata", {}).get("tool_name"),
+                                            "tool_args": _event.get("metadata", {}).get("tool_args"),
+                                        },
+                                    },
+                                    checkpoint_tier=_cp_tier,
+                                    metadata=_event.get("metadata"),
+                                )
+                                break  # Pause — user must confirm on next message
+
+                            elif _event["type"] == "token":
+                                _al_answer += _event.get("content", "")
+                            elif _event["type"] == "tool_result":
+                                _al_steps.append(_event.get("metadata", {}))
+                            elif _event["type"] == "agent_loop_complete":
+                                _al_done = True
+
+                            # Get next event (no checkpoint confirmation in SSE mode)
+                            _event = _loop_gen.send(None)
+
+                    except StopIteration:
+                        _al_done = True
+
+                    if _al_checkpoint_hit:
+                        yield _sse({
+                            "type": "done",
+                            "content": _event.get("content", ""),
+                            "metadata": {"checkpoint_pending": True, "agent_loop": True},
+                        })
+                        return
+
+                    # Agent loop completed — emit done
+                    _done_meta_al = {
+                        "tool_calls": _al_steps,
+                        "agent_loop": True,
+                        "response_type": "task",
+                        "gates_passed": True,
+                    }
+                    yield _sse({"type": "done", "content": _al_answer, "metadata": _done_meta_al})
+                    return
+
+                except Exception as _al_err:
+                    logger.warning("[STREAM] Agent tool loop failed, falling back to legacy path: %s", _al_err, exc_info=True)
+                    # Fall through to legacy path
 
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":

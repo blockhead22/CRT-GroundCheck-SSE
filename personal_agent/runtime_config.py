@@ -245,6 +245,20 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
         ],
     },
     
+    # Agentic Tool Loop (Sprint 14): LLM-driven ReAct loop for task execution.
+    # When enabled, the main chat pipeline uses an iterative tool-calling loop
+    # where the LLM sees intermediate results and decides next actions autonomously.
+    # When disabled, falls back to the legacy classify-once-execute-blind pattern.
+    "agent_loop": {
+        "enabled": False,
+        # Which LLM provider drives the loop: "local" (Ollama), "cloud", or "auto"
+        "model": "auto",
+        # Maximum tool-call iterations per request (safety cap)
+        "max_iterations": 10,
+        # Show LLM reasoning/thinking between tool calls in the UI
+        "show_thinking": True,
+    },
+
     "learned_suggestions": {
         "enabled": True,
         "emit_metadata": True,
