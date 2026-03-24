@@ -252,6 +252,35 @@ _CANCEL_COMMITMENT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Sprint 11 — Desktop control patterns
+_DESKTOP_ACTION_RE = re.compile(
+    r"\b((?:(?:can|could|would)\s+you\s+)?(?:please\s+)?"
+    r"open\s+(?:up\s+)?(?:chrome|firefox|edge|brave|not[e]?pad|vs\s*code|file\s*explorer|"
+    r"settings|terminal|cmd|powershell|discord|spotify|steam|outlook|word|excel|"
+    r"calculator|paint|snipping\s*tool|task\s*bar|start\s*menu|control\s*panel|"
+    r"the\s+\w+(?:\s+\w+)?(?:\s+app)?)|"
+    r"click\s+(?:on\s+)?(?:the\s+)?|close\s+(?:the\s+)?(?:window|tab|app|dialog)|"
+    r"switch\s+to\s+|minimize\s+|maximize\s+|"
+    r"take\s+a\s+screenshot|show\s+(?:me\s+)?my\s+desktop|"
+    r"open\s+(?:my\s+)?(?:desktop|downloads|documents|music|videos|pictures)|"
+    r"type\s+in\s+(?:the\s+)?|scroll\s+(?:up|down)\s+(?:in\s+|on\s+)?|"
+    r"right[\s-]?click\s+(?:on\s+)?|double[\s-]?click\s+(?:on\s+)?|"
+    r"press\s+(?:the\s+)?(?:enter|escape|tab|space|delete|backspace)(?:\s+key)?|"
+    r"go\s+(?:to|back)\s+(?:in\s+)?(?:the\s+)?|drag\s+(?:the\s+)?|"
+    r"focus\s+(?:on\s+)?(?:the\s+)?|alt[\s-]?tab)\b",
+    re.IGNORECASE,
+)
+
+# Conversational desktop mentions that should NOT trigger desktop_action
+_DESKTOP_CONVERSATIONAL_RE = re.compile(
+    r"\b(tell\s+me\s+about\s+(?:my\s+)?desktop|"
+    r"what\s+(?:is|are)\s+(?:my\s+)?desktop\s+(?:wallpaper|background|theme|icons)|"
+    r"change\s+(?:my\s+)?(?:wallpaper|background|theme)|"
+    r"how\s+(?:do|can)\s+I\s+(?:change|customize)|"
+    r"what\s+is\s+(?:a\s+)?desktop)\b",
+    re.IGNORECASE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Credentials store
@@ -510,6 +539,8 @@ def _describe_action(intent: "TaskIntent") -> str:
         return "continue the previous task"
     elif intent.intent_type == "system_info":
         return "check system status"
+    elif intent.intent_type == "desktop_action":
+        return f"control your desktop: {intent.slots.get('task_description', 'desktop action')}"
     elif intent.intent_type == "file_read":
         return f"read file {intent.slots.get('path', '?')}"
     elif intent.intent_type == "dir_list":
@@ -584,6 +615,27 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
             "checkpoint_tier": "medium",
             "checkpoint_message": msg,
             "requires_confirmation": True,
+        }
+
+    # ── Desktop action — gate depends on user's confirmation setting ─────
+    if intent.intent_type == "desktop_action":
+        try:
+            from auth import get_user_settings as _gus
+            _ds = _gus(1)
+            _cm = _ds.get("desktop_require_confirmation", "dangerous_only")
+            if _cm == "always":
+                _task_desc = intent.slots.get("task_description", "a desktop task")
+                return {
+                    "checkpoint_tier": "high",
+                    "checkpoint_message": f"Desktop control: {_task_desc}. Go ahead?",
+                    "requires_confirmation": True,
+                }
+        except Exception:
+            pass
+        return {
+            "checkpoint_tier": "none",
+            "checkpoint_message": "",
+            "requires_confirmation": False,
         }
 
     # ── Layer 3-4 write/exec tools — ALWAYS require confirmation ────────
@@ -681,6 +733,16 @@ def classify_intent(
                 confidence=0.92,
                 reason="active_task_continuation",
             )
+
+    # ── 1b-desktop. Desktop action — "open chrome", "click on" etc. (Sprint 11) ──
+    if _DESKTOP_ACTION_RE.search(message) and not _DESKTOP_CONVERSATIONAL_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="desktop_action",
+            slots={"task_description": message},
+            confidence=0.88,
+            reason="desktop_action_pattern",
+        )
 
     # ── 1b. System info — "how's my system", "check CPU" etc. ───────────
     if _SYSTEM_INFO_RE.search(message):
@@ -1121,11 +1183,15 @@ def classify_intent_hybrid(
             f"embedding={intent_type}({top_embedding.confidence:.2f}) "
             f"final={intent_type} source=embedding"
         )
+        # Build slots — for desktop_action, the whole message is the task
+        _slots = regex_result.slots if regex_result else {}
+        if intent_type == "desktop_action" and "task_description" not in _slots:
+            _slots["task_description"] = message
         return TaskIntent(
             route=route,
             intent_type=intent_type,
             confidence=top_embedding.confidence,
-            slots=regex_result.slots if regex_result else {},
+            slots=_slots,
             reason=f"embedding_match",
             source="embedding",
         )
@@ -1416,6 +1482,7 @@ class CRTTaskAgent:
                 "create_commitment": "Set a reminder",
                 "list_commitments": "List reminders",
                 "cancel_commitment": "Cancel a reminder",
+                "desktop_action": "Control desktop",
                 "broad_recall": "Recall memories",
                 "self_referential": "About me (Aether)",
                 "url_fetch": "Fetch a URL",
@@ -1725,6 +1792,22 @@ class CRTTaskAgent:
                 _err_step = next((s for s in steps if s.status == "error"), None)
                 answer = f"Failed: {_err_step.error}" if _err_step else "Action failed."
             yield {"type": "token", "content": answer}
+        elif intent.intent_type == "desktop_action":
+            # Deterministic answer for desktop actions
+            _da_step = next(
+                (s for s in steps if s.tool_name == "desktop_action"),
+                None,
+            )
+            if _da_step and isinstance(_da_step.output, dict):
+                _da = _da_step.output
+                if _da.get("success"):
+                    answer = f"Desktop task completed in {_da.get('steps_taken', 0)} steps ({_da.get('total_duration_ms', 0):.0f}ms). {_da.get('task_summary', '')}"
+                else:
+                    answer = f"Desktop task failed after {_da.get('steps_taken', 0)} steps: {_da.get('error', 'unknown error')}"
+            else:
+                _err = next((s for s in steps if s.status == "error"), None)
+                answer = f"Desktop action failed: {_err.error}" if _err else "Desktop action failed."
+            yield {"type": "token", "content": answer}
         elif intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
             # Deterministic answers for read-only tools — never let the LLM
             # summarize file/system content (it hallucinates).
@@ -1850,7 +1933,13 @@ class CRTTaskAgent:
         # ── 8. Build suggested follow-up actions for read-only tools ──────
         _suggested_actions = None
         _followup_prompt = None
-        if all_ok and intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
+        if all_ok and intent.intent_type == "desktop_action":
+            _suggested_actions = [
+                {"label": "Take screenshot", "value": "Take a screenshot of my desktop"},
+                {"label": "What's open?", "value": "What apps are currently open?"},
+            ]
+            _followup_prompt = "What else would you like me to do on your desktop?"
+        elif all_ok and intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
             if intent.intent_type == "file_read":
                 _fname = (intent.slots.get("path") or "").rsplit("/", 1)[-1] or "this file"
                 _suggested_actions = [
@@ -2830,7 +2919,12 @@ RULES:
     ) -> List[Dict[str, Any]]:
         plan: List[Dict[str, Any]] = []
 
-        if intent.intent_type == "system_info":
+        if intent.intent_type == "desktop_action":
+            plan.append({"tool": "desktop_action", "input": {
+                "task": intent.slots.get("task_description", ""),
+            }})
+
+        elif intent.intent_type == "system_info":
             plan.append({"tool": "system_info", "input": {}})
 
         elif intent.intent_type == "create_commitment":
@@ -3154,6 +3248,9 @@ RULES:
 
         elif tool == "system_info":
             return self._run_system_info(step, inp, step_index)
+
+        elif tool == "desktop_action":
+            return (yield from self._run_desktop_action(step, inp, step_index, thread_id))
 
         elif tool == "file_read":
             return self._run_file_read(step, inp, step_index)
@@ -3581,6 +3678,153 @@ RULES:
                 "type": "tool_result",
                 "content": f"✗ system info failed: {e}",
                 "metadata": {"tool_name": "system_info", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # Desktop control (Sprint 11)
+    # ------------------------------------------------------------------
+
+    def _run_desktop_action(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        """Execute a desktop automation task via the ReAct vision loop."""
+        import time as _time
+        t0 = _time.time()
+        task = inp.get("task", "")
+
+        try:
+            # Check if desktop control is enabled in user settings
+            from auth import get_user_settings
+            _settings = get_user_settings(1)  # uid=1 single-user
+            if _settings.get("desktop_control_enabled", "false") != "true":
+                step.status = "error"
+                step.error = "Desktop control is disabled. Enable it in Settings > Desktop Control."
+                return {
+                    "type": "tool_result",
+                    "content": step.error,
+                    "metadata": {"tool_name": "desktop_action", "status": "error",
+                                 "error": step.error, "step_index": step_index},
+                }
+
+            from personal_agent.desktop_control import DesktopController
+            from personal_agent.desktop_vision import CookieVisionProvider
+            from personal_agent.desktop_agent import DesktopAgent, DesktopTaskResult
+            from personal_agent.action_receipts import create_receipt, log_receipt
+
+            # Read settings
+            _max_steps = int(_settings.get("desktop_max_steps_per_task", "15"))
+            _vision_provider = _settings.get("desktop_vision_provider", "cookie")
+            _confirm_mode = _settings.get("desktop_require_confirmation", "dangerous_only")
+
+            # Initialize components
+            controller = DesktopController()
+            if _vision_provider == "api_key":
+                from personal_agent.desktop_vision import ClaudeVisionProvider
+                from personal_agent.anthropic_client import AnthropicClient
+                vision = ClaudeVisionProvider(AnthropicClient())
+            else:
+                vision = CookieVisionProvider()
+            agent = DesktopAgent(controller=controller, vision=vision, max_steps=_max_steps)
+
+            # Override confirmation behavior based on settings
+            if _confirm_mode == "never":
+                agent._needs_confirmation = lambda action, analysis: False
+            elif _confirm_mode == "always":
+                agent._needs_confirmation = lambda action, analysis: True
+            # "dangerous_only" uses the default implementation
+
+            # Build memory context from verified facts
+            memory_context = ""
+            try:
+                from personal_agent.crt_memory import CRTMemory
+                if self._memory is not None:
+                    relevant = self._memory.retrieve(task, top_k=10)
+                    memory_lines = [
+                        f"- {m.text} (trust: {m.trust_score:.2f})"
+                        for m in relevant
+                        if m.trust_score >= 0.7
+                    ]
+                    memory_context = "\n".join(memory_lines)
+            except Exception:
+                pass
+
+            # Stream steps to the frontend
+            def on_step(step_num, action, screenshot_b64, analysis):
+                pass  # We yield status events below in the action_log
+
+            # Execute — this blocks while the ReAct loop runs
+            yield {"type": "status", "content": f"Starting desktop control: {task}"}
+
+            result: DesktopTaskResult = agent.execute_task(
+                task=task,
+                memory_context=memory_context,
+                on_step=on_step,
+            )
+
+            duration_ms = round((_time.time() - t0) * 1000)
+
+            # Log action receipts for each step
+            for action_entry in result.action_log:
+                try:
+                    receipt = create_receipt(
+                        tool_name="desktop_action",
+                        action=f"desktop {action_entry.get('action_type', 'unknown')}: {action_entry.get('target', '')}",
+                        target=action_entry.get("target", task),
+                        result="success" if result.success else "partial",
+                        reversible=False,
+                        details=action_entry,
+                    )
+                    log_receipt(receipt, thread_id)
+                except Exception:
+                    pass
+
+            # Build output
+            step.output = {
+                "success": result.success,
+                "steps_taken": result.steps_taken,
+                "total_duration_ms": result.total_duration_ms,
+                "task_summary": result.task_summary,
+                "error": result.error,
+                "final_screenshot_b64": result.final_screenshot_b64,
+                "action_log": result.action_log,
+            }
+            step.output_preview = (
+                f"Desktop task {'completed' if result.success else 'failed'} "
+                f"in {result.steps_taken} steps ({result.total_duration_ms:.0f}ms)"
+            )
+            step.duration_ms = duration_ms
+            step.status = "ok" if result.success else "error"
+            if not result.success:
+                step.error = result.error
+
+            return {
+                "type": "tool_result",
+                "content": step.output_preview,
+                "metadata": {
+                    "tool_name": "desktop_action",
+                    "status": step.status,
+                    "duration_ms": duration_ms,
+                    "step_index": step_index,
+                    "success": result.success,
+                    "steps_taken": result.steps_taken,
+                    "task_summary": result.task_summary,
+                    "final_screenshot_b64": result.final_screenshot_b64,
+                },
+            }
+
+        except Exception as e:
+            logger.warning("[DESKTOP_ACTION] Failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"Desktop action failed: {e}",
+                "metadata": {
+                    "tool_name": "desktop_action",
+                    "status": "error",
+                    "error": str(e),
+                    "step_index": step_index,
+                },
             }
 
     # ------------------------------------------------------------------

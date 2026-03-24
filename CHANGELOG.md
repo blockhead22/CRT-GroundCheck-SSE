@@ -5,6 +5,83 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.3 — March 23, 2026
+
+Desktop control (Sprint 11). Cloud vision + local action loop. Aether can now see and control the user's desktop via a ReAct loop: screenshot → Claude vision analysis → execute action → verify → repeat. Memory-grounded — injects verified facts about the user's system so the vision model knows exact paths, preferences, and app locations.
+
+**How it works:**
+1. `DesktopController` captures a full-resolution screenshot via `mss` (e.g. 4592x2048 on ultrawide)
+2. Screenshot resized to 1280px wide, compressed to JPEG, base64-encoded
+3. `CookieVisionProvider` uploads the image to `claude.ai/api/{org}/upload` via multipart form (curl_cffi CurlMime), gets back a file UUID
+4. Sends chat completion to `claude.ai` with the file UUID + structured prompt asking for one JSON action
+5. Parses SSE response into `VisionAnalysis` with a single `DesktopAction` (type, coordinates, text, reasoning, confidence)
+6. `DesktopAgent` scales coordinates from 1280px vision-space back to actual screen resolution (e.g. ×3.59 for ultrawide)
+7. Executes action via `pyautogui` (click, type, hotkey, scroll, etc.)
+8. Loops back to step 1 with fresh screenshot. Stops on `done`, `failed`, `need_info`, or max 25 steps
+
+**Live test result:** "open notepad" completed in 4 steps / 70 seconds:
+- Step 1: `hotkey(win)` → opened Start menu (19s vision latency)
+- Step 2: `type("notepad")` → searched in Start menu (24s vision latency)
+- Step 3: `click(606, 692)` scaled to `(2175, 2484)` → launched Notepad (9s vision latency)
+- Step 4: `done` → recognized Notepad was open (13s vision latency)
+
+### Feature
+- **Desktop control module** (`personal_agent/desktop_control.py`) — DesktopController class wrapping pyautogui (mouse/keyboard), mss (fast screenshots), Pillow (image processing). Screenshot capture, region capture, base64 encoding with resize, mouse clicks/drags, keyboard typing/hotkeys, window management via pygetwindow
+- **Desktop vision module** (`personal_agent/desktop_vision.py`) — VisionProvider ABC with two cloud implementations:
+  - `ClaudeVisionProvider` — uses Anthropic API key via `AnthropicClient.chat_with_image()`
+  - `CookieVisionProvider` — uses claude.ai session cookie, uploads images via multipart form, no API key needed. Full pipeline: decode base64 → compress to 1280px JPEG → upload via `curl_cffi` CurlMime → send completion with file UUID → parse SSE response
+- **Desktop ReAct agent** (`personal_agent/desktop_agent.py`) — DesktopAgent with screenshot→think→act→verify loop. Max 25 steps, configurable callbacks for checkpoints and step logging. Rate limiting (20 actions/min, 10 clicks/min, 200 keystrokes/min)
+- **Coordinate scaling** — vision model sees 1280px-wide images but actual screen may be 3440px+ (ultrawide, high DPI). Agent computes `scale = screen_width / vision_width` and multiplies all action coordinates before execution. Restricted region checks applied after scaling so they use real screen coordinates
+- **Cookie image upload** — `CookieProvider._upload_image()` sends multipart form to `claude.ai/api/{org}/upload`, returns file UUID. `complete_with_image()` references the UUID in the chat completion payload
+- **Chat with image** — `AnthropicClient.chat_with_image()` method for API key path (base64 image + text prompt)
+- **Lightweight gating** — no initial checkpoint for desktop tasks. Safe actions (open app, click tab, scroll, type in search) execute freely. Only dangerous actions gate mid-loop: send, submit, delete, purchase, uninstall, etc.
+- **Screenshot preview in ActionCard** — `ActionCard.tsx` renders `screenshot_b64` as inline JPEG with target description overlay
+- **Desktop API routes** (`routes/desktop.py`) — `POST /api/desktop/execute`, `POST /api/desktop/stop`, `GET /api/desktop/screenshot`, `GET /api/desktop/history`
+- **Action receipts** — every desktop action step logged to SQLite via existing action_receipts system
+- **Memory-grounded vision** — verified facts from CRT memory injected into vision prompt (paths, preferences, app locations). When user says "open my portfolio in VS Code," vision model knows the exact path
+- **Deterministic responses** — "Desktop task completed in N steps (Xms). {summary}" or "Desktop task failed after N steps: {error}"
+- **LocalVisionProvider stub** — prepared interface for future local vision model (moondream2, Qwen2-VL) when VRAM permits
+- **Live test runner** — `tests/desktop_control/run_live.py`: CLI tool for interactive desktop task testing with step-by-step logging, 3-second countdown, checkpoint prompts for dangerous actions
+
+### Safety
+- **Blocked apps** — 18 entries: password managers (1Password, Bitwarden, KeePass, LastPass), banking (Chase, Wells Fargo, PayPal, Venmo), admin tools (regedit, Task Manager, Device Manager, Credential Manager, Windows Security, Disk Management, Group Policy, Firewall, Services, certificates)
+- **Hard-blocked targets** — password fields, credit card inputs, SSN, bank account, routing number, CVV — these never execute, even with confirmation
+- **Confirmation keywords** — send, submit, delete, remove, purchase, buy, pay, publish, post, confirm, sign out, log out, uninstall, format, erase, reset, shutdown, restart
+- **Rate limiting** — sliding-window limiters prevent runaway loops (20 actions/min, 10 clicks/min, 200 keystrokes/min)
+- **Restricted screen regions** — system tray area blocked by default, checked after coordinate scaling
+- **pyautogui.FAILSAFE** — move mouse to top-left corner (0,0) to abort all automation
+
+### Fix
+- **Coordinate scaling bug** — initial implementation sent raw vision-space coordinates (1280px) to pyautogui on a 4592px screen. Cursor appeared to not move because clicks landed at ~1/3.6 of the intended position. Fixed by computing scale factor from actual screen resolution and applying before execution
+
+### Test
+- 42/42 unit tests passing: screenshot capture, cursor position, window detection, blocked app detection (11 cases), confirmation logic (7 cases), hard-blocked targets (4 cases), restricted regions (3 cases), agent ReAct loop (5 cases), vision response parsing (3 cases)
+- Vision benchmark harness: 22 annotated scenarios, interactive screenshot capture, accuracy metrics with gate check
+- Live integration test: "open notepad" end-to-end via cookie vision provider — 4 steps, 70s, successful
+
+### Desktop Control Settings (v2.3.1)
+
+Added user-facing controls for desktop automation in Settings > Desktop tab.
+
+#### Feature
+- **Desktop Control toggle** — master enable/disable for all desktop automation (`desktop_control_enabled`). Off by default; task_agent and API route return error when disabled
+- **Max steps per task** — configurable limit on vision-action loop iterations per task (default 15, max 50). Controls cost and runaway prevention
+- **Max actions per session** — total desktop actions allowed per session before requiring re-enable (default 50)
+- **Confirmation mode** — three levels: "Never" (fully autonomous), "Dangerous actions only" (default — gates send/delete/purchase/uninstall), "Every action" (pause before each step)
+- **Vision provider selector** — switch between cookie session (no API key) and API key (`ANTHROPIC_API_KEY`) for screenshot analysis
+- **Heartbeat idle control** — when enabled + system idle (CPU < 10%, no GPU), automatically runs a configurable desktop task. E.g. "organize my downloads folder"
+- **Idle task text field** — freeform natural language task that runs during idle detection
+- **Settings persistence** — all desktop settings stored in `user_settings` SQLite table via existing `PATCH /api/auth/settings` endpoint
+- **Settings enforcement** — `task_agent._run_desktop_action()` and `routes/desktop.py` both check `desktop_control_enabled` before executing. Returns clear error message directing user to Settings when disabled
+- **Heartbeat integration** — `heartbeat_executor.py` checks `desktop_heartbeat_idle_control` + `desktop_control_enabled` + `desktop_idle_task` on each idle trigger. Runs task via `DesktopAgent` with configured max steps. Guarded by `_desktop_idle_running` flag to prevent overlapping tasks
+
+#### Frontend
+- **Desktop tab** in Settings page with Toggle, number input, select dropdown, and text input controls
+- **Warning banner** when desktop control is enabled — reminds user about emergency stop (mouse to top-left corner)
+- **Conditional idle task field** — only shown when heartbeat idle control is enabled
+
+---
+
 ## v2.2 — March 25, 2026
 
 Semantic intent router (Sprint 7). Replaces fragile regex-based intent classification with embedding similarity against 140+ prototype phrases. Hybrid routing preserves all existing regex as fallback while the embedding model fills gaps — semantic equivalents, typos, multi-intent messages, and ambiguous queries now route correctly.

@@ -482,6 +482,14 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     # Profile — explicit user-controlled identity fields
     "preferred_nickname": "",
     "agent_name": "Aether",
+    # Desktop control (Sprint 11)
+    "desktop_control_enabled": "false",
+    "desktop_max_actions_per_session": "50",
+    "desktop_max_steps_per_task": "15",
+    "desktop_heartbeat_idle_control": "false",
+    "desktop_idle_task": "",
+    "desktop_require_confirmation": "dangerous_only",
+    "desktop_vision_provider": "cookie",
 }
 
 

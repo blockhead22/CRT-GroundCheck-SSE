@@ -18,9 +18,15 @@ logger = logging.getLogger(__name__)
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
-except ImportError:
+except ImportError as _e:
     HAS_PYAUTOGUI = False
     pyautogui = None  # type: ignore
+    logger.warning("pyautogui import failed: %s", _e)
+except Exception as _e:
+    # Catch broader errors (e.g. display not available, DLL issues)
+    HAS_PYAUTOGUI = False
+    pyautogui = None  # type: ignore
+    logger.warning("pyautogui import error (non-ImportError): %s", _e)
 
 try:
     import mss
@@ -41,6 +47,8 @@ if HAS_PYAUTOGUI:
     pyautogui.FAILSAFE = True
     # Safety: add small delay between actions to allow human intervention
     pyautogui.PAUSE = 0.3
+
+logger.info("desktop_control imports: pyautogui=%s mss=%s PIL=%s", HAS_PYAUTOGUI, HAS_MSS, HAS_PIL)
 
 
 class DesktopController:

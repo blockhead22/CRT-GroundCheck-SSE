@@ -18,6 +18,17 @@
 | [Configuration](CONFIGURATION.md) | Runtime config reference, JSON schema, environment variables, product modes |
 | [ViLT Technical Writeup](VILT_TECHNICAL_WRITEUP.md) | Verification-In-the-Loop Training: trust-weighted loss, GroundCheck mid-training, SmolLM/Qwen results |
 
+## Agent Capabilities (v1.7 - v2.3)
+| Document | Description |
+|----------|-------------|
+| [Desktop Control](DESKTOP_CONTROL.md) | v2.3 — ReAct vision loop: screenshot, analyze, act, verify. Coordinate scaling, safety system, memory-grounded vision |
+| [Semantic Intent Router](SEMANTIC_INTENT_ROUTER.md) | v2.2 — Embedding-based intent classification with 140+ prototypes, hybrid routing, self-improvement via corrections |
+| [Dynamic Slot Discovery](SLOT_DISCOVERY.md) | v2.1 — Learned slot types from contradiction patterns. Replaces hardcoded EXCLUSIVE_SLOTS with emergent structure |
+| [Commitments & Scheduling](COMMITMENTS.md) | v2.0 — Reminders, recurring tasks, natural language time parsing, browser notifications, proactive triggers |
+| [Action Execution Layer](ACTION_EXECUTION.md) | v1.9 — File read/write, shell exec, git ops, action receipts, checkpoint gating with diff/command preview |
+| [System Info & Heartbeat](SYSTEM_HEARTBEAT.md) | v1.8+ — System awareness (CPU/RAM/GPU), 24/7 heartbeat scheduler, self-reflection, behavioral triggers |
+| [Skill System](SKILL_SYSTEM.md) | v1.7 — SKILL.md-based service integration, install pipeline, trust levels, LLM tool loop execution |
+
 ## Getting Started
 | Document | Description |
 |----------|-------------|

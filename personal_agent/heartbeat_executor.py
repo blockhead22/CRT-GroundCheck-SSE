@@ -1227,6 +1227,40 @@ Reason carefully. If unsure, reply with action=none.
                 except Exception as rm_e:
                     logger.debug(f"[HEARTBEAT] Resource restore failed: {rm_e}")
 
+            # ── Desktop idle control: run a task when system is idle ──────
+            if flags.get("idle") and not gaming_detected:
+                try:
+                    from auth import get_user_settings
+                    _dsettings = get_user_settings(1)
+                    _idle_enabled = _dsettings.get("desktop_heartbeat_idle_control", "false") == "true"
+                    _desktop_enabled = _dsettings.get("desktop_control_enabled", "false") == "true"
+                    _idle_task = _dsettings.get("desktop_idle_task", "").strip()
+                    if _idle_enabled and _desktop_enabled and _idle_task and not getattr(self, "_desktop_idle_running", False):
+                        self._desktop_idle_running = True
+                        logger.info(f"[HEARTBEAT] Idle desktop task: {_idle_task}")
+                        try:
+                            from personal_agent.desktop_control import DesktopController
+                            from personal_agent.desktop_vision import CookieVisionProvider
+                            from personal_agent.desktop_agent import DesktopAgent
+                            _ctrl = DesktopController()
+                            _vis = CookieVisionProvider()
+                            _max = int(_dsettings.get("desktop_max_steps_per_task", "15"))
+                            _dagent = DesktopAgent(controller=_ctrl, vision=_vis, max_steps=_max)
+                            _result = _dagent.execute_task(task=_idle_task)
+                            actions_taken.append({
+                                "action": "desktop_idle_task",
+                                "trigger": "idle_detected",
+                                "detail": f"Ran idle task: {_idle_task} — {'success' if _result.success else 'failed'} in {_result.steps_taken} steps",
+                                "success": _result.success,
+                            })
+                            logger.info(f"[HEARTBEAT] Idle desktop task {'succeeded' if _result.success else 'failed'}: {_idle_task}")
+                        except Exception as dt_e:
+                            logger.warning(f"[HEARTBEAT] Idle desktop task failed: {dt_e}")
+                        finally:
+                            self._desktop_idle_running = False
+                except Exception:
+                    pass
+
         except Exception as e:
             logger.debug(f"[HEARTBEAT] System snapshot skipped: {e}")
 

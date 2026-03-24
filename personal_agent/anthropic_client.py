@@ -391,6 +391,67 @@ class AnthropicClient:
             logger.warning("[ANTHROPIC] chat_with_tools failed: %s", e)
             return {"tool_calls": [], "content": f"[Claude API error: {e}]", "used_tools": False}
 
+    # ── chat_with_image() ─────────────────────────────────────────────────
+
+    def chat_with_image(
+        self,
+        prompt: str,
+        image_b64: str,
+        image_media_type: str = "image/jpeg",
+        max_tokens: int = 1000,
+        temperature: float = 0.1,
+        model: Optional[str] = None,
+    ) -> str:
+        """Send a prompt with an image to Claude. Returns text response."""
+        selected_model = model or self.model
+
+        kwargs: Dict[str, Any] = {
+            "model": selected_model,
+            "max_tokens": max(max_tokens, 1024),
+            "temperature": temperature,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": image_media_type,
+                                "data": image_b64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        },
+                    ],
+                }
+            ],
+        }
+
+        try:
+            t0 = time.time()
+            response = self._client.messages.create(**kwargs)
+            elapsed = time.time() - t0
+
+            self._total_input_tokens += response.usage.input_tokens
+            self._total_output_tokens += response.usage.output_tokens
+
+            text = self._extract_text(response)
+            logger.debug(
+                "[ANTHROPIC] chat_with_image: model=%s tokens=%d/%d elapsed=%.1fs",
+                selected_model,
+                response.usage.input_tokens,
+                response.usage.output_tokens,
+                elapsed,
+            )
+            return text or "[No response from Claude]"
+
+        except Exception as e:
+            logger.warning("[ANTHROPIC] chat_with_image failed: %s", e)
+            return f"[Claude API error: {e}]"
+
     # ── Helpers ────────────────────────────────────────────────────────────
 
     @staticmethod

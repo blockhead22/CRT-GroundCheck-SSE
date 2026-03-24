@@ -251,6 +251,14 @@ def auth_update_settings(
         # Advanced settings
         "bypass_crt",
         "enable_tooling",
+        # Desktop control (Sprint 11)
+        "desktop_control_enabled",
+        "desktop_max_actions_per_session",
+        "desktop_max_steps_per_task",
+        "desktop_heartbeat_idle_control",
+        "desktop_idle_task",
+        "desktop_require_confirmation",
+        "desktop_vision_provider",
     }
 
     updated = {}

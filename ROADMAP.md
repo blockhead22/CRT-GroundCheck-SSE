@@ -1,9 +1,30 @@
 # CRT/Aether Roadmap
-Last updated: March 25, 2026 (v2.2)
+Last updated: March 23, 2026 (v2.3)
 
 ---
 
 ## DONE
+
+### v2.3 (March 23)
+- [x] Desktop control module — `personal_agent/desktop_control.py`: pyautogui + mss + Pillow for screenshots, mouse, keyboard, window management
+- [x] Desktop vision module — `personal_agent/desktop_vision.py`: VisionProvider ABC, ClaudeVisionProvider (API key), CookieVisionProvider (session cookie — uploads image to claude.ai, no API key needed)
+- [x] Desktop ReAct agent — `personal_agent/desktop_agent.py`: screenshot→think→act→verify loop, max 25 steps, rate limiting
+- [x] Cookie vision provider — uploads screenshots via `claude.ai/api/{org}/upload`, references file UUID in chat completion. Uses `curl_cffi` with CurlMime for multipart upload. Full image→upload→prompt→SSE parse pipeline working
+- [x] Coordinate scaling — vision model receives 1280px-wide screenshots, agent scales coordinates back to actual screen resolution (e.g. 3.59x on 4592x2048 ultrawide). Restricted region checks applied after scaling
+- [x] Claude vision integration — `AnthropicClient.chat_with_image()` for API key path; `CookieProvider.complete_with_image()` for cookie path
+- [x] Live test validated — "open notepad" completed in 4 steps / 70s: Win key → type "notepad" → click search result → done. Cookie vision latency 10-24s per step
+- [x] Desktop action intent — regex pattern matching "open chrome", "click on", "switch to", "take a screenshot" etc.
+- [x] Lightweight gating — no initial checkpoint gate; only dangerous actions (send, delete, purchase, uninstall) gate mid-loop. Safe actions (open app, click tab, scroll, type in search) run freely
+- [x] ActionCard screenshot preview — inline JPEG with target description overlay
+- [x] Desktop API — `POST /api/desktop/execute`, `POST /api/desktop/stop`, `GET /api/desktop/screenshot`, `GET /api/desktop/history`
+- [x] Safety: 18 blocked apps, hard-blocked targets (passwords, credit cards, SSN), confirmation keywords, rate limiting, restricted regions
+- [x] Memory-grounded vision — verified facts from CRT memory injected into vision prompt
+- [x] LocalVisionProvider stub — ready for local vision model swap when VRAM permits
+- [x] Live test runner — `tests/desktop_control/run_live.py` for interactive testing with step-by-step logging
+- [x] 42/42 unit tests passing + 22-scenario vision benchmark harness
+- [x] Desktop control settings — Settings > Desktop tab: enable/disable, max steps, max actions/session, confirmation mode (never/dangerous/always), vision provider (cookie/api_key), heartbeat idle control with configurable idle task
+- [x] Settings enforcement — task_agent + API route check `desktop_control_enabled` before executing. Off by default
+- [x] Heartbeat idle automation — when enabled + system idle, runs configured desktop task via DesktopAgent
 
 ### v2.2 (March 25)
 - [x] Semantic intent router — `all-MiniLM-L6-v2` embedding similarity against 140+ prototype phrases across 16 intent types
@@ -203,6 +224,7 @@ Layer 2: Read files/projects  → low gate (first access checkpoint, then truste
 Layer 3: Write files/code     → high gate (always checkpoint, show diff)
 Layer 4: Shell execution      → highest gate (always checkpoint, show command)
 Layer 5: External APIs        → per-service gate (skill system, already built)
+Layer 6: Desktop control      → action-level gate (safe actions free, dangerous actions checkpoint)
 ```
 
 ### The Pitch

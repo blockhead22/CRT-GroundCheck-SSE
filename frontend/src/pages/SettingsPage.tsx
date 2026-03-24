@@ -9,7 +9,7 @@ type Props = {
   onProfileUpdated: () => void
 }
 
-type SettingsTab = 'profile' | 'cloud' | 'advanced' | 'facts' | 'account'
+type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'advanced' | 'facts' | 'account'
 
 const ESCALATION_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
@@ -157,7 +157,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
     // Claude settings and advanced settings use true/false, OpenAI settings use on/off
-    const useTrueFalse = key.startsWith('cloud_claude_') || key === 'bypass_crt' || key === 'enable_tooling'
+    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key === 'bypass_crt' || key === 'enable_tooling'
     const newVal = useTrueFalse ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
     const oldVal = useTrueFalse ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })
@@ -221,6 +221,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'profile', label: 'Profile' },
     { id: 'cloud', label: 'Cloud' },
+    { id: 'desktop', label: 'Desktop' },
     { id: 'advanced', label: 'Advanced' },
     { id: 'facts', label: 'Known Facts' },
     { id: 'account', label: 'Account' },
@@ -241,9 +242,10 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={
-                  'rounded px-3 py-2 text-xs font-semibold ' +
-                  (tab === t.id ? 'bg-violet-600 text-white' : 'text-white/70 hover:bg-white/10')
+                  'rounded px-3 py-2 text-xs font-semibold transition-colors ' +
+                  (tab === t.id ? 'text-white' : 'text-white/70 hover:bg-white/10')
                 }
+                style={tab === t.id ? { backgroundColor: 'var(--accent)' } : undefined}
               >
                 {t.label}
               </button>
@@ -547,6 +549,127 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   </div>
                 </div>
               )}
+            </>
+          )}
+
+          {tab === 'desktop' && (
+            <>
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Desktop Control</div>
+                <p className="mb-4 text-xs text-white/40">
+                  Aether can see and control your desktop via screenshot analysis. When enabled, commands like "open notepad" or "search for weather" will use the vision-action loop.
+                </p>
+
+                {cloudSettings ? (
+                  <div className="space-y-1">
+                    <Toggle
+                      label="Enable Desktop Control"
+                      description="Allow Aether to take screenshots and control mouse/keyboard to complete tasks."
+                      checked={cloudSettings.desktop_control_enabled === 'true'}
+                      onChange={(v) => handleCloudToggle('desktop_control_enabled', v)}
+                    />
+                    {cloudSettings.desktop_control_enabled === 'true' && (
+                      <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
+                        Desktop control is active. Aether can see your screen and interact with it. Move your mouse to the top-left corner (0,0) to emergency-stop all automation.
+                      </div>
+                    )}
+
+                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Limits</div>
+
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex-1">
+                        <div className="text-sm text-white/80">Max steps per task</div>
+                        <div className="text-xs text-white/40 mt-0.5">Maximum vision-action loop iterations before aborting. Each step takes 10-25s.</div>
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        max="50"
+                        value={cloudSettings.desktop_max_steps_per_task || '15'}
+                        onChange={(e) => handleCloudNumberInput('desktop_max_steps_per_task', e.target.value)}
+                        className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex-1">
+                        <div className="text-sm text-white/80">Max actions per session</div>
+                        <div className="text-xs text-white/40 mt-0.5">Total desktop actions allowed per session before requiring re-enable.</div>
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        max="500"
+                        value={cloudSettings.desktop_max_actions_per_session || '50'}
+                        onChange={(e) => handleCloudNumberInput('desktop_max_actions_per_session', e.target.value)}
+                        className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
+                      />
+                    </div>
+
+                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Confirmation</div>
+
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex-1">
+                        <div className="text-sm text-white/80">Require confirmation</div>
+                        <div className="text-xs text-white/40 mt-0.5">When to pause and ask before executing an action.</div>
+                      </div>
+                      <select
+                        value={cloudSettings.desktop_require_confirmation || 'dangerous_only'}
+                        onChange={(e) => handleCloudSelect('desktop_require_confirmation', e.target.value)}
+                        className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                      >
+                        <option value="never">Never</option>
+                        <option value="dangerous_only">Dangerous actions only</option>
+                        <option value="always">Every action</option>
+                      </select>
+                    </div>
+
+                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Vision Provider</div>
+
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex-1">
+                        <div className="text-sm text-white/80">Vision model</div>
+                        <div className="text-xs text-white/40 mt-0.5">How screenshots are analyzed. Cookie uses your claude.ai session; API key uses ANTHROPIC_API_KEY.</div>
+                      </div>
+                      <select
+                        value={cloudSettings.desktop_vision_provider || 'cookie'}
+                        onChange={(e) => handleCloudSelect('desktop_vision_provider', e.target.value)}
+                        className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                      >
+                        <option value="cookie">Cookie session</option>
+                        <option value="api_key">API key</option>
+                      </select>
+                    </div>
+
+                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Heartbeat Automation</div>
+
+                    <Toggle
+                      label="Idle desktop control"
+                      description="When the system is idle (CPU < 10%, no GPU activity), automatically run a desktop task."
+                      checked={cloudSettings.desktop_heartbeat_idle_control === 'true'}
+                      onChange={(v) => handleCloudToggle('desktop_heartbeat_idle_control', v)}
+                    />
+
+                    {cloudSettings.desktop_heartbeat_idle_control === 'true' && (
+                      <div className="flex items-center justify-between py-2 ml-2">
+                        <div className="flex-1">
+                          <div className="text-sm text-white/80">Idle task</div>
+                          <div className="text-xs text-white/40 mt-0.5">What to do when idle. E.g. "organize my downloads folder" or "check email".</div>
+                        </div>
+                        <input
+                          type="text"
+                          value={cloudSettings.desktop_idle_task || ''}
+                          onChange={(e) => handleCloudSelect('desktop_idle_task', e.target.value)}
+                          placeholder="e.g. organize downloads"
+                          className="w-56 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading desktop settings...</p>
+                )}
+              </div>
             </>
           )}
 

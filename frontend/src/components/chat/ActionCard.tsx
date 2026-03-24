@@ -93,6 +93,30 @@ export function ActionCard(props: {
           boxShadow: '0 -4px 24px rgba(0,0,0,0.25), 0 0 48px rgba(212,132,92,0.04)',
         }}
       >
+        {/* Screenshot preview for desktop actions */}
+        {(meta?.screenshot_b64 as string) && (
+          <div className="mb-3">
+            <img
+              src={`data:image/jpeg;base64,${meta?.screenshot_b64 as string}`}
+              alt="Current desktop state"
+              className="rounded border w-full"
+              style={{
+                borderColor: 'rgba(240,235,225,0.1)',
+                maxHeight: '300px',
+                objectFit: 'contain',
+              }}
+            />
+            {(meta?.target_description as string) && (
+              <div
+                className="mt-1 text-[11px]"
+                style={{ color: 'rgba(212,132,92,0.8)' }}
+              >
+                Target: {meta?.target_description as string}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Diff preview for file write actions */}
         {diffPreview && (
           <div className="mb-3">

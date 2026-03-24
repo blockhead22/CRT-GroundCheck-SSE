@@ -1092,7 +1092,18 @@ def create_app() -> FastAPI:
         "what_makes_different": {"title": "What Makes CRT/Aether Different", "kind": "guide", "path": docs_dir / "WHAT_MAKES_CRT_DIFFERENT.md"},
         "quick_start": {"title": "Quick Start Guide", "kind": "guide", "path": docs_dir / "QUICK_START.md"},
         "testing_patterns": {"title": "Testing Patterns", "kind": "guide", "path": docs_dir / "TESTING_PATTERNS.md"},
+        "testing_methods": {"title": "Testing Methods", "kind": "guide", "path": docs_dir / "TESTING_METHODS.md"},
+        "adversarial_stress_test": {"title": "Adversarial Stress Test Report", "kind": "guide", "path": docs_dir / "ADVERSARIAL_STRESS_TEST_REPORT.md"},
         "anti_patterns": {"title": "What NOT to Do", "kind": "guide", "path": docs_dir / "ANTI_PATTERNS.md"},
+        "vilt_writeup": {"title": "ViLT Technical Writeup", "kind": "reference", "path": docs_dir / "VILT_TECHNICAL_WRITEUP.md"},
+        # Agent capabilities — v1.7 through v2.3.
+        "desktop_control": {"title": "Desktop Control System", "kind": "guide", "path": docs_dir / "DESKTOP_CONTROL.md"},
+        "semantic_intent_router": {"title": "Semantic Intent Router", "kind": "guide", "path": docs_dir / "SEMANTIC_INTENT_ROUTER.md"},
+        "slot_discovery": {"title": "Dynamic Slot Discovery", "kind": "guide", "path": docs_dir / "SLOT_DISCOVERY.md"},
+        "commitments": {"title": "Commitments & Scheduling", "kind": "guide", "path": docs_dir / "COMMITMENTS.md"},
+        "action_execution": {"title": "Action Execution Layer", "kind": "guide", "path": docs_dir / "ACTION_EXECUTION.md"},
+        "system_heartbeat": {"title": "System Info & Heartbeat", "kind": "guide", "path": docs_dir / "SYSTEM_HEARTBEAT.md"},
+        "skill_system": {"title": "Skill System", "kind": "guide", "path": docs_dir / "SKILL_SYSTEM.md"},
         # Convenience reference docs.
         "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": docs_dir / "CRT_WHITE_PAPER.md"},
         # Project-level docs served from repo root.
