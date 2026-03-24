@@ -1,9 +1,44 @@
 # CRT/Aether Roadmap
-Last updated: March 24, 2026 (v1.9)
+Last updated: March 25, 2026 (v2.2)
 
 ---
 
 ## DONE
+
+### v2.2 (March 25)
+- [x] Semantic intent router — `all-MiniLM-L6-v2` embedding similarity against 140+ prototype phrases across 16 intent types
+- [x] Hybrid routing — regex at >= 0.90 confidence wins, embedding fills gaps below that; all existing regex preserved as fallback
+- [x] Multi-intent detection — compound messages like "check my system and read the config" route to multiple tools
+- [x] Ambiguity handling — low-confidence intents trigger clarification via action card instead of wrong routing
+- [x] Intent correction learning — `intent_corrections.db` tracks misclassifications, `record_correction()` on disambiguation
+- [x] Heartbeat self-improvement — auto-adds prototypes from 3+ repeated corrections
+- [x] Intent debug API — `GET /api/intents/classify`, `/prototypes`, `/corrections`, `/stats`
+- [x] Lazy loading — SemanticIntentRouter initializes on first use, graceful fallback if model unavailable
+- [x] Source chip in AgentThinkingStrip — blue badge when embedding router is used
+
+### v2.1 (March 25)
+- [x] Dynamic slot discovery — `personal_agent/slot_discovery.py` with `SlotType` enum (EXCLUSIVE, ADDITIVE, TEMPORAL, HIERARCHICAL, UNKNOWN)
+- [x] Slot classification from contradiction/fact patterns — rule-based with evidence-weighted confidence scoring
+- [x] Replaced hardcoded `EXCLUSIVE_SLOTS` in `crt_memory.py` with dynamic `get_slot_type()` lookup
+- [x] Seed lists preserved as fallback — `_SEED_EXCLUSIVE`, `_SEED_ADDITIVE` for bootstrap before enough data
+- [x] Resolution policy engine — `suggest_resolution_policy()`: override/preserve/archive/merge/ask_user based on learned type
+- [x] Event hooks — `on_contradiction_recorded()`, `on_fact_stored()`, `on_contradiction_resolved()` fire on every relevant action
+- [x] Counter-evidence tracking — user disagreeing with suggested resolution lowers classification confidence
+- [x] Heartbeat discovery pass — periodic `run_discovery_pass()` reclassifies slots from full ledger
+- [x] Slot lineage logging — `slot_discovery_log` table tracks every reclassification with trigger and evidence
+- [x] Slot discovery API — `GET /api/slots/profiles`, `POST /api/slots/analyze`, `PUT /api/slots/profiles/{name}/override`, `GET /api/slots/stats`
+- [x] TEMPORAL slots get lighter demotion (0.6x vs 0.4x for EXCLUSIVE) in `crt_memory.py`
+
+### v2.0 (March 24-25)
+- [x] Commitment governance — `personal_agent/commitments.py` with Commitment dataclass, SQLite `commitments` table
+- [x] Natural language time parsing — `personal_agent/time_parser.py`: "at 10:30pm", "every weekday at 9am", "in 5 minutes", "tomorrow morning"
+- [x] Commitment agent tools — `create_commitment`, `list_commitments`, `cancel_commitment` intents with checkpoint gates
+- [x] Time-aware heartbeat — commitment scanner checks for due commitments each tick, fires notifications
+- [x] Browser notifications via SSE — `commitment_notification` event type, system message injection in chat
+- [x] Proactive triggers — `personal_agent/proactive_triggers.py`: trip planning, deadlines, health concern, project mention patterns
+- [x] Heartbeat resource management — kill/restart ollama based on gaming/idle detection (`_resources_reduced` state)
+- [x] Deterministic commitment responses — "Reminder set: {description}. Next fire: {time}. Recurrence: {pattern}."
+- [x] Commitment API — `POST /api/commitments`, `GET /api/commitments`, `PUT /api/commitments/{id}/status`, `DELETE /api/commitments/{id}`
 
 ### v1.9 (March 24)
 - [x] File write tool — `write_file()`, `apply_edit()`, `generate_diff()` with path validation and unified diff preview
@@ -106,35 +141,13 @@ Last updated: March 24, 2026 (v1.9)
 
 ---
 
-## IN PROGRESS — Personal Assistant & Intelligence Layer (v2.0+)
-
-### Sprint 4: Proactive & Scheduled Actions ← NEXT
-- [ ] Commitment governance — reminders/scheduled tasks as commitments with status/deadline/consequence
-- [ ] Time-aware heartbeat — scans for due commitments each tick, fires notifications
-- [ ] Natural language time parsing — "at 10:30pm", "every weekday at 9am", "in 5 minutes"
-- [ ] Notification delivery — browser Web Notifications via SSE + system message injection in chat
-- [ ] Proactive triggers — pattern detection (trip planning, deadlines, health) fires contextual suggestions
-- [ ] Heartbeat resource management — kill/restart ollama based on gaming/idle detection
+## IN PROGRESS — Intelligence & Autonomy Layer (v2.3+)
 
 ### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
 Skill.md files + credentials through existing pipeline. Add as needed:
 - [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
 
-### Sprint 6: Dynamic Slot Discovery
-- [ ] Mine contradiction ledger for slot exclusivity patterns — which slots always resolve to one value vs. coexist
-- [ ] Replace hardcoded `EXCLUSIVE_SLOTS` list with learned slot behavior model
-- [ ] Slot type classifier — exclusive (favorite_color), additive (hobby), temporal (location), hierarchical (role)
-- [ ] Feedback loop — new contradictions auto-classified with resolution policy based on learned patterns
-- [ ] Slot confidence scores — how certain is the system that a slot is exclusive vs. additive
-
-### Sprint 7: Intent Router (replace keyword routing)
-- [ ] ML-based intent classifier replacing regex patterns in `classify_intent()`
-- [ ] Multi-intent detection — "check my system and read the package.json" routes to two tools
-- [ ] Ambiguity handling — low-confidence intents trigger clarification instead of wrong routing
-- [ ] Intent embeddings — semantic similarity to intent prototypes instead of keyword matching
-- [ ] Graceful fallback — unknown intents route to conversational with explanation, not silent failure
-
-### Sprint 8: Sub-Agent Interface + Delegation Protocol
+### Sprint 8: Sub-Agent Interface + Delegation Protocol ← NEXT
 - [ ] Agent protocol ABCs — MemoryAgent, ToolAgent, ReflectionAgent, LearningAgent
 - [ ] Delegation — Aether breaks complex requests into subtasks, assigns to specialized agents
 - [ ] Trust propagation — sub-agent outputs inherit trust scores from their source data
