@@ -40,7 +40,7 @@ def _get_task_intent_cls():
 # ---------------------------------------------------------------------------
 
 _ROUTER_SYSTEM_PROMPT = """\
-You are a tool-routing assistant. Your ONLY job is to decide which tool to call \
+You are a tool-routing assistant. Your ONLY job is to decide which tool(s) to call \
 based on the user's message.
 
 Rules:
@@ -50,7 +50,11 @@ tools, call that tool with the correct parameters.
 want to read/view/summarize it, use file_read with that path.
 3. If no tool is appropriate (casual conversation, opinions, general questions), \
 respond with a short text message — do NOT call any tool.
-4. Only call ONE tool unless the user clearly wants multiple actions.
+4. If the user wants MULTIPLE actions in sequence (e.g. "copy this file then \
+summarize it", "read the file and tell me what it says"), call the FIRST tool \
+that should execute. Also include a JSON block in your text response describing \
+the full sequence:
+{"multi_step": true, "steps": [{"tool": "tool_name", "params": {...}}, ...]}
 5. Extract parameters carefully from the user message — file paths, URLs, commands, etc.
 6. For git commands, extract the git subcommand and args into the args parameter as a list.
 7. For shell commands, put the full command string in the command parameter.
@@ -72,7 +76,7 @@ class LLMIntentRouter:
         *,
         source_label: str = "llm_local",
         max_tokens: int = 300,
-        temperature: float = 0.1,
+        temperature: float = 0.0,
     ):
         """
         Args:
@@ -86,7 +90,7 @@ class LLMIntentRouter:
         self.tool_schemas = tool_schemas
         self.source_label = source_label
         self.max_tokens = max_tokens
-        self.temperature = temperature
+        self.temperature = 0.0  # Force deterministic routing (classification task)
 
     def classify(
         self,
@@ -235,16 +239,78 @@ class LLMIntentRouter:
             )
 
         tool_calls = result.get("tool_calls", [])
+        content = result.get("content", "")
+
+        # Check for multi_step JSON in the content (LLM described a sequence)
+        _multi_step_match = re.search(
+            r'\{[^{}]*"multi_step"\s*:\s*true[^{}]*"steps"\s*:\s*\[',
+            content, re.DOTALL,
+        )
+        if _multi_step_match:
+            try:
+                # Find the full JSON object
+                _json_start = content.find("{", _multi_step_match.start())
+                _brace_depth = 0
+                _json_end = _json_start
+                for _ci, _ch in enumerate(content[_json_start:], _json_start):
+                    if _ch == "{":
+                        _brace_depth += 1
+                    elif _ch == "}":
+                        _brace_depth -= 1
+                        if _brace_depth == 0:
+                            _json_end = _ci + 1
+                            break
+                _multi_data = json.loads(content[_json_start:_json_end])
+                _steps = _multi_data.get("steps", [])
+                if _steps and len(_steps) >= 2:
+                    logger.info(
+                        "[LLM_ROUTER:%s] → multi_step with %d steps",
+                        self.source_label, len(_steps),
+                    )
+                    return TaskIntent(
+                        route="task",
+                        intent_type="multi_step",
+                        slots={
+                            "raw_message": original_message,
+                            "steps": _steps,
+                        },
+                        confidence=0.85,
+                        reason=f"LLM router detected multi-step ({len(_steps)} steps)",
+                        source=self.source_label,
+                    )
+            except (json.JSONDecodeError, ValueError) as e:
+                logger.debug("[LLM_ROUTER] Failed to parse multi_step JSON: %s", e)
 
         # No tool calls → conversational
         if not tool_calls:
-            content = result.get("content", "")
             return TaskIntent(
                 route="conversational",
                 intent_type="conversational",
                 slots={"raw_message": original_message, "llm_response": content},
                 confidence=0.75,
                 reason="LLM chose no tool — conversational response",
+                source=self.source_label,
+            )
+
+        # Multiple tool calls → multi_step
+        if len(tool_calls) >= 2:
+            _steps = [
+                {"tool": tc.get("name", ""), "params": tc.get("arguments", {})}
+                for tc in tool_calls
+            ]
+            logger.info(
+                "[LLM_ROUTER:%s] → multi_step from %d native tool_calls",
+                self.source_label, len(tool_calls),
+            )
+            return TaskIntent(
+                route="task",
+                intent_type="multi_step",
+                slots={
+                    "raw_message": original_message,
+                    "steps": _steps,
+                },
+                confidence=0.88,
+                reason=f"LLM router returned {len(tool_calls)} tool calls",
                 source=self.source_label,
             )
 

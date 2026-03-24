@@ -30,6 +30,16 @@ from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_print(msg: str) -> None:
+    """Print to stderr so debug lines appear in server logs (not SSE stream)."""
+    import sys
+    try:
+        print(msg, file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # Known services registry
 # ---------------------------------------------------------------------------
@@ -781,6 +791,40 @@ def classify_intent(
     msg_lower = message.lower().strip()
     url_match = _URL_RE.search(message)
 
+    # ── 0b. [file: X] tag fast-path — always route to file_read (0.95+) ──
+    # When a user attaches a file via [file: path], they want to read it.
+    # This must fire at high confidence before the LLM router can misclassify.
+    _file_attached = [a for a in _attached_paths if a["type"] == "file"]
+    if _file_attached:
+        _fa_path = _file_attached[0]["path"]
+        return TaskIntent(
+            route="task",
+            intent_type="file_read",
+            slots={"path": _fa_path, "raw_message": _clean_message or message},
+            confidence=0.97,
+            reason="attached_file_tag_fast_path",
+        )
+
+    # ── 0c. Explicit drive-letter path + action verb → file_read fast-path ──
+    # Catches "D:\AI_round2\docs\FILE.md read and summarize" regardless of verb order.
+    _drive_path_match = re.search(r"[A-Za-z]:[/\\][\w./\\-]+", message)
+    if _drive_path_match:
+        _dp = _drive_path_match.group(0)
+        _has_file_ext = bool(re.search(r"\.\w{1,10}$", _dp.rstrip("/\\")))
+        _has_action_verb = any(
+            v in msg_lower
+            for v in ("read", "summarize", "summary", "show", "open", "display",
+                       "cat", "print", "look", "contents", "what")
+        )
+        if _has_file_ext and _has_action_verb:
+            return TaskIntent(
+                route="task",
+                intent_type="file_read",
+                slots={"path": _dp, "raw_message": message},
+                confidence=0.95,
+                reason="drive_path_with_action_verb_fast_path",
+            )
+
     # ── 1. Active task continuation ──────────────────────────────────────
     if active_task and active_task.get("status") == "active":
         # Long messages (>200 chars) are unlikely to be simple continuations.
@@ -1244,6 +1288,27 @@ def classify_intent_hybrid(
 
     Falls back to embedding classifier when LLM router is unavailable.
     """
+    # 0. Route-learning cache: reuse a recent successful classification
+    try:
+        from personal_agent.route_learning import get_route_learning_db
+        _rl_db = get_route_learning_db()
+        _cached = _rl_db.lookup_recent(message, max_age_hours=24)
+        if _cached and _cached["intent_type"] != "conversational" and _cached["confidence"] >= 0.80:
+            logger.info(
+                "[INTENT_ROUTER] Route cache hit: '%s' → %s (%.2f)",
+                message[:60], _cached["intent_type"], _cached["confidence"],
+            )
+            return TaskIntent(
+                route="task",
+                intent_type=_cached["intent_type"],
+                slots={"raw_message": message},
+                confidence=_cached["confidence"],
+                reason="route_learning_cache_hit",
+                source="cache:" + _cached["source"],
+            )
+    except Exception as _rl_err:
+        logger.debug("[INTENT_ROUTER] Route cache lookup failed: %s", _rl_err)
+
     # 1. Always run regex first (existing behavior)
     regex_result = _classify_intent_regex(message, active_task)
 
@@ -2199,12 +2264,22 @@ class CRTTaskAgent:
             except Exception:
                 pass
 
+            # ── Synthesis gate debug logging ──
+            if not _synthesis_enabled:
+                _safe_print("[SYNTHESIS] Skipped: disabled in settings")
+            elif not _ok_step:
+                _safe_print(f"[SYNTHESIS] Skipped: no ok step (steps={[s.status for s in steps]})")
+            elif self._llm is None:
+                _safe_print("[SYNTHESIS] Skipped: self._llm is None")
+
             if _synthesis_enabled and _ok_step and self._llm is not None:
                 try:
                     from personal_agent.response_synthesis import ResponseSynthesizer
                     _synthesizer = ResponseSynthesizer(self._llm)
                     _tool_result = _ok_step.output if _ok_step else None
-                    if _synthesizer.should_synthesize(_ok_step.tool_name, message, _tool_result):
+                    _should = _synthesizer.should_synthesize(_ok_step.tool_name, message, _tool_result)
+                    _safe_print(f"[SYNTHESIS] should_synthesize({_ok_step.tool_name!r})={_should}")
+                    if _should:
                         yield {"type": "status", "content": "thinking about results"}
                         _step_dicts = [
                             {
@@ -2222,7 +2297,8 @@ class CRTTaskAgent:
                             tool_results=_step_dicts,
                         )
                 except Exception as _synth_err:
-                    logger.debug("[SYNTHESIS] Failed, falling back to deterministic: %s", _synth_err)
+                    _safe_print(f"[SYNTHESIS] Failed, falling back to deterministic: {_synth_err}")
+                    logger.warning("[SYNTHESIS] Failed, falling back to deterministic: %s", _synth_err, exc_info=True)
 
             if _synth_answer:
                 answer = _synth_answer
@@ -4636,17 +4712,86 @@ RULES:
     def _run_web_search(
         self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
     ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
-        """Execute a web search — navigate to search engine, extract results."""
+        """Execute a web search — try lightweight Python package first, browser fallback."""
         import time as _time
         t0 = _time.time()
         query = inp.get("query", "")
 
+        yield {"type": "status", "content": f"Searching the web: {query}"}
+
+        # ── Primary: lightweight Python search (no browser needed) ────────
+        try:
+            from personal_agent.web_search import WebSearchTool
+            _safe_print(f"[WEB_SEARCH] Using lightweight WebSearchTool for: {query}")
+            searcher = WebSearchTool(max_results=8)
+            response = searcher.search(query)
+
+            if response.results:
+                duration_ms = round((_time.time() - t0) * 1000)
+                search_result = {
+                    "success": True,
+                    "query": query,
+                    "results": [
+                        {"title": r.title, "url": r.url, "snippet": r.snippet}
+                        for r in response.results
+                    ],
+                    "results_count": len(response.results),
+                    "source": "ddgs_package",
+                }
+                step.output = search_result
+                step.status = "ok"
+                step.duration_ms = duration_ms
+                results_count = len(response.results)
+                step.output_preview = f"Found {results_count} results for \"{query}\""
+                lines = []
+                for r in response.results[:5]:
+                    lines.append(f"- {r.title}: {r.snippet[:100]}")
+                step.output_preview += "\n" + "\n".join(lines)
+
+                # Log receipt
+                try:
+                    from personal_agent.action_receipts import create_receipt, log_receipt
+                    receipt = create_receipt(
+                        tool_name="web_search",
+                        action=f"search: {query}",
+                        target=query,
+                        result="success",
+                        reversible=False,
+                        details=search_result,
+                    )
+                    log_receipt(receipt, thread_id)
+                except Exception:
+                    pass
+
+                return {
+                    "type": "tool_result",
+                    "content": step.output_preview,
+                    "metadata": {
+                        "tool_name": "web_search",
+                        "status": "ok",
+                        "duration_ms": duration_ms,
+                        "step_index": step_index,
+                        "success": True,
+                        "results_count": results_count,
+                        "query": query,
+                    },
+                }
+            elif response.error:
+                _safe_print(f"[WEB_SEARCH] WebSearchTool returned error: {response.error}")
+            else:
+                _safe_print("[WEB_SEARCH] WebSearchTool returned 0 results, falling back to browser")
+        except ImportError:
+            _safe_print("[WEB_SEARCH] ddgs package not installed, falling back to browser search")
+        except Exception as _pkg_err:
+            _safe_print(f"[WEB_SEARCH] WebSearchTool failed ({_pkg_err}), falling back to browser search")
+
+        # ── Fallback: browser-based search ────────────────────────────────
         try:
             from auth import get_user_settings
             _settings = get_user_settings(1)
             if _settings.get("browser_enabled", "false") != "true":
                 step.status = "error"
-                step.error = "Browser control is disabled. Enable it in Settings > Browser."
+                step.error = "Web search failed (package unavailable) and browser control is disabled."
                 return {
                     "type": "tool_result",
                     "content": step.error,
@@ -4656,15 +4801,12 @@ RULES:
 
             from personal_agent.browser_control import BrowserController
             from personal_agent.browser_agent import run_web_search
-            from personal_agent.action_receipts import create_receipt, log_receipt
             import asyncio
 
             _headless = _settings.get("browser_mode", "headed") == "headless"
             _engine = _settings.get("browser_engine", "chromium")
             _persist = _settings.get("browser_persist_sessions", "true") == "true"
             persistent_dir = "data/browser_profile" if _persist else None
-
-            yield {"type": "status", "content": f"Searching the web: {query}"}
 
             async def _do_search():
                 ctrl = BrowserController(
@@ -4678,8 +4820,6 @@ RULES:
                 finally:
                     await ctrl.close()
 
-            # Run async search in a dedicated thread with its own event loop
-            # (Playwright must be started and used within the same event loop)
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(asyncio.run, _do_search())
@@ -4689,6 +4829,7 @@ RULES:
 
             # Log receipt
             try:
+                from personal_agent.action_receipts import create_receipt, log_receipt
                 receipt = create_receipt(
                     tool_name="web_search",
                     action=f"search: {query}",
@@ -4705,7 +4846,6 @@ RULES:
             results_count = search_result.get("results_count", 0)
             step.output_preview = f"Found {results_count} results for \"{query}\""
             if search_result.get("results"):
-                # Include top results in preview for synthesis
                 lines = []
                 for r in search_result["results"][:5]:
                     lines.append(f"- {r.get('title', '?')}: {r.get('snippet', '')[:100]}")

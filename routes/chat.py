@@ -825,11 +825,30 @@ _CAPABILITY_REROUTE_PATTERNS = [
 
 # Additional patterns for multi-intent compound detection
 _COMPOUND_INTENT_PATTERNS = [
+    # ── Git ──
     (_re_mod.compile(r"\bgit\s+(status|diff|log|branch|commit|push|pull|stash)", _re_mod.IGNORECASE), "git_action"),
-    (_re_mod.compile(r"\b(?:list|show|check)\s+(?:the\s+)?(?:files?|directory|folder|dir)\b", _re_mod.IGNORECASE), "dir_list"),
-    (_re_mod.compile(r"\b(?:read|open|show\s+me)\s+(?:the\s+)?(?:file|contents?\s+of)\b", _re_mod.IGNORECASE), "file_read"),
     (_re_mod.compile(r"\b(?:uncommitted|modified|staged)\s+(?:git\s+)?(?:changes?|files?)", _re_mod.IGNORECASE), "git_action"),
     (_re_mod.compile(r"\bgit\s+(?:changes?|uncommitted|modified|staged)", _re_mod.IGNORECASE), "git_action"),
+    # ── Directory listing ──
+    (_re_mod.compile(r"\b(?:list|show|check)\s+(?:the\s+)?(?:files?|directory|folder|dir)\b", _re_mod.IGNORECASE), "dir_list"),
+    # ── File read (including [file:...] tags and named files) ──
+    (_re_mod.compile(r"\b(?:read|open|show\s+me)\s+(?:the\s+)?(?:file|contents?\s+of)\b", _re_mod.IGNORECASE), "file_read"),
+    (_re_mod.compile(r"\[file:\s*\S+\]", _re_mod.IGNORECASE), "file_read"),
+    (_re_mod.compile(r"\b(?:read|open|show|cat)\s+\S+\.(?:md|py|txt|json|yaml|yml|toml|cfg|ini|log|csv|ts|tsx|js|jsx)\b", _re_mod.IGNORECASE), "file_read"),
+    (_re_mod.compile(r"\b(?:summarize|explain|describe|tell\s+me\s+about)\s+\S+\.(?:md|py|txt|json)\b", _re_mod.IGNORECASE), "file_read"),
+    # ── File operations (copy/move/delete) ──
+    (_re_mod.compile(r"\b(?:copy|move|rename|delete)\s+.*\.(?:md|py|txt|json|ts|tsx|js|jsx|csv)\b", _re_mod.IGNORECASE), "shell_exec"),
+    # ── File write/create ──
+    (_re_mod.compile(r"\b(?:write|create|make)\s+(?:a\s+)?(?:new\s+)?(?:file|document)\b", _re_mod.IGNORECASE), "file_write"),
+    (_re_mod.compile(r"\b(?:save|write)\s+.*\s+to\s+", _re_mod.IGNORECASE), "file_write"),
+    # ── Web search/browse ──
+    (_re_mod.compile(r"\b(?:search|look\s*up|find|google|browse)\s+(?:for|on|the\s+web|online)\b", _re_mod.IGNORECASE), "web_search"),
+    (_re_mod.compile(r"\b(?:search|look\s*up|check|find)\s+(?:on\s+)?\S+\.(?:com|org|net|io)\b", _re_mod.IGNORECASE), "web_search"),
+    (_re_mod.compile(r"\b(?:go\s+to|open|visit|navigate\s+to)\s+\S+\.(?:com|org|net|io)\b", _re_mod.IGNORECASE), "web_browse"),
+    (_re_mod.compile(r"\b(?:latest|recent|current|today'?s?)\s+(?:news|headlines|updates|weather)\b", _re_mod.IGNORECASE), "web_search"),
+    (_re_mod.compile(r"\b(?:can you|please)?\s*(?:check|search|look\s*up|find)\s+(?:the\s+)?(?:latest|recent|current)\b", _re_mod.IGNORECASE), "web_search"),
+    # ── Project scaffold ──
+    (_re_mod.compile(r"\b(?:set\s*up|scaffold|initialize|init|bootstrap)\s+(?:a\s+)?(?:new\s+)?project\b", _re_mod.IGNORECASE), "shell_exec"),
 ]
 
 # Extract git subcommand from message for compound detection
@@ -855,6 +874,8 @@ def _capability_reroute(message: str, current_intent) -> "Optional[TaskIntent]":
     from personal_agent.task_agent import TaskIntent
 
     msg = message.strip()
+    _total_patterns = len(_CAPABILITY_REROUTE_PATTERNS) + len(_COMPOUND_INTENT_PATTERNS)
+    _safe_print(f"[REROUTE] checking {_total_patterns} patterns against: {msg[:80]}")
 
     # First pass: collect all matching intents (primary + compound)
     matched_intents = []
@@ -871,8 +892,10 @@ def _capability_reroute(message: str, current_intent) -> "Optional[TaskIntent]":
                 matched_intents.append({"type": intent_type, "confidence": 0.80})
 
     if not matched_intents:
+        _safe_print(f"[REROUTE] no pattern matched")
         return None
 
+    _safe_print(f"[REROUTE] matched: {[m['type'] for m in matched_intents]}")
     # Single match — return as single intent
     if len(matched_intents) == 1:
         m = matched_intents[0]
@@ -3323,13 +3346,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         or _raw_answer.startswith("[Cloud LLM error:")
     )
     # Also catch gate-fail with empty/error responses — the engine returned
-    # "No memories available" (or similar) before cloud had a chance to help.
+    # an empty or error answer before cloud had a chance to help.
+    # Note: "no_memories_local_generation" means local model succeeded without
+    # memories — do NOT fall back to cloud for that case.
+    _gate_reason_str = str(result.get("gate_reason") or "")
     _is_gate_fail_empty = (
         not _is_llm_error
         and not result.get("gates_passed", True)
+        and _gate_reason_str != "no_memories_local_generation"
         and (
             not _raw_answer.strip()
-            or str(result.get("gate_reason") or "") == "No memories available"
+            or _gate_reason_str == "No memories available"
         )
     )
     if _is_llm_error or _is_gate_fail_empty:
@@ -4823,14 +4850,14 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.debug("[STREAM] capability re-route check failed: %s", _rre)
 
             # ── COMPOUND INTENT UPGRADE (Sprint 8) ────────────────────────
-            # If the classifier returned a single task intent but the message
-            # contains additional tool-worthy clauses, upgrade to multi_intent
-            # so the orchestrator can run them in parallel.
+            # If the classifier returned a single task intent (or conversational
+            # due to multi-action confusion) but the message contains additional
+            # tool-worthy clauses, upgrade to multi_intent so the orchestrator
+            # can run them in parallel.
             if (
                 _task_intent is not None
-                and _task_intent.route == "task"
-                and _task_intent.intent_type != "multi_intent"
-                and _task_intent.intent_type != "task_continuation"
+                and _task_intent.route in ("task", "conversational")
+                and _task_intent.intent_type not in ("multi_intent", "multi_step", "task_continuation")
             ):
                 try:
                     _extra_intents = []
@@ -4845,10 +4872,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         if any(e["type"] == "git_action" for e in _extra_intents) or _task_intent.intent_type == "git_action":
                             _merged_slots["args"] = _extract_git_args(req.message)
                             _merged_slots["cwd"] = "D:/AI_round2"
-                        _all_intents = [
-                            {"type": _task_intent.intent_type, "confidence": _task_intent.confidence},
-                            *_extra_intents,
-                        ]
+                        # When upgrading from conversational, don't include "conversational" as a sub-intent
+                        _base_intents = []
+                        if _task_intent.intent_type != "conversational":
+                            _base_intents.append({"type": _task_intent.intent_type, "confidence": _task_intent.confidence})
+                        _all_intents = [*_base_intents, *_extra_intents]
                         _merged_slots["intents"] = _all_intents
                         logger.info(
                             "[STREAM] Compound upgrade: %s + %s → multi_intent",
@@ -4906,6 +4934,61 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 except Exception as _tap_err:
                     logger.debug("[STREAM] Intuition check clarify failed: %s", _tap_err)
 
+            # ── PLAN ENGINE CHECK (v2.9.3) ──────────────────────────────
+            # If the message warrants a plan (multi-step work), generate one
+            # and upgrade the intent to use the plan orchestrator.
+            if _task_intent is not None and _task_intent.route in ("task", "conversational"):
+                try:
+                    from personal_agent.plan_engine import PlanEngine as _PlanEngine
+                    _get_llm_pe = request.app.state.get_llm_client
+                    _pe = _PlanEngine(
+                        llm_client=_get_llm_pe(),
+                        session_db=_session_db,
+                    )
+                    if _pe.should_create_plan(req.message, intent=_task_intent):
+                        _safe_print(f"[PLAN] should_create_plan=True for: {req.message[:80]}")
+                        _plan = _pe.generate_plan(
+                            user_message=req.message,
+                            conversation_history=recent_history,
+                        )
+                        if _plan:
+                            _plan_steps = _plan.get("steps", [])
+                            _safe_print(f"[PLAN] Generated plan '{_plan.get('title')}' with {len(_plan_steps)} steps")
+                            # Link plan to thread so advance_step() can find it
+                            try:
+                                _session_db.link_plan_to_thread(req.thread_id, _plan["id"])
+                            except Exception as _lpe:
+                                _safe_print(f"[PLAN] link_plan_to_thread failed: {_lpe}")
+                            yield _sse({
+                                "type": "plan_created",
+                                "content": f"Plan: {_plan.get('title', 'Untitled')}",
+                                "metadata": {
+                                    "plan_id": _plan.get("id"),
+                                    "title": _plan.get("title"),
+                                    "step_count": len(_plan_steps),
+                                    "steps": [
+                                        {"title": s.get("title", ""), "tool_name": s.get("tool_name")}
+                                        for s in _plan_steps[:10]
+                                    ],
+                                },
+                            })
+                            # Upgrade intent to multi_step with plan context
+                            _task_intent = TaskIntent(
+                                route="task",
+                                intent_type="multi_step",
+                                confidence=0.90,
+                                slots={
+                                    "raw_message": req.message,
+                                    "plan_id": _plan.get("id"),
+                                    "plan_steps": _plan_steps,
+                                },
+                                reason="plan_engine_generated",
+                                source="plan_engine",
+                            )
+                except Exception as _pe_err:
+                    _safe_print(f"[PLAN] plan engine check failed: {_pe_err}")
+                    logger.debug("[STREAM] Plan engine check failed: %s", _pe_err)
+
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":
                 try:
@@ -4925,7 +5008,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     # parallel sub-agent execution. Single-intent tasks
                     # use the existing sync path (no overhead).
                     _use_orchestrator = (
-                        _task_intent.intent_type == "multi_intent"
+                        _task_intent.intent_type in ("multi_intent", "multi_step")
                     )
 
                     _checkpoint_hit = False

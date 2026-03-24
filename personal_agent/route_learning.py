@@ -200,6 +200,31 @@ class RouteLearningDB:
         except Exception as e:
             logger.warning("[ROUTE_LEARNING] save_learned_pattern failed: %s", e)
 
+    def lookup_recent(self, message: str, max_age_hours: int = 24) -> Optional[Dict[str, Any]]:
+        """Look up a recent successful classification for a similar message.
+
+        Returns {"intent_type": str, "confidence": float, "source": str} or None.
+        """
+        try:
+            normalized = self._normalize(message)
+            cutoff = time.time() - (max_age_hours * 3600)
+            with sqlite3.connect(self.db_path) as conn:
+                row = conn.execute(
+                    """SELECT intent_type, confidence, source
+                       FROM route_log
+                       WHERE message_normalized = ?
+                         AND success = 1
+                         AND timestamp > ?
+                       ORDER BY timestamp DESC
+                       LIMIT 1""",
+                    (normalized, cutoff),
+                ).fetchone()
+                if row:
+                    return {"intent_type": row[0], "confidence": row[1], "source": row[2]}
+        except Exception as e:
+            logger.debug("[ROUTE_LEARNING] lookup_recent failed: %s", e)
+        return None
+
     def get_learned_patterns(self) -> List[Tuple[str, str]]:
         """Get all active learned patterns as (intent_type, pattern) tuples."""
         try:

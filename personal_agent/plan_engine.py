@@ -20,13 +20,27 @@ logger = logging.getLogger(__name__)
 # Keywords that suggest the user wants multi-step work
 _PLAN_KEYWORDS = re.compile(
     r"\b(plan|steps|todo|today i want|first .+ then|phase|workflow|checklist"
-    r"|and then|after that|followed by|next|finally)\b",
+    r"|and then|after that|followed by|next|finally"
+    r"|set up a|set up the|scaffold|bootstrap|initialize and"
+    r"|step[- ]by[- ]step|walk me through)\b",
+    re.IGNORECASE,
+)
+
+# "help me" + compound actions (multiple verbs)
+_HELP_COMPOUND = re.compile(
+    r"\bhelp\s+me\b.*\b(?:and|then|,)\b",
     re.IGNORECASE,
 )
 
 # Multi-action patterns (3+ actions separated by commas/and)
 _MULTI_ACTION = re.compile(
     r"(?:,\s*(?:and\s+)?|;\s*|\band\b\s+){2,}",
+    re.IGNORECASE,
+)
+
+# "I need to" + compound actions
+_NEED_COMPOUND = re.compile(
+    r"\b(?:i need to|i want to|i'd like to)\b.*\b(?:and|then|,)\b.*\b(?:and|then|,)\b",
     re.IGNORECASE,
 )
 
@@ -70,9 +84,22 @@ class PlanEngine:
         # Multiple actions (3+ comma/and separated clauses)
         if _MULTI_ACTION.search(message):
             return True
+        # "help me" + compound actions
+        if _HELP_COMPOUND.search(message):
+            return True
+        # "I need to" + compound actions (3+ verbs)
+        if _NEED_COMPOUND.search(message):
+            return True
         # Long messages (> 100 chars) with multiple sentences often describe projects
         sentences = [s.strip() for s in re.split(r'[.!?]+', message) if s.strip()]
         if len(sentences) >= 3 and len(message) > 100:
+            return True
+        # Count action verbs — 3+ distinct verbs suggests multi-step
+        _action_verbs = re.findall(
+            r"\b(create|copy|move|read|write|delete|install|init|scaffold|build|deploy|test|run|push|commit|summarize|setup|configure|open|download|upload)\b",
+            message, re.IGNORECASE,
+        )
+        if len(set(v.lower() for v in _action_verbs)) >= 3:
             return True
         return False
 

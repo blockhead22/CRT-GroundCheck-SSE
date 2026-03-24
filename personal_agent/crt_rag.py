@@ -8045,33 +8045,39 @@ class CRTEnhancedRAG:
     # ====== END Orchestration Methods ======
     
     def _fallback_response(self, query: str, thread_id: Optional[str] = None) -> Dict:
-        """Generate fallback response when no memories exist."""
-        # Simple fallback
+        """Generate response when no memories exist.
+
+        The local model can still generate valid responses without memories —
+        memories enhance but should not gate local generation.
+        """
         result = self.reasoning.reason(
             query=query,
             context={'retrieved_docs': [], 'contradictions': []},
             mode=ReasoningMode.QUICK
         )
-        
+
+        _answer = result.get('answer', '') or ''
+        _has_valid_answer = bool(_answer.strip()) and not _answer.startswith("[")
+
         # Store as low-trust speech
         self.memory.store_memory(
-            text=result['answer'],
+            text=_answer,
             confidence=0.3,
             source=MemorySource.FALLBACK,
             context={'query': query, 'type': 'fallback_no_memory'},
             thread_id=thread_id,
         )
-        
-        self.memory.record_speech(query, result['answer'], "no_memory")
-        
+
+        self.memory.record_speech(query, _answer, "no_memory")
+
         return {
-            'answer': result['answer'],
+            'answer': _answer,
             'thinking': None,
             'mode': 'quick',
-            'confidence': 0.3,
+            'confidence': 0.5 if _has_valid_answer else 0.3,
             'response_type': 'speech',
-            'gates_passed': False,
-            'gate_reason': 'No memories available',
+            'gates_passed': _has_valid_answer,  # Pass gate if local model generated a real answer
+            'gate_reason': 'no_memories_local_generation' if _has_valid_answer else 'No memories available',
             'contradiction_detected': False,
             'retrieved_memories': []
         }
