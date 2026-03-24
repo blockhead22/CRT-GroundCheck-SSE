@@ -30,9 +30,16 @@ CREATE TABLE IF NOT EXISTS action_receipts (
     reversible INTEGER,
     reverse_action TEXT,
     details TEXT,
-    checkpoint_approved INTEGER
+    checkpoint_approved INTEGER,
+    agent_name TEXT,
+    orchestration_id TEXT
 )
 """
+
+_MIGRATE_AGENT_COLS_SQL = [
+    "ALTER TABLE action_receipts ADD COLUMN agent_name TEXT DEFAULT NULL",
+    "ALTER TABLE action_receipts ADD COLUMN orchestration_id TEXT DEFAULT NULL",
+]
 
 
 @dataclass
@@ -53,6 +60,12 @@ def _get_db() -> sqlite3.Connection:
     """Get or create the receipts database."""
     conn = sqlite3.connect(_DB_PATH)
     conn.execute(_CREATE_TABLE_SQL)
+    # Migrate: add Sprint 8 columns if missing
+    for sql in _MIGRATE_AGENT_COLS_SQL:
+        try:
+            conn.execute(sql)
+        except sqlite3.OperationalError:
+            pass  # column already exists
     conn.commit()
     return conn
 
@@ -146,3 +159,32 @@ def create_receipt(
         details=details or {},
         checkpoint_approved=checkpoint_approved,
     )
+
+
+def log_orchestration_receipt(
+    orchestration_id: str,
+    thread_id: str,
+    subtask_count: int,
+    parallel_count: int,
+    total_duration_ms: float,
+    merged_trust: float,
+    all_ok: bool,
+) -> str:
+    """Log an orchestration-level receipt that ties sub-agent receipts together."""
+    receipt = ActionReceipt(
+        receipt_id=orchestration_id,
+        timestamp=time.time(),
+        tool_name="orchestration",
+        action=f"{subtask_count} subtasks ({parallel_count} parallel)",
+        target="TaskOrchestrator",
+        result="ok" if all_ok else "partial_failure",
+        reversible=False,
+        details={
+            "subtask_count": subtask_count,
+            "parallel_count": parallel_count,
+            "merged_trust": merged_trust,
+            "total_duration_ms": total_duration_ms,
+        },
+    )
+    log_receipt(receipt, thread_id)
+    return orchestration_id
