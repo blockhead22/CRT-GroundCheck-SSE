@@ -184,6 +184,32 @@ _FILE_PATH_RE = re.compile(
     r"[\w./\\-]+\.(?:py|tsx?|jsx?|json|md|ya?ml|toml|rs|go|css|html|txt|cfg|ini|sh|bat)\b",
 )
 
+# 3A — file write / edit patterns
+_FILE_WRITE_RE = re.compile(
+    r"\b(write\s+to|create\s+file|edit\s+file|update\s+file|save\s+to|"
+    r"modify\s+(the\s+)?file|change\s+the\s+code\s+in|add\s+a\s+line\s+to|"
+    r"write\s+file|overwrite|append\s+to)\b",
+    re.IGNORECASE,
+)
+
+# 3B — shell execution patterns
+_SHELL_EXEC_RE = re.compile(
+    r"\b(run\s+command|execute\s+command|run\s+shell|terminal|"
+    r"npm\s+install|pip\s+install|python\s+run|"
+    r"run\s+the\s+command|execute\s+the|"
+    r"run\s+`[^`]+`|shell\s+command)\b",
+    re.IGNORECASE,
+)
+
+# 3C — git action patterns (distinct from project_scan read-only git status)
+_GIT_ACTION_RE = re.compile(
+    r"\b(git\s+commit|git\s+push|git\s+pull|git\s+checkout|git\s+merge|"
+    r"git\s+branch|git\s+stash|git\s+add|git\s+reset|git\s+rebase|"
+    r"commit\s+changes|push\s+to\s+(remote|origin|github|upstream)|"
+    r"create\s+(a\s+)?branch|checkout\s+branch)\b",
+    re.IGNORECASE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Credentials store
@@ -447,6 +473,12 @@ def _describe_action(intent: "TaskIntent") -> str:
         return f"list directory {intent.slots.get('path', '?')}"
     elif intent.intent_type == "project_scan":
         return f"scan project at {intent.slots.get('path', '?')}"
+    elif intent.intent_type == "file_write":
+        return f"write to {intent.slots.get('path', 'a file')}"
+    elif intent.intent_type == "shell_exec":
+        return f"run command: {intent.slots.get('command', '?')}"
+    elif intent.intent_type == "git_action":
+        return f"execute git {' '.join(intent.slots.get('args', ['?']))}"
     return "execute a task"
 
 
@@ -479,6 +511,24 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
             "checkpoint_message": "",
             "requires_confirmation": False,
         }
+
+    # ── Layer 3-4 write/exec tools — ALWAYS require confirmation ────────
+    if intent.intent_type in ("file_write", "shell_exec", "git_action"):
+        action_desc = _describe_action(intent)
+        # Build metadata for the action card (diff preview, command, etc.)
+        checkpoint_meta = {
+            "checkpoint_tier": "high",
+            "checkpoint_message": f"I'm about to {action_desc}. Go ahead?",
+            "requires_confirmation": True,
+        }
+        # Attach diff_preview or command for action card display
+        if intent.intent_type == "file_write":
+            checkpoint_meta["target_path"] = intent.slots.get("path", "")
+        elif intent.intent_type == "shell_exec":
+            checkpoint_meta["command"] = intent.slots.get("command", "")
+        elif intent.intent_type == "git_action":
+            checkpoint_meta["command"] = f"git {' '.join(intent.slots.get('args', []))}"
+        return checkpoint_meta
 
     # ── Intent direction gate ────────────────────────────────────────────
     # Every action must pass: does the classified intent match what the user
@@ -558,6 +608,57 @@ def classify_intent(
             confidence=0.95,
             reason="system_info_query",
         )
+
+    # ── 1b2. Git action — "git commit", "git push" etc. (before project_scan) ──
+    if _GIT_ACTION_RE.search(message):
+        path_match = _FILE_PATH_RE.search(message)
+        # Extract git args from the message
+        git_match = re.search(r"\bgit\s+(\w+(?:\s+\S+)*)", message, re.IGNORECASE)
+        args = git_match.group(1).split() if git_match else []
+        return TaskIntent(
+            route="task",
+            intent_type="git_action",
+            slots={
+                "args": args,
+                "cwd": path_match.group(0) if path_match else "D:/AI_round2",
+            },
+            confidence=0.90,
+            reason="git_action_pattern",
+        )
+
+    # ── 1b3. Shell exec — "run command", "npm install" etc. ──────────────
+    if _SHELL_EXEC_RE.search(message):
+        # Try to extract the command from backticks or after "run"/"execute"
+        cmd_match = re.search(r"`([^`]+)`", message)
+        if not cmd_match:
+            cmd_match = re.search(r"\b(?:run|execute)\s+(?:the\s+)?(?:command\s+)?(.+)", message, re.IGNORECASE)
+        command = cmd_match.group(1).strip() if cmd_match else message.strip()
+        path_match = _FILE_PATH_RE.search(message)
+        return TaskIntent(
+            route="task",
+            intent_type="shell_exec",
+            slots={
+                "command": command,
+                "cwd": path_match.group(0) if path_match else "D:/AI_round2",
+            },
+            confidence=0.90,
+            reason="shell_exec_pattern",
+        )
+
+    # ── 1b4. File write — "write to", "create file", "edit file" etc. ───
+    if _FILE_WRITE_RE.search(message):
+        path_match = _FILE_PATH_RE.search(message)
+        if path_match:
+            return TaskIntent(
+                route="task",
+                intent_type="file_write",
+                slots={
+                    "path": path_match.group(0),
+                    "raw_message": message,
+                },
+                confidence=0.90,
+                reason="file_write_pattern",
+            )
 
     # ── 1c. Project scan — "git status", "check my repo" etc. ──────────
     if _PROJECT_SCAN_RE.search(message):
@@ -1010,17 +1111,22 @@ class CRTTaskAgent:
         if not user_confirmed:
             gate = gate_task_intent(intent)
             if gate["checkpoint_tier"] != "none":
+                _cp_meta = {
+                    "intent": intent.intent_type,
+                    "checkpoint_tier": gate["checkpoint_tier"],
+                    "requires_confirmation": gate["requires_confirmation"],
+                    "auto_proceed_seconds": None,
+                    "slots": intent.slots,
+                    "confidence": intent.confidence,
+                }
+                # Pass through Layer 3-4 display metadata for action card
+                for _k in ("command", "target_path", "diff_preview"):
+                    if _k in gate:
+                        _cp_meta[_k] = gate[_k]
                 yield {
                     "type": "agent_checkpoint",
                     "content": gate["checkpoint_message"],
-                    "metadata": {
-                        "intent": intent.intent_type,
-                        "checkpoint_tier": gate["checkpoint_tier"],
-                        "requires_confirmation": gate["requires_confirmation"],
-                        "auto_proceed_seconds": None,
-                        "slots": intent.slots,
-                        "confidence": intent.confidence,
-                    },
+                    "metadata": _cp_meta,
                 }
                 # Stop here — caller must re-invoke after user confirms.
                 return
@@ -1272,6 +1378,118 @@ class CRTTaskAgent:
                 "No actions were taken."
             )
             yield {"type": "token", "content": answer}
+        elif intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
+            # Deterministic answers for read-only tools — never let the LLM
+            # summarize file/system content (it hallucinates).
+            # Use the actual tool output directly.
+            _ro_step = next(
+                (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
+                None,
+            )
+            if _ro_step:
+                # Structured deterministic answers — show actual tool output,
+                # never let the LLM summarize (it hallucinates file contents).
+                if intent.intent_type == "file_read" and isinstance(_ro_step.output, dict):
+                    _fr = _ro_step.output
+                    if "error" in _fr:
+                        answer = f"Error reading `{_fr.get('path', '?')}`: {_fr['error']}"
+                    else:
+                        _path = _fr.get("path", "?")
+                        _lines = _fr.get("lines", 0)
+                        _size = _fr.get("size_bytes", 0)
+                        _content = _fr.get("content", "")
+                        # Show first ~50 lines in a code block
+                        _content_lines = _content.splitlines()
+                        _preview = "\n".join(_content_lines[:50])
+                        _ext = _path.rsplit(".", 1)[-1] if "." in _path else ""
+                        answer = f"**{_path}** — {_lines} lines, {_size:,} bytes\n\n```{_ext}\n{_preview}\n```"
+                        if len(_content_lines) > 50:
+                            answer += f"\n\n*... ({len(_content_lines) - 50} more lines not shown)*"
+                elif intent.intent_type == "dir_list" and isinstance(_ro_step.output, dict):
+                    _dr = _ro_step.output
+                    if "error" in _dr:
+                        answer = f"Error listing `{_dr.get('path', '?')}`: {_dr['error']}"
+                    else:
+                        from personal_agent.file_tools import format_dir_result
+                        answer = f"**{_dr['path']}** — {_dr.get('total', 0)} entries\n\n```\n{format_dir_result(_dr)}\n```"
+                elif intent.intent_type == "project_scan" and isinstance(_ro_step.output, dict):
+                    _pr = _ro_step.output
+                    if "error" in _pr:
+                        answer = f"Project scan error: {_pr['error']}"
+                    else:
+                        _parts = [f"**Project: {_pr.get('path', '?')}**", f"- Type: {_pr.get('type', 'unknown')}"]
+                        if _pr.get("entry_point"):
+                            _parts.append(f"- Entry point: `{_pr['entry_point']}`")
+                        _git = _pr.get("git", {})
+                        if not _git.get("error"):
+                            _status = "clean" if _git.get("clean") else "dirty"
+                            _parts.append(f"- Branch: `{_git.get('branch', '?')}` ({_status})")
+                            if _git.get("modified"):
+                                _parts.append(f"- Modified: {', '.join(f'`{f}`' for f in _git['modified'])}")
+                            if _git.get("staged"):
+                                _parts.append(f"- Staged: {', '.join(f'`{f}`' for f in _git['staged'])}")
+                            if _git.get("untracked"):
+                                _parts.append(f"- Untracked: {', '.join(f'`{f}`' for f in _git['untracked'][:10])}")
+                            if _git.get("recent_commits"):
+                                _parts.append("- Recent commits:")
+                                for _c in _git["recent_commits"][:5]:
+                                    _parts.append(f"  - `{_c}`")
+                        answer = "\n".join(_parts)
+                elif intent.intent_type == "system_info":
+                    from personal_agent.system_info import format_snapshot_text
+                    answer = format_snapshot_text(_ro_step.output) if isinstance(_ro_step.output, dict) else str(_ro_step.output_preview or "")
+                else:
+                    answer = str(_ro_step.output_preview or "Tool completed.")
+            else:
+                # Tool failed — report the error deterministically
+                _err_step = next((s for s in steps if s.status == "error"), None)
+                answer = f"Tool failed: {_err_step.error}" if _err_step else "Tool execution failed — see steps above."
+            yield {"type": "token", "content": answer}
+        elif intent.intent_type in ("file_write", "shell_exec", "git_action"):
+            # Deterministic answers for write/exec tools — show actual results
+            _tool_map = {"file_write": "file_write", "shell_exec": "shell_exec", "git_action": "git_exec"}
+            _w_tool = _tool_map.get(intent.intent_type, intent.intent_type)
+            _w_step = next(
+                (s for s in steps if s.tool_name == _w_tool and s.status == "ok"),
+                None,
+            )
+            if _w_step and isinstance(_w_step.output, dict):
+                if intent.intent_type == "file_write":
+                    _wr = _w_step.output
+                    _path = _wr.get("path", "?")
+                    _bytes = _wr.get("written_bytes", 0)
+                    _created = _wr.get("created", False)
+                    _diff = _wr.get("diff_preview", "")
+                    answer = f"{'Created' if _created else 'Wrote'} {_bytes} bytes to `{_path}`."
+                    if _diff:
+                        answer += f"\n\n```diff\n{_diff}\n```"
+                elif intent.intent_type == "shell_exec":
+                    _sr = _w_step.output
+                    _cmd = _sr.get("command", "?")
+                    _exit = _sr.get("exit_code", -1)
+                    _stdout = _sr.get("stdout", "")
+                    # Truncate stdout for response (max 50 lines)
+                    _out_lines = _stdout.splitlines()[:50]
+                    _out_preview = "\n".join(_out_lines)
+                    answer = f"Ran `{_cmd}` — exit code {_exit}."
+                    if _out_preview:
+                        answer += f"\n\n```\n{_out_preview}\n```"
+                    if len(_stdout.splitlines()) > 50:
+                        answer += f"\n\n*... ({len(_stdout.splitlines()) - 50} more lines)*"
+                elif intent.intent_type == "git_action":
+                    _gr = _w_step.output
+                    _cmd = _gr.get("command", "?")
+                    _exit = _gr.get("exit_code", -1)
+                    _output = _gr.get("stdout", "") or _gr.get("stderr", "")
+                    answer = f"Executed `{_cmd}` — exit code {_exit}."
+                    if _output.strip():
+                        answer += f"\n\n```\n{_output[:500]}\n```"
+                else:
+                    answer = str(_w_step.output_preview or "Action completed.")
+            else:
+                _err_step = next((s for s in steps if s.status == "error"), None)
+                answer = f"Action failed: {_err_step.error}" if _err_step else "Action failed — see steps above."
+            yield {"type": "token", "content": answer}
         else:
             answer = yield from self._stream_generate_answer(
                 message, fetched_content, intent, steps, stored_credentials, active_task
@@ -1282,31 +1500,66 @@ class CRTTaskAgent:
             thread_id, intent, fetched_content, stored_credentials, steps
         )
 
-        # ── 8. Done ───────────────────────────────────────────────────────
+        # ── 8. Build suggested follow-up actions for read-only tools ──────
+        _suggested_actions = None
+        _followup_prompt = None
+        if all_ok and intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
+            if intent.intent_type == "file_read":
+                _fname = (intent.slots.get("path") or "").rsplit("/", 1)[-1] or "this file"
+                _suggested_actions = [
+                    {"label": "Summarize", "value": f"Summarize {_fname}"},
+                    {"label": "Explain", "value": f"Explain what {_fname} does"},
+                    {"label": "Find issues", "value": f"Find potential issues in {_fname}"},
+                ]
+                _followup_prompt = "What would you like to do with this file?"
+            elif intent.intent_type == "dir_list":
+                _suggested_actions = [
+                    {"label": "Scan project", "value": f"Scan project at {intent.slots.get('path', 'this directory')}"},
+                    {"label": "Find large files", "value": "Which files are the largest?"},
+                ]
+                _followup_prompt = "What would you like to do?"
+            elif intent.intent_type == "project_scan":
+                _suggested_actions = [
+                    {"label": "Show changes", "value": "Show me the uncommitted changes"},
+                    {"label": "Summarize project", "value": "Summarize this project"},
+                ]
+                _followup_prompt = "What would you like to know about the project?"
+            elif intent.intent_type == "system_info":
+                _suggested_actions = [
+                    {"label": "What's using resources?", "value": "What processes are using the most resources?"},
+                    {"label": "Is anything unusual?", "value": "Is anything unusual about my system right now?"},
+                ]
+                _followup_prompt = "What would you like to know?"
+
+        # ── 9. Done ───────────────────────────────────────────────────────
+        _done_meta: Dict[str, Any] = {
+            "answer": answer,
+            "steps": [s.to_dict() for s in steps],
+            "facts_written": facts_written,
+            "stored_credentials": list(stored_credentials.keys()),
+            "intent": {
+                "route": intent.route,
+                "intent_type": intent.intent_type,
+                "slots": intent.slots,
+                "confidence": intent.confidence,
+            },
+            "pipeline_statuses": [
+                f"task: {intent.intent_type}",
+                *(f"{s.tool_name}: {s.status}" for s in steps),
+                "validate: pass" if all_ok else "validate: partial",
+            ],
+            "gates_passed": True,
+            "gate_reason": "task_route",
+            "response_type": "task",
+            "confidence": 0.88 if all_ok else 0.60,
+        }
+        if _suggested_actions:
+            _done_meta["suggested_actions"] = _suggested_actions
+            _done_meta["followup_prompt"] = _followup_prompt
         yield {
             "type": "task_done",
             "content": answer,
-            "metadata": {
-                "answer": answer,
-                "steps": [s.to_dict() for s in steps],
-                "facts_written": facts_written,
-                "stored_credentials": list(stored_credentials.keys()),
-                "intent": {
-                    "route": intent.route,
-                    "intent_type": intent.intent_type,
-                    "slots": intent.slots,
-                    "confidence": intent.confidence,
-                },
-                "pipeline_statuses": [
-                    f"task: {intent.intent_type}",
-                    *(f"{s.tool_name}: {s.status}" for s in steps),
-                    "validate: pass" if all_ok else "validate: partial",
-                ],
-                "gates_passed": True,
-                "gate_reason": "task_route",
-                "response_type": "task",
-                "confidence": 0.88 if all_ok else 0.60,
-            },
+            "metadata": _done_meta,
         }
 
         # Clear pending task from session DB on full completion
@@ -2245,6 +2498,22 @@ RULES:
             path = intent.slots.get("path", "D:/AI_round2")
             plan.append({"tool": "project_scan", "input": {"path": path}})
 
+        elif intent.intent_type == "file_write":
+            path = intent.slots.get("path", "")
+            # Always read the file first to get current state for diff
+            plan.append({"tool": "file_read", "input": {"path": path}})
+            plan.append({"tool": "file_write", "input": {"path": path, "content": intent.slots.get("content", ""), "raw_message": message}})
+
+        elif intent.intent_type == "shell_exec":
+            command = intent.slots.get("command", "")
+            cwd = intent.slots.get("cwd", "D:/AI_round2")
+            plan.append({"tool": "shell_exec", "input": {"command": command, "cwd": cwd}})
+
+        elif intent.intent_type == "git_action":
+            args = intent.slots.get("args", [])
+            cwd = intent.slots.get("cwd", "D:/AI_round2")
+            plan.append({"tool": "git_exec", "input": {"args": args, "cwd": cwd}})
+
         elif intent.intent_type == "url_fetch":
             url = intent.slots.get("url")
             if url:
@@ -2428,6 +2697,15 @@ RULES:
 
         elif tool == "project_scan":
             return self._run_project_scan(step, inp, step_index)
+
+        elif tool == "file_write":
+            return self._run_file_write(step, inp, step_index, thread_id)
+
+        elif tool == "shell_exec":
+            return self._run_shell_exec(step, inp, step_index, thread_id)
+
+        elif tool == "git_exec":
+            return self._run_git_exec(step, inp, step_index, thread_id)
 
         else:
             # execute_instructions / llm_respond — resolved in LLM call
@@ -2952,6 +3230,239 @@ RULES:
                 "type": "tool_result",
                 "content": f"✗ project scan failed: {e}",
                 "metadata": {"tool_name": "project_scan", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # File write tool (Layer 3)
+    # ------------------------------------------------------------------
+
+    def _run_file_write(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Dict[str, Any]:
+        """Write content to a file. Creates ActionReceipt."""
+        try:
+            from personal_agent.file_tools import write_file
+            from personal_agent.action_receipts import create_receipt, log_receipt
+
+            path = inp.get("path", "")
+            content = inp.get("content", "")
+            result = write_file(path, content)
+            has_error = "error" in result
+
+            step.output = result
+            step.status = "error" if has_error else "ok"
+            step.error = result.get("error") if has_error else None
+            step.verified = not has_error
+
+            if not has_error:
+                written = result.get("written_bytes", 0)
+                created = result.get("created", False)
+                diff_preview = result.get("diff_preview", "")
+                action_desc = f"{'created' if created else 'wrote'} {written} bytes to {path}"
+                step.output_preview = action_desc
+
+                receipt = create_receipt(
+                    tool_name="file_write",
+                    action=action_desc,
+                    target=path,
+                    result="success",
+                    reversible=not created and result.get("previous_content") is not None,
+                    reverse_action="restore from previous content" if not created else None,
+                    details={"written_bytes": written, "created": created, "diff_preview": diff_preview},
+                )
+                log_receipt(receipt, thread_id)
+
+                logger.info("[FILE_WRITE] %s — %d bytes", path, written)
+                return {
+                    "type": "tool_result",
+                    "content": f"✓ {action_desc}",
+                    "metadata": {
+                        "tool_name": "file_write",
+                        "status": "ok",
+                        "step_index": step_index,
+                        "written_bytes": written,
+                        "created": created,
+                        "diff_preview": diff_preview,
+                        "receipt_id": receipt.receipt_id,
+                    },
+                }
+            else:
+                logger.warning("[FILE_WRITE] Failed: %s", result.get("error"))
+                return {
+                    "type": "tool_result",
+                    "content": f"✗ file write failed: {result.get('error')}",
+                    "metadata": {"tool_name": "file_write", "status": "error", "error": step.error, "step_index": step_index},
+                }
+        except Exception as e:
+            logger.warning("[FILE_WRITE] Exception: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ file write failed: {e}",
+                "metadata": {"tool_name": "file_write", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # Shell exec tool (Layer 3-4)
+    # ------------------------------------------------------------------
+
+    def _run_shell_exec(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Dict[str, Any]:
+        """Execute a shell command. Creates ActionReceipt."""
+        try:
+            from personal_agent.shell_tools import execute_command
+            from personal_agent.action_receipts import create_receipt, log_receipt
+
+            command = inp.get("command", "")
+            cwd = inp.get("cwd", "D:/AI_round2")
+            timeout = inp.get("timeout", 30)
+
+            result = execute_command(command, cwd=cwd, timeout=timeout)
+            has_error = "error" in result
+
+            step.output = result
+            step.status = "error" if has_error else "ok"
+            step.error = result.get("error") if has_error else None
+            step.verified = not has_error
+
+            if not has_error:
+                exit_code = result.get("exit_code", -1)
+                stdout = result.get("stdout", "")
+                duration_ms = result.get("duration_ms", 0)
+                # Truncate stdout for preview (max 50 lines)
+                stdout_lines = stdout.splitlines()
+                preview = "\n".join(stdout_lines[:50])
+                if len(stdout_lines) > 50:
+                    preview += f"\n... ({len(stdout_lines) - 50} more lines)"
+                step.output_preview = preview[:500]
+                step.duration_ms = duration_ms
+
+                action_desc = f"ran `{command}` — exit code {exit_code}"
+                receipt = create_receipt(
+                    tool_name="shell_exec",
+                    action=action_desc,
+                    target=command,
+                    result="success" if exit_code == 0 else "error",
+                    reversible=False,
+                    details={"exit_code": exit_code, "stdout": stdout[:2000], "stderr": result.get("stderr", "")[:1000]},
+                )
+                log_receipt(receipt, thread_id)
+
+                logger.info("[SHELL_EXEC] '%s' — exit=%d, %dms", command[:80], exit_code, duration_ms)
+                return {
+                    "type": "tool_result",
+                    "content": f"✓ exit={exit_code}  {duration_ms}ms\n{preview}" if exit_code == 0 else f"✗ exit={exit_code}\n{preview}",
+                    "metadata": {
+                        "tool_name": "shell_exec",
+                        "status": "ok",
+                        "step_index": step_index,
+                        "exit_code": exit_code,
+                        "duration_ms": duration_ms,
+                        "receipt_id": receipt.receipt_id,
+                    },
+                }
+            else:
+                logger.warning("[SHELL_EXEC] Failed: %s", result.get("error"))
+                return {
+                    "type": "tool_result",
+                    "content": f"✗ command failed: {result.get('error')}",
+                    "metadata": {"tool_name": "shell_exec", "status": "error", "error": step.error, "step_index": step_index},
+                }
+        except Exception as e:
+            logger.warning("[SHELL_EXEC] Exception: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ shell exec failed: {e}",
+                "metadata": {"tool_name": "shell_exec", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
+    # ------------------------------------------------------------------
+    # Git exec tool (Layer 3-4)
+    # ------------------------------------------------------------------
+
+    def _run_git_exec(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Dict[str, Any]:
+        """Execute a git command. Creates ActionReceipt."""
+        try:
+            from personal_agent.shell_tools import execute_git
+            from personal_agent.action_receipts import create_receipt, log_receipt
+
+            args = inp.get("args", [])
+            cwd = inp.get("cwd", "D:/AI_round2")
+
+            result = execute_git(args, cwd=cwd)
+            has_error = "error" in result
+
+            step.output = result
+            step.status = "error" if has_error else "ok"
+            step.error = result.get("error") if has_error else None
+            step.verified = not has_error
+
+            if not has_error:
+                exit_code = result.get("exit_code", -1)
+                stdout = result.get("stdout", "")
+                stderr = result.get("stderr", "")
+                duration_ms = result.get("duration_ms", 0)
+                command = result.get("command", f"git {' '.join(args)}")
+                output = stdout or stderr
+                step.output_preview = output[:500]
+                step.duration_ms = duration_ms
+
+                action_desc = f"executed `{command}` — exit code {exit_code}"
+                # Git commands are often reversible
+                reversible = args[0] in ("commit", "add", "stash", "checkout", "branch") if args else False
+                reverse_map = {
+                    "commit": "git reset HEAD~1",
+                    "add": "git reset HEAD",
+                    "stash": "git stash pop",
+                    "checkout": "git checkout -",
+                }
+                reverse_action = reverse_map.get(args[0]) if args else None
+
+                receipt = create_receipt(
+                    tool_name="git",
+                    action=action_desc,
+                    target=command,
+                    result="success" if exit_code == 0 else "error",
+                    reversible=reversible,
+                    reverse_action=reverse_action,
+                    details={"exit_code": exit_code, "stdout": stdout[:2000], "stderr": stderr[:1000]},
+                )
+                log_receipt(receipt, thread_id)
+
+                logger.info("[GIT_EXEC] '%s' — exit=%d, %dms", command[:80], exit_code, duration_ms)
+                return {
+                    "type": "tool_result",
+                    "content": f"✓ {command} — exit={exit_code}\n{output[:500]}" if exit_code == 0 else f"✗ {command} — exit={exit_code}\n{output[:500]}",
+                    "metadata": {
+                        "tool_name": "git_exec",
+                        "status": "ok",
+                        "step_index": step_index,
+                        "exit_code": exit_code,
+                        "duration_ms": duration_ms,
+                        "receipt_id": receipt.receipt_id,
+                    },
+                }
+            else:
+                logger.warning("[GIT_EXEC] Failed: %s", result.get("error"))
+                return {
+                    "type": "tool_result",
+                    "content": f"✗ git failed: {result.get('error')}",
+                    "metadata": {"tool_name": "git_exec", "status": "error", "error": step.error, "step_index": step_index},
+                }
+        except Exception as e:
+            logger.warning("[GIT_EXEC] Exception: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"✗ git exec failed: {e}",
+                "metadata": {"tool_name": "git_exec", "status": "error", "error": str(e), "step_index": step_index},
             }
 
     # ------------------------------------------------------------------

@@ -466,6 +466,15 @@ export default function App() {
                 agentThinkingRef.current = next
                 return next
               })
+              // If the task includes suggested follow-up actions, show the action card
+              const suggested = (_meta as Record<string, unknown>)?.suggested_actions
+              if (Array.isArray(suggested) && suggested.length > 0) {
+                const msg = ((_meta as Record<string, unknown>)?.followup_prompt as string) || 'What would you like to do?'
+                setPendingCheckpoint({
+                  message: msg,
+                  metadata: { suggested_actions: suggested, is_followup: true },
+                })
+              }
             },
             onAgentCheckpoint: (message, metadata) => {
               // Show the checkpoint message as streamed response AND activate the action card
@@ -749,8 +758,11 @@ export default function App() {
   /** Respond to an agent checkpoint without showing a user message bubble */
   async function handleCheckpointRespond(text: string) {
     if (!selectedThread) return
+    const isFollowup = pendingCheckpoint?.metadata?.is_followup === true
     setPendingCheckpoint(null)
-    await handleSend(text, { silent: true })
+    // Follow-up actions (from task_done suggested_actions) should show as a
+    // normal user message so context is clear. Checkpoint confirmations stay silent.
+    await handleSend(text, { silent: !isFollowup })
   }
 
   function pickQuickAction(a: QuickAction) {

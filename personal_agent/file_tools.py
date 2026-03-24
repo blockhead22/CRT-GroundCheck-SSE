@@ -1,10 +1,12 @@
 """
-Layer 2 — Read-only file and project awareness.
+Layer 2-3 — File and project tools.
 
-Provides read_file(), list_directory(), git_status(), scan_project()
-with allowed-path enforcement.
+Layer 2 (read-only): read_file(), list_directory(), git_status(), scan_project()
+Layer 3 (write): write_file(), apply_edit(), generate_diff()
+All with allowed-path enforcement.
 """
 
+import difflib
 import json
 import logging
 import os
@@ -426,3 +428,136 @@ def format_project_result(result: Dict[str, Any]) -> str:
         parts.append(f"  Contents: {dir_count} dirs, {file_count} files")
 
     return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# generate_diff (Layer 3 helper)
+# ---------------------------------------------------------------------------
+
+def generate_diff(old_content: str, new_content: str, filename: str = "file") -> str:
+    """Produce a unified diff string. Truncates to 20 lines with a note."""
+    diff_lines = list(difflib.unified_diff(
+        old_content.splitlines(keepends=True),
+        new_content.splitlines(keepends=True),
+        fromfile=f"a/{filename}",
+        tofile=f"b/{filename}",
+    ))
+    if not diff_lines:
+        return "(no changes)"
+    total = len(diff_lines)
+    if total > 20:
+        diff_lines = diff_lines[:20]
+        diff_lines.append(f"\n... ({total - 20} more lines)\n")
+    return "".join(diff_lines)
+
+
+# ---------------------------------------------------------------------------
+# write_file (Layer 3 — requires checkpoint approval)
+# ---------------------------------------------------------------------------
+
+def write_file(path: str, content: str) -> Dict[str, Any]:
+    """Write content to a file. Reads existing content first for diff.
+
+    Returns dict with path, written_bytes, created, previous_content, diff_preview.
+    """
+    err = _check_path_allowed(path)
+    if err:
+        return {"error": err, "path": path}
+
+    resolved = str(Path(path).resolve()).replace("\\", "/")
+
+    # Read existing content for diff
+    previous_content = None
+    created = True
+    if os.path.exists(resolved):
+        created = False
+        if not os.path.isfile(resolved):
+            return {"error": f"Path exists but is not a file: {resolved}", "path": resolved}
+        try:
+            with open(resolved, "r", encoding="utf-8", errors="replace") as f:
+                previous_content = f.read()
+        except Exception as e:
+            return {"error": f"Cannot read existing file for diff: {e}", "path": resolved}
+
+    try:
+        # Ensure parent directory exists
+        os.makedirs(os.path.dirname(resolved), exist_ok=True)
+        with open(resolved, "w", encoding="utf-8", newline="") as f:
+            f.write(content)
+        written_bytes = len(content.encode("utf-8"))
+
+        # Generate diff preview
+        diff_preview = ""
+        if previous_content is not None:
+            filename = os.path.basename(resolved)
+            diff_preview = generate_diff(previous_content, content, filename)
+        else:
+            # New file — show first 20 lines
+            lines = content.splitlines()[:20]
+            diff_preview = "\n".join(f"+{line}" for line in lines)
+            if len(content.splitlines()) > 20:
+                diff_preview += f"\n... ({len(content.splitlines()) - 20} more lines)"
+
+        logger.info("[FILE_TOOLS] write_file %s — %d bytes, created=%s",
+                    resolved, written_bytes, created)
+
+        return {
+            "path": resolved,
+            "written_bytes": written_bytes,
+            "created": created,
+            "previous_content": previous_content,
+            "diff_preview": diff_preview,
+        }
+    except Exception as e:
+        return {"error": str(e), "path": resolved}
+
+
+# ---------------------------------------------------------------------------
+# apply_edit (Layer 3 — find-and-replace in a file)
+# ---------------------------------------------------------------------------
+
+def apply_edit(path: str, old_text: str, new_text: str) -> Dict[str, Any]:
+    """Find old_text in file and replace with new_text.
+
+    Returns dict with path, replaced, diff_preview — or error if old_text not found.
+    """
+    err = _check_path_allowed(path)
+    if err:
+        return {"error": err, "path": path}
+
+    resolved = str(Path(path).resolve()).replace("\\", "/")
+
+    if not os.path.exists(resolved):
+        return {"error": f"File not found: {resolved}", "path": resolved}
+
+    if not os.path.isfile(resolved):
+        return {"error": f"Not a file: {resolved}", "path": resolved}
+
+    try:
+        with open(resolved, "r", encoding="utf-8", errors="replace") as f:
+            original = f.read()
+    except Exception as e:
+        return {"error": f"Cannot read file: {e}", "path": resolved}
+
+    if old_text not in original:
+        return {"error": "old_text not found in file", "path": resolved, "replaced": False}
+
+    new_content = original.replace(old_text, new_text, 1)
+
+    try:
+        with open(resolved, "w", encoding="utf-8", newline="") as f:
+            f.write(new_content)
+    except Exception as e:
+        return {"error": f"Cannot write file: {e}", "path": resolved}
+
+    filename = os.path.basename(resolved)
+    diff_preview = generate_diff(original, new_content, filename)
+
+    logger.info("[FILE_TOOLS] apply_edit %s — replaced %d chars with %d chars",
+                resolved, len(old_text), len(new_text))
+
+    return {
+        "path": resolved,
+        "replaced": True,
+        "diff_preview": diff_preview,
+    }

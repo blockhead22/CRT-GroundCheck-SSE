@@ -1,8 +1,19 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 
-/** Derive quick-reply options from the checkpoint message text */
-function deriveOptions(text: string): { label: string; value: string }[] {
+/** Derive quick-reply options from the checkpoint message text or metadata */
+function deriveOptions(
+  text: string,
+  meta?: Record<string, unknown>,
+): { label: string; value: string }[] {
+  // If metadata provides explicit suggested_actions, use those
+  const suggested = meta?.suggested_actions as
+    | { label: string; value: string }[]
+    | undefined
+  if (Array.isArray(suggested) && suggested.length > 0) {
+    return suggested
+  }
+
   const lower = (text || '').toLowerCase()
 
   // Permission / go-ahead patterns → action-oriented buttons
@@ -37,7 +48,7 @@ export function ActionCard(props: {
 }) {
   const [customMode, setCustomMode] = useState(false)
   const [customText, setCustomText] = useState('')
-  const options = deriveOptions(props.checkpointMessage)
+  const options = deriveOptions(props.checkpointMessage, props.checkpointMeta)
 
   function sendCustom() {
     const t = customText.trim()
