@@ -4676,7 +4676,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     _task_intent = _classify_intent(req.message, active_task=_active_task)
 
             except Exception as _cie:
-                logger.debug("[STREAM] task intent classifier failed: %s", _cie)
+                logger.warning("[STREAM] task intent classifier failed: %s", _cie, exc_info=True)
                 _task_intent = None
                 _active_task = None
                 _user_confirmed = False
