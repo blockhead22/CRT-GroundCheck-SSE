@@ -393,16 +393,55 @@ class OllamaClient:
                 if (self._client is not None and hasattr(self._client, "chat"))
                 else ollama.chat  # type: ignore[union-attr]
             )
-            response = chat_fn(
-                model=selected_model,
-                messages=messages,
-                tools=tools,
-                options={
-                    "num_predict": self._effective_num_predict(max_tokens, selected_model),
-                    "temperature": temperature,
-                    "repeat_penalty": 1.15,
-                },
-            )
+            # Ollama's Pydantic model may reject string arguments in tool calls,
+            # so we try the native client first, then fall back to raw HTTP
+            try:
+                response = chat_fn(
+                    model=selected_model,
+                    messages=messages,
+                    tools=tools,
+                    options={
+                        "num_predict": self._effective_num_predict(max_tokens, selected_model),
+                        "temperature": temperature,
+                        "repeat_penalty": 1.15,
+                    },
+                )
+            except Exception as _pydantic_err:
+                # Pydantic validation failed on tool_calls — use raw HTTP
+                print(f"[OLLAMA] Native client failed ({_pydantic_err}), falling back to raw HTTP")
+                import requests as _req
+
+                def _to_dict(obj):
+                    """Convert Pydantic models / dataclasses to plain dicts."""
+                    if isinstance(obj, dict):
+                        return {k: _to_dict(v) for k, v in obj.items()}
+                    if isinstance(obj, (list, tuple)):
+                        return [_to_dict(v) for v in obj]
+                    if hasattr(obj, "model_dump"):
+                        return obj.model_dump()
+                    if hasattr(obj, "dict"):
+                        return obj.dict()
+                    return obj
+
+                _base = "http://localhost:11434"
+                _payload = {
+                    "model": selected_model,
+                    "messages": _to_dict(messages if isinstance(messages, list) else list(messages)),
+                    "tools": _to_dict(tools) if tools else [],
+                    "stream": False,
+                    "options": {
+                        "num_predict": self._effective_num_predict(max_tokens, selected_model),
+                        "temperature": temperature,
+                        "repeat_penalty": 1.15,
+                    },
+                }
+                try:
+                    _resp = _req.post(f"{_base}/api/chat", json=_payload, timeout=120)
+                    _resp.raise_for_status()
+                    response = _resp.json()  # raw dict, no Pydantic
+                except Exception as _http_err:
+                    print(f"[OLLAMA] Raw HTTP fallback also failed: {_http_err}")
+                    raise _pydantic_err from _http_err
 
             msg = (
                 response.message
@@ -421,15 +460,26 @@ class OllamaClient:
             for tc in raw_tool_calls:
                 if hasattr(tc, "function"):
                     args = tc.function.arguments
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except (json.JSONDecodeError, TypeError):
+                            args = {}
                     parsed_calls.append({
                         "name": tc.function.name,
                         "arguments": args if isinstance(args, dict) else {},
                     })
                 elif isinstance(tc, dict) and "function" in tc:
                     fn = tc["function"]
+                    args = fn.get("arguments", {})
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except (json.JSONDecodeError, TypeError):
+                            args = {}
                     parsed_calls.append({
                         "name": fn.get("name", ""),
-                        "arguments": fn.get("arguments", {}),
+                        "arguments": args if isinstance(args, dict) else {},
                     })
 
             content = ""

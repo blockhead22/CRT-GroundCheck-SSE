@@ -58,6 +58,7 @@ export function ActionCard(props: {
   checkpointMessage: string
   checkpointMeta?: Record<string, unknown>
   onRespond: (text: string) => void
+  onDismiss?: () => void
 }) {
   const [customMode, setCustomMode] = useState(false)
   const [customText, setCustomText] = useState('')
@@ -86,13 +87,27 @@ export function ActionCard(props: {
       style={{ maxWidth: '760px' }}
     >
       <div
-        className="rounded-lg border px-4 py-3"
+        className="relative rounded-lg border px-4 py-3"
         style={{
           background: 'rgba(22,20,16,0.85)',
           borderColor: 'rgba(212,132,92,0.2)',
           boxShadow: '0 -4px 24px rgba(0,0,0,0.25), 0 0 48px rgba(212,132,92,0.04)',
         }}
       >
+        {/* Dismiss / close button */}
+        {props.onDismiss && (
+          <button
+            onClick={props.onDismiss}
+            className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded transition-colors hover:bg-white/[0.1]"
+            style={{ color: 'rgba(240,235,225,0.3)' }}
+            title="Dismiss"
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
         {/* Screenshot preview for desktop actions */}
         {(meta?.screenshot_b64 as string) && (
           <div className="mb-3">

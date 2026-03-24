@@ -107,16 +107,10 @@ export function Composer(props: {
       return
     }
     if (type === 'file') {
-      // Browser file picker only returns filename (security sandbox strips path).
-      // Use a path prompt so the backend gets the full filesystem path.
-      const path = window.prompt('Enter file path (e.g. D:/AI_round2/docs/ACTION_EXECUTION.md):')
-      if (path) {
-        const normalized = path.replace(/\\/g, '/')
-        setAttachedPaths((prev) =>
-          prev.some((p) => p.path === normalized) ? prev : [...prev, { path: normalized, type: 'file' }]
-        )
-      }
-      textareaRef.current?.focus()
+      // Trigger the native file picker — Electron exposes the full filesystem
+      // path on File objects, so handleFileSelected will capture it.
+      fileInputRef.current?.click()
+      return
     } else {
       // Browser APIs can't return full filesystem paths (security sandbox),
       // so we use a direct path input for folder targeting.
@@ -142,7 +136,10 @@ export function Composer(props: {
     const newPaths: { path: string; type: 'file' | 'dir' }[] = []
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
-      const path = f.name.replace(/\\/g, '/')
+      // Electron exposes the full filesystem path on File objects.
+      // Fall back to name only if path is unavailable (standard browser).
+      const raw = (f as unknown as { path?: string }).path || f.name
+      const path = raw.replace(/\\/g, '/')
       if (!newPaths.some((p) => p.path === path)) {
         newPaths.push({ path, type: 'file' })
       }

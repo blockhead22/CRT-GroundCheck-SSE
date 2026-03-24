@@ -180,6 +180,12 @@
                                              "min_tokens_for_cloud":  16
                                          }
                          },
+    "agent_loop": {
+        "enabled": true,
+        "model": "local",
+        "max_iterations": 10,
+        "show_thinking": true
+    },
     "openclaw_handoff":  {
                              "enabled":  true,
                              "agent_id":  "main",

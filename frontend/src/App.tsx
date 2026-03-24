@@ -342,6 +342,8 @@ export default function App() {
 
   useEffect(() => {
     let mounted = true
+    let id: number | undefined
+
     async function ping() {
       try {
         await getHealth()
@@ -350,12 +352,36 @@ export default function App() {
         if (mounted) setApiStatus('disconnected')
       }
     }
+
+    function startPolling() {
+      stopPolling()
+      id = window.setInterval(() => void ping(), 30_000)
+    }
+
+    function stopPolling() {
+      if (id !== undefined) {
+        window.clearInterval(id)
+        id = undefined
+      }
+    }
+
+    function handleVisibility() {
+      if (document.visibilityState === 'visible') {
+        void ping() // immediate check on tab focus
+        startPolling()
+      } else {
+        stopPolling()
+      }
+    }
+
     void ping()
-    // POLLING FIX: /health interval raised from 5s to 15s to reduce log noise
-    const id = window.setInterval(() => void ping(), 15000)
+    startPolling()
+    document.addEventListener('visibilitychange', handleVisibility)
+
     return () => {
       mounted = false
-      window.clearInterval(id)
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
 
@@ -1149,6 +1175,7 @@ export default function App() {
                       onToggleDiagnostics={() => setDiagnosticsOpen((v) => !v)}
                       pendingCheckpoint={pendingCheckpoint}
                       onCheckpointRespond={handleCheckpointRespond}
+                      onCheckpointDismiss={() => setPendingCheckpoint(null)}
                       onStopGeneration={handleStopGeneration}
                       proactiveSuggestion={proactiveSuggestion}
                       onProactiveSuggestionClick={(action) => {

@@ -158,6 +158,7 @@ export function ChatThreadView(props: {
   onToggleDiagnostics?: () => void
   pendingCheckpoint?: { message: string; metadata: Record<string, unknown> } | null
   onCheckpointRespond?: (text: string) => void
+  onCheckpointDismiss?: () => void
   onStopGeneration?: () => void
   proactiveSuggestion?: { trigger: string; suggestion: string; action: string } | null
   onProactiveSuggestionClick?: (action: string) => void
@@ -728,6 +729,7 @@ export function ChatThreadView(props: {
               checkpointMessage={props.pendingCheckpoint.message}
               checkpointMeta={props.pendingCheckpoint.metadata}
               onRespond={props.onCheckpointRespond ?? props.onSend}
+              onDismiss={props.onCheckpointDismiss}
             />
           </div>
         )}
