@@ -786,11 +786,11 @@ _CAPABILITY_REROUTE_PATTERNS = [
     # System info queries
     (
         _re_mod.compile(
-            r"(?:what(?:'s| is| are)?\s+(?:\w+\s+)*(?:apps?|programs?|processes?|windows?)\s+(?:are\s+)?(?:open|running|active))"
-            r"|(?:which\s+(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:open|running|active))"
-            r"|(?:(?:show|list|check)\s+(?:me\s+)?(?:what\s+)?(?:processes?|apps?|programs?)\s+(?:are\s+)?(?:running|open|active))"
+            r"(?:what(?:'s| is| are)?\s+(?:\w+\s+)*(?:apps?|programs?|processes?|windows?)\s+(?:are\s+)?(?:\w+\s+)?(?:open|running|active))"
+            r"|(?:which\s+(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:\w+\s+)?(?:open|running|active))"
+            r"|(?:(?:show|list|check)\s+(?:me\s+)?(?:what\s+)?(?:processes?|apps?|programs?)\s+(?:are\s+)?(?:\w+\s+)?(?:running|open|active))"
             r"|(?:(?:show|list|check)\s+(?:me\s+)?(?:the\s+)?(?:running|active|open)\s+(?:processes?|apps?|programs?))"
-            r"|(?:(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:open|running|active)\??)"
+            r"|(?:(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:\w+\s+)?(?:open|running|active)\??)"
             r"|(?:how(?:'s| is)?\s+my\s+(?:system|computer|pc|machine|cpu|ram|gpu|memory|disk))"
             r"|(?:(?:check|show|what(?:'s)?)\s+(?:my\s+)?(?:system|cpu|ram|gpu|memory|disk)\s*(?:status|usage|info)?)"
             r"|(?:top\s+processes|task\s+manager|resource\s+monitor)",
@@ -4795,9 +4795,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # matches a tool capability, override. This catches cases like
             # "what apps are open?" falling through to conversational when
             # system_info can answer it.
+            print(f"[INTENT_DEBUG] _task_intent={_task_intent}, route={getattr(_task_intent, 'route', None)}, type={getattr(_task_intent, 'intent_type', None)}, conf={getattr(_task_intent, 'confidence', None)}")
             if _task_intent is not None and _task_intent.route == "conversational":
                 try:
                     _rerouted = _capability_reroute(req.message, _task_intent)
+                    print(f"[INTENT_DEBUG] capability_reroute result: {_rerouted}")
                     if _rerouted is not None:
                         logger.info(
                             "[STREAM] Capability re-route: %s → %s (was conversational)",
@@ -4805,6 +4807,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         )
                         _task_intent = _rerouted
                 except Exception as _rre:
+                    print(f"[INTENT_DEBUG] capability_reroute EXCEPTION: {_rre}")
                     logger.debug("[STREAM] capability re-route check failed: %s", _rre)
 
             # ── COMPOUND INTENT UPGRADE (Sprint 8) ────────────────────────
