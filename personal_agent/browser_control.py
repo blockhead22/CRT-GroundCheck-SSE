@@ -29,12 +29,14 @@ try:
     HAS_PLAYWRIGHT = True
 except ImportError as _e:
     HAS_PLAYWRIGHT = False
+    print(f"[BROWSER] playwright import FAILED (ImportError): {_e}")
     logger.warning("playwright import failed: %s", _e)
 except Exception as _e:
     HAS_PLAYWRIGHT = False
+    print(f"[BROWSER] playwright import FAILED (Exception): {type(_e).__name__}: {_e}")
     logger.warning("playwright import error (non-ImportError): %s", _e)
 
-logger.info("browser_control imports: playwright=%s", HAS_PLAYWRIGHT)
+print(f"[BROWSER] HAS_PLAYWRIGHT={HAS_PLAYWRIGHT}")
 
 
 class BrowserController:

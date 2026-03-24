@@ -755,35 +755,39 @@ class BrowserAgent:
 # ── Web search convenience ───────────────────────────────────────────────
 
 async def run_web_search(controller, query: str, max_results: int = 10) -> Dict[str, Any]:
-    """Quick web search — navigate to search engine, extract results.
+    """Quick web search — navigate to DuckDuckGo, extract results.
 
+    Uses DuckDuckGo HTML version — bot-friendly, no CAPTCHAs.
     This is a convenience function for the web_search tool.
     Does not require the full ReAct agent loop.
     """
-    search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
+    from urllib.parse import quote_plus
+    search_url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
 
     try:
         nav_result = await controller.navigate(search_url)
-
-        # Wait for results to load
         await controller.wait_for_load()
 
-        # Extract search results from Google's DOM
+        # Extract search results from DuckDuckGo HTML version DOM
         page = await controller.get_active_page()
         results = await page.evaluate(f"""() => {{
             const results = [];
-            // Google search result divs
-            const items = document.querySelectorAll('div.g, div[data-hveid]');
+            // DuckDuckGo HTML results are in .result class divs
+            const items = document.querySelectorAll('.result');
             for (const item of items) {{
-                const link = item.querySelector('a[href]');
-                const title = item.querySelector('h3');
-                const snippet = item.querySelector('[data-sncf], .VwiC3b, [style*="-webkit-line-clamp"]');
-                if (link && title) {{
-                    results.push({{
-                        title: title.textContent.trim(),
-                        url: link.href,
-                        snippet: snippet ? snippet.textContent.trim().substring(0, 300) : '',
-                    }});
+                const link = item.querySelector('.result__a');
+                const snippet = item.querySelector('.result__snippet');
+                if (link) {{
+                    const title = link.textContent.trim();
+                    const url = link.href;
+                    // Skip DuckDuckGo internal links
+                    if (url && !url.includes('duckduckgo.com') && title) {{
+                        results.push({{
+                            title: title,
+                            url: url,
+                            snippet: snippet ? snippet.textContent.trim().substring(0, 300) : '',
+                        }});
+                    }}
                 }}
                 if (results.length >= {max_results}) break;
             }}
