@@ -5,6 +5,33 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.9.2 — March 24, 2026
+
+Full settings expansion — user-facing controls for every major subsystem. Reorganized the Settings page from 6 tabs to 8 with new Heartbeat and Behavior tabs, fixed silent-drop bugs, and wired 20+ new setting keys end-to-end (backend defaults, API whitelist, frontend UI).
+
+### Feature
+- **Heartbeat tab** — enable/disable heartbeat, configure interval (300-86400s), active hours window, news monitoring with topic list, curiosity engine toggle
+- **Behavior tab** — greeting enable/style (time_based, time_of_day, simple), conflict warning toggle, provenance footer toggle with world-check sub-toggle, background jobs master toggle with sub-controls for auto-resolve contradictions, auto web research (with privacy warning), auto learning
+- **Web search settings** — max results (1-20) and search region selector (US, UK, CA, AU, DE, FR, JP)
+- **Model Selection section** (Advanced tab) — generation mode picker (local/cloud_openai/cloud_claude), OpenAI model ID input, Claude model ID input, routing LLM model override
+- **Response Synthesis** moved into Advanced pipeline controls section alongside Bypass CRT and Enable Tooling
+
+### Fix
+- **`preferred_nickname` and `agent_name` silently dropped** — added both to API whitelist in `routes/auth.py`. Previously SettingsPage sent these but the backend rejected them as unknown keys
+- **4 API-whitelisted keys had no UI** — `generation_mode`, `cloud_model_openai`, `cloud_model_claude`, `routing_llm_model` now have controls in the Advanced > Model Selection section
+- **`synthesis_enabled` toggle logic** — fixed true/false handling to match other boolean toggles
+
+### Polish
+- Extracted reusable `SectionCard` component for consistent card styling across all tabs
+- Settings tabs use `flex-wrap` to handle narrow viewports
+
+### Infra
+- **Modified file**: `auth.py` — 20 new keys in `CLOUD_SETTING_DEFAULTS`
+- **Modified file**: `routes/auth.py` — 20 new keys in `allowed_keys` whitelist
+- **Rewritten file**: `frontend/src/pages/SettingsPage.tsx` — 8 tabs (Profile, Cloud, Desktop, Heartbeat, Behavior, Advanced, Facts, Account)
+
+---
+
 ## v2.8 — March 24, 2026
 
 Telegram full-pipeline integration. The Telegram channel now uses `/api/chat/stream` (SSE) instead of `/api/chat/send`, giving it the complete task pipeline: intent classification, sub-agent orchestration, capability re-route, intuition check, and trust propagation. Previously Telegram was conversational-only — asking "what apps are open?" would get an LLM guess instead of actually running system_info.

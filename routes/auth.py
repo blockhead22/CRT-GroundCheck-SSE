@@ -266,11 +266,36 @@ def auth_update_settings(
         "desktop_idle_task",
         "desktop_require_confirmation",
         "desktop_vision_provider",
+        # Profile identity
+        "preferred_nickname",    # what the agent calls the user
+        "agent_name",            # custom name for the AI agent
         # Intent routing (Sprint 13 / v2.9)
         "routing_mode",          # local_only | cloud_only | hybrid
         "routing_llm_model",     # model override for routing LLM
         # Response synthesis (v2.9.1)
         "synthesis_enabled",     # true | false — LLM interprets tool results
+        # Heartbeat & proactivity
+        "heartbeat_enabled",
+        "heartbeat_interval_seconds",
+        "heartbeat_active_hours_start",
+        "heartbeat_active_hours_end",
+        "heartbeat_news_monitoring",
+        "heartbeat_news_topics",
+        "heartbeat_curiosity_enabled",
+        # Behavior
+        "greeting_enabled",
+        "greeting_style",
+        "conflict_warning_enabled",
+        "provenance_enabled",
+        "provenance_world_check",
+        # Background jobs
+        "background_jobs_enabled",
+        "background_auto_resolve",
+        "background_auto_research",
+        "background_auto_learning",
+        # Web search
+        "web_search_max_results",
+        "web_search_region",
     }
 
     updated = {}

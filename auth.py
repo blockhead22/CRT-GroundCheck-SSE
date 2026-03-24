@@ -497,6 +497,33 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "desktop_idle_task": "",
     "desktop_require_confirmation": "dangerous_only",
     "desktop_vision_provider": "cookie",
+    # Intent routing (Sprint 13 / v2.9)
+    "routing_mode": "hybrid",
+    "routing_llm_model": "",
+    # Response synthesis (v2.9.1)
+    "synthesis_enabled": "true",
+    # Heartbeat & proactivity
+    "heartbeat_enabled": "true",
+    "heartbeat_interval_seconds": "1800",
+    "heartbeat_active_hours_start": "",
+    "heartbeat_active_hours_end": "",
+    "heartbeat_news_monitoring": "false",
+    "heartbeat_news_topics": "",
+    "heartbeat_curiosity_enabled": "true",
+    # Behavior
+    "greeting_enabled": "true",
+    "greeting_style": "time_based",
+    "conflict_warning_enabled": "true",
+    "provenance_enabled": "true",
+    "provenance_world_check": "false",
+    # Background jobs
+    "background_jobs_enabled": "false",
+    "background_auto_resolve": "false",
+    "background_auto_research": "false",
+    "background_auto_learning": "false",
+    # Web search
+    "web_search_max_results": "8",
+    "web_search_region": "us-en",
 }
 
 

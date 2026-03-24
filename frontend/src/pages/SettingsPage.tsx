@@ -9,7 +9,7 @@ type Props = {
   onProfileUpdated: () => void
 }
 
-type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'advanced' | 'facts' | 'account'
+type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'heartbeat' | 'behavior' | 'advanced' | 'facts' | 'account'
 
 const ESCALATION_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
@@ -34,6 +34,16 @@ function Toggle({ label, checked, onChange, description }: {
       >
         <span className={`block absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
       </button>
+    </div>
+  )
+}
+
+function SectionCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+      <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">{title}</div>
+      {description && <p className="mb-4 text-xs text-white/40">{description}</p>}
+      {children}
     </div>
   )
 }
@@ -101,18 +111,16 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     setSaving(true)
     try {
       if (displayName.trim()) {
-        // Try auth update first (if logged in), fall back to profile-only
         try {
           const res = await updateAuthProfile({ display_name: displayName.trim() })
           if (res.ok) onDisplayNameChanged(displayName.trim())
         } catch {
           // No auth session — still update via profile name
         }
-        // Always propagate to parent regardless of auth
         onDisplayNameChanged(displayName.trim())
       }
 
-      // Save nickname and agent name as auth settings (not memory facts)
+      // Save nickname and agent name as auth settings
       const settingsToSave: Record<string, string> = {}
       if (nickname.trim() !== (cloudSettings?.preferred_nickname || '')) {
         settingsToSave.preferred_nickname = nickname.trim()
@@ -157,8 +165,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
-    // Claude settings and advanced settings use true/false, OpenAI settings use on/off
-    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('intuition_check_') || key === 'bypass_crt' || key === 'enable_tooling'
+    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('intuition_check_') || key.startsWith('heartbeat_') || key.startsWith('background_') || key.startsWith('greeting_') || key.startsWith('conflict_') || key.startsWith('provenance_') || key === 'bypass_crt' || key === 'enable_tooling' || key === 'synthesis_enabled'
     const newVal = useTrueFalse ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
     const oldVal = useTrueFalse ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })
@@ -223,8 +230,10 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     { id: 'profile', label: 'Profile' },
     { id: 'cloud', label: 'Cloud' },
     { id: 'desktop', label: 'Desktop' },
+    { id: 'heartbeat', label: 'Heartbeat' },
+    { id: 'behavior', label: 'Behavior' },
     { id: 'advanced', label: 'Advanced' },
-    { id: 'facts', label: 'Known Facts' },
+    { id: 'facts', label: 'Facts' },
     { id: 'account', label: 'Account' },
   ]
 
@@ -237,7 +246,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
           <div className="mt-1 text-sm text-white/60">Manage your profile, cloud features, and account</div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded border border-white/10 bg-white/5 p-1 flex-wrap">
             {tabs.map((t) => (
               <button
                 key={t.id}
@@ -258,11 +267,10 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
         <div className={`mx-auto space-y-6 ${tab === 'cloud' ? 'max-w-5xl' : 'max-w-2xl'}`}>
+          {/* ═══════════════════ PROFILE TAB ═══════════════════ */}
           {tab === 'profile' && (
             <>
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-4 text-xs font-medium uppercase tracking-wide text-white/50">Profile</div>
-
+              <SectionCard title="Profile">
                 <div className="space-y-4">
                   <div>
                     <label className="mb-1.5 block text-sm text-white/70">Display Name</label>
@@ -305,21 +313,17 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 >
                   {saving ? 'Saving...' : saved ? 'Saved' : 'Save Profile'}
                 </button>
-              </div>
+              </SectionCard>
             </>
           )}
 
+          {/* ═══════════════════ CLOUD TAB ═══════════════════ */}
           {tab === 'cloud' && (
             <>
-              {/* ── Two-column grid: Cloud Features | Claude ──────────── */}
+              {/* Two-column grid: Cloud Features | Claude */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* ── LEFT COLUMN: Cloud Features (Tier 1 / OpenAI) ──── */}
-                <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                  <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Cloud Features</div>
-                  <p className="mb-4 text-xs text-white/40">
-                    Cloud LLM verification for CRT operations. Uses gpt-4o-mini (Tier 1).
-                  </p>
-
+                {/* LEFT: Cloud Features (Tier 1 / OpenAI) */}
+                <SectionCard title="Cloud Features" description="Cloud LLM verification for CRT operations. Uses gpt-4o-mini (Tier 1).">
                   {cloudSettings ? (
                     <div className="space-y-1">
                       <Toggle
@@ -390,18 +394,16 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   ) : (
                     <p className="text-sm text-white/40">Loading cloud settings...</p>
                   )}
-                </div>
+                </SectionCard>
 
-                {/* ── RIGHT COLUMN: Claude (Tier 2) ──────────────────── */}
-                <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                  <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Claude (Tier 2)</div>
-                  <p className="mb-4 text-xs text-white/40">
-                    High-quality generation fallback and reflection validation.
+                {/* RIGHT: Claude (Tier 2) */}
+                <SectionCard title="Claude (Tier 2)" description="High-quality generation fallback and reflection validation.">
+                  <p className="text-xs text-white/40 -mt-2 mb-3">
                     {cloudUsage?.claude_available === false && (
-                      <span className="ml-1 text-amber-400/80">Cookie not configured.</span>
+                      <span className="text-amber-400/80">Cookie not configured.</span>
                     )}
                     {cloudUsage?.claude_available === true && (
-                      <span className="ml-1 text-green-400/80">Cookie active.</span>
+                      <span className="text-green-400/80">Cookie active.</span>
                     )}
                   </p>
 
@@ -475,16 +477,11 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   ) : (
                     <p className="text-sm text-white/40">Loading Claude settings...</p>
                   )}
-                </div>
+                </SectionCard>
               </div>
 
-              {/* ── Intuition Check (full width below grid) ────────────── */}
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Intuition Check</div>
-                <p className="mb-4 text-xs text-white/40">
-                  Lightweight LLM side-channel (~150ms) for situational awareness. Clarifies ambiguous input, suggests next steps after tasks, and reconnects after idle periods.
-                </p>
-
+              {/* Intuition Check (full width below grid) */}
+              <SectionCard title="Intuition Check" description="Lightweight LLM side-channel (~150ms) for situational awareness. Clarifies ambiguous input, suggests next steps after tasks, and reconnects after idle periods.">
                 {cloudSettings ? (
                   <div className="space-y-1">
                     <Toggle
@@ -554,13 +551,13 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 ) : (
                   <p className="text-sm text-white/40">Loading intuition check settings...</p>
                 )}
-              </div>
+              </SectionCard>
 
-              {/* ── Usage (full width row below) ──────────────────────── */}
+              {/* Usage (full width row below) */}
               {cloudUsage !== null && (
-                <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="text-xs font-medium uppercase tracking-wide text-white/50">Usage (this session)</div>
+                <SectionCard title="Usage (this session)">
+                  <div className="flex items-center justify-between mb-3 -mt-3">
+                    <div />
                     <button
                       onClick={() => getCloudUsage().then(setCloudUsage).catch(() => {})}
                       className="text-xs hover:opacity-80 transition-opacity"
@@ -616,140 +613,355 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       <p className="text-white/30 italic col-span-full">No cloud calls yet this session</p>
                     )}
                   </div>
-                </div>
+                </SectionCard>
               )}
             </>
           )}
 
+          {/* ═══════════════════ DESKTOP TAB ═══════════════════ */}
           {tab === 'desktop' && (
-            <>
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Desktop Control</div>
-                <p className="mb-4 text-xs text-white/40">
-                  Aether can see and control your desktop via screenshot analysis. When enabled, commands like "open notepad" or "search for weather" will use the vision-action loop.
-                </p>
+            <SectionCard title="Desktop Control" description="Aether can see and control your desktop via screenshot analysis. When enabled, commands like 'open notepad' or 'search for weather' will use the vision-action loop.">
+              {cloudSettings ? (
+                <div className="space-y-1">
+                  <Toggle
+                    label="Enable Desktop Control"
+                    description="Allow Aether to take screenshots and control mouse/keyboard to complete tasks."
+                    checked={cloudSettings.desktop_control_enabled === 'true'}
+                    onChange={(v) => handleCloudToggle('desktop_control_enabled', v)}
+                  />
+                  {cloudSettings.desktop_control_enabled === 'true' && (
+                    <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
+                      Desktop control is active. Aether can see your screen and interact with it. Move your mouse to the top-left corner (0,0) to emergency-stop all automation.
+                    </div>
+                  )}
 
-                {cloudSettings ? (
-                  <div className="space-y-1">
-                    <Toggle
-                      label="Enable Desktop Control"
-                      description="Allow Aether to take screenshots and control mouse/keyboard to complete tasks."
-                      checked={cloudSettings.desktop_control_enabled === 'true'}
-                      onChange={(v) => handleCloudToggle('desktop_control_enabled', v)}
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Limits</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Max steps per task</div>
+                      <div className="text-xs text-white/40 mt-0.5">Maximum vision-action loop iterations before aborting. Each step takes 10-25s.</div>
+                    </div>
+                    <input
+                      type="number" min="1" max="50"
+                      value={cloudSettings.desktop_max_steps_per_task || '15'}
+                      onChange={(e) => handleCloudNumberInput('desktop_max_steps_per_task', e.target.value)}
+                      className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
                     />
-                    {cloudSettings.desktop_control_enabled === 'true' && (
-                      <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
-                        Desktop control is active. Aether can see your screen and interact with it. Move your mouse to the top-left corner (0,0) to emergency-stop all automation.
-                      </div>
-                    )}
-
-                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Limits</div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex-1">
-                        <div className="text-sm text-white/80">Max steps per task</div>
-                        <div className="text-xs text-white/40 mt-0.5">Maximum vision-action loop iterations before aborting. Each step takes 10-25s.</div>
-                      </div>
-                      <input
-                        type="number"
-                        min="1"
-                        max="50"
-                        value={cloudSettings.desktop_max_steps_per_task || '15'}
-                        onChange={(e) => handleCloudNumberInput('desktop_max_steps_per_task', e.target.value)}
-                        className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex-1">
-                        <div className="text-sm text-white/80">Max actions per session</div>
-                        <div className="text-xs text-white/40 mt-0.5">Total desktop actions allowed per session before requiring re-enable.</div>
-                      </div>
-                      <input
-                        type="number"
-                        min="1"
-                        max="500"
-                        value={cloudSettings.desktop_max_actions_per_session || '50'}
-                        onChange={(e) => handleCloudNumberInput('desktop_max_actions_per_session', e.target.value)}
-                        className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
-                      />
-                    </div>
-
-                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Confirmation</div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex-1">
-                        <div className="text-sm text-white/80">Require confirmation</div>
-                        <div className="text-xs text-white/40 mt-0.5">When to pause and ask before executing an action.</div>
-                      </div>
-                      <select
-                        value={cloudSettings.desktop_require_confirmation || 'dangerous_only'}
-                        onChange={(e) => handleCloudSelect('desktop_require_confirmation', e.target.value)}
-                        className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
-                      >
-                        <option value="never">Never</option>
-                        <option value="dangerous_only">Dangerous actions only</option>
-                        <option value="always">Every action</option>
-                      </select>
-                    </div>
-
-                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Vision Provider</div>
-
-                    <div className="flex items-center justify-between py-2">
-                      <div className="flex-1">
-                        <div className="text-sm text-white/80">Vision model</div>
-                        <div className="text-xs text-white/40 mt-0.5">How screenshots are analyzed. Cookie uses your claude.ai session; API key uses ANTHROPIC_API_KEY.</div>
-                      </div>
-                      <select
-                        value={cloudSettings.desktop_vision_provider || 'cookie'}
-                        onChange={(e) => handleCloudSelect('desktop_vision_provider', e.target.value)}
-                        className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
-                      >
-                        <option value="cookie">Cookie session</option>
-                        <option value="api_key">API key</option>
-                      </select>
-                    </div>
-
-                    <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Heartbeat Automation</div>
-
-                    <Toggle
-                      label="Idle desktop control"
-                      description="When the system is idle (CPU < 10%, no GPU activity), automatically run a desktop task."
-                      checked={cloudSettings.desktop_heartbeat_idle_control === 'true'}
-                      onChange={(v) => handleCloudToggle('desktop_heartbeat_idle_control', v)}
-                    />
-
-                    {cloudSettings.desktop_heartbeat_idle_control === 'true' && (
-                      <div className="flex items-center justify-between py-2 ml-2">
-                        <div className="flex-1">
-                          <div className="text-sm text-white/80">Idle task</div>
-                          <div className="text-xs text-white/40 mt-0.5">What to do when idle. E.g. "organize my downloads folder" or "check email".</div>
-                        </div>
-                        <input
-                          type="text"
-                          defaultValue={cloudSettings.desktop_idle_task || ''}
-                          onBlur={(e) => handleCloudSelect('desktop_idle_task', e.target.value)}
-                          placeholder="e.g. organize downloads"
-                          className="w-56 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
-                        />
-                      </div>
-                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-white/40">Loading desktop settings...</p>
-                )}
-              </div>
-            </>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Max actions per session</div>
+                      <div className="text-xs text-white/40 mt-0.5">Total desktop actions allowed per session before requiring re-enable.</div>
+                    </div>
+                    <input
+                      type="number" min="1" max="500"
+                      value={cloudSettings.desktop_max_actions_per_session || '50'}
+                      onChange={(e) => handleCloudNumberInput('desktop_max_actions_per_session', e.target.value)}
+                      className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
+                    />
+                  </div>
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Confirmation</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Require confirmation</div>
+                      <div className="text-xs text-white/40 mt-0.5">When to pause and ask before executing an action.</div>
+                    </div>
+                    <select
+                      value={cloudSettings.desktop_require_confirmation || 'dangerous_only'}
+                      onChange={(e) => handleCloudSelect('desktop_require_confirmation', e.target.value)}
+                      className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                    >
+                      <option value="never">Never</option>
+                      <option value="dangerous_only">Dangerous actions only</option>
+                      <option value="always">Every action</option>
+                    </select>
+                  </div>
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Vision Provider</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Vision model</div>
+                      <div className="text-xs text-white/40 mt-0.5">How screenshots are analyzed. Cookie uses your claude.ai session; API key uses ANTHROPIC_API_KEY.</div>
+                    </div>
+                    <select
+                      value={cloudSettings.desktop_vision_provider || 'cookie'}
+                      onChange={(e) => handleCloudSelect('desktop_vision_provider', e.target.value)}
+                      className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                    >
+                      <option value="cookie">Cookie session</option>
+                      <option value="api_key">API key</option>
+                    </select>
+                  </div>
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Heartbeat Automation</div>
+
+                  <Toggle
+                    label="Idle desktop control"
+                    description="When the system is idle (CPU < 10%, no GPU activity), automatically run a desktop task."
+                    checked={cloudSettings.desktop_heartbeat_idle_control === 'true'}
+                    onChange={(v) => handleCloudToggle('desktop_heartbeat_idle_control', v)}
+                  />
+
+                  {cloudSettings.desktop_heartbeat_idle_control === 'true' && (
+                    <div className="flex items-center justify-between py-2 ml-2">
+                      <div className="flex-1">
+                        <div className="text-sm text-white/80">Idle task</div>
+                        <div className="text-xs text-white/40 mt-0.5">What to do when idle. E.g. "organize my downloads folder" or "check email".</div>
+                      </div>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.desktop_idle_task || ''}
+                        onBlur={(e) => handleCloudSelect('desktop_idle_task', e.target.value)}
+                        placeholder="e.g. organize downloads"
+                        className="w-56 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-white/40">Loading desktop settings...</p>
+              )}
+            </SectionCard>
           )}
 
+          {/* ═══════════════════ HEARTBEAT TAB ═══════════════════ */}
+          {tab === 'heartbeat' && cloudSettings && (
+            <>
+              <SectionCard title="Heartbeat System" description="Proactive background loop that runs periodically per thread. Reads workspace instructions, gathers context, and can take autonomous actions like posting to the Ledger.">
+                <Toggle
+                  label="Enable Heartbeat"
+                  description="Run the heartbeat loop at the configured interval. When disabled, no proactive actions occur."
+                  checked={cloudSettings.heartbeat_enabled !== 'false'}
+                  onChange={(v) => handleCloudToggle('heartbeat_enabled', v)}
+                />
+
+                <div className={cloudSettings.heartbeat_enabled === 'false' ? 'opacity-40 pointer-events-none' : ''}>
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Timing</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Interval (seconds)</div>
+                      <div className="text-xs text-white/40 mt-0.5">How often the heartbeat fires. 1800 = 30 minutes, 3600 = 1 hour.</div>
+                    </div>
+                    <input
+                      type="number" min="300" max="86400" step="300"
+                      value={cloudSettings.heartbeat_interval_seconds || '1800'}
+                      onChange={(e) => {
+                        setCloudSettingsState({ ...cloudSettings, heartbeat_interval_seconds: e.target.value })
+                      }}
+                      onBlur={(e) => handleCloudNumberInput('heartbeat_interval_seconds', e.target.value)}
+                      className="w-24 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mt-2">
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Active hours start</label>
+                      <input
+                        type="number" min="0" max="23"
+                        value={cloudSettings.heartbeat_active_hours_start || ''}
+                        placeholder="Any"
+                        onChange={(e) => {
+                          setCloudSettingsState({ ...cloudSettings, heartbeat_active_hours_start: e.target.value })
+                        }}
+                        onBlur={(e) => handleCloudNumberInput('heartbeat_active_hours_start', e.target.value)}
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Hour (0-23). Leave blank for always.</p>
+                    </div>
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Active hours end</label>
+                      <input
+                        type="number" min="0" max="23"
+                        value={cloudSettings.heartbeat_active_hours_end || ''}
+                        placeholder="Any"
+                        onChange={(e) => {
+                          setCloudSettingsState({ ...cloudSettings, heartbeat_active_hours_end: e.target.value })
+                        }}
+                        onBlur={(e) => handleCloudNumberInput('heartbeat_active_hours_end', e.target.value)}
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Hour (0-23). Leave blank for always.</p>
+                    </div>
+                  </div>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="News Monitoring" description="Proactive news fetching on topics you care about. Runs during heartbeat cycles.">
+                <Toggle
+                  label="Enable News Monitoring"
+                  description="Periodically search for news on your configured topics and post summaries."
+                  checked={cloudSettings.heartbeat_news_monitoring === 'true'}
+                  onChange={(v) => handleCloudToggle('heartbeat_news_monitoring', v)}
+                />
+
+                {cloudSettings.heartbeat_news_monitoring === 'true' && (
+                  <div className="mt-3">
+                    <label className="mb-1.5 block text-sm text-white/70">News Topics</label>
+                    <input
+                      type="text"
+                      defaultValue={cloudSettings.heartbeat_news_topics || ''}
+                      onBlur={(e) => handleCloudSelect('heartbeat_news_topics', e.target.value)}
+                      placeholder="AI, technology, climate (comma-separated)"
+                      className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                    />
+                    <p className="mt-1 text-xs text-white/40">Comma-separated list of topics to monitor</p>
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Curiosity Engine" description="When enabled, the heartbeat can generate curiosity-driven reflections and questions about recent conversations.">
+                <Toggle
+                  label="Enable Curiosity"
+                  description="Allow the agent to explore tangential ideas and post reflections to the Ledger."
+                  checked={cloudSettings.heartbeat_curiosity_enabled !== 'false'}
+                  onChange={(v) => handleCloudToggle('heartbeat_curiosity_enabled', v)}
+                />
+              </SectionCard>
+            </>
+          )}
+          {tab === 'heartbeat' && !cloudSettings && (
+            <p className="text-sm text-white/40">Loading heartbeat settings...</p>
+          )}
+
+          {/* ═══════════════════ BEHAVIOR TAB ═══════════════════ */}
+          {tab === 'behavior' && cloudSettings && (
+            <>
+              <SectionCard title="Greeting" description="How the agent greets you when you start a conversation or return after being away.">
+                <Toggle
+                  label="Enable Greetings"
+                  description="Show a personalized greeting when you return to chat."
+                  checked={cloudSettings.greeting_enabled !== 'false'}
+                  onChange={(v) => handleCloudToggle('greeting_enabled', v)}
+                />
+
+                {cloudSettings.greeting_enabled !== 'false' && (
+                  <div className="mt-3">
+                    <label className="mb-1.5 block text-sm text-white/70">Greeting Style</label>
+                    <select
+                      value={cloudSettings.greeting_style || 'time_based'}
+                      onChange={(e) => handleCloudSelect('greeting_style', e.target.value)}
+                      className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                    >
+                      <option value="time_based" className="bg-gray-900">Time-based (considers how long you were away)</option>
+                      <option value="time_of_day" className="bg-gray-900">Time of day (good morning/afternoon/evening)</option>
+                      <option value="simple" className="bg-gray-900">Simple (minimal greeting)</option>
+                    </select>
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Response Behavior" description="Controls how the agent handles uncertainty and verifies information.">
+                <Toggle
+                  label="Conflict Warnings"
+                  description="When the agent isn't sure about something due to conflicting information, show a friendly explanation."
+                  checked={cloudSettings.conflict_warning_enabled !== 'false'}
+                  onChange={(v) => handleCloudToggle('conflict_warning_enabled', v)}
+                />
+                <Toggle
+                  label="Provenance Footers"
+                  description="Add a short provenance note to answers explaining where the information came from."
+                  checked={cloudSettings.provenance_enabled !== 'false'}
+                  onChange={(v) => handleCloudToggle('provenance_enabled', v)}
+                />
+                {cloudSettings.provenance_enabled !== 'false' && (
+                  <div className="ml-4">
+                    <Toggle
+                      label="World Check"
+                      description="Cross-check facts against public knowledge. Produces warnings, not truth-picking."
+                      checked={cloudSettings.provenance_world_check === 'true'}
+                      onChange={(v) => handleCloudToggle('provenance_world_check', v)}
+                    />
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Background Activity" description="Autonomous tasks that run when the system is idle. These can resolve contradictions, research open questions, and retrain models.">
+                <Toggle
+                  label="Enable Background Jobs"
+                  description="Master toggle for all autonomous background activity."
+                  checked={cloudSettings.background_jobs_enabled === 'true'}
+                  onChange={(v) => handleCloudToggle('background_jobs_enabled', v)}
+                />
+
+                <div className={cloudSettings.background_jobs_enabled !== 'true' ? 'opacity-40 pointer-events-none' : ''}>
+                  <Toggle
+                    label="Auto-resolve Contradictions"
+                    description="Automatically attempt to resolve detected contradictions using evidence and trust scoring."
+                    checked={cloudSettings.background_auto_resolve === 'true'}
+                    onChange={(v) => handleCloudToggle('background_auto_resolve', v)}
+                  />
+                  <Toggle
+                    label="Auto Web Research"
+                    description="Proactively research open questions when idle. Has privacy implications."
+                    checked={cloudSettings.background_auto_research === 'true'}
+                    onChange={(v) => handleCloudToggle('background_auto_research', v)}
+                  />
+                  {cloudSettings.background_auto_research === 'true' && (
+                    <div className="ml-4 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
+                      Auto web research sends queries to external search APIs. Review your privacy preferences before enabling.
+                    </div>
+                  )}
+                  <Toggle
+                    label="Auto Learning"
+                    description="Background model retraining from accepted suggestions and corrections."
+                    checked={cloudSettings.background_auto_learning === 'true'}
+                    onChange={(v) => handleCloudToggle('background_auto_learning', v)}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Web Search" description="Settings for web search tool when invoked by the agent.">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex-1">
+                    <div className="text-sm text-white/80">Max results</div>
+                    <div className="text-xs text-white/40 mt-0.5">Maximum number of search results to return per query.</div>
+                  </div>
+                  <input
+                    type="number" min="1" max="20"
+                    value={cloudSettings.web_search_max_results || '8'}
+                    onChange={(e) => {
+                      setCloudSettingsState({ ...cloudSettings, web_search_max_results: e.target.value })
+                    }}
+                    onBlur={(e) => handleCloudNumberInput('web_search_max_results', e.target.value)}
+                    className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
+                  />
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex-1">
+                    <div className="text-sm text-white/80">Search region</div>
+                    <div className="text-xs text-white/40 mt-0.5">Locale for search results.</div>
+                  </div>
+                  <select
+                    value={cloudSettings.web_search_region || 'us-en'}
+                    onChange={(e) => handleCloudSelect('web_search_region', e.target.value)}
+                    className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                  >
+                    <option value="us-en">US English</option>
+                    <option value="gb-en">UK English</option>
+                    <option value="ca-en">Canada English</option>
+                    <option value="au-en">Australia English</option>
+                    <option value="de-de">Germany</option>
+                    <option value="fr-fr">France</option>
+                    <option value="jp-jp">Japan</option>
+                  </select>
+                </div>
+              </SectionCard>
+            </>
+          )}
+          {tab === 'behavior' && !cloudSettings && (
+            <p className="text-sm text-white/40">Loading behavior settings...</p>
+          )}
+
+          {/* ═══════════════════ ADVANCED TAB ═══════════════════ */}
           {tab === 'advanced' && (
             <>
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Advanced Settings</div>
-                <p className="mb-4 text-xs text-white/40">
-                  These settings control CRT pipeline behavior and model capabilities. Changes take effect on the next message.
-                </p>
-
+              <SectionCard title="Pipeline Controls" description="These settings control CRT pipeline behavior and model capabilities. Changes take effect on the next message.">
                 {cloudSettings ? (
                   <div className="space-y-1">
                     <Toggle
@@ -760,7 +972,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     />
                     {(cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on') && (
                       <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
-                        CRT bypass is active. Responses will not use memories, contradiction checking, or trust scoring. Select a cloud model in the Cloud tab to use this mode.
+                        CRT bypass is active. Responses will not use memories, contradiction checking, or trust scoring.
                       </div>
                     )}
 
@@ -770,23 +982,84 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       checked={cloudSettings.enable_tooling === 'true' || cloudSettings.enable_tooling === 'on'}
                       onChange={(v) => handleCloudToggle('enable_tooling', v)}
                     />
+
+                    <Toggle
+                      label="Enable Response Synthesis"
+                      description="When enabled, the LLM interprets tool results and responds with context and analysis. When disabled, raw tool output is returned."
+                      checked={cloudSettings.synthesis_enabled !== 'false'}
+                      onChange={(v) => handleCloudToggle('synthesis_enabled', v)}
+                    />
                   </div>
                 ) : (
                   <p className="text-sm text-white/40">Loading advanced settings...</p>
                 )}
-              </div>
+              </SectionCard>
 
-              {/* Intent Routing (v2.9) */}
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Intent Routing</div>
-                <p className="mb-4 text-xs text-white/40">
-                  Controls how user messages are classified and routed to tools. Regex patterns are always tried first (instant, free). The LLM router handles novel phrasings that regex misses.
-                </p>
+              {/* Model Selection */}
+              <SectionCard title="Model Selection" description="Choose which models are used for generation. These override defaults when set.">
+                {cloudSettings ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Generation Mode</label>
+                      <select
+                        value={cloudSettings.generation_mode || 'local'}
+                        onChange={(e) => handleCloudSelect('generation_mode', e.target.value)}
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                      >
+                        <option value="local" className="bg-gray-900">Local (Ollama)</option>
+                        <option value="cloud_openai" className="bg-gray-900">Cloud (OpenAI)</option>
+                        <option value="cloud_claude" className="bg-gray-900">Cloud (Claude)</option>
+                      </select>
+                      <p className="mt-1 text-xs text-white/40">Primary model provider for text generation</p>
+                    </div>
 
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">OpenAI Model</label>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.cloud_model_openai || 'gpt-4o-mini'}
+                        onBlur={(e) => handleCloudSelect('cloud_model_openai', e.target.value)}
+                        placeholder="gpt-4o-mini"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Model ID for OpenAI API calls (e.g., gpt-4o, gpt-4o-mini)</p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Claude Model</label>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.cloud_model_claude || 'claude-sonnet-4-20250514'}
+                        onBlur={(e) => handleCloudSelect('cloud_model_claude', e.target.value)}
+                        placeholder="claude-sonnet-4-20250514"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Model ID for Claude API calls</p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Routing LLM Model Override</label>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.routing_llm_model || ''}
+                        onBlur={(e) => handleCloudSelect('routing_llm_model', e.target.value)}
+                        placeholder="Leave blank for default"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Override the model used for intent routing. Leave blank to use the default.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading model settings...</p>
+                )}
+              </SectionCard>
+
+              {/* Intent Routing */}
+              <SectionCard title="Intent Routing" description="Controls how user messages are classified and routed to tools. Regex patterns are always tried first (instant, free). The LLM router handles novel phrasings that regex misses.">
                 {cloudSettings ? (
                   <div className="space-y-2">
                     {[
-                      { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex → local LLM → cloud escalation. Best balance of speed, cost, and accuracy.' },
+                      { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex -> local LLM -> cloud escalation. Best balance of speed, cost, and accuracy.' },
                       { value: 'local_only', label: 'Local Only', desc: 'Regex + local LLM. No cloud calls for routing. Free but less accurate on novel requests.' },
                       { value: 'cloud_only', label: 'Cloud Only', desc: 'Regex + cloud LLM. Most accurate, uses API tokens for classification.' },
                     ].map((opt) => (
@@ -816,31 +1089,13 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 ) : (
                   <p className="text-sm text-white/40">Loading routing settings...</p>
                 )}
-              </div>
-
-              {/* Response Synthesis (v2.9.1) */}
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Response Synthesis</div>
-                {cloudSettings ? (
-                  <>
-                    <Toggle
-                      label="Enable Response Synthesis"
-                      description="When enabled, the LLM interprets tool results and responds with context and analysis. When disabled, raw tool output is returned for speed."
-                      checked={cloudSettings.synthesis_enabled !== 'false'}
-                      onChange={(v) => handleCloudToggle('synthesis_enabled', v)}
-                    />
-                  </>
-                ) : (
-                  <p className="text-sm text-white/40">Loading synthesis settings...</p>
-                )}
-              </div>
+              </SectionCard>
             </>
           )}
 
+          {/* ═══════════════════ FACTS TAB ═══════════════════ */}
           {tab === 'facts' && (
-            <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-              <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Known Facts</div>
-
+            <SectionCard title="Known Facts">
               {Object.keys(slots).length > 0 ? (
                 <div className="mb-4 space-y-1.5">
                   {Object.entries(slots).map(([key, val]) => (
@@ -855,7 +1110,6 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 <p className="mb-4 text-sm text-white/40">No facts stored yet. Chat with Aether to build your profile, or add facts below.</p>
               )}
 
-              {/* Add new fact */}
               <div className="flex items-end gap-2">
                 <div className="flex-1">
                   <input
@@ -882,12 +1136,12 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   Add
                 </button>
               </div>
-            </div>
+            </SectionCard>
           )}
 
+          {/* ═══════════════════ ACCOUNT TAB ═══════════════════ */}
           {tab === 'account' && (
-            <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-              <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Account</div>
+            <SectionCard title="Account">
               <div className="space-y-2 text-sm text-white/60">
                 <div className="flex items-center gap-3 rounded bg-white/5 px-4 py-3">
                   <span className="text-white/40">Username</span>
@@ -898,7 +1152,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   <span className="font-mono text-xs text-white/80">{authUser?.id || '\u2014'}</span>
                 </div>
               </div>
-            </div>
+            </SectionCard>
           )}
         </div>
       </div>
