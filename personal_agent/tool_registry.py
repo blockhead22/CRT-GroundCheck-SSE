@@ -407,6 +407,49 @@ _register(ToolDefinition(
     ],
 ))
 
+# ---- web_browse ----
+_register(ToolDefinition(
+    name="web_browse",
+    description="Browse a website — navigate, read content, click links, fill forms, extract information",
+    parameters=[
+        ToolParam("task", "string", "What to do on the web (natural language)", required=True),
+        ToolParam("url", "string", "Starting URL to navigate to", required=False),
+    ],
+    access_layer=3,
+    checkpoint_tier="medium",
+    synthesis_mode="always",
+    intent_type="web_browse",
+    examples=[
+        "go to hacker news and tell me the top 5 stories",
+        "search google for playwright python tutorial",
+        "check the weather on weather.com",
+        "go to this url and summarize the page",
+        "fill out the contact form on example.com",
+        "look up the latest python release notes",
+        "find the pricing on that website",
+    ],
+))
+
+# ---- web_search ----
+_register(ToolDefinition(
+    name="web_search",
+    description="Search the web for information using a search engine",
+    parameters=[
+        ToolParam("query", "string", "The search query", required=True),
+    ],
+    access_layer=2,
+    checkpoint_tier="none",
+    synthesis_mode="always",
+    intent_type="web_search",
+    examples=[
+        "search for how to use playwright",
+        "look up the population of Tokyo",
+        "find recent news about AI",
+        "google fastapi websocket tutorial",
+        "search for best python testing frameworks 2026",
+    ],
+))
+
 
 # ---------------------------------------------------------------------------
 # Helper functions

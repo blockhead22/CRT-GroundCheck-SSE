@@ -21,11 +21,13 @@ from .commitments import router as commitments_router
 from .slot_discovery import router as slot_discovery_router
 from .desktop import router as desktop_router
 from .intents import router as intents_router
+from .plans import router as plans_router
 
 
 def register_routes(app: FastAPI) -> None:
     """Register modular routers on the app."""
     install_log_handler()
+    app.include_router(plans_router)
     app.include_router(desktop_router)
     app.include_router(intents_router)
     app.include_router(action_receipts_router)

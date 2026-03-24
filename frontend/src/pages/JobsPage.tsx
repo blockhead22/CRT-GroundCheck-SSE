@@ -4,9 +4,18 @@ import {
   getJob,
   getJobsStatus,
   listJobs,
+  listPlans,
+  createPlan,
+  deletePlan,
+  updatePlan,
+  addPlanStep,
+  deletePlanStep,
+  updatePlanStep,
   type JobDetailResponse,
   type JobListItem,
   type JobsStatusResponse,
+  type Plan,
+  type PlanStep,
 } from '../lib/api'
 
 type JobStatusFilter = 'all' | 'queued' | 'running' | 'succeeded' | 'failed'
@@ -108,6 +117,307 @@ function safeCopy(text: string) {
   } catch {
     // ignore
   }
+}
+
+// ── Plan status badge ──────────────────────────────────────────────────
+function planStatusBadge(status: string) {
+  const s = (status || '').toLowerCase()
+  const base = 'rounded-full px-2 py-0.5 text-[11px] font-semibold '
+  if (s === 'completed') return base + 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/20'
+  if (s === 'paused') return base + 'bg-amber-500/15 text-amber-200 border border-amber-500/20'
+  if (s === 'archived') return base + 'bg-white/5 text-white/40 border border-white/10'
+  return base + 'bg-violet-500/15 text-violet-200 border border-violet-500/20' // active
+}
+
+const STEP_ICONS: Record<string, string> = {
+  completed: '✓', in_progress: '►', waiting_input: '?',
+  failed: '✗', skipped: '—', pending: '○',
+}
+
+// ── Plans Section Component ───────────────────────────────────────────
+function PlansSection(props: { threadId: string }) {
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [showNew, setShowNew] = useState(false)
+  const [newTitle, setNewTitle] = useState('')
+  const [newDesc, setNewDesc] = useState('')
+  const [newSteps, setNewSteps] = useState<Array<{ title: string; description: string }>>([
+    { title: '', description: '' },
+  ])
+  const [plansBusy, setPlansBusy] = useState(false)
+
+  async function refreshPlans() {
+    try {
+      const list = await listPlans()
+      setPlans(list)
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    void refreshPlans()
+    const id = window.setInterval(() => void refreshPlans(), 8000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  async function handleCreatePlan() {
+    if (!newTitle.trim()) return
+    setPlansBusy(true)
+    try {
+      const validSteps = newSteps.filter((s) => s.title.trim())
+      await createPlan({
+        title: newTitle.trim(),
+        description: newDesc.trim() || undefined,
+        steps: validSteps.map((s) => ({ title: s.title.trim(), description: s.description.trim() || undefined })),
+      })
+      setNewTitle('')
+      setNewDesc('')
+      setNewSteps([{ title: '', description: '' }])
+      setShowNew(false)
+      await refreshPlans()
+    } catch { /* ignore */ } finally {
+      setPlansBusy(false)
+    }
+  }
+
+  async function handleDeletePlan(planId: string) {
+    setPlansBusy(true)
+    try {
+      await deletePlan(planId)
+      await refreshPlans()
+    } catch { /* ignore */ } finally {
+      setPlansBusy(false)
+    }
+  }
+
+  async function handlePlanStatus(planId: string, status: string) {
+    try {
+      await updatePlan(planId, { status })
+      await refreshPlans()
+    } catch { /* ignore */ }
+  }
+
+  async function handleStepStatus(planId: string, stepId: string, status: string) {
+    try {
+      await updatePlanStep(planId, stepId, { status })
+      await refreshPlans()
+    } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-sm font-semibold text-white/90">Plans</div>
+          <div className="text-xs text-white/40">Multi-step task plans</div>
+        </div>
+        <button
+          onClick={() => setShowNew(!showNew)}
+          className="rounded px-3 py-1.5 text-xs font-semibold bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+        >
+          {showNew ? 'Cancel' : '+ New Plan'}
+        </button>
+      </div>
+
+      {/* New plan form */}
+      {showNew && (
+        <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4 mb-3 space-y-3">
+          <input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Plan title"
+            className="w-full rounded glass-field px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-violet-500/50"
+          />
+          <input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            placeholder="Description (optional)"
+            className="w-full rounded glass-field px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+          />
+          <div className="space-y-2">
+            <div className="text-xs text-white/50 font-semibold">Steps</div>
+            {newSteps.map((step, i) => (
+              <div key={i} className="flex gap-2">
+                <span className="text-xs text-white/30 pt-2 w-5 shrink-0">{i + 1}.</span>
+                <input
+                  value={step.title}
+                  onChange={(e) => {
+                    const copy = [...newSteps]
+                    copy[i] = { ...copy[i], title: e.target.value }
+                    setNewSteps(copy)
+                  }}
+                  placeholder={`Step ${i + 1}`}
+                  className="flex-1 rounded glass-field px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                />
+                {newSteps.length > 1 && (
+                  <button
+                    onClick={() => setNewSteps(newSteps.filter((_, j) => j !== i))}
+                    className="text-xs text-rose-400/60 hover:text-rose-400 px-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setNewSteps([...newSteps, { title: '', description: '' }])}
+              className="text-xs text-white/40 hover:text-white/60"
+            >
+              + Add step
+            </button>
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleCreatePlan}
+              disabled={plansBusy || !newTitle.trim()}
+              className="rounded px-4 py-2 text-xs font-semibold bg-violet-600 text-white hover:bg-violet-500 disabled:opacity-40 transition-colors"
+            >
+              Create Plan
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Plan list */}
+      {plans.length === 0 && !showNew && (
+        <div className="text-xs text-white/30 py-4 text-center">No plans yet</div>
+      )}
+      <div className="space-y-2">
+        {plans.map((plan) => {
+          const steps = plan.steps || []
+          const completed = steps.filter((s) => s.status === 'completed').length
+          const total = steps.length
+          const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+          const isExpanded = expandedId === plan.id
+
+          return (
+            <div
+              key={plan.id}
+              className={`rounded-lg border transition-colors ${
+                plan.status === 'active'
+                  ? 'border-violet-500/20 bg-violet-500/[0.03]'
+                  : 'border-white/10 bg-white/[0.02]'
+              }`}
+            >
+              {/* Plan header */}
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : plan.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition-colors rounded-lg"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-white/90 truncate">{plan.title}</span>
+                    <span className={planStatusBadge(plan.status)}>{plan.status}</span>
+                  </div>
+                  {plan.description && (
+                    <div className="text-xs text-white/40 mt-0.5 truncate">{plan.description}</div>
+                  )}
+                </div>
+                {total > 0 && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-20 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${pct}%`,
+                          backgroundColor: pct === 100 ? '#34d399' : 'var(--accent, #c084fc)',
+                        }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-white/40 w-12 text-right">
+                      {completed}/{total}
+                    </span>
+                  </div>
+                )}
+                <span className="text-white/20 text-xs">{isExpanded ? '▲' : '▼'}</span>
+              </button>
+
+              {/* Expanded steps */}
+              {isExpanded && (
+                <div className="border-t border-white/5 px-4 py-3">
+                  {steps.length === 0 && (
+                    <div className="text-xs text-white/30 py-2">No steps defined</div>
+                  )}
+                  <div className="space-y-1">
+                    {steps.map((step) => (
+                      <div
+                        key={step.id}
+                        className={`flex items-center gap-2 rounded px-2 py-1.5 text-xs group ${
+                          step.status === 'in_progress' ? 'bg-white/[0.04]' : ''
+                        }`}
+                      >
+                        <button
+                          onClick={() => {
+                            const next = step.status === 'completed' ? 'pending' : 'completed'
+                            void handleStepStatus(plan.id, step.id, next)
+                          }}
+                          className={`font-mono shrink-0 w-4 text-center ${
+                            step.status === 'completed' ? 'text-emerald-400' :
+                            step.status === 'in_progress' ? 'text-amber-300' :
+                            step.status === 'failed' ? 'text-rose-400' :
+                            'text-white/30 hover:text-white/60'
+                          }`}
+                        >
+                          {STEP_ICONS[step.status] ?? '○'}
+                        </button>
+                        <span className={`flex-1 min-w-0 truncate ${
+                          step.status === 'completed' ? 'text-white/40 line-through' : 'text-white/80'
+                        }`}>
+                          {step.title}
+                        </span>
+                        {step.tool_name && (
+                          <span className="shrink-0 rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/30 font-mono">
+                            {step.tool_name}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Plan actions */}
+                  <div className="flex items-center gap-2 mt-3 pt-2 border-t border-white/5">
+                    <span className="text-[10px] text-white/25 flex-1">
+                      {plan.created_by === 'aether' ? 'Created by Aether' : 'Manual'} ·{' '}
+                      {new Date(plan.created_at * 1000).toLocaleDateString()}
+                    </span>
+                    {plan.status === 'active' && (
+                      <button
+                        onClick={() => void handlePlanStatus(plan.id, 'paused')}
+                        className="text-[10px] text-amber-400/60 hover:text-amber-400"
+                      >
+                        Pause
+                      </button>
+                    )}
+                    {plan.status === 'paused' && (
+                      <button
+                        onClick={() => void handlePlanStatus(plan.id, 'active')}
+                        className="text-[10px] text-emerald-400/60 hover:text-emerald-400"
+                      >
+                        Resume
+                      </button>
+                    )}
+                    {plan.status === 'completed' && (
+                      <button
+                        onClick={() => void handlePlanStatus(plan.id, 'archived')}
+                        className="text-[10px] text-white/40 hover:text-white/60"
+                      >
+                        Archive
+                      </button>
+                    )}
+                    <button
+                      onClick={() => void handleDeletePlan(plan.id)}
+                      className="text-[10px] text-rose-400/40 hover:text-rose-400"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 export function JobsPage(props: { threadId: string }) {
@@ -219,8 +529,8 @@ export function JobsPage(props: { threadId: string }) {
       <div className="border-b border-white/10 px-5 py-4">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-lg font-semibold text-white">Jobs</div>
-            <div className="mt-1 text-sm text-white/60">Queue + worker visibility and manual enqueuing</div>
+            <div className="text-lg font-semibold text-white">Plans & Jobs</div>
+            <div className="mt-1 text-sm text-white/60">Task plans, queue visibility, and manual enqueuing</div>
           </div>
           <div className="flex items-center gap-2">
             <div className="rounded border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
@@ -254,6 +564,12 @@ export function JobsPage(props: { threadId: string }) {
         </div>
       </div>
 
+      {/* ═══════════ PLANS SECTION ═══════════ */}
+      <div className="border-b border-white/10 px-5 py-4">
+        <PlansSection threadId={props.threadId} />
+      </div>
+
+      {/* ═══════════ JOBS SECTION ═══════════ */}
       <div className="min-h-0 flex-1 overflow-hidden">
         <div className="flex h-full min-h-0">
           <div className="w-[380px] flex-none border-r border-white/10 p-5">

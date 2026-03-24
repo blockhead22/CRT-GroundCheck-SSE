@@ -5,6 +5,34 @@
 **Layer:** 6 — action-level gating
 **Files:** `personal_agent/desktop_control.py`, `personal_agent/desktop_vision.py`, `personal_agent/desktop_agent.py`, `routes/desktop.py`
 
+
+
+# Planned: Local Vision & Control Processing
+### Status: 3/24/2026 - not started
+The current desktop agent sends every screenshot to Claude's vision API (via `ClaudeVisionProvider` or `CookieVisionProvider`) for action selection. This works but has drawbacks:
+- Every ReAct step costs a cloud API call (5-15 per task)
+- Dependent on Claude API availability and cookie freshness
+- Latency per step includes round-trip to cloud
+
+### Planned Changes
+
+**Local vision model integration:**
+- Add `LocalVisionProvider` implementing the existing `VisionProvider` interface
+- Candidate models: `moondream2`, `Qwen2-VL`, `Florence-2` (all runnable via Ollama on modest hardware)
+- Cloud vision becomes Tier 2 fallback, not primary
+
+**Local action selection:**
+- The LLM deciding "what to do next" in the ReAct loop should run on the local Ollama model by default
+- For the browser agent specifically, DOM text provides sufficient context — no vision model needed for most tasks
+- Vision only escalates for: complex visual layouts, canvas/WebGL content, visual verification ("does this look right?")
+
+**Routing mode integration:**
+- Local/cloud/hybrid setting from the Settings panel applies to vision and control processing, not just intent routing
+- User controls cost vs capability tradeoff per their preference
+
+**Target**: v3.1+ (after browser agent stabilizes)
+
+
 ---
 
 ## Overview

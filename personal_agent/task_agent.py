@@ -284,6 +284,29 @@ _DESKTOP_CONVERSATIONAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Browser agent patterns — "browse to", "go to website", "search the web for", etc.
+_WEB_BROWSE_RE = re.compile(
+    r"\b((?:(?:can|could|would)\s+you\s+)?(?:please\s+)?"
+    r"(?:browse\s+(?:to\s+)?|visit\s+|open\s+(?:the\s+)?(?:url|website|webpage|page|site)|"
+    r"go\s+to\s+(?:the\s+)?(?:website|webpage|page|site|url|https?://)|"
+    r"navigate\s+to\s+|check\s+(?:the\s+)?(?:website|webpage|page|site)|"
+    r"read\s+(?:the\s+)?(?:website|webpage|page|article)\s+at|"
+    r"fill\s+(?:out\s+)?(?:the\s+)?(?:form|fields)\s+(?:on|at)|"
+    r"(?:scrape|extract|pull)\s+(?:data|info|content|text)\s+from|"
+    r"summarize\s+(?:the\s+)?(?:page|article|website)\s+(?:at|on)|"
+    r"what(?:'s| is)\s+on\s+(?:the\s+)?(?:page|site|website)))\b"
+    r"|https?://\S+",
+    re.IGNORECASE,
+)
+
+_WEB_SEARCH_RE = re.compile(
+    r"\b((?:(?:can|could|would)\s+you\s+)?(?:please\s+)?"
+    r"(?:search\s+(?:the\s+)?(?:web|internet|google|online)\s+for|"
+    r"google\s+|look\s+up\s+|find\s+(?:info|information|results)\s+(?:about|on|for)|"
+    r"search\s+for\s+|web\s+search\s+))\b",
+    re.IGNORECASE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Credentials store
@@ -544,6 +567,10 @@ def _describe_action(intent: "TaskIntent") -> str:
         return "check system status"
     elif intent.intent_type == "desktop_action":
         return f"control your desktop: {intent.slots.get('task_description', 'desktop action')}"
+    elif intent.intent_type == "web_browse":
+        return f"browse the web: {intent.slots.get('task_description', 'web task')}"
+    elif intent.intent_type == "web_search":
+        return f"search the web for: {intent.slots.get('query', 'information')}"
     elif intent.intent_type == "file_read":
         return f"read file {intent.slots.get('path', '?')}"
     elif intent.intent_type == "dir_list":
@@ -662,6 +689,27 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
             "requires_confirmation": False,
         }
 
+    # ── Browser action — gate depends on user's confirmation setting ─────
+    if intent.intent_type == "web_browse":
+        try:
+            from auth import get_user_settings as _gus
+            _bs = _gus(1)
+            _bcm = _bs.get("browser_confirm_mode", "submissions_only")
+            if _bcm == "all_actions":
+                _task_desc = intent.slots.get("task_description", "a web task")
+                return {
+                    "checkpoint_tier": "high",
+                    "checkpoint_message": f"Browser control: {_task_desc}. Go ahead?",
+                    "requires_confirmation": True,
+                }
+        except Exception:
+            pass
+        return {
+            "checkpoint_tier": "none",
+            "checkpoint_message": "",
+            "requires_confirmation": False,
+        }
+
     # ── Layer 3-4 write/exec tools — ALWAYS require confirmation ────────
     if intent.intent_type in ("file_write", "shell_exec", "git_action"):
         action_desc = _describe_action(intent)
@@ -766,6 +814,35 @@ def classify_intent(
             slots={"task_description": message},
             confidence=0.88,
             reason="desktop_action_pattern",
+        )
+
+    # ── 1b-web. Web search — "search the web for", "google X" ───────────
+    if _WEB_SEARCH_RE.search(message):
+        # Extract the search query (everything after the trigger phrase)
+        _ws_match = _WEB_SEARCH_RE.search(message)
+        _query = message[_ws_match.end():].strip() if _ws_match else message
+        return TaskIntent(
+            route="task",
+            intent_type="web_search",
+            slots={"query": _query or message},
+            confidence=0.90,
+            reason="web_search_pattern",
+        )
+
+    # ── 1b-web. Web browse — "go to website", "browse to URL" etc. ────────
+    if _WEB_BROWSE_RE.search(message):
+        # Extract URL if present
+        import re as _re_mod
+        _url_match = _re_mod.search(r'https?://\S+', message)
+        _slots: Dict[str, Any] = {"task_description": message}
+        if _url_match:
+            _slots["url"] = _url_match.group(0)
+        return TaskIntent(
+            route="task",
+            intent_type="web_browse",
+            slots=_slots,
+            confidence=0.88,
+            reason="web_browse_pattern",
         )
 
     # ── 1b. System info — "how's my system", "check CPU" etc. ───────────
@@ -1321,6 +1398,10 @@ def _try_embedding_classifier(
         _slots = regex_result.slots if regex_result else {}
         if intent_type == "desktop_action" and "task_description" not in _slots:
             _slots["task_description"] = message
+        if intent_type == "web_browse" and "task_description" not in _slots:
+            _slots["task_description"] = message
+        if intent_type == "web_search" and "query" not in _slots:
+            _slots["query"] = message
         return TaskIntent(
             route=route,
             intent_type=intent_type,
@@ -1411,6 +1492,16 @@ _ACK_TEMPLATES: Dict[str, List[str]] = {
         "Let me take care of that. Working on your screen now.",
         "I'm on it \u2014 taking control of the desktop for a sec.",
     ],
+    "web_browse": [
+        "Opening the browser \u2014 let me check that out for you.",
+        "On it \u2014 browsing to that page now.",
+        "Let me pull that up in the browser. One moment.",
+    ],
+    "web_search": [
+        "Searching the web for that now \u2014 hang tight.",
+        "Let me look that up for you. One sec.",
+        "Running a web search \u2014 be right back.",
+    ],
     "file_write": [
         "I'll create that file for you. Let me draft it up.",
         "Working on that file now \u2014 give me a moment.",
@@ -1464,6 +1555,8 @@ _ACK_TEMPLATES: Dict[str, List[str]] = {
 # Intent types that map to specific tool names
 _INTENT_TOOL_MAP: Dict[str, List[str]] = {
     "desktop_action": ["desktop_action"],
+    "web_browse": ["web_browse"],
+    "web_search": ["web_search"],
     "file_write": ["content_generation", "file_write"],
     "file_read": ["file_read"],
     "dir_list": ["dir_list"],
@@ -1780,6 +1873,8 @@ class CRTTaskAgent:
                 "list_commitments": "List reminders",
                 "cancel_commitment": "Cancel a reminder",
                 "desktop_action": "Control desktop",
+                "web_browse": "Browse the web",
+                "web_search": "Search the web",
                 "broad_recall": "Recall memories",
                 "self_referential": "About me (Aether)",
                 "url_fetch": "Fetch a URL",
@@ -2158,6 +2253,18 @@ class CRTTaskAgent:
                 {"label": "What's open?", "value": "What apps are currently open?"},
             ]
             _followup_prompt = "What else would you like me to do on your desktop?"
+        elif all_ok and intent.intent_type == "web_browse":
+            _suggested_actions = [
+                {"label": "Read more", "value": "Read more from this page"},
+                {"label": "Follow a link", "value": "Follow the first link on the page"},
+            ]
+            _followup_prompt = "What else would you like me to do in the browser?"
+        elif all_ok and intent.intent_type == "web_search":
+            _suggested_actions = [
+                {"label": "Open top result", "value": "Open the top search result and summarize it"},
+                {"label": "Search more", "value": "Search for more details"},
+            ]
+            _followup_prompt = "Want me to dig deeper into any of these results?"
         elif all_ok and intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
             if intent.intent_type == "file_read":
                 _fname = (intent.slots.get("path") or "").rsplit("/", 1)[-1] or "this file"
@@ -2224,6 +2331,36 @@ class CRTTaskAgent:
             except Exception:
                 pass
 
+        # ── Plan advancement (v2.9.2) ─────────────────────────────────
+        if all_ok and self._session_db is not None:
+            try:
+                thread_plan = self._session_db.get_thread_plan(thread_id)
+                if thread_plan and thread_plan.get("status") == "active":
+                    from personal_agent.plan_engine import PlanEngine
+                    _pe = PlanEngine(session_db=self._session_db)
+                    _step_output = None
+                    if _ok_step:
+                        _step_output = _ok_step.output or _ok_step.output_preview
+                    _next = _pe.advance_step(thread_plan["id"], step_result=_step_output)
+                    _progress = _pe.get_plan_progress_summary(thread_plan["id"])
+                    yield {
+                        "type": "plan_update",
+                        "content": _progress,
+                        "metadata": {
+                            "plan_id": thread_plan["id"],
+                            "next_step": _next,
+                            "progress": _progress,
+                        },
+                    }
+                    if _next is None:
+                        yield {
+                            "type": "plan_complete",
+                            "content": f"Plan '{thread_plan['title']}' completed!",
+                            "metadata": {"plan_id": thread_plan["id"]},
+                        }
+            except Exception as _plan_err:
+                logger.debug("[PLAN] advance failed: %s", _plan_err)
+
     # ------------------------------------------------------------------
     # Async orchestrated execution (Sprint 8)
     # ------------------------------------------------------------------
@@ -2267,6 +2404,8 @@ class CRTTaskAgent:
                 "list_commitments": "List reminders",
                 "cancel_commitment": "Cancel a reminder",
                 "desktop_action": "Control desktop",
+                "web_browse": "Browse the web",
+                "web_search": "Search the web",
                 "broad_recall": "Recall memories",
                 "self_referential": "About me (Aether)",
                 "url_fetch": "Fetch a URL",
@@ -3405,6 +3544,17 @@ RULES:
                 "task": intent.slots.get("task_description", ""),
             }})
 
+        elif intent.intent_type == "web_browse":
+            plan.append({"tool": "web_browse", "input": {
+                "task": intent.slots.get("task_description", ""),
+                "url": intent.slots.get("url", ""),
+            }})
+
+        elif intent.intent_type == "web_search":
+            plan.append({"tool": "web_search", "input": {
+                "query": intent.slots.get("query", ""),
+            }})
+
         elif intent.intent_type == "system_info":
             plan.append({"tool": "system_info", "input": {}})
 
@@ -3732,6 +3882,12 @@ RULES:
 
         elif tool == "desktop_action":
             return (yield from self._run_desktop_action(step, inp, step_index, thread_id))
+
+        elif tool == "web_browse":
+            return (yield from self._run_browser_action(step, inp, step_index, thread_id))
+
+        elif tool == "web_search":
+            return (yield from self._run_web_search(step, inp, step_index, thread_id))
 
         elif tool == "file_read":
             return self._run_file_read(step, inp, step_index)
@@ -4302,6 +4458,283 @@ RULES:
                 "content": f"Desktop action failed: {e}",
                 "metadata": {
                     "tool_name": "desktop_action",
+                    "status": "error",
+                    "error": str(e),
+                    "step_index": step_index,
+                },
+            }
+
+    # ------------------------------------------------------------------
+    # Browser control
+    # ------------------------------------------------------------------
+
+    def _run_browser_action(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        """Execute a browser automation task via the ReAct DOM+vision loop."""
+        import time as _time
+        t0 = _time.time()
+        task = inp.get("task", "")
+        start_url = inp.get("url", "") or None
+
+        try:
+            # Check if browser control is enabled in user settings
+            from auth import get_user_settings
+            _settings = get_user_settings(1)  # uid=1 single-user
+            if _settings.get("browser_enabled", "false") != "true":
+                step.status = "error"
+                step.error = "Browser control is disabled. Enable it in Settings > Browser."
+                return {
+                    "type": "tool_result",
+                    "content": step.error,
+                    "metadata": {"tool_name": "web_browse", "status": "error",
+                                 "error": step.error, "step_index": step_index},
+                }
+
+            from personal_agent.browser_control import BrowserController
+            from personal_agent.browser_agent import BrowserAgent, BrowserTaskResult
+            from personal_agent.action_receipts import create_receipt, log_receipt
+
+            # Read settings
+            _max_steps = int(_settings.get("browser_max_steps", "20"))
+            _headless = _settings.get("browser_mode", "headed") == "headless"
+            _engine = _settings.get("browser_engine", "chromium")
+            _persist = _settings.get("browser_persist_sessions", "true") == "true"
+            _confirm_mode = _settings.get("browser_confirm_mode", "submissions_only")
+            _allowlist_raw = _settings.get("browser_domain_allowlist", "")
+            _blocklist_raw = _settings.get("browser_domain_blocklist", "")
+            _domain_allowlist = [d.strip() for d in _allowlist_raw.split("\n") if d.strip()] if _allowlist_raw else []
+            _domain_blocklist = [d.strip() for d in _blocklist_raw.split("\n") if d.strip()] if _blocklist_raw else []
+
+            persistent_dir = "data/browser_profile" if _persist else None
+
+            # Initialize components
+            controller = BrowserController(
+                headless=_headless,
+                persistent_context_dir=persistent_dir,
+                engine=_engine,
+            )
+
+            agent = BrowserAgent(
+                controller=controller,
+                vision=None,  # Vision fallback not wired yet
+                llm_client=self._llm,
+                max_steps=_max_steps,
+                confirm_mode=_confirm_mode,
+                domain_allowlist=_domain_allowlist,
+                domain_blocklist=_domain_blocklist,
+            )
+
+            # Build memory context from verified facts
+            memory_context = ""
+            try:
+                if self._memory is not None:
+                    relevant = self._memory.retrieve(task, top_k=10)
+                    memory_lines = [
+                        f"- {m.text} (trust: {m.trust_score:.2f})"
+                        for m in relevant
+                        if m.trust_score >= 0.7
+                    ]
+                    memory_context = "\n".join(memory_lines)
+            except Exception:
+                pass
+
+            # Execute — this blocks while the ReAct loop runs
+            yield {"type": "status", "content": f"Opening browser: {task}"}
+
+            agent.launch_sync()
+            try:
+                result: BrowserTaskResult = agent.execute_task_sync(
+                    task=task,
+                    start_url=start_url,
+                    memory_context=memory_context,
+                )
+            finally:
+                agent.close_sync()
+
+            duration_ms = round((_time.time() - t0) * 1000)
+
+            # Log action receipts for each step
+            for action_entry in result.action_log:
+                try:
+                    receipt = create_receipt(
+                        tool_name="web_browse",
+                        action=f"browser {action_entry.get('action_type', 'unknown')}: {action_entry.get('target', '')}",
+                        target=action_entry.get("target", task),
+                        result="success" if result.success else "partial",
+                        reversible=False,
+                        details=action_entry,
+                    )
+                    log_receipt(receipt, thread_id)
+                except Exception:
+                    pass
+
+            # Build output
+            step.output = {
+                "success": result.success,
+                "steps_taken": result.steps_taken,
+                "total_duration_ms": result.total_duration_ms,
+                "task_summary": result.task_summary,
+                "extracted_content": result.extracted_content,
+                "error": result.error,
+                "final_url": result.final_url,
+                "final_title": result.final_title,
+                "screenshot_b64": result.screenshot_b64,
+                "action_log": result.action_log,
+            }
+            step.output_preview = (
+                f"Browser task {'completed' if result.success else 'failed'} "
+                f"in {result.steps_taken} steps ({result.total_duration_ms:.0f}ms)"
+            )
+            if result.extracted_content:
+                step.output_preview += f"\n{result.extracted_content[:500]}"
+            step.duration_ms = duration_ms
+            step.status = "ok" if result.success else "error"
+            if not result.success:
+                step.error = result.error
+
+            return {
+                "type": "tool_result",
+                "content": step.output_preview,
+                "metadata": {
+                    "tool_name": "web_browse",
+                    "status": step.status,
+                    "duration_ms": duration_ms,
+                    "step_index": step_index,
+                    "success": result.success,
+                    "steps_taken": result.steps_taken,
+                    "task_summary": result.task_summary,
+                    "extracted_content": result.extracted_content,
+                    "final_url": result.final_url,
+                    "screenshot_b64": result.screenshot_b64,
+                },
+            }
+
+        except Exception as e:
+            logger.warning("[WEB_BROWSE] Failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"Browser action failed: {e}",
+                "metadata": {
+                    "tool_name": "web_browse",
+                    "status": "error",
+                    "error": str(e),
+                    "step_index": step_index,
+                },
+            }
+
+    def _run_web_search(
+        self, step: AgentStep, inp: Dict[str, Any], step_index: int, thread_id: str,
+    ) -> Generator[Dict[str, Any], None, Dict[str, Any]]:
+        """Execute a web search — navigate to search engine, extract results."""
+        import time as _time
+        t0 = _time.time()
+        query = inp.get("query", "")
+
+        try:
+            from auth import get_user_settings
+            _settings = get_user_settings(1)
+            if _settings.get("browser_enabled", "false") != "true":
+                step.status = "error"
+                step.error = "Browser control is disabled. Enable it in Settings > Browser."
+                return {
+                    "type": "tool_result",
+                    "content": step.error,
+                    "metadata": {"tool_name": "web_search", "status": "error",
+                                 "error": step.error, "step_index": step_index},
+                }
+
+            from personal_agent.browser_control import BrowserController
+            from personal_agent.browser_agent import run_web_search
+            from personal_agent.action_receipts import create_receipt, log_receipt
+            import asyncio
+
+            _headless = _settings.get("browser_mode", "headed") == "headless"
+            _engine = _settings.get("browser_engine", "chromium")
+            _persist = _settings.get("browser_persist_sessions", "true") == "true"
+            persistent_dir = "data/browser_profile" if _persist else None
+
+            controller = BrowserController(
+                headless=_headless,
+                persistent_context_dir=persistent_dir,
+                engine=_engine,
+            )
+
+            yield {"type": "status", "content": f"Searching the web: {query}"}
+
+            async def _do_search():
+                await controller.launch()
+                try:
+                    return await run_web_search(controller, query)
+                finally:
+                    await controller.close()
+
+            # Run async search in sync context
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                        future = pool.submit(asyncio.run, _do_search())
+                        search_result = future.result(timeout=60)
+                else:
+                    search_result = loop.run_until_complete(_do_search())
+            except RuntimeError:
+                search_result = asyncio.run(_do_search())
+
+            duration_ms = round((_time.time() - t0) * 1000)
+
+            # Log receipt
+            try:
+                receipt = create_receipt(
+                    tool_name="web_search",
+                    action=f"search: {query}",
+                    target=query,
+                    result="success" if search_result.get("success") else "failed",
+                    reversible=False,
+                    details=search_result,
+                )
+                log_receipt(receipt, thread_id)
+            except Exception:
+                pass
+
+            step.output = search_result
+            results_count = search_result.get("results_count", 0)
+            step.output_preview = f"Found {results_count} results for \"{query}\""
+            if search_result.get("results"):
+                # Include top results in preview for synthesis
+                lines = []
+                for r in search_result["results"][:5]:
+                    lines.append(f"- {r.get('title', '?')}: {r.get('snippet', '')[:100]}")
+                step.output_preview += "\n" + "\n".join(lines)
+            step.duration_ms = duration_ms
+            step.status = "ok" if search_result.get("success") else "error"
+
+            return {
+                "type": "tool_result",
+                "content": step.output_preview,
+                "metadata": {
+                    "tool_name": "web_search",
+                    "status": step.status,
+                    "duration_ms": duration_ms,
+                    "step_index": step_index,
+                    "success": search_result.get("success", False),
+                    "results_count": results_count,
+                    "query": query,
+                },
+            }
+
+        except Exception as e:
+            logger.warning("[WEB_SEARCH] Failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"Web search failed: {e}",
+                "metadata": {
+                    "tool_name": "web_search",
                     "status": "error",
                     "error": str(e),
                     "step_index": step_index,
@@ -5224,6 +5657,43 @@ RULES:
             _err = next((s for s in steps if s.status == "error"), None)
             return f"Desktop action failed: {_err.error}" if _err else "Desktop action failed."
 
+        if intent.intent_type == "web_browse":
+            _wb_step = next(
+                (s for s in steps if s.tool_name == "web_browse"),
+                None,
+            )
+            if _wb_step and isinstance(_wb_step.output, dict):
+                _wb = _wb_step.output
+                if _wb.get("success"):
+                    summary = f"Browser task completed in {_wb.get('steps_taken', 0)} steps."
+                    if _wb.get("extracted_content"):
+                        summary += f"\n{_wb['extracted_content'][:1000]}"
+                    if _wb.get("final_url"):
+                        summary += f"\nFinal page: {_wb['final_url']}"
+                    return summary
+                return f"Browser task failed after {_wb.get('steps_taken', 0)} steps: {_wb.get('error', 'unknown error')}"
+            _err = next((s for s in steps if s.status == "error"), None)
+            return f"Browser action failed: {_err.error}" if _err else "Browser action failed."
+
+        if intent.intent_type == "web_search":
+            _ws_step = next(
+                (s for s in steps if s.tool_name == "web_search"),
+                None,
+            )
+            if _ws_step and isinstance(_ws_step.output, dict):
+                _ws = _ws_step.output
+                if _ws.get("success"):
+                    results = _ws.get("results", [])
+                    lines = [f"Search results for \"{_ws.get('query', '?')}\" ({len(results)} results):"]
+                    for r in results[:10]:
+                        lines.append(f"- {r.get('title', '?')}: {r.get('url', '')}")
+                        if r.get("snippet"):
+                            lines.append(f"  {r['snippet'][:200]}")
+                    return "\n".join(lines)
+                return f"Web search failed: {_ws.get('error', 'unknown error')}"
+            _err = next((s for s in steps if s.status == "error"), None)
+            return f"Web search failed: {_err.error}" if _err else "Web search failed."
+
         if intent.intent_type in ("file_read", "dir_list", "project_scan", "system_info"):
             _ro_step = next(
                 (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),
@@ -5490,6 +5960,24 @@ RULES:
                 text = f"RECENT ACTION: {_summary}. ({_step_count} steps)"
                 self._memory.store_memory(
                     text=text, confidence=0.90,
+                    source=MemorySource.SYSTEM, thread_id=thread_id,
+                    kind="task_result",
+                )
+                facts.append(text)
+
+            elif intent.intent_type in ("web_browse", "web_search"):
+                _task_desc = intent.slots.get("task_description", intent.slots.get("query", ""))
+                _summary = ""
+                if answer:
+                    _first_line = answer.split(".")[0].strip()
+                    if _first_line and len(_first_line) > 10:
+                        _summary = _first_line
+                if not _summary:
+                    _label = "web browsing" if intent.intent_type == "web_browse" else "web search"
+                    _summary = f"Completed {_label}: {_task_desc[:100]}"
+                text = f"RECENT ACTION: {_summary}"
+                self._memory.store_memory(
+                    text=text, confidence=0.85,
                     source=MemorySource.SYSTEM, thread_id=thread_id,
                     kind="task_result",
                 )

@@ -411,6 +411,9 @@ export type StreamEventType =
   | 'correction'
   | 'stream_checkpoint'
   | 'stream_stopped'
+  | 'plan_proposal'
+  | 'plan_update'
+  | 'plan_complete'
   | 'done'
   | 'error'
 
@@ -2127,4 +2130,133 @@ export function streamLogs(opts?: {
   })()
 
   return ctrl
+}
+
+// ---------------------------------------------------------------------------
+// Plans API (v2.9.2)
+// ---------------------------------------------------------------------------
+
+export type PlanStep = {
+  id: string
+  plan_id: string
+  step_number: number
+  title: string
+  description?: string | null
+  status: string
+  tool_name?: string | null
+  input_json?: string | null
+  output_json?: string | null
+  needs_user_input?: string | null
+  user_input?: string | null
+  started_at?: number | null
+  completed_at?: number | null
+}
+
+export type Plan = {
+  id: string
+  title: string
+  description?: string | null
+  status: string
+  created_by: string
+  created_at: number
+  updated_at: number
+  completed_at?: number | null
+  metadata?: Record<string, unknown> | null
+  steps: PlanStep[]
+  current_step_id?: string | null
+  thread_id?: string | null
+}
+
+export async function listPlans(status?: string): Promise<Plan[]> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return fetchJson<Plan[]>(`/api/plans${qs}`)
+}
+
+export async function createPlan(args: {
+  title: string
+  description?: string
+  steps?: Array<{ title: string; description?: string; tool_name?: string; needs_user_input?: string }>
+}): Promise<Plan> {
+  return postJson<Plan>('/api/plans', args)
+}
+
+export async function getPlan(planId: string): Promise<Plan> {
+  return fetchJson<Plan>(`/api/plans/${encodeURIComponent(planId)}`)
+}
+
+export async function updatePlan(planId: string, fields: {
+  title?: string; description?: string; status?: string
+}): Promise<Plan> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/plans/${encodeURIComponent(planId)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
+  if (!res.ok) throw new Error(`Failed to update plan: ${res.status}`)
+  return res.json()
+}
+
+export async function deletePlan(planId: string): Promise<{ ok: boolean }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/plans/${encodeURIComponent(planId)}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(`Failed to delete plan: ${res.status}`)
+  return res.json()
+}
+
+export async function addPlanStep(planId: string, step: {
+  title: string; description?: string; tool_name?: string
+}): Promise<PlanStep> {
+  return postJson<PlanStep>(`/api/plans/${encodeURIComponent(planId)}/steps`, step)
+}
+
+export async function updatePlanStep(planId: string, stepId: string, fields: {
+  title?: string; description?: string; status?: string; user_input?: string
+}): Promise<Plan> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(
+    `${base}/api/plans/${encodeURIComponent(planId)}/steps/${encodeURIComponent(stepId)}`,
+    { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fields) },
+  )
+  if (!res.ok) throw new Error(`Failed to update step: ${res.status}`)
+  return res.json()
+}
+
+export async function deletePlanStep(planId: string, stepId: string): Promise<{ ok: boolean }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(
+    `${base}/api/plans/${encodeURIComponent(planId)}/steps/${encodeURIComponent(stepId)}`,
+    { method: 'DELETE' },
+  )
+  if (!res.ok) throw new Error(`Failed to delete step: ${res.status}`)
+  return res.json()
+}
+
+export async function reorderPlanSteps(planId: string, stepIds: string[]): Promise<Plan> {
+  return postJson<Plan>(`/api/plans/${encodeURIComponent(planId)}/reorder`, { step_ids: stepIds })
+}
+
+export async function linkPlanToThread(planId: string, threadId: string): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>(
+    `/api/plans/${encodeURIComponent(planId)}/link/${encodeURIComponent(threadId)}`,
+    {},
+  )
+}
+
+export async function unlinkPlanFromThread(planId: string, threadId: string): Promise<{ ok: boolean }> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(
+    `${base}/api/plans/${encodeURIComponent(planId)}/link/${encodeURIComponent(threadId)}`,
+    { method: 'DELETE' },
+  )
+  if (!res.ok) throw new Error(`Failed to unlink plan: ${res.status}`)
+  return res.json()
+}
+
+export async function getThreadPlan(threadId: string): Promise<Plan | null> {
+  const base = getApiBaseUrlInternal()
+  const res = await fetch(`${base}/api/plans/thread/${encodeURIComponent(threadId)}`)
+  if (!res.ok) return null
+  const data = await res.json()
+  return data || null
 }

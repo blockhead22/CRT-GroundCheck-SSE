@@ -32,7 +32,14 @@ const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: strin
     heading: 'Capabilities',
     items: [
       { id: 'capabilities', label: 'Agent Tools' },
+      { id: 'behavior', label: 'Behavior & Proactivity' },
       { id: 'training', label: 'Training & Verification' },
+    ],
+  },
+  {
+    heading: 'Configuration',
+    items: [
+      { id: 'settings', label: 'Settings & Controls' },
     ],
   },
   {

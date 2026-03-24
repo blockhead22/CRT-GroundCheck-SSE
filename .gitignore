@@ -11,6 +11,9 @@ build/
 venv/
 ENV/
 
+# Browser profile (cookies/sessions from Playwright)
+data/browser_profile/
+
 # Environment variables
 .env
 .env.local

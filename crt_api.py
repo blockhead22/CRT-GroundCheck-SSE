@@ -864,7 +864,7 @@ def create_app() -> FastAPI:
     import warnings
     warnings.filterwarnings("ignore", message=".*on_event is deprecated.*", category=DeprecationWarning)
 
-    app = FastAPI(title="CRT API", version="0.9-beta")
+    app = FastAPI(title="CRT API", version="2.9.3")
 
     runtime_cfg = get_runtime_config()
     reflection_cfg = (runtime_cfg.get("reflection") or {}) if isinstance(runtime_cfg, dict) else {}
@@ -1106,10 +1106,16 @@ def create_app() -> FastAPI:
         "self_model": {"title": "Self-Model & Reflection", "kind": "intelligence", "path": docs_dir / "SELF_MODEL.md"},
         # Agent capabilities.
         "desktop_control": {"title": "Desktop Control", "kind": "capabilities", "path": docs_dir / "DESKTOP_CONTROL.md"},
+        "browser_control": {"title": "Browser Control", "kind": "capabilities", "path": docs_dir / "BROWSER_CONTROL.md"},
         "action_execution": {"title": "Action Execution Layer", "kind": "capabilities", "path": docs_dir / "ACTION_EXECUTION.md"},
         "commitments": {"title": "Commitments & Scheduling", "kind": "capabilities", "path": docs_dir / "COMMITMENTS.md"},
         "system_heartbeat": {"title": "System Info & Heartbeat", "kind": "capabilities", "path": docs_dir / "SYSTEM_HEARTBEAT.md"},
         "skill_system": {"title": "Skill System", "kind": "capabilities", "path": docs_dir / "SKILL_SYSTEM.md"},
+        # Behavior & proactivity.
+        "heartbeat_loop": {"title": "Heartbeat Loop", "kind": "behavior", "path": docs_dir / "HEARTBEAT_LOOP.md"},
+        "greetings_warnings": {"title": "Greetings, Warnings & Response Behavior", "kind": "behavior", "path": docs_dir / "GREETINGS_WARNINGS.md"},
+        # Settings & controls.
+        "settings": {"title": "Settings Page", "kind": "settings", "path": docs_dir / "SETTINGS.md"},
         # Training & verification.
         "vilt_writeup": {"title": "ViLT Technical Writeup", "kind": "training", "path": docs_dir / "VILT_TECHNICAL_WRITEUP.md"},
         # Testing & quality.

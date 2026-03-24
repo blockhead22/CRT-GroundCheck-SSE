@@ -1,9 +1,35 @@
 # CRT/Aether Roadmap
-Last updated: March 24, 2026 (v2.7)
+Last updated: March 24, 2026 (v2.9.3)
 
 ---
 
 ## DONE
+
+### v2.9.3 (March 24)
+- [x] Task Plan System — multi-step work plans that persist across messages and threads
+- [x] Plans database layer — 3 SQLite tables (`plans`, `plan_steps`, `thread_plan_links`) + 15 CRUD methods in ThreadSessionDB
+- [x] Plans REST API — `routes/plans.py`: 12 endpoints for plan/step CRUD, thread linking, reordering
+- [x] PlanEngine — `personal_agent/plan_engine.py`: LLM-powered plan generation, step advancement, user-input handling, progress summaries
+- [x] Chat pipeline integration — plan steps auto-advance after tool execution, `plan_update`/`plan_complete` SSE events
+- [x] Jobs page split — renamed "Plans & Jobs", PlansSection with create form + expandable plan list + step toggling
+- [x] PlanWidget — compact collapsible in-chat plan display with progress ring, step list, status icons
+- [x] Plan settings — auto-plan threshold, notifications, chat visibility toggles in Behavior tab
+- [x] 3 new SSE event types: `plan_proposal`, `plan_update`, `plan_complete`
+- [x] 7 Pydantic models, 12 TypeScript API client functions, Plan/PlanStep types
+
+### v2.9.2 (March 24)
+- [x] Full settings expansion — Heartbeat tab, Behavior tab, 20+ new setting keys wired end-to-end
+- [x] Fix: preferred_nickname and agent_name silently dropped by API whitelist
+- [x] Fix: 4 API-whitelisted keys had no UI controls
+
+### v2.9.1 (March 24)
+- [x] Response synthesis layer — LLM interprets tool results before responding
+- [x] ResponseSynthesizer class with synthesis_mode per tool, hallucination guards, deterministic fallback
+
+### v2.9 (March 24)
+- [x] Hybrid LLM intent router — 3-tier (regex → local LLM → cloud LLM) with self-improving route learning
+- [x] Tool registry with unified schema for all 17 tools
+- [x] Routing mode selector in Settings (local_only / cloud_only / hybrid)
 
 ### v2.7 (March 24)
 - [x] Intuition Check — `personal_agent/intuition_check.py`: lightweight gpt-4o-mini side-channel for situational awareness

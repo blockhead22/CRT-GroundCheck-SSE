@@ -9,7 +9,7 @@ type Props = {
   onProfileUpdated: () => void
 }
 
-type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'heartbeat' | 'behavior' | 'advanced' | 'facts' | 'account'
+type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'browser' | 'heartbeat' | 'behavior' | 'advanced' | 'facts' | 'account'
 
 const ESCALATION_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
@@ -230,6 +230,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     { id: 'profile', label: 'Profile' },
     { id: 'cloud', label: 'Cloud' },
     { id: 'desktop', label: 'Desktop' },
+    { id: 'browser', label: 'Browser' },
     { id: 'heartbeat', label: 'Heartbeat' },
     { id: 'behavior', label: 'Behavior' },
     { id: 'advanced', label: 'Advanced' },
@@ -729,6 +730,128 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
             </SectionCard>
           )}
 
+          {/* ═══════════════════ BROWSER TAB ═══════════════════ */}
+          {tab === 'browser' && (
+            <SectionCard title="Browser Control" description="Aether can browse the web autonomously via Playwright. Navigate pages, read content, fill forms, extract data. Uses DOM analysis first, vision fallback for complex pages.">
+              {cloudSettings ? (
+                <div className="space-y-1">
+                  <Toggle
+                    label="Enable Browser Control"
+                    description="Allow Aether to open a browser, navigate the web, and interact with web pages."
+                    checked={cloudSettings.browser_enabled === 'true'}
+                    onChange={(v) => handleCloudToggle('browser_enabled', v)}
+                  />
+                  {cloudSettings.browser_enabled === 'true' && (
+                    <div className="ml-2 mb-2 rounded bg-blue-500/10 border border-blue-500/20 px-3 py-2 text-xs text-blue-300/80">
+                      Browser control is active. Aether can browse websites and interact with web pages on your behalf.
+                    </div>
+                  )}
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Browser Settings</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Browser mode</div>
+                      <div className="text-xs text-white/40 mt-0.5">Headed shows the browser window; headless runs in background (faster, no UI).</div>
+                    </div>
+                    <select
+                      value={cloudSettings.browser_mode || 'headed'}
+                      onChange={(e) => handleCloudSelect('browser_mode', e.target.value)}
+                      className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                    >
+                      <option value="headed">Headed (visible)</option>
+                      <option value="headless">Headless (background)</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Browser engine</div>
+                      <div className="text-xs text-white/40 mt-0.5">Which browser engine Playwright uses. Chromium is recommended.</div>
+                    </div>
+                    <select
+                      value={cloudSettings.browser_engine || 'chromium'}
+                      onChange={(e) => handleCloudSelect('browser_engine', e.target.value)}
+                      className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                    >
+                      <option value="chromium">Chromium</option>
+                      <option value="firefox">Firefox</option>
+                      <option value="webkit">WebKit</option>
+                    </select>
+                  </div>
+
+                  <Toggle
+                    label="Persist sessions"
+                    description="Save cookies and login sessions between browser tasks. When off, each task starts fresh."
+                    checked={cloudSettings.browser_persist_sessions !== 'false'}
+                    onChange={(v) => handleCloudToggle('browser_persist_sessions', v)}
+                  />
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Limits</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Max steps per task</div>
+                      <div className="text-xs text-white/40 mt-0.5">Maximum actions the browser agent takes before stopping. Each step is a page read + action.</div>
+                    </div>
+                    <input
+                      type="number" min="5" max="50"
+                      value={cloudSettings.browser_max_steps || '20'}
+                      onChange={(e) => handleCloudNumberInput('browser_max_steps', e.target.value)}
+                      className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
+                    />
+                  </div>
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Confirmation</div>
+
+                  <div className="flex items-center justify-between py-2">
+                    <div className="flex-1">
+                      <div className="text-sm text-white/80">Require confirmation for</div>
+                      <div className="text-xs text-white/40 mt-0.5">When to pause and ask before executing a browser action.</div>
+                    </div>
+                    <select
+                      value={cloudSettings.browser_confirm_mode || 'submissions_only'}
+                      onChange={(e) => handleCloudSelect('browser_confirm_mode', e.target.value)}
+                      className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                    >
+                      <option value="never">Never</option>
+                      <option value="submissions_only">Form submissions only</option>
+                      <option value="all_actions">Every action</option>
+                    </select>
+                  </div>
+
+                  <div className="mt-4 mb-2 text-xs font-medium text-white/50 uppercase tracking-wide">Domain Restrictions</div>
+
+                  <div className="py-2">
+                    <div className="text-sm text-white/80 mb-1">Domain allowlist</div>
+                    <div className="text-xs text-white/40 mb-2">If set, browser can ONLY visit these domains. One per line. Leave empty to allow all non-blocked domains.</div>
+                    <textarea
+                      defaultValue={cloudSettings.browser_domain_allowlist || ''}
+                      onBlur={(e) => handleCloudSelect('browser_domain_allowlist', e.target.value)}
+                      placeholder="example.com&#10;docs.python.org"
+                      rows={3}
+                      className="w-full rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white font-mono"
+                    />
+                  </div>
+
+                  <div className="py-2">
+                    <div className="text-sm text-white/80 mb-1">Domain blocklist</div>
+                    <div className="text-xs text-white/40 mb-2">Browser will never visit these domains. Banking domains are always blocked regardless of this list.</div>
+                    <textarea
+                      defaultValue={cloudSettings.browser_domain_blocklist || ''}
+                      onBlur={(e) => handleCloudSelect('browser_domain_blocklist', e.target.value)}
+                      placeholder="facebook.com&#10;twitter.com"
+                      rows={3}
+                      className="w-full rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white font-mono"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-white/40">Loading browser settings...</p>
+              )}
+            </SectionCard>
+          )}
+
           {/* ═══════════════════ HEARTBEAT TAB ═══════════════════ */}
           {tab === 'heartbeat' && cloudSettings && (
             <>
@@ -951,6 +1074,36 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     <option value="jp-jp">Japan</option>
                   </select>
                 </div>
+              </SectionCard>
+
+              <SectionCard title="Plans & Workflow" description="Multi-step task plans that persist across messages and threads.">
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex-1">
+                    <div className="text-sm text-white/80">Auto-plan creation</div>
+                    <div className="text-xs text-white/40 mt-0.5">When should the agent automatically create plans for multi-step requests?</div>
+                  </div>
+                  <select
+                    value={cloudSettings.plan_auto_threshold || 'always_ask'}
+                    onChange={(e) => handleCloudSelect('plan_auto_threshold', e.target.value)}
+                    className="rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white"
+                  >
+                    <option value="always_ask" className="bg-gray-900">Always ask first (default)</option>
+                    <option value="auto_simple" className="bg-gray-900">Auto for 3+ step tasks</option>
+                    <option value="auto_all" className="bg-gray-900">Auto for any multi-step task</option>
+                  </select>
+                </div>
+                <Toggle
+                  label="Plan Notifications"
+                  description="Show step completion and plan progress in chat responses."
+                  checked={cloudSettings.plan_notifications !== 'false'}
+                  onChange={(v) => handleCloudToggle('plan_notifications', v)}
+                />
+                <Toggle
+                  label="Show Plan Widget in Chat"
+                  description="Display a compact plan progress bar above the message input when a plan is active."
+                  checked={cloudSettings.plan_chat_visibility !== 'false'}
+                  onChange={(v) => handleCloudToggle('plan_chat_visibility', v)}
+                />
               </SectionCard>
             </>
           )}

@@ -1,6 +1,6 @@
 # CRT/Aether Documentation
 
-**Current version:** v2.7 (March 24, 2026)
+**Current version:** v2.9.3 (March 24, 2026)
 
 Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliation and Trust) — a memory governance engine that preserves contradictions, tracks belief evolution, and maintains trust scores across every fact it learns. Unlike conventional AI memory (which silently overwrites), CRT treats disagreement as signal.
 
@@ -49,9 +49,25 @@ Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliati
 |----------|-------------|
 | [Desktop Control](DESKTOP_CONTROL.md) | v2.3 — ReAct vision loop: screenshot, analyze, act, verify. Coordinate scaling, safety system, memory-grounded vision |
 | [Action Execution Layer](ACTION_EXECUTION.md) | v1.9 — File read/write, shell exec, git ops, action receipts, checkpoint gating with diff/command preview |
+| [Task Plans](TASK_PLANS.md) | v2.9.3 — Multi-step persistent plans: LLM generation, step advancement, thread linking, in-chat progress widget |
 | [Commitments & Scheduling](COMMITMENTS.md) | v2.0 — Reminders, recurring tasks, natural language time parsing, browser notifications, proactive triggers |
 | [System Info & Heartbeat](SYSTEM_HEARTBEAT.md) | v1.8+ — System awareness (CPU/RAM/GPU), 24/7 heartbeat scheduler, self-reflection, behavioral triggers |
 | [Skill System](SKILL_SYSTEM.md) | v1.7 — SKILL.md-based service integration, install pipeline, trust levels, LLM tool loop execution |
+| [Browser Control](BROWSER_CONTROL.md) | v2.9+ — Browser automation, web search integration, DOM-aware interactions (in development) |
+
+## Behavior & Proactivity
+
+| Document | Description |
+|----------|-------------|
+| [Heartbeat Loop](HEARTBEAT_LOOP.md) | 24/7 background scheduler: per-thread proactive actions, news monitoring, curiosity engine, HEARTBEAT.md instructions |
+| [Greetings, Warnings & Response Behavior](GREETINGS_WARNINGS.md) | Greeting system (time-based/time-of-day), conflict warnings, provenance footers, response variation |
+
+## Configuration & Settings
+
+| Document | Description |
+|----------|-------------|
+| [Settings Page](SETTINGS.md) | v2.9.2 — 8-tab settings UI: all 51 setting keys, wiring status (fully wired vs stubbed), API reference |
+| [Configuration](CONFIGURATION.md) | Runtime config reference, JSON schema, environment variables, product modes |
 
 ## Getting Started
 
@@ -60,7 +76,6 @@ Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliati
 | [Quick Start](QUICK_START.md) | Installation, environment setup, frontend/backend startup, first conversation walkthrough |
 | [Requirements & Dependencies](REQUIREMENTS.md) | Python/Node packages, optional install groups, env vars, system tools, database files |
 | [CRT White Paper](CRT_WHITE_PAPER.md) | Theoretical foundations: trust math, contradiction theory, epistemic governance |
-| [Configuration](CONFIGURATION.md) | Runtime config reference, JSON schema, environment variables, product modes |
 
 ## Training & Verification
 

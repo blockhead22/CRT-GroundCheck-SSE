@@ -266,6 +266,15 @@ def auth_update_settings(
         "desktop_idle_task",
         "desktop_require_confirmation",
         "desktop_vision_provider",
+        # Browser control
+        "browser_enabled",
+        "browser_mode",              # "headed" | "headless"
+        "browser_engine",            # "chromium" | "firefox" | "webkit"
+        "browser_persist_sessions",  # "true" | "false"
+        "browser_confirm_mode",      # "all_actions" | "submissions_only" | "never"
+        "browser_max_steps",         # number as string
+        "browser_domain_allowlist",  # newline-separated domains
+        "browser_domain_blocklist",  # newline-separated domains
         # Profile identity
         "preferred_nickname",    # what the agent calls the user
         "agent_name",            # custom name for the AI agent
@@ -296,6 +305,10 @@ def auth_update_settings(
         # Web search
         "web_search_max_results",
         "web_search_region",
+        # Plans & workflow (v2.9.2)
+        "plan_auto_threshold",       # always_ask | auto_simple | auto_all
+        "plan_notifications",        # true | false
+        "plan_chat_visibility",      # true | false
     }
 
     updated = {}

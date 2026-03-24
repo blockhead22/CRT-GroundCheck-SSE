@@ -1,5 +1,6 @@
 """Database utilities for handling SQLite locks and concurrent access."""
 
+import json
 import sqlite3
 import time
 import logging
@@ -460,6 +461,54 @@ class ThreadSessionDB:
                 credential_keys_json TEXT,
                 created_at REAL NOT NULL,
                 updated_at REAL NOT NULL
+            )
+        """)
+
+        # ── Plans system (v2.9.2) ──────────────────────────────────────
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS plans (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT,
+                status TEXT NOT NULL DEFAULT 'active',
+                created_by TEXT NOT NULL DEFAULT 'user',
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                completed_at REAL,
+                metadata_json TEXT
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS plan_steps (
+                id TEXT PRIMARY KEY,
+                plan_id TEXT NOT NULL,
+                step_number INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                status TEXT NOT NULL DEFAULT 'pending',
+                tool_name TEXT,
+                input_json TEXT,
+                output_json TEXT,
+                needs_user_input TEXT,
+                user_input TEXT,
+                started_at REAL,
+                completed_at REAL,
+                FOREIGN KEY(plan_id) REFERENCES plans(id)
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_plan_steps_plan
+            ON plan_steps(plan_id, step_number)
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS thread_plan_links (
+                thread_id TEXT PRIMARY KEY,
+                plan_id TEXT NOT NULL,
+                current_step_id TEXT,
+                linked_at REAL NOT NULL,
+                FOREIGN KEY(plan_id) REFERENCES plans(id)
             )
         """)
 
@@ -2201,6 +2250,329 @@ class ThreadSessionDB:
     def clear_pending_checkpoint(self, thread_id: str) -> None:
         """Remove pending checkpoint for thread."""
         self._pending_checkpoints.pop(thread_id, None)
+
+    # ── Plans CRUD (v2.9.2) ───────────────────────────────────────────
+
+    def create_plan(
+        self, title: str, description: str | None = None,
+        created_by: str = "user", steps: list[dict] | None = None,
+        metadata: dict | None = None,
+    ) -> dict:
+        """Create a plan with optional initial steps. Returns the full plan dict."""
+        import uuid, time as _t
+        plan_id = str(uuid.uuid4())
+        now = _t.time()
+        conn = self._get_connection()
+        conn.execute(
+            """INSERT INTO plans (id, title, description, status, created_by,
+                                  created_at, updated_at, metadata_json)
+               VALUES (?, ?, ?, 'active', ?, ?, ?, ?)""",
+            (plan_id, title, description, created_by, now, now,
+             json.dumps(metadata) if metadata else None),
+        )
+        step_rows: list[dict] = []
+        if steps:
+            for idx, s in enumerate(steps, 1):
+                step_id = str(uuid.uuid4())
+                conn.execute(
+                    """INSERT INTO plan_steps
+                       (id, plan_id, step_number, title, description, status,
+                        tool_name, input_json, needs_user_input)
+                       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)""",
+                    (step_id, plan_id, idx,
+                     s.get("title", f"Step {idx}"),
+                     s.get("description"),
+                     s.get("tool_name"),
+                     json.dumps(s["input"]) if s.get("input") else None,
+                     s.get("needs_user_input")),
+                )
+                step_rows.append({
+                    "id": step_id, "plan_id": plan_id, "step_number": idx,
+                    "title": s.get("title", f"Step {idx}"),
+                    "description": s.get("description"),
+                    "status": "pending", "tool_name": s.get("tool_name"),
+                    "input_json": json.dumps(s["input"]) if s.get("input") else None,
+                    "output_json": None, "needs_user_input": s.get("needs_user_input"),
+                    "user_input": None, "started_at": None, "completed_at": None,
+                })
+        conn.commit()
+        conn.close()
+        return {
+            "id": plan_id, "title": title, "description": description,
+            "status": "active", "created_by": created_by,
+            "created_at": now, "updated_at": now, "completed_at": None,
+            "metadata": metadata, "steps": step_rows,
+        }
+
+    def get_plan(self, plan_id: str) -> dict | None:
+        """Get a plan with all its steps."""
+        conn = self._get_connection()
+        cur = conn.execute("SELECT * FROM plans WHERE id = ?", (plan_id,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return None
+        cols = [d[0] for d in cur.description]
+        plan = dict(zip(cols, row))
+        plan["metadata"] = json.loads(plan.pop("metadata_json") or "null")
+        # Fetch steps
+        cur2 = conn.execute(
+            "SELECT * FROM plan_steps WHERE plan_id = ? ORDER BY step_number",
+            (plan_id,),
+        )
+        step_cols = [d[0] for d in cur2.description]
+        plan["steps"] = [dict(zip(step_cols, r)) for r in cur2.fetchall()]
+        conn.close()
+        return plan
+
+    def list_plans(self, status: str | None = None, limit: int = 50) -> list[dict]:
+        """List plans, optionally filtered by status."""
+        conn = self._get_connection()
+        if status:
+            cur = conn.execute(
+                "SELECT * FROM plans WHERE status = ? ORDER BY updated_at DESC LIMIT ?",
+                (status, limit),
+            )
+        else:
+            cur = conn.execute(
+                "SELECT * FROM plans ORDER BY updated_at DESC LIMIT ?", (limit,),
+            )
+        cols = [d[0] for d in cur.description]
+        plans = []
+        for row in cur.fetchall():
+            p = dict(zip(cols, row))
+            p["metadata"] = json.loads(p.pop("metadata_json") or "null")
+            plans.append(p)
+        conn.close()
+        return plans
+
+    def update_plan(self, plan_id: str, **kwargs) -> None:
+        """Update plan fields. Accepted keys: title, description, status, metadata."""
+        import time as _t
+        sets, vals = ["updated_at = ?"], [_t.time()]
+        for key in ("title", "description", "status"):
+            if key in kwargs:
+                sets.append(f"{key} = ?")
+                vals.append(kwargs[key])
+        if "metadata" in kwargs:
+            sets.append("metadata_json = ?")
+            vals.append(json.dumps(kwargs["metadata"]))
+        if kwargs.get("status") == "completed":
+            sets.append("completed_at = ?")
+            vals.append(_t.time())
+        vals.append(plan_id)
+        conn = self._get_connection()
+        conn.execute(
+            f"UPDATE plans SET {', '.join(sets)} WHERE id = ?", vals,
+        )
+        conn.commit()
+        conn.close()
+
+    def delete_plan(self, plan_id: str) -> None:
+        """Delete a plan and its steps + thread links."""
+        conn = self._get_connection()
+        conn.execute("DELETE FROM plan_steps WHERE plan_id = ?", (plan_id,))
+        conn.execute("DELETE FROM thread_plan_links WHERE plan_id = ?", (plan_id,))
+        conn.execute("DELETE FROM plans WHERE id = ?", (plan_id,))
+        conn.commit()
+        conn.close()
+
+    # ── Plan Steps CRUD ───────────────────────────────────────────────
+
+    def add_plan_step(
+        self, plan_id: str, title: str, description: str | None = None,
+        tool_name: str | None = None, step_number: int | None = None,
+    ) -> dict:
+        """Add a step to a plan. Auto-assigns step_number if not provided."""
+        import uuid, time as _t
+        conn = self._get_connection()
+        if step_number is None:
+            cur = conn.execute(
+                "SELECT COALESCE(MAX(step_number), 0) FROM plan_steps WHERE plan_id = ?",
+                (plan_id,),
+            )
+            step_number = cur.fetchone()[0] + 1
+        step_id = str(uuid.uuid4())
+        conn.execute(
+            """INSERT INTO plan_steps
+               (id, plan_id, step_number, title, description, status, tool_name)
+               VALUES (?, ?, ?, ?, ?, 'pending', ?)""",
+            (step_id, plan_id, step_number, title, description, tool_name),
+        )
+        conn.execute(
+            "UPDATE plans SET updated_at = ? WHERE id = ?", (_t.time(), plan_id),
+        )
+        conn.commit()
+        conn.close()
+        return {
+            "id": step_id, "plan_id": plan_id, "step_number": step_number,
+            "title": title, "description": description, "status": "pending",
+            "tool_name": tool_name, "input_json": None, "output_json": None,
+            "needs_user_input": None, "user_input": None,
+            "started_at": None, "completed_at": None,
+        }
+
+    def get_plan_steps(self, plan_id: str) -> list[dict]:
+        """Get all steps for a plan, ordered by step_number."""
+        conn = self._get_connection()
+        cur = conn.execute(
+            "SELECT * FROM plan_steps WHERE plan_id = ? ORDER BY step_number",
+            (plan_id,),
+        )
+        cols = [d[0] for d in cur.description]
+        steps = [dict(zip(cols, r)) for r in cur.fetchall()]
+        conn.close()
+        return steps
+
+    def update_step(self, step_id: str, **kwargs) -> None:
+        """Update step fields: status, output_json, user_input, started_at, completed_at, title, description."""
+        import time as _t
+        allowed = {"status", "output_json", "user_input", "started_at",
+                    "completed_at", "title", "description", "needs_user_input",
+                    "tool_name", "input_json"}
+        sets, vals = [], []
+        for k, v in kwargs.items():
+            if k in allowed:
+                sets.append(f"{k} = ?")
+                vals.append(v)
+        if not sets:
+            return
+        vals.append(step_id)
+        conn = self._get_connection()
+        conn.execute(f"UPDATE plan_steps SET {', '.join(sets)} WHERE id = ?", vals)
+        # Also bump parent plan's updated_at
+        cur = conn.execute("SELECT plan_id FROM plan_steps WHERE id = ?", (step_id,))
+        row = cur.fetchone()
+        if row:
+            conn.execute(
+                "UPDATE plans SET updated_at = ? WHERE id = ?", (_t.time(), row[0]),
+            )
+        conn.commit()
+        conn.close()
+
+    def delete_step(self, step_id: str) -> None:
+        """Delete a single plan step."""
+        conn = self._get_connection()
+        conn.execute("DELETE FROM plan_steps WHERE id = ?", (step_id,))
+        conn.commit()
+        conn.close()
+
+    def reorder_steps(self, plan_id: str, step_ids: list[str]) -> None:
+        """Reorder steps by setting step_number from the ordered list of IDs."""
+        import time as _t
+        conn = self._get_connection()
+        for idx, sid in enumerate(step_ids, 1):
+            conn.execute(
+                "UPDATE plan_steps SET step_number = ? WHERE id = ? AND plan_id = ?",
+                (idx, sid, plan_id),
+            )
+        conn.execute(
+            "UPDATE plans SET updated_at = ? WHERE id = ?", (_t.time(), plan_id),
+        )
+        conn.commit()
+        conn.close()
+
+    def advance_plan(self, plan_id: str) -> dict | None:
+        """Mark the first in_progress step as completed, move to next pending. Returns next step or None."""
+        import time as _t
+        conn = self._get_connection()
+        now = _t.time()
+        # Complete current in_progress step
+        conn.execute(
+            """UPDATE plan_steps SET status = 'completed', completed_at = ?
+               WHERE plan_id = ? AND status = 'in_progress'""",
+            (now, plan_id),
+        )
+        # Find next pending step
+        cur = conn.execute(
+            """SELECT * FROM plan_steps
+               WHERE plan_id = ? AND status = 'pending'
+               ORDER BY step_number LIMIT 1""",
+            (plan_id,),
+        )
+        row = cur.fetchone()
+        if row:
+            cols = [d[0] for d in cur.description]
+            next_step = dict(zip(cols, row))
+            status = "waiting_input" if next_step.get("needs_user_input") else "in_progress"
+            conn.execute(
+                "UPDATE plan_steps SET status = ?, started_at = ? WHERE id = ?",
+                (status, now, next_step["id"]),
+            )
+            next_step["status"] = status
+            next_step["started_at"] = now
+            # Update thread link cursor
+            conn.execute(
+                "UPDATE thread_plan_links SET current_step_id = ? WHERE plan_id = ?",
+                (next_step["id"], plan_id),
+            )
+            conn.execute(
+                "UPDATE plans SET updated_at = ? WHERE id = ?", (now, plan_id),
+            )
+            conn.commit()
+            conn.close()
+            return next_step
+        else:
+            # All steps done — mark plan completed
+            conn.execute(
+                "UPDATE plans SET status = 'completed', completed_at = ?, updated_at = ? WHERE id = ?",
+                (now, now, plan_id),
+            )
+            conn.commit()
+            conn.close()
+            return None
+
+    # ── Thread-Plan Links ─────────────────────────────────────────────
+
+    def link_plan_to_thread(self, thread_id: str, plan_id: str) -> None:
+        """Link a plan to a thread (one active plan per thread)."""
+        import time as _t
+        conn = self._get_connection()
+        # Get first pending step as cursor
+        cur = conn.execute(
+            """SELECT id FROM plan_steps
+               WHERE plan_id = ? AND status IN ('pending', 'in_progress', 'waiting_input')
+               ORDER BY step_number LIMIT 1""",
+            (plan_id,),
+        )
+        row = cur.fetchone()
+        step_id = row[0] if row else None
+        conn.execute(
+            """INSERT OR REPLACE INTO thread_plan_links
+               (thread_id, plan_id, current_step_id, linked_at)
+               VALUES (?, ?, ?, ?)""",
+            (thread_id, plan_id, step_id, _t.time()),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_thread_plan(self, thread_id: str) -> dict | None:
+        """Get the plan linked to a thread, including steps and cursor."""
+        conn = self._get_connection()
+        cur = conn.execute(
+            "SELECT plan_id, current_step_id FROM thread_plan_links WHERE thread_id = ?",
+            (thread_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return None
+        plan_id, current_step_id = row
+        conn.close()
+        plan = self.get_plan(plan_id)
+        if plan:
+            plan["current_step_id"] = current_step_id
+            plan["thread_id"] = thread_id
+        return plan
+
+    def unlink_plan_from_thread(self, thread_id: str) -> None:
+        """Unlink plan from thread."""
+        conn = self._get_connection()
+        conn.execute(
+            "DELETE FROM thread_plan_links WHERE thread_id = ?", (thread_id,),
+        )
+        conn.commit()
+        conn.close()
 
 
 # Global instance for easy access

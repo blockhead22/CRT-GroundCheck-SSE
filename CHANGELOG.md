@@ -5,6 +5,35 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.9.3 — March 24, 2026
+
+Task Plan System — multi-step work plans that persist across messages and threads. Plans break complex requests into concrete steps, track progress, and advance automatically as tools execute. Three creation paths: user describes work (Aether structures it), complex request triggers a plan proposal, or manual creation via the Plans UI. Plans are linked to chat threads with a compact progress widget.
+
+### Feature
+- **Plans database layer** — 3 new SQLite tables (`plans`, `plan_steps`, `thread_plan_links`) in ThreadSessionDB with 15 CRUD methods: create/get/list/update/delete plans, add/get/update/delete/reorder steps, link/unlink/get thread-plan associations, advance plan cursor
+- **Plans REST API** (`routes/plans.py`) — 12 endpoints: full CRUD for plans and steps, thread linking, step reordering. Route ordering fix: `/thread/{thread_id}` registered before `/{plan_id}` to avoid path conflicts
+- **PlanEngine** (`personal_agent/plan_engine.py`) — plan generation from natural language via LLM, step advancement after tool execution, user-input handling for `waiting_input` steps, progress summary generation. Keyword + multi-action + sentence-count heuristics for `should_create_plan()`
+- **Chat pipeline integration** — after tool execution in task_agent.py, active plan steps auto-advance. Emits `plan_update` and `plan_complete` SSE events with progress metadata
+- **Jobs page split** — renamed to "Plans & Jobs". New `PlansSection` component at top with plan list (expandable steps, progress bars, status badges), "New Plan" form (title, description, dynamic step list with add/remove), and plan actions (pause/resume/archive/delete). Existing Jobs section preserved below
+- **PlanWidget** (`frontend/src/components/PlanWidget.tsx`) — compact collapsible plan display for in-chat use. Shows SVG progress ring with percentage, plan title, current step name. Expands to show all steps with status icons (✓ ► ? ✗ — ○), descriptions, tool badges, and plan metadata
+- **Plan settings** — 3 new settings in Behavior tab: auto-plan threshold (always_ask / auto_simple / auto_all), plan notifications toggle, plan widget chat visibility toggle
+- **3 new SSE event types** — `plan_proposal`, `plan_update`, `plan_complete` added to StreamEventType
+
+### Infra
+- **New file**: `routes/plans.py` (240 lines)
+- **New file**: `personal_agent/plan_engine.py` (195 lines)
+- **New file**: `frontend/src/components/PlanWidget.tsx` (150 lines)
+- **Modified file**: `personal_agent/db_utils.py` — 3 tables + 15 methods (~300 lines added)
+- **Modified file**: `routes/register.py` — plans_router registered (priority position)
+- **Modified file**: `routes/models.py` — 7 Pydantic models (CreatePlanRequest, PlanResponse, StepResponse, UpdatePlanRequest, UpdateStepRequest, ReorderStepsRequest, CreateStepRequest)
+- **Modified file**: `routes/auth.py` — 3 new settings keys in whitelist (plan_auto_threshold, plan_notifications, plan_chat_visibility)
+- **Modified file**: `personal_agent/task_agent.py` — plan advancement after tool execution (~25 lines)
+- **Modified file**: `frontend/src/pages/JobsPage.tsx` — PlansSection component + page rename (~230 lines added)
+- **Modified file**: `frontend/src/pages/SettingsPage.tsx` — Plans & Workflow section in Behavior tab
+- **Modified file**: `frontend/src/lib/api.ts` — Plan/PlanStep types, 12 API client functions, 3 new SSE event types (~150 lines added)
+
+---
+
 ## v2.9.2 — March 24, 2026
 
 Full settings expansion — user-facing controls for every major subsystem. Reorganized the Settings page from 6 tabs to 8 with new Heartbeat and Behavior tabs, fixed silent-drop bugs, and wired 20+ new setting keys end-to-end (backend defaults, API whitelist, frontend UI).

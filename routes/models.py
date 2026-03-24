@@ -871,3 +871,68 @@ class ChatFeedbackRequest(BaseModel):
         default_factory=list,
         description="Memory IDs from xray.memories_used or prompt_memories in the response",
     )
+
+
+# ── Plans (v2.9.2) ────────────────────────────────────────────────────
+
+class CreateStepRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    tool_name: Optional[str] = None
+    needs_user_input: Optional[str] = None
+
+
+class CreatePlanRequest(BaseModel):
+    title: str
+    description: Optional[str] = None
+    steps: List[CreateStepRequest] = Field(default_factory=list)
+
+
+class StepResponse(BaseModel):
+    id: str
+    plan_id: str
+    step_number: int
+    title: str
+    description: Optional[str] = None
+    status: str  # pending | in_progress | waiting_input | completed | skipped | failed
+    tool_name: Optional[str] = None
+    input_json: Optional[str] = None
+    output_json: Optional[str] = None
+    needs_user_input: Optional[str] = None
+    user_input: Optional[str] = None
+    started_at: Optional[float] = None
+    completed_at: Optional[float] = None
+
+
+class PlanResponse(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    status: str  # active | paused | completed | archived
+    created_by: str
+    created_at: float
+    updated_at: float
+    completed_at: Optional[float] = None
+    metadata: Optional[dict] = None
+    steps: List[StepResponse] = Field(default_factory=list)
+    current_step_id: Optional[str] = None
+    thread_id: Optional[str] = None
+
+
+class UpdatePlanRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+
+
+class UpdateStepRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    status: Optional[str] = None
+    output_json: Optional[str] = None
+    user_input: Optional[str] = None
+    tool_name: Optional[str] = None
+
+
+class ReorderStepsRequest(BaseModel):
+    step_ids: List[str]
