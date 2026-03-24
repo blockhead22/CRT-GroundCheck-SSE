@@ -249,7 +249,7 @@ class CRTBridge:
         """Send via /api/chat/stream and consume SSE events.
 
         This gives Telegram the full pipeline: intent classification,
-        sub-agent orchestration, capability re-route, side model tap.
+        sub-agent orchestration, capability re-route, intuition check.
 
         If a checkpoint gate fires (task needs confirmation), the bridge
         auto-confirms low-risk intents and sends a follow-up stream to

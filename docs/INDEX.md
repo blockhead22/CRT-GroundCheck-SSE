@@ -39,7 +39,7 @@ Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliati
 | [Semantic Intent Router](SEMANTIC_INTENT_ROUTER.md) | v2.2 — Embedding-based intent classification with 140+ prototypes, hybrid routing, self-improvement via corrections |
 | [Task Triage & Acknowledgment](TASK_TRIAGE.md) | v2.4 — "Pause to think" step with instant acknowledgment, capability-aware re-routing, post-task memory |
 | [Sub-Agents & Orchestration](SUB_AGENTS.md) | v2.6 — 8 specialized agents, dependency graph decomposition, parallel execution, weakest-link trust propagation |
-| [Side Model Tap](SIDE_MODEL_TAP.md) | v2.7 — Lightweight gpt-4o-mini side-channel: clarify ambiguous input, suggest next steps, reconnect after idle |
+| [Intuition Check](INTUITION_CHECK.md) | v2.7 — Lightweight gpt-4o-mini side-channel: clarify ambiguous input, suggest next steps, reconnect after idle |
 | [Cloud Routing](CLOUD_ROUTING.md) | 3-tier routing (Local, OpenAI Tier 1, Claude Tier 2), escalation policy, fallback logic |
 | [Self-Model](SELF_MODEL.md) | 7-slot self-awareness system, heartbeat reflection, personality checkpoints, behavioral directives |
 

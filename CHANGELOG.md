@@ -7,7 +7,7 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ## v2.8 — March 24, 2026
 
-Telegram full-pipeline integration. The Telegram channel now uses `/api/chat/stream` (SSE) instead of `/api/chat/send`, giving it the complete task pipeline: intent classification, sub-agent orchestration, capability re-route, side model tap, and trust propagation. Previously Telegram was conversational-only — asking "what apps are open?" would get an LLM guess instead of actually running system_info.
+Telegram full-pipeline integration. The Telegram channel now uses `/api/chat/stream` (SSE) instead of `/api/chat/send`, giving it the complete task pipeline: intent classification, sub-agent orchestration, capability re-route, intuition check, and trust propagation. Previously Telegram was conversational-only — asking "what apps are open?" would get an LLM guess instead of actually running system_info.
 
 ### Feature
 - **CRTBridge stream mode** (`channels/base.py`) — new `_send_stream()` method consumes SSE events from `/api/chat/stream`. Parses all event types: intent_preview, agent_checkpoint, task_acknowledged, tool_start/result, subtask_start/done, orchestration_done, token, task_done, done, error
@@ -25,19 +25,19 @@ Telegram full-pipeline integration. The Telegram channel now uses `/api/chat/str
 
 ## v2.7 — March 24, 2026
 
-Side Model Tap — lightweight LLM side-channel for situational awareness. A gpt-4o-mini "quick tap" that fires at three moments: ambiguous input (clarify before routing), post-task completion (suggest next step from context), and reconnect after idle (welcome back with open task context). Runs in ~150ms, doesn't block the main pipeline, and degrades gracefully when cloud is unavailable.
+Intuition Check — lightweight LLM side-channel for situational awareness. A gpt-4o-mini "quick check" that fires at three moments: ambiguous input (clarify before routing), post-task completion (suggest next step from context), and reconnect after idle (welcome back with open task context). Runs in ~150ms, doesn't block the main pipeline, and degrades gracefully when cloud is unavailable.
 
 ### Feature
-- **SideModelTap** (`personal_agent/side_model_tap.py`) — singleton class with three public methods: `clarify()`, `suggest_next()`, `reconnect()`. Each makes a single gpt-4o-mini call with a focused system prompt and returns structured JSON
-- **Clarify tap** — fires when intent classifier returns conversational with confidence < 0.75. Asks the side model if the message needs clarification before routing. Emits `side_tap` SSE event with the question
-- **Post-task suggest tap** — fires after every task_done event. Passes completed task metadata + open tasks to the side model, gets back a natural follow-up suggestion. Embedded in the `done` event metadata as `side_tap.message`
-- **Reconnect tap** — fires before the conversational pipeline when `last_active` is >5 minutes old. Generates a context-aware welcome-back message referencing open tasks. Emits `side_tap` SSE event
+- **IntuitionCheck** (`personal_agent/intuition_check.py`) — singleton class with three public methods: `clarify()`, `suggest_next()`, `reconnect()`. Each makes a single gpt-4o-mini call with a focused system prompt and returns structured JSON
+- **Clarify check** — fires when intent classifier returns conversational with confidence < 0.75. Asks the intuition check if the message needs clarification before routing. Emits `intuition_check` SSE event with the question
+- **Post-task suggest check** — fires after every task_done event. Passes completed task metadata + open tasks to the intuition check, gets back a natural follow-up suggestion. Embedded in the `done` event metadata as `intuition_check.message`
+- **Reconnect check** — fires before the conversational pipeline when `last_active` is >5 minutes old. Generates a context-aware welcome-back message referencing open tasks. Emits `intuition_check` SSE event
 - **`get_last_message_ts()`** — new method on `ThreadSessionDB` to read idle duration from the existing `last_active` column
 
 ### Infra
-- **New file**: `personal_agent/side_model_tap.py` (270 lines)
-- **CloudFeatureService** — 3 new daily limit categories: `side_tap_clarify` (20/day), `side_tap_suggest` (20/day), `side_tap_reconnect` (10/day)
-- **New SSE event type**: `side_tap` with `tap_action` metadata field (clarify | suggest | reconnect)
+- **New file**: `personal_agent/intuition_check.py` (270 lines)
+- **CloudFeatureService** — 3 new daily limit categories: `intuition_check_clarify` (20/day), `intuition_check_suggest` (20/day), `intuition_check_reconnect` (10/day)
+- **New SSE event type**: `intuition_check` with `tap_action` metadata field (clarify | suggest | reconnect)
 
 ---
 

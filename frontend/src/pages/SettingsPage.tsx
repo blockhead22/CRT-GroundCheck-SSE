@@ -158,7 +158,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
     // Claude settings and advanced settings use true/false, OpenAI settings use on/off
-    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key === 'bypass_crt' || key === 'enable_tooling'
+    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('intuition_check_') || key === 'bypass_crt' || key === 'enable_tooling'
     const newVal = useTrueFalse ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
     const oldVal = useTrueFalse ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })
@@ -257,7 +257,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5">
-        <div className="mx-auto max-w-2xl space-y-6">
+        <div className={`mx-auto space-y-6 ${tab === 'cloud' ? 'max-w-5xl' : 'max-w-2xl'}`}>
           {tab === 'profile' && (
             <>
               <div className="rounded border border-white/10 bg-white/[0.03] p-6">
@@ -311,195 +311,263 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
           {tab === 'cloud' && (
             <>
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Cloud Features</div>
-                <p className="mb-4 text-xs text-white/40">
-                  Enable cloud LLM verification for higher-accuracy CRT operations. Calls use gpt-4o-mini (Tier 1) or Claude (Tier 2).
-                </p>
+              {/* ── Two-column grid: Cloud Features | Claude ──────────── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* ── LEFT COLUMN: Cloud Features (Tier 1 / OpenAI) ──── */}
+                <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                  <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Cloud Features</div>
+                  <p className="mb-4 text-xs text-white/40">
+                    Cloud LLM verification for CRT operations. Uses gpt-4o-mini (Tier 1).
+                  </p>
 
-                {cloudSettings ? (
-                  <div className="space-y-1">
-                    <Toggle
-                      label="Slot Classification"
-                      description="Cloud-powered fact extraction from user statements"
-                      checked={cloudSettings.cloud_slot_classification === 'on'}
-                      onChange={(v) => handleCloudToggle('cloud_slot_classification', v)}
-                    />
-                    <Toggle
-                      label="NLI Contradiction Detection"
-                      description="Natural language inference to catch conflicting facts"
-                      checked={cloudSettings.cloud_nli_contradiction === 'on'}
-                      onChange={(v) => handleCloudToggle('cloud_nli_contradiction', v)}
-                    />
-                    <Toggle
-                      label="Reflection Validation"
-                      description="Epistemic audit of self-model updates"
-                      checked={cloudSettings.cloud_reflection_validation === 'on'}
-                      onChange={(v) => handleCloudToggle('cloud_reflection_validation', v)}
-                    />
-
-                    {/* Escalation Policy */}
-                    <div className="pt-3">
-                      <label className="mb-1.5 block text-sm text-white/70">Escalation Policy</label>
-                      <select
-                        value={cloudSettings.cloud_escalation_policy}
-                        onChange={(e) => handleCloudSelect('cloud_escalation_policy', e.target.value)}
-                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
-                      >
-                        {ESCALATION_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value} className="bg-gray-900">{opt.label}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-white/40">Controls when local results escalate to cloud verification</p>
-                    </div>
-
-                    {/* Confidence Threshold */}
-                    <div className="pt-3">
-                      <label className="mb-1.5 block text-sm text-white/70">
-                        Confidence Threshold: {cloudSettings.cloud_confidence_threshold}
-                      </label>
-                      <input
-                        type="range"
-                        min="0.5"
-                        max="1.0"
-                        step="0.05"
-                        value={cloudSettings.cloud_confidence_threshold}
-                        onChange={(e) => handleCloudSlider('cloud_confidence_threshold', e.target.value)}
-                        onMouseUp={() => commitCloudSlider('cloud_confidence_threshold')}
-                        onTouchEnd={() => commitCloudSlider('cloud_confidence_threshold')}
-                        className="w-full accent-blue-500"
-                      />
-                      <p className="mt-1 text-xs text-white/40">Below this threshold, results may be escalated to cloud</p>
-                    </div>
-
-                    {/* Daily Limit Multiplier */}
-                    <div className="pt-3">
-                      <label className="mb-1.5 block text-sm text-white/70">
-                        Daily Limit Multiplier: {cloudSettings.cloud_daily_limit_multiplier}x
-                      </label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="3.0"
-                        step="0.5"
-                        value={cloudSettings.cloud_daily_limit_multiplier}
-                        onChange={(e) => handleCloudSlider('cloud_daily_limit_multiplier', e.target.value)}
-                        onMouseUp={() => commitCloudSlider('cloud_daily_limit_multiplier')}
-                        onTouchEnd={() => commitCloudSlider('cloud_daily_limit_multiplier')}
-                        className="w-full accent-blue-500"
-                      />
-                      <p className="mt-1 text-xs text-white/40">Scale daily call limits up or down (0 = disabled)</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/40">Loading cloud settings...</p>
-                )}
-              </div>
-
-              {/* Claude (Tier 2) Section */}
-              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Claude (Tier 2)</div>
-                <p className="mb-4 text-xs text-white/40">
-                  Use Claude via cookie session for high-quality generation fallback and reflection validation.
-                  {cloudUsage?.claude_available === false && (
-                    <span className="ml-1 text-amber-400/80">Cookie session not configured (CLAUDE_SESSION_COOKIE not set).</span>
-                  )}
-                  {cloudUsage?.claude_available === true && (
-                    <span className="ml-1 text-green-400/80">Cookie session active.</span>
-                  )}
-                </p>
-
-                {cloudSettings ? (
-                  <div className="space-y-1">
-                    <Toggle
-                      label="Enable Claude"
-                      description="Master toggle for all Claude features"
-                      checked={claudeEnabled}
-                      onChange={(v) => handleCloudToggle('cloud_claude_enabled', v)}
-                    />
-                    <div className={claudeEnabled ? '' : 'opacity-40 pointer-events-none'}>
+                  {cloudSettings ? (
+                    <div className="space-y-1">
                       <Toggle
-                        label="Use for generation fallback"
-                        description="Escalate to Claude when OpenAI fails or returns low confidence"
-                        checked={cloudSettings.cloud_claude_generation === 'true' || cloudSettings.cloud_claude_generation === 'on'}
-                        onChange={(v) => handleCloudToggle('cloud_claude_generation', v)}
+                        label="Slot Classification"
+                        description="Cloud-powered fact extraction from user statements"
+                        checked={cloudSettings.cloud_slot_classification === 'on'}
+                        onChange={(v) => handleCloudToggle('cloud_slot_classification', v)}
                       />
                       <Toggle
-                        label="Use for reflection validation"
-                        description="Use Claude for epistemic audits of self-model updates"
-                        checked={cloudSettings.cloud_claude_reflection === 'true' || cloudSettings.cloud_claude_reflection === 'on'}
-                        onChange={(v) => handleCloudToggle('cloud_claude_reflection', v)}
+                        label="NLI Contradiction Detection"
+                        description="Natural language inference to catch conflicting facts"
+                        checked={cloudSettings.cloud_nli_contradiction === 'on'}
+                        onChange={(v) => handleCloudToggle('cloud_nli_contradiction', v)}
+                      />
+                      <Toggle
+                        label="Reflection Validation"
+                        description="Epistemic audit of self-model updates"
+                        checked={cloudSettings.cloud_reflection_validation === 'on'}
+                        onChange={(v) => handleCloudToggle('cloud_reflection_validation', v)}
                       />
 
-                      {/* Daily call limit */}
                       <div className="pt-3">
-                        <label className="mb-1.5 block text-sm text-white/70">Daily Call Limit</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={cloudSettings.cloud_claude_daily_limit || '20'}
-                          onChange={(e) => {
-                            if (!cloudSettings) return
-                            setCloudSettingsState({ ...cloudSettings, cloud_claude_daily_limit: e.target.value })
-                          }}
-                          onBlur={(e) => handleCloudNumberInput('cloud_claude_daily_limit', e.target.value)}
+                        <label className="mb-1.5 block text-sm text-white/70">Escalation Policy</label>
+                        <select
+                          value={cloudSettings.cloud_escalation_policy}
+                          onChange={(e) => handleCloudSelect('cloud_escalation_policy', e.target.value)}
                           className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
-                        />
-                        <p className="mt-1 text-xs text-white/40">Maximum Claude calls per day (all features combined)</p>
+                        >
+                          {ESCALATION_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value} className="bg-gray-900">{opt.label}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-xs text-white/40">Controls when local results escalate to cloud verification</p>
                       </div>
 
-                      {/* Max tokens per call */}
                       <div className="pt-3">
-                        <label className="mb-1.5 block text-sm text-white/70">Max Tokens per Call</label>
+                        <label className="mb-1.5 block text-sm text-white/70">
+                          Confidence Threshold: {cloudSettings.cloud_confidence_threshold}
+                        </label>
                         <input
-                          type="number"
-                          min="256"
-                          max="8192"
-                          step="256"
-                          value={cloudSettings.cloud_claude_max_tokens || '4096'}
-                          onChange={(e) => {
-                            if (!cloudSettings) return
-                            setCloudSettingsState({ ...cloudSettings, cloud_claude_max_tokens: e.target.value })
-                          }}
-                          onBlur={(e) => handleCloudNumberInput('cloud_claude_max_tokens', e.target.value)}
-                          className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          type="range" min="0.5" max="1.0" step="0.05"
+                          value={cloudSettings.cloud_confidence_threshold}
+                          onChange={(e) => handleCloudSlider('cloud_confidence_threshold', e.target.value)}
+                          onMouseUp={() => commitCloudSlider('cloud_confidence_threshold')}
+                          onTouchEnd={() => commitCloudSlider('cloud_confidence_threshold')}
+                          className="w-full"
+                          style={{ accentColor: 'var(--accent)' }}
                         />
-                        <p className="mt-1 text-xs text-white/40">Maximum tokens per Claude API call</p>
+                        <p className="mt-1 text-xs text-white/40">Below this threshold, results may be escalated to cloud</p>
+                      </div>
+
+                      <div className="pt-3">
+                        <label className="mb-1.5 block text-sm text-white/70">
+                          Daily Limit Multiplier: {cloudSettings.cloud_daily_limit_multiplier}x
+                        </label>
+                        <input
+                          type="range" min="0" max="3.0" step="0.5"
+                          value={cloudSettings.cloud_daily_limit_multiplier}
+                          onChange={(e) => handleCloudSlider('cloud_daily_limit_multiplier', e.target.value)}
+                          onMouseUp={() => commitCloudSlider('cloud_daily_limit_multiplier')}
+                          onTouchEnd={() => commitCloudSlider('cloud_daily_limit_multiplier')}
+                          className="w-full"
+                          style={{ accentColor: 'var(--accent)' }}
+                        />
+                        <p className="mt-1 text-xs text-white/40">Scale daily call limits up or down (0 = disabled)</p>
                       </div>
                     </div>
+                  ) : (
+                    <p className="text-sm text-white/40">Loading cloud settings...</p>
+                  )}
+                </div>
 
-                    {/* Claude usage display */}
-                    {cloudUsage && (cloudUsage.claude_calls_today != null || cloudUsage.claude_generation) && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <div className="text-xs text-white/50 mb-1">Today's Claude Usage</div>
-                        <div className="flex justify-between text-xs text-white/60">
-                          <span>Calls</span>
-                          <span>{cloudUsage.claude_calls_today ?? 0} / {cloudUsage.claude_daily_limit ?? 20}</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-white/60">
-                          <span>Estimated tokens</span>
-                          <span>~{cloudUsage.claude_tokens_today ?? 0}</span>
-                        </div>
-                      </div>
+                {/* ── RIGHT COLUMN: Claude (Tier 2) ──────────────────── */}
+                <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                  <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Claude (Tier 2)</div>
+                  <p className="mb-4 text-xs text-white/40">
+                    High-quality generation fallback and reflection validation.
+                    {cloudUsage?.claude_available === false && (
+                      <span className="ml-1 text-amber-400/80">Cookie not configured.</span>
                     )}
+                    {cloudUsage?.claude_available === true && (
+                      <span className="ml-1 text-green-400/80">Cookie active.</span>
+                    )}
+                  </p>
+
+                  {cloudSettings ? (
+                    <div className="space-y-1">
+                      <Toggle
+                        label="Enable Claude"
+                        description="Master toggle for all Claude features"
+                        checked={claudeEnabled}
+                        onChange={(v) => handleCloudToggle('cloud_claude_enabled', v)}
+                      />
+                      <div className={claudeEnabled ? '' : 'opacity-40 pointer-events-none'}>
+                        <Toggle
+                          label="Use for generation fallback"
+                          description="Escalate to Claude when OpenAI fails or returns low confidence"
+                          checked={cloudSettings.cloud_claude_generation === 'true' || cloudSettings.cloud_claude_generation === 'on'}
+                          onChange={(v) => handleCloudToggle('cloud_claude_generation', v)}
+                        />
+                        <Toggle
+                          label="Use for reflection validation"
+                          description="Use Claude for epistemic audits of self-model updates"
+                          checked={cloudSettings.cloud_claude_reflection === 'true' || cloudSettings.cloud_claude_reflection === 'on'}
+                          onChange={(v) => handleCloudToggle('cloud_claude_reflection', v)}
+                        />
+
+                        <div className="pt-3">
+                          <label className="mb-1.5 block text-sm text-white/70">Daily Call Limit</label>
+                          <input
+                            type="number" min="0" max="100"
+                            value={cloudSettings.cloud_claude_daily_limit || '20'}
+                            onChange={(e) => {
+                              if (!cloudSettings) return
+                              setCloudSettingsState({ ...cloudSettings, cloud_claude_daily_limit: e.target.value })
+                            }}
+                            onBlur={(e) => handleCloudNumberInput('cloud_claude_daily_limit', e.target.value)}
+                            className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          />
+                          <p className="mt-1 text-xs text-white/40">Maximum Claude calls per day (all features combined)</p>
+                        </div>
+
+                        <div className="pt-3">
+                          <label className="mb-1.5 block text-sm text-white/70">Max Tokens per Call</label>
+                          <input
+                            type="number" min="256" max="8192" step="256"
+                            value={cloudSettings.cloud_claude_max_tokens || '4096'}
+                            onChange={(e) => {
+                              if (!cloudSettings) return
+                              setCloudSettingsState({ ...cloudSettings, cloud_claude_max_tokens: e.target.value })
+                            }}
+                            onBlur={(e) => handleCloudNumberInput('cloud_claude_max_tokens', e.target.value)}
+                            className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          />
+                          <p className="mt-1 text-xs text-white/40">Maximum tokens per Claude API call</p>
+                        </div>
+                      </div>
+
+                      {cloudUsage && (cloudUsage.claude_calls_today != null || cloudUsage.claude_generation) && (
+                        <div className="mt-3 pt-3 border-t border-white/10">
+                          <div className="text-xs text-white/50 mb-1">Today's Claude Usage</div>
+                          <div className="flex justify-between text-xs text-white/60">
+                            <span>Calls</span>
+                            <span>{cloudUsage.claude_calls_today ?? 0} / {cloudUsage.claude_daily_limit ?? 20}</span>
+                          </div>
+                          <div className="flex justify-between text-xs text-white/60">
+                            <span>Estimated tokens</span>
+                            <span>~{cloudUsage.claude_tokens_today ?? 0}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-white/40">Loading Claude settings...</p>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Intuition Check (full width below grid) ────────────── */}
+              <div className="rounded border border-white/10 bg-white/[0.03] p-6">
+                <div className="mb-3 text-xs font-medium uppercase tracking-wide text-white/50">Intuition Check</div>
+                <p className="mb-4 text-xs text-white/40">
+                  Lightweight LLM side-channel (~150ms) for situational awareness. Clarifies ambiguous input, suggests next steps after tasks, and reconnects after idle periods.
+                </p>
+
+                {cloudSettings ? (
+                  <div className="space-y-1">
+                    <Toggle
+                      label="Enable Intuition Check"
+                      description="Master toggle for all intuition check features"
+                      checked={cloudSettings.intuition_check_enabled === 'true'}
+                      onChange={(v) => handleCloudToggle('intuition_check_enabled', v)}
+                    />
+                    <div className={cloudSettings.intuition_check_enabled === 'true' ? '' : 'opacity-40 pointer-events-none'}>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                        <div className="rounded border border-white/5 bg-white/[0.02] p-3">
+                          <Toggle
+                            label="Clarify"
+                            description="Ask clarifying questions for ambiguous input before routing"
+                            checked={cloudSettings.intuition_check_clarify === 'true'}
+                            onChange={(v) => handleCloudToggle('intuition_check_clarify', v)}
+                          />
+                        </div>
+                        <div className="rounded border border-white/5 bg-white/[0.02] p-3">
+                          <Toggle
+                            label="Suggest Next"
+                            description="After a task completes, suggest what to do next"
+                            checked={cloudSettings.intuition_check_suggest === 'true'}
+                            onChange={(v) => handleCloudToggle('intuition_check_suggest', v)}
+                          />
+                        </div>
+                        <div className="rounded border border-white/5 bg-white/[0.02] p-3">
+                          <Toggle
+                            label="Reconnect"
+                            description="Welcome back with open task context after idle"
+                            checked={cloudSettings.intuition_check_reconnect === 'true'}
+                            onChange={(v) => handleCloudToggle('intuition_check_reconnect', v)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                        <div>
+                          <label className="mb-1.5 block text-sm text-white/70">Model</label>
+                          <select
+                            value={cloudSettings.intuition_check_model || 'gpt-4o-mini'}
+                            onChange={(e) => handleCloudSelect('intuition_check_model', e.target.value)}
+                            className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          >
+                            <option value="gpt-4o-mini" className="bg-gray-900">gpt-4o-mini (fast, cheap)</option>
+                            <option value="gpt-4o" className="bg-gray-900">gpt-4o (higher quality)</option>
+                            <option value="claude-haiku" className="bg-gray-900">Claude Haiku (via cookie)</option>
+                          </select>
+                          <p className="mt-1 text-xs text-white/40">Which model handles the intuition check calls</p>
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-sm text-white/70">Escalation</label>
+                          <select
+                            value={cloudSettings.intuition_check_escalation || 'cloud_first'}
+                            onChange={(e) => handleCloudSelect('intuition_check_escalation', e.target.value)}
+                            className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                          >
+                            <option value="cloud_first" className="bg-gray-900">Cloud first (default)</option>
+                            <option value="local_only" className="bg-gray-900">Local only (no cloud calls)</option>
+                            <option value="cloud_required" className="bg-gray-900">Cloud required (skip if unavailable)</option>
+                          </select>
+                          <p className="mt-1 text-xs text-white/40">When cloud is unavailable: skip check or try local fallback</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-white/40">Loading Claude settings...</p>
+                  <p className="text-sm text-white/40">Loading intuition check settings...</p>
                 )}
               </div>
 
-              {/* Usage Display */}
+              {/* ── Usage (full width row below) ──────────────────────── */}
               {cloudUsage !== null && (
                 <div className="rounded border border-white/10 bg-white/[0.03] p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className="text-xs font-medium uppercase tracking-wide text-white/50">Usage (this session)</div>
                     <button
                       onClick={() => getCloudUsage().then(setCloudUsage).catch(() => {})}
-                      className="text-xs text-blue-400 hover:text-blue-300"
+                      className="text-xs hover:opacity-80 transition-opacity"
+                      style={{ color: 'var(--accent)' }}
                     >refresh</button>
                   </div>
-                  <div className="space-y-1 text-xs text-white/60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-1 text-xs text-white/60">
                     {cloudUsage.slot_classification && (
                       <div className="flex justify-between">
                         <span>Slot Classification</span>
@@ -531,21 +599,21 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       </div>
                     )}
                     {cloudUsage.total_cost_est != null && (
-                      <div className="flex justify-between pt-1 border-t border-white/10 font-medium">
+                      <div className="flex justify-between pt-1 border-t border-white/10 font-medium col-span-full">
                         <span>Estimated Cost</span>
                         <span>${cloudUsage.total_cost_est.toFixed(4)}</span>
                       </div>
                     )}
                     {cloudUsage.daily_limits && Object.keys(cloudUsage.daily_limits).length > 0 && (
-                      <div className="pt-1 border-t border-white/10">
+                      <div className="pt-1 border-t border-white/10 col-span-full flex flex-wrap gap-x-4">
                         <span className="text-white/50">Daily limits: </span>
                         {Object.entries(cloudUsage.daily_limits).map(([k, v]) => (
-                          <span key={k} className="mr-3">{k.replace(/_/g, ' ')}: {v.used}/{v.limit}</span>
+                          <span key={k}>{k.replace(/_/g, ' ')}: {v.used}/{v.limit}</span>
                         ))}
                       </div>
                     )}
                     {!cloudUsage.slot_classification && !cloudUsage.nli_contradiction && !cloudUsage.reflection_validation && (
-                      <p className="text-white/30 italic">No cloud calls yet this session</p>
+                      <p className="text-white/30 italic col-span-full">No cloud calls yet this session</p>
                     )}
                   </div>
                 </div>

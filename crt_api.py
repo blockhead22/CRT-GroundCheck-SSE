@@ -1080,47 +1080,50 @@ def create_app() -> FastAPI:
 
     docs_dir = root / "docs"
     doc_map: Dict[str, Dict[str, Any]] = {
-        # Developer documentation — architecture, internals, and guides.
-        "sys_architecture": {"title": "System Architecture", "kind": "guide", "path": docs_dir / "ARCHITECTURE.md"},
-        "request_lifecycle": {"title": "How a Request Flows Through CRT", "kind": "guide", "path": docs_dir / "REQUEST_LIFECYCLE.md"},
-        "self_model": {"title": "Self-Reflection & The 7-Slot Self-Model", "kind": "guide", "path": docs_dir / "SELF_MODEL.md"},
-        "compression": {"title": "Adaptive Semantic Compression", "kind": "guide", "path": docs_dir / "COMPRESSION.md"},
-        "cloud_routing": {"title": "3-Tier Cloud Routing & Escalation", "kind": "guide", "path": docs_dir / "CLOUD_ROUTING.md"},
-        "memory_lifecycle": {"title": "Memory Lifecycle", "kind": "guide", "path": docs_dir / "MEMORY_LIFECYCLE.md"},
-        "configuration": {"title": "Configuration & Environment Variables", "kind": "guide", "path": docs_dir / "CONFIGURATION.md"},
-        "three_laws": {"title": "The Three Laws of CRT", "kind": "guide", "path": docs_dir / "THREE_LAWS.md"},
-        "what_makes_different": {"title": "What Makes CRT/Aether Different", "kind": "guide", "path": docs_dir / "WHAT_MAKES_CRT_DIFFERENT.md"},
-        "quick_start": {"title": "Quick Start Guide", "kind": "guide", "path": docs_dir / "QUICK_START.md"},
-        "testing_patterns": {"title": "Testing Patterns", "kind": "guide", "path": docs_dir / "TESTING_PATTERNS.md"},
-        "testing_methods": {"title": "Testing Methods", "kind": "guide", "path": docs_dir / "TESTING_METHODS.md"},
-        "adversarial_stress_test": {"title": "Adversarial Stress Test Report", "kind": "guide", "path": docs_dir / "ADVERSARIAL_STRESS_TEST_REPORT.md"},
-        "anti_patterns": {"title": "What NOT to Do", "kind": "guide", "path": docs_dir / "ANTI_PATTERNS.md"},
-        "vilt_writeup": {"title": "ViLT Technical Writeup", "kind": "reference", "path": docs_dir / "VILT_TECHNICAL_WRITEUP.md"},
-        # Agent capabilities — v1.7 through v2.3.
-        "desktop_control": {"title": "Desktop Control System", "kind": "guide", "path": docs_dir / "DESKTOP_CONTROL.md"},
-        "semantic_intent_router": {"title": "Semantic Intent Router", "kind": "guide", "path": docs_dir / "SEMANTIC_INTENT_ROUTER.md"},
-        "slot_discovery": {"title": "Dynamic Slot Discovery", "kind": "guide", "path": docs_dir / "SLOT_DISCOVERY.md"},
-        "commitments": {"title": "Commitments & Scheduling", "kind": "guide", "path": docs_dir / "COMMITMENTS.md"},
-        "action_execution": {"title": "Action Execution Layer", "kind": "guide", "path": docs_dir / "ACTION_EXECUTION.md"},
-        "system_heartbeat": {"title": "System Info & Heartbeat", "kind": "guide", "path": docs_dir / "SYSTEM_HEARTBEAT.md"},
-        "skill_system": {"title": "Skill System", "kind": "guide", "path": docs_dir / "SKILL_SYSTEM.md"},
-        # v2.4 through v2.7.
-        "task_triage": {"title": "Task Triage & Acknowledgment", "kind": "guide", "path": docs_dir / "TASK_TRIAGE.md"},
-        "belief_synthesis": {"title": "Belief Synthesis & Volatility Context", "kind": "guide", "path": docs_dir / "BELIEF_SYNTHESIS.md"},
-        "sub_agents": {"title": "Sub-Agents & Orchestration", "kind": "guide", "path": docs_dir / "SUB_AGENTS.md"},
-        "side_model_tap": {"title": "Side Model Tap", "kind": "guide", "path": docs_dir / "SIDE_MODEL_TAP.md"},
+        # Landing page.
+        "index": {"title": "Documentation Index", "kind": "overview", "path": docs_dir / "INDEX.md"},
+        # Getting started.
+        "quick_start": {"title": "Quick Start Guide", "kind": "start", "path": docs_dir / "QUICK_START.md"},
+        "configuration": {"title": "Configuration & Environment Variables", "kind": "start", "path": docs_dir / "CONFIGURATION.md"},
+        "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "start", "path": docs_dir / "CRT_WHITE_PAPER.md"},
+        # Core architecture.
+        "three_laws": {"title": "The Three Laws of CRT", "kind": "core", "path": docs_dir / "THREE_LAWS.md"},
+        "sys_architecture": {"title": "System Architecture", "kind": "core", "path": docs_dir / "ARCHITECTURE.md"},
+        "request_lifecycle": {"title": "How a Request Flows Through CRT", "kind": "core", "path": docs_dir / "REQUEST_LIFECYCLE.md"},
+        "what_makes_different": {"title": "What Makes CRT/Aether Different", "kind": "core", "path": docs_dir / "WHAT_MAKES_CRT_DIFFERENT.md"},
+        # Memory & trust.
+        "memory_lifecycle": {"title": "Memory Lifecycle", "kind": "memory", "path": docs_dir / "MEMORY_LIFECYCLE.md"},
+        "compression": {"title": "Adaptive Semantic Compression", "kind": "memory", "path": docs_dir / "COMPRESSION.md"},
+        "slot_discovery": {"title": "Dynamic Slot Discovery", "kind": "memory", "path": docs_dir / "SLOT_DISCOVERY.md"},
+        "belief_synthesis": {"title": "Belief Synthesis & Volatility", "kind": "memory", "path": docs_dir / "BELIEF_SYNTHESIS.md"},
+        # Intelligence & routing.
+        "semantic_intent_router": {"title": "Semantic Intent Router", "kind": "intelligence", "path": docs_dir / "SEMANTIC_INTENT_ROUTER.md"},
+        "task_triage": {"title": "Task Triage & Acknowledgment", "kind": "intelligence", "path": docs_dir / "TASK_TRIAGE.md"},
+        "sub_agents": {"title": "Sub-Agents & Orchestration", "kind": "intelligence", "path": docs_dir / "SUB_AGENTS.md"},
+        "intuition_check": {"title": "Intuition Check", "kind": "intelligence", "path": docs_dir / "INTUITION_CHECK.md"},
+        "cloud_routing": {"title": "3-Tier Cloud Routing", "kind": "intelligence", "path": docs_dir / "CLOUD_ROUTING.md"},
+        "self_model": {"title": "Self-Model & Reflection", "kind": "intelligence", "path": docs_dir / "SELF_MODEL.md"},
+        # Agent capabilities.
+        "desktop_control": {"title": "Desktop Control", "kind": "capabilities", "path": docs_dir / "DESKTOP_CONTROL.md"},
+        "action_execution": {"title": "Action Execution Layer", "kind": "capabilities", "path": docs_dir / "ACTION_EXECUTION.md"},
+        "commitments": {"title": "Commitments & Scheduling", "kind": "capabilities", "path": docs_dir / "COMMITMENTS.md"},
+        "system_heartbeat": {"title": "System Info & Heartbeat", "kind": "capabilities", "path": docs_dir / "SYSTEM_HEARTBEAT.md"},
+        "skill_system": {"title": "Skill System", "kind": "capabilities", "path": docs_dir / "SKILL_SYSTEM.md"},
+        # Training & verification.
+        "vilt_writeup": {"title": "ViLT Technical Writeup", "kind": "training", "path": docs_dir / "VILT_TECHNICAL_WRITEUP.md"},
+        # Testing & quality.
+        "testing_patterns": {"title": "Testing Patterns", "kind": "testing", "path": docs_dir / "TESTING_PATTERNS.md"},
+        "testing_methods": {"title": "Testing Methods", "kind": "testing", "path": docs_dir / "TESTING_METHODS.md"},
+        "adversarial_stress_test": {"title": "Adversarial Stress Test Report", "kind": "testing", "path": docs_dir / "ADVERSARIAL_STRESS_TEST_REPORT.md"},
+        "anti_patterns": {"title": "What NOT to Do", "kind": "testing", "path": docs_dir / "ANTI_PATTERNS.md"},
         # Frozen specs (v0.9.0, Feb 2026).
-        "api_contract": {"title": "API Contract (v0.9.0 Frozen)", "kind": "spec", "path": docs_dir / "specs" / "API_CONTRACT.md"},
-        "architecture_spec": {"title": "Architecture Spec (Feb 2026)", "kind": "spec", "path": docs_dir / "specs" / "ARCHITECTURE.md"},
+        "api_contract": {"title": "API Contract (v0.9.0)", "kind": "spec", "path": docs_dir / "specs" / "API_CONTRACT.md"},
+        "architecture_spec": {"title": "Architecture Spec", "kind": "spec", "path": docs_dir / "specs" / "ARCHITECTURE.md"},
         "freeze_manifest": {"title": "Freeze Manifest", "kind": "spec", "path": docs_dir / "specs" / "FREEZE_MANIFEST.md"},
         "innovation_pillars": {"title": "Innovation Pillars", "kind": "spec", "path": docs_dir / "specs" / "INNOVATION_PILLARS.md"},
-        # Convenience reference docs.
-        "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": docs_dir / "CRT_WHITE_PAPER.md"},
-        # Project-level docs served from repo root.
+        # Project meta.
         "changelog": {"title": "Changelog", "kind": "meta", "path": root / "CHANGELOG.md"},
         "roadmap": {"title": "Roadmap", "kind": "meta", "path": root / "ROADMAP.md"},
-        # Documentation index — landing page.
-        "index": {"title": "Documentation Index", "kind": "meta", "path": docs_dir / "INDEX.md"},
     }
 
     # Initialize shared LLM client for all threads (lazy initialization)

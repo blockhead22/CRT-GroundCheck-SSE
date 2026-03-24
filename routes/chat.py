@@ -4857,16 +4857,16 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 except Exception as _cue:
                     logger.debug("[STREAM] compound upgrade check failed: %s", _cue)
 
-            # ── SIDE MODEL TAP: Clarify ambiguous input ─────────────────
+            # ── INTUITION CHECK: Clarify ambiguous input ─────────────────
             # If the classifier fell to conversational but confidence is low,
-            # ask the side model if clarification is needed before proceeding.
+            # ask the intuition check if clarification is needed before proceeding.
             if (
                 _task_intent is not None
                 and _task_intent.route in ("conversational", "clarify")
                 and _task_intent.confidence < 0.75
             ):
                 try:
-                    from personal_agent.side_model_tap import get_side_tap as _get_tap
+                    from personal_agent.intuition_check import get_intuition_check as _get_tap
                     from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs
                     _tap = _get_tap(cloud_service=_get_cfs())
                     _open_tasks = []
@@ -4881,11 +4881,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     )
                     if _tap_result is not None:
                         logger.info(
-                            "[STREAM] Side tap clarify: %s (confidence=%.2f, latency=%dms)",
+                            "[STREAM] Intuition check clarify: %s (confidence=%.2f, latency=%dms)",
                             _tap_result.message[:60], _tap_result.confidence, _tap_result.latency_ms,
                         )
                         yield _sse({
-                            "type": "side_tap",
+                            "type": "intuition_check",
                             "content": _tap_result.message,
                             "metadata": {
                                 "tap_action": "clarify",
@@ -4895,7 +4895,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             },
                         })
                 except Exception as _tap_err:
-                    logger.debug("[STREAM] Side tap clarify failed: %s", _tap_err)
+                    logger.debug("[STREAM] Intuition check clarify failed: %s", _tap_err)
 
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":
@@ -5059,9 +5059,9 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         "tool_calls": _task_steps,
                     }
 
-                    # ── SIDE MODEL TAP: Post-task suggestion ────────────────
+                    # ── INTUITION CHECK: Post-task suggestion ────────────────
                     try:
-                        from personal_agent.side_model_tap import get_side_tap as _get_tap_post
+                        from personal_agent.intuition_check import get_intuition_check as _get_tap_post
                         from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs_post
                         _tap_post = _get_tap_post(cloud_service=_get_cfs_post())
                         _completed_info = {
@@ -5075,17 +5075,17 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         )
                         if _tap_suggest is not None:
                             logger.info(
-                                "[STREAM] Side tap suggest: %s (latency=%dms)",
+                                "[STREAM] Intuition check suggest: %s (latency=%dms)",
                                 _tap_suggest.message[:60], _tap_suggest.latency_ms,
                             )
-                            _done_meta["side_tap"] = {
+                            _done_meta["intuition_check"] = {
                                 "action": "suggest",
                                 "message": _tap_suggest.message,
                                 "suggested_action": _tap_suggest.metadata.get("suggested_action"),
                                 "latency_ms": _tap_suggest.latency_ms,
                             }
                     except Exception as _tap_post_err:
-                        logger.debug("[STREAM] Side tap suggest failed: %s", _tap_post_err)
+                        logger.debug("[STREAM] Intuition check suggest failed: %s", _tap_post_err)
 
                     yield _sse({"type": "done", "content": _task_answer, "metadata": _done_meta})
                     return
@@ -5093,11 +5093,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.warning("[STREAM] TaskAgent failed, falling back to CRT pipeline: %s", _te)
                     # Fall through to CRT pipeline
 
-            # ── SIDE MODEL TAP: Reconnect after idle ────────────────────
+            # ── INTUITION CHECK: Reconnect after idle ────────────────────
             # If the user has been idle for a while and there's open work,
-            # the side model generates a natural reconnection message.
+            # the intuition check generates a natural reconnection message.
             try:
-                from personal_agent.side_model_tap import get_side_tap as _get_tap_recon
+                from personal_agent.intuition_check import get_intuition_check as _get_tap_recon
                 from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs_recon
                 _tap_recon = _get_tap_recon(cloud_service=_get_cfs_recon())
                 # Check idle time from session metadata
@@ -5123,13 +5123,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     )
                     if _tap_reconnect is not None:
                         logger.info(
-                            "[STREAM] Side tap reconnect: %s (idle=%dm, latency=%dms)",
+                            "[STREAM] Intuition check reconnect: %s (idle=%dm, latency=%dms)",
                             _tap_reconnect.message[:60],
                             int(_last_msg_age / 60),
                             _tap_reconnect.latency_ms,
                         )
                         yield _sse({
-                            "type": "side_tap",
+                            "type": "intuition_check",
                             "content": _tap_reconnect.message,
                             "metadata": {
                                 "tap_action": "reconnect",
@@ -5139,7 +5139,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             },
                         })
             except Exception as _tap_recon_err:
-                logger.debug("[STREAM] Side tap reconnect failed: %s", _tap_recon_err)
+                logger.debug("[STREAM] Intuition check reconnect failed: %s", _tap_recon_err)
 
             # ── Intent pre-pass for conversational route ──────────────────
             try:

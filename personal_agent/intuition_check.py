@@ -1,5 +1,5 @@
 """
-Side Model Tap — lightweight LLM "quick tap" for situational awareness.
+Intuition Check — lightweight LLM "quick check" for situational awareness.
 
 Three triggers:
   1. Ambiguous input  — intent classifier is unsure → ask clarifying question
@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 # ── Result types ────────────────────────────────────────────────────────
 
 @dataclass
-class TapResult:
-    """Result from a side model tap."""
+class IntuitionResult:
+    """Result from an intuition check."""
     action: str          # "clarify" | "suggest" | "reconnect" | "none"
     message: str         # Human-readable message to show the user
-    confidence: float    # How confident the tap is in its suggestion
+    confidence: float    # How confident the check is in its suggestion
     metadata: Dict[str, Any] = field(default_factory=dict)
     latency_ms: int = 0
 
@@ -86,7 +86,7 @@ Respond with JSON only:
 
 # ── Main class ──────────────────────────────────────────────────────────
 
-class SideModelTap:
+class IntuitionCheck:
     """Lightweight LLM side-channel for situational awareness."""
 
     def __init__(self, cloud_service=None):
@@ -106,7 +106,7 @@ class SideModelTap:
         open_tasks: Optional[List[Dict]] = None,
         recent_history: Optional[List[str]] = None,
         classifier_confidence: float = 0.0,
-    ) -> Optional[TapResult]:
+    ) -> Optional[IntuitionResult]:
         """Check if an ambiguous message needs clarification before routing.
 
         Call this when the regex classifier returns low confidence or
@@ -119,7 +119,7 @@ class SideModelTap:
             classifier_confidence: What the regex classifier scored
 
         Returns:
-            TapResult with action="clarify" if clarification needed, else None.
+            IntuitionResult with action="clarify" if clarification needed, else None.
         """
         if not self._is_available():
             return None
@@ -139,7 +139,7 @@ class SideModelTap:
 
         prompt = "\n".join(context_parts)
 
-        result = self._call(_CLARIFY_SYSTEM, prompt, feature="side_tap_clarify")
+        result = self._call(_CLARIFY_SYSTEM, prompt, feature="intuition_check_clarify")
         if result is None:
             return None
 
@@ -147,7 +147,7 @@ class SideModelTap:
         if not needs:
             return None
 
-        return TapResult(
+        return IntuitionResult(
             action="clarify",
             message=result.get("clarification_question", "Could you clarify what you'd like me to do?"),
             confidence=result.get("confidence", 0.5),
@@ -163,7 +163,7 @@ class SideModelTap:
         completed_task: Dict[str, Any],
         open_tasks: Optional[List[Dict]] = None,
         recent_history: Optional[List[str]] = None,
-    ) -> Optional[TapResult]:
+    ) -> Optional[IntuitionResult]:
         """Suggest a follow-up after a task completes.
 
         Call this right after task_done is emitted.
@@ -174,7 +174,7 @@ class SideModelTap:
             recent_history: Last few messages
 
         Returns:
-            TapResult with action="suggest" if there's a useful follow-up, else None.
+            IntuitionResult with action="suggest" if there's a useful follow-up, else None.
         """
         if not self._is_available():
             return None
@@ -195,14 +195,14 @@ class SideModelTap:
 
         prompt = "\n".join(context_parts)
 
-        result = self._call(_SUGGEST_SYSTEM, prompt, feature="side_tap_suggest")
+        result = self._call(_SUGGEST_SYSTEM, prompt, feature="intuition_check_suggest")
         if result is None:
             return None
 
         if not result.get("has_suggestion", False):
             return None
 
-        return TapResult(
+        return IntuitionResult(
             action="suggest",
             message=result.get("suggestion", ""),
             confidence=0.7,
@@ -219,7 +219,7 @@ class SideModelTap:
         open_tasks: Optional[List[Dict]] = None,
         last_message_age_seconds: float = 0,
         recent_history: Optional[List[str]] = None,
-    ) -> Optional[TapResult]:
+    ) -> Optional[IntuitionResult]:
         """Generate a reconnection message after user returns from idle.
 
         Call this when the user sends a message after >5 minutes of silence.
@@ -230,7 +230,7 @@ class SideModelTap:
             recent_history: Last few messages before the gap
 
         Returns:
-            TapResult with action="reconnect" if there's context to reconnect to, else None.
+            IntuitionResult with action="reconnect" if there's context to reconnect to, else None.
         """
         if not self._is_available():
             return None
@@ -254,14 +254,14 @@ class SideModelTap:
 
         prompt = "\n".join(context_parts)
 
-        result = self._call(_RECONNECT_SYSTEM, prompt, feature="side_tap_reconnect")
+        result = self._call(_RECONNECT_SYSTEM, prompt, feature="intuition_check_reconnect")
         if result is None:
             return None
 
         if not result.get("has_context", False):
             return None
 
-        return TapResult(
+        return IntuitionResult(
             action="reconnect",
             message=result.get("message", "Welcome back!"),
             confidence=0.6,
@@ -290,7 +290,7 @@ class SideModelTap:
     _last_latency: int = 0
 
     def _is_available(self) -> bool:
-        """Check if the cloud service is available for side taps."""
+        """Check if the cloud service is available for intuition checks."""
         if self._cloud is None:
             return False
         # Reuse the cloud service's OpenAI availability check
@@ -303,7 +303,7 @@ class SideModelTap:
         self,
         system: str,
         prompt: str,
-        feature: str = "side_tap",
+        feature: str = "intuition_check",
     ) -> Optional[Dict[str, Any]]:
         """Make a quick LLM call via the cloud service.
 
@@ -320,34 +320,34 @@ class SideModelTap:
 
             if result is not None:
                 logger.info(
-                    "[SIDE_TAP] %s: %dms, result=%s",
+                    "[INTUITION_CHECK] %s: %dms, result=%s",
                     feature, self._last_latency, json.dumps(result)[:200],
                 )
             else:
-                logger.debug("[SIDE_TAP] %s: %dms, no result", feature, self._last_latency)
+                logger.debug("[INTUITION_CHECK] %s: %dms, no result", feature, self._last_latency)
 
             return result
 
         except Exception as e:
             self._last_latency = int((time.perf_counter() - t0) * 1000)
-            logger.warning("[SIDE_TAP] %s failed (%dms): %s", feature, self._last_latency, e)
+            logger.warning("[INTUITION_CHECK] %s failed (%dms): %s", feature, self._last_latency, e)
             return None
 
 
 # ── Module-level singleton ──────────────────────────────────────────────
 
-_tap_instance: Optional[SideModelTap] = None
+_instance: Optional[IntuitionCheck] = None
 
 
-def get_side_tap(cloud_service=None) -> SideModelTap:
-    """Get or create the SideModelTap singleton.
+def get_intuition_check(cloud_service=None) -> IntuitionCheck:
+    """Get or create the IntuitionCheck singleton.
 
     If cloud_service is provided on first call, it's used to initialize.
     Subsequent calls return the same instance.
     """
-    global _tap_instance
-    if _tap_instance is None:
-        _tap_instance = SideModelTap(cloud_service=cloud_service)
-    elif cloud_service is not None and _tap_instance._cloud is None:
-        _tap_instance._cloud = cloud_service
-    return _tap_instance
+    global _instance
+    if _instance is None:
+        _instance = IntuitionCheck(cloud_service=cloud_service)
+    elif cloud_service is not None and _instance._cloud is None:
+        _instance._cloud = cloud_service
+    return _instance

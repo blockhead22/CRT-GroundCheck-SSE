@@ -248,6 +248,13 @@ def auth_update_settings(
         "generation_mode",
         "cloud_model_openai",
         "cloud_model_claude",
+        # Intuition Check
+        "intuition_check_enabled",
+        "intuition_check_clarify",
+        "intuition_check_suggest",
+        "intuition_check_reconnect",
+        "intuition_check_model",
+        "intuition_check_escalation",
         # Advanced settings
         "bypass_crt",
         "enable_tooling",

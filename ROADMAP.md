@@ -6,12 +6,12 @@ Last updated: March 24, 2026 (v2.7)
 ## DONE
 
 ### v2.7 (March 24)
-- [x] Side Model Tap — `personal_agent/side_model_tap.py`: lightweight gpt-4o-mini side-channel for situational awareness
-- [x] Clarify tap — fires when intent classifier returns ambiguous (confidence < 0.75), asks if message needs clarification before routing
-- [x] Post-task suggest tap — fires after every task_done, passes completed task + open tasks to suggest follow-up
-- [x] Reconnect tap — fires when user returns after > 5 minutes of silence, welcome-back with open task context
+- [x] Intuition Check — `personal_agent/intuition_check.py`: lightweight gpt-4o-mini side-channel for situational awareness
+- [x] Clarify check — fires when intent classifier returns ambiguous (confidence < 0.75), asks if message needs clarification before routing
+- [x] Post-task suggest check — fires after every task_done, passes completed task + open tasks to suggest follow-up
+- [x] Reconnect check — fires when user returns after > 5 minutes of silence, welcome-back with open task context
 - [x] ~150ms latency, doesn't block main pipeline, degrades gracefully when cloud unavailable
-- [x] `side_tap` SSE event type, embedded in `done` event metadata
+- [x] `intuition_check` SSE event type, embedded in `done` event metadata
 - [x] Daily rate limits: 20 clarify, 20 suggest, 10 reconnect
 
 ### v2.6 (March 24)
@@ -244,17 +244,17 @@ Last updated: March 24, 2026 (v2.7)
 - [x] **Frontend orchestration UI** — AgentThinkingStrip shows subtask rows with agent names, live status (pending/running/ok/error), duration, and merged trust score. Parallel subtasks animate independently
 - [x] **App.tsx orchestration callbacks** — `onOrchestrationStart`, `onSubtaskStart`, `onSubtaskDone`, `onOrchestrationDone` wire into `agentThinkingState.orchestration`
 
-### Side Model Tap (v2.7, March 24) ✓
-- [x] **SideModelTap** — `personal_agent/side_model_tap.py`: lightweight gpt-4o-mini side-channel for situational awareness. Three triggers:
-- [x] **Clarify tap** — fires when intent classifier returns conversational with low confidence (<0.75). Asks "does this need clarification?" before routing. Emits `side_tap` SSE event
-- [x] **Post-task suggest tap** — fires after task_done. Passes completed task + open tasks to side model, gets natural follow-up suggestion. Embedded in done event metadata
-- [x] **Reconnect tap** — fires before conversational pipeline when user idle >5 minutes. Generates context-aware welcome-back with open task summary
+### Intuition Check (v2.7, March 24) ✓
+- [x] **IntuitionCheck** — `personal_agent/intuition_check.py`: lightweight gpt-4o-mini side-channel for situational awareness. Three triggers:
+- [x] **Clarify check** — fires when intent classifier returns conversational with low confidence (<0.75). Asks "does this need clarification?" before routing. Emits `intuition_check` SSE event
+- [x] **Post-task suggest check** — fires after task_done. Passes completed task + open tasks to intuition check, gets natural follow-up suggestion. Embedded in done event metadata
+- [x] **Reconnect check** — fires before conversational pipeline when user idle >5 minutes. Generates context-aware welcome-back with open task summary
 - [x] **Cloud integration** — reuses `CloudFeatureService._call_openai()` with 3 new daily limit categories (clarify: 20, suggest: 20, reconnect: 10)
 - [x] **Graceful degradation** — returns None when cloud unavailable, pipeline continues unchanged
 - [x] **`get_last_message_ts()`** on ThreadSessionDB for idle detection
 
 ### Telegram Full-Pipeline Integration (v2.8, March 24) ✓
-- [x] **CRTBridge stream mode** — `channels/base.py` rewritten to consume `/api/chat/stream` SSE instead of `/api/chat/send`. Telegram now gets intent classification, sub-agents, orchestrator, capability re-route, and side model tap
+- [x] **CRTBridge stream mode** — `channels/base.py` rewritten to consume `/api/chat/stream` SSE instead of `/api/chat/send`. Telegram now gets intent classification, sub-agents, orchestrator, capability re-route, and intuition check
 - [x] **SSE event parser** — `_consume_sse()` handles all event types: intent_preview, agent_checkpoint, task_acknowledged, tool/subtask progress, orchestration_done, token streaming, task_done, done, error
 - [x] **Checkpoint auto-confirmation** — low-risk intents (system_info, dir_list, git_action, file_read) auto-confirm via follow-up stream. High-risk (file_write, shell_exec, desktop_action) gated via optional callback
 - [x] **Task visibility** — Telegram replies show `🔧 intent_type` header for task routes, `🔧 N subtasks · trust XX%` for multi-agent orchestrations

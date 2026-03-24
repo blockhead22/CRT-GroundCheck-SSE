@@ -167,8 +167,10 @@ def list_docs(request: Request) -> list[DocListItem]:
         if not path.exists() or not path.is_file():
             continue
         items.append(DocListItem(id=doc_id, title=str(meta.get("title") or doc_id), kind=str(meta.get("kind") or "docs")))
-    # Stable ordering: docs first, then reference
-    items.sort(key=lambda x: (0 if x.kind == "docs" else 1, x.title.lower()))
+    # Stable ordering: preserve doc_map insertion order within each kind, kinds alphabetical
+    kind_order = {k: i for i, k in enumerate(dict.fromkeys(meta.get("kind", "") for meta in doc_map.values()))}
+    doc_order = {doc_id: i for i, doc_id in enumerate(doc_map.keys())}
+    items.sort(key=lambda x: (kind_order.get(x.kind, 99), doc_order.get(x.id, 99)))
     return items
 
 

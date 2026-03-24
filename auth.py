@@ -476,6 +476,13 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "generation_mode": "local",
     "cloud_model_openai": "gpt-4o-mini",
     "cloud_model_claude": "claude-sonnet-4-20250514",
+    # Intuition Check (Sprint 8+)
+    "intuition_check_enabled": "true",
+    "intuition_check_clarify": "true",
+    "intuition_check_suggest": "true",
+    "intuition_check_reconnect": "true",
+    "intuition_check_model": "gpt-4o-mini",
+    "intuition_check_escalation": "cloud_first",
     # Advanced settings
     "bypass_crt": "false",
     "enable_tooling": "false",

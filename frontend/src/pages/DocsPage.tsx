@@ -1,29 +1,57 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { getDoc, listDocs } from '../lib/api'
 
-type DocTab = 'architecture' | 'faq' | 'functional_spec' | 'reference' | 'guide' | 'changelog' | 'roadmap'
+type DocTab = string
 
 const SECTIONS: Array<{ heading: string; items: Array<{ id: DocTab; label: string }> }> = [
   {
-    heading: 'Developer Guide',
+    heading: 'Overview',
     items: [
-      { id: 'guide', label: 'Guides' },
+      { id: 'overview', label: 'Index' },
     ],
   },
   {
-    heading: 'API Reference',
+    heading: 'Getting Started',
     items: [
-      { id: 'reference', label: 'Endpoints' },
+      { id: 'start', label: 'Setup & Guides' },
+    ],
+  },
+  {
+    heading: 'Architecture',
+    items: [
+      { id: 'core', label: 'Core Design' },
+      { id: 'memory', label: 'Memory & Trust' },
+      { id: 'intelligence', label: 'Intelligence & Routing' },
+    ],
+  },
+  {
+    heading: 'Capabilities',
+    items: [
+      { id: 'capabilities', label: 'Agent Tools' },
+      { id: 'training', label: 'Training & Verification' },
+    ],
+  },
+  {
+    heading: 'Quality',
+    items: [
+      { id: 'testing', label: 'Testing' },
+    ],
+  },
+  {
+    heading: 'Reference',
+    items: [
+      { id: 'spec', label: 'Frozen Specs' },
     ],
   },
   {
     heading: 'Project',
     items: [
-      { id: 'changelog' as DocTab, label: 'Changelog' },
-      { id: 'roadmap' as DocTab, label: 'Roadmap' },
+      { id: 'changelog', label: 'Changelog' },
+      { id: 'roadmap', label: 'Roadmap' },
     ],
   },
 ]
@@ -217,16 +245,39 @@ const docsMdComponents = {
   },
 }
 
+// ── URL slug helpers ──
+function toSlug(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '')
+}
+
+/** Find a SECTIONS item whose slug matches a URL segment */
+function findSectionBySlug(slug: string): { id: DocTab; label: string } | undefined {
+  for (const section of SECTIONS) {
+    for (const item of section.items) {
+      if (toSlug(item.label) === slug) return item
+    }
+  }
+  return undefined
+}
+
+/** Find a doc whose title slug matches */
+function findDocBySlug(docs: Array<{ id: string; title: string; kind: string }>, slug: string): { id: string; title: string; kind: string } | undefined {
+  return docs.find((d) => toSlug(d.title) === slug)
+}
+
 // ── Main Component ──
 export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [docs, setDocs] = useState<Array<{ id: string; title: string; kind: string }>>([])
-  const [activeDocId, setActiveDocId] = useState<string>('architecture')
-  const [tab, setTab] = useState<DocTab>('guide')
+  const [activeDocId, setActiveDocId] = useState<string>('index')
+  const [tab, setTab] = useState<DocTab>('overview')
   const [md, setMd] = useState<string>('')
   const [title, setTitle] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const [codeTab, setCodeTab] = useState(0)
+  const initialRouteApplied = useRef(false)
 
   useEffect(() => {
     let mounted = true
@@ -236,26 +287,77 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
     return () => { mounted = false }
   }, [])
 
+  // ── Parse URL on initial load (once docs are available) ──
+  useEffect(() => {
+    if (docs.length === 0 || initialRouteApplied.current) return
+    initialRouteApplied.current = true
+
+    const path = location.pathname.replace(/^\/docs\/?/, '').replace(/\/$/, '')
+    if (!path) return // /docs → default (index)
+
+    const segments = path.split('/')
+    // Try /docs/{category}/{doc_slug}
+    if (segments.length >= 1) {
+      const sectionMatch = findSectionBySlug(segments[0])
+      if (sectionMatch) {
+        setTab(sectionMatch.id)
+        if (segments.length >= 2) {
+          const docMatch = findDocBySlug(docs, segments[1])
+          if (docMatch) {
+            setActiveDocId(docMatch.id)
+            return
+          }
+        }
+        // Just the category — let the tab-change effect pick the first doc
+        return
+      }
+      // Try /docs/{doc_slug} (flat)
+      const docMatch = findDocBySlug(docs, segments[0])
+      if (docMatch) {
+        setTab(docMatch.kind)
+        setActiveDocId(docMatch.id)
+        return
+      }
+    }
+  }, [docs, location.pathname])
+
+  // ── Push URL when tab or doc changes (skip initial load) ──
+  const updateUrl = useCallback((newTab: string, newDocId: string) => {
+    const doc = docs.find((d) => d.id === newDocId)
+    if (!doc) return
+    // Find the section label for this tab
+    let sectionSlug = ''
+    for (const section of SECTIONS) {
+      for (const item of section.items) {
+        if (item.id === newTab) { sectionSlug = toSlug(item.label); break }
+      }
+      if (sectionSlug) break
+    }
+    const docSlug = toSlug(doc.title)
+    const newPath = sectionSlug ? `/docs/${sectionSlug}/${docSlug}` : `/docs/${docSlug}`
+    if (location.pathname !== newPath) {
+      navigate(newPath, { replace: true })
+    }
+  }, [docs, navigate, location.pathname])
+
+  // Kinds that are direct doc IDs (not expandable categories)
+  const DIRECT_TABS = new Set(['changelog', 'roadmap'])
+
   const filtered = useMemo(() => {
-    if (tab === 'reference') return docs.filter((d) => d.kind === 'reference')
-    if (tab === 'guide') return docs.filter((d) => d.kind === 'guide')
-    if (tab === 'changelog') return docs.filter((d) => d.id === 'changelog')
-    if (tab === 'roadmap') return docs.filter((d) => d.id === 'roadmap')
-    return docs.filter((d) => d.id === tab)
+    if (DIRECT_TABS.has(tab)) return docs.filter((d) => d.id === tab)
+    return docs.filter((d) => d.kind === tab)
   }, [docs, tab])
 
   useEffect(() => {
-    if (tab === 'reference') {
-      const first = docs.find((d) => d.kind === 'reference')
-      if (first) setActiveDocId(first.id)
+    if (DIRECT_TABS.has(tab)) {
+      setActiveDocId(tab)
       return
     }
-    if (tab === 'guide') {
-      const first = docs.find((d) => d.kind === 'guide')
-      if (first) setActiveDocId(first.id)
-      return
-    }
-    setActiveDocId(tab)
+    // Only set first doc if current activeDocId doesn't belong to this tab
+    const currentDoc = docs.find((d) => d.id === activeDocId)
+    if (currentDoc && currentDoc.kind === tab) return
+    const first = docs.find((d) => d.kind === tab)
+    if (first) setActiveDocId(first.id)
   }, [tab, docs])
 
   useEffect(() => {
@@ -268,10 +370,11 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
         setMd(d.markdown)
         setCodeTab(0)
         contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        updateUrl(tab, activeDocId)
       })
       .catch((e) => { if (mounted) setError(e instanceof Error ? e.message : String(e)) })
     return () => { mounted = false }
-  }, [activeDocId])
+  }, [activeDocId, tab, updateUrl])
 
   const headings = useMemo(() => extractHeadings(md), [md])
   const codeBlocks = useMemo(() => extractCodeBlocks(md), [md])
@@ -337,7 +440,7 @@ export function DocsPage({ onBackToApp }: { onBackToApp?: () => void }) {
               </div>
               <div className="flex flex-col gap-px">
                 {section.items.map((item) => {
-                  const isExpandableKind = item.id === 'reference' || item.id === 'guide'
+                  const isExpandableKind = !DIRECT_TABS.has(item.id)
                   const isActive = item.id === tab && !isExpandableKind
                   // For reference and guide, render expandable sub-items
                   if (isExpandableKind) {
