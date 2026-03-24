@@ -2086,8 +2086,13 @@ class CRTTaskAgent:
                                     _parts.append(f"  - `{_c}`")
                         answer = "\n".join(_parts)
                 elif intent.intent_type == "system_info":
+                    # Pass system data through LLM for natural response
                     from personal_agent.system_info import format_snapshot_text
-                    answer = format_snapshot_text(_ro_step.output) if isinstance(_ro_step.output, dict) else str(_ro_step.output_preview or "")
+                    _sys_data = format_snapshot_text(_ro_step.output) if isinstance(_ro_step.output, dict) else str(_ro_step.output_preview or "")
+                    _ro_step.output_preview = _sys_data  # ensure context builder can see it
+                    answer = yield from self._stream_generate_answer(
+                        message, _sys_data, intent, steps, stored_credentials, active_task
+                    )
                 else:
                     answer = str(_ro_step.output_preview or "Tool completed.")
             else:

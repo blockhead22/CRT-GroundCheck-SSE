@@ -793,7 +793,10 @@ _CAPABILITY_REROUTE_PATTERNS = [
             r"|(?:(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:\w+\s+)?(?:open|running|active)\??)"
             r"|(?:how(?:'s| is)?\s+my\s+(?:system|computer|pc|machine|cpu|ram|gpu|memory|disk))"
             r"|(?:(?:check|show|what(?:'s)?)\s+(?:my\s+)?(?:system|cpu|ram|gpu|memory|disk)\s*(?:status|usage|info)?)"
-            r"|(?:top\s+processes|task\s+manager|resource\s+monitor)",
+            r"|(?:top\s+processes|task\s+manager|resource\s+monitor)"
+            r"|(?:(?:anything|something|what(?:'s)?)\s+(?:\w+\s+)?(?:unusual|wrong|off|weird|strange)\s+(?:\w+\s+)?(?:my\s+)?(?:system|computer|pc|machine))"
+            r"|(?:(?:is|are)\s+(?:my\s+)?(?:system|computer|pc|machine)\s+(?:\w+\s+)?(?:ok|fine|healthy|normal|overloaded|slow))"
+            r"|(?:(?:my\s+)?(?:system|computer|pc)\s+(?:status|health|performance|diagnostics))",
             _re_mod.IGNORECASE,
         ),
         "system_info",
@@ -4796,7 +4799,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # "what apps are open?" falling through to conversational when
             # system_info can answer it.
             print(f"[INTENT_DEBUG] _task_intent={_task_intent}, route={getattr(_task_intent, 'route', None)}, type={getattr(_task_intent, 'intent_type', None)}, conf={getattr(_task_intent, 'confidence', None)}")
-            if _task_intent is not None and _task_intent.route == "conversational":
+            if _task_intent is not None and _task_intent.route in ("conversational", "clarify"):
                 try:
                     _rerouted = _capability_reroute(req.message, _task_intent)
                     print(f"[INTENT_DEBUG] capability_reroute result: {_rerouted}")
@@ -4859,7 +4862,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # ask the side model if clarification is needed before proceeding.
             if (
                 _task_intent is not None
-                and _task_intent.route == "conversational"
+                and _task_intent.route in ("conversational", "clarify")
                 and _task_intent.confidence < 0.75
             ):
                 try:

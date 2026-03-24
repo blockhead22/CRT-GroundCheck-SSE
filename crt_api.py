@@ -1104,11 +1104,23 @@ def create_app() -> FastAPI:
         "action_execution": {"title": "Action Execution Layer", "kind": "guide", "path": docs_dir / "ACTION_EXECUTION.md"},
         "system_heartbeat": {"title": "System Info & Heartbeat", "kind": "guide", "path": docs_dir / "SYSTEM_HEARTBEAT.md"},
         "skill_system": {"title": "Skill System", "kind": "guide", "path": docs_dir / "SKILL_SYSTEM.md"},
+        # v2.4 through v2.7.
+        "task_triage": {"title": "Task Triage & Acknowledgment", "kind": "guide", "path": docs_dir / "TASK_TRIAGE.md"},
+        "belief_synthesis": {"title": "Belief Synthesis & Volatility Context", "kind": "guide", "path": docs_dir / "BELIEF_SYNTHESIS.md"},
+        "sub_agents": {"title": "Sub-Agents & Orchestration", "kind": "guide", "path": docs_dir / "SUB_AGENTS.md"},
+        "side_model_tap": {"title": "Side Model Tap", "kind": "guide", "path": docs_dir / "SIDE_MODEL_TAP.md"},
+        # Frozen specs (v0.9.0, Feb 2026).
+        "api_contract": {"title": "API Contract (v0.9.0 Frozen)", "kind": "spec", "path": docs_dir / "specs" / "API_CONTRACT.md"},
+        "architecture_spec": {"title": "Architecture Spec (Feb 2026)", "kind": "spec", "path": docs_dir / "specs" / "ARCHITECTURE.md"},
+        "freeze_manifest": {"title": "Freeze Manifest", "kind": "spec", "path": docs_dir / "specs" / "FREEZE_MANIFEST.md"},
+        "innovation_pillars": {"title": "Innovation Pillars", "kind": "spec", "path": docs_dir / "specs" / "INNOVATION_PILLARS.md"},
         # Convenience reference docs.
         "crt_whitepaper": {"title": "CRT Whitepaper", "kind": "reference", "path": docs_dir / "CRT_WHITE_PAPER.md"},
         # Project-level docs served from repo root.
         "changelog": {"title": "Changelog", "kind": "meta", "path": root / "CHANGELOG.md"},
         "roadmap": {"title": "Roadmap", "kind": "meta", "path": root / "ROADMAP.md"},
+        # Documentation index — landing page.
+        "index": {"title": "Documentation Index", "kind": "meta", "path": docs_dir / "INDEX.md"},
     }
 
     # Initialize shared LLM client for all threads (lazy initialization)

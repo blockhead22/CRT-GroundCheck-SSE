@@ -933,6 +933,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     prefix = _pick_response_prefix(resp, text)
     reply_text = resp.text
 
+    # If routed through the task pipeline, add a subtle header
+    if getattr(resp, 'route', 'conversational') == 'task' and getattr(resp, 'intent_type', None):
+        _it = resp.intent_type
+        _orch = getattr(resp, 'orchestration', None)
+        if _orch and _orch.get('subtask_count', 0) > 1:
+            _trust = _orch.get('merged_trust')
+            _trust_str = f" · trust {_trust:.0%}" if _trust is not None else ""
+            reply_text = f"🔧 {_orch['subtask_count']} subtasks{_trust_str}\n\n{reply_text}"
+        elif _it and _it != 'multi_intent':
+            reply_text = f"🔧 {_it}\n\n{reply_text}"
+
     # If a contradiction was detected, add a visual indicator
     if resp.contradiction_detected:
         reply_text = "⚠️ Contradiction detected!\n\n" + reply_text

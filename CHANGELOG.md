@@ -5,6 +5,24 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
+## v2.8 — March 24, 2026
+
+Telegram full-pipeline integration. The Telegram channel now uses `/api/chat/stream` (SSE) instead of `/api/chat/send`, giving it the complete task pipeline: intent classification, sub-agent orchestration, capability re-route, side model tap, and trust propagation. Previously Telegram was conversational-only — asking "what apps are open?" would get an LLM guess instead of actually running system_info.
+
+### Feature
+- **CRTBridge stream mode** (`channels/base.py`) — new `_send_stream()` method consumes SSE events from `/api/chat/stream`. Parses all event types: intent_preview, agent_checkpoint, task_acknowledged, tool_start/result, subtask_start/done, orchestration_done, token, task_done, done, error
+- **Two-stream checkpoint handling** — when a checkpoint gate fires, the bridge auto-confirms low-risk intents (system_info, dir_list, git_action, file_read) by sending a follow-up "yes" stream and consuming the task result. High-risk intents (file_write, shell_exec, desktop_action) can be gated via an optional `checkpoint_callback`
+- **Task visibility in Telegram** — task responses show a `🔧 intent_type` header. Multi-agent orchestrations show `🔧 N subtasks · trust XX%`
+- **Graceful fallback** — if the stream endpoint fails, the bridge falls back to `/api/chat/send` (conversational-only) automatically
+- **ChannelResponse enrichment** — new fields: `route`, `intent_type`, `task_steps`, `orchestration` for downstream visibility
+
+### Infra
+- **Modified file**: `channels/base.py` (rewritten, ~280 lines)
+- **Modified file**: `channels/telegram_bot.py` (task header in replies)
+- **Dependency**: `python-telegram-bot[job-queue]` now installed with apscheduler support
+
+---
+
 ## v2.7 — March 24, 2026
 
 Side Model Tap — lightweight LLM side-channel for situational awareness. A gpt-4o-mini "quick tap" that fires at three moments: ambiguous input (clarify before routing), post-task completion (suggest next step from context), and reconnect after idle (welcome back with open task context). Runs in ~150ms, doesn't block the main pipeline, and degrades gracefully when cloud is unavailable.

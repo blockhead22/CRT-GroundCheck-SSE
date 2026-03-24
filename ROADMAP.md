@@ -1,9 +1,40 @@
 # CRT/Aether Roadmap
-Last updated: March 24, 2026 (v2.5)
+Last updated: March 24, 2026 (v2.7)
 
 ---
 
 ## DONE
+
+### v2.7 (March 24)
+- [x] Side Model Tap — `personal_agent/side_model_tap.py`: lightweight gpt-4o-mini side-channel for situational awareness
+- [x] Clarify tap — fires when intent classifier returns ambiguous (confidence < 0.75), asks if message needs clarification before routing
+- [x] Post-task suggest tap — fires after every task_done, passes completed task + open tasks to suggest follow-up
+- [x] Reconnect tap — fires when user returns after > 5 minutes of silence, welcome-back with open task context
+- [x] ~150ms latency, doesn't block main pipeline, degrades gracefully when cloud unavailable
+- [x] `side_tap` SSE event type, embedded in `done` event metadata
+- [x] Daily rate limits: 20 clarify, 20 suggest, 10 reconnect
+
+### v2.6 (March 24)
+- [x] Sub-agent protocol — `personal_agent/sub_agents.py`: SubTask/SubTaskResult dataclasses, SubAgent ABC with async execute + trust computation
+- [x] 8 concrete agents — SystemInfoAgent, FileAgent, ShellAgent, GitAgent, WebFetchAgent, DesktopToolAgent, GenerationAgent, CommitmentAgent
+- [x] Task orchestrator — `personal_agent/orchestrator.py`: decomposes multi-intent into dependency graph, runs independent tasks via asyncio.gather()
+- [x] Trust propagation — weakest-link: merged trust = min across all branches. Per-agent confidence levels (0.60-0.95)
+- [x] Dependency detection — sequential language markers ("then", "after that"), structural pipes (generate→write, fetch→respond)
+- [x] `run_stream_async()` on CRTTaskAgent for async bridge
+- [x] 4 new SSE events: orchestration_start, subtask_start, subtask_done, orchestration_done
+- [x] Orchestration UI in AgentThinkingStrip
+- [x] Schema migration: agent_name and orchestration_id columns on action_receipts
+
+### v2.4 (March 24)
+- [x] Task triage — `triage_message()` in task_agent: "pause to think" step with instant acknowledgment before full pipeline
+- [x] `task_acknowledged` SSE event with contextual message per intent type
+- [x] 13 intent-type acknowledgment templates ("Checking your system...", "Reading that file...", etc.)
+- [x] Capability-aware re-route — if classified intent is unavailable, re-routes to closest capability
+- [x] Post-task memory writer — writes brief memory fact about completed task for follow-up context
+- [x] 8 capability self-knowledge seeds in memory
+- [x] Composer pulse animation on task_acknowledged event
+- [x] Fix: silent routing failure from embedding errors in classify_intent_hybrid()
+- [x] Fix: multi-intent detection safety for NaN edge cases
 
 ### v2.5 (March 24)
 - [x] Belief synthesis engine — `personal_agent/belief_synthesis.py`: thematic clustering, temporal trajectory analysis, contradiction-aware synthesis
@@ -181,9 +212,9 @@ Last updated: March 24, 2026 (v2.5)
 
 ---
 
-## IN PROGRESS — Intelligence & Autonomy Layer (v2.4+)
+## COMPLETED SPRINTS — Intelligence & Autonomy Layer
 
-### Sprint 12: Task Triage & Orchestration Layer (v2.4, March 24) ← DONE
+### Sprint 12: Task Triage & Orchestration Layer (v2.4, March 24) ✓
 - [x] **Silent routing failure fix** — `classify_intent_hybrid()` now wraps embedding path in its own try/except; regex results survive embedding failures instead of dropping to conversational
 - [x] **Error logging upgrade** — chat.py intent classifier exception handler promoted from `warning` to `error` level
 - [x] **Task triage layer** — `triage_message()` function: pause-to-think step between classification and execution. Determines category (task/question/conversation/clarification), planning needs, tool requirements, and generates acknowledgment
@@ -199,11 +230,7 @@ Last updated: March 24, 2026 (v2.5)
 - [x] **Post-task memory writer** — `_write_facts()` stores what the agent did for desktop_action, system_info, file ops, shell, git tasks. Follow-up questions have context
 - [x] **Capability-aware re-route** — `_capability_reroute()` catches conversational-classified messages that match tool capabilities (e.g. "what apps are open?" → system_info)
 
-### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
-Skill.md files + credentials through existing pipeline. Add as needed:
-- [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
-
-### Sprint 8: Sub-Agent Interface + Delegation Protocol (v2.6, March 24) ← DONE
+### Sprint 8: Sub-Agent Interface + Delegation Protocol (v2.6, March 24) ✓
 - [x] **SubAgent ABC** — `personal_agent/sub_agents.py`: abstract base with `execute()`, `can_handle()`, trust computation, receipt logging
 - [x] **8 concrete agents** — SystemInfoAgent, FileAgent, ShellAgent, GitAgent, WebFetchAgent, DesktopToolAgent, GenerationAgent, CommitmentAgent. Each wraps existing tool functions via `asyncio.to_thread()`
 - [x] **SubTask/SubTaskResult dataclasses** — dependency graph edges (`depends_on`, `input_from`), trust metadata (`confidence`, `source_trust`, `propagated_trust`)
@@ -217,7 +244,7 @@ Skill.md files + credentials through existing pipeline. Add as needed:
 - [x] **Frontend orchestration UI** — AgentThinkingStrip shows subtask rows with agent names, live status (pending/running/ok/error), duration, and merged trust score. Parallel subtasks animate independently
 - [x] **App.tsx orchestration callbacks** — `onOrchestrationStart`, `onSubtaskStart`, `onSubtaskDone`, `onOrchestrationDone` wire into `agentThinkingState.orchestration`
 
-### Side Model Tap (v2.7, March 24) ← DONE
+### Side Model Tap (v2.7, March 24) ✓
 - [x] **SideModelTap** — `personal_agent/side_model_tap.py`: lightweight gpt-4o-mini side-channel for situational awareness. Three triggers:
 - [x] **Clarify tap** — fires when intent classifier returns conversational with low confidence (<0.75). Asks "does this need clarification?" before routing. Emits `side_tap` SSE event
 - [x] **Post-task suggest tap** — fires after task_done. Passes completed task + open tasks to side model, gets natural follow-up suggestion. Embedded in done event metadata
@@ -225,6 +252,14 @@ Skill.md files + credentials through existing pipeline. Add as needed:
 - [x] **Cloud integration** — reuses `CloudFeatureService._call_openai()` with 3 new daily limit categories (clarify: 20, suggest: 20, reconnect: 10)
 - [x] **Graceful degradation** — returns None when cloud unavailable, pipeline continues unchanged
 - [x] **`get_last_message_ts()`** on ThreadSessionDB for idle detection
+
+### Telegram Full-Pipeline Integration (v2.8, March 24) ✓
+- [x] **CRTBridge stream mode** — `channels/base.py` rewritten to consume `/api/chat/stream` SSE instead of `/api/chat/send`. Telegram now gets intent classification, sub-agents, orchestrator, capability re-route, and side model tap
+- [x] **SSE event parser** — `_consume_sse()` handles all event types: intent_preview, agent_checkpoint, task_acknowledged, tool/subtask progress, orchestration_done, token streaming, task_done, done, error
+- [x] **Checkpoint auto-confirmation** — low-risk intents (system_info, dir_list, git_action, file_read) auto-confirm via follow-up stream. High-risk (file_write, shell_exec, desktop_action) gated via optional callback
+- [x] **Task visibility** — Telegram replies show `🔧 intent_type` header for task routes, `🔧 N subtasks · trust XX%` for multi-agent orchestrations
+- [x] **Graceful fallback** — if `/api/chat/stream` fails, falls back to `/api/chat/send` (conversational-only)
+- [x] **JobQueue dependency** — `python-telegram-bot[job-queue]` installed with apscheduler for proactive notification polling
 
 ### Sprint 9: Synthesis Responses ✅ (v2.5)
 - [x] Worldview questions answered from compressed belief trajectories, not individual fact recall
@@ -239,6 +274,14 @@ Skill.md files + credentials through existing pipeline. Add as needed:
 - [x] Volatile facts surfaced proactively — "you recently changed your mind about X, using the new value"
 - [x] Context compression — stable high-trust facts compressed, volatile low-trust facts preserved in full
 - [x] Budget-aware retrieval — total context window managed as a resource, not unlimited
+
+---
+
+## IN PROGRESS
+
+### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
+Skill.md files + credentials through existing pipeline. Add as needed:
+- [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
 
 ---
 
