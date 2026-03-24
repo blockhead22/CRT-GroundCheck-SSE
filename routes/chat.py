@@ -777,6 +777,59 @@ def _format_preference_instruction(preference_profile: Optional[Dict[str, Any]])
     return "LEARNED USER PREFERENCES:\n" + "\n".join(f"- {line}" for line in lines)
 
 
+# ── Capability-aware re-route (Sprint 12) ──────────────────────────────
+# Patterns that should route to tools but the classifier missed.
+# These are checked ONLY when the classifier said "conversational".
+import re as _re_mod
+
+_CAPABILITY_REROUTE_PATTERNS = [
+    # System info queries
+    (
+        _re_mod.compile(
+            r"\b(what(?:'s| is| are)?\s+(?:apps?|programs?|processes?|windows?)\s+(?:are\s+)?(?:open|running|active))"
+            r"|(?:which\s+(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:open|running|active))"
+            r"|(?:(?:apps?|programs?|windows?)\s+(?:are\s+)?(?:open|running|active)\??)"
+            r"|(?:(?:how(?:'s| is)?\s+my\s+(?:system|computer|pc|machine|cpu|ram|gpu|memory|disk)))"
+            r"|(?:(?:check|show|what(?:'s)?)\s+(?:my\s+)?(?:system|cpu|ram|gpu|memory|disk)\s*(?:status|usage|info)?)",
+            _re_mod.IGNORECASE,
+        ),
+        "system_info",
+        {},
+    ),
+    # Desktop action queries that look like questions
+    (
+        _re_mod.compile(
+            r"\b(?:can you\s+)?(?:take|grab|capture)\s+(?:a\s+)?screenshot",
+            _re_mod.IGNORECASE,
+        ),
+        "desktop_action",
+        lambda msg: {"task_description": msg},
+    ),
+]
+
+
+def _capability_reroute(message: str, current_intent) -> "Optional[TaskIntent]":
+    """Check if a conversational message should actually route to a tool.
+
+    Returns a new TaskIntent if re-routing is needed, None otherwise.
+    """
+    from personal_agent.task_agent import TaskIntent
+
+    msg = message.strip()
+    for pattern, intent_type, slots_fn in _CAPABILITY_REROUTE_PATTERNS:
+        if pattern.search(msg):
+            _slots = slots_fn(msg) if callable(slots_fn) else dict(slots_fn)
+            return TaskIntent(
+                route="task",
+                intent_type=intent_type,
+                confidence=0.85,
+                slots=_slots,
+                reason="capability_reroute",
+                source="capability_reroute",
+            )
+    return None
+
+
 def _route_model_for_request(
     request: Request,
     *,
@@ -4680,6 +4733,23 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 _task_intent = None
                 _active_task = None
                 _user_confirmed = False
+
+            # ── CAPABILITY-AWARE RE-ROUTE (Sprint 12) ──────────────────────
+            # If the classifier said "conversational" but the message clearly
+            # matches a tool capability, override. This catches cases like
+            # "what apps are open?" falling through to conversational when
+            # system_info can answer it.
+            if _task_intent is not None and _task_intent.route == "conversational":
+                try:
+                    _rerouted = _capability_reroute(req.message, _task_intent)
+                    if _rerouted is not None:
+                        logger.info(
+                            "[STREAM] Capability re-route: %s → %s (was conversational)",
+                            req.message[:60], _rerouted.intent_type,
+                        )
+                        _task_intent = _rerouted
+                except Exception as _rre:
+                    logger.debug("[STREAM] capability re-route check failed: %s", _rre)
 
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             if _task_intent is not None and _task_intent.route == "task":

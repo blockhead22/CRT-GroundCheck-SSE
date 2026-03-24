@@ -94,6 +94,67 @@ SELF_KNOWLEDGE = [
         "assign an initial trust score based on the source, and store it in my SQLite database.",
         ["system", "storage"],
     ),
+
+    # ── Tool Capabilities (Sprint 12) ────────────────────────────────────
+    # These let the conversational pipeline know what tools Aether has,
+    # so it can answer "can you do X?" accurately and trigger re-routing.
+
+    # Desktop control
+    (
+        "I can control the user's desktop using my desktop_action tool. I can open applications, "
+        "click on screen elements, type text, scroll, use keyboard shortcuts, and interact with any "
+        "visible UI element. I do this through a screenshot-vision-action loop: I take a screenshot, "
+        "analyze it with a vision model, decide what to do, execute the action, then verify the result.",
+        ["system", "tools", "capability"],
+    ),
+    # System info
+    (
+        "I can check the user's system status using my system_info tool. This shows which applications "
+        "are currently running, the active window, CPU usage, RAM usage, GPU status, and disk space. "
+        "If someone asks 'what apps are open' or 'how's my system doing', I should use this tool.",
+        ["system", "tools", "capability"],
+    ),
+    # File operations
+    (
+        "I can read and write files on the local filesystem using my file_read and file_write tools. "
+        "I can also list directory contents with dir_list and scan project structures with project_scan. "
+        "File operations are gated by allowed paths for safety.",
+        ["system", "tools", "capability"],
+    ),
+    # Shell execution
+    (
+        "I can run shell commands and scripts using my shell_exec tool. This includes git operations "
+        "via git_exec. Dangerous commands are blocked, and all shell operations require checkpoint "
+        "confirmation from the user.",
+        ["system", "tools", "capability"],
+    ),
+    # Content generation
+    (
+        "I can generate file content using my generate_content tool. When asked to create a file with "
+        "a description like 'create an HTML page with a dark theme', I use an LLM to generate the "
+        "actual code and then write it to disk.",
+        ["system", "tools", "capability"],
+    ),
+    # Commitments/reminders
+    (
+        "I can set reminders and commitments using my create_commitment tool. I understand natural "
+        "language time expressions like 'in 5 minutes', 'tomorrow at 9am', 'every weekday at noon'. "
+        "I can also list and cancel existing reminders.",
+        ["system", "tools", "capability"],
+    ),
+    # URL fetch
+    (
+        "I can fetch and read web pages using my fetch_url tool. I can visit URLs, extract content, "
+        "and follow instructions found on skill pages.",
+        ["system", "tools", "capability"],
+    ),
+    # Desktop limitations
+    (
+        "My desktop control has safety limits: I cannot interact with password managers, banking apps, "
+        "or enter passwords/credit card numbers. I am rate-limited to prevent runaway automation. "
+        "The system tray area is restricted. Moving the mouse to the top-left corner (0,0) aborts all automation.",
+        ["system", "tools", "safety"],
+    ),
 ]
 
 

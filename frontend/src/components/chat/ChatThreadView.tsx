@@ -516,7 +516,6 @@ export function ChatThreadView(props: {
                       className="absolute inset-0 -z-10 blur-[80px] opacity-20"
                       style={{ background: 'radial-gradient(ellipse at center, rgba(212,132,92,0.5) 0%, transparent 70%)' }}
                     />
-                    <img src="src/images/rbt.png" alt="Robot hero" className="mx-auto mb-6 w-32 opacity-80" />
                     <motion.div
                       className="font-display md:text-8xl lg:text-9xl"
                       style={{ fontSize: 'clamp(4rem, 12vw, 9rem)', lineHeight: 1, color: '#F0EBE1' }}

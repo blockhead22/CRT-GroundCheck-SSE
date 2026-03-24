@@ -195,6 +195,9 @@ Last updated: March 24, 2026 (v2.5)
 - [x] **Settings toggle accent fix** — Toggle component uses `var(--accent)` instead of `bg-blue-500/80`
 - [x] **Idle task input debounce** — changed from onChange to onBlur to prevent PATCH request per keystroke
 - [x] **Nested button DOM fix** — Sidebar thread items changed from `motion.button` to `motion.div` with role="button" to eliminate `<button>` nested inside `<button>` console warnings
+- [x] **Capability self-knowledge seeds** — 8 tool capability facts seeded into CRT memory on startup (desktop control, system info, file ops, shell exec, content gen, commitments, URL fetch, safety limits)
+- [x] **Post-task memory writer** — `_write_facts()` stores what the agent did for desktop_action, system_info, file ops, shell, git tasks. Follow-up questions have context
+- [x] **Capability-aware re-route** — `_capability_reroute()` catches conversational-classified messages that match tool capabilities (e.g. "what apps are open?" → system_info)
 
 ### Sprint 5: External Integrations (ad hoc, no dedicated sprint)
 Skill.md files + credentials through existing pipeline. Add as needed:

@@ -53,11 +53,15 @@ Task triage & orchestration layer (Sprint 12). Adds a "pause to think" step betw
 - **Task acknowledgment SSE event** — new `task_acknowledged` event emitted before task execution. Frontend renders it as a real assistant message bubble
 - **Template-based acknowledgments** — 13 intent types with natural templates ("On it — I'll handle that on your desktop. Give me a moment."). No cloud latency
 - **Composer pulse animation** — accent-colored box-shadow pulse on the input container while a task is executing. Stops when task completes or errors
+- **Capability self-knowledge seeds** — 8 new tool capability facts in `seed_self_knowledge.py` (desktop control, system info, file ops, shell exec, content generation, commitments, URL fetch, desktop safety limits). Stored as SYSTEM-source memories with 0.95 trust so the LLM can answer "can you do X?" from real capabilities
+- **Post-task memory writer** — `_write_facts()` now stores what the agent did for desktop_action, system_info, file_write, file_read, dir_list, shell_exec, and git_action tasks. Follow-up questions like "what apps are open?" now have context from previous actions
+- **Capability-aware re-route** — new `_capability_reroute()` in chat.py catches messages that the classifier sent to conversational but clearly match a tool capability (e.g. "what apps are open?" re-routes to system_info, "take a screenshot" re-routes to desktop_action)
 
 ### Fix
 - **Silent routing failure** — `classify_intent_hybrid()` now wraps the embedding classification path in its own try/except. Previously, if `router.classify()` threw (VRAM conflict, model not loaded), the exception propagated up to `chat.py:4678` which set `_task_intent = None`, causing desktop_action requests to silently fall through to conversational. Now the regex result (e.g. `desktop_action` at 0.88 confidence) survives embedding failures
 - **Error logging upgrade** — intent classifier exception handler in chat.py promoted from `logger.warning` to `logger.error` so failures are impossible to miss in terminal output
 - **detect_multi_intent safety** — wrapped in its own try/except so multi-intent detection failures don't kill the classification
+- **"What apps are open?" routing** — previously fell through to conversational and returned "I don't have visibility." Now correctly routes to system_info tool via capability re-route
 
 ### Polish
 - **Settings toggle accent color** — Toggle component now uses `var(--accent)` instead of hardcoded `bg-blue-500/80` for the active state

@@ -184,6 +184,8 @@ INTENT_PROTOTYPES: Dict[str, List[str]] = {
         "can you open notepad",
         "launch firefox",
         "open up vs code",
+        "open visual studio code",
+        "open visual studio code for me",
         "start spotify",
         "open file explorer",
         "open the calculator",

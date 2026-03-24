@@ -255,7 +255,7 @@ _CANCEL_COMMITMENT_RE = re.compile(
 # Sprint 11 — Desktop control patterns
 _DESKTOP_ACTION_RE = re.compile(
     r"\b((?:(?:can|could|would)\s+you\s+)?(?:please\s+)?"
-    r"open\s+(?:up\s+)?(?:chrome|firefox|edge|brave|not[e]?pad|vs\s*code|file\s*explorer|"
+    r"open\s+(?:up\s+)?(?:chrome|firefox|edge|brave|not[e]?pad|(?:visual\s+studio\s+code|vs\s*code)|file\s*explorer|"
     r"settings|terminal|cmd|powershell|discord|spotify|steam|outlook|word|excel|"
     r"calculator|paint|snipping\s*tool|task\s*bar|start\s*menu|control\s*panel|"
     r"the\s+\w+(?:\s+\w+)?(?:\s+app)?)|"
@@ -2123,7 +2123,8 @@ class CRTTaskAgent:
 
         # ── 7. Write facts through CRT memory ────────────────────────────
         facts_written = self._write_facts(
-            thread_id, intent, fetched_content, stored_credentials, steps
+            thread_id, intent, fetched_content, stored_credentials, steps,
+            answer=answer,
         )
 
         # ── 8. Build suggested follow-up actions for read-only tools ──────
@@ -5018,6 +5019,7 @@ RULES:
         fetched_content: Optional[str],
         stored_credentials: Dict[str, str],
         steps: Optional[List[AgentStep]] = None,
+        answer: Optional[str] = None,
     ) -> List[str]:
         facts: List[str] = []
         if self._memory is None:
@@ -5048,6 +5050,68 @@ RULES:
                 self._memory.store_memory(text=text, confidence=0.72,
                     source=MemorySource.SYSTEM, thread_id=thread_id, kind="task_result")
                 facts.append(text[:120])
+
+            # ── Sprint 12: Store task completion as memory fact ───────────
+            # This lets follow-up questions like "what apps are open?" have
+            # context from what the agent just did.
+            if intent.intent_type == "desktop_action":
+                _task_desc = intent.slots.get("task_description", "")
+                # Extract a short summary from the answer or task description
+                _summary = ""
+                if answer:
+                    # Pull the first sentence from the answer (the deterministic summary)
+                    _first_line = answer.split(".")[0].strip()
+                    if _first_line and len(_first_line) > 10:
+                        _summary = _first_line
+                if not _summary:
+                    _summary = f"Completed desktop task: {_task_desc[:100]}"
+                _step_count = len([s for s in (steps or []) if s.status == "ok"])
+                text = f"RECENT ACTION: {_summary}. ({_step_count} steps)"
+                self._memory.store_memory(
+                    text=text, confidence=0.90,
+                    source=MemorySource.SYSTEM, thread_id=thread_id,
+                    kind="task_result",
+                )
+                facts.append(text)
+
+            elif intent.intent_type == "system_info":
+                # Store a brief system snapshot so follow-ups have context
+                if answer and len(answer) > 20:
+                    # Truncate to avoid storing huge system dumps
+                    _snippet = answer[:300].rstrip()
+                    text = f"RECENT ACTION: Checked system status. {_snippet}"
+                    self._memory.store_memory(
+                        text=text, confidence=0.80,
+                        source=MemorySource.SYSTEM, thread_id=thread_id,
+                        kind="task_result",
+                    )
+                    facts.append(text[:120])
+
+            elif intent.intent_type in ("file_write", "file_read", "dir_list", "shell_exec", "git_action"):
+                _action_verbs = {
+                    "file_write": "Wrote file",
+                    "file_read": "Read file",
+                    "dir_list": "Listed directory",
+                    "shell_exec": "Ran shell command",
+                    "git_action": "Ran git operation",
+                }
+                _verb = _action_verbs.get(intent.intent_type, "Completed task")
+                _target = (
+                    intent.slots.get("path", "")
+                    or intent.slots.get("command", "")
+                    or intent.slots.get("args", "")
+                )
+                if isinstance(_target, list):
+                    _target = " ".join(str(t) for t in _target)
+                _target_str = f": {_target[:80]}" if _target else ""
+                text = f"RECENT ACTION: {_verb}{_target_str}"
+                self._memory.store_memory(
+                    text=text, confidence=0.80,
+                    source=MemorySource.SYSTEM, thread_id=thread_id,
+                    kind="task_result",
+                )
+                facts.append(text[:120])
+
             for k in stored_credentials:
                 text = f"Task: stored credential '{k}' via task agent"
                 self._memory.store_memory(text=text, confidence=0.85,
