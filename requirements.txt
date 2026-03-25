@@ -17,6 +17,9 @@ requests==2.32.5
 beautifulsoup4==4.14.3
 python-dotenv==1.2.1
 
+# LLM provider abstraction (replaces direct ollama + anthropic SDK usage)
+litellm>=1.40.0
+
 # MySQL support
 pymysql>=1.0.0
 cryptography>=41.0.0

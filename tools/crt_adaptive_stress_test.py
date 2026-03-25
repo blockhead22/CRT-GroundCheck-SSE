@@ -33,7 +33,7 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 # Optional dependency: the LLM-driven controller uses Ollama.
 # Keep heuristic mode runnable without requiring the `ollama` package.
 try:
-    from personal_agent.ollama_client import get_ollama_client, OllamaClient
+    from personal_agent.litellm_client import get_default_llm_client as get_ollama_client, UnifiedLLMClient as OllamaClient
 except ModuleNotFoundError:  # pragma: no cover
     get_ollama_client = None  # type: ignore[assignment]
     OllamaClient = object  # type: ignore[misc,assignment]

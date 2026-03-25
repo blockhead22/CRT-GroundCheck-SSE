@@ -799,10 +799,10 @@ Output ONLY valid JSON, nothing else."""
         """Call LLM to get heartbeat decision."""
         try:
             # Try Ollama first (local)
-            from .ollama_client import OllamaClient
-            
+            from .litellm_client import get_default_llm_client
+
             llm_model = model or os.getenv("CRT_OLLAMA_MODEL") or "llama3.2:latest"
-            client = OllamaClient(model=llm_model)
+            client = get_default_llm_client(llm_model)
             
             response = client.generate(
                 prompt=prompt,

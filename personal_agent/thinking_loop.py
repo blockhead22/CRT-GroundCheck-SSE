@@ -133,9 +133,9 @@ class ThinkingLoop:
             if not os.getenv("CRT_ENABLE_LLM", "").lower() in ("1", "true", "yes"):
                 return None
             try:
-                from personal_agent.ollama_client import OllamaClient
+                from personal_agent.litellm_client import get_default_llm_client
                 model = os.getenv("CRT_OLLAMA_MODEL", "qwen3:14b")
-                self._llm_client = OllamaClient(model=model)
+                self._llm_client = get_default_llm_client(model)
             except Exception as e:
                 logger.warning(f"[THINKING] Failed to init LLM: {e}")
         return self._llm_client

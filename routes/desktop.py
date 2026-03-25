@@ -92,8 +92,8 @@ async def execute_desktop_task(req: DesktopExecuteRequest):
         controller = DesktopController()
         if _vision_provider == "api_key":
             from personal_agent.desktop_vision import ClaudeVisionProvider
-            from personal_agent.anthropic_client import AnthropicClient
-            vision = ClaudeVisionProvider(AnthropicClient())
+            from personal_agent.litellm_client import create_vision_client
+            vision = ClaudeVisionProvider(create_vision_client())
         else:
             vision = CookieVisionProvider()
         agent = DesktopAgent(

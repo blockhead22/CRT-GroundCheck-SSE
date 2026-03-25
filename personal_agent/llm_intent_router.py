@@ -467,9 +467,9 @@ def create_local_router(
     """Create an LLM router using the local Ollama model."""
     if ollama_client is None:
         try:
-            from personal_agent.ollama_client import get_ollama_client
+            from personal_agent.litellm_client import get_default_llm_client
             model = os.getenv("CRT_OLLAMA_MODEL", "qwen3:14b")
-            ollama_client = get_ollama_client(model)
+            ollama_client = get_default_llm_client(model)
         except Exception as e:
             logger.warning("[LLM_ROUTER] Could not create local router: %s", e)
             return None

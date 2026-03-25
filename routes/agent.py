@@ -206,7 +206,7 @@ def agent_status() -> AgentStatusResponse:
 
     try:
         from personal_agent.agent_loop import create_agent
-        from personal_agent.ollama_client import get_ollama_client
+        from personal_agent.litellm_client import get_default_llm_client as get_ollama_client
 
         # Test agent creation
         agent = create_agent()

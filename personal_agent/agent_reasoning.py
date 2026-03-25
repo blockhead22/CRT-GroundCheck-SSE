@@ -17,7 +17,7 @@ from typing import Any, Optional
 
 try:
     from personal_agent.agent_loop import AgentAction, AgentTrace, AgentStep, ToolCall
-    from personal_agent.ollama_client import get_ollama_client
+    from personal_agent.litellm_client import get_default_llm_client as get_ollama_client
 except ImportError as e:
     print(f"Warning: Import failed in agent_reasoning.py: {e}")
 

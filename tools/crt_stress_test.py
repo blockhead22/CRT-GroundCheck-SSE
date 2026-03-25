@@ -116,9 +116,9 @@ if ls_cfg.get("write_jsonl", True):
 
 ollama = None
 if not bool(getattr(args, "use_api", False)):
-    from personal_agent.ollama_client import get_ollama_client
+    from personal_agent.litellm_client import get_default_llm_client
 
-    ollama = get_ollama_client(args.model)
+    ollama = get_default_llm_client(args.model)
 
 
 def _api_base(url: str) -> str:

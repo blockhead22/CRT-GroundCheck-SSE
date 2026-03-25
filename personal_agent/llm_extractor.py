@@ -363,8 +363,8 @@ class LocalLLMFactExtractor(LLMFactExtractor):
     def _create_client(self) -> Optional[Any]:
         """Create Ollama client."""
         try:
-            from .ollama_client import OllamaClient
-            return OllamaClient(model=self.model)
+            from .litellm_client import get_default_llm_client
+            return get_default_llm_client(self.model)
         except ImportError:
             logger.warning("Ollama client not available.")
             return None

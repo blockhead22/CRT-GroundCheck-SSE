@@ -1538,10 +1538,10 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
     try:
         llm_client = engine.llm_client if hasattr(engine, "llm_client") else None
         if llm_client is None:
-            from personal_agent.ollama_client import OllamaClient
+            from personal_agent.litellm_client import get_default_llm_client
             import os
             fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
-            llm_client = OllamaClient(model=fast_model)
+            llm_client = get_default_llm_client(fast_model)
         # Use fast model for self-referential answers
         import os
         fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
@@ -1702,9 +1702,9 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
 
         # Let the LLM synthesize a natural summary from the raw facts
         try:
-            from personal_agent.ollama_client import OllamaClient
+            from personal_agent.litellm_client import get_default_llm_client
             fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
-            llm = OllamaClient(model=fast_model)
+            llm = get_default_llm_client(fast_model)
 
             system = (
                 "You are Aether. The user asked what you know about them. "

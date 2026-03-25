@@ -443,9 +443,9 @@ def _get_journal_llm_client() -> Optional[object]:
         return None
 
     try:
-        from .ollama_client import OllamaClient
+        from .litellm_client import get_default_llm_client
         model = os.getenv("CRT_JOURNAL_LLM_REFLECTION_MODEL") or os.getenv("CRT_OLLAMA_MODEL") or "deepseek-r1:latest"
-        _JOURNAL_LLM_CLIENT = OllamaClient(model=model)
+        _JOURNAL_LLM_CLIENT = get_default_llm_client(model)
         logger.info(f"[JOURNAL] LLM reflection enabled with model: {model}")
     except Exception as e:
         logger.warning(f"[JOURNAL] Failed to init LLM client: {e}")

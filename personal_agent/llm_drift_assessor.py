@@ -83,8 +83,8 @@ class LLMDriftAssessor:
             return True
             
         try:
-            from .ollama_client import OllamaClient
-            self.llm_client = OllamaClient(model=self.model)
+            from .litellm_client import get_default_llm_client
+            self.llm_client = get_default_llm_client(self.model)
             logger.info(f"[DRIFT_LLM] Initialized with model: {self.model}")
             return True
         except Exception as e:

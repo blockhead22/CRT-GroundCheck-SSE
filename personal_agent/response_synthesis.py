@@ -275,7 +275,7 @@ def get_response_synthesizer(llm_client=None, mode: str = "local") -> Optional[R
 
     # Try to create with default client
     try:
-        from personal_agent.ollama_client import get_ollama_client
+        from personal_agent.litellm_client import get_default_llm_client as get_ollama_client
         model = os.getenv("CRT_OLLAMA_MODEL", "qwen3:14b")
         client = get_ollama_client(model)
         _global_synthesizer = ResponseSynthesizer(client, mode=mode)

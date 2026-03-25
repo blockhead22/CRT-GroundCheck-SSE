@@ -76,10 +76,10 @@ def main() -> None:
     if args.with_crt:
         logger.info("Initialising CRTSystem with Ollama…")
         try:
-            from personal_agent.ollama_client import OllamaClient
+            from personal_agent.litellm_client import get_default_llm_client
             import os
             model = os.environ.get("CRT_OLLAMA_MODEL", "llama3.2:latest")
-            llm = OllamaClient(model=model)
+            llm = get_default_llm_client(model)
             from eval.baselines.crt_system import CRTSystem
             systems.append(CRTSystem(llm_client=llm))
             logger.info("CRTSystem added (model=%s)", model)

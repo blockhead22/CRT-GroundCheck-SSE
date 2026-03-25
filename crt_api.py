@@ -30,7 +30,7 @@ from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.fact_slots import extract_fact_slots, create_simple_fact
 from personal_agent.two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from personal_agent.artifact_store import now_iso_utc
-from personal_agent.hybrid_llm_client import HybridLLMClient, create_primary_llm_client
+from personal_agent.litellm_client import UnifiedLLMClient, create_llm_client
 from personal_agent.idle_scheduler import CRTIdleScheduler
 from personal_agent.evidence_packet import Citation, EvidencePacket
 from personal_agent.research_engine import ResearchEngine
@@ -1134,7 +1134,7 @@ def create_app() -> FastAPI:
     }
 
     # Initialize shared LLM client for all threads (lazy initialization)
-    _llm_client: Optional[HybridLLMClient] = None
+    _llm_client: Optional[UnifiedLLMClient] = None
     _llm_lock = threading.Lock()
     _default_router_model = str(
         os.getenv("CRT_OLLAMA_MODEL")
@@ -1147,7 +1147,7 @@ def create_app() -> FastAPI:
         raw = str(os.getenv("CRT_ENABLE_LLM", "true") or "").strip().lower()
         return raw not in {"0", "false", "no", "off"}
     
-    def get_llm_client() -> Optional[HybridLLMClient]:
+    def get_llm_client() -> Optional[UnifiedLLMClient]:
         """Get or create the shared primary LLM client."""
         nonlocal _llm_client
         
@@ -1159,7 +1159,7 @@ def create_app() -> FastAPI:
             if _llm_client is None:
                 try:
                     logger.info("[API] Initializing primary LLM client...")
-                    _llm_client = create_primary_llm_client(runtime_cfg)
+                    _llm_client = create_llm_client(runtime_cfg)
                     if _llm_client is not None:
                         logger.info(
                             "[API] Primary LLM initialized (product_mode=%s cloud_available=%s local_model=%s)",
@@ -1449,7 +1449,7 @@ def create_app() -> FastAPI:
             _cloud_cookie = None
             _oai_key = os.getenv("OPENAI_API_KEY", "").strip()
             if _oai_key:
-                from personal_agent.hybrid_llm_client import OpenAICompatibleClient
+                from personal_agent.litellm_client import OpenAICompatibleClient
                 _cloud_openai = OpenAICompatibleClient(
                     model="gpt-4o-mini",
                     api_key_env="OPENAI_API_KEY",

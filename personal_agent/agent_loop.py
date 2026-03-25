@@ -38,7 +38,7 @@ try:
     from personal_agent.crt_memory import CRTMemorySystem
     from personal_agent.research_engine import ResearchEngine
     from personal_agent.evidence_packet import EvidencePacket
-    from personal_agent.ollama_client import get_ollama_client
+    from personal_agent.litellm_client import get_default_llm_client as get_ollama_client
 except ImportError as e:
     print(f"Warning: Import failed in agent_loop.py: {e}")
     CRTMemorySystem = None
