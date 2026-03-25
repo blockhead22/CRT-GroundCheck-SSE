@@ -417,6 +417,65 @@ class UnifiedLLMClient:
 
     # ── Core LiteLLM call ─────────────────────────────────────────────
 
+    @staticmethod
+    def _fix_tool_call_ids(messages: List[Dict]) -> List[Dict]:
+        """Ensure every tool_call in the message history has an 'id' field.
+
+        LiteLLM's Ollama prompt template expects OpenAI-format tool calls
+        with an 'id' key.  The CRT agent loop stores tool calls as
+        {"name": ..., "arguments": ...} without 'id'.  This patch adds
+        synthetic IDs so LiteLLM doesn't crash on iteration 2+.
+        """
+        fixed: List[Dict] = []
+        call_counter = 0
+        for msg in messages:
+            if not isinstance(msg, dict):
+                fixed.append(msg)
+                continue
+            msg = dict(msg)  # shallow copy
+
+            # Fix assistant messages with tool_calls
+            if msg.get("tool_calls"):
+                new_tcs = []
+                for tc in msg["tool_calls"]:
+                    tc = dict(tc) if isinstance(tc, dict) else tc
+                    if isinstance(tc, dict):
+                        if "id" not in tc:
+                            tc["id"] = f"call_{call_counter}"
+                            call_counter += 1
+                        # Ensure OpenAI structure: {"id", "type", "function": {"name", "arguments"}}
+                        if "function" not in tc and "name" in tc:
+                            args = tc.get("arguments", {})
+                            if isinstance(args, dict):
+                                args = json.dumps(args)
+                            tc = {
+                                "id": tc["id"],
+                                "type": "function",
+                                "function": {
+                                    "name": tc["name"],
+                                    "arguments": args,
+                                },
+                            }
+                        elif "function" in tc:
+                            # Already OpenAI format — ensure arguments is a string
+                            fn = tc["function"]
+                            if isinstance(fn, dict) and isinstance(fn.get("arguments"), dict):
+                                tc["function"] = dict(fn)
+                                tc["function"]["arguments"] = json.dumps(fn["arguments"])
+                    new_tcs.append(tc)
+                msg["tool_calls"] = new_tcs
+                # Ollama requires content to be non-null on assistant msgs
+                if msg.get("content") is None:
+                    msg["content"] = ""
+
+            # Fix tool result messages — must have a tool_call_id
+            if msg.get("role") == "tool" and not msg.get("tool_call_id"):
+                # Try to match by name to a preceding call, else use synthetic
+                msg["tool_call_id"] = msg.get("name") or f"call_{call_counter}"
+
+            fixed.append(msg)
+        return fixed
+
     def _call(
         self,
         provider: str,
@@ -434,6 +493,9 @@ class UnifiedLLMClient:
 
         if scrub and provider in ("cloud", "anthropic"):
             messages = self._scrub_messages_for_cloud(messages)
+
+        # Patch tool call messages for LiteLLM compatibility
+        messages = self._fix_tool_call_ids(messages)
 
         effective_max = self._effective_max_tokens(max_tokens, resolved_model)
 
@@ -565,6 +627,10 @@ class UnifiedLLMClient:
         content = (result["content"] or "").strip()
         if content:
             _lower = content.lower()
+            # Degenerate JSON-only responses (e.g. "{}", "[]", "null")
+            if _lower in ("{}", "[]", "null", '""', "''"):
+                print(f"[LITELLM] Local returned degenerate response '{content}', falling through")
+                return None
             if not any(_lower.startswith(p) for p in self._META_STARTS):
                 return result
             print(f"[LITELLM] Local returned meta-reasoning, falling through: {content[:100]}")
@@ -584,6 +650,85 @@ class UnifiedLLMClient:
         except Exception as e:
             logger.warning("[LITELLM] Anthropic tool call failed: %s", e)
             return None
+
+    def _try_cookie_text_fallback(self, messages) -> Optional[Dict[str, Any]]:
+        """Last-resort fallback: use cookie-based Claude for a plain text answer.
+
+        When local returns garbage and there's no Anthropic API key, try the
+        cookie provider (CLAUDE_SESSION_COOKIE) for a text-only synthesis.
+        No tool calling — just ask Claude to answer based on the conversation.
+        """
+        try:
+            from .cloud_features import get_cloud_feature_service
+            svc = get_cloud_feature_service()
+            if svc is None or not svc._cookie_available():
+                return None
+
+            # Build a simple prompt from the message history
+            prompt_parts: List[str] = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                content = msg.get("content", "")
+                if not content or not isinstance(content, str):
+                    continue
+                if role == "system":
+                    continue  # system prompt is too long; cookie has its own
+                if role == "tool":
+                    # Include tool results as context
+                    name = msg.get("name", "tool")
+                    prompt_parts.append(f"[Tool result from {name}]: {content[:500]}")
+                elif role == "user":
+                    prompt_parts.append(f"User: {content}")
+                elif role == "assistant" and content.strip():
+                    prompt_parts.append(f"Assistant: {content[:300]}")
+
+            if not prompt_parts:
+                return None
+
+            system = (
+                "You are a helpful personal assistant. The user asked a question "
+                "and tools have already gathered the information shown below. "
+                "Synthesize a direct, natural answer from the tool results. "
+                "Be concise and warm. Speak in first person as the user's assistant. "
+                "Reply with ONLY the answer text — no JSON, no markdown fences, no wrapping."
+            )
+            prompt = "\n".join(prompt_parts[-8:])  # last 8 turns max
+
+            print("[LITELLM] Trying cookie-based Claude fallback for text answer")
+            raw = svc._call_cookie_text(system, prompt, max_tokens=1024, feature="agent_fallback")
+            if raw and raw.strip():
+                text = raw.strip()
+                # Strip JSON/markdown wrapping if Claude ignores the instruction
+                text = self._unwrap_json_response(text)
+                print(f"[LITELLM] Cookie fallback succeeded: {len(text)} chars")
+                return {"tool_calls": [], "content": text, "used_tools": False}
+
+            print("[LITELLM] Cookie fallback returned empty")
+        except Exception as e:
+            print(f"[LITELLM] Cookie fallback failed: {e}")
+        return None
+
+    @staticmethod
+    def _unwrap_json_response(text: str) -> str:
+        """Extract plain text from JSON-wrapped or markdown-fenced responses."""
+        t = text.strip()
+        # Strip markdown code fences
+        if t.startswith("```"):
+            lines = t.split("\n")
+            lines = [l for l in lines if not l.strip().startswith("```")]
+            t = "\n".join(lines).strip()
+        # Try to extract text from JSON wrapper
+        if t.startswith("{"):
+            try:
+                parsed = json.loads(t)
+                if isinstance(parsed, dict):
+                    # Look for common text keys
+                    for key in ("response", "answer", "content", "text", "message"):
+                        if key in parsed and isinstance(parsed[key], str):
+                            return parsed[key].strip()
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return t
 
     def chat_with_tools(
         self,
@@ -611,6 +756,9 @@ class UnifiedLLMClient:
             result = self._try_anthropic_tools(
                 messages, tools, max_tokens, temperature, model_name,
             )
+            if result:
+                return result
+            result = self._try_cookie_text_fallback(messages)
             return result or {
                 "tool_calls": [], "content": "[Cloud unavailable or rate-limited]",
                 "used_tools": False,
@@ -644,6 +792,10 @@ class UnifiedLLMClient:
         result = self._try_anthropic_tools(
             messages, tools, max_tokens, temperature, model_name,
         )
+        if result:
+            return result
+        # Last resort: cookie-based Claude for text answer
+        result = self._try_cookie_text_fallback(messages)
         return result or {"tool_calls": [], "content": "", "used_tools": False}
 
     # ── chat_stream() ─────────────────────────────────────────────────

@@ -96,14 +96,17 @@ class ReasoningEngine:
         self.reasoning_traces = []  # Internal log
         self._last_behavioral_directives = {}  # Set by _build_quick_prompt from reflection loop
         self.dnnt = None
-        self.dnnt_enabled = str(os.getenv("CRT_DNNT_ENABLED", "true")).strip().lower() in {
+        self.dnnt_enabled = str(os.getenv("CRT_DNNT_ENABLED", "false")).strip().lower() in {
             "1", "true", "yes", "y", "on"
         }
         self.dnnt_confidence_threshold = float(os.getenv("CRT_DNNT_CONFIDENCE_THRESHOLD", "0.62"))
 
         if self.llm is None:
             print("[REASONING] No LLM client provided - using fallback reasoning")
-        
+
+        if not self.dnnt_enabled:
+            print("[REASONING] DNNT disabled (set CRT_DNNT_ENABLED=true to re-enable)")
+
         if self.dnnt_enabled:
             try:
                 from .dnnt.inference import ReasoningInference

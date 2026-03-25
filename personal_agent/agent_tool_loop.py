@@ -120,11 +120,15 @@ class LoopResult:
 # Tool execution bridge
 # ---------------------------------------------------------------------------
 
-def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str) -> Dict[str, Any]:
+def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str,
+                   engine=None) -> Dict[str, Any]:
     """Execute a registered tool and return the result.
 
     Returns dict with keys: content (str), status (str), metadata (dict).
     Reuses the same execution functions as CRTTaskAgent._run_* methods.
+
+    Args:
+        engine: Optional CRTEnhancedRAG instance for memory access.
     """
     try:
         if tool_name == "file_read":
@@ -266,8 +270,24 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str) -> 
                     "metadata": {"tool_name": tool_name, "byte_count": len(text)}}
 
         elif tool_name == "memory_recall":
-            # Attempt memory recall if memory system is available
-            return {"content": "(memory recall not available in loop mode)", "status": "ok",
+            query = tool_args.get("query", "").strip()
+            if not query:
+                return {"content": "(no query provided)", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+            if engine is not None and hasattr(engine, "memory"):
+                results = engine.memory.retrieve_memories(query, k=5)
+                if results:
+                    lines = []
+                    for mem, score in results:
+                        text = getattr(mem, "text", str(mem))
+                        trust = getattr(mem, "trust", None)
+                        trust_tag = f" [trust={trust:.2f}]" if trust is not None else ""
+                        lines.append(f"- {text}{trust_tag} (score={score:.3f})")
+                    return {"content": "\n".join(lines), "status": "ok",
+                            "metadata": {"tool_name": tool_name, "result_count": len(results)}}
+                return {"content": "(no matching memories found)", "status": "ok",
+                        "metadata": {"tool_name": tool_name, "result_count": 0}}
+            return {"content": "(memory system not available)", "status": "error",
                     "metadata": {"tool_name": tool_name}}
 
         elif tool_name == "generate_content":
@@ -276,17 +296,40 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str) -> 
                     "status": "ok", "metadata": {"tool_name": tool_name}}
 
         elif tool_name == "create_commitment":
-            from personal_agent.scheduled_tasks import schedule_reminder
             intent_text = tool_args.get("intent", "")
+            description = tool_args.get("description", intent_text)
+            # If there's a deadline, treat as a scheduled reminder
             deadline = tool_args.get("deadline")
-            recurrence = tool_args.get("recurrence")
-            priority = tool_args.get("priority", "medium")
-            result = schedule_reminder(
-                intent=intent_text, description=tool_args.get("description", intent_text),
-                deadline=deadline, recurrence=recurrence, priority=priority, thread_id=thread_id,
-            )
-            return {"content": f"✓ Reminder set: {intent_text}", "status": "ok",
-                    "metadata": {"tool_name": tool_name, "reminder_id": result.get("id", "")}}
+            if deadline and engine is None:
+                # No engine — try scheduled tasks
+                try:
+                    from personal_agent.scheduled_tasks import create_scheduled_task
+                    from datetime import datetime
+                    task_id = f"reminder_{thread_id}_{int(time.time() * 1000)}"
+                    create_scheduled_task(task_id, thread_id, intent_text, datetime.fromisoformat(deadline))
+                    return {"content": f"✓ Reminder set: {intent_text}", "status": "ok",
+                            "metadata": {"tool_name": tool_name}}
+                except Exception as e:
+                    return {"content": f"✗ Failed to create reminder: {e}", "status": "error",
+                            "metadata": {"tool_name": tool_name, "error": str(e)}}
+            # No deadline — store as a memory fact
+            if engine is not None and hasattr(engine, "memory"):
+                try:
+                    from personal_agent.crt_core import MemorySource
+                    fact_text = description or intent_text
+                    engine.memory.store_memory(
+                        fact_text,
+                        confidence=0.9,
+                        source=MemorySource.USER,
+                        context={"origin": "agent_loop", "thread_id": thread_id},
+                    )
+                    return {"content": f"✓ Stored: {fact_text}", "status": "ok",
+                            "metadata": {"tool_name": tool_name}}
+                except Exception as e:
+                    return {"content": f"✗ Failed to store: {e}", "status": "error",
+                            "metadata": {"tool_name": tool_name, "error": str(e)}}
+            return {"content": f"✓ Noted: {intent_text} (not persisted — no memory system)",
+                    "status": "ok", "metadata": {"tool_name": tool_name}}
 
         elif tool_name == "list_commitments":
             from personal_agent.scheduled_tasks import list_reminders
@@ -337,11 +380,13 @@ class AgentToolLoop:
         session_db=None,
         max_iterations: int = 10,
         show_thinking: bool = True,
+        engine=None,
     ):
         self.llm_client = llm_client
         self.session_db = session_db
         self.max_iterations = max_iterations
         self.show_thinking = show_thinking
+        self.engine = engine
 
     def run(
         self,
@@ -537,7 +582,7 @@ class AgentToolLoop:
                 }
 
                 t0 = time.time()
-                result = _execute_tool(tool_name, tool_args, thread_id)
+                result = _execute_tool(tool_name, tool_args, thread_id, engine=self.engine)
                 elapsed_ms = (time.time() - t0) * 1000
 
                 step.status = result["status"]
@@ -569,6 +614,7 @@ class AgentToolLoop:
                 })
                 messages.append({
                     "role": "tool",
+                    "name": tool_name,
                     "content": result["content"][:4000],  # Keep context manageable
                 })
 
@@ -681,6 +727,7 @@ def run_agent_tool_loop(
     conversation_history: Optional[List[Dict[str, str]]] = None,
     max_iterations: int = 10,
     show_thinking: bool = True,
+    engine=None,
 ) -> Generator[Dict[str, Any], Optional[bool], None]:
     """Convenience wrapper to create and run an AgentToolLoop.
 
@@ -698,6 +745,7 @@ def run_agent_tool_loop(
         session_db=session_db,
         max_iterations=max_iterations,
         show_thinking=show_thinking,
+        engine=engine,
     )
     yield from loop.run(
         message,

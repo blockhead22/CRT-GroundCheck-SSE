@@ -4831,11 +4831,17 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     })
 
                                     # Now re-run the agent loop with the confirmed result already in context
+                                    _alr_engine = None
+                                    try:
+                                        _alr_engine = request.app.state.get_engine(req.thread_id)
+                                    except Exception:
+                                        pass
                                     _loop_alr = AgentToolLoop(
                                         _llm_client_alr,
                                         session_db=_session_db,
                                         max_iterations=_al_cfg_alr.get("max_iterations", 10),
                                         show_thinking=_al_cfg_alr.get("show_thinking", True),
+                                        engine=_alr_engine,
                                     )
 
                                     # Build messages with the confirmed tool result already included
@@ -5226,11 +5232,19 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception as _tooling_err:
                         _safe_print(f"[AGENT_LOOP] Warning: failed to read tooling settings: {_tooling_err}")
 
+                    # Get engine for memory access in tool loop
+                    _al_engine = None
+                    try:
+                        _al_engine = request.app.state.get_engine(req.thread_id)
+                    except Exception:
+                        pass
+
                     _loop = AgentToolLoop(
                         _llm_client_al,
                         session_db=_session_db,
                         max_iterations=_al_max_iter,
                         show_thinking=_al_show_thinking,
+                        engine=_al_engine,
                     )
 
                     _loop_gen = _loop.run(
