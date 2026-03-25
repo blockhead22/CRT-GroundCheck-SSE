@@ -650,6 +650,7 @@ export default function App() {
               }
             },
             onAgentCheckpoint: (message, metadata) => {
+              console.log(`[APP_DEBUG] onAgentCheckpoint message="${message}" meta=`, metadata)
               // Show the checkpoint message as streamed response AND activate the action card
               setStreamingResponse(message)
               setPendingCheckpoint({ message, metadata })
@@ -707,10 +708,12 @@ export default function App() {
               setStreamingResponse(finalBufferRef.current)
             },
             onToken: (token) => {
+              console.log(`[APP_DEBUG] onToken len=${token.length} preview=${token.slice(0, 100)}`)
               finalBufferRef.current += token
               setStreamingResponse(finalBufferRef.current)
             },
             onDone: (content, metadata) => {
+              console.log(`[APP_DEBUG] onDone content_len=${content.length} checkpoint_pending=${(metadata as any)?.checkpoint_pending} agent_loop=${(metadata as any)?.agent_loop}`, content.slice(0, 200))
               const at = Date.now()
               // Prefer thinking from metadata (server-side) if available, fallback to streamed content
               const finalThinking = (metadata?.thinking as string) || thinkingContent || undefined

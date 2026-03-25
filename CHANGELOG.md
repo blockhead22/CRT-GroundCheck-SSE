@@ -5,9 +5,13 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
-## v3.1 — March 24, 2026
+## v3.1 — In Progress (March 24, 2026)
 
 Agentic Tool Loop — LLM-driven ReAct loop for the main chat pipeline. Replaces the classify-once-execute-blind pattern with a true iterative tool-calling loop where the LLM sees intermediate results and decides what to do next. The LLM calls tools, observes results, and repeats until the task is complete. Multi-step compound requests ("read this file and copy it to X") now work in a single user message without manual intervention.
+
+### Currently Working On
+- **Ollama JSON 400 on tool continuation** — after checkpoint confirmation, Ollama's parser chokes on tool result payloads containing curly braces (`"Value looks like object, but can't find closing '}' symbol"`). File content with `{`/`}` breaks the JSON parser. Needs content escaping or truncation before re-sending to Ollama.
+- **Tooling settings tab** — new Settings tab to configure per-tool model selection and fallback policy. Controls which model (local/cloud) handles which tool, and what happens when the primary model fails.
 
 ### Feature
 - **AgentToolLoop** (`personal_agent/agent_tool_loop.py`, ~530 lines) — core loop engine: sends conversation + tool definitions to the LLM, processes tool calls, appends results to context, repeats until LLM returns text or hits max iterations. Supports both local Ollama and cloud LLMs via `chat_with_tools()`. Yields SSE events in real-time for the frontend

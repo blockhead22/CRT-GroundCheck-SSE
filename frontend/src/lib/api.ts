@@ -553,7 +553,12 @@ export async function streamFromCrtApi(args: {
         if (line.startsWith('data: ')) {
           try {
             const event: StreamEvent = JSON.parse(line.slice(6))
-            
+
+            // SSE pipeline debug — remove after diagnosis
+            if (['token', 'done', 'agent_checkpoint', 'agent_loop_start', 'agent_loop_complete', 'tool_start', 'tool_result', 'error'].includes(event.type)) {
+              console.log(`[SSE_DEBUG] type=${event.type} content_len=${(event.content || '').length}`, event.type === 'done' ? event : '')
+            }
+
             switch (event.type) {
               case 'status':
                 args.callbacks.onStatus?.(event.content)

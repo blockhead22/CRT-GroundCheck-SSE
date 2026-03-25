@@ -459,12 +459,17 @@ class HybridLLMClient:
 
         # Local route (default)
         if self.local_client is not None and hasattr(self.local_client, "chat_with_tools"):
-            return self.local_client.chat_with_tools(
+            result = self.local_client.chat_with_tools(
                 messages, tools=tools, max_tokens=max_tokens,
                 temperature=temperature, model=selected_model,
             )
+            # Quality gate: if local returned something useful, use it
+            if result.get("tool_calls") or (result.get("content") or "").strip():
+                return result
+            # Local returned empty — fall through to Anthropic
+            print("[HYBRID] Local chat_with_tools returned empty, falling through to Anthropic")
 
-        # Anthropic fallback if local unavailable
+        # Anthropic fallback if local unavailable or returned empty
         if self.anthropic_client is not None and self._check_anthropic_rate_limit():
             result = self.anthropic_client.chat_with_tools(
                 messages, tools=tools, max_tokens=max_tokens,

@@ -410,6 +410,25 @@ class OllamaClient:
                         "repeat_penalty": 1.15,
                     },
                 }
+                # Debug: dump payload to verify it's valid JSON
+                import json as _json
+                try:
+                    _json_str = _json.dumps(_payload)
+                    print(f"[OLLAMA] Tool call payload size: {len(_json_str)}, msgs: {len(messages)}, tools: {len(tools)}")
+                except TypeError as _te:
+                    print(f"[OLLAMA] Payload NOT JSON-serializable: {_te}")
+                    # Find the problematic part
+                    for i, m in enumerate(messages):
+                        try:
+                            _json.dumps(m)
+                        except TypeError as _me:
+                            print(f"[OLLAMA]   message[{i}] bad: {_me} — type={type(m)}, keys={m.keys() if hasattr(m, 'keys') else 'N/A'}")
+                    for i, t in enumerate(tools):
+                        try:
+                            _json.dumps(t)
+                        except TypeError as _tte:
+                            print(f"[OLLAMA]   tool[{i}] bad: {_tte}")
+
                 _resp = httpx.post(f"{_base}/api/chat", json=_payload, timeout=120.0)
                 if _resp.status_code != 200:
                     print(f"[OLLAMA] Tool call HTTP {_resp.status_code}: {_resp.text[:500]}")
@@ -431,6 +450,16 @@ class OllamaClient:
                 if hasattr(response, "message")
                 else response.get("message", {})
             )
+
+            # Debug: dump raw message
+            if isinstance(msg, dict):
+                _dbg_content = (msg.get("content") or "")[:300]
+                _dbg_tcs = len(msg.get("tool_calls") or [])
+                print(f"[OLLAMA_DEBUG] raw msg: content_len={len(msg.get('content') or '')}, tool_calls={_dbg_tcs}, content_preview={_dbg_content[:200]}")
+            else:
+                _dbg_content = (getattr(msg, 'content', '') or '')[:300]
+                _dbg_tcs = len(getattr(msg, 'tool_calls', None) or [])
+                print(f"[OLLAMA_DEBUG] pydantic msg: content_len={len(getattr(msg, 'content', '') or '')}, tool_calls={_dbg_tcs}, content_preview={_dbg_content[:200]}")
 
             # Extract tool calls (pydantic or dict)
             raw_tool_calls = []
@@ -465,11 +494,24 @@ class OllamaClient:
                         "arguments": args if isinstance(args, dict) else {},
                     })
 
-            content = ""
+            # Extract content with thinking-token recovery (same as chat())
+            raw_content = ""
             if hasattr(msg, "content"):
-                content = msg.content or ""
+                raw_content = msg.content or ""
             elif isinstance(msg, dict):
-                content = msg.get("content", "") or ""
+                raw_content = msg.get("content", "") or ""
+
+            thinking = ""
+            if hasattr(msg, "thinking"):
+                thinking = msg.thinking or ""
+            elif isinstance(msg, dict):
+                thinking = msg.get("thinking", "") or ""
+
+            # Apply _resolve_visible_text so thinking content is recovered
+            if raw_content or thinking:
+                content = self._resolve_visible_text(raw_content, thinking)
+            else:
+                content = ""
 
             return {
                 "tool_calls": parsed_calls,

@@ -5155,12 +5155,14 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             except Exception:
                 pass
 
+            _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}")
             if (
                 _agent_loop_enabled
                 and _task_intent is not None
                 and _task_intent.route == "task"
                 and not _user_confirmed  # Agent loop handles its own checkpoints
             ):
+                _safe_print("[AGENT_LOOP_GATE] >>> ENTERING agent tool loop path")
                 try:
                     from personal_agent.agent_tool_loop import AgentToolLoop
 
@@ -5191,6 +5193,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _event = next(_loop_gen)
                         while True:
                             # Emit the event to SSE
+                            logger.info("[SSE_DEBUG] Emitting event type=%s content_len=%d", _event.get("type"), len(str(_event.get("content", ""))))
                             yield _sse(_event)
 
                             if _event["type"] == "agent_checkpoint":
@@ -5231,7 +5234,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except StopIteration:
                         _al_done = True
 
+                    logger.info("[SSE_DEBUG] Loop exited: checkpoint_hit=%s, al_done=%s, al_answer_len=%d, steps=%d",
+                               _al_checkpoint_hit, _al_done, len(_al_answer), len(_al_steps))
+
                     if _al_checkpoint_hit:
+                        logger.info("[SSE_DEBUG] Emitting checkpoint-done, content=%.200s", _event.get("content", "")[:200])
                         yield _sse({
                             "type": "done",
                             "content": _event.get("content", ""),
@@ -5240,6 +5247,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         return
 
                     # Agent loop completed — emit done
+                    logger.info("[SSE_DEBUG] Emitting final done, al_answer_len=%d, preview=%.200s", len(_al_answer), _al_answer[:200])
                     _done_meta_al = {
                         "tool_calls": _al_steps,
                         "agent_loop": True,
@@ -5250,10 +5258,12 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     return
 
                 except Exception as _al_err:
+                    _safe_print(f"[AGENT_LOOP_GATE] >>> EXCEPTION in agent loop: {_al_err}")
                     logger.warning("[STREAM] Agent tool loop failed, falling back to legacy path: %s", _al_err, exc_info=True)
                     # Fall through to legacy path
 
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
+            _safe_print("[AGENT_LOOP_GATE] >>> LEGACY PATH (agent loop was skipped or failed)")
             if _task_intent is not None and _task_intent.route == "task":
                 try:
                     _get_engine = request.app.state.get_engine
@@ -5266,6 +5276,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         llm_client=_llm_client,
                         session_db=_session_db,
                     )
+                    _safe_print(f"[LEGACY_PATH] CRTTaskAgent created, intent_type={_task_intent.intent_type}")
 
                     # ── Sprint 8: Pick sync vs async orchestrated path ────
                     # Multi-intent tasks use the async orchestrator for

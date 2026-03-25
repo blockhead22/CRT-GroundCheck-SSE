@@ -385,6 +385,8 @@ class AgentToolLoop:
 
         for iteration in range(self.max_iterations):
             logger.info("[AGENT_LOOP] Iteration %d/%d", iteration + 1, self.max_iterations)
+            _total_msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
+            print(f"[AGENT_LOOP_DEBUG] Iteration {iteration+1}: {len(messages)} messages, ~{_total_msg_chars} chars total")
 
             # ── 1. Call LLM with tools ─────────────────────────────────────
             try:
@@ -395,6 +397,7 @@ class AgentToolLoop:
                     temperature=0.1,
                 )
             except Exception as e:
+                print(f"[AGENT_LOOP_DEBUG] LLM call FAILED: {e}")
                 logger.error("[AGENT_LOOP] LLM call failed: %s", e)
                 yield {
                     "type": "token",
@@ -403,8 +406,14 @@ class AgentToolLoop:
                 break
 
             # ── 2. Check if LLM returned text (no tool calls) ─────────────
+            print(f"[AGENT_LOOP_DEBUG] Raw LLM response keys={list(llm_response.keys())} used_tools={llm_response.get('used_tools')}")
             tool_calls = llm_response.get("tool_calls", [])
             text_content = (llm_response.get("content") or "").strip()
+
+            print(f"[AGENT_LOOP_DEBUG] iter={iteration+1}  tool_calls={len(tool_calls)}  text_len={len(text_content)}  text_preview={text_content[:200] if text_content else '(empty)'}")
+            if tool_calls:
+                for _tc_dbg in tool_calls:
+                    print(f"[AGENT_LOOP_DEBUG]   tool: {_tc_dbg.get('name')}  args_keys={list(_tc_dbg.get('arguments', {}).keys()) if isinstance(_tc_dbg.get('arguments'), dict) else 'raw'}")
 
             if not tool_calls:
                 # LLM is done — emit final answer
@@ -421,7 +430,10 @@ class AgentToolLoop:
                             "metadata": {"step": "final_reasoning"},
                         }
 
+                    print(f"[AGENT_LOOP_DEBUG] Emitting final token, len={len(clean_text)}, preview={clean_text[:200]}")
                     yield {"type": "token", "content": clean_text}
+                else:
+                    print("[AGENT_LOOP_DEBUG] No tool_calls AND empty text — loop ending with no final answer")
                 break
 
             # ── 3. Process each tool call ──────────────────────────────────
@@ -462,6 +474,7 @@ class AgentToolLoop:
                     text_content = ""  # Only emit once per iteration
 
                 # ── 3b. Checkpoint gate for Layer 3+ tools ─────────────
+                print(f"[AGENT_LOOP_DEBUG] Tool={tool_name} needs_checkpoint={_needs_checkpoint(tool_name)}")
                 if _needs_checkpoint(tool_name):
                     td = TOOL_REGISTRY.get(tool_name)
                     tier = td.checkpoint_tier if td else "high"
@@ -494,15 +507,12 @@ class AgentToolLoop:
 
                         messages.append({
                             "role": "assistant",
-                            "content": None,
-                            "tool_calls": [{"id": f"call_{iteration}_{tool_name}",
-                                           "type": "function",
-                                           "function": {"name": tool_name,
-                                                       "arguments": json.dumps(tool_args)}}],
+                            "content": "",
+                            "tool_calls": [{"function": {"name": tool_name,
+                                                        "arguments": tool_args}}],
                         })
                         messages.append({
                             "role": "tool",
-                            "tool_call_id": f"call_{iteration}_{tool_name}",
                             "content": "User denied this action. Adapt your approach or ask the user what they'd like instead.",
                         })
 
@@ -547,18 +557,15 @@ class AgentToolLoop:
                 }
 
                 # ── 3d. Append tool call + result to messages ──────────
-                # Use the format expected by the LLM for tool results
+                # Use Ollama's expected format (no id/type, arguments as dict, content as string)
                 messages.append({
                     "role": "assistant",
-                    "content": None,
-                    "tool_calls": [{"id": f"call_{iteration}_{tool_name}",
-                                   "type": "function",
-                                   "function": {"name": tool_name,
-                                               "arguments": json.dumps(tool_args)}}],
+                    "content": "",
+                    "tool_calls": [{"function": {"name": tool_name,
+                                                "arguments": tool_args}}],
                 })
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": f"call_{iteration}_{tool_name}",
                     "content": result["content"][:4000],  # Keep context manageable
                 })
 
