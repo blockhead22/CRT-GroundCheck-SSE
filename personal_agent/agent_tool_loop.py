@@ -58,6 +58,9 @@ output) as the content parameter.
 9. For git commands, extract subcommand + args into the args array.
 10. Be concise in your final answers. Don't repeat raw tool output — interpret it.
 11. Put ALL internal reasoning in <think> tags. Everything outside <think> is shown verbatim.
+12. PREFER shell_exec for file operations (copy, move, rename, delete). Use native \
+OS commands: on Windows use "copy", "move", "del", "xcopy"; on Linux/Mac use \
+"cp", "mv", "rm". This is faster and more reliable than file_read + file_write.
 
 IMPORTANT: You must ONLY use the tools provided. Do not invent tool names."""
 

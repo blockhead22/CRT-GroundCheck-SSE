@@ -2062,6 +2062,22 @@ export async function updateCloudSettings(settings: Partial<CloudSettings>): Pro
   return data.updated
 }
 
+export interface AvailableModels {
+  local: Array<{ name: string; size?: string }>
+  cloud: Array<{ name: string; label: string }>
+  anthropic: Array<{ name: string; label: string }>
+}
+
+export async function getAvailableModels(): Promise<AvailableModels> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  const res = await fetch(`${base}/api/tooling/models`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`Failed to load models: ${res.statusText}`)
+  return await res.json()
+}
+
 export async function getCloudUsage(): Promise<CloudUsage> {
   const base = getApiBaseUrlInternal()
   const token = getAuthToken()

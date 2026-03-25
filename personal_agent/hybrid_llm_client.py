@@ -174,6 +174,7 @@ class HybridLLMClient:
         self.cloud_policy = cloud_policy or CloudPromptPolicy()
         self.rate_limiter = rate_limiter
         self.model_roles: Dict[str, str] = model_roles or {}
+        self.fallback_policy: str = "local_to_cloud"  # local_to_cloud | cloud_to_local | local_only | cloud_only
 
     @property
     def model(self) -> str:
@@ -431,6 +432,43 @@ class HybridLLMClient:
             safe_messages.append(safe_item)
         return safe_messages
 
+    def _try_anthropic_tools(self, messages, tools, max_tokens, temperature, model):
+        """Attempt Anthropic tool call. Returns result or None."""
+        if self.anthropic_client is not None and self._check_anthropic_rate_limit():
+            safe_messages = self._scrub_messages_for_cloud(messages)
+            result = self.anthropic_client.chat_with_tools(
+                safe_messages, tools=tools, max_tokens=max_tokens,
+                temperature=temperature, model=model,
+            )
+            self._record_anthropic_usage()
+            return result
+        return None
+
+    def _try_local_tools(self, messages, tools, max_tokens, temperature, model):
+        """Attempt local (Ollama) tool call with quality gate. Returns result or None."""
+        if self.local_client is None or not hasattr(self.local_client, "chat_with_tools"):
+            return None
+        result = self.local_client.chat_with_tools(
+            messages, tools=tools, max_tokens=max_tokens,
+            temperature=temperature, model=model,
+        )
+        # Quality gate: tool calls are always valid
+        if result.get("tool_calls"):
+            return result
+        # Check if content is just meta-reasoning (not a real answer)
+        content = (result.get("content") or "").strip()
+        if content:
+            _lower = content.lower()
+            _meta_starts = ("i should", "i need to", "let me", "i will",
+                            "i'll", "the next step", "now i", "i want to",
+                            "[model returned internal")
+            if not any(_lower.startswith(p) for p in _meta_starts):
+                return result
+            print(f"[HYBRID] Local returned meta-reasoning, falling through: {content[:100]}")
+        else:
+            print("[HYBRID] Local chat_with_tools returned empty, falling through")
+        return None
+
     def chat_with_tools(
         self,
         messages: List[Dict[str, Any]],
@@ -439,43 +477,50 @@ class HybridLLMClient:
         temperature: float = 0.3,
         model: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Tool-calling — routes to anthropic, local, or cloud."""
+        """Tool-calling — routes based on explicit provider prefix or fallback_policy."""
         provider, selected_model = self._resolve_target(model)
 
-        # Anthropic route — Claude has native tool calling
-        if provider == "anthropic" and self.anthropic_client is not None:
-            if self._check_anthropic_rate_limit():
-                safe_messages = self._scrub_messages_for_cloud(messages)
-                result = self.anthropic_client.chat_with_tools(
-                    safe_messages, tools=tools, max_tokens=max_tokens,
-                    temperature=temperature, model=selected_model,
-                )
-                self._record_anthropic_usage()
+        # Explicit provider from model string (e.g., "anthropic:claude-sonnet-4-6")
+        if provider == "anthropic":
+            result = self._try_anthropic_tools(messages, tools, max_tokens, temperature, selected_model)
+            if result:
                 return result
-            else:
-                logger.info("[HYBRID] Anthropic rate limited for tool call, falling back to local")
-                if self.rate_limiter:
-                    self.rate_limiter.record_fallback()
+            # Rate limited — fall through based on policy
+            if self.rate_limiter:
+                self.rate_limiter.record_fallback()
 
-        # Local route (default)
-        if self.local_client is not None and hasattr(self.local_client, "chat_with_tools"):
-            result = self.local_client.chat_with_tools(
-                messages, tools=tools, max_tokens=max_tokens,
-                temperature=temperature, model=selected_model,
-            )
-            # Quality gate: if local returned something useful, use it
-            if result.get("tool_calls") or (result.get("content") or "").strip():
+        policy = self.fallback_policy or "local_to_cloud"
+
+        if policy == "cloud_only":
+            result = self._try_anthropic_tools(messages, tools, max_tokens, temperature, selected_model)
+            if result:
                 return result
-            # Local returned empty — fall through to Anthropic
-            print("[HYBRID] Local chat_with_tools returned empty, falling through to Anthropic")
+            return {"tool_calls": [], "content": "[Cloud unavailable or rate-limited]", "used_tools": False}
 
-        # Anthropic fallback if local unavailable or returned empty
-        if self.anthropic_client is not None and self._check_anthropic_rate_limit():
-            result = self.anthropic_client.chat_with_tools(
-                messages, tools=tools, max_tokens=max_tokens,
-                temperature=temperature, model=selected_model,
-            )
-            self._record_anthropic_usage()
+        if policy == "local_only":
+            result = self._try_local_tools(messages, tools, max_tokens, temperature, selected_model)
+            if result:
+                return result
+            return {"tool_calls": [], "content": "", "used_tools": False}
+
+        if policy == "cloud_to_local":
+            # Try cloud first, local fallback
+            result = self._try_anthropic_tools(messages, tools, max_tokens, temperature, selected_model)
+            if result:
+                return result
+            print("[HYBRID] Cloud unavailable, trying local")
+            result = self._try_local_tools(messages, tools, max_tokens, temperature, selected_model)
+            if result:
+                return result
+            return {"tool_calls": [], "content": "", "used_tools": False}
+
+        # Default: local_to_cloud — try local first, anthropic fallback
+        result = self._try_local_tools(messages, tools, max_tokens, temperature, selected_model)
+        if result:
+            return result
+        print("[HYBRID] Local failed, trying Anthropic fallback")
+        result = self._try_anthropic_tools(messages, tools, max_tokens, temperature, selected_model)
+        if result:
             return result
 
         return {"tool_calls": [], "content": "", "used_tools": False}

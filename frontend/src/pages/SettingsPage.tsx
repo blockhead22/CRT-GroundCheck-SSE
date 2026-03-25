@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getProfile, updateAuthProfile, setProfileFacts, setProfileName, getCloudSettings, updateCloudSettings, getCloudUsage } from '../lib/api'
-import type { AuthUser, CloudSettings, CloudUsage } from '../lib/api'
+import { getProfile, updateAuthProfile, setProfileFacts, setProfileName, getCloudSettings, updateCloudSettings, getCloudUsage, getAvailableModels } from '../lib/api'
+import type { AuthUser, CloudSettings, CloudUsage, AvailableModels } from '../lib/api'
 
 type Props = {
   authUser: AuthUser | null
@@ -9,7 +9,7 @@ type Props = {
   onProfileUpdated: () => void
 }
 
-type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'browser' | 'heartbeat' | 'behavior' | 'advanced' | 'facts' | 'account'
+type SettingsTab = 'profile' | 'cloud' | 'desktop' | 'browser' | 'heartbeat' | 'behavior' | 'tooling' | 'facts' | 'account'
 
 const ESCALATION_OPTIONS = [
   { value: 'conservative', label: 'Conservative' },
@@ -64,6 +64,9 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   const [cloudUsage, setCloudUsage] = useState<CloudUsage | null>(null)
   const [cloudSaving, setCloudSaving] = useState(false)
 
+  // Tooling tab state
+  const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null)
+
   // Load profile on mount
   useEffect(() => {
     setDisplayName(authUser?.display_name || '')
@@ -80,6 +83,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
       if (cs?.agent_name) setAgentName(cs.agent_name)
     }).catch(() => {})
     getCloudUsage().then(setCloudUsage).catch(() => {})
+    getAvailableModels().then(setAvailableModels).catch(() => {})
   }, [threadId, authUser])
 
   // POLLING FIX: cloud-usage interval raised from 10s to 30s; pauses when tab is hidden
@@ -165,7 +169,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   async function handleCloudToggle(key: string, value: boolean) {
     if (!cloudSettings) return
-    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('browser_') || key.startsWith('intuition_check_') || key.startsWith('heartbeat_') || key.startsWith('background_') || key.startsWith('greeting_') || key.startsWith('conflict_') || key.startsWith('provenance_') || key === 'bypass_crt' || key === 'enable_tooling' || key === 'synthesis_enabled'
+    const useTrueFalse = key.startsWith('cloud_claude_') || key.startsWith('desktop_') || key.startsWith('browser_') || key.startsWith('intuition_check_') || key.startsWith('heartbeat_') || key.startsWith('background_') || key.startsWith('greeting_') || key.startsWith('conflict_') || key.startsWith('provenance_') || key.startsWith('tooling_') || key === 'bypass_crt' || key === 'enable_tooling' || key === 'synthesis_enabled'
     const newVal = useTrueFalse ? (value ? 'true' : 'false') : (value ? 'on' : 'off')
     const oldVal = useTrueFalse ? (value ? 'false' : 'true') : (value ? 'off' : 'on')
     setCloudSettingsState({ ...cloudSettings, [key]: newVal })
@@ -228,12 +232,12 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'profile', label: 'Profile' },
-    { id: 'cloud', label: 'Cloud' },
+    { id: 'cloud', label: 'Cloud & Models' },
     { id: 'desktop', label: 'Desktop' },
     { id: 'browser', label: 'Browser' },
     { id: 'heartbeat', label: 'Heartbeat' },
     { id: 'behavior', label: 'Behavior' },
-    { id: 'advanced', label: 'Advanced' },
+    { id: 'tooling', label: 'Tooling' },
     { id: 'facts', label: 'Facts' },
     { id: 'account', label: 'Account' },
   ]
@@ -616,6 +620,137 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   </div>
                 </SectionCard>
               )}
+
+              {/* ── Pipeline Controls (merged from Advanced) ── */}
+              <SectionCard title="Pipeline Controls" description="These settings control CRT pipeline behavior and model capabilities. Changes take effect on the next message.">
+                {cloudSettings ? (
+                  <div className="space-y-1">
+                    <Toggle
+                      label="Bypass CRT Loop"
+                      description="Skip memory retrieval, contradiction detection, gates, and trust scoring. Sends messages directly to the selected cloud model with no CRT wrapping."
+                      checked={cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on'}
+                      onChange={(v) => handleCloudToggle('bypass_crt', v)}
+                    />
+                    {(cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on') && (
+                      <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
+                        CRT bypass is active. Responses will not use memories, contradiction checking, or trust scoring.
+                      </div>
+                    )}
+
+                    <Toggle
+                      label="Enable Tooling"
+                      description="Allow the model to use tools and function calls during generation."
+                      checked={cloudSettings.enable_tooling === 'true' || cloudSettings.enable_tooling === 'on'}
+                      onChange={(v) => handleCloudToggle('enable_tooling', v)}
+                    />
+
+                    <Toggle
+                      label="Enable Response Synthesis"
+                      description="When enabled, the LLM interprets tool results and responds with context and analysis. When disabled, raw tool output is returned."
+                      checked={cloudSettings.synthesis_enabled !== 'false'}
+                      onChange={(v) => handleCloudToggle('synthesis_enabled', v)}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading advanced settings...</p>
+                )}
+              </SectionCard>
+
+              {/* ── Model Selection (merged from Advanced) ── */}
+              <SectionCard title="Model Selection" description="Choose which models are used for generation. These override defaults when set.">
+                {cloudSettings ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Generation Mode</label>
+                      <select
+                        value={cloudSettings.generation_mode || 'local'}
+                        onChange={(e) => handleCloudSelect('generation_mode', e.target.value)}
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                      >
+                        <option value="local" className="bg-gray-900">Local (Ollama)</option>
+                        <option value="cloud_openai" className="bg-gray-900">Cloud (OpenAI)</option>
+                        <option value="cloud_claude" className="bg-gray-900">Cloud (Claude)</option>
+                      </select>
+                      <p className="mt-1 text-xs text-white/40">Primary model provider for text generation</p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">OpenAI Model</label>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.cloud_model_openai || 'gpt-4o-mini'}
+                        onBlur={(e) => handleCloudSelect('cloud_model_openai', e.target.value)}
+                        placeholder="gpt-4o-mini"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Model ID for OpenAI API calls (e.g., gpt-4o, gpt-4o-mini)</p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Claude Model</label>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.cloud_model_claude || 'claude-sonnet-4-20250514'}
+                        onBlur={(e) => handleCloudSelect('cloud_model_claude', e.target.value)}
+                        placeholder="claude-sonnet-4-20250514"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Model ID for Claude API calls</p>
+                    </div>
+
+                    <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Routing LLM Model Override</label>
+                      <input
+                        type="text"
+                        defaultValue={cloudSettings.routing_llm_model || ''}
+                        onBlur={(e) => handleCloudSelect('routing_llm_model', e.target.value)}
+                        placeholder="Leave blank for default"
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                      />
+                      <p className="mt-1 text-xs text-white/40">Override the model used for intent routing. Leave blank to use the default.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading model settings...</p>
+                )}
+              </SectionCard>
+
+              {/* ── Intent Routing (merged from Advanced) ── */}
+              <SectionCard title="Intent Routing" description="Controls how user messages are classified and routed to tools. Regex patterns are always tried first (instant, free). The LLM router handles novel phrasings that regex misses.">
+                {cloudSettings ? (
+                  <div className="space-y-2">
+                    {[
+                      { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex -> local LLM -> cloud escalation. Best balance of speed, cost, and accuracy.' },
+                      { value: 'local_only', label: 'Local Only', desc: 'Regex + local LLM. No cloud calls for routing. Free but less accurate on novel requests.' },
+                      { value: 'cloud_only', label: 'Cloud Only', desc: 'Regex + cloud LLM. Most accurate, uses API tokens for classification.' },
+                    ].map((opt) => (
+                      <label
+                        key={opt.value}
+                        className={`flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                          (cloudSettings.routing_mode || 'hybrid') === opt.value
+                            ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/30'
+                            : 'bg-white/5 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="routing_mode"
+                          value={opt.value}
+                          checked={(cloudSettings.routing_mode || 'hybrid') === opt.value}
+                          onChange={() => handleCloudSelect('routing_mode', opt.value)}
+                          className="mt-0.5 accent-[var(--accent)]"
+                        />
+                        <div>
+                          <div className="text-sm font-medium text-white/90">{opt.label}</div>
+                          <div className="text-xs text-white/40 mt-0.5">{opt.desc}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading routing settings...</p>
+                )}
+              </SectionCard>
             </>
           )}
 
@@ -1111,140 +1246,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
             <p className="text-sm text-white/40">Loading behavior settings...</p>
           )}
 
-          {/* ═══════════════════ ADVANCED TAB ═══════════════════ */}
-          {tab === 'advanced' && (
-            <>
-              <SectionCard title="Pipeline Controls" description="These settings control CRT pipeline behavior and model capabilities. Changes take effect on the next message.">
-                {cloudSettings ? (
-                  <div className="space-y-1">
-                    <Toggle
-                      label="Bypass CRT Loop"
-                      description="Skip memory retrieval, contradiction detection, gates, and trust scoring. Sends messages directly to the selected cloud model with no CRT wrapping."
-                      checked={cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on'}
-                      onChange={(v) => handleCloudToggle('bypass_crt', v)}
-                    />
-                    {(cloudSettings.bypass_crt === 'true' || cloudSettings.bypass_crt === 'on') && (
-                      <div className="ml-2 mb-2 rounded bg-amber-500/10 border border-amber-500/20 px-3 py-2 text-xs text-amber-300/80">
-                        CRT bypass is active. Responses will not use memories, contradiction checking, or trust scoring.
-                      </div>
-                    )}
-
-                    <Toggle
-                      label="Enable Tooling"
-                      description="Allow the model to use tools and function calls during generation."
-                      checked={cloudSettings.enable_tooling === 'true' || cloudSettings.enable_tooling === 'on'}
-                      onChange={(v) => handleCloudToggle('enable_tooling', v)}
-                    />
-
-                    <Toggle
-                      label="Enable Response Synthesis"
-                      description="When enabled, the LLM interprets tool results and responds with context and analysis. When disabled, raw tool output is returned."
-                      checked={cloudSettings.synthesis_enabled !== 'false'}
-                      onChange={(v) => handleCloudToggle('synthesis_enabled', v)}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/40">Loading advanced settings...</p>
-                )}
-              </SectionCard>
-
-              {/* Model Selection */}
-              <SectionCard title="Model Selection" description="Choose which models are used for generation. These override defaults when set.">
-                {cloudSettings ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="mb-1.5 block text-sm text-white/70">Generation Mode</label>
-                      <select
-                        value={cloudSettings.generation_mode || 'local'}
-                        onChange={(e) => handleCloudSelect('generation_mode', e.target.value)}
-                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
-                      >
-                        <option value="local" className="bg-gray-900">Local (Ollama)</option>
-                        <option value="cloud_openai" className="bg-gray-900">Cloud (OpenAI)</option>
-                        <option value="cloud_claude" className="bg-gray-900">Cloud (Claude)</option>
-                      </select>
-                      <p className="mt-1 text-xs text-white/40">Primary model provider for text generation</p>
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-sm text-white/70">OpenAI Model</label>
-                      <input
-                        type="text"
-                        defaultValue={cloudSettings.cloud_model_openai || 'gpt-4o-mini'}
-                        onBlur={(e) => handleCloudSelect('cloud_model_openai', e.target.value)}
-                        placeholder="gpt-4o-mini"
-                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
-                      />
-                      <p className="mt-1 text-xs text-white/40">Model ID for OpenAI API calls (e.g., gpt-4o, gpt-4o-mini)</p>
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-sm text-white/70">Claude Model</label>
-                      <input
-                        type="text"
-                        defaultValue={cloudSettings.cloud_model_claude || 'claude-sonnet-4-20250514'}
-                        onBlur={(e) => handleCloudSelect('cloud_model_claude', e.target.value)}
-                        placeholder="claude-sonnet-4-20250514"
-                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
-                      />
-                      <p className="mt-1 text-xs text-white/40">Model ID for Claude API calls</p>
-                    </div>
-
-                    <div>
-                      <label className="mb-1.5 block text-sm text-white/70">Routing LLM Model Override</label>
-                      <input
-                        type="text"
-                        defaultValue={cloudSettings.routing_llm_model || ''}
-                        onBlur={(e) => handleCloudSelect('routing_llm_model', e.target.value)}
-                        placeholder="Leave blank for default"
-                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
-                      />
-                      <p className="mt-1 text-xs text-white/40">Override the model used for intent routing. Leave blank to use the default.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/40">Loading model settings...</p>
-                )}
-              </SectionCard>
-
-              {/* Intent Routing */}
-              <SectionCard title="Intent Routing" description="Controls how user messages are classified and routed to tools. Regex patterns are always tried first (instant, free). The LLM router handles novel phrasings that regex misses.">
-                {cloudSettings ? (
-                  <div className="space-y-2">
-                    {[
-                      { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex -> local LLM -> cloud escalation. Best balance of speed, cost, and accuracy.' },
-                      { value: 'local_only', label: 'Local Only', desc: 'Regex + local LLM. No cloud calls for routing. Free but less accurate on novel requests.' },
-                      { value: 'cloud_only', label: 'Cloud Only', desc: 'Regex + cloud LLM. Most accurate, uses API tokens for classification.' },
-                    ].map((opt) => (
-                      <label
-                        key={opt.value}
-                        className={`flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
-                          (cloudSettings.routing_mode || 'hybrid') === opt.value
-                            ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/30'
-                            : 'bg-white/5 hover:bg-white/[0.08]'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="routing_mode"
-                          value={opt.value}
-                          checked={(cloudSettings.routing_mode || 'hybrid') === opt.value}
-                          onChange={() => handleCloudSelect('routing_mode', opt.value)}
-                          className="mt-0.5 accent-[var(--accent)]"
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-white/90">{opt.label}</div>
-                          <div className="text-xs text-white/40 mt-0.5">{opt.desc}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/40">Loading routing settings...</p>
-                )}
-              </SectionCard>
-            </>
-          )}
+          {/* Advanced tab removed — content merged into Cloud & Models tab above */}
 
           {/* ═══════════════════ FACTS TAB ═══════════════════ */}
           {tab === 'facts' && (
@@ -1290,6 +1292,170 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 </button>
               </div>
             </SectionCard>
+          )}
+
+          {/* ═══════════════════ TOOLING TAB ═══════════════════ */}
+          {tab === 'tooling' && (
+            <>
+              {/* ── Section A: Model Roles ── */}
+              <SectionCard title="Model Roles" description="Assign which model handles each task type. Leave empty to use the default from runtime config.">
+                {cloudSettings ? (
+                  <div className="space-y-4">
+                    {([
+                      { key: 'tooling_model_role_fast', label: 'Fast', desc: 'Quick classifications, intent routing' },
+                      { key: 'tooling_model_role_reasoning', label: 'Reasoning', desc: 'Complex analysis, multi-step thinking' },
+                      { key: 'tooling_model_role_tool_loop', label: 'Tool Loop', desc: 'Agent tool-calling iterations' },
+                      { key: 'tooling_model_role_answer', label: 'Answer', desc: 'Final response generation' },
+                    ] as const).map(({ key, label, desc }) => (
+                      <div key={key}>
+                        <label className="mb-1 block text-sm text-white/80">{label}</label>
+                        <div className="text-xs text-white/40 mb-1.5">{desc}</div>
+                        <select
+                          className="glass-field w-full rounded px-3 py-2 text-sm text-white/90"
+                          value={cloudSettings[key] || ''}
+                          onChange={(e) => handleCloudSelect(key, e.target.value)}
+                        >
+                          <option value="">Default (runtime config)</option>
+                          {availableModels && (
+                            <>
+                              <optgroup label="Local (Ollama)">
+                                {availableModels.local.map((m) => (
+                                  <option key={`local:${m.name}`} value={`local:${m.name}`}>
+                                    {m.name}{m.size ? ` (${m.size})` : ''}
+                                  </option>
+                                ))}
+                              </optgroup>
+                              <optgroup label="Cloud (OpenAI)">
+                                {availableModels.cloud.map((m) => (
+                                  <option key={`cloud:${m.name}`} value={`cloud:${m.name}`}>
+                                    {m.label}
+                                  </option>
+                                ))}
+                              </optgroup>
+                              <optgroup label="Anthropic">
+                                {availableModels.anthropic.map((m) => (
+                                  <option key={`anthropic:${m.name}`} value={`anthropic:${m.name}`}>
+                                    {m.label}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            </>
+                          )}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading...</p>
+                )}
+              </SectionCard>
+
+              {/* ── Section B: Fallback Policy ── */}
+              <SectionCard title="Fallback Policy" description="Control how the system routes between local and cloud models when the primary is unavailable or returns empty.">
+                {cloudSettings ? (
+                  <div>
+                    <select
+                      className="glass-field w-full rounded px-3 py-2 text-sm text-white/90"
+                      value={cloudSettings.tooling_fallback_policy || 'local_to_cloud'}
+                      onChange={(e) => handleCloudSelect('tooling_fallback_policy', e.target.value)}
+                    >
+                      <option value="local_to_cloud">Local first, cloud fallback</option>
+                      <option value="cloud_to_local">Cloud first, local fallback</option>
+                      <option value="local_only">Local only</option>
+                      <option value="cloud_only">Cloud only</option>
+                    </select>
+                    <div className="mt-2 text-xs text-white/40">
+                      {cloudSettings.tooling_fallback_policy === 'local_to_cloud' && 'Try local Ollama models first; escalate to cloud if unavailable or returns empty.'}
+                      {cloudSettings.tooling_fallback_policy === 'cloud_to_local' && 'Try cloud/Anthropic first; fall back to local if cloud unavailable.'}
+                      {cloudSettings.tooling_fallback_policy === 'local_only' && 'Never use cloud models. All requests stay on local Ollama.'}
+                      {cloudSettings.tooling_fallback_policy === 'cloud_only' && 'Only use cloud/Anthropic models. Skip local entirely.'}
+                      {!cloudSettings.tooling_fallback_policy && 'Try local Ollama models first; escalate to cloud if unavailable or returns empty.'}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading...</p>
+                )}
+              </SectionCard>
+
+              {/* ── Section C: Tool Access ── */}
+              <SectionCard title="Tool Access" description="Enable or disable individual tools available to the agent loop.">
+                {cloudSettings ? (
+                  <div className="space-y-1">
+                    {/* Safe / Read-only */}
+                    <div className="mb-3">
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-white/30">Read-only</div>
+                      <Toggle label="System Info" description="Get OS, hardware, and environment details" checked={cloudSettings.tooling_tool_enabled_system_info !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_system_info', v)} />
+                      <Toggle label="Directory List" description="List files and folders in a directory" checked={cloudSettings.tooling_tool_enabled_dir_list !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_dir_list', v)} />
+                      <Toggle label="Project Scan" description="Scan project structure and tech stack" checked={cloudSettings.tooling_tool_enabled_project_scan !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_project_scan', v)} />
+                      <Toggle label="List Commitments" description="List scheduled reminders" checked={cloudSettings.tooling_tool_enabled_list_commitments !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_list_commitments', v)} />
+                      <Toggle label="Memory Recall" description="Search agent memory and knowledge" checked={cloudSettings.tooling_tool_enabled_memory_recall !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_memory_recall', v)} />
+                    </div>
+                    {/* Network / Passive */}
+                    <div className="mb-3">
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-white/30">Network</div>
+                      <Toggle label="File Read" description="Read file contents from disk" checked={cloudSettings.tooling_tool_enabled_file_read !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_file_read', v)} />
+                      <Toggle label="Fetch URL" description="HTTP GET request to a URL" checked={cloudSettings.tooling_tool_enabled_fetch_url !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_fetch_url', v)} />
+                      <Toggle label="Web Search" description="Search the web for information" checked={cloudSettings.tooling_tool_enabled_web_search !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_web_search', v)} />
+                      <Toggle label="HTTP GET JSON" description="Fetch and parse JSON from a URL" checked={cloudSettings.tooling_tool_enabled_http_get_json !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_http_get_json', v)} />
+                      <Toggle label="Generate Content" description="Generate text or code via LLM" checked={cloudSettings.tooling_tool_enabled_generate_content !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_generate_content', v)} />
+                    </div>
+                    {/* Write / Modify */}
+                    <div className="mb-3">
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-white/30">Write / Modify</div>
+                      <Toggle label="File Write" description="Write or overwrite files on disk" checked={cloudSettings.tooling_tool_enabled_file_write !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_file_write', v)} />
+                      <Toggle label="Git Exec" description="Run git commands" checked={cloudSettings.tooling_tool_enabled_git_exec !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_git_exec', v)} />
+                      <Toggle label="HTTP POST" description="Send POST requests to APIs" checked={cloudSettings.tooling_tool_enabled_http_post !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_http_post', v)} />
+                      <Toggle label="Store Credential" description="Save credentials to the vault" checked={cloudSettings.tooling_tool_enabled_store_credential !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_store_credential', v)} />
+                      <Toggle label="Web Browse" description="Navigate and interact with websites" checked={cloudSettings.tooling_tool_enabled_web_browse !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_web_browse', v)} />
+                      <Toggle label="Create Commitment" description="Create scheduled reminders" checked={cloudSettings.tooling_tool_enabled_create_commitment !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_create_commitment', v)} />
+                      <Toggle label="Cancel Commitment" description="Cancel existing reminders" checked={cloudSettings.tooling_tool_enabled_cancel_commitment !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_cancel_commitment', v)} />
+                    </div>
+                    {/* System / Dangerous */}
+                    <div>
+                      <div className="mb-2 text-xs font-medium uppercase tracking-wide text-amber-400/60">System (use with caution)</div>
+                      <Toggle label="Shell Exec" description="Run arbitrary shell commands on the host" checked={cloudSettings.tooling_tool_enabled_shell_exec !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_shell_exec', v)} />
+                      <Toggle label="Desktop Action" description="Mouse, keyboard, and screen automation" checked={cloudSettings.tooling_tool_enabled_desktop_action !== 'false'} onChange={(v) => handleCloudToggle('tooling_tool_enabled_desktop_action', v)} />
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading...</p>
+                )}
+              </SectionCard>
+
+              {/* ── Section D: Agent Loop ── */}
+              <SectionCard title="Agent Loop" description="Configure the autonomous tool execution loop that runs multi-step tasks.">
+                {cloudSettings ? (
+                  <div className="space-y-2">
+                    <Toggle
+                      label="Enable Agent Loop"
+                      description="Allow the AI to call tools autonomously in a loop"
+                      checked={cloudSettings.tooling_agent_loop_enabled !== 'false'}
+                      onChange={(v) => handleCloudToggle('tooling_agent_loop_enabled', v)}
+                    />
+                    <div>
+                      <label className="mb-1 block text-sm text-white/80">Max Iterations</label>
+                      <div className="text-xs text-white/40 mb-1.5">Maximum tool calls per task (1-50)</div>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        className="glass-field w-24 rounded px-3 py-2 text-sm text-white/90"
+                        value={cloudSettings.tooling_agent_loop_max_iterations || '10'}
+                        onChange={(e) => handleCloudNumberInput('tooling_agent_loop_max_iterations', e.target.value)}
+                      />
+                    </div>
+                    <Toggle
+                      label="Show Thinking"
+                      description="Display model's chain-of-thought reasoning in the UI"
+                      checked={cloudSettings.tooling_agent_loop_show_thinking !== 'false'}
+                      onChange={(v) => handleCloudToggle('tooling_agent_loop_show_thinking', v)}
+                    />
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/40">Loading...</p>
+                )}
+              </SectionCard>
+            </>
           )}
 
           {/* ═══════════════════ ACCOUNT TAB ═══════════════════ */}

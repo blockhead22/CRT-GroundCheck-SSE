@@ -4796,6 +4796,22 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     _rt_cfg_alr = get_runtime_config()
                                     _al_cfg_alr = _rt_cfg_alr.get("agent_loop", {})
 
+                                    # Wire user tooling settings for resume path too
+                                    try:
+                                        import auth as _auth_tooling_r
+                                        _uid_tooling_r = int(uid) if uid else 1
+                                        _user_fallback_r = _auth_tooling_r.get_user_setting(_uid_tooling_r, "tooling_fallback_policy", "")
+                                        if _user_fallback_r and _llm_client_alr is not None:
+                                            _llm_client_alr.fallback_policy = _user_fallback_r
+                                        for _role_r in ("fast", "reasoning", "tool_loop", "answer"):
+                                            _user_role_r = _auth_tooling_r.get_user_setting(_uid_tooling_r, f"tooling_model_role_{_role_r}", "")
+                                            if _user_role_r and _llm_client_alr is not None:
+                                                if not hasattr(_llm_client_alr, "model_roles") or _llm_client_alr.model_roles is None:
+                                                    _llm_client_alr.model_roles = {}
+                                                _llm_client_alr.model_roles[_role_r] = _user_role_r
+                                    except Exception as _tooling_r_err:
+                                        logger.warning("[AGENT_LOOP_RESUME] Failed to read tooling settings: %s", _tooling_r_err)
+
                                     _loop_state = _cp_data.get("_loop_state", {})
                                     _pending_tool = _loop_state.get("tool_name", "")
                                     _pending_args = _loop_state.get("tool_args", {})
@@ -5170,6 +5186,45 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     _llm_client_al = _get_llm_al()
                     _al_max_iter = _al_cfg.get("max_iterations", 10)
                     _al_show_thinking = _al_cfg.get("show_thinking", True)
+
+                    # ── Wire user tooling settings into runtime ──
+                    try:
+                        import auth as _auth_tooling
+                        _uid_tooling = int(uid) if uid else 1
+
+                        # Override agent loop config from user settings
+                        _user_al_enabled = _auth_tooling.get_user_setting(_uid_tooling, "tooling_agent_loop_enabled", "true")
+                        if _user_al_enabled == "false":
+                            _safe_print("[AGENT_LOOP_GATE] Agent loop disabled by user tooling settings")
+                            # Skip agent loop, fall through to normal generation
+                            raise StopIteration("agent_loop_disabled_by_user")
+                        _user_max_iter = _auth_tooling.get_user_setting(_uid_tooling, "tooling_agent_loop_max_iterations", "")
+                        if _user_max_iter and _user_max_iter.isdigit():
+                            _al_max_iter = max(1, min(50, int(_user_max_iter)))
+                        _user_show_thinking = _auth_tooling.get_user_setting(_uid_tooling, "tooling_agent_loop_show_thinking", "true")
+                        _al_show_thinking = _user_show_thinking != "false"
+
+                        # Override fallback policy on the LLM client
+                        _user_fallback = _auth_tooling.get_user_setting(_uid_tooling, "tooling_fallback_policy", "")
+                        if _user_fallback and _llm_client_al is not None:
+                            _llm_client_al.fallback_policy = _user_fallback
+                            _safe_print(f"[AGENT_LOOP] Fallback policy set to: {_user_fallback}")
+
+                        # Override model roles on the LLM client
+                        if _llm_client_al is not None:
+                            for _role in ("fast", "reasoning", "tool_loop", "answer"):
+                                _user_role_model = _auth_tooling.get_user_setting(
+                                    _uid_tooling, f"tooling_model_role_{_role}", ""
+                                )
+                                if _user_role_model:
+                                    if not hasattr(_llm_client_al, "model_roles") or _llm_client_al.model_roles is None:
+                                        _llm_client_al.model_roles = {}
+                                    _llm_client_al.model_roles[_role] = _user_role_model
+                                    _safe_print(f"[AGENT_LOOP] Model role '{_role}' overridden to: {_user_role_model}")
+                    except StopIteration:
+                        raise
+                    except Exception as _tooling_err:
+                        _safe_print(f"[AGENT_LOOP] Warning: failed to read tooling settings: {_tooling_err}")
 
                     _loop = AgentToolLoop(
                         _llm_client_al,

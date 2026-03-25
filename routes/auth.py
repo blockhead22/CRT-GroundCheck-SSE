@@ -309,6 +309,35 @@ def auth_update_settings(
         "plan_auto_threshold",       # always_ask | auto_simple | auto_all
         "plan_notifications",        # true | false
         "plan_chat_visibility",      # true | false
+        # Tooling (v3.1.1)
+        "tooling_model_role_fast",
+        "tooling_model_role_reasoning",
+        "tooling_model_role_tool_loop",
+        "tooling_model_role_answer",
+        "tooling_fallback_policy",            # local_to_cloud | cloud_to_local | local_only | cloud_only
+        "tooling_agent_loop_enabled",         # true | false
+        "tooling_agent_loop_max_iterations",  # number as string
+        "tooling_agent_loop_show_thinking",   # true | false
+        # Tooling — per-tool enable/disable
+        "tooling_tool_enabled_system_info",
+        "tooling_tool_enabled_file_read",
+        "tooling_tool_enabled_file_write",
+        "tooling_tool_enabled_dir_list",
+        "tooling_tool_enabled_project_scan",
+        "tooling_tool_enabled_shell_exec",
+        "tooling_tool_enabled_git_exec",
+        "tooling_tool_enabled_fetch_url",
+        "tooling_tool_enabled_desktop_action",
+        "tooling_tool_enabled_create_commitment",
+        "tooling_tool_enabled_list_commitments",
+        "tooling_tool_enabled_cancel_commitment",
+        "tooling_tool_enabled_generate_content",
+        "tooling_tool_enabled_memory_recall",
+        "tooling_tool_enabled_http_post",
+        "tooling_tool_enabled_http_get_json",
+        "tooling_tool_enabled_store_credential",
+        "tooling_tool_enabled_web_browse",
+        "tooling_tool_enabled_web_search",
     }
 
     updated = {}

@@ -524,6 +524,37 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     # Web search
     "web_search_max_results": "8",
     "web_search_region": "us-en",
+    # Tooling (v3.1.1) — model roles
+    "tooling_model_role_fast": "",
+    "tooling_model_role_reasoning": "",
+    "tooling_model_role_tool_loop": "",
+    "tooling_model_role_answer": "",
+    # Tooling — fallback policy
+    "tooling_fallback_policy": "local_to_cloud",
+    # Tooling — agent loop
+    "tooling_agent_loop_enabled": "true",
+    "tooling_agent_loop_max_iterations": "10",
+    "tooling_agent_loop_show_thinking": "true",
+    # Tooling — per-tool enable/disable (all on by default)
+    "tooling_tool_enabled_system_info": "true",
+    "tooling_tool_enabled_file_read": "true",
+    "tooling_tool_enabled_file_write": "true",
+    "tooling_tool_enabled_dir_list": "true",
+    "tooling_tool_enabled_project_scan": "true",
+    "tooling_tool_enabled_shell_exec": "true",
+    "tooling_tool_enabled_git_exec": "true",
+    "tooling_tool_enabled_fetch_url": "true",
+    "tooling_tool_enabled_desktop_action": "true",
+    "tooling_tool_enabled_create_commitment": "true",
+    "tooling_tool_enabled_list_commitments": "true",
+    "tooling_tool_enabled_cancel_commitment": "true",
+    "tooling_tool_enabled_generate_content": "true",
+    "tooling_tool_enabled_memory_recall": "true",
+    "tooling_tool_enabled_http_post": "true",
+    "tooling_tool_enabled_http_get_json": "true",
+    "tooling_tool_enabled_store_credential": "true",
+    "tooling_tool_enabled_web_browse": "true",
+    "tooling_tool_enabled_web_search": "true",
 }
 
 

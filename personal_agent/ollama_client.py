@@ -399,9 +399,35 @@ class OllamaClient:
             if tools:
                 import httpx
                 _base = "http://localhost:11434"
+
+                # Sanitize messages for Ollama's strict JSON parser:
+                # - Replace null content with empty string
+                # - Convert string tool_call arguments to dicts
+                _clean_msgs = []
+                for _m in messages:
+                    _cm = dict(_m)
+                    if _cm.get("content") is None:
+                        _cm["content"] = ""
+                    # Ollama chokes on tool_calls with string arguments
+                    if "tool_calls" in _cm and _cm["tool_calls"]:
+                        _fixed_tcs = []
+                        for _tc in _cm["tool_calls"]:
+                            _ftc = dict(_tc) if isinstance(_tc, dict) else _tc
+                            if isinstance(_ftc, dict) and "function" in _ftc:
+                                _fn = dict(_ftc["function"])
+                                if isinstance(_fn.get("arguments"), str):
+                                    try:
+                                        _fn["arguments"] = json.loads(_fn["arguments"])
+                                    except (json.JSONDecodeError, TypeError):
+                                        _fn["arguments"] = {}
+                                _ftc = {**_ftc, "function": _fn}
+                            _fixed_tcs.append(_ftc)
+                        _cm["tool_calls"] = _fixed_tcs
+                    _clean_msgs.append(_cm)
+
                 _payload = {
                     "model": selected_model,
-                    "messages": messages,
+                    "messages": _clean_msgs,
                     "tools": tools,
                     "stream": False,
                     "options": {

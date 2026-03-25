@@ -1,0 +1,1 @@
+{"event_type": "gate_blocked", "timestamp": 1774401062.7883584, "slot": null, "reason": "CRT-Critic revised answer (verdict=soft_fail)", "old_value": null, "new_value": null, "p_valid": null, "memory_id": null, "thread_id": "t_052d7fe8-459a-4dc8-b60a-d298b47a52e5", "extra": {"verdict": "soft_fail", "query": "what is my name?"}, "timestamp_iso": "2026-03-25T01:11:02.788358+00:00"}
