@@ -418,6 +418,74 @@ class UnifiedLLMClient:
     # ── Core LiteLLM call ─────────────────────────────────────────────
 
     @staticmethod
+    @staticmethod
+    def _flatten_tool_messages_for_ollama(messages: List[Dict]) -> List[Dict]:
+        """Flatten tool_call / tool_result messages into plain chat for Ollama.
+
+        Ollama (via LiteLLM's prompt template) chokes on multi-turn tool
+        conversations — it returns '{}' on iteration 2+.  This converts:
+
+          assistant: {tool_calls: [{name: "memory_recall", args: {query: "name"}}]}
+          tool:      {content: "Nick [trust=0.95]"}
+
+        Into:
+
+          assistant: [Calling memory_recall({"query": "name"})]
+          user:      [Tool result from memory_recall]: Nick [trust=0.95]
+
+        Cloud models that handle OpenAI tool format correctly skip this path.
+        """
+        has_tool_content = any(
+            m.get("role") == "tool" or m.get("tool_calls")
+            for m in messages if isinstance(m, dict)
+        )
+        if not has_tool_content:
+            return messages
+
+        flat: List[Dict] = []
+        for msg in messages:
+            if not isinstance(msg, dict):
+                flat.append(msg)
+                continue
+
+            role = msg.get("role", "")
+
+            # Assistant message with tool_calls → convert to plain text
+            if role == "assistant" and msg.get("tool_calls"):
+                parts = []
+                existing = msg.get("content") or ""
+                if existing.strip():
+                    parts.append(existing.strip())
+                for tc in msg["tool_calls"]:
+                    if isinstance(tc, dict):
+                        fn = tc.get("function", tc)
+                        name = fn.get("name", "unknown")
+                        args = fn.get("arguments", {})
+                        if isinstance(args, str):
+                            args_str = args
+                        else:
+                            args_str = json.dumps(args)
+                        parts.append(f"[Calling {name}({args_str})]")
+                flat.append({"role": "assistant", "content": "\n".join(parts) or "..."})
+                continue
+
+            # Tool result message → convert to user message
+            if role == "tool":
+                name = msg.get("name", "tool")
+                content = msg.get("content", "")
+                flat.append({
+                    "role": "user",
+                    "content": f"[Tool result from {name}]: {content}",
+                })
+                continue
+
+            # Everything else passes through (strip stale tool_calls from normal msgs)
+            clean = {k: v for k, v in msg.items() if k != "tool_calls"}
+            flat.append(clean)
+
+        return flat
+
+    @staticmethod
     def _fix_tool_call_ids(messages: List[Dict]) -> List[Dict]:
         """Ensure every tool_call in the message history has an 'id' field.
 
@@ -494,7 +562,13 @@ class UnifiedLLMClient:
         if scrub and provider in ("cloud", "anthropic"):
             messages = self._scrub_messages_for_cloud(messages)
 
-        # Patch tool call messages for LiteLLM compatibility
+        # For Ollama: flatten tool_call/tool_result messages into plain chat
+        # so the prompt template doesn't choke (returns '{}' otherwise).
+        # Keep tools available so Ollama can still make real tool calls.
+        if provider == "local":
+            messages = self._flatten_tool_messages_for_ollama(messages)
+
+        # Patch tool call messages for LiteLLM compatibility (cloud models)
         messages = self._fix_tool_call_ids(messages)
 
         effective_max = self._effective_max_tokens(max_tokens, resolved_model)
