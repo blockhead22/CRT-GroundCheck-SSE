@@ -760,10 +760,11 @@ class UnifiedLLMClient:
                 return None
 
             system = (
-                "You are a helpful personal assistant. The user asked a question "
-                "and tools have already gathered the information shown below. "
+                "You are Aether, a personal AI assistant built by Aeteros, powered by Claude. "
+                "The user asked a question and tools have already gathered the information below. "
                 "Synthesize a direct, natural answer from the tool results. "
-                "Be concise and warm. Speak in first person as the user's assistant. "
+                "Be concise and warm. Speak as Aether in first person. "
+                "When stating facts about the user, use second person (your/you). "
                 "Reply with ONLY the answer text — no JSON, no markdown fences, no wrapping."
             )
             prompt = "\n".join(prompt_parts[-8:])  # last 8 turns max
@@ -826,6 +827,17 @@ class UnifiedLLMClient:
 
         policy = self.fallback_policy or "local_to_cloud"
 
+        # Respect cloud_claude_enabled setting — downgrade cloud policies to local_only
+        if policy in ("local_to_cloud", "cloud_only", "cloud_to_local"):
+            try:
+                import auth as _auth_mod
+                _cloud_on = str(_auth_mod.get_user_setting(1, "cloud_claude_enabled", "false")).lower() in ("true", "1", "yes", "on")
+                if not _cloud_on:
+                    print(f"[LITELLM] Cloud disabled in settings, overriding {policy} → local_only")
+                    policy = "local_only"
+            except Exception:
+                pass
+
         if policy == "cloud_only":
             result = self._try_anthropic_tools(
                 messages, tools, max_tokens, temperature, model_name,
@@ -842,7 +854,18 @@ class UnifiedLLMClient:
             result = self._try_local_tools(
                 messages, tools, max_tokens, temperature, model_name,
             )
-            return result or {"tool_calls": [], "content": "", "used_tools": False}
+            if result:
+                return result
+            # Local tool call failed — retry without tools for a plain text answer
+            print("[LITELLM] Local tool call failed, retrying without tools for text answer")
+            try:
+                resp = self._call("local", model_name, messages, max_tokens, temperature)
+                text = (resp.get("content") or "").strip() if isinstance(resp, dict) else str(resp).strip()
+                if text and text.lower() not in ("{}", "[]", "null", '""', "''"):
+                    return {"tool_calls": [], "content": text, "used_tools": False}
+            except Exception as _e:
+                print(f"[LITELLM] Local text-only retry also failed: {_e}")
+            return {"tool_calls": [], "content": "", "used_tools": False}
 
         if policy == "cloud_to_local":
             result = self._try_anthropic_tools(

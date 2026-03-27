@@ -36,6 +36,21 @@ from .crt_semantic_anchor import (
     is_resolution_grounded,
 )
 
+# Import disposition classifier (Phase G1)
+_disposition_classifier = None
+
+def _get_disposition_classifier():
+    """Lazy-load the disposition classifier."""
+    global _disposition_classifier
+    if _disposition_classifier is None:
+        try:
+            from .disposition_classifier import classify_contradiction as _classify_disp
+            _disposition_classifier = _classify_disp
+        except ImportError:
+            _logger.debug("[DISPOSITION] disposition_classifier not available")
+    return _disposition_classifier
+
+
 # Import LLM drift assessor (lazy-loaded to avoid startup cost)
 _llm_drift_assessor = None
 
@@ -97,6 +112,11 @@ class ContradictionEntry:
     # Slot tracking - which fact slots does this contradiction affect?
     affects_slots: Optional[str] = None  # Comma-separated slot names (e.g., "employer,location")
     
+    # Disposition classification (Phase G1: resolvable/held/evolving/contextual)
+    disposition: Optional[str] = None           # resolvable | held | evolving | contextual | unknown
+    disposition_confidence: float = 0.0         # classifier confidence 0-1
+    disposition_explanation: Optional[str] = None
+
     # Metadata
     query: Optional[str] = None
     summary: Optional[str] = None
@@ -104,7 +124,7 @@ class ContradictionEntry:
     resolution_method: Optional[str] = None
     merged_memory_id: Optional[str] = None
     thread_id: Optional[str] = None
-    
+
     def to_dict(self) -> Dict:
         """Convert to dictionary."""
         return {
@@ -118,6 +138,9 @@ class ContradictionEntry:
             'status': self.status,
             'contradiction_type': self.contradiction_type,
             'affects_slots': self.affects_slots,
+            'disposition': self.disposition,
+            'disposition_confidence': self.disposition_confidence,
+            'disposition_explanation': self.disposition_explanation,
             'query': self.query,
             'summary': self.summary,
             'resolution_timestamp': self.resolution_timestamp,
@@ -392,10 +415,28 @@ class ContradictionLedger:
         
         # Index on lifecycle state for efficient filtering
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_contradiction_lifecycle_state 
+            CREATE INDEX IF NOT EXISTS idx_contradiction_lifecycle_state
             ON contradiction_lifecycle(state)
         """)
-        
+
+        # Phase G1: Disposition classification columns
+        try:
+            cursor.execute("ALTER TABLE contradictions ADD COLUMN disposition TEXT")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE contradictions ADD COLUMN disposition_confidence REAL DEFAULT 0.0")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE contradictions ADD COLUMN disposition_explanation TEXT")
+        except sqlite3.OperationalError:
+            pass
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_contradictions_disposition "
+            "ON contradictions(disposition)"
+        )
+
         conn.commit()
         conn.close()
 
@@ -731,6 +772,35 @@ class ContradictionLedger:
         
         affects_slots_str = ",".join(sorted(affects_slots_set)) if affects_slots_set else None
         
+        # Phase G1: Run disposition classifier
+        _disp_result = None
+        if old_text and new_text:
+            _classify_disp = _get_disposition_classifier()
+            if _classify_disp is not None:
+                try:
+                    # Compute similarity if vectors available
+                    _sim = 0.5
+                    if old_vector is not None and new_vector is not None:
+                        _sim = float(self.crt_math.similarity(old_vector, new_vector))
+                    # Approximate timestamps — use current time and offset by 1 day
+                    _ts_new = time.time()
+                    _ts_old = _ts_new - 86400  # approximate
+                    _disp_result = _classify_disp(
+                        text_a=old_text,
+                        text_b=new_text,
+                        timestamp_a=_ts_old,
+                        timestamp_b=_ts_new,
+                        similarity=_sim,
+                    )
+                    _logger.info(
+                        "[DISPOSITION] %s (%.2f) — %s",
+                        _disp_result.disposition.value,
+                        _disp_result.confidence,
+                        _disp_result.explanation,
+                    )
+                except Exception as _disp_err:
+                    _logger.debug("[DISPOSITION] Classification failed (non-fatal): %s", _disp_err)
+
         entry = ContradictionEntry(
             ledger_id=f"contra_{int(time.time() * 1000)}_{hash(old_memory_id + new_memory_id) % 10000}",
             timestamp=time.time(),
@@ -742,25 +812,32 @@ class ContradictionLedger:
             status=ContradictionStatus.OPEN,
             contradiction_type=contradiction_type,
             affects_slots=affects_slots_str,
+            disposition=_disp_result.disposition.value if _disp_result else None,
+            disposition_confidence=_disp_result.confidence if _disp_result else 0.0,
+            disposition_explanation=_disp_result.explanation if _disp_result else None,
             query=query,
             summary=summary or self._generate_summary(drift_mean, confidence_delta, contradiction_type),
             thread_id=thread_id or self.default_thread_id,
         )
-        
+
         # Store in database
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+
         # Store suggested policy in metadata if provided
         metadata = {}
         if suggested_policy:
             metadata['suggested_policy'] = suggested_policy
-        
+        if _disp_result:
+            metadata['disposition_rule_trace'] = _disp_result.rule_trace
+
         cursor.execute("""
             INSERT INTO contradictions
-            (ledger_id, timestamp, old_memory_id, new_memory_id, drift_mean, 
-             drift_reason, confidence_delta, status, contradiction_type, affects_slots, query, summary, metadata, thread_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (ledger_id, timestamp, old_memory_id, new_memory_id, drift_mean,
+             drift_reason, confidence_delta, status, contradiction_type, affects_slots,
+             query, summary, metadata, thread_id,
+             disposition, disposition_confidence, disposition_explanation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             entry.ledger_id,
             entry.timestamp,
@@ -776,6 +853,9 @@ class ContradictionLedger:
             entry.summary,
             json.dumps(metadata) if metadata else None,
             entry.thread_id,
+            entry.disposition,
+            entry.disposition_confidence,
+            entry.disposition_explanation,
         ))
         
         conn.commit()
@@ -1160,7 +1240,7 @@ class ContradictionLedger:
     
     def _row_to_entry(self, row) -> ContradictionEntry:
         """Convert database row to ContradictionEntry."""
-        return ContradictionEntry(
+        entry = ContradictionEntry(
             ledger_id=row[0],
             timestamp=row[1],
             old_memory_id=row[2],
@@ -1178,6 +1258,14 @@ class ContradictionLedger:
             merged_memory_id=row[14] if len(row) > 14 else (row[13] if len(row) > 13 else row[12]),
             thread_id=row[16] if len(row) > 16 else None,
         )
+        # Phase G1: disposition columns (24, 25, 26 after migration)
+        if len(row) > 24:
+            entry.disposition = row[24]
+        if len(row) > 25:
+            entry.disposition_confidence = row[25] if row[25] is not None else 0.0
+        if len(row) > 26:
+            entry.disposition_explanation = row[26]
+        return entry
 
     # ========================================================================
     # Metadata Management

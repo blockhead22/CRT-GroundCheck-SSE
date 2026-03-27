@@ -1288,7 +1288,29 @@ def classify_intent_hybrid(
 
     Falls back to embedding classifier when LLM router is unavailable.
     """
-    # 0. Route-learning cache: reuse a recent successful classification
+    # 0. Identity/self-referential questions → conversational (never agent loop)
+    # Must run before cache to override stale system_info classifications
+    _lower = message.lower().strip().rstrip("?!.")
+    _identity_patterns = (
+        "who are you", "what are you", "what's your purpose", "whats your purpose",
+        "how do you work", "what do you do", "tell me about yourself",
+        "what's your name", "whats your name", "who built you", "who made you",
+        "explain your architecture", "how does your memory work",
+        "what model are you", "what llm are you", "are you claude",
+        "are you chatgpt", "are you gpt", "what ai are you",
+    )
+    if _lower in _identity_patterns or any(_lower.startswith(p) for p in _identity_patterns):
+        logger.info("[INTENT_ROUTER] Identity question detected: '%s' → conversational", message[:60])
+        return TaskIntent(
+            route="conversational",
+            intent_type="self_referential",
+            slots={"raw_message": message},
+            confidence=0.95,
+            reason="identity_pattern_match",
+            source="regex",
+        )
+
+    # 0b. Route-learning cache: reuse a recent successful classification
     try:
         from personal_agent.route_learning import get_route_learning_db
         _rl_db = get_route_learning_db()

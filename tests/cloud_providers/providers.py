@@ -408,7 +408,7 @@ class CookieProvider(CloudProvider):
             chat_id = self._ensure_chat()
             headers = self._get_headers()
 
-            full_prompt = f"{system}\n\n{prompt}\n\nRespond with valid JSON only."
+            full_prompt = f"{system}\n\n{prompt}"
 
             payload = {
                 "prompt": full_prompt,

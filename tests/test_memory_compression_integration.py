@@ -370,8 +370,10 @@ class TestFullLifecycle(unittest.TestCase):
         self.assertIsNotNone(row[1])
 
         # Step 3: Add contradictions -> promote back
+        # With MemQuant's low drift, we need high contradiction density to hit
+        # the PROMOTION_THRESHOLD (0.6). C(t) = 20/10 = 2.0, beta*C = 0.7.
         conn.execute(
-            "UPDATE memories SET contradiction_count = 10, access_count = 10 WHERE memory_id = 'mem_lifecycle'"
+            "UPDATE memories SET contradiction_count = 20, access_count = 10 WHERE memory_id = 'mem_lifecycle'"
         )
         conn.commit()
 

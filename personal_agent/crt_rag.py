@@ -2521,6 +2521,7 @@ class CRTEnhancedRAG:
                                 'old_value': old_mem.text,
                                 'new_value': new_mem.text,
                                 'category': contra.contradiction_type,
+                                'disposition': getattr(contra, 'disposition', None),
                                 'old_memory_authoritative': old_authoritative,
                                 'new_memory_authoritative': new_authoritative,
                             })
@@ -2538,13 +2539,23 @@ class CRTEnhancedRAG:
             bc.get('category') == ContradictionType.CONFLICT or bc.get('category') == 'conflict'
             for bc in blocking_contradictions
         )
-        
+
         if has_hard_conflict:
             # Don't auto-resolve CONFLICT contradictions - fall through to uncertainty response
             # Return gates NOT passed so the uncertainty response path is triggered
             logger.info(f"[GATE_CHECK] Hard CONFLICT detected - not auto-resolving, will ask user for clarification")
             return False, None, blocking_contradictions
-        
+
+        # Phase G1: disposition-aware gate — held/evolving contradictions should NOT
+        # be assertively resolved. They represent genuine complexity.
+        has_held_or_evolving = any(
+            bc.get('disposition') in ('held', 'evolving')
+            for bc in blocking_contradictions
+        )
+        if has_held_or_evolving:
+            logger.info("[GATE_CHECK] Held/evolving disposition — presenting both sides")
+            return False, None, blocking_contradictions
+
         # SPRINT 1: Assertive contradiction resolution instead of passive questioning
         # Only for non-CONFLICT contradictions (REVISION, REFINEMENT, TEMPORAL)
         # Convert blocking_contradictions back to ContradictionEntry objects

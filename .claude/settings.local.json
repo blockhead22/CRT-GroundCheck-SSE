@@ -20,7 +20,8 @@
       "mcp__mcp-registry__search_mcp_registry",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:upload.wikimedia.org)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:research.google)"
     ]
   }
 }

@@ -1,0 +1,65 @@
+{
+  "tier_0": {
+    "tier": 0,
+    "target_dim": 10,
+    "bytes_per_vector": 40,
+    "cosine_sim": {
+      "mean": 0.03406454491440652,
+      "std": 0.05441890599690366,
+      "min": -0.10762658715248108,
+      "p5": -0.04537057317793369,
+      "p95": 0.12231960147619247
+    },
+    "inner_product_correlation": {
+      "pearson_r": 0.4848203665484567,
+      "spearman_rho": 0.4406977885586255
+    },
+    "topk_recall": {
+      "top5": 0.36399999999999993,
+      "top10": 0.37799999999999995
+    },
+    "compress_time_sec": 0.21088337898254395
+  },
+  "tier_1": {
+    "tier": 1,
+    "target_dim": 64,
+    "bytes_per_vector": 256,
+    "cosine_sim": {
+      "mean": 0.235719675224998,
+      "std": 0.05988245756563825,
+      "min": 0.07736731320619583,
+      "p5": 0.12842047214508057,
+      "p95": 0.3336412385106087
+    },
+    "inner_product_correlation": {
+      "pearson_r": 0.8420427297243134,
+      "spearman_rho": 0.7040155770260499
+    },
+    "topk_recall": {
+      "top5": 0.726,
+      "top10": 0.722
+    },
+    "compress_time_sec": 1.1866497993469238
+  },
+  "tier_2": {
+    "tier": 2,
+    "target_dim": 384,
+    "bytes_per_vector": 1536,
+    "cosine_sim": {
+      "mean": 1.0000000349480471,
+      "std": 5.4265696998088826e-08,
+      "min": 1.0,
+      "p5": 1.0,
+      "p95": 1.0000001192092896
+    },
+    "inner_product_correlation": {
+      "pearson_r": 1.0,
+      "spearman_rho": 1.0
+    },
+    "topk_recall": {
+      "top5": 1.0,
+      "top10": 1.0
+    },
+    "compress_time_sec": 0.2006676197052002
+  }
+}

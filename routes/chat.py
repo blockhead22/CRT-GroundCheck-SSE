@@ -5239,12 +5239,41 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception:
                         pass
 
+                    # ── Triage: assess intent and tell the user what we're about to do ──
+                    _al_intent_hint = None
+                    try:
+                        from personal_agent.task_agent import triage_message, _INTENT_TOOL_MAP
+                        _triage = triage_message(req.message, _task_intent)
+                        _ack_text = _triage.acknowledgment
+                        _tools_planned = _triage.tools_needed or _INTENT_TOOL_MAP.get(_task_intent.intent_type, [])
+                        if _ack_text:
+                            yield _sse({
+                                "type": "intent_preview",
+                                "content": _ack_text,
+                                "metadata": {
+                                    "intent": _task_intent.intent_type,
+                                    "route": _task_intent.route,
+                                    "confidence": _task_intent.confidence,
+                                    "tools_planned": _tools_planned,
+                                    "source": getattr(_task_intent, "source", ""),
+                                },
+                            })
+                            _safe_print(f"[AGENT_LOOP] Intent preview: {_ack_text} (tools={_tools_planned})")
+                        # Build intent hint for the LLM
+                        _al_intent_hint = (
+                            f"User intent: {_task_intent.intent_type}. "
+                            f"Suggested tools: {', '.join(_tools_planned) if _tools_planned else 'none'}."
+                        )
+                    except Exception as _triage_err:
+                        _safe_print(f"[AGENT_LOOP] Triage failed (non-fatal): {_triage_err}")
+
                     _loop = AgentToolLoop(
                         _llm_client_al,
                         session_db=_session_db,
                         max_iterations=_al_max_iter,
                         show_thinking=_al_show_thinking,
                         engine=_al_engine,
+                        intent_hint=_al_intent_hint,
                     )
 
                     _loop_gen = _loop.run(

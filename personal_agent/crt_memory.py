@@ -191,6 +191,11 @@ class MemoryItem:
     model_id: Optional[str] = None             # generating model identifier
     run_id: Optional[str] = None               # run/request identifier for traceability
 
+    # Geometric memory (Phase G1)
+    sigma: Optional[np.ndarray] = None          # Diagonal covariance (384D), None = uninitialized
+    belnap_state: str = "true"                  # true | false | both | neither
+    memory_type: str = "observation"            # fact | preference | event | belief | identity
+
     # Adaptive compression (Phase 1)
     compression_tier: int = 2                   # 0=cold(10D), 1=warm(64D), 2=full(384D)
     compressed_vector: Optional[np.ndarray] = None  # folded vector (None for tier 2)
@@ -225,6 +230,9 @@ class MemoryItem:
             'source_kind': self.source_kind,
             'model_id': self.model_id,
             'run_id': self.run_id,
+            'sigma': self.sigma.tolist() if self.sigma is not None else None,
+            'belnap_state': self.belnap_state,
+            'memory_type': self.memory_type,
             'compression_tier': self.compression_tier,
             'compressed_vector': self.compressed_vector.tolist() if self.compressed_vector is not None else None,
             'cogni_seed': self.cogni_seed,
@@ -283,6 +291,28 @@ class MemoryItem:
         if self.review_after is None:
             return False
         return (now if now is not None else time.time()) > self.review_after
+
+
+# ---------------------------------------------------------------------------
+# Geometric memory helpers (Phase G1)
+# ---------------------------------------------------------------------------
+
+_KIND_TO_MEMORY_TYPE = {
+    "user_fact": "fact",
+    "ops": "fact",
+    "preference": "preference",
+    "identity_constant": "identity",
+    "evolution_observation": "belief",
+    "evolution_proposal": "belief",
+    "hypothesis": "belief",
+    "observation": "observation",
+    "narrative_note": "belief",
+}
+
+
+def _kind_to_memory_type(kind: Optional[str]) -> str:
+    """Map existing ``kind`` field to geometric memory_type."""
+    return _KIND_TO_MEMORY_TYPE.get(kind or "", "observation")
 
 
 class CRTMemorySystem:
@@ -629,6 +659,15 @@ class CRTMemorySystem:
             logger.info(f"[MIGRATION] Adding user_id column to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN user_id TEXT")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_user_id ON memories(user_id)")
+
+        # Geometric memory (Phase G1): sigma (diagonal covariance), belnap_state, memory_type
+        if "sigma" not in columns:
+            logger.info(f"[MIGRATION] Adding geometric memory columns to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN sigma BLOB")
+            cursor.execute("ALTER TABLE memories ADD COLUMN belnap_state TEXT DEFAULT 'true'")
+            cursor.execute("ALTER TABLE memories ADD COLUMN memory_type TEXT DEFAULT 'observation'")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_belnap_state ON memories(belnap_state)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type)")
 
         conn.commit()
         conn.close()
@@ -1447,6 +1486,7 @@ class CRTMemorySystem:
             source_kind=resolved_source_kind,
             model_id=model_id,
             run_id=run_id,
+            memory_type=_kind_to_memory_type(kind),
         )
 
         # Store in database
@@ -1456,8 +1496,8 @@ class CRTMemorySystem:
         try:
             cursor.execute("""
                 INSERT INTO memories
-                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind, review_after, source_kind, model_id, run_id, user_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (memory_id, vector_json, text, timestamp, confidence, trust, source, sse_mode, context_json, fact_tuples, extraction_method, temporal_status, domain_tags, thread_id, authority, channel, origin, kind, review_after, source_kind, model_id, run_id, user_id, sigma, belnap_state, memory_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 memory.memory_id,
                 json.dumps(vector.tolist()),
@@ -1482,6 +1522,9 @@ class CRTMemorySystem:
                 model_id,
                 run_id,
                 resolved_user_id,
+                memory.sigma.tobytes() if memory.sigma is not None else None,
+                memory.belnap_state,
+                memory.memory_type,
             ))
         except sqlite3.OperationalError as e:
             # Backward compatibility for old ad-hoc tables that may not include thread_id.
@@ -1702,11 +1745,13 @@ class CRTMemorySystem:
 
         # Compute scores — tier-aware: fold query to each memory's dimensionality
         t_now = time.time()
-        from personal_agent.memory_compression import fold_vector, TIER_DIMS
+        from personal_agent.memory_compression import (
+            fold_vector, TIER_DIMS, dequantize_vector,
+        )
 
-        # Compression tier fidelity penalty: lower-dim vectors lose
-        # information, so we discount their similarity scores.
-        _TIER_WEIGHT = {0: 0.85, 1: 0.95, 2: 1.0}
+        # Compression tier fidelity penalty: lower-fidelity compressed
+        # vectors get a slight discount (MemQuant is much less lossy than fold).
+        _TIER_WEIGHT = {0: 0.90, 1: 0.97, 2: 1.0}
 
         memory_dicts = []
         for m in memories:
@@ -1715,12 +1760,25 @@ class CRTMemorySystem:
             for qvec in expanded_vectors:
                 try:
                     if tier < 2 and m.compressed_vector is not None and len(m.compressed_vector) > 0:
-                        # Memory is compressed — fold query to its tier for comparison
-                        target_dim = TIER_DIMS.get(tier, 384)
-                        folded_query, _ = fold_vector(qvec, target_dim)
-                        effective_vector = m.compressed_vector
-                        sim = float(np.dot(folded_query, effective_vector) / (
-                            np.linalg.norm(folded_query) * np.linalg.norm(effective_vector) + 1e-8
+                        # Compressed memory — detect format and decompress
+                        if isinstance(m.cogni_seed, dict) and m.cogni_seed.get("method") == "memquant":
+                            # MemQuant: decompress to full 384D, compare directly
+                            effective_vector = dequantize_vector(
+                                np.array(m.compressed_vector, dtype=np.uint8),
+                                m.cogni_seed,
+                            )
+                        else:
+                            # Legacy fold: fold query down to match compressed dim
+                            target_dim = TIER_DIMS.get(tier, 384)
+                            folded_query, _ = fold_vector(qvec, target_dim)
+                            effective_vector = m.compressed_vector
+                            sim = float(np.dot(folded_query, effective_vector) / (
+                                np.linalg.norm(folded_query) * np.linalg.norm(effective_vector) + 1e-8
+                            ))
+                            best_sim = max(best_sim, sim)
+                            continue
+                        sim = float(np.dot(qvec, effective_vector) / (
+                            np.linalg.norm(qvec) * np.linalg.norm(effective_vector) + 1e-8
                         ))
                     else:
                         # Full vector — compare directly
@@ -2530,14 +2588,18 @@ class CRTMemorySystem:
         # Adaptive compression fields (columns 27-32)
         if len(row) > 27:
             memory.compression_tier = int(row[27]) if row[27] is not None else 2
-        if len(row) > 28 and row[28]:
-            try:
-                memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.float32)
-            except Exception:
-                pass
         if len(row) > 29 and row[29]:
             try:
                 memory.cogni_seed = json.loads(row[29])
+            except Exception:
+                pass
+        if len(row) > 28 and row[28]:
+            try:
+                # Detect format: memquant stores uint8 indices, legacy stores float32
+                if isinstance(memory.cogni_seed, dict) and memory.cogni_seed.get("method") == "memquant":
+                    memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.uint8)
+                else:
+                    memory.compressed_vector = np.array(json.loads(row[28]), dtype=np.float32)
             except Exception:
                 pass
         if len(row) > 30:
@@ -2549,6 +2611,16 @@ class CRTMemorySystem:
         # user_id (column 33 — added AFTER compression columns in migration order)
         if len(row) > 33:
             memory.user_id = row[33]
+        # Geometric memory (columns 34-36 — sigma BLOB, belnap_state, memory_type)
+        if len(row) > 34 and row[34] is not None:
+            try:
+                memory.sigma = np.frombuffer(row[34], dtype=np.float32)
+            except Exception:
+                pass
+        if len(row) > 35:
+            memory.belnap_state = row[35] if row[35] else "true"
+        if len(row) > 36:
+            memory.memory_type = row[36] if row[36] else "observation"
         return memory
     
     def _load_all_memories(self, user_id: Optional[str] = None) -> List[MemoryItem]:

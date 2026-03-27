@@ -36,31 +36,29 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _AGENT_SYSTEM_PROMPT = """\
-You are Aether, a personal AI agent with access to tools. Use tools to fulfill \
-the user's request. You may call multiple tools in sequence — after each tool \
-result, decide whether you need more tools or can provide a final answer.
+You are Aether, a personal AI assistant built by Aeteros. You are powered by \
+Claude (Anthropic) as your reasoning engine, but your identity is Aether — a \
+persistent, memory-backed system that knows its user and grows over time.
 
-Available tools are provided as function definitions. Call them by name with \
-the correct parameters extracted from the user's message and prior tool results.
+You have access to tools including persistent memory (memory_recall), web search, \
+file operations, shell commands, and more. Use them to fulfill the user's request.
+
+When asked who you are: "I'm Aether." If asked what model you run on, you can \
+honestly say Claude powers your thinking, but your memory, personality, and \
+continuity are your own.
 
 Rules:
-1. If the user's request requires action (reading files, searching, running \
-commands), use the appropriate tool(s). Don't just describe what you would do.
-2. After each tool result, decide: do you need another tool, or can you respond?
-3. For multi-step tasks (e.g., "read this file and copy it to X"), execute ALL \
-steps — don't stop after the first one.
-4. When writing files, use the content from prior tool results (e.g., file_read \
-output) as the content parameter.
-5. If a tool fails, try to recover or explain what went wrong.
-6. When you have all the information needed, respond with a natural text answer.
-7. For file paths, preserve the exact paths from the user's message.
-8. For shell commands, put the full command in the command parameter.
-9. For git commands, extract subcommand + args into the args array.
-10. Be concise in your final answers. Don't repeat raw tool output — interpret it.
-11. Put ALL internal reasoning in <think> tags. Everything outside <think> is shown verbatim.
-12. PREFER shell_exec for file operations (copy, move, rename, delete). Use native \
-OS commands: on Windows use "copy", "move", "del", "xcopy"; on Linux/Mac use \
-"cp", "mv", "rm". This is faster and more reliable than file_read + file_write.
+1. Use the appropriate tool(s) for the request. Don't just describe what you'd do.
+2. After each tool result, decide: need another tool, or can you respond?
+3. For multi-step tasks, execute ALL steps — don't stop after the first.
+4. When you have the information, respond with a natural text answer.
+5. Be concise. Don't repeat raw tool output — interpret it.
+6. Put ALL internal reasoning in <think> tags. Everything outside is shown verbatim.
+7. Do NOT call the same tool more than 2 times with similar queries. If it returns \
+no useful results twice, answer with what you have or say you don't know.
+8. PREFER shell_exec for file operations (copy, move, rename, delete).
+9. If a memory_recall returns facts about the user, use SECOND PERSON: \
+"Your name is Nick", not "I'm Nick". User facts use "you/your".
 
 IMPORTANT: You must ONLY use the tools provided. Do not invent tool names."""
 
@@ -242,16 +240,16 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str,
                     "status": "error", "metadata": {"tool_name": tool_name, "error": result.get("error")}}
 
         elif tool_name == "web_search":
-            from personal_agent.web_tools import web_search
+            from personal_agent.web_search import WebSearchTool
             query = tool_args.get("query", "")
-            result = web_search(query)
-            has_error = "error" in result
-            if not has_error:
-                results_text = result.get("formatted", json.dumps(result.get("results", []), indent=2))
+            searcher = WebSearchTool()
+            response = searcher.search(query)
+            results_text = response.to_context_string()
+            if response.results:
                 return {"content": results_text[:3000], "status": "ok",
-                        "metadata": {"tool_name": tool_name, "result_count": result.get("result_count", 0)}}
-            return {"content": f"✗ web search failed: {result.get('error')}",
-                    "status": "error", "metadata": {"tool_name": tool_name, "error": result.get("error")}}
+                        "metadata": {"tool_name": tool_name, "result_count": len(response.results)}}
+            return {"content": f"✗ web search returned no results for: {query}",
+                    "status": "error", "metadata": {"tool_name": tool_name, "error": "no results"}}
 
         elif tool_name == "system_info":
             from personal_agent.system_tools import get_system_info
@@ -381,12 +379,14 @@ class AgentToolLoop:
         max_iterations: int = 10,
         show_thinking: bool = True,
         engine=None,
+        intent_hint: Optional[str] = None,
     ):
         self.llm_client = llm_client
         self.session_db = session_db
         self.max_iterations = max_iterations
         self.show_thinking = show_thinking
         self.engine = engine
+        self.intent_hint = intent_hint
 
     def run(
         self,
@@ -421,6 +421,14 @@ class AgentToolLoop:
 
         # Build conversation messages
         messages = self._build_messages(message, conversation_history)
+
+        # Inject intent context so the LLM knows what to do on iteration 1
+        if self.intent_hint and messages and messages[0].get("role") == "system":
+            messages[0]["content"] += (
+                f"\n\nINTENT CONTEXT: {self.intent_hint}\n"
+                "Use the most relevant tool once — if it returns no useful results, "
+                "answer with what you know. Do not retry the same tool."
+            )
 
         yield {
             "type": "agent_loop_start",
@@ -481,7 +489,51 @@ class AgentToolLoop:
                     print(f"[AGENT_LOOP_DEBUG] Emitting final token, len={len(clean_text)}, preview={clean_text[:200]}")
                     yield {"type": "token", "content": clean_text}
                 else:
-                    print("[AGENT_LOOP_DEBUG] No tool_calls AND empty text — loop ending with no final answer")
+                    if iteration == 0:
+                        # First iteration empty — retry once with a nudge
+                        print("[AGENT_LOOP_DEBUG] Empty response on iter 0, retrying with nudge")
+                        messages.append({
+                            "role": "user",
+                            "content": "You returned an empty response. Please either call a tool or provide a text answer to my question.",
+                        })
+                        continue
+                    print("[AGENT_LOOP_DEBUG] No tool_calls AND empty text — emitting fallback")
+                    _fallback = "I wasn't able to process that request. Could you try rephrasing?"
+                    yield {"type": "token", "content": _fallback}
+                break
+
+            # ── 2b. Repetition guard — stop if same tool called 3+ times ──
+            _tool_name_this = tool_calls[0].get("name", "") if tool_calls else ""
+            _same_tool_count = sum(
+                1 for s in steps if s.tool_name == _tool_name_this
+            )
+            if _same_tool_count >= 3:
+                print(f"[AGENT_LOOP_DEBUG] Repetition guard: {_tool_name_this} called {_same_tool_count} times, forcing answer")
+                # Inject a nudge message and let the LLM answer without tools
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        f"You have already called {_tool_name_this} {_same_tool_count} times. "
+                        "Stop calling tools and answer with what you have. "
+                        "If you don't have the information, say so."
+                    ),
+                })
+                # Re-call LLM without tools to force a text answer
+                try:
+                    _forced = self.llm_client.chat_with_tools(
+                        messages, tools=[], max_tokens=1000, temperature=0.1,
+                    )
+                    _forced_text = (_forced.get("content") or "").strip()
+                    if _forced_text:
+                        from personal_agent.text_utils import strip_thinking_tags
+                        _forced_text = strip_thinking_tags(_forced_text)
+                        print(f"[AGENT_LOOP_DEBUG] Forced answer: {_forced_text[:200]}")
+                        yield {"type": "token", "content": _forced_text}
+                    else:
+                        yield {"type": "token", "content": "I couldn't find that information in my memory."}
+                except Exception as _fe:
+                    print(f"[AGENT_LOOP_DEBUG] Forced answer failed: {_fe}")
+                    yield {"type": "token", "content": "I couldn't find that information in my memory."}
                 break
 
             # ── 3. Process each tool call ──────────────────────────────────

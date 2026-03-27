@@ -446,6 +446,11 @@ def detect_unresolved_tensions(
 ) -> List[Tuple[str, str]]:
     """Detect unresolved tensions from the contradiction ledger and intra-cluster divergence.
 
+    Phase G1: disposition-aware filtering.
+    - ``held`` and ``evolving`` contradictions are genuine tensions to surface.
+    - ``resolvable`` contradictions are actionable — still surfaced but annotated.
+    - ``contextual`` contradictions are skipped (not really tensions).
+
     Returns human-readable tension pairs.
     """
     tensions: List[Tuple[str, str]] = []
@@ -454,10 +459,21 @@ def detect_unresolved_tensions(
     try:
         open_contras = ledger.get_open_contradictions(limit=50)
         for contra in open_contras:
+            # Phase G1: skip contextual dispositions — they're not real tensions
+            disposition = getattr(contra, "disposition", None)
+            if disposition == "contextual":
+                continue
+
             claim_a = getattr(contra, "claim_a_text", None) or ""
             claim_b = getattr(contra, "claim_b_text", None) or ""
             if claim_a and claim_b:
-                tensions.append((claim_a[:120], claim_b[:120]))
+                # Annotate held/evolving tensions so prompt builder can frame them
+                if disposition == "held":
+                    tensions.append((f"[held] {claim_a[:120]}", f"[held] {claim_b[:120]}"))
+                elif disposition == "evolving":
+                    tensions.append((f"[evolving] {claim_a[:120]}", f"[evolving] {claim_b[:120]}"))
+                else:
+                    tensions.append((claim_a[:120], claim_b[:120]))
     except Exception as e:
         logger.warning("[SYNTHESIS] Ledger tension scan failed: %s", e)
 
@@ -592,12 +608,17 @@ def _build_contradiction_prompt(
     tensions: List[Tuple[str, str]],
     clusters: List[BeliefCluster],
 ) -> str:
-    """Build LLM prompt for contradiction-aware synthesis."""
+    """Build LLM prompt for contradiction-aware synthesis.
+
+    Phase G1: tensions may carry disposition annotations ([held], [evolving]).
+    """
     lines = [
         "You are Aether's synthesis engine. The user wants to understand their internal "
         "contradictions and tensions. Present these thoughtfully — contradictions are "
         "normal and reveal complexity, not flaws.",
         "Frame as 'On one hand... on the other hand...' not 'You said X but also Y.'",
+        "Tensions marked [held] are simultaneously true — frame as genuine complexity.",
+        "Tensions marked [evolving] show the user changing over time — frame as growth.",
         "",
         f"User asked: \"{query}\"",
         "",
