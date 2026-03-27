@@ -204,14 +204,30 @@ def _get_user_from_token(authorization: Optional[str]):
         user = auth_module.validate_session(token)
         if user:
             return user
-    # Fallback: single-user mode — return first user in DB
+    # Local mode: return existing user or create one — never 401
     try:
         user = auth_module.get_user_by_id(1)
         if user:
             return user
     except Exception:
         pass
-    raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        user = auth_module.register_user(
+            username="local", password="local", display_name="Local User"
+        )
+        if user:
+            return user
+    except Exception:
+        pass
+    # Last resort: stub user so we never 401 in local mode
+    from dataclasses import dataclass
+    @dataclass
+    class _StubUser:
+        id: int = 0
+        username: str = "local"
+        display_name: str = "Local User"
+        created_at: int = 0
+    return _StubUser()
 
 
 @router.get("/settings")
