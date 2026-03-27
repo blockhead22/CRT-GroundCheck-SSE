@@ -288,6 +288,26 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str,
             return {"content": "(memory system not available)", "status": "error",
                     "metadata": {"tool_name": tool_name}}
 
+        elif tool_name == "inquiry_queue":
+            # Phase G4: Active inference — show what the agent is uncertain about
+            try:
+                from personal_agent.heartbeat_system import HeartbeatScheduler
+                queue = HeartbeatScheduler.get_inquiry_queue()
+                if queue:
+                    lines = []
+                    for inq in queue[:10]:
+                        lines.append(
+                            f"- [{inq.urgency.value.upper()}] {inq.question} "
+                            f"(type={inq.uncertainty_type.value}, gain={inq.expected_info_gain:.2f})"
+                        )
+                    return {"content": "\n".join(lines), "status": "ok",
+                            "metadata": {"tool_name": tool_name, "count": len(queue)}}
+                return {"content": "(no open inquiries — belief state is stable)", "status": "ok",
+                        "metadata": {"tool_name": tool_name, "count": 0}}
+            except Exception as e:
+                return {"content": f"(inquiry queue unavailable: {e})", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+
         elif tool_name == "generate_content":
             # Content generation is handled by the LLM itself in loop mode
             return {"content": "(use your own generation capability to produce the content, then call file_write to save it)",

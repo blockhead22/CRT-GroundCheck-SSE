@@ -161,10 +161,67 @@ def _sanitize_identity_pronouns(answer: str) -> str:
     return out
 
 
+# ---------------------------------------------------------------------------
+# Phase G3: Fisher-weighted reranking
+# ---------------------------------------------------------------------------
+
+def _fisher_rerank(
+    retrieved: list,
+    fisher_weight: float = 0.3,
+) -> list:
+    """Rerank retrieved memories by precision (inverse total uncertainty).
+
+    Memories with tighter sigma (lower total uncertainty) get a boost.
+    This complements volatility reranking (which boosts unstable memories
+    for surfacing) by also rewarding high-certainty memories.
+
+    Args:
+        retrieved: list of (MemoryItem, score) tuples
+        fisher_weight: 0-1, how much precision influences the final score
+
+    Returns:
+        Re-sorted list of (MemoryItem, score) tuples
+    """
+    if not retrieved or fisher_weight <= 0:
+        return retrieved
+
+    # Collect total_uncertainty for memories that have sigma
+    uncertainties = []
+    for mem, _score in retrieved:
+        sigma = getattr(mem, "sigma", None)
+        if sigma is not None:
+            uncertainties.append(float(np.sum(sigma)))
+        else:
+            uncertainties.append(None)
+
+    # If no memories have sigma, skip
+    valid = [u for u in uncertainties if u is not None]
+    if not valid:
+        return retrieved
+
+    # Normalize: precision = 1 - (uncertainty / max_uncertainty)
+    max_unc = max(valid) if valid else 1.0
+    if max_unc < 1e-12:
+        return retrieved
+
+    reranked = []
+    for (mem, score), unc in zip(retrieved, uncertainties):
+        if unc is not None:
+            precision = 1.0 - (unc / max_unc)
+        else:
+            precision = 0.5  # neutral for memories without sigma
+
+        adjusted = score * (1.0 + fisher_weight * precision)
+        reranked.append((mem, adjusted))
+
+    reranked.sort(key=lambda x: x[1], reverse=True)
+    return reranked
+
+
 class CRTEnhancedRAG:
     """
     RAG engine with CRT principles.
-    
+
     Differences from standard RAG:
     1. Retrieval weighted by trust, not just similarity
     2. Outputs gated by intent/memory alignment
@@ -5635,6 +5692,11 @@ class CRTEnhancedRAG:
         try:
             from .volatility_context import rerank_by_volatility, allocate_context_budget
             retrieved = rerank_by_volatility(retrieved, self.ledger, self.memory, boost_factor=0.5)
+            # Phase G3: Fisher-weighted reranking — prefer memories with tighter sigma
+            try:
+                retrieved = _fisher_rerank(retrieved, fisher_weight=0.3)
+            except Exception as _fr_err:
+                logger.debug("[FISHER_RERANK] skipped: %s", _fr_err)
             _context_budget = allocate_context_budget(
                 query=user_query,
                 retrieved=retrieved,

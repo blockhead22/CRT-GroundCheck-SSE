@@ -23,11 +23,13 @@ from .desktop import router as desktop_router
 from .intents import router as intents_router
 from .plans import router as plans_router
 from .tooling import router as tooling_router
+from .analysis import router as analysis_router
 
 
 def register_routes(app: FastAPI) -> None:
     """Register modular routers on the app."""
     install_log_handler()
+    app.include_router(analysis_router)
     app.include_router(plans_router)
     app.include_router(tooling_router)
     app.include_router(desktop_router)

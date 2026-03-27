@@ -313,6 +313,133 @@ class DisclosurePolicy:
             self.budget = DisclosureBudget()
             logger.info("[DISCLOSURE] Budget reset")
 
+    # ------------------------------------------------------------------
+    # Phase G4: Belnap-aware disclosure + gap audit
+    # ------------------------------------------------------------------
+
+    def should_disclose_belnap(
+        self,
+        p_valid: float,
+        slot: str,
+        belnap_state: str = "true",
+        disposition: Optional[str] = None,
+        old_value: Optional[str] = None,
+        new_value: Optional[str] = None,
+        context: Optional[Dict[str, any]] = None,
+    ) -> DisclosureDecision:
+        """Belnap-aware disclosure: factors in four-valued logic state.
+
+        - ``true``: normal disclosure flow
+        - ``both``: always hedge (held contradiction)
+        - ``false``: always withhold (contradicted)
+        - ``neither``: always clarify (no evidence)
+
+        The disposition (from the disposition classifier) further modulates:
+        - ``held``: present both sides
+        - ``evolving``: note the trajectory
+        - ``contextual``: context-switch prompt
+        """
+        # BOTH state: always route to clarification regardless of p_valid
+        if belnap_state == "both":
+            prompt = self._generate_clarification_prompt(slot, old_value, new_value, p_valid)
+            if disposition == "held":
+                prompt = (
+                    f"I have two perspectives on your {slot.replace('_', ' ').title()}: "
+                    f"'{old_value}' and '{new_value}'. Both may be valid — can you help me "
+                    f"understand the context for each?"
+                )
+            elif disposition == "evolving":
+                prompt = (
+                    f"Your {slot.replace('_', ' ').title()} seems to have shifted from "
+                    f"'{old_value}' to '{new_value}'. Is that right, or is it more nuanced?"
+                )
+            _reason = f"Belnap BOTH state — held contradiction (disposition={disposition})"
+            _audit("clarify", slot, p_valid, _reason, old_value=old_value, new_value=new_value)
+            return DisclosureDecision(
+                action=DisclosureAction.CLARIFY,
+                reason=_reason,
+                p_valid=p_valid,
+                clarification_prompt=prompt,
+                metadata={
+                    "zone": "belnap_both",
+                    "belnap_state": belnap_state,
+                    "disposition": disposition,
+                },
+            )
+
+        # FALSE state: suppress
+        if belnap_state == "false":
+            _reason = f"Belnap FALSE — belief contradicted (P={p_valid:.2f})"
+            _audit("reject", slot, p_valid, _reason, old_value=old_value, new_value=new_value)
+            return DisclosureDecision(
+                action=DisclosureAction.REJECT,
+                reason=_reason,
+                p_valid=p_valid,
+                metadata={"zone": "belnap_false", "belnap_state": belnap_state},
+            )
+
+        # NEITHER state: seek evidence
+        if belnap_state == "neither":
+            prompt = f"I don't have strong evidence about your {slot.replace('_', ' ').title()} yet. Can you tell me more?"
+            _reason = f"Belnap NEITHER — no evidence (P={p_valid:.2f})"
+            _audit("clarify", slot, p_valid, _reason)
+            return DisclosureDecision(
+                action=DisclosureAction.CLARIFY,
+                reason=_reason,
+                p_valid=p_valid,
+                clarification_prompt=prompt,
+                metadata={"zone": "belnap_neither", "belnap_state": belnap_state},
+            )
+
+        # TRUE state: normal flow
+        return self.should_disclose(p_valid, slot, old_value, new_value, context)
+
+    def audit_gap(
+        self,
+        slot: str,
+        belief_text: str,
+        speech_text: str,
+        disclosure_level: str,
+        belnap_state: str = "true",
+        rule_applied: str = "",
+    ) -> Dict[str, any]:
+        """Record a belief/speech gap for audit trail.
+
+        Returns an audit record that can be stored or logged.
+        """
+        import time as _t
+
+        # Gap magnitude from disclosure level
+        _GAP_MAGNITUDES = {
+            "full": 0.0,
+            "simplified": 0.2,
+            "hedged": 0.4,
+            "redirected": 0.6,
+            "withheld": 1.0,
+        }
+        gap_magnitude = _GAP_MAGNITUDES.get(disclosure_level, 0.0)
+
+        record = {
+            "timestamp": _t.time(),
+            "slot": slot,
+            "belief_text": belief_text[:200],
+            "speech_text": speech_text[:200],
+            "disclosure_level": disclosure_level,
+            "gap_magnitude": gap_magnitude,
+            "belnap_state": belnap_state,
+            "rule_applied": rule_applied,
+        }
+
+        # Log to judgment audit
+        if gap_magnitude > 0:
+            _audit(
+                "gap_audit", slot, gap_magnitude,
+                f"Gap detected: {disclosure_level} (belnap={belnap_state})",
+                belief=belief_text[:100], speech=speech_text[:100],
+            )
+
+        return record
+
 
 def load_calibrated_thresholds(path: str) -> Optional[Dict[str, float]]:
     """

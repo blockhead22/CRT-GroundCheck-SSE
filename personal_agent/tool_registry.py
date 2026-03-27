@@ -471,6 +471,26 @@ def get_tools_for_intent(intent_type: str) -> List[ToolDefinition]:
     return [t for t in TOOL_REGISTRY.values() if t.intent_type == intent_type]
 
 
+# ---- inquiry_queue (Phase G4: Active Inference) ----
+_register(ToolDefinition(
+    name="inquiry_queue",
+    description="Show what the agent is uncertain about — a prioritized queue of beliefs that need clarification, evidence, or user input to reduce uncertainty",
+    parameters=[],
+    access_layer=1,
+    checkpoint_tier="none",
+    intent_type="inquiry_queue",
+    synthesis_mode="smart",
+    examples=[
+        "what are you uncertain about",
+        "what don't you know",
+        "what should I clarify",
+        "show me your questions",
+        "what beliefs need updating",
+        "where are you confused",
+    ],
+))
+
+
 def get_all_llm_schemas() -> List[Dict[str, Any]]:
     """Get OpenAI-compatible function schemas for ALL tools (for LLM routing)."""
     return [t.to_llm_schema() for t in TOOL_REGISTRY.values()]

@@ -560,6 +560,76 @@ def should_demote(
 
 
 # ---------------------------------------------------------------------------
+# Phase G2: volatility → covariance bridge
+# ---------------------------------------------------------------------------
+
+_SIGMA_SETTLE_RATE = 0.02   # per-cycle tightening when volatility is low
+_SIGMA_WIDEN_RATE = 0.05    # per-cycle widening when volatility is high
+_VOLATILITY_MIDPOINT = 0.3  # V(t) above this widens, below tightens
+
+
+def _save_trajectory_snapshot(conn, id_col: str, mem_id: str) -> None:
+    """Save a lightweight trajectory snapshot during the compression pass."""
+    row = conn.execute(
+        f"SELECT vector_json, sigma, trust FROM memories WHERE {id_col} = ?",
+        (mem_id,),
+    ).fetchone()
+    if not row or row[1] is None:
+        return
+    sigma = np.frombuffer(row[1], dtype=np.float32)
+    total_unc = float(np.sum(sigma))
+    mu_blob = None
+    if row[0]:
+        try:
+            mu_blob = np.array(json.loads(row[0]), dtype=np.float32).tobytes()
+        except Exception:
+            pass
+    alpha = row[2] if row[2] is not None else 0.5
+    import time as _t
+    conn.execute(
+        """INSERT INTO trajectory_snapshots
+           (memory_id, timestamp, mu, sigma, alpha, total_uncertainty)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (mem_id, _t.time(), mu_blob, row[1], alpha, total_unc),
+    )
+
+
+def _bridge_volatility_to_sigma(conn, id_col: str, mem_id: str, volatility: float) -> None:
+    """Nudge sigma toward the volatility signal each heartbeat cycle.
+
+    Low volatility  → sigma shrinks (belief settling)
+    High volatility → sigma grows   (belief under pressure)
+
+    This keeps the geometric representation in sync with the scalar
+    compression system without replacing either.
+    """
+    row = conn.execute(
+        f"SELECT sigma FROM memories WHERE {id_col} = ?", (mem_id,)
+    ).fetchone()
+    if not row or row[0] is None:
+        return
+
+    sigma = np.frombuffer(row[0], dtype=np.float32).copy()
+
+    if volatility < _VOLATILITY_MIDPOINT:
+        # Settle: gently tighten
+        factor = 1.0 - _SIGMA_SETTLE_RATE * (1.0 - volatility / _VOLATILITY_MIDPOINT)
+        sigma *= factor
+    else:
+        # Pressure: gently widen
+        excess = (volatility - _VOLATILITY_MIDPOINT) / (1.0 - _VOLATILITY_MIDPOINT + 1e-8)
+        factor = 1.0 + _SIGMA_WIDEN_RATE * excess
+        sigma *= factor
+
+    np.maximum(sigma, 1e-8, out=sigma)
+
+    conn.execute(
+        f"UPDATE memories SET sigma = ? WHERE {id_col} = ?",
+        (sigma.tobytes(), mem_id),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Compression pass — called from trust_decay heartbeat
 # ---------------------------------------------------------------------------
 
@@ -663,6 +733,16 @@ def run_compression_pass(
             access_count=access_cnt,
         )
 
+        # Phase G2: bridge volatility → covariance (sigma)
+        # High volatility → widen sigma, low volatility → tighten sigma
+        try:
+            _bridge_volatility_to_sigma(conn, id_col, mem_id, volatility)
+            # Snapshot every 5 stable cycles or on any promote/demote (handled below)
+            if stable_cyc > 0 and stable_cyc % 5 == 0:
+                _save_trajectory_snapshot(conn, id_col, mem_id)
+        except Exception:
+            pass
+
         # Promote?
         if should_promote(tier, volatility, trust):
             new_tier = min(tier + 1, 2)
@@ -690,6 +770,10 @@ def run_compression_pass(
                     (new_tier, json.dumps(indices.tolist()), json.dumps(metadata), mem_id),
                 )
             _log_unfold(mem_id, text, tier, new_tier, volatility, trust)
+            try:
+                _save_trajectory_snapshot(conn, id_col, mem_id)
+            except Exception:
+                pass
             unfolded += 1
 
         # Demote?
@@ -707,6 +791,10 @@ def run_compression_pass(
                 (new_tier, json.dumps(indices.tolist()), json.dumps(metadata), mem_id),
             )
             _log_fold(mem_id, text, tier, new_tier, volatility, trust)
+            try:
+                _save_trajectory_snapshot(conn, id_col, mem_id)
+            except Exception:
+                pass
             folded += 1
 
         # Stability tracking

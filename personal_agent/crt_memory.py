@@ -294,7 +294,7 @@ class MemoryItem:
 
 
 # ---------------------------------------------------------------------------
-# Geometric memory helpers (Phase G1)
+# Geometric memory helpers (Phase G1 + G2)
 # ---------------------------------------------------------------------------
 
 _KIND_TO_MEMORY_TYPE = {
@@ -309,10 +309,53 @@ _KIND_TO_MEMORY_TYPE = {
     "narrative_note": "belief",
 }
 
+# Per-type sigma multipliers (relative to 1/dim base scale).
+# Tight = low uncertainty, wide = high uncertainty.
+_SIGMA_MULTIPLIERS = {
+    "fact": 0.5,
+    "preference": 1.5,
+    "event": 0.8,
+    "belief": 2.0,
+    "identity": 1.2,
+    "observation": 1.0,
+}
+
+_EMBEDDING_DIM = 384  # all-MiniLM-L6-v2
+
 
 def _kind_to_memory_type(kind: Optional[str]) -> str:
     """Map existing ``kind`` field to geometric memory_type."""
     return _KIND_TO_MEMORY_TYPE.get(kind or "", "observation")
+
+
+# Recency weight curves by memory type (age_days → weight).
+# Matches temporal_governance.py's recency_weight() but inlined for hot-path perf.
+_RECENCY_CURVES: Dict[str, tuple] = {
+    #              (lambda_days, floor)
+    "fact":        (365.0, 0.8),   # nearly flat — facts stay relevant
+    "preference":  (90.0,  0.3),   # moderate decay
+    "event":       (3.0,   0.1),   # fast decay — events are ephemeral
+    "belief":      (365.0, 0.6),   # slow decay
+    "identity":    (1e9,   1.0),   # constant — identity never decays
+    "observation": (7.0,   0.4),   # default: 7-day half-life
+}
+
+
+def _temporal_recency(age_days: float, memory_type: str) -> float:
+    """Type-dependent recency weight for retrieval scoring."""
+    lam, floor = _RECENCY_CURVES.get(memory_type, (7.0, 0.4))
+    import math as _m
+    return max(floor, _m.exp(-age_days / lam))
+
+
+def _init_sigma(memory_type: str, dim: int = _EMBEDDING_DIM) -> np.ndarray:
+    """Initialize diagonal covariance from memory_type.
+
+    Returns a float32 array of shape ``(dim,)`` with type-appropriate spread.
+    """
+    base_scale = 1.0 / dim
+    mult = _SIGMA_MULTIPLIERS.get(memory_type, 1.0)
+    return np.full(dim, base_scale * mult, dtype=np.float32)
 
 
 class CRTMemorySystem:
@@ -504,6 +547,24 @@ class CRTMemorySystem:
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_memory_facts_memory
             ON memory_facts(memory_id)
+        """)
+
+        # Phase G2: trajectory snapshots for covariance evolution tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS trajectory_snapshots (
+                snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                memory_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                mu BLOB,
+                sigma BLOB,
+                alpha REAL,
+                total_uncertainty REAL,
+                FOREIGN KEY (memory_id) REFERENCES memories(memory_id)
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_trajectory_memory_ts
+            ON trajectory_snapshots(memory_id, timestamp DESC)
         """)
 
         conn.commit()
@@ -1237,6 +1298,11 @@ class CRTMemorySystem:
             )
             conn.commit()
             conn.close()
+            # Phase G2: confirming evidence → tighten covariance
+            try:
+                self._tighten_sigma(existing_id)
+            except Exception:
+                pass
             self.record_memory_event(
                 memory_id=existing_id,
                 event_type="dedup_reinforced",
@@ -1487,6 +1553,7 @@ class CRTMemorySystem:
             model_id=model_id,
             run_id=run_id,
             memory_type=_kind_to_memory_type(kind),
+            sigma=_init_sigma(_kind_to_memory_type(kind), dim=vector.shape[0]),
         )
 
         # Store in database
@@ -1591,6 +1658,11 @@ class CRTMemorySystem:
                     c.close()
                 except Exception:
                     pass
+                # Phase G2: contradicting evidence → widen covariance
+                try:
+                    self._widen_sigma(old_mem.memory_id)
+                except Exception:
+                    pass
                 logger.info(f"[TRUST_DECAY] Reduced trust for contradicted memory: {old_mem.text[:60]} (trust: {old_trust:.2f} -> {new_trust:.2f})")
 
         # B: Model disagreement detection — when model_output writes slot values that
@@ -1649,6 +1721,8 @@ class CRTMemorySystem:
         kinds: Optional[Set[str]] = None,
         exclude_kinds: Optional[Set[str]] = None,
         user_id: Optional[str] = None,
+        belnap_include: Optional[Set[str]] = None,
+        belnap_exclude: Optional[Set[str]] = None,
     ) -> List[Tuple[MemoryItem, float]]:
         """
         Retrieve memories using trust-weighted scoring.
@@ -1704,6 +1778,14 @@ class CRTMemorySystem:
         
         # Filter by minimum trust
         memories = [m for m in memories if m.trust >= min_trust]
+
+        # Phase G3: Belnap-aware filtering
+        # By default, include all states. Pass belnap_exclude={'both'} to hide
+        # contradicted memories, or belnap_include={'true'} to get only clean ones.
+        if belnap_include is not None:
+            memories = [m for m in memories if getattr(m, "belnap_state", "true") in belnap_include]
+        if belnap_exclude is not None:
+            memories = [m for m in memories if getattr(m, "belnap_state", "true") not in belnap_exclude]
 
         if authorities:
             normalized = {self._normalize_authority(a) for a in authorities}
@@ -1796,12 +1878,9 @@ class CRTMemorySystem:
 
             # CRT scoring: R = sim * recency * belief_weight * tier_weight
             age = t_now - m.timestamp
-            # BUG FIX: Previous lambda of 86400 (1 day) was far too aggressive.
-            # Stable facts like "favorite color = orange" become unretrievable
-            # after 2-3 days. Use 7-day lambda (604800s) so memories remain
-            # discoverable for weeks. A 7-day-old memory gets recency ~0.37
-            # instead of the old ~0.0006.
-            recency = math.exp(-age / 604800.0)  # 7-day lambda
+            # Phase G3: type-dependent recency via temporal governance
+            # Facts/identity decay slowly; events decay fast; preferences moderate.
+            recency = _temporal_recency(age / 86400.0, getattr(m, "memory_type", "observation"))
             belief = 0.7 * m.trust + 0.3 * m.confidence
             tier_weight = _TIER_WEIGHT.get(tier, 1.0)
             score = max(0.0, best_sim) * recency * belief * tier_weight
@@ -1997,6 +2076,159 @@ class CRTMemorySystem:
         count = cursor.fetchone()[0]
         conn.close()
         return count
+
+    # ------------------------------------------------------------------
+    # Phase G2: Sigma (covariance) updates
+    # ------------------------------------------------------------------
+
+    def _tighten_sigma(self, memory_id: str, learning_rate: float = 0.1) -> None:
+        """Shrink covariance (confirming evidence). Called on dedup reinforcement."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT sigma FROM memories WHERE memory_id = ?", (memory_id,))
+        row = cursor.fetchone()
+        if row and row[0] is not None:
+            sigma = np.frombuffer(row[0], dtype=np.float32).copy()
+            sigma *= (1.0 - learning_rate)
+            np.maximum(sigma, 1e-8, out=sigma)
+            cursor.execute(
+                "UPDATE memories SET sigma = ? WHERE memory_id = ?",
+                (sigma.tobytes(), memory_id),
+            )
+            conn.commit()
+        conn.close()
+
+    def _widen_sigma(self, memory_id: str, learning_rate: float = 0.15) -> None:
+        """Grow covariance (contradicting evidence). Called on contradiction detection."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT sigma FROM memories WHERE memory_id = ?", (memory_id,))
+        row = cursor.fetchone()
+        if row and row[0] is not None:
+            sigma = np.frombuffer(row[0], dtype=np.float32).copy()
+            sigma *= (1.0 + learning_rate)
+            cursor.execute(
+                "UPDATE memories SET sigma = ? WHERE memory_id = ?",
+                (sigma.tobytes(), memory_id),
+            )
+            conn.commit()
+        conn.close()
+
+    def save_trajectory_snapshot(self, memory_id: str) -> None:
+        """Save current (mu, sigma, trust) as a trajectory snapshot.
+
+        Called periodically during compression heartbeat to build covariance
+        evolution history for predictive contradiction detection.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT vector_json, sigma, trust FROM memories WHERE memory_id = ?",
+            (memory_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            conn.close()
+            return
+
+        mu_blob = None
+        sigma_blob = row[1]
+        alpha = row[2] if row[2] is not None else 0.5
+        total_uncertainty = 0.0
+
+        if row[0]:
+            try:
+                mu = np.array(json.loads(row[0]), dtype=np.float32)
+                mu_blob = mu.tobytes()
+            except Exception:
+                pass
+        if sigma_blob is not None:
+            try:
+                sigma = np.frombuffer(sigma_blob, dtype=np.float32)
+                total_uncertainty = float(np.sum(sigma))
+            except Exception:
+                pass
+
+        cursor.execute(
+            """INSERT INTO trajectory_snapshots
+               (memory_id, timestamp, mu, sigma, alpha, total_uncertainty)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (memory_id, time.time(), mu_blob, sigma_blob, alpha, total_uncertainty),
+        )
+        conn.commit()
+        conn.close()
+
+    def get_trajectory_snapshots(
+        self, memory_id: str, limit: int = 20,
+    ) -> list:
+        """Return recent trajectory snapshots for a memory (newest first)."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT timestamp, mu, sigma, alpha, total_uncertainty
+               FROM trajectory_snapshots
+               WHERE memory_id = ?
+               ORDER BY timestamp DESC LIMIT ?""",
+            (memory_id, limit),
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        snapshots = []
+        for ts, mu_blob, sigma_blob, alpha, total_unc in rows:
+            snap = {"timestamp": ts, "alpha": alpha, "total_uncertainty": total_unc}
+            if mu_blob:
+                snap["mu"] = np.frombuffer(mu_blob, dtype=np.float32)
+            if sigma_blob:
+                snap["sigma"] = np.frombuffer(sigma_blob, dtype=np.float32)
+            snapshots.append(snap)
+        return snapshots
+
+    def _update_sigma_with_evidence(
+        self,
+        memory_id: str,
+        new_embedding: np.ndarray,
+        weight: float = 0.2,
+    ) -> None:
+        """Bayesian-style sigma update: shift center, adjust covariance by surprise."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT vector_json, sigma FROM memories WHERE memory_id = ?",
+            (memory_id,),
+        )
+        row = cursor.fetchone()
+        if not row or row[1] is None:
+            conn.close()
+            return
+
+        import math as _math
+
+        mu = np.array(json.loads(row[0]), dtype=np.float32)
+        sigma = np.frombuffer(row[1], dtype=np.float32).copy()
+        new_emb = np.asarray(new_embedding, dtype=np.float32)
+
+        diff = new_emb - mu
+        dist_sq = float(np.sum(diff ** 2))
+        expected_dist = float(np.sum(sigma))
+
+        # Shift center toward new evidence
+        mu += weight * diff
+
+        surprise_ratio = dist_sq / max(expected_dist, 1e-8)
+        if surprise_ratio < 1.0:
+            sigma *= (1.0 - 0.05 * weight)
+        else:
+            widen_factor = min(0.5, 0.1 * _math.log(surprise_ratio + 1))
+            sigma *= (1.0 + widen_factor)
+
+        np.maximum(sigma, 1e-8, out=sigma)
+
+        cursor.execute(
+            "UPDATE memories SET vector_json = ?, sigma = ? WHERE memory_id = ?",
+            (json.dumps(mu.tolist()), sigma.tobytes(), memory_id),
+        )
+        conn.commit()
+        conn.close()
 
     def update_trust(
         self,

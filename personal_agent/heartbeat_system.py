@@ -516,12 +516,102 @@ class HeartbeatScheduler:
             self._record_heartbeat_run(thread_id, result)
             self._notify_callbacks(result)
 
+        # Phase G4: Active inference cycle — scans for uncertainty hotspots and
+        # generates prioritized inquiry queue. Runs before self-reflection so
+        # the reflection pass can incorporate active inference insights.
+        try:
+            self._run_active_inference(thread_id)
+        except Exception as ai_exc:
+            logger.debug("[HEARTBEAT] active inference cycle failed: %s", ai_exc)
+
         # Self-reflection pass — runs after the main action regardless of its success.
         # Failures here are fully isolated from the main heartbeat result.
         try:
             self._run_self_reflection(thread_id)
         except Exception as sr_exc:
             logger.debug("[HEARTBEAT] self-reflection pass failed: %s", sr_exc)
+
+    # ------------------------------------------------------------------
+    # Phase G4: Active inference cycle
+    # ------------------------------------------------------------------
+
+    # Shared inquiry generator — persists across heartbeat cycles
+    _inquiry_generator = None
+
+    def _run_active_inference(self, thread_id: str) -> None:
+        """Run one active inference cycle: scan for uncertainty, generate inquiries."""
+        import numpy as np
+        import json
+        import sqlite3
+
+        from .memory_splats import MemorySplat
+        from .active_inference import run_active_inference_cycle, InquiryGenerator
+
+        if self.__class__._inquiry_generator is None:
+            self.__class__._inquiry_generator = InquiryGenerator()
+
+        generator = self.__class__._inquiry_generator
+
+        # Build splats from memory DB
+        db_path = getattr(self, "_memory_db_path", None)
+        if db_path is None:
+            import os
+            db_path = os.path.join(os.path.dirname(__file__), "crt_memory.db")
+
+        if not os.path.exists(db_path):
+            return
+
+        conn = sqlite3.connect(db_path, timeout=5)
+        rows = conn.execute(
+            """SELECT memory_id, vector_json, sigma, trust, text, memory_type,
+                      timestamp, access_count, contradiction_count
+               FROM memories
+               WHERE deprecated = 0 AND sigma IS NOT NULL
+               ORDER BY timestamp DESC LIMIT 100"""
+        ).fetchall()
+        conn.close()
+
+        splats = []
+        for mid, vec_json, sigma_blob, trust, text, mtype, ts, acc, contra in rows:
+            try:
+                mu = np.array(json.loads(vec_json), dtype=np.float32)
+                sigma = np.frombuffer(sigma_blob, dtype=np.float32)
+                splat = MemorySplat(
+                    memory_id=mid, mu=mu, sigma=sigma,
+                    alpha=trust if trust is not None else 0.5,
+                    text=text or "", memory_type=mtype or "observation",
+                    created_at=ts or 0.0, last_updated=ts or 0.0,
+                    update_count=int(acc or 0) + int(contra or 0),
+                )
+                splats.append(splat)
+            except Exception:
+                continue
+
+        if len(splats) < 2:
+            return
+
+        generator = run_active_inference_cycle(
+            splats=splats,
+            generator=generator,
+        )
+        self.__class__._inquiry_generator = generator
+
+        queue = generator.prioritized_queue()
+        if queue:
+            logger.info(
+                "[ACTIVE_INFERENCE] %d open inquiries (top: %s/%s — %s)",
+                len(queue),
+                queue[0].urgency.value,
+                queue[0].uncertainty_type.value,
+                queue[0].question[:80],
+            )
+
+    @classmethod
+    def get_inquiry_queue(cls) -> list:
+        """Return the current prioritized inquiry queue (for tool exposure)."""
+        if cls._inquiry_generator is None:
+            return []
+        return cls._inquiry_generator.prioritized_queue()
 
     # ------------------------------------------------------------------
     # Self-reflection pass (personality / self-awareness)

@@ -1575,15 +1575,153 @@ class HeartbeatLoop:
             return None
 
 
-def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, PersonalityLoop, SelfReplyLoop, HeartbeatLoop]:
+# ---------------------------------------------------------------------------
+# Phase G4: Predictive contradiction scanner loop
+# ---------------------------------------------------------------------------
+
+class ContradictionScanLoop:
+    """Periodic scan for converging beliefs that may become contradictions.
+
+    Uses trajectory snapshots to detect belief pairs on collision course
+    and generates early-warning alerts before contradictions manifest.
+    """
+
+    def __init__(
+        self,
+        session_db: ThreadSessionDB,
+        interval_seconds: int = 1200,
+        enabled: bool = True,
+    ) -> None:
+        self.session_db = session_db
+        self.interval_seconds = max(60, interval_seconds)
+        self.enabled = enabled
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._latest_alerts: List[Dict[str, Any]] = []
+
+    def start(self) -> None:
+        if not self.enabled or self._thread is not None:
+            return
+        self._thread = threading.Thread(
+            target=self._run_forever, name="contradiction-scan-loop", daemon=True,
+        )
+        self._thread.start()
+        logger.info("[CONTRADICTION_SCAN] Started (interval=%ds)", self.interval_seconds)
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        logger.info("[CONTRADICTION_SCAN] Stop requested")
+
+    def _run_forever(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self.run_once()
+            except Exception as e:
+                logger.warning("[CONTRADICTION_SCAN] Error: %s", e)
+            self._stop_event.wait(self.interval_seconds)
+
+    def run_once(self) -> List[Dict[str, Any]]:
+        """Run one scan cycle across all memories. Returns alerts."""
+        alerts: List[Dict[str, Any]] = []
+        try:
+            from .memory_splats import MemorySplat, cosine_similarity
+            from .predictive_contradiction import scan_for_convergence, Urgency
+            import numpy as np
+
+            # Build splats from DB — use the default memory DB
+            splats = self._build_splats_from_db()
+            if len(splats) < 2:
+                return alerts
+
+            convergence_alerts = scan_for_convergence(
+                splats, min_cosine=0.2, min_urgency=Urgency.WATCH,
+            )
+
+            for alert in convergence_alerts[:10]:  # cap at 10
+                r = alert.result
+                alerts.append({
+                    "splat_a": r.splat_a_id,
+                    "splat_b": r.splat_b_id,
+                    "urgency": r.urgency.name,
+                    "convergence_score": r.convergence_score,
+                    "explanation": r.explanation,
+                    "priority": alert.priority,
+                })
+
+            if alerts:
+                logger.info(
+                    "[CONTRADICTION_SCAN] %d convergence alerts (top urgency: %s)",
+                    len(alerts), alerts[0]["urgency"],
+                )
+
+        except ImportError as ie:
+            logger.debug("[CONTRADICTION_SCAN] Module not available: %s", ie)
+        except Exception as e:
+            logger.warning("[CONTRADICTION_SCAN] Scan failed: %s", e)
+
+        self._latest_alerts = alerts
+        return alerts
+
+    @property
+    def latest_alerts(self) -> List[Dict[str, Any]]:
+        return self._latest_alerts
+
+    def _build_splats_from_db(self) -> list:
+        """Build MemorySplat objects from memories that have sigma."""
+        from .memory_splats import MemorySplat
+        import numpy as np
+        import json
+        import sqlite3
+
+        # Find the memory DB path
+        db_path = os.path.join(os.path.dirname(__file__), "crt_memory.db")
+        if not os.path.exists(db_path):
+            return []
+
+        conn = sqlite3.connect(db_path, timeout=5)
+        rows = conn.execute(
+            """SELECT memory_id, vector_json, sigma, trust, text, memory_type, timestamp,
+                      stable_cycles, contradiction_count, access_count
+               FROM memories
+               WHERE deprecated = 0 AND sigma IS NOT NULL
+               ORDER BY timestamp DESC LIMIT 200"""
+        ).fetchall()
+        conn.close()
+
+        splats = []
+        for mid, vec_json, sigma_blob, trust, text, mtype, ts, stable, contra, access in rows:
+            try:
+                mu = np.array(json.loads(vec_json), dtype=np.float32)
+                sigma = np.frombuffer(sigma_blob, dtype=np.float32)
+                splat = MemorySplat(
+                    memory_id=mid,
+                    mu=mu,
+                    sigma=sigma,
+                    alpha=trust if trust is not None else 0.5,
+                    text=text or "",
+                    memory_type=mtype or "observation",
+                    created_at=ts or 0.0,
+                    last_updated=ts or 0.0,
+                    update_count=int(access or 0) + int(contra or 0),
+                )
+                splats.append(splat)
+            except Exception:
+                continue
+
+        return splats
+
+
+def build_loops(session_db: ThreadSessionDB) -> tuple:
     enabled_reflection = os.getenv("CRT_REFLECTION_LOOP_ENABLED", "true").lower() == "true"
     enabled_personality = os.getenv("CRT_PERSONALITY_LOOP_ENABLED", "true").lower() == "true"
     enabled_self_reply = os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_ENABLED", "true").lower() == "true"
     enabled_heartbeat = os.getenv("CRT_HEARTBEAT_LOOP_ENABLED", "true").lower() == "true"
+    enabled_contradiction_scan = os.getenv("CRT_CONTRADICTION_SCAN_LOOP_ENABLED", "true").lower() == "true"
     reflection_interval = int(os.getenv("CRT_REFLECTION_LOOP_SECONDS", "900") or 900)
     personality_interval = int(os.getenv("CRT_PERSONALITY_LOOP_SECONDS", "1200") or 1200)
     self_reply_interval = int(os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_SECONDS", "1800") or 1800)
     heartbeat_interval = int(os.getenv("CRT_HEARTBEAT_LOOP_SECONDS", "1800") or 1800)
+    contradiction_scan_interval = int(os.getenv("CRT_CONTRADICTION_SCAN_LOOP_SECONDS", "1200") or 1200)
     window = int(os.getenv("CRT_LOOP_WINDOW", "20") or 20)
 
     return (
@@ -1591,4 +1729,5 @@ def build_loops(session_db: ThreadSessionDB) -> tuple[ReflectionLoop, Personalit
         PersonalityLoop(session_db=session_db, interval_seconds=personality_interval, window=window, enabled=enabled_personality),
         SelfReplyLoop(session_db=session_db, interval_seconds=self_reply_interval, enabled=enabled_self_reply),
         HeartbeatLoop(session_db=session_db, interval_seconds=heartbeat_interval, enabled=enabled_heartbeat),
+        ContradictionScanLoop(session_db=session_db, interval_seconds=contradiction_scan_interval, enabled=enabled_contradiction_scan),
     )
