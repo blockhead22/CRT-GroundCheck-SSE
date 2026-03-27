@@ -1,0 +1,4 @@
+{"prompt_id": "fs_029", "domain": "factual_settled", "temperature": 0.7, "repetition": 2, "response": "DNA stands for deoxyribonucleic acid.", "finish_reason": "stop", "usage": {"prompt_tokens": 33, "completion_tokens": 11, "total_tokens": 44}}
+{"prompt_id": "fs_029", "domain": "factual_settled", "temperature": 0.7, "repetition": 3, "response": "DNA stands for deoxyribonucleic acid.", "finish_reason": "stop", "usage": {"prompt_tokens": 33, "completion_tokens": 11, "total_tokens": 44}}
+{"prompt_id": "fs_029", "domain": "factual_settled", "temperature": 0.7, "repetition": 7, "response": "DNA stands for deoxyribonucleic acid.", "finish_reason": "stop", "usage": {"prompt_tokens": 33, "completion_tokens": 11, "total_tokens": 44}}
+{"prompt_id": "fs_029", "domain": "factual_settled", "temperature": 0.7, "repetition": 8, "response": "DNA stands for deoxyribonucleic acid.", "finish_reason": "stop", "usage": {"prompt_tokens": 33, "completion_tokens": 11, "total_tokens": 44}}

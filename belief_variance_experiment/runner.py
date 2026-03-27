@@ -191,9 +191,12 @@ async def run_experiment(
         append_result(prompt["id"], temperature, record)
         pbar.update(1)
 
-    # Launch all tasks
-    coros = [process_task(p, t, r) for p, t, r in tasks]
-    await asyncio.gather(*coros)
+    # Launch tasks in batches to avoid event loop overhead
+    BATCH_SIZE = 500
+    for i in range(0, len(tasks), BATCH_SIZE):
+        batch = tasks[i:i + BATCH_SIZE]
+        coros = [process_task(p, t, r) for p, t, r in batch]
+        await asyncio.gather(*coros)
     pbar.close()
 
     print("\nExperiment complete!")

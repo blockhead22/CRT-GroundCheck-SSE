@@ -1,0 +1,4 @@
+{"prompt_id": "fs_034", "domain": "factual_settled", "temperature": 0.3, "repetition": 27, "response": "There are 60 minutes in one hour.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 9, "total_tokens": 44}}
+{"prompt_id": "fs_034", "domain": "factual_settled", "temperature": 0.3, "repetition": 28, "response": "There are 60 minutes in one hour.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 9, "total_tokens": 44}}
+{"prompt_id": "fs_034", "domain": "factual_settled", "temperature": 0.3, "repetition": 0, "response": "There are 60 minutes in one hour.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 9, "total_tokens": 44}}
+{"prompt_id": "fs_034", "domain": "factual_settled", "temperature": 0.3, "repetition": 29, "response": "There are 60 minutes in one hour.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 9, "total_tokens": 44}}

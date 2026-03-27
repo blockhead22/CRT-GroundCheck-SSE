@@ -1,0 +1,4 @@
+{"prompt_id": "fs_037", "domain": "factual_settled", "temperature": 0.0, "repetition": 16, "response": "The capital of Japan is Tokyo.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 7, "total_tokens": 41}}
+{"prompt_id": "fs_037", "domain": "factual_settled", "temperature": 0.0, "repetition": 17, "response": "The capital of Japan is Tokyo.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 7, "total_tokens": 41}}
+{"prompt_id": "fs_037", "domain": "factual_settled", "temperature": 0.0, "repetition": 21, "response": "The capital of Japan is Tokyo.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 7, "total_tokens": 41}}
+{"prompt_id": "fs_037", "domain": "factual_settled", "temperature": 0.0, "repetition": 46, "response": "The capital of Japan is Tokyo.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 7, "total_tokens": 41}}

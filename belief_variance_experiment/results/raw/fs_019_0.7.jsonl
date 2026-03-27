@@ -1,0 +1,2 @@
+{"prompt_id": "fs_019", "domain": "factual_settled", "temperature": 0.7, "repetition": 15, "response": "Humans have 46 chromosomes, which are organized into 23 pairs.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 15, "total_tokens": 49}}
+{"prompt_id": "fs_019", "domain": "factual_settled", "temperature": 0.7, "repetition": 46, "response": "Humans have a total of 46 chromosomes, arranged in 23 pairs.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 16, "total_tokens": 50}}

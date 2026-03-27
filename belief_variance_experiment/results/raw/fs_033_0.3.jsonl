@@ -1,0 +1,4 @@
+{"prompt_id": "fs_033", "domain": "factual_settled", "temperature": 0.3, "repetition": 47, "response": "The chemical symbol for sodium is Na.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 8, "total_tokens": 43}}
+{"prompt_id": "fs_033", "domain": "factual_settled", "temperature": 0.3, "repetition": 48, "response": "The chemical symbol for sodium is Na.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 8, "total_tokens": 43}}
+{"prompt_id": "fs_033", "domain": "factual_settled", "temperature": 0.3, "repetition": 4, "response": "The chemical symbol for sodium is Na.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 8, "total_tokens": 43}}
+{"prompt_id": "fs_033", "domain": "factual_settled", "temperature": 0.3, "repetition": 5, "response": "The chemical symbol for sodium is Na.", "finish_reason": "stop", "usage": {"prompt_tokens": 35, "completion_tokens": 8, "total_tokens": 43}}

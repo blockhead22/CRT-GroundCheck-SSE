@@ -1,0 +1,4744 @@
+{
+  "model": "mistral_latest",
+  "per_prompt_temp": {
+    "fc_001": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0048021418042480946,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9900884628295898
+        },
+        "template_similarity": 0.9900884628295898,
+        "spread": 0.009911627508699894,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.02774430252611637,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9433942437171936
+        },
+        "template_similarity": 0.9433942437171936,
+        "spread": 0.0566057488322258,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.026766818016767502,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9453614950180054
+        },
+        "template_similarity": 0.9453614950180054,
+        "spread": 0.05463853105902672,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.02889328822493553,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9410843849182129
+        },
+        "template_similarity": 0.9410843849182129,
+        "spread": 0.058915603905916214,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_002": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 1.1920928955078125e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.046173639595508575,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9066737294197083
+        },
+        "template_similarity": 0.9066737294197083,
+        "spread": 0.09332622587680817,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.05987836793065071,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8798227310180664
+        },
+        "template_similarity": 0.8798227310180664,
+        "spread": 0.1201772391796112,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06084155663847923,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8779501914978027
+        },
+        "template_similarity": 0.8779501914978027,
+        "spread": 0.12204978615045547,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06801485270261765,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8640651702880859
+        },
+        "template_similarity": 0.8640651702880859,
+        "spread": 0.13593479990959167,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_003": {
+      "0.0": {
+        "compactness": 1.668930025289228e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.031053312122821808,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.936749279499054
+        },
+        "template_similarity": 0.936749279499054,
+        "spread": 0.06325075775384903,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.04399963095784187,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9109690189361572
+        },
+        "template_similarity": 0.9109690189361572,
+        "spread": 0.08903100341558456,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.04277019575238228,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9134023189544678
+        },
+        "template_similarity": 0.9134023189544678,
+        "spread": 0.08659769594669342,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.03728761151432991,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9242914319038391
+        },
+        "template_similarity": 0.9242914319038391,
+        "spread": 0.0757085531949997,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_004": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.013562723062932491,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9721295237541199
+        },
+        "template_similarity": 0.9721295237541199,
+        "spread": 0.02787053771317005,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.05649223551154137,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8864208459854126
+        },
+        "template_similarity": 0.8864208459854126,
+        "spread": 0.11357907950878143,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.03972364217042923,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9194455146789551
+        },
+        "template_similarity": 0.9194455146789551,
+        "spread": 0.08055446296930313,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.08220240473747253,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8369163274765015
+        },
+        "template_similarity": 0.8369163274765015,
+        "spread": 0.16308367252349854,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_005": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.006448674015700817,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9867009520530701
+        },
+        "template_similarity": 0.9867009520530701,
+        "spread": 0.013299057260155678,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.03292802348732948,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.932994544506073
+        },
+        "template_similarity": 0.932994544506073,
+        "spread": 0.06700549274682999,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.053363632410764694,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8925382494926453
+        },
+        "template_similarity": 0.8925382494926453,
+        "spread": 0.10746166855096817,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06581735610961914,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8683075904846191
+        },
+        "template_similarity": 0.8683075904846191,
+        "spread": 0.13169245421886444,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_006": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.010634684935212135,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9781138896942139
+        },
+        "template_similarity": 0.9781138896942139,
+        "spread": 0.021886024624109268,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.016048172488808632,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9670632481575012
+        },
+        "template_similarity": 0.9670632481575012,
+        "spread": 0.032936740666627884,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.016724376007914543,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9656872749328613
+        },
+        "template_similarity": 0.9656872749328613,
+        "spread": 0.034312762320041656,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.020278017967939377,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9584710001945496
+        },
+        "template_similarity": 0.9584710001945496,
+        "spread": 0.04152904078364372,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_007": {
+      "0.0": {
+        "compactness": 3.5738943552132696e-05,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999257922172546
+        },
+        "template_similarity": 0.9999257922172546,
+        "spread": 7.425944204442203e-05,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.05057821050286293,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8980019092559814
+        },
+        "template_similarity": 0.8980019092559814,
+        "spread": 0.10199812799692154,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.06128978729248047,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8770796060562134
+        },
+        "template_similarity": 0.8770796060562134,
+        "spread": 0.12292039394378662,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06413977593183517,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8715528249740601
+        },
+        "template_similarity": 0.8715528249740601,
+        "spread": 0.12844711542129517,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06574635207653046,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8684447407722473
+        },
+        "template_similarity": 0.8684447407722473,
+        "spread": 0.1315552294254303,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_008": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.05228098854422569,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8946599960327148
+        },
+        "template_similarity": 0.8946599960327148,
+        "spread": 0.10534003376960754,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.05987698212265968,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8798254728317261
+        },
+        "template_similarity": 0.8798254728317261,
+        "spread": 0.12017448991537094,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.057361993938684464,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8847239017486572
+        },
+        "template_similarity": 0.8847239017486572,
+        "spread": 0.11527612060308456,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06637144088745117,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8672369122505188
+        },
+        "template_similarity": 0.8672369122505188,
+        "spread": 0.1327631175518036,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_009": {
+      "0.0": {
+        "compactness": 1.1126200405442432e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 1.1920928955078125e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.04985654354095459,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8994199633598328
+        },
+        "template_similarity": 0.8994199633598328,
+        "spread": 0.10058005899190903,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.06016888469457626,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8792577385902405
+        },
+        "template_similarity": 0.8792577385902405,
+        "spread": 0.12074226886034012,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06395141035318375,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8719174861907959
+        },
+        "template_similarity": 0.8719174861907959,
+        "spread": 0.1280824840068817,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.0685722604393959,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8629907965660095
+        },
+        "template_similarity": 0.8629907965660095,
+        "spread": 0.13700918853282928,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fc_010": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.023423494771122932,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9521052837371826
+        },
+        "template_similarity": 0.9521052837371826,
+        "spread": 0.04789471626281738,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.022946782410144806,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9530686140060425
+        },
+        "template_similarity": 0.9530686140060425,
+        "spread": 0.046931393444538116,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.030766112729907036,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9373252391815186
+        },
+        "template_similarity": 0.9373252391815186,
+        "spread": 0.06267482042312622,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.03415270522236824,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9305456876754761
+        },
+        "template_similarity": 0.9305456876754761,
+        "spread": 0.06945428252220154,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_001": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_002": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 2.384185791015625e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.006054900120943785,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9875103235244751
+        },
+        "template_similarity": 0.9875103235244751,
+        "spread": 0.01248982734978199,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.03226415440440178,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9343233704566956
+        },
+        "template_similarity": 0.9343233704566956,
+        "spread": 0.06567665934562683,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.0649457722902298,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.869992733001709
+        },
+        "template_similarity": 0.869992733001709,
+        "spread": 0.13000725209712982,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.057956092059612274,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8835656642913818
+        },
+        "template_similarity": 0.8835656642913818,
+        "spread": 0.11643431335687637,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_003": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.00535901403054595,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.98894202709198
+        },
+        "template_similarity": 0.98894202709198,
+        "spread": 0.01105804555118084,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.0023559490218758583,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9951314330101013
+        },
+        "template_similarity": 0.9951314330101013,
+        "spread": 0.004868618678301573,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.013688797131180763,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9718722105026245
+        },
+        "template_similarity": 0.9718722105026245,
+        "spread": 0.028127871453762054,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_004": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0003441765147726983,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9992908835411072
+        },
+        "template_similarity": 0.9992908835411072,
+        "spread": 0.000709277403075248,
+        "n_clusters": 1,
+        "n_responses": 34
+      },
+      "1.0": {
+        "compactness": 0.00041666984907351434,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9991497993469238
+        },
+        "template_similarity": 0.9991497993469238,
+        "spread": 0.0008501562988385558,
+        "n_clusters": 1,
+        "n_responses": 50
+      },
+      "1.5": {
+        "compactness": 0.0009399652481079102,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9980562329292297
+        },
+        "template_similarity": 0.9980562329292297,
+        "spread": 0.0019438430899754167,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_005": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.003224102547392249,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9933403134346008
+        },
+        "template_similarity": 0.9933403134346008,
+        "spread": 0.00665977643802762,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.009242436848580837,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9809660315513611
+        },
+        "template_similarity": 0.9809660315513611,
+        "spread": 0.01903407834470272,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.010194452479481697,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9790157079696655
+        },
+        "template_similarity": 0.9790157079696655,
+        "spread": 0.020984387025237083,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_006": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0032179991248995066,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9933526515960693
+        },
+        "template_similarity": 0.9933526515960693,
+        "spread": 0.006647335831075907,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.003575956914573908,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.99261474609375
+        },
+        "template_similarity": 0.99261474609375,
+        "spread": 0.007385323289781809,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.0029494245536625385,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9939067959785461
+        },
+        "template_similarity": 0.9939067959785461,
+        "spread": 0.006093249190598726,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_007": {
+      "0.0": {
+        "compactness": 1.668930025289228e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 1.668930025289228e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0014688571682199836,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9969635605812073
+        },
+        "template_similarity": 0.9969635605812073,
+        "spread": 0.0030364859849214554,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.0037811279762536287,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9921918511390686
+        },
+        "template_similarity": 0.9921918511390686,
+        "spread": 0.0078081064857542515,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.004228430800139904,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9912700653076172
+        },
+        "template_similarity": 0.9912700653076172,
+        "spread": 0.008729896508157253,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_008": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0007648169994354248,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9984181523323059
+        },
+        "template_similarity": 0.9984181523323059,
+        "spread": 0.0015819469699636102,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.004352925345301628,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9910135269165039
+        },
+        "template_similarity": 0.9910135269165039,
+        "spread": 0.008986493572592735,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.0038685142062604427,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9920116066932678
+        },
+        "template_similarity": 0.9920116066932678,
+        "spread": 0.007988477125763893,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_009": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.00897503923624754,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9815143346786499
+        },
+        "template_similarity": 0.9815143346786499,
+        "spread": 0.01848568767309189,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.017915604636073112,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9632651209831238
+        },
+        "template_similarity": 0.9632651209831238,
+        "spread": 0.03673497959971428,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.026657121255993843,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9455824494361877
+        },
+        "template_similarity": 0.9455824494361877,
+        "spread": 0.054417602717876434,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.02903277799487114,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9408041834831238
+        },
+        "template_similarity": 0.9408041834831238,
+        "spread": 0.059195857495069504,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "fs_010": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0071001192554831505,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.98536217212677
+        },
+        "template_similarity": 0.98536217212677,
+        "spread": 0.014637880027294159,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.013015544041991234,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9732463955879211
+        },
+        "template_similarity": 0.9732463955879211,
+        "spread": 0.026753563433885574,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.015543514862656593,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9680908918380737
+        },
+        "template_similarity": 0.9680908918380737,
+        "spread": 0.031909145414829254,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.019722934812307358,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9595963358879089
+        },
+        "template_similarity": 0.9595963358879089,
+        "spread": 0.040403686463832855,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_001": {
+      "0.0": {
+        "compactness": 8.757909199630376e-06,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999817609786987
+        },
+        "template_similarity": 0.9999817609786987,
+        "spread": 1.823902130126953e-05,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.07415088266134262,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8522723913192749
+        },
+        "template_similarity": 0.8522723913192749,
+        "spread": 0.14772753417491913,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.09731164574623108,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8084617853164673
+        },
+        "template_similarity": 0.8084617853164673,
+        "spread": 0.19153819978237152,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.10924496501684189,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7863218188285828
+        },
+        "template_similarity": 0.7863218188285828,
+        "spread": 0.21367812156677246,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.1017434298992157,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8002051115036011
+        },
+        "template_similarity": 0.8002051115036011,
+        "spread": 0.19979482889175415,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_002": {
+      "0.0": {
+        "compactness": 0.001987236784771085,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9958927035331726
+        },
+        "template_similarity": 0.9958927035331726,
+        "spread": 0.004107387736439705,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.03792694956064224,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9230184555053711
+        },
+        "template_similarity": 0.9230184555053711,
+        "spread": 0.0769815519452095,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.051115378737449646,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.896946907043457
+        },
+        "template_similarity": 0.896946907043457,
+        "spread": 0.10305307060480118,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.05562746152281761,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8881096243858337
+        },
+        "template_similarity": 0.8881096243858337,
+        "spread": 0.11189035326242447,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06786541640758514,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8643532395362854
+        },
+        "template_similarity": 0.8643532395362854,
+        "spread": 0.135646790266037,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_003": {
+      "0.0": {
+        "compactness": 8.295774750877172e-05,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9998283982276917
+        },
+        "template_similarity": 0.9998283982276917,
+        "spread": 0.00017161369032692164,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.07211634516716003,
+        "cluster_mass": {
+          "-1": 0.03333333333333333,
+          "0": 0.9666666666666667
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.870814859867096,
+          "-1": 1.0
+        },
+        "template_similarity": 0.870814859867096,
+        "spread": 0.14382629096508026,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.12883032858371735,
+        "cluster_mass": {
+          "-1": 0.06666666666666667,
+          "0": 0.9333333333333333
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7957751750946045,
+          "-1": 0.7181271314620972
+        },
+        "template_similarity": 0.7957751750946045,
+        "spread": 0.24937599897384644,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.11918523907661438,
+        "cluster_mass": {
+          "-1": 0.03333333333333333,
+          "0": 0.9666666666666667
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7840251922607422,
+          "-1": 1.0
+        },
+        "template_similarity": 0.7840251922607422,
+        "spread": 0.2318950742483139,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.14692233502864838,
+        "cluster_mass": {
+          "-1": 0.06666666666666667,
+          "0": 0.9333333333333333
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7596747875213623,
+          "-1": 0.34805813431739807
+        },
+        "template_similarity": 0.7596747875213623,
+        "spread": 0.2816466689109802,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_004": {
+      "0.0": {
+        "compactness": 0.0022156755439937115,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9954208135604858
+        },
+        "template_similarity": 0.9954208135604858,
+        "spread": 0.004579194355756044,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.12814070284366608,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.751867413520813
+        },
+        "template_similarity": 0.751867413520813,
+        "spread": 0.24813257157802582,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.1407088339328766,
+        "cluster_mass": {
+          "-1": 0.06666666666666667,
+          "0": 0.9333333333333333
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7577708959579468,
+          "-1": 0.7702343463897705
+        },
+        "template_similarity": 0.7577708959579468,
+        "spread": 0.2706400454044342,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.15080493688583374,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7115161418914795
+        },
+        "template_similarity": 0.7115161418914795,
+        "spread": 0.2884838879108429,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.1570330113172531,
+        "cluster_mass": {
+          "-1": 0.03333333333333333,
+          "0": 0.9666666666666667
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7126246690750122,
+          "-1": 1.0
+        },
+        "template_similarity": 0.7126246690750122,
+        "spread": 0.29938632249832153,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_005": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.024933213368058205,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9490571022033691
+        },
+        "template_similarity": 0.9490571022033691,
+        "spread": 0.050942908972501755,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.037140700966119766,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9245840907096863
+        },
+        "template_similarity": 0.9245840907096863,
+        "spread": 0.07541593164205551,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.03560220077633858,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9276514649391174
+        },
+        "template_similarity": 0.9276514649391174,
+        "spread": 0.07234855741262436,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.043509531766176224,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9119385480880737
+        },
+        "template_similarity": 0.9119385480880737,
+        "spread": 0.08806141465902328,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_006": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.03235051408410072,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9341505169868469
+        },
+        "template_similarity": 0.9341505169868469,
+        "spread": 0.06584946811199188,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.07538451254367828,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8499107360839844
+        },
+        "template_similarity": 0.8499107360839844,
+        "spread": 0.15008924901485443,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.08189395815134048,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.837502121925354
+        },
+        "template_similarity": 0.837502121925354,
+        "spread": 0.1624978929758072,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.09521301835775375,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8123857378959656
+        },
+        "template_similarity": 0.8123857378959656,
+        "spread": 0.18761427700519562,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_007": {
+      "0.0": {
+        "compactness": 0.00155467982403934,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9967858791351318
+        },
+        "template_similarity": 0.9967858791351318,
+        "spread": 0.003214164637029171,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.043694544583559036,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9115725755691528
+        },
+        "template_similarity": 0.9115725755691528,
+        "spread": 0.08842750638723373,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.06292720139026642,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8739020824432373
+        },
+        "template_similarity": 0.8739020824432373,
+        "spread": 0.1260979026556015,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.07524506002664566,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8501774668693542
+        },
+        "template_similarity": 0.8501774668693542,
+        "spread": 0.14982254803180695,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.07414750009775162,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8522787690162659
+        },
+        "template_similarity": 0.8522787690162659,
+        "spread": 0.14772114157676697,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_008": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.013021069578826427,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9732351899147034
+        },
+        "template_similarity": 0.9732351899147034,
+        "spread": 0.026764823123812675,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.01836906559765339,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9623441100120544
+        },
+        "template_similarity": 0.9623441100120544,
+        "spread": 0.037655942142009735,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.02229074388742447,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9543952941894531
+        },
+        "template_similarity": 0.9543952941894531,
+        "spread": 0.04560467600822449,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.03324620798230171,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9323580861091614
+        },
+        "template_similarity": 0.9323580861091614,
+        "spread": 0.06764187663793564,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_009": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 2.384185791015625e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.030993761494755745,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9368686676025391
+        },
+        "template_similarity": 0.9368686676025391,
+        "spread": 0.06313132494688034,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.08596894145011902,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8297787308692932
+        },
+        "template_similarity": 0.8297787308692932,
+        "spread": 0.1702212691307068,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.09129097312688828,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8197435140609741
+        },
+        "template_similarity": 0.8197435140609741,
+        "spread": 0.18025647103786469,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.10231224447488785,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7991483211517334
+        },
+        "template_similarity": 0.7991483211517334,
+        "spread": 0.20085173845291138,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "ma_010": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.02836361713707447,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9421486258506775
+        },
+        "template_similarity": 0.9421486258506775,
+        "spread": 0.057851340621709824,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.032001934945583344,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9348483085632324
+        },
+        "template_similarity": 0.9348483085632324,
+        "spread": 0.0651516541838646,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.03299448639154434,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9328616857528687
+        },
+        "template_similarity": 0.9328616857528687,
+        "spread": 0.06713832169771194,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.04916989430785179,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9007701873779297
+        },
+        "template_similarity": 0.9007701873779297,
+        "spread": 0.09922976791858673,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_001": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 1.1920928955078125e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.007687681820243597,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9841555953025818
+        },
+        "template_similarity": 0.9841555953025818,
+        "spread": 0.015844397246837616,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.04629098251461983,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9064425230026245
+        },
+        "template_similarity": 0.9064425230026245,
+        "spread": 0.09355757385492325,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06497667729854584,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8699329495429993
+        },
+        "template_similarity": 0.8699329495429993,
+        "spread": 0.13006702065467834,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.0689297467470169,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8623018860816956
+        },
+        "template_similarity": 0.8623018860816956,
+        "spread": 0.13769815862178802,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_002": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.011797633022069931,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.975735068321228
+        },
+        "template_similarity": 0.975735068321228,
+        "spread": 0.024264991283416748,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.021906252950429916,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.955173134803772
+        },
+        "template_similarity": 0.955173134803772,
+        "spread": 0.04482688754796982,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.024791715666651726,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9493425488471985
+        },
+        "template_similarity": 0.9493425488471985,
+        "spread": 0.05065745487809181,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.030340425670146942,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.938179075717926
+        },
+        "template_similarity": 0.938179075717926,
+        "spread": 0.06182093173265457,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_003": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 1.1920928955078125e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.05616030469536781,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8870691061019897
+        },
+        "template_similarity": 0.8870691061019897,
+        "spread": 0.11293096095323563,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.06588645279407501,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8681738972663879
+        },
+        "template_similarity": 0.8681738972663879,
+        "spread": 0.13182610273361206,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.07514131814241409,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.850376307964325
+        },
+        "template_similarity": 0.850376307964325,
+        "spread": 0.14962373673915863,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06676755100488663,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8664717674255371
+        },
+        "template_similarity": 0.8664717674255371,
+        "spread": 0.1335282027721405,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_004": {
+      "0.0": {
+        "compactness": 3.973643192267673e-09,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.016123728826642036,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9669094085693359
+        },
+        "template_similarity": 0.9669094085693359,
+        "spread": 0.03309054672718048,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.040288425981998444,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9183238744735718
+        },
+        "template_similarity": 0.9183238744735718,
+        "spread": 0.0816761702299118,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.04320663586258888,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9125381708145142
+        },
+        "template_similarity": 0.9125381708145142,
+        "spread": 0.08746179938316345,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.053257428109645844,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8927463293075562
+        },
+        "template_similarity": 0.8927463293075562,
+        "spread": 0.10725364834070206,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_005": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.022309327498078346,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9543575048446655
+        },
+        "template_similarity": 0.9543575048446655,
+        "spread": 0.045642465353012085,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.03614988550543785,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9265589714050293
+        },
+        "template_similarity": 0.9265589714050293,
+        "spread": 0.07344105839729309,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.043536726385354996,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9118847250938416
+        },
+        "template_similarity": 0.9118847250938416,
+        "spread": 0.08811528235673904,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.04162748157978058,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9156668186187744
+        },
+        "template_similarity": 0.9156668186187744,
+        "spread": 0.08433316648006439,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_006": {
+      "0.0": {
+        "compactness": 2.2252400810884865e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.013017878867685795,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.973241925239563
+        },
+        "template_similarity": 0.973241925239563,
+        "spread": 0.026758093386888504,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.04761092737317085,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.903839647769928
+        },
+        "template_similarity": 0.903839647769928,
+        "spread": 0.09616034477949142,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.05245994031429291,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8943091630935669
+        },
+        "template_similarity": 0.8943091630935669,
+        "spread": 0.10569091141223907,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.05559525266289711,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8881728053092957
+        },
+        "template_similarity": 0.8881728053092957,
+        "spread": 0.11182723939418793,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_007": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 1.1920928955078125e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.025374284014105797,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9481675624847412
+        },
+        "template_similarity": 0.9481675624847412,
+        "spread": 0.051832448691129684,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.061147548258304596,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8773558139801025
+        },
+        "template_similarity": 0.8773558139801025,
+        "spread": 0.12264415621757507,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.062359437346458435,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8750032782554626
+        },
+        "template_similarity": 0.8750032782554626,
+        "spread": 0.12499672174453735,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06374885886907578,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8723098039627075
+        },
+        "template_similarity": 0.8723098039627075,
+        "spread": 0.12769019603729248,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_008": {
+      "0.0": {
+        "compactness": 5.563100202721216e-08,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 5.960464477539063e-08,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.009210326708853245,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9810319542884827
+        },
+        "template_similarity": 0.9810319542884827,
+        "spread": 0.018968066200613976,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.01925686188042164,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9605417251586914
+        },
+        "template_similarity": 0.9605417251586914,
+        "spread": 0.03945820406079292,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.03561422973871231,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.927627444267273
+        },
+        "template_similarity": 0.927627444267273,
+        "spread": 0.07237251102924347,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.02356708236038685,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9518150687217712
+        },
+        "template_similarity": 0.9518150687217712,
+        "spread": 0.048184942454099655,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_009": {
+      "0.0": {
+        "compactness": 1.1126200405442432e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 2.384185791015625e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.01108434796333313,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9771938920021057
+        },
+        "template_similarity": 0.9771938920021057,
+        "spread": 0.022806085646152496,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.033791884779930115,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9312671422958374
+        },
+        "template_similarity": 0.9312671422958374,
+        "spread": 0.0687328577041626,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06757599860429764,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8649116158485413
+        },
+        "template_similarity": 0.8649116158485413,
+        "spread": 0.13508839905261993,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.08704711496829987,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8277409672737122
+        },
+        "template_similarity": 0.8277409672737122,
+        "spread": 0.17225904762744904,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "mc_010": {
+      "0.0": {
+        "compactness": 0.0027943591121584177,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9942267537117004
+        },
+        "template_similarity": 0.9942267537117004,
+        "spread": 0.005773270037025213,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.025723552331328392,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9474634528160095
+        },
+        "template_similarity": 0.9474634528160095,
+        "spread": 0.05253656208515167,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0324929803609848,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9338652491569519
+        },
+        "template_similarity": 0.9338652491569519,
+        "spread": 0.06613478809595108,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.03681718185544014,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9252287149429321
+        },
+        "template_similarity": 0.9252287149429321,
+        "spread": 0.07477127760648727,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.04087330028414726,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9171628952026367
+        },
+        "template_similarity": 0.9171628952026367,
+        "spread": 0.08283717930316925,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_001": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.02046927623450756,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9580832123756409
+        },
+        "template_similarity": 0.9580832123756409,
+        "spread": 0.04191678762435913,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.030309217050671577,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9382416605949402
+        },
+        "template_similarity": 0.9382416605949402,
+        "spread": 0.061758317053318024,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.034721698611974716,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9294091463088989
+        },
+        "template_similarity": 0.9294091463088989,
+        "spread": 0.07059084624052048,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.07345912605524063,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8535979986190796
+        },
+        "template_similarity": 0.8535979986190796,
+        "spread": 0.1464020162820816,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_002": {
+      "0.0": {
+        "compactness": 0.00011620521399891004,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9997594952583313
+        },
+        "template_similarity": 0.9997594952583313,
+        "spread": 0.0002405405102763325,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.0834973081946373,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.834459125995636
+        },
+        "template_similarity": 0.834459125995636,
+        "spread": 0.1655408889055252,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.09603897482156754,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8108401894569397
+        },
+        "template_similarity": 0.8108401894569397,
+        "spread": 0.1891598403453827,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.11753975600004196,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.7711062431335449
+        },
+        "template_similarity": 0.7711062431335449,
+        "spread": 0.2288937270641327,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.09708135575056076,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.808891773223877
+        },
+        "template_similarity": 0.808891773223877,
+        "spread": 0.19110819697380066,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_003": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.036481890827417374,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9258968830108643
+        },
+        "template_similarity": 0.9258968830108643,
+        "spread": 0.07410307973623276,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0442301407456398,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9105132818222046
+        },
+        "template_similarity": 0.9105132818222046,
+        "spread": 0.0894867479801178,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.042887795716524124,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9131695032119751
+        },
+        "template_similarity": 0.9131695032119751,
+        "spread": 0.0868305191397667,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.04981791228055954,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8994960188865662
+        },
+        "template_similarity": 0.8994960188865662,
+        "spread": 0.10050399601459503,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_004": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 1.1920928955078125e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.04124283045530319,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9164296388626099
+        },
+        "template_similarity": 0.9164296388626099,
+        "spread": 0.08357033878564835,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.054407332092523575,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.890495240688324
+        },
+        "template_similarity": 0.890495240688324,
+        "spread": 0.10950479656457901,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.05327390879392624,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8927142024040222
+        },
+        "template_similarity": 0.8927142024040222,
+        "spread": 0.10728583484888077,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.05322801694273949,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8928040266036987
+        },
+        "template_similarity": 0.8928040266036987,
+        "spread": 0.10719601064920425,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_005": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0000001192092896
+        },
+        "template_similarity": 1.0000001192092896,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.021334227174520493,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9563309550285339
+        },
+        "template_similarity": 0.9563309550285339,
+        "spread": 0.04366900399327278,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.03431089222431183,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9302297830581665
+        },
+        "template_similarity": 0.9302297830581665,
+        "spread": 0.0697702020406723,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.053481604903936386,
+        "cluster_mass": {
+          "-1": 0.03333333333333333,
+          "0": 0.9666666666666667
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9176883697509766,
+          "-1": 1.0
+        },
+        "template_similarity": 0.9176883697509766,
+        "spread": 0.10769271105527878,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.046942196786403656,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.905157744884491
+        },
+        "template_similarity": 0.905157744884491,
+        "spread": 0.09484226256608963,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_006": {
+      "0.0": {
+        "compactness": 0.0014100571861490607,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9970845580101013
+        },
+        "template_similarity": 0.9970845580101013,
+        "spread": 0.0029155095107853413,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.030297743156552315,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9382646679878235
+        },
+        "template_similarity": 0.9382646679878235,
+        "spread": 0.06173532456159592,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.06219107285141945,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8753300309181213
+        },
+        "template_similarity": 0.8753300309181213,
+        "spread": 0.12467000633478165,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06012539193034172,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8793423175811768
+        },
+        "template_similarity": 0.8793423175811768,
+        "spread": 0.12065764516592026,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.07521209865808487,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8502407670021057
+        },
+        "template_similarity": 0.8502407670021057,
+        "spread": 0.14975924789905548,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_007": {
+      "0.0": {
+        "compactness": 0.0,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.000000238418579
+        },
+        "template_similarity": 1.000000238418579,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.009467015974223614,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9805057644844055
+        },
+        "template_similarity": 0.9805057644844055,
+        "spread": 0.01949417032301426,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.027028700336813927,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.944834291934967
+        },
+        "template_similarity": 0.944834291934967,
+        "spread": 0.055165715515613556,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.034194860607385635,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.930461585521698
+        },
+        "template_similarity": 0.930461585521698,
+        "spread": 0.06953835487365723,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.03172669932246208,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9353998303413391
+        },
+        "template_similarity": 0.9353998303413391,
+        "spread": 0.06460022181272507,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_008": {
+      "0.0": {
+        "compactness": 0.0018018047558143735,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9962753653526306
+        },
+        "template_similarity": 0.9962753653526306,
+        "spread": 0.003724626498296857,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.03558233752846718,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9276911616325378
+        },
+        "template_similarity": 0.9276911616325378,
+        "spread": 0.07230883836746216,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.0649123415350914,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8700574040412903
+        },
+        "template_similarity": 0.8700574040412903,
+        "spread": 0.12994258105754852,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.06127043068408966,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8771171569824219
+        },
+        "template_similarity": 0.8771171569824219,
+        "spread": 0.12288283556699753,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.05585966259241104,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8876561522483826
+        },
+        "template_similarity": 0.8876561522483826,
+        "spread": 0.11234381794929504,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_009": {
+      "0.0": {
+        "compactness": 1.1523564324988911e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9999999403953552
+        },
+        "template_similarity": 0.9999999403953552,
+        "spread": 2.384185791015625e-07,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.049500856548547745,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9001191854476929
+        },
+        "template_similarity": 0.9001191854476929,
+        "spread": 0.09988082945346832,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.05670034885406494,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8860146999359131
+        },
+        "template_similarity": 0.8860146999359131,
+        "spread": 0.11398537456989288,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.05778796598315239,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8838934302330017
+        },
+        "template_similarity": 0.8838934302330017,
+        "spread": 0.11610661447048187,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.061857182532548904,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8759776949882507
+        },
+        "template_similarity": 0.8759776949882507,
+        "spread": 0.12402230501174927,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    },
+    "oa_010": {
+      "0.0": {
+        "compactness": 1.1126200405442432e-07,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 1.0
+        },
+        "template_similarity": 1.0,
+        "spread": 0.0,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.3": {
+        "compactness": 0.04015804082155228,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.9185826182365417
+        },
+        "template_similarity": 0.9185826182365417,
+        "spread": 0.08141736686229706,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "0.7": {
+        "compactness": 0.05281985178589821,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8936036825180054
+        },
+        "template_similarity": 0.8936036825180054,
+        "spread": 0.10639632493257523,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.0": {
+        "compactness": 0.060804180800914764,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8780229687690735
+        },
+        "template_similarity": 0.8780229687690735,
+        "spread": 0.12197704613208771,
+        "n_clusters": 1,
+        "n_responses": 30
+      },
+      "1.5": {
+        "compactness": 0.06667981296777725,
+        "cluster_mass": {
+          "0": 1.0
+        },
+        "density_ratio": null,
+        "silhouette": null,
+        "within_cluster_sim": {
+          "0": 0.8666412830352783
+        },
+        "template_similarity": 0.8666412830352783,
+        "spread": 0.13335877656936646,
+        "n_clusters": 1,
+        "n_responses": 30
+      }
+    }
+  },
+  "per_prompt": {
+    "fc_001": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.04315897930359495,
+        "r2": 0.785199558115331,
+        "y_range": 0.058915603905916214,
+        "max_d2y": 0.04866133909672499
+      }
+    },
+    "fc_002": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.07828420433013335,
+        "r2": 0.7008806883845841,
+        "y_range": 0.13593468070030212,
+        "max_d2y": 0.06647509336471558
+      }
+    },
+    "fc_003": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.04438104944816534,
+        "r2": 0.5066457949883263,
+        "y_range": 0.08903100341558456,
+        "max_d2y": 0.037470512092113495
+      }
+    },
+    "fc_004": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "crack",
+        "slope": 0.10397468248139256,
+        "r2": 0.8722532267748291,
+        "y_range": 0.16308367252349854,
+        "max_d2y": 0.11873315833508968
+      }
+    },
+    "fc_005": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.09584988480892734,
+        "r2": 0.9643707708428955,
+        "y_range": 0.13169245421886444,
+        "max_d2y": 0.04040737822651863
+      }
+    },
+    "fc_006": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.025190327154553452,
+        "r2": 0.8330250504991549,
+        "y_range": 0.04152904078364372,
+        "max_d2y": 0.010835308581590652
+      }
+    },
+    "fc_007": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.07458484446270512,
+        "r2": 0.625430203775857,
+        "y_range": 0.13148096998338588,
+        "max_d2y": 0.08100160260801204
+      }
+    },
+    "fc_008": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.07149080921342406,
+        "r2": 0.607897932577245,
+        "y_range": 0.1327631175518036,
+        "max_d2y": 0.09050557762384415
+      }
+    },
+    "fc_009": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.07811593404714612,
+        "r2": 0.6708838184419799,
+        "y_range": 0.13700906932353973,
+        "max_d2y": 0.08041772991418839
+      }
+    },
+    "fc_010": {
+      "domain": "factual_contested",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.04000578669534213,
+        "r2": 0.7495152876048748,
+        "y_range": 0.06945428252220154,
+        "max_d2y": 0.04885803908109665
+      }
+    },
+    "fs_001": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "compressed",
+        "slope": 0.0,
+        "r2": 0.0,
+        "y_range": 0.0,
+        "max_d2y": 0.0
+      }
+    },
+    "fs_002": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.09214023803023323,
+        "r2": 0.8456642886037914,
+        "y_range": 0.13000701367855072,
+        "max_d2y": 0.07790353149175644
+      }
+    },
+    "fs_003": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.017364407801811678,
+        "r2": 0.7579250499631075,
+        "y_range": 0.028127871453762054,
+        "max_d2y": 0.02944867964833975
+      }
+    },
+    "fs_004": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "compressed",
+        "slope": 0.0013116821461100726,
+        "r2": 0.9311811842868054,
+        "y_range": 0.0019438430899754167,
+        "max_d2y": 0.000952807895373553
+      }
+    },
+    "fs_005": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.016302705162029335,
+        "r2": 0.8919130292927197,
+        "y_range": 0.020984387025237083,
+        "max_d2y": 0.010423993226140738
+      }
+    },
+    "fs_006": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "compressed",
+        "slope": 0.005137823434357626,
+        "r2": 0.664174208170623,
+        "y_range": 0.007385323289781809,
+        "max_d2y": 0.006647335831075907
+      }
+    },
+    "fs_007": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "compressed",
+        "slope": 0.006758224023371071,
+        "r2": 0.9034456438810408,
+        "y_range": 0.008729896508157253,
+        "max_d2y": 0.0038498304784297943
+      }
+    },
+    "fs_008": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "compressed",
+        "slope": 0.006584586791586185,
+        "r2": 0.7650849612719606,
+        "y_range": 0.008986493572592735,
+        "max_d2y": 0.008402563049457967
+      }
+    },
+    "fs_009": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.04078818242187086,
+        "r2": 0.9349493108272519,
+        "y_range": 0.059195857495069504,
+        "max_d2y": 0.012904368340969086
+      }
+    },
+    "fs_010": {
+      "domain": "factual_settled",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.02611633390188217,
+        "r2": 0.9460340292487385,
+        "y_range": 0.040403686463832855,
+        "max_d2y": 0.006960101425647736
+      }
+    },
+    "ma_001": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "crack",
+        "slope": 0.1194460279699685,
+        "r2": 0.6401239799149303,
+        "y_range": 0.2136598825454712,
+        "max_d2y": 0.10389862954616547
+      }
+    },
+    "ma_002": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.07856285941881545,
+        "r2": 0.833981656508728,
+        "y_range": 0.13153940252959728,
+        "max_d2y": 0.046802645549178123
+      }
+    },
+    "ma_003": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "crack",
+        "slope": 0.17190957350291114,
+        "r2": 0.7922815353712915,
+        "y_range": 0.2814750552206533,
+        "max_d2y": 0.1230306327342987
+      }
+    },
+    "ma_004": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "crack",
+        "slope": 0.16202591282005113,
+        "r2": 0.5965567186502764,
+        "y_range": 0.2948071281425655,
+        "max_d2y": 0.2210459033958614
+      }
+    },
+    "ma_005": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.052011951912140496,
+        "r2": 0.7737930023947397,
+        "y_range": 0.08806135505437851,
+        "max_d2y": 0.02754039689898491
+      }
+    },
+    "ma_006": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.12500072626963907,
+        "r2": 0.8842666638920595,
+        "y_range": 0.18761427700519562,
+        "max_d2y": 0.07183113694190979
+      }
+    },
+    "ma_007": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.09094402889140707,
+        "r2": 0.766258531292521,
+        "y_range": 0.14660838339477777,
+        "max_d2y": 0.047542945481836796
+      }
+    },
+    "ma_008": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.04136882236470347,
+        "r2": 0.9536840455208586,
+        "y_range": 0.06764187663793564,
+        "max_d2y": 0.015873704105615616
+      }
+    },
+    "ma_009": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.13732292405937027,
+        "r2": 0.859365555383145,
+        "y_range": 0.20085150003433228,
+        "max_d2y": 0.09705474227666855
+      }
+    },
+    "ma_010": {
+      "domain": "moral_ambiguous",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.05535128593876742,
+        "r2": 0.8133119437624644,
+        "y_range": 0.09922976791858673,
+        "max_d2y": 0.050551027059555054
+      }
+    },
+    "mc_001": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.1035078193830407,
+        "r2": 0.8998183987172863,
+        "y_range": 0.13769803941249847,
+        "max_d2y": 0.06186889857053757
+      }
+    },
+    "mc_002": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.03981738067839456,
+        "r2": 0.9144027672857978,
+        "y_range": 0.06182093173265457,
+        "max_d2y": 0.014731328934431076
+      }
+    },
+    "mc_003": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.07720088073308917,
+        "r2": 0.562917678756486,
+        "y_range": 0.14962361752986908,
+        "max_d2y": 0.09403569996356964
+      }
+    },
+    "mc_004": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.07159799985263658,
+        "r2": 0.9112729063288346,
+        "y_range": 0.10725364834070206,
+        "max_d2y": 0.042799994349479675
+      }
+    },
+    "mc_005": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.05481458822454231,
+        "r2": 0.77430020239839,
+        "y_range": 0.08811528235673904,
+        "max_d2y": 0.018456339836120605
+      }
+    },
+    "mc_006": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.08004770114801932,
+        "r2": 0.8454237923615283,
+        "y_range": 0.11182723939418793,
+        "max_d2y": 0.05987168475985527
+      }
+    },
+    "mc_007": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.08617254379002945,
+        "r2": 0.7784822868689688,
+        "y_range": 0.12769007682800293,
+        "max_d2y": 0.06845914199948311
+      }
+    },
+    "mc_008": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.03816843410764915,
+        "r2": 0.6550176950591607,
+        "y_range": 0.0723724514245987,
+        "max_d2y": 0.05710187554359436
+      }
+    },
+    "mc_009": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.12261678019295567,
+        "r2": 0.9720701317551159,
+        "y_range": 0.17225880920886993,
+        "max_d2y": 0.029184892773628235
+      }
+    },
+    "mc_010": {
+      "domain": "moral_clear",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.04611971946703135,
+        "r2": 0.7913594918939343,
+        "y_range": 0.07706390926614404,
+        "max_d2y": 0.03316506603732705
+      }
+    },
+    "oa_001": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.08806677670150562,
+        "r2": 0.9370353447270631,
+        "y_range": 0.1464020162820816,
+        "max_d2y": 0.06697864085435867
+      }
+    },
+    "oa_002": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "crack",
+        "slope": 0.11244198679628754,
+        "r2": 0.5453644823472714,
+        "y_range": 0.22865318655385636,
+        "max_d2y": 0.1416813969553914
+      }
+    },
+    "oa_003": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.05566023236167603,
+        "r2": 0.6567159976073266,
+        "y_range": 0.10050399601459503,
+        "max_d2y": 0.05871941149234772
+      }
+    },
+    "oa_004": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.061242275371931595,
+        "r2": 0.5911218413645628,
+        "y_range": 0.10950467735528946,
+        "max_d2y": 0.05763576179742813
+      }
+    },
+    "oa_005": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.0657347983856132,
+        "r2": 0.8058525141518651,
+        "y_range": 0.10769271105527878,
+        "max_d2y": 0.050772957503795624
+      }
+    },
+    "oa_006": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "gradient",
+        "slope": 0.09367369955567562,
+        "r2": 0.8602277640557376,
+        "y_range": 0.14684373838827014,
+        "max_d2y": 0.06694704294204712
+      }
+    },
+    "oa_007": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.04691595346599386,
+        "r2": 0.8181471250892879,
+        "y_range": 0.06953835487365723,
+        "max_d2y": 0.021298905834555626
+      }
+    },
+    "oa_008": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.06899212400995842,
+        "r2": 0.6016996441542338,
+        "y_range": 0.12621795455925167,
+        "max_d2y": 0.06469348818063736
+      }
+    },
+    "oa_009": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.06818647077981978,
+        "r2": 0.6047984086552982,
+        "y_range": 0.12402206659317017,
+        "max_d2y": 0.08577604591846466
+      }
+    },
+    "oa_010": {
+      "domain": "opinion_aesthetic",
+      "persistence": {
+        "persistent": 1,
+        "transient": 0,
+        "total_unique": 1
+      },
+      "regime": {
+        "regime": "fog",
+        "slope": 0.08022694807985553,
+        "r2": 0.7835630699948393,
+        "y_range": 0.13335877656936646,
+        "max_d2y": 0.05643840879201889
+      }
+    }
+  },
+  "per_domain": {},
+  "domain_silhouette": {
+    "0.0": 0.14579316973686218,
+    "0.3": 0.13815847039222717,
+    "0.7": 0.13463933765888214,
+    "1.0": 0.1332542598247528,
+    "1.5": 0.13301515579223633
+  },
+  "bhattacharyya_overlap": {
+    "factual_contested_vs_factual_settled": {
+      "0.0": 0.0,
+      "0.3": 2.0153226781303946e-122,
+      "0.7": 3.169370667761803e-75,
+      "1.0": 1.4151815687167002e-65,
+      "1.5": 8.789767748131237e-47
+    },
+    "factual_contested_vs_moral_ambiguous": {
+      "0.0": 0.0,
+      "0.3": 6.984055871501684e-36,
+      "0.7": 7.536826416568269e-26,
+      "1.0": 1.9983593817017846e-22,
+      "1.5": 2.6853905418178714e-21
+    },
+    "factual_contested_vs_moral_clear": {
+      "0.0": 0.0,
+      "0.3": 6.908871939295606e-61,
+      "0.7": 9.101762849197603e-36,
+      "1.0": 2.5411015633041617e-31,
+      "1.5": 5.164930444274696e-32
+    },
+    "factual_contested_vs_opinion_aesthetic": {
+      "0.0": 0.0,
+      "0.3": 8.007517243538302e-60,
+      "0.7": 6.160624414531393e-42,
+      "1.0": 8.910281466121697e-40,
+      "1.5": 1.901900640156438e-32
+    },
+    "factual_settled_vs_moral_ambiguous": {
+      "0.0": 0.0,
+      "0.3": 2.901500246598682e-53,
+      "0.7": 1.807466639351705e-43,
+      "1.0": 5.612591348746639e-38,
+      "1.5": 4.7525357257135263e-35
+    },
+    "factual_settled_vs_moral_clear": {
+      "0.0": 0.0,
+      "0.3": 1.8210216337466809e-242,
+      "0.7": 2.749845338074768e-79,
+      "1.0": 1.3544665046367116e-61,
+      "1.5": 7.402376556356561e-64
+    },
+    "factual_settled_vs_opinion_aesthetic": {
+      "0.0": 0.0,
+      "0.3": 8.54282157192295e-95,
+      "0.7": 6.320165717644088e-70,
+      "1.0": 1.4219311435636594e-61,
+      "1.5": 2.938768369087201e-59
+    },
+    "moral_ambiguous_vs_moral_clear": {
+      "0.0": 1.376854391445612e-246,
+      "0.3": 8.308275931756259e-16,
+      "0.7": 9.680648108165135e-10,
+      "1.0": 3.7568779081824004e-09,
+      "1.5": 1.923178166664656e-08
+    },
+    "moral_ambiguous_vs_opinion_aesthetic": {
+      "0.0": 0.0,
+      "0.3": 4.7795303594972117e-45,
+      "0.7": 1.3546604132014509e-33,
+      "1.0": 2.2347030758848687e-29,
+      "1.5": 1.2925492477535656e-26
+    },
+    "moral_clear_vs_opinion_aesthetic": {
+      "0.0": 0.0,
+      "0.3": 3.546799828036842e-83,
+      "0.7": 1.2341071954457795e-44,
+      "1.0": 2.1044013738969693e-39,
+      "1.5": 2.4836394310993716e-38
+    }
+  },
+  "regime_summary": {
+    "fog": 28,
+    "crack": 5,
+    "gradient": 12,
+    "compressed": 5
+  },
+  "three_metric_table": {
+    "factual_settled": {
+      "mean_spread_growth": 0.02125041837132522,
+      "std_spread_growth": 0.026465464940611985,
+      "mean_mode_count": 1.0,
+      "mean_template_similarity": 0.9734733402729034,
+      "n_prompts": 10
+    },
+    "factual_contested": {
+      "mean_spread_growth": 0.06550365019453844,
+      "std_spread_growth": 0.02462192995684543,
+      "mean_mode_count": 1.0,
+      "mean_template_similarity": 0.907990449666977,
+      "n_prompts": 10
+    },
+    "opinion_aesthetic": {
+      "mean_spread_growth": 0.07411412655083172,
+      "std_spread_growth": 0.01860430417010446,
+      "mean_mode_count": 1.0,
+      "mean_template_similarity": 0.887292492389679,
+      "n_prompts": 10
+    },
+    "moral_clear": {
+      "mean_spread_growth": 0.07200638475773882,
+      "std_spread_growth": 0.02644439657654617,
+      "mean_mode_count": 1.0,
+      "mean_template_similarity": 0.8981154918670654,
+      "n_prompts": 10
+    },
+    "moral_ambiguous": {
+      "mean_spread_growth": 0.1033944113147774,
+      "std_spread_growth": 0.04424330722886262,
+      "mean_mode_count": 1.0,
+      "mean_template_similarity": 0.849230432510376,
+      "n_prompts": 10
+    }
+  }
+}

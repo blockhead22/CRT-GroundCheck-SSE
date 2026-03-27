@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRT Model Probing — Fragility Landscapes in LLMs</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050508; color: #c8c8c8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.7; overflow-x: hidden; }
+
+  /* ===== HERO ===== */
+  .hero { position: relative; width: 100%; height: 100vh; min-height: 600px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .hero canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  .hero-content { position: relative; z-index: 1; text-align: center; max-width: 800px; padding: 0 30px; }
+  .hero-content h1 { font-size: 3.2em; color: #fff; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
+  .hero-content h1 span.accent { background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #ffe66d); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero-content .tagline { font-size: 1.15em; color: #888; margin-bottom: 30px; }
+  .hero-content .claim { font-size: 0.95em; color: #aaa; border: 1px solid #333; border-radius: 8px; padding: 14px 20px; background: rgba(10,10,10,0.7); backdrop-filter: blur(10px); display: inline-block; }
+  .scroll-hint { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #444; font-size: 0.75em; z-index: 1; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+  /* ===== CONTENT ===== */
+  .container { max-width: 860px; margin: 0 auto; padding: 60px 30px; }
+  h2 { font-size: 1.6em; color: #fff; margin: 60px 0 20px 0; letter-spacing: -0.5px; }
+  h2:first-child { margin-top: 0; }
+  h3 { font-size: 1.1em; color: #ddd; margin: 30px 0 12px 0; }
+  p { margin-bottom: 16px; color: #b0b0b0; }
+  strong { color: #e0e0e0; }
+
+  .divider { width: 60px; height: 2px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4); margin: 40px 0; }
+
+  /* ===== REGIME CARDS ===== */
+  .regime-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 24px 0; }
+  .regime-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 10px; padding: 24px 20px; text-align: center; transition: border-color 0.3s, transform 0.3s; }
+  .regime-card:hover { border-color: #333; transform: translateY(-2px); }
+  .regime-card .regime-icon { font-size: 2.4em; margin-bottom: 10px; }
+  .regime-card .regime-name { font-size: 1em; font-weight: 700; margin-bottom: 4px; }
+  .regime-card .regime-model { font-size: 0.75em; color: #666; margin-bottom: 10px; }
+  .regime-card .regime-desc { font-size: 0.82em; color: #888; line-height: 1.5; }
+  .card-crack { border-color: #ff6b6b33; }
+  .card-crack .regime-name { color: #ff6b6b; }
+  .card-gradient { border-color: #4ecdc433; }
+  .card-gradient .regime-name { color: #4ecdc4; }
+  .card-fog { border-color: #ffe66d33; }
+  .card-fog .regime-name { color: #ffe66d; }
+
+  /* ===== DATA TABLE ===== */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
+  th { text-align: left; padding: 10px 12px; color: #666; font-weight: 600; border-bottom: 2px solid #1a1a22; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 10px 12px; border-bottom: 1px solid #0f0f14; color: #aaa; }
+  tr:hover td { background: #0a0a0e; }
+  td strong { color: #fff; }
+
+  /* ===== AXES ===== */
+  .axes { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .axis-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 8px; padding: 20px; }
+  .axis-card h4 { color: #fff; font-size: 0.9em; margin-bottom: 8px; }
+  .axis-card p { color: #888; font-size: 0.85em; margin: 0; }
+
+  /* ===== QUOTE ===== */
+  .quote { border-left: 3px solid #4ecdc4; padding: 16px 20px; margin: 24px 0; background: #08080c; border-radius: 0 8px 8px 0; }
+  .quote p { color: #bbb; font-style: italic; margin: 0; font-size: 1.05em; }
+  .quote .attr { color: #555; font-size: 0.75em; margin-top: 8px; font-style: normal; }
+
+  /* ===== LAYERS ===== */
+  .layer-stack { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 20px 0; }
+  .layer { background: #08080c; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; }
+  .layer .layer-name { color: #fff; font-weight: 600; font-size: 0.95em; }
+  .layer .layer-sub { color: #555; font-size: 0.72em; margin-top: 4px; }
+  .layer .layer-desc { color: #888; font-size: 0.8em; margin-top: 10px; line-height: 1.5; }
+
+  /* ===== FOOTER ===== */
+  .footer { text-align: center; padding: 40px 30px; color: #333; font-size: 0.7em; border-top: 1px solid #111; margin-top: 60px; }
+
+  @media (max-width: 700px) {
+    .hero-content h1 { font-size: 2em; }
+    .regime-grid, .axes, .layer-stack { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HERO WITH PARTICLE CANVAS ===== -->
+<div class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-content">
+    <h1>CRT <span class="accent">Model Probing</span></h1>
+    <p class="tagline">Fragility Landscapes and Response-Governance Regimes in LLMs</p>
+    <div class="claim">Temperature-swept semantic variance reveals stable, model-specific fragility landscapes across three open-weight models, confirmed across 16 analyzer configurations each.</div>
+  </div>
+  <div class="scroll-hint">&#x25BC; scroll</div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="container">
+
+<h2>The Question</h2>
+<p>This project studies how language models vary under controlled temperature perturbation. The goal is not to ask whether a model is simply "consistent" or "inconsistent," but to measure how its semantic output deforms when pressure is applied. Some models split into distinct answer camps. Some drift continuously without breaking apart. Some soften across domains without ever fully locking or fracturing. The probe is designed to detect those differences and turn them into measurable response-governance signatures.</p>
+
+<div class="divider"></div>
+
+<h2>The Core Finding</h2>
+<p>Three tested models exhibit <strong>three distinct fragility regimes</strong>. All three regime identities remained stable across a 16-configuration robustness sweep covering two embedding models, two text normalization modes, and four clustering thresholds.</p>
+
+<div class="regime-grid">
+  <div class="regime-card card-crack">
+    <div class="regime-icon">&#x26A1;</div>
+    <div class="regime-name">Selective Fracture</div>
+    <div class="regime-model">Qwen3:14b</div>
+    <div class="regime-desc">High factual fragility, low moral fragility. Stable held contradictions in factual domains. Stays locked until a threshold, then bifurcates into distinct answer camps.</div>
+  </div>
+  <div class="regime-card card-gradient">
+    <div class="regime-icon">&#x2248;</div>
+    <div class="regime-name">Selective Spread</div>
+    <div class="regime-model">Mistral 7B</div>
+    <div class="regime-desc">Low bifurcation, no true mode splitting. Meaningful continuous semantic drift concentrated in moral and opinion domains. Smooth, not sharp.</div>
+  </div>
+  <div class="regime-card card-fog">
+    <div class="regime-icon">&#x2601;</div>
+    <div class="regime-name">Uniform Softness</div>
+    <div class="regime-model">DeepSeek-R1:8b</div>
+    <div class="regime-desc">Broad cross-domain spread with minimal locking. Almost no discrete fracture. Everything softens under pressure. Nothing holds rigid.</div>
+  </div>
+</div>
+
+<h2>Why the Ordering Matters</h2>
+<p>The ordering of fragility is <strong>not universal</strong>. Qwen is most fragile in factual regions. Mistral is more fragile in moral and opinion space. DeepSeek spreads broadly, with especially high movement in moral and aesthetic prompts. The probe is not detecting a generic rule like "facts vary more than morals." It is detecting <strong>model-specific semantic fragility landscapes</strong>. Different training regimes appear to allocate flexibility, hedging, and epistemic fracture to different semantic regions.</p>
+
+<table>
+  <tr>
+    <th>Domain</th>
+    <th style="color:#ff6b6b">Qwen3</th>
+    <th style="color:#4ecdc4">Mistral</th>
+    <th style="color:#ffe66d">DeepSeek</th>
+  </tr>
+  <tr><td>factual_settled</td><td><strong>0.180</strong></td><td>0.030</td><td>0.146</td></tr>
+  <tr><td>factual_contested</td><td><strong>0.248</strong></td><td>0.101</td><td>0.161</td></tr>
+  <tr><td>moral_ambiguous</td><td>0.092</td><td>0.166</td><td><strong>0.247</strong></td></tr>
+  <tr><td>moral_clear</td><td>0.036</td><td>0.100</td><td><strong>0.198</strong></td></tr>
+  <tr><td>opinion_aesthetic</td><td>0.077</td><td>0.112</td><td><strong>0.274</strong></td></tr>
+</table>
+<p style="color:#555; font-size:0.75em;">Spread growth: mean pairwise embedding distance increase T=0 &rarr; T=1.5, averaged across 16 robustness configs.</p>
+
+<div class="divider"></div>
+
+<h2>Two Axes of Difference</h2>
+
+<div class="axes">
+  <div class="axis-card">
+    <h4>Axis 1 &mdash; Morphology</h4>
+    <p>How does variance express? Does the model fracture into competing answer camps, drift smoothly across semantic space, or compress into narrow response corridors? The shape of instability matters as much as the amount.</p>
+  </div>
+  <div class="axis-card">
+    <h4>Axis 2 &mdash; Fragility Location</h4>
+    <p>Where does the model destabilize? Which semantic domains crack under temperature pressure? The answer is model-specific &mdash; a property of training, not of the prompts themselves.</p>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<h2>The Measurement Stack</h2>
+<p>The probe is intentionally simple. Fifty prompts across five domains, sampled thirty times each at five temperatures, embedded and clustered. Four metrics separate variance by both amount and structure:</p>
+
+<table>
+  <tr><th>Metric</th><th>What it measures</th><th>Why it matters</th></tr>
+  <tr><td><strong>Spread growth</strong></td><td>Mean pairwise distance increase T=0&rarr;T=1.5</td><td>How much semantic movement under pressure</td></tr>
+  <tr><td><strong>Susceptibility (dH/dT)</strong></td><td>Rate of entropy increase with temperature</td><td>Sensitivity to perturbation</td></tr>
+  <tr><td><strong>Mode count</strong></td><td>Distinct response clusters at T=1.0</td><td>Bifurcation vs continuous drift</td></tr>
+  <tr><td><strong>Held contradictions</strong></td><td>Stable incompatible answer camps</td><td>Persistent splits, not paraphrase noise</td></tr>
+</table>
+
+<p>Robustness is tested across 16 analyzer configurations: two embedding models, two text normalization modes, four clustering thresholds. A finding must survive all perturbations to be considered confirmed.</p>
+
+<div class="divider"></div>
+
+<h2>Why This Matters</h2>
+<p>Variance is not just analysis output. It can become a <strong>governance signal</strong>. High susceptibility can be treated as an epistemic fragility tag. Stable multi-cluster response clouds can be represented as unresolved or plural belief states. Held contradictions map naturally onto systems that preserve conflict rather than flatten it.</p>
+
+<p>The probe is useful not only for studying models from the outside, but for designing memory systems that know when certainty is genuine, when it is trained uniformity, and when contradiction should be preserved rather than erased.</p>
+
+<div class="quote">
+  <p>"The problem is not switching mouths. The problem is losing the self between them."</p>
+  <div class="attr">&mdash; Nick Block</div>
+</div>
+
+<p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic that was safely handled by one model's locked regime may land in another model's fracture zone. The variance probe maps each model's fragility profile &mdash; the governance layer uses this to know what to watch for after every handoff.</p>
+
+<h3>Three Calibration Layers</h3>
+<div class="layer-stack">
+  <div class="layer">
+    <div class="layer-name">Fragility</div>
+    <div class="layer-sub">Source: Variance probe</div>
+    <div class="layer-desc">Where and how the model destabilizes under perturbation</div>
+  </div>
+  <div class="layer">
+    <div class="layer-name">Support</div>
+    <div class="layer-sub">Source: Memory &amp; retrieval</div>
+    <div class="layer-desc">What beliefs are actually backed by evidence</div>
+  </div>
+  <div class="layer">
+    <div class="layer-name">Tension</div>
+    <div class="layer-sub">Source: Contradiction engine</div>
+    <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<h2>Current Status</h2>
+<p>The result is strong enough to freeze. Three models, three regimes, all robustness-confirmed across analyzer perturbations. The main claim is supported: repeated temperature-swept sampling reveals stable, model-specific variance morphologies and fragility landscapes.</p>
+
+<p>What remains is refinement, not discovery. GPT-4o-mini remains provisional and needs a clean rerun. Template similarity should be formalized alongside spread and mode count. Visual interpretations from 3D projections remain subordinate to numeric results. But the central finding is already there.</p>
+
+<table>
+  <tr><th>Model</th><th>Responses</th><th>Regime</th><th>Robustness</th><th>Status</th></tr>
+  <tr><td style="color:#ff6b6b">Qwen3:14b</td><td>7,500</td><td>Selective Fracture</td><td>16/16</td><td style="color:#4ecdc4">Confirmed</td></tr>
+  <tr><td style="color:#4ecdc4">Mistral 7B</td><td>7,524</td><td>Selective Spread</td><td>16/16</td><td style="color:#4ecdc4">Confirmed</td></tr>
+  <tr><td style="color:#ffe66d">DeepSeek-R1:8b</td><td>7,500</td><td>Uniform Softness</td><td>16/16</td><td style="color:#4ecdc4">Confirmed</td></tr>
+  <tr><td style="color:#888">GPT-4o-mini</td><td>~2,000</td><td>Global Compression</td><td>&mdash;</td><td style="color:#ffe66d">Provisional</td></tr>
+</table>
+
+<p style="font-size:0.82em; color:#666;">Total experiment cost: $0 for local models. ~$3 for GPT-4o-mini re-run (in progress). 22,524 analyzed responses across three complete models.</p>
+
+<div class="divider"></div>
+
+<h2>One Sentence</h2>
+<p style="font-size: 1.1em; color: #ddd; text-align: center; padding: 20px 0;">LLMs do not merely differ in how much they vary. They differ in <strong>how variance expresses</strong> and <strong>where fragility lives</strong>.</p>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  CRT / Aether Research &mdash; Nick Block &mdash; 2026<br>
+  The model is the mouth. The persistence layer is the self.
+</div>
+
+<!-- ===== HERO PARTICLE ANIMATION ===== -->
+<script>
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, particles, mouse = { x: -1000, y: -1000 };
+
+  const COLORS = ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ffffff'];
+  const N = 180;
+
+  function resize() {
+    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+    ctx.scale(devicePixelRatio, devicePixelRatio);
+  }
+
+  function init() {
+    resize();
+    particles = [];
+    for (let i = 0; i < N; i++) {
+      const regime = Math.floor(Math.random() * 3);
+      // Three clusters with different behaviors
+      let cx, cy, spread;
+      if (regime === 0) { // crack - tight cluster, some outliers
+        cx = w / devicePixelRatio * 0.3;
+        cy = h / devicePixelRatio * 0.45;
+        spread = 60 + Math.random() * (Math.random() > 0.7 ? 200 : 30);
+      } else if (regime === 1) { // gradient - smooth spread
+        cx = w / devicePixelRatio * 0.5;
+        cy = h / devicePixelRatio * 0.55;
+        spread = 40 + Math.random() * 120;
+      } else { // fog - everywhere
+        cx = w / devicePixelRatio * 0.7;
+        cy = h / devicePixelRatio * 0.5;
+        spread = 20 + Math.random() * 180;
+      }
+      const angle = Math.random() * Math.PI * 2;
+      particles.push({
+        x: cx + Math.cos(angle) * spread,
+        y: cy + Math.sin(angle) * spread,
+        baseX: cx + Math.cos(angle) * spread,
+        baseY: cy + Math.sin(angle) * spread,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        r: 1 + Math.random() * 2,
+        color: COLORS[regime],
+        alpha: 0.15 + Math.random() * 0.4,
+        regime: regime,
+        drift: 0.002 + Math.random() * 0.008,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
+  function draw(t) {
+    ctx.clearRect(0, 0, w / devicePixelRatio, h / devicePixelRatio);
+
+    // Draw connections
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        if (particles[i].regime !== particles[j].regime) continue;
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 80) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = particles[i].color;
+          ctx.globalAlpha = (1 - dist / 80) * 0.06;
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Draw particles
+    for (const p of particles) {
+      // Gentle orbit around base position
+      p.phase += p.drift;
+      const orbitR = 10 + Math.sin(t * 0.0005 + p.phase) * 15;
+      p.x = p.baseX + Math.cos(p.phase) * orbitR + p.vx;
+      p.y = p.baseY + Math.sin(p.phase) * orbitR + p.vy;
+
+      // Mouse repulsion
+      const mx = p.x - mouse.x;
+      const my = p.y - mouse.y;
+      const md = Math.sqrt(mx * mx + my * my);
+      if (md < 120) {
+        const force = (120 - md) / 120 * 2;
+        p.x += (mx / md) * force;
+        p.y += (my / md) * force;
+      }
+
+      // Temperature simulation: regime 0 (crack) particles occasionally jump
+      if (p.regime === 0 && Math.random() < 0.001) {
+        p.baseX += (Math.random() - 0.5) * 40;
+        p.baseY += (Math.random() - 0.5) * 40;
+      }
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha;
+      ctx.fill();
+
+      // Glow
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.alpha * 0.08;
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+
+  canvas.parentElement.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+  });
+  canvas.parentElement.addEventListener('mouseleave', () => {
+    mouse.x = -1000;
+    mouse.y = -1000;
+  });
+
+  window.addEventListener('resize', () => { resize(); init(); });
+  init();
+  requestAnimationFrame(draw);
+})();
+</script>
+
+</body>
+</html>

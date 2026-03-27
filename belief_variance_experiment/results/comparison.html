@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>LLM Fragility Landscape — Three-Model Comparison</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 20px; }
+  h1 { text-align: center; font-size: 1.6em; margin-bottom: 4px; color: #fff; }
+  .subtitle { text-align: center; font-size: 0.85em; color: #888; margin-bottom: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1400px; margin: 0 auto; }
+  .chart-box { background: #141414; border: 1px solid #333; border-radius: 8px; padding: 16px; }
+  .chart-box h2 { font-size: 1em; margin-bottom: 8px; color: #ccc; }
+  .chart-box .desc { font-size: 0.75em; color: #666; margin-bottom: 12px; }
+  canvas { width: 100% !important; }
+  .legend { display: flex; justify-content: center; gap: 30px; margin: 16px 0; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.9em; }
+  .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+  .regime-table { max-width: 1400px; margin: 20px auto; }
+  .regime-table table { width: 100%; border-collapse: collapse; }
+  .regime-table th, .regime-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #333; font-size: 0.85em; }
+  .regime-table th { color: #888; font-weight: 600; }
+  .regime-table td { color: #ccc; }
+  .regime-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600; }
+  .tag-crack { background: #ff6b6b33; color: #ff6b6b; }
+  .tag-gradient { background: #4ecdc433; color: #4ecdc4; }
+  .tag-fog { background: #ffe66d33; color: #ffe66d; }
+  .footnote { text-align: center; font-size: 0.7em; color: #555; margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<h1>LLM Fragility Landscape — Three-Model Comparison</h1>
+<p class="subtitle">Temperature-swept semantic variance reveals model-specific fragility landscapes | Robustness-confirmed (16 configs each)</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#ff6b6b"></div> Qwen3:14b (Selective Fracture)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#4ecdc4"></div> Mistral 7B (Selective Spread)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#ffe66d"></div> DeepSeek-R1:8b (Uniform Softness)</div>
+</div>
+
+<div class="grid">
+  <div class="chart-box">
+    <h2>Spread Growth (T=0 → T=1.5)</h2>
+    <p class="desc">Mean pairwise embedding distance increase. Higher = more semantic movement under temperature pressure.</p>
+    <canvas id="spreadChart"></canvas>
+  </div>
+  <div class="chart-box">
+    <h2>Susceptibility (dH/dT)</h2>
+    <p class="desc">Rate of semantic entropy increase with temperature. Higher = greater sensitivity to perturbation.</p>
+    <canvas id="susceptChart"></canvas>
+  </div>
+  <div class="chart-box">
+    <h2>Mode Count (max across temps)</h2>
+    <p class="desc">Average distinct response clusters detected. ~1.0 = no bifurcation. Higher = discrete fracture.</p>
+    <canvas id="modeChart"></canvas>
+  </div>
+  <div class="chart-box">
+    <h2>Held Contradictions (mean across configs)</h2>
+    <p class="desc">Prompts producing two or more stable answer camps at T=1.0. Mean across 16 analyzer configs.</p>
+    <canvas id="heldChart"></canvas>
+  </div>
+</div>
+
+<div class="regime-table">
+  <table>
+    <tr>
+      <th>Model</th>
+      <th>Regime</th>
+      <th>Factual Fragility</th>
+      <th>Moral Fragility</th>
+      <th>Mode Splits</th>
+      <th>Character</th>
+      <th>Robustness</th>
+    </tr>
+    <tr>
+      <td style="color:#ff6b6b">Qwen3:14b</td>
+      <td><span class="regime-tag tag-crack">Selective Fracture</span></td>
+      <td>HIGH (0.18–0.25)</td>
+      <td>LOW (0.04–0.09)</td>
+      <td>YES (4 held)</td>
+      <td>Stable until threshold, then bifurcation in factual domains</td>
+      <td>16/16</td>
+    </tr>
+    <tr>
+      <td style="color:#4ecdc4">Mistral 7B</td>
+      <td><span class="regime-tag tag-gradient">Selective Spread</span></td>
+      <td>LOW (0.03–0.10)</td>
+      <td>MODERATE (0.10–0.17)</td>
+      <td>NO</td>
+      <td>Smooth domain-selective diffusion, no bifurcation</td>
+      <td>16/16</td>
+    </tr>
+    <tr>
+      <td style="color:#ffe66d">DeepSeek-R1:8b</td>
+      <td><span class="regime-tag tag-fog">Uniform Softness</span></td>
+      <td>MODERATE (0.15–0.16)</td>
+      <td>HIGH (0.20–0.27)</td>
+      <td>NO</td>
+      <td>Broad cross-domain softening, minimal locking or fracture</td>
+      <td>16/16</td>
+    </tr>
+  </table>
+</div>
+
+<p class="footnote">
+  Data: 7,500 responses per model (50 prompts × 5 temps × 30 reps). Robustness: 16 analyzer configs (2 embedders × 2 text modes × 4 eps values).<br>
+  Regime identity confirmed stable across all perturbations. Domain ordering: Qwen3 16/16 factual>moral, Mistral 1/16 (inverted), DeepSeek 1/16 (inverted).<br>
+  Generated 2026-03-28 | Nick Block | CRT/Aether Research
+</p>
+
+<script>
+const DATA = {"models": ["Qwen3:14b", "Mistral 7B", "DeepSeek-R1:8b"], "domains": ["factual_settled", "factual_contested", "moral_ambiguous", "moral_clear", "opinion_aesthetic"], "domain_labels": ["Factual\nSettled", "Factual\nContested", "Moral\nAmbiguous", "Moral\nClear", "Opinion\nAesthetic"], "colors": {"Qwen3:14b": "#ff6b6b", "Mistral 7B": "#4ecdc4", "DeepSeek-R1:8b": "#ffe66d"}, "spread": {"Qwen3:14b": [0.18030908443152785, 0.24810997478587646, 0.09243068413587652, 0.03570477422234477, 0.07697418073464289], "Mistral 7B": [0.030249344706535338, 0.10081381648169556, 0.16613516728984912, 0.09958005069524845, 0.11170433456936736], "DeepSeek-R1:8b": [0.14615806895340305, 0.16135348233331348, 0.24666274575206115, 0.19776285138738545, 0.27363473054877147]}, "susceptibility": {"Qwen3:14b": [0.2318181944721133, 0.21384123252579296, 0.03206595082723235, 0.0, 0.010432341153004144], "Mistral 7B": [0.00028647051673517606, 0.010552346532104271, 0.031194674422361443, 0.0005729410334703521, 0.014588104305617019], "DeepSeek-R1:8b": [0.10321506844266905, 0.06521008900371154, 0.14554712015912344, 0.1180189734456012, 0.20918588659861623]}, "modes": {"Qwen3:14b": [1.3999999999999997, 1.5, 1.0, 1.0, 1.0], "Mistral 7B": [1.0, 1.025, 1.0, 1.0, 1.0], "DeepSeek-R1:8b": [1.0, 1.0, 1.025, 1.0375, 1.0625]}, "held": {"Qwen3:14b": [1.0, 3.0, 0.0, 0.0, 0.0], "Mistral 7B": [0.0, 0.125, 0.0, 0.0, 0.0], "DeepSeek-R1:8b": [0.0, 0.0, 0.0, 0.25, 0.125]}};
+
+const domainLabels = DATA.domain_labels.map(l => l.replace('\n', ' '));
+
+function makeBarChart(canvasId, dataKey, yLabel) {
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  const datasets = DATA.models.map(model => ({
+    label: model,
+    data: DATA[dataKey][model],
+    backgroundColor: DATA.colors[model] + 'cc',
+    borderColor: DATA.colors[model],
+    borderWidth: 1,
+    borderRadius: 3,
+  }));
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: { labels: domainLabels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(4)
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#888', font: { size: 11 } },
+          grid: { color: '#222' },
+        },
+        y: {
+          ticks: { color: '#888' },
+          grid: { color: '#222' },
+          title: { display: true, text: yLabel, color: '#666' },
+        }
+      }
+    }
+  });
+}
+
+makeBarChart('spreadChart', 'spread', 'Mean pairwise distance growth');
+makeBarChart('susceptChart', 'susceptibility', 'dH/dT');
+makeBarChart('modeChart', 'modes', 'Avg max clusters');
+makeBarChart('heldChart', 'held', 'Mean held contradictions');
+</script>
+</body>
+</html>

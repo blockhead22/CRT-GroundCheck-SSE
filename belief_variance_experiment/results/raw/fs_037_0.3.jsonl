@@ -1,0 +1,1 @@
+{"prompt_id": "fs_037", "domain": "factual_settled", "temperature": 0.3, "repetition": 34, "response": "The capital of Japan is Tokyo.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 7, "total_tokens": 41}}

@@ -1,0 +1,1 @@
+{"prompt_id": "fs_019", "domain": "factual_settled", "temperature": 1.0, "repetition": 20, "response": "Humans typically have 46 chromosomes, arranged in 23 pairs.", "finish_reason": "stop", "usage": {"prompt_tokens": 34, "completion_tokens": 14, "total_tokens": 48}}

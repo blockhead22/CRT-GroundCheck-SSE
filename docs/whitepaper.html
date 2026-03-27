@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRT / Aether / SSE — Whitepaper</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --red: #ff6b6b;
+    --teal: #4ecdc4;
+    --yellow: #ffe66d;
+    --purple: #c084fc;
+    --orange: #f97316;
+    --bg-dark: #050508;
+    --bg-alt: #08080e;
+    --bg-card: #0a0a10;
+    --border: #151520;
+    --border-hover: #252535;
+    --text-body: #a8a8b0;
+    --text-dim: #666670;
+    --text-bright: #e0e0e8;
+    --text-white: #ffffff;
+  }
+
+  body {
+    background: var(--bg-dark);
+    color: var(--text-body);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.75;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ===== TOP BAR ===== */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    background: rgba(5,5,8,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    z-index: 200;
+    transition: opacity 0.4s;
+  }
+  .topbar-brand {
+    font-size: 0.7em;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: #555;
+    text-transform: uppercase;
+  }
+  .topbar-label {
+    font-size: 0.65em;
+    letter-spacing: 2px;
+    color: #333;
+    text-transform: uppercase;
+  }
+  .topbar-toc-btn {
+    font-size: 0.65em;
+    letter-spacing: 1px;
+    color: #555;
+    text-transform: uppercase;
+    cursor: pointer;
+    background: none;
+    border: 1px solid #1a1a22;
+    padding: 4px 14px;
+    border-radius: 4px;
+    transition: all 0.3s;
+  }
+  .topbar-toc-btn:hover { color: #fff; border-color: #333; }
+
+  /* ===== TOC SLIDE-OUT ===== */
+  .toc-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .toc-overlay.open { opacity: 1; pointer-events: all; }
+  .toc {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 280px;
+    height: 100vh;
+    background: #0a0a10;
+    border-left: 1px solid #151520;
+    padding: 60px 28px 40px;
+    z-index: 301;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    overflow-y: auto;
+  }
+  .toc.open { transform: translateX(0); }
+  .toc-close {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+    color: #555;
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    cursor: pointer;
+  }
+  .toc-close:hover { color: #fff; }
+  .toc h4 {
+    color: #333;
+    font-size: 0.6em;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+  .toc a {
+    display: block;
+    color: #555;
+    font-size: 0.82em;
+    text-decoration: none;
+    padding: 6px 0;
+    transition: color 0.2s;
+    border-bottom: 1px solid #0f0f16;
+  }
+  .toc a:hover { color: var(--teal); }
+
+  /* ===== HERO ===== */
+  .hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .hero canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 0;
+  }
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 900px;
+    padding: 0 40px;
+  }
+  .hero-content h1 {
+    font-size: 4.2em;
+    color: #fff;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 16px;
+    font-weight: 800;
+  }
+  .hero-content h1 span.accent {
+    background: linear-gradient(135deg, var(--red), var(--teal), var(--yellow));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-content .tagline {
+    font-size: 1.15em;
+    color: #666;
+    margin-bottom: 36px;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+  .hero-content .claim {
+    font-size: 0.88em;
+    color: #999;
+    border: 1px solid #222;
+    border-radius: 10px;
+    padding: 18px 28px;
+    background: rgba(8,8,14,0.75);
+    backdrop-filter: blur(12px);
+    display: inline-block;
+    max-width: 720px;
+    line-height: 1.7;
+  }
+  .scroll-hint {
+    position: absolute;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #333;
+    font-size: 0.7em;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 1;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.2; } 50% { opacity: 0.7; } }
+
+  /* ===== SECTIONS ===== */
+  .section {
+    padding: 120px 0;
+    scroll-margin-top: 44px;
+  }
+  .section-dark { background: var(--bg-dark); }
+  .section-alt { background: var(--bg-alt); }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+  .container-wide {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* ===== CHAPTER NUMBERS ===== */
+  .chapter-num {
+    font-size: 5em;
+    font-weight: 800;
+    color: #111118;
+    line-height: 1;
+    margin-bottom: -8px;
+    letter-spacing: -3px;
+    user-select: none;
+  }
+  .section-title {
+    font-size: 2.2em;
+    color: var(--text-white);
+    font-weight: 700;
+    letter-spacing: -1px;
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  .section-subtitle {
+    font-size: 0.9em;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ===== TYPOGRAPHY ===== */
+  h3 {
+    font-size: 1.15em;
+    color: var(--text-bright);
+    margin: 40px 0 14px 0;
+    letter-spacing: -0.3px;
+  }
+  h4 {
+    font-size: 0.95em;
+    color: #bbb;
+    margin: 28px 0 10px 0;
+  }
+  p { margin-bottom: 18px; }
+  strong { color: var(--text-bright); }
+  ul, ol { margin: 0 0 18px 24px; }
+  li { margin-bottom: 8px; }
+
+  /* ===== STAT CALLOUTS ===== */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin: 60px 0;
+  }
+  .stat-card {
+    text-align: center;
+    padding: 36px 20px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .stat-number {
+    font-size: 3.4em;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 8px;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, var(--red), var(--teal));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-number.grad-2 {
+    background: linear-gradient(135deg, var(--teal), var(--yellow));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .stat-number.grad-3 {
+    background: linear-gradient(135deg, var(--yellow), var(--orange));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .stat-number.grad-4 {
+    background: linear-gradient(135deg, var(--purple), var(--red));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .stat-number.grad-5 {
+    background: linear-gradient(135deg, var(--orange), var(--red));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .stat-number.grad-6 {
+    background: linear-gradient(135deg, var(--teal), var(--purple));
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+  .stat-label {
+    font-size: 0.72em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+
+  /* ===== PULL QUOTES ===== */
+  .pull-quote {
+    text-align: center;
+    padding: 60px 40px;
+    margin: 50px 0;
+  }
+  .pull-quote-rule {
+    width: 60px;
+    height: 1px;
+    background: #222;
+    margin: 0 auto 28px;
+  }
+  .pull-quote p {
+    font-size: 1.65em;
+    font-style: italic;
+    color: var(--text-bright);
+    line-height: 1.45;
+    max-width: 700px;
+    margin: 0 auto 20px;
+    font-weight: 300;
+  }
+  .pull-quote .attr {
+    font-size: 0.75em;
+    color: #444;
+    font-style: normal;
+    letter-spacing: 1px;
+  }
+  .pull-quote-rule-bottom {
+    width: 60px;
+    height: 1px;
+    background: #222;
+    margin: 28px auto 0;
+  }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-block;
+    font-size: 0.6em;
+    padding: 3px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    font-weight: 700;
+    vertical-align: middle;
+    margin-left: 10px;
+  }
+  .badge-proven { background: rgba(78,205,196,0.1); color: var(--teal); border: 1px solid rgba(78,205,196,0.2); }
+  .badge-active { background: rgba(255,230,109,0.1); color: var(--yellow); border: 1px solid rgba(255,230,109,0.2); }
+  .badge-progress { background: rgba(255,107,107,0.1); color: var(--red); border: 1px solid rgba(255,107,107,0.2); }
+  .badge-concept { background: rgba(136,136,136,0.1); color: #777; border: 1px solid rgba(136,136,136,0.2); }
+
+  /* ===== COMPONENT CARDS ===== */
+  .comp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 36px 0;
+  }
+  .comp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 28px;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .comp-card:hover { border-color: var(--border-hover); transform: translateY(-3px); }
+  .comp-card h4 {
+    color: var(--text-white);
+    margin: 0 0 6px 0;
+    font-size: 1.05em;
+  }
+  .comp-card .comp-sub {
+    color: #444;
+    font-size: 0.72em;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .comp-card p { font-size: 0.88em; color: #777; margin: 0; line-height: 1.6; }
+
+  /* ===== PRINCIPLE CARDS ===== */
+  .principle-grid {
+    display: grid;
+    gap: 16px;
+    margin: 28px 0;
+  }
+  .principle {
+    background: rgba(8,8,14,0.6);
+    border-left: 3px solid #333;
+    padding: 24px 28px;
+    border-radius: 0 12px 12px 0;
+  }
+  .principle .p-num {
+    color: #444;
+    font-size: 0.65em;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .principle .p-text {
+    color: var(--text-bright);
+    font-size: 1.05em;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+  .principle .p-sub {
+    color: #666;
+    font-size: 0.85em;
+    margin-top: 8px;
+    line-height: 1.6;
+  }
+  .principle-belief { border-color: var(--red); }
+  .principle-trust { border-color: var(--teal); }
+  .principle-contra { border-color: var(--yellow); }
+  .principle-speech { border-color: var(--purple); }
+  .principle-variance { border-color: var(--orange); }
+
+  /* ===== TABLES ===== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0 28px;
+    font-size: 0.88em;
+  }
+  th {
+    text-align: left;
+    padding: 14px 16px;
+    color: #555;
+    font-weight: 700;
+    border-bottom: 2px solid #1a1a24;
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #0f0f16;
+    color: #999;
+    transition: background 0.2s;
+  }
+  tr:hover td { background: rgba(10,10,16,0.5); }
+  td strong { color: var(--text-white); }
+
+  /* ===== REGIME CARDS ===== */
+  .regime-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin: 36px 0;
+  }
+  .regime-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 32px 24px;
+    text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
+  }
+  .regime-card:hover { border-color: var(--border-hover); transform: translateY(-3px); }
+  .regime-card .regime-label {
+    font-size: 0.6em;
+    color: #444;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 10px;
+    font-weight: 700;
+  }
+  .regime-card .regime-name {
+    font-size: 1.1em;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .regime-card .regime-model {
+    font-size: 0.72em;
+    color: #555;
+    margin-bottom: 14px;
+    letter-spacing: 0.5px;
+  }
+  .regime-card .regime-desc {
+    font-size: 0.84em;
+    color: #777;
+    line-height: 1.55;
+  }
+  .card-crack { border-color: rgba(255,107,107,0.2); }
+  .card-crack .regime-name { color: var(--red); }
+  .card-gradient { border-color: rgba(78,205,196,0.2); }
+  .card-gradient .regime-name { color: var(--teal); }
+  .card-fog { border-color: rgba(255,230,109,0.2); }
+  .card-fog .regime-name { color: var(--yellow); }
+  .card-damp { border-color: rgba(136,136,136,0.2); }
+  .card-damp .regime-name { color: #888; }
+
+  /* ===== AXES ===== */
+  .axes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 28px 0;
+  }
+  .axis-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .axis-card h4 { color: var(--text-white); font-size: 0.92em; margin: 0 0 10px 0; }
+  .axis-card p { color: #777; font-size: 0.88em; margin: 0; line-height: 1.6; }
+
+  /* ===== LAYER STACK ===== */
+  .layer-stack {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin: 28px 0;
+  }
+  .layer {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+  }
+  .layer .layer-name {
+    color: var(--text-white);
+    font-weight: 700;
+    font-size: 1em;
+  }
+  .layer .layer-sub {
+    color: #444;
+    font-size: 0.7em;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .layer .layer-desc {
+    color: #777;
+    font-size: 0.84em;
+    margin-top: 12px;
+    line-height: 1.55;
+  }
+
+  /* ===== IMMUNE GRID ===== */
+  .immune-grid {
+    display: grid;
+    gap: 16px;
+    margin: 28px 0;
+  }
+  .immune-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 28px;
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 20px;
+    align-items: start;
+    transition: border-color 0.3s;
+  }
+  .immune-card:hover { border-color: var(--border-hover); }
+  .immune-card .im-law {
+    color: #444;
+    font-size: 0.65em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+  .immune-card .im-name {
+    color: var(--text-white);
+    font-weight: 600;
+    font-size: 0.98em;
+    margin-top: 6px;
+  }
+  .immune-card .im-desc {
+    color: #777;
+    font-size: 0.88em;
+    line-height: 1.6;
+  }
+
+  /* ===== LINK BUTTONS ===== */
+  .link-btn {
+    display: inline-block;
+    padding: 12px 28px;
+    border: 1px solid;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    transition: background 0.3s, color 0.3s;
+  }
+  .link-btn-teal { border-color: var(--teal); color: var(--teal); }
+  .link-btn-teal:hover { background: rgba(78,205,196,0.1); }
+  .link-btn-red { border-color: var(--red); color: var(--red); }
+  .link-btn-red:hover { background: rgba(255,107,107,0.1); }
+
+  /* ===== PRODUCT CALLOUT ===== */
+  .product-callout {
+    font-size: 1.2em;
+    color: var(--text-bright);
+    text-align: center;
+    padding: 32px 28px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-card);
+    margin: 28px 0;
+    font-weight: 500;
+  }
+
+  /* ===== ACCENT DIVIDER ===== */
+  .accent-line {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--red), var(--teal));
+    margin: 0 0 40px;
+  }
+
+  /* ===== SECTION DIVIDER BAND ===== */
+  .divider-band {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 5%, #1a1a24 50%, transparent 95%);
+  }
+
+  /* ===== NOTE TEXT ===== */
+  .note {
+    color: #555;
+    font-size: 0.82em;
+    font-style: italic;
+  }
+
+  /* ===== CLOSING ===== */
+  .closing {
+    text-align: center;
+    padding: 100px 40px;
+    background: var(--bg-dark);
+  }
+  .closing p {
+    font-size: 1.3em;
+    color: var(--text-bright);
+    line-height: 1.5;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .closing strong { color: var(--text-white); }
+
+  /* ===== FOOTER ===== */
+  .footer {
+    text-align: center;
+    padding: 48px 30px;
+    color: #2a2a30;
+    font-size: 0.72em;
+    border-top: 1px solid #0f0f14;
+    line-height: 1.8;
+  }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 768px) {
+    .hero-content h1 { font-size: 2.4em; }
+    .chapter-num { font-size: 3em; }
+    .section-title { font-size: 1.6em; }
+    .stats-row { grid-template-columns: 1fr 1fr; }
+    .stat-number { font-size: 2.4em; }
+    .comp-grid,
+    .regime-grid,
+    .axes,
+    .layer-stack { grid-template-columns: 1fr; }
+    .immune-card { grid-template-columns: 1fr; }
+    .pull-quote p { font-size: 1.2em; }
+    .section { padding: 80px 0; }
+    .container, .container-wide { padding: 0 24px; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-row { grid-template-columns: 1fr; }
+    .topbar { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="topbar" id="topbar">
+  <span class="topbar-brand">Aeteros</span>
+  <span class="topbar-label">Whitepaper</span>
+  <button class="topbar-toc-btn" onclick="toggleToc()">Contents</button>
+</div>
+
+<!-- ===== TOC OVERLAY ===== -->
+<div class="toc-overlay" id="tocOverlay" onclick="toggleToc()"></div>
+<nav class="toc" id="tocNav">
+  <button class="toc-close" onclick="toggleToc()">&times;</button>
+  <h4>Table of Contents</h4>
+  <a href="#overview" onclick="toggleToc()">Overview</a>
+  <a href="#thesis" onclick="toggleToc()">Core Thesis</a>
+  <a href="#problem" onclick="toggleToc()">Problem Statement</a>
+  <a href="#principles" onclick="toggleToc()">Architectural Principles</a>
+  <a href="#components" onclick="toggleToc()">System Components</a>
+  <a href="#contradiction" onclick="toggleToc()">Contradiction Ledger</a>
+  <a href="#trust" onclick="toggleToc()">Trust Model</a>
+  <a href="#grounding" onclick="toggleToc()">Grounding + Verification</a>
+  <a href="#variance" onclick="toggleToc()">Variance Probing Research</a>
+  <a href="#regimes" onclick="toggleToc()">Three Confirmed Regimes</a>
+  <a href="#governance" onclick="toggleToc()">Why Variance = Governance</a>
+  <a href="#immune" onclick="toggleToc()">Immune Agents</a>
+  <a href="#persistence" onclick="toggleToc()">Persistence Layer Thesis</a>
+  <a href="#positioning" onclick="toggleToc()">Product Positioning</a>
+  <a href="#maturity" onclick="toggleToc()">Maturity Map</a>
+  <a href="#vision" onclick="toggleToc()">Long-Range Vision</a>
+</nav>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-content">
+    <h1><span class="accent">CRT</span> / Aether</h1>
+    <p class="tagline">Contradiction-preserving, trust-evolving governance for AI memory and response verification</p>
+    <div class="claim">A system where memory is not just storage, but governed semantic history. Where contradiction is signal, not failure. Where the model speaks, but does not decide what is believed.</div>
+  </div>
+  <div class="scroll-hint">scroll</div>
+</div>
+
+<!-- ===== STATS BANNER ===== -->
+<div class="section-alt" style="padding: 80px 0;">
+  <div class="container-wide">
+    <div class="stats-row" style="margin:0;">
+      <div class="stat-card">
+        <div class="stat-number">22,524</div>
+        <div class="stat-label">Analyzed Responses</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number grad-2">3</div>
+        <div class="stat-label">Confirmed Regimes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number grad-3">16/16</div>
+        <div class="stat-label">Robustness Configs Passed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number grad-4">5</div>
+        <div class="stat-label">Constitutional Laws</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number grad-5">2</div>
+        <div class="stat-label">Immune Agents Built &amp; Tested</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number grad-6">$0</div>
+        <div class="stat-label">Cost for Local Model Runs</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 01. OVERVIEW ===== -->
+<div class="section section-dark" id="overview">
+  <div class="container">
+    <div class="chapter-num">01</div>
+    <div class="section-title">Overview</div>
+    <div class="accent-line"></div>
+
+    <p>CRT is a contradiction-preserving, trust-evolving framework for governed AI memory and response verification. Rather than treating contradiction as something to overwrite or hide, CRT treats contradiction as a first-class signal. Memories are not flattened into a single mutable truth state. They are tracked, weighted, resolved, and preserved through an append-only logic that favors auditability over convenience.</p>
+
+    <p>The system sits closer to a <strong>control plane</strong> than a generator. It is designed to wrap language models, not replace them. The model speaks, but CRT governs what is trusted, what is contradictory, what remains unresolved, and what should be shown back to a user as stable, unstable, or under review.</p>
+
+    <p>Over time, the stack has matured into several aligned layers:</p>
+
+    <div class="comp-grid">
+      <div class="comp-card">
+        <h4>CRT <span class="badge badge-proven">proven</span></h4>
+        <div class="comp-sub">Trust, contradiction, and belief-state governance</div>
+        <p>The core engine. Manages memory states, disagreement persistence, drift detection, and resolution tracking.</p>
+      </div>
+      <div class="comp-card">
+        <h4>GroundCheck <span class="badge badge-proven">proven</span></h4>
+        <div class="comp-sub">Fast grounding verification</div>
+        <p>Local grounding checks fast enough for live usage. Trust-weighted verification against memory and retrieval.</p>
+      </div>
+      <div class="comp-card">
+        <h4>SSE <span class="badge badge-proven">proven</span></h4>
+        <div class="comp-sub">Semantic string extraction and claim tracking</div>
+        <p>Extracts semantic units, claims, and provenance from model output. The bridge between raw text and governable memory objects.</p>
+      </div>
+      <div class="comp-card">
+        <h4>Aether <span class="badge badge-active">active</span></h4>
+        <div class="comp-sub">Assistant identity and interaction surface</div>
+        <p>The layer users encounter. CRT governs memory integrity underneath. Aether is the face; CRT is the spine.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 02. CORE THESIS ===== -->
+<div class="section section-alt" id="thesis">
+  <div class="container">
+    <div class="chapter-num">02</div>
+    <div class="section-title">Core Thesis</div>
+    <div class="accent-line"></div>
+
+    <p>Most AI systems treat memory as overwriteable cache, contradiction as bug, and verification as optional cleanup. CRT rejects that framing.</p>
+
+    <div class="principle-grid">
+      <div class="principle principle-contra">
+        <div class="p-num">Principle 1</div>
+        <div class="p-text">Contradictions should be preserved before they are resolved.</div>
+        <div class="p-sub">Premature resolution destroys information. The system must hold tension until it has evidence to choose.</div>
+      </div>
+      <div class="principle principle-trust">
+        <div class="p-num">Principle 2</div>
+        <div class="p-text">Trust should evolve continuously, not as a binary flag.</div>
+        <div class="p-sub">Memories gain and lose trust over time. Negative evidence carries stronger weight than positive reinforcement.</div>
+      </div>
+      <div class="principle principle-speech">
+        <div class="p-num">Principle 3</div>
+        <div class="p-text">Speech and belief must be separated.</div>
+        <div class="p-sub">A model may generate plausible language. That does not make it believed. Speech can speculate. Belief must be earned.</div>
+      </div>
+      <div class="principle principle-belief">
+        <div class="p-num">Principle 4</div>
+        <div class="p-text">A memory system should expose uncertainty honestly rather than collapse it.</div>
+        <div class="p-sub">If the system does not know, is split, or is unstable, it should show that state instead of pretending certainty.</div>
+      </div>
+      <div class="principle principle-variance">
+        <div class="p-num">Principle 5</div>
+        <div class="p-text">Variance under perturbation is not noise alone. It can reveal how a model governs meaning.</div>
+        <div class="p-sub">Temperature-swept sampling exposes fragility landscapes that single-point evaluation cannot see.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 03. PROBLEM STATEMENT ===== -->
+<div class="section section-dark" id="problem">
+  <div class="container">
+    <div class="chapter-num">03</div>
+    <div class="section-title">Problem Statement</div>
+    <div class="accent-line"></div>
+
+    <p>Modern agents are good at producing fluent output, but weak at epistemic bookkeeping. Common failure patterns include:</p>
+
+    <ul>
+      <li>Contradictions being overwritten instead of preserved</li>
+      <li>No durable record of why two claims conflicted</li>
+      <li>Memory treated as raw retrieval rather than governed evidence</li>
+      <li>No distinction between what was said and what is actually trusted</li>
+      <li>Hallucination checks running too late or too expensively</li>
+      <li>No visible path from user feedback to trust evolution</li>
+      <li>Systems that appear coherent only because conflict has been flattened</li>
+    </ul>
+
+    <p>CRT is designed as a response to those gaps. Not by making models smarter, but by wrapping them in a governance layer that tracks what is known, what is contested, and what remains unresolved.</p>
+  </div>
+</div>
+
+<!-- ===== PULL QUOTE ===== -->
+<div class="section section-alt" style="padding: 80px 0;">
+  <div class="pull-quote">
+    <div class="pull-quote-rule"></div>
+    <p>The model is the mouth. The persistence layer is the self.</p>
+    <div class="attr">-- Core architectural thesis</div>
+    <div class="pull-quote-rule-bottom"></div>
+  </div>
+</div>
+
+<!-- ===== 04. ARCHITECTURAL PRINCIPLES ===== -->
+<div class="section section-dark" id="principles">
+  <div class="container">
+    <div class="chapter-num">04</div>
+    <div class="section-title">Architectural Principles</div>
+    <div class="accent-line"></div>
+
+    <h3>Contradiction as signal</h3>
+    <p>Contradiction is not automatically failure. Sometimes it marks ambiguity. Sometimes it marks growth. Sometimes it marks a real unresolved conflict in evidence. The system preserves that distinction rather than collapsing it.</p>
+
+    <h3>Belief vs speech separation</h3>
+    <p>A model may generate language that is plausible, hedged, or mistaken. That does not mean the system should adopt it as belief. The model is the mouth. The persistence layer is the self.</p>
+
+    <h3>Memory-first governance</h3>
+    <p>The system does not let fluent generation overwrite memory-backed structure without accountability. Memory is governed semantic history, not a cache to be silently updated.</p>
+
+    <h3>Trust as continuous state</h3>
+    <p>Trust exists on a range, not as yes/no. Negative evidence reduces trust faster than positive evidence increases it. Trust participates in retrieval scoring and verification decisions.</p>
+
+    <h3>Transparent failure</h3>
+    <p>If the system does not know, is split, or is unstable, it shows that state. No pretending certainty. No silent consolidation. The UI makes epistemic behavior inspectable, not magical.</p>
+  </div>
+</div>
+
+<!-- ===== 05. SYSTEM COMPONENTS ===== -->
+<div class="section section-alt" id="components">
+  <div class="container">
+    <div class="chapter-num">05</div>
+    <div class="section-title">System Components</div>
+    <div class="accent-line"></div>
+
+    <h3>CRT <span class="badge badge-proven">implemented</span></h3>
+    <p>The trust and contradiction layer. Manages memory states, disagreement persistence, drift detection, and resolution tracking. Key features: append-only contradiction ledger, asymmetric trust update logic, lifecycle state machine for contradictions, and memory records that retain competing claims.</p>
+
+    <h3>GroundCheck <span class="badge badge-proven">implemented</span></h3>
+    <p>The fast verification layer. Performs local grounding checks quickly enough to be used in practical loops. Trust-weighted grounding, semantic contradiction checks against memory, and lightweight retrieval and claim verification.</p>
+
+    <h3>SSE <span class="badge badge-proven">implemented</span></h3>
+    <p>Semantic String Engine. Extracts semantic units, claims, and provenance-bearing structures from model output. The bridge between raw text and governable memory objects. Supports contradiction detection and structured response analysis for later governance.</p>
+
+    <h3>Aether <span class="badge badge-active">active</span></h3>
+    <p>The assistant-facing identity and interaction surface. Users encounter Aether; CRT governs memory integrity underneath. The face of the system, not the spine.</p>
+
+    <h3>Lumi <span class="badge badge-concept">early project</span></h3>
+    <p>An earlier AI project exploring memory continuity and reflective identity. Many of the architectural instincts from Lumi informed what became CRT. The ideas survived; the implementation is being rebuilt from evidence.</p>
+  </div>
+</div>
+
+<!-- ===== 06. CONTRADICTION LEDGER ===== -->
+<div class="section section-dark" id="contradiction">
+  <div class="container">
+    <div class="chapter-num">06</div>
+    <div class="section-title">Contradiction Ledger</div>
+    <div class="accent-line"></div>
+
+    <p>The contradiction ledger is one of the most important parts of the system. Rather than deleting one side of a conflict, the ledger stores both sides and tracks their status over time.</p>
+
+    <h4>Lifecycle</h4>
+    <table>
+      <tr><th>State</th><th>Meaning</th><th>Action</th></tr>
+      <tr><td><strong>DETECTED</strong></td><td>Two claims conflict</td><td>Log both, classify disposition</td></tr>
+      <tr><td><strong>ACTIVE</strong></td><td>Contradiction under review</td><td>Gather evidence, check user input</td></tr>
+      <tr><td><strong>SETTLING</strong></td><td>Evidence accumulating toward one side</td><td>Trust asymmetry building</td></tr>
+      <tr><td><strong>SETTLED</strong></td><td>One side earned higher trust</td><td>Lower side demoted, not deleted</td></tr>
+      <tr><td><strong>ARCHIVED</strong></td><td>Resolution complete, history preserved</td><td>Both sides remain in ledger</td></tr>
+    </table>
+
+    <p>The ledger is not a debug tool. It is a memory governance mechanism. It supports auditability, user-guided resolution, non-destructive epistemic history, and trust evolution based on outcomes.</p>
+  </div>
+</div>
+
+<!-- ===== 07. TRUST MODEL ===== -->
+<div class="section section-alt" id="trust">
+  <div class="container">
+    <div class="chapter-num">07</div>
+    <div class="section-title">Trust Model</div>
+    <div class="accent-line"></div>
+
+    <p>CRT uses a continuous trust model rather than binary truth flags. Memories gain or lose trust over time depending on confirmation, contradiction, user correction, provenance quality, and resolution outcomes.</p>
+
+    <ul>
+      <li>Trust exists on a range, not as yes/no</li>
+      <li>Negative evidence reduces trust faster than positive evidence increases it</li>
+      <li>Trust participates in retrieval scoring and verification decisions</li>
+      <li>Contradictory memories are not automatically discarded</li>
+      <li>Provenance quality affects initial trust assignment</li>
+    </ul>
+
+    <p>This allows the system to represent uncertain but relevant memories without pretending they are settled truth.</p>
+  </div>
+</div>
+
+<!-- ===== 08. GROUNDING ===== -->
+<div class="section section-dark" id="grounding">
+  <div class="container">
+    <div class="chapter-num">08</div>
+    <div class="section-title">Grounding and Verification</div>
+    <div class="accent-line"></div>
+
+    <p>GroundCheck and SSE work together to verify claims against stored evidence and current retrieval. This matters because language models often sound most confident exactly when governance is weakest.</p>
+
+    <ul>
+      <li>Extract claims from model output via SSE</li>
+      <li>Retrieve supporting or conflicting evidence from memory</li>
+      <li>Run lightweight grounding checks (sub-2ms target)</li>
+      <li>Expose pass/fail or confidence behavior in the UI</li>
+      <li>Block obvious hallucinations and contradiction drift</li>
+    </ul>
+
+    <p>Fast enough for live usage. Interpretable enough for inspection. Strong enough to catch the failures that matter.</p>
+  </div>
+</div>
+
+<!-- ===== 09. VARIANCE PROBING ===== -->
+<div class="section section-alt" id="variance">
+  <div class="container">
+    <div class="chapter-num">09</div>
+    <div class="section-title">Variance Probing Research <span class="badge badge-proven">validated</span></div>
+    <div class="accent-line"></div>
+
+    <p>A major result from this project: repeated temperature-swept probing reveals <strong>model-specific fragility landscapes</strong>.</p>
+
+    <p>This work asks a different question from standard benchmark evaluation. Instead of asking whether a model gets a prompt right or wrong once, it asks how the model's semantic output <strong>deforms under controlled perturbation</strong>.</p>
+
+    <h4>The Measurement Stack</h4>
+    <table>
+      <tr><th>Metric</th><th>What it measures</th></tr>
+      <tr><td><strong>Spread growth</strong></td><td>Mean pairwise embedding distance increase, T=0 to T=1.5</td></tr>
+      <tr><td><strong>Susceptibility (dH/dT)</strong></td><td>Rate of semantic entropy increase with temperature</td></tr>
+      <tr><td><strong>Mode count</strong></td><td>Distinct response clusters at T=1.0 via DBSCAN</td></tr>
+      <tr><td><strong>Held contradictions</strong></td><td>Stable incompatible answer camps that persist, not paraphrase noise</td></tr>
+    </table>
+
+    <p>Every finding is tested across <strong>16 analyzer configurations</strong>: two embedding models, two text normalization modes, and four clustering thresholds. A result must survive all perturbations to be considered confirmed.</p>
+
+    <p style="text-align: center; margin: 36px 0;">
+      <a href="variance-probing.html" class="link-btn link-btn-teal">Full Variance Probing Research &rarr;</a>
+    </p>
+
+    <h4>Two Axes of Difference</h4>
+    <div class="axes">
+      <div class="axis-card">
+        <h4>Axis 1 -- Morphology</h4>
+        <p>How does variance express? Does the model fracture into competing answer camps, drift smoothly, or compress into narrow corridors?</p>
+      </div>
+      <div class="axis-card">
+        <h4>Axis 2 -- Fragility Location</h4>
+        <p>Where does the model destabilize? Which semantic domains crack under temperature pressure? The answer is model-specific.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 10. THREE REGIMES ===== -->
+<div class="section section-dark" id="regimes">
+  <div class="container">
+    <div class="chapter-num">10</div>
+    <div class="section-title">Three Confirmed Regimes</div>
+    <div class="accent-line"></div>
+
+    <p>Three models tested under the same probe produce three distinct, robustness-confirmed fragility signatures:</p>
+
+    <div class="regime-grid">
+      <div class="regime-card card-crack">
+        <div class="regime-label">Regime 1</div>
+        <div class="regime-name">Selective Fracture</div>
+        <div class="regime-model">Qwen3:14b</div>
+        <div class="regime-desc">Stable until threshold, then bifurcation in factual domains. High factual fragility, low moral fragility. Held contradictions only in factual prompts.</div>
+      </div>
+      <div class="regime-card card-gradient">
+        <div class="regime-label">Regime 2</div>
+        <div class="regime-name">Selective Spread</div>
+        <div class="regime-model">Mistral 7B</div>
+        <div class="regime-desc">Smooth domain-selective diffusion without bifurcation. Movement concentrated in moral and opinion domains. Facts stay locked.</div>
+      </div>
+      <div class="regime-card card-fog">
+        <div class="regime-label">Regime 3</div>
+        <div class="regime-name">Uniform Softness</div>
+        <div class="regime-model">DeepSeek-R1:8b</div>
+        <div class="regime-desc">Broad cross-domain softening. Minimal locking or discrete fracture. Everything gives under pressure. Nothing holds rigid.</div>
+      </div>
+    </div>
+
+    <table>
+      <tr>
+        <th>Domain</th>
+        <th style="color:var(--red)">Qwen3</th>
+        <th style="color:var(--teal)">Mistral</th>
+        <th style="color:var(--yellow)">DeepSeek</th>
+      </tr>
+      <tr><td>factual_settled</td><td><strong>0.180</strong></td><td>0.030</td><td>0.146</td></tr>
+      <tr><td>factual_contested</td><td><strong>0.248</strong></td><td>0.101</td><td>0.161</td></tr>
+      <tr><td>moral_ambiguous</td><td>0.092</td><td>0.166</td><td><strong>0.247</strong></td></tr>
+      <tr><td>moral_clear</td><td>0.036</td><td>0.100</td><td><strong>0.198</strong></td></tr>
+      <tr><td>opinion_aesthetic</td><td>0.077</td><td>0.112</td><td><strong>0.274</strong></td></tr>
+    </table>
+    <p class="note">Spread growth: mean pairwise embedding distance increase T=0 to T=1.5, averaged across 16 robustness configurations.</p>
+
+    <h4>Fourth Model (Provisional)</h4>
+    <div class="regime-grid" style="grid-template-columns: 1fr;">
+      <div class="regime-card card-damp" style="max-width: 340px;">
+        <div class="regime-label">Provisional</div>
+        <div class="regime-name">Global Compression</div>
+        <div class="regime-model">GPT-4o-mini</div>
+        <div class="regime-desc">Narrow behavioral corridor. Resists movement even at high temperature. Pending clean rerun for confirmation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 11. WHY VARIANCE = GOVERNANCE ===== -->
+<div class="section section-alt" id="governance">
+  <div class="container">
+    <div class="chapter-num">11</div>
+    <div class="section-title">Why Variance Matters to CRT</div>
+    <div class="accent-line"></div>
+
+    <p>Variance is not only an analysis artifact. It serves as a <strong>governance signal</strong>.</p>
+
+    <ul>
+      <li>High susceptibility becomes an epistemic fragility tag on model outputs</li>
+      <li>Stable multi-cluster response clouds map to unresolved or plural belief states</li>
+      <li>Held contradictions map onto systems that preserve conflict rather than flatten it</li>
+      <li>Dynamic trust damping in fragile regions prevents false confidence</li>
+      <li>Routing decisions can be made based on regime type per model and domain</li>
+    </ul>
+
+    <p>The probe is useful not only for studying models from the outside, but for designing memory systems that know when certainty is genuine, when it is trained uniformity, and when contradiction should be preserved rather than erased.</p>
+
+    <div class="pull-quote">
+      <div class="pull-quote-rule"></div>
+      <p>The problem is not switching mouths. The problem is losing the self between them.</p>
+      <div class="attr">-- Nick Block</div>
+      <div class="pull-quote-rule-bottom"></div>
+    </div>
+
+    <p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic safely handled by one model's locked regime may land in another model's fracture zone. The variance probe maps each model's profile. The governance layer uses this to know what to watch for after every handoff.</p>
+
+    <h3>Three Calibration Layers</h3>
+    <div class="layer-stack">
+      <div class="layer">
+        <div class="layer-name">Fragility</div>
+        <div class="layer-sub">Source: Variance probe</div>
+        <div class="layer-desc">Where and how the model destabilizes under perturbation</div>
+      </div>
+      <div class="layer">
+        <div class="layer-name">Support</div>
+        <div class="layer-sub">Source: Memory + retrieval</div>
+        <div class="layer-desc">What beliefs are actually backed by evidence</div>
+      </div>
+      <div class="layer">
+        <div class="layer-name">Tension</div>
+        <div class="layer-sub">Source: Contradiction engine</div>
+        <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable</div>
+      </div>
+    </div>
+
+    <p class="note">Important boundary: these calibration layers are promising design hypotheses informed by validated research. They should be treated as downstream architecture, not proven integrations, until implemented and tested end-to-end.</p>
+  </div>
+</div>
+
+<!-- ===== 12. IMMUNE AGENTS ===== -->
+<div class="section section-dark" id="immune">
+  <div class="container">
+    <div class="chapter-num">12</div>
+    <div class="section-title">Immune Agents <span class="badge badge-progress">in progress</span></div>
+    <div class="accent-line"></div>
+
+    <p>Instead of fixed pipeline gates, the system uses specialized agents -- each one trained to detect a specific violation of the Mirus/Holden constitutional doctrine. They are not tied to pipeline stages. They watch the same stream and fire when their pattern is detected.</p>
+
+    <div class="immune-grid">
+      <div class="immune-card">
+        <div>
+          <div class="im-law">Law 1</div>
+          <div class="im-name">SpeechLeakDetector <span class="badge badge-proven">built</span></div>
+        </div>
+        <div class="im-desc">Speech cannot upgrade belief. Watches the output-to-memory write path. Blocks generated claims from being stored with higher trust than evidence supports.</div>
+      </div>
+      <div class="immune-card">
+        <div>
+          <div class="im-law">Law 2</div>
+          <div class="im-name">TemplateDetector <span class="badge badge-proven">built</span></div>
+        </div>
+        <div class="im-desc">Low variance does not imply high confidence. Detects hedge-template lock vs genuine certainty using susceptibility data and pattern matching. Directly calibrated by the variance experiment.</div>
+      </div>
+      <div class="immune-card">
+        <div>
+          <div class="im-law">Law 3</div>
+          <div class="im-name">PrematureResolutionGuard <span class="badge badge-concept">planned</span></div>
+        </div>
+        <div class="im-desc">Contradiction must be preserved before resolution. Blocks resolution attempts on contradictions classified as HELD, EVOLVING, or CONTEXTUAL.</div>
+      </div>
+      <div class="immune-card">
+        <div>
+          <div class="im-law">Law 4</div>
+          <div class="im-name">MemoryCorruptionGuard <span class="badge badge-concept">planned</span></div>
+        </div>
+        <div class="im-desc">Degraded reconstruction cannot silently overwrite trusted memory. Compares old trust score vs new reconstruction fidelity. Blocks downgrades.</div>
+      </div>
+      <div class="immune-card">
+        <div>
+          <div class="im-law">Law 5</div>
+          <div class="im-name">GapAuditor <span class="badge badge-concept">planned</span></div>
+        </div>
+        <div class="im-desc">Outward confidence must be bounded by internal support. Measures the gap between expressed confidence and belief-layer backing. Logs every divergence.</div>
+      </div>
+    </div>
+
+    <p>The coordination layer between agents replaces the original GFN (Graph Function Network) concept. It is not a pipeline graph. It is a communication layer between immune agents that need to arbitrate when multiple laws fire simultaneously.</p>
+
+    <p style="text-align: center; margin: 36px 0;">
+      <a href="immune-agents.html" class="link-btn link-btn-red">Full Immune Agent Architecture &rarr;</a>
+    </p>
+  </div>
+</div>
+
+<!-- ===== 13. PERSISTENCE LAYER ===== -->
+<div class="section section-alt" id="persistence">
+  <div class="container">
+    <div class="chapter-num">13</div>
+    <div class="section-title">The Persistence Layer Thesis</div>
+    <div class="accent-line"></div>
+
+    <p>If governance, memory, contradiction state, support state, and task continuity live outside the currently active model, then the model becomes the mouth -- not the self, not the belief-holder, not the continuity layer. Just the speaker.</p>
+
+    <p>This means switching models is safe only if <strong>continuity of governance is stronger than continuity of model</strong>. The system needs a layer that survives the switch and carries forward:</p>
+
+    <ul>
+      <li>The task intent</li>
+      <li>The confidence and support state</li>
+      <li>The unresolved ambiguities</li>
+      <li>The contradiction state</li>
+      <li>The behavioral constraints and governance policy</li>
+    </ul>
+
+    <p>Without that, a router is saying "good luck, new brain." Each handoff risks a tiny identity wipe. New assumptions creep in. Tone changes. Certainty changes. Missing details get invented. The task mutates.</p>
+
+    <h3>Three Requirements for Serious Agentic Systems</h3>
+    <div class="layer-stack">
+      <div class="layer">
+        <div class="layer-name">Shared Task State</div>
+        <div class="layer-desc">What are we doing. What has been decided. What is still open.</div>
+      </div>
+      <div class="layer">
+        <div class="layer-name">Shared Support State</div>
+        <div class="layer-desc">What do we know and how well. What is grounded. What is fragile.</div>
+      </div>
+      <div class="layer">
+        <div class="layer-name">Shared Governance State</div>
+        <div class="layer-desc">What rules apply. What laws are active. What the fragility map looks like for the current model.</div>
+      </div>
+    </div>
+
+    <p>If any of these reset at handoff, the system can drift even when every individual model is working as designed.</p>
+  </div>
+</div>
+
+<!-- ===== 14. PRODUCT POSITIONING ===== -->
+<div class="section section-dark" id="positioning">
+  <div class="container">
+    <div class="chapter-num">14</div>
+    <div class="section-title">Product Positioning</div>
+    <div class="accent-line"></div>
+
+    <p>The current practical framing is not "we built a new foundation model." It is:</p>
+
+    <div class="product-callout">
+      <strong>A contradiction-preserving, trust-aware control plane for AI systems.</strong>
+    </div>
+
+    <p>The system wraps existing models and provides governed memory, contradiction preservation, fast verification, transparent traces, and trust evolution over time. This makes it useful even before the deeper reflective architecture is complete.</p>
+
+    <h4>Near-term paths</h4>
+    <ul>
+      <li><strong>Diagnostic probe for AI companies</strong> -- measure where models are hollow, sell as compliance tooling</li>
+      <li><strong>Open-source memory library</strong> -- own the agent memory layer</li>
+      <li><strong>EU AI Act Article 50 compliance</strong> -- enforceable August 2026, requires exactly this transparency infrastructure</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== 15. MATURITY MAP ===== -->
+<div class="section section-alt" id="maturity">
+  <div class="container">
+    <div class="chapter-num">15</div>
+    <div class="section-title">Maturity Map</div>
+    <div class="accent-line"></div>
+
+    <table>
+      <tr><th>Component</th><th>Status</th><th>Evidence</th></tr>
+      <tr><td>Contradiction ledger</td><td><span class="badge badge-proven">proven</span></td><td>Implemented, append-only, lifecycle state machine</td></tr>
+      <tr><td>Trust-evolving memory</td><td><span class="badge badge-proven">proven</span></td><td>Continuous trust, asymmetric update logic</td></tr>
+      <tr><td>GroundCheck verification</td><td><span class="badge badge-proven">proven</span></td><td>Sub-2ms local grounding, trust-weighted</td></tr>
+      <tr><td>SSE claim extraction</td><td><span class="badge badge-proven">proven</span></td><td>Semantic unit extraction, provenance mapping</td></tr>
+      <tr><td>Variance probing (3 models)</td><td><span class="badge badge-proven">proven</span></td><td>22,524 responses, 16/16 robustness configs each</td></tr>
+      <tr><td>SpeechLeakDetector</td><td><span class="badge badge-proven">built</span></td><td>All unit tests passing, tested on experiment data</td></tr>
+      <tr><td>TemplateDetector</td><td><span class="badge badge-proven">built</span></td><td>All unit tests passing, tested on real Qwen3 + Mistral data</td></tr>
+      <tr><td>GPT-4o-mini regime</td><td><span class="badge badge-active">provisional</span></td><td>Sparse data, rerun in progress</td></tr>
+      <tr><td>Remaining immune agents</td><td><span class="badge badge-progress">planned</span></td><td>Spec written, needs memory pipeline for testing</td></tr>
+      <tr><td>Adaptive temperature governance</td><td><span class="badge badge-progress">designed</span></td><td>Architecture defined, needs integration</td></tr>
+      <tr><td>Full Mirus/Holden rebuild</td><td><span class="badge badge-concept">deferred</span></td><td>Doctrine preserved. Rebuild after immune agents prove which laws matter.</td></tr>
+      <tr><td>Reflective identity continuity</td><td><span class="badge badge-concept">conceptual</span></td><td>Long-range vision. Informed by current architecture work.</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ===== 16. LONG-RANGE VISION ===== -->
+<div class="section section-dark" id="vision">
+  <div class="container">
+    <div class="chapter-num">16</div>
+    <div class="section-title">Long-Range Vision</div>
+    <div class="accent-line"></div>
+
+    <p>The long-range vision is larger than verification alone. It is about building systems whose memory is not merely persistent, but <strong>meaning-aware and contradiction-accountable</strong>.</p>
+
+    <ul>
+      <li>Reflective continuity -- memory that can examine its own evolution</li>
+      <li>Contradiction as catalyst for growth, not mere cleanup</li>
+      <li>Governed semantic evolution across time and context</li>
+      <li>Identity that emerges from memory history rather than hardcoded persona</li>
+      <li>Memory structures that preserve plural states without collapsing them prematurely</li>
+    </ul>
+
+    <p>These are long-range goals, not current claims. They are informed by everything being built now, but they are not proven or implemented yet.</p>
+  </div>
+</div>
+
+<!-- ===== CLOSING ===== -->
+<div class="closing">
+  <p>The model is the mouth. The persistence layer is the self.<br><strong>CRT is the governance that keeps the self honest.</strong></p>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  CRT / Aether / SSE -- Whitepaper -- Nick Block -- 2026<br>
+  This is the internal map, not the final publication. Every section signals its maturity level.<br>
+  Living document. Updated as evidence accumulates.
+</div>
+
+<!-- ===== CINEMATIC HERO: 3D BELIEF SPACE FLY-THROUGH ===== -->
+<script>
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, cw, ch;
+  let mouse = { x: -1000, y: -1000 };
+  let stars = [];
+  let nebulae = [];
+  let clusters = [];
+  let time = 0;
+  let camZ = 0;
+
+  const COLORS = {
+    crack: { r: 255, g: 107, b: 107 },
+    gradient: { r: 78, g: 205, b: 196 },
+    fog: { r: 255, g: 230, b: 109 },
+    white: { r: 200, g: 200, b: 220 },
+  };
+
+  function resize() {
+    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+    cw = w / devicePixelRatio;
+    ch = h / devicePixelRatio;
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+
+  function init() {
+    resize();
+    stars = [];
+    nebulae = [];
+    clusters = [];
+
+    for (let i = 0; i < 400; i++) {
+      stars.push({
+        x: Math.random() * cw * 2 - cw * 0.5,
+        y: Math.random() * ch * 2 - ch * 0.5,
+        z: Math.random() * 2000 + 200,
+        r: Math.random() * 1.2 + 0.3,
+        alpha: Math.random() * 0.5 + 0.1,
+        twinkle: Math.random() * Math.PI * 2,
+        twinkleSpeed: 0.005 + Math.random() * 0.02,
+      });
+    }
+
+    const nebulaConfigs = [
+      { cx: cw * 0.2, cy: ch * 0.3, color: COLORS.crack, size: 300, alpha: 0.03 },
+      { cx: cw * 0.6, cy: ch * 0.5, color: COLORS.gradient, size: 350, alpha: 0.025 },
+      { cx: cw * 0.8, cy: ch * 0.35, color: COLORS.fog, size: 280, alpha: 0.02 },
+      { cx: cw * 0.4, cy: ch * 0.7, color: COLORS.crack, size: 200, alpha: 0.015 },
+      { cx: cw * 0.7, cy: ch * 0.7, color: COLORS.gradient, size: 250, alpha: 0.02 },
+    ];
+    for (const n of nebulaConfigs) {
+      nebulae.push({ ...n, phase: Math.random() * Math.PI * 2, drift: 0.001 + Math.random() * 0.002 });
+    }
+
+    const regimeNames = ['crack', 'gradient', 'fog'];
+    const regimeCenters = [
+      { x: cw * 0.3, y: ch * 0.4 },
+      { x: cw * 0.55, y: ch * 0.55 },
+      { x: cw * 0.75, y: ch * 0.45 },
+    ];
+
+    for (let r = 0; r < 3; r++) {
+      const col = COLORS[regimeNames[r]];
+      const center = regimeCenters[r];
+      const count = 60 + Math.floor(Math.random() * 20);
+
+      for (let i = 0; i < count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        let spread;
+        if (r === 0) {
+          spread = Math.random() > 0.8 ? 80 + Math.random() * 120 : 15 + Math.random() * 30;
+        } else if (r === 1) {
+          spread = 20 + Math.random() * 80;
+        } else {
+          spread = 10 + Math.random() * 140;
+        }
+
+        clusters.push({
+          x: center.x + Math.cos(angle) * spread,
+          y: center.y + Math.sin(angle) * spread,
+          z: 300 + Math.random() * 1500,
+          baseX: center.x + Math.cos(angle) * spread,
+          baseY: center.y + Math.sin(angle) * spread,
+          r: 1.2 + Math.random() * 2.5,
+          color: col,
+          regime: r,
+          phase: Math.random() * Math.PI * 2,
+          orbitSpeed: 0.002 + Math.random() * 0.005,
+          orbitRadius: 5 + Math.random() * 15,
+          pulsePhase: Math.random() * Math.PI * 2,
+          pulseSpeed: 0.01 + Math.random() * 0.02,
+        });
+      }
+    }
+  }
+
+  function project(x, y, z) {
+    const fov = 600;
+    const depth = z - camZ;
+    if (depth <= 0) return null;
+    const scale = fov / depth;
+    return {
+      x: cw / 2 + (x - cw / 2) * scale,
+      y: ch / 2 + (y - ch / 2) * scale,
+      scale: scale,
+    };
+  }
+
+  function draw() {
+    time++;
+    camZ += 0.3;
+
+    ctx.clearRect(0, 0, cw, ch);
+
+    const bgGrad = ctx.createRadialGradient(cw * 0.5, ch * 0.4, 0, cw * 0.5, ch * 0.5, cw * 0.8);
+    bgGrad.addColorStop(0, '#0a0a12');
+    bgGrad.addColorStop(0.5, '#060610');
+    bgGrad.addColorStop(1, '#030306');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, cw, ch);
+
+    for (const n of nebulae) {
+      n.phase += n.drift;
+      const nx = n.cx + Math.sin(n.phase) * 30;
+      const ny = n.cy + Math.cos(n.phase * 0.7) * 20;
+      const grad = ctx.createRadialGradient(nx, ny, 0, nx, ny, n.size);
+      grad.addColorStop(0, `rgba(${n.color.r},${n.color.g},${n.color.b},${n.alpha})`);
+      grad.addColorStop(0.4, `rgba(${n.color.r},${n.color.g},${n.color.b},${n.alpha * 0.5})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(nx - n.size, ny - n.size, n.size * 2, n.size * 2);
+    }
+
+    for (const s of stars) {
+      s.twinkle += s.twinkleSpeed;
+      const twinkleAlpha = s.alpha * (0.6 + 0.4 * Math.sin(s.twinkle));
+      let sz = s.z;
+      if (sz - camZ < 10) { sz += 2000; s.z = sz; }
+      const p = project(s.x, s.y, sz);
+      if (!p || p.scale < 0.01) continue;
+      const sr = s.r * p.scale * 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(sr, 0.3), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,200,220,${twinkleAlpha * Math.min(p.scale * 2, 1)})`;
+      ctx.fill();
+    }
+
+    const sorted = clusters.slice().sort((a, b) => b.z - a.z);
+
+    for (let i = 0; i < sorted.length; i++) {
+      const pi = sorted[i];
+      let pz = pi.z;
+      if (pz - camZ < 10) { pz += 1800; pi.z = pz; }
+      const pp = project(pi.x, pi.y, pz);
+      if (!pp || pp.scale < 0.05) continue;
+
+      for (let j = i + 1; j < sorted.length; j++) {
+        const pj = sorted[j];
+        if (pi.regime !== pj.regime) continue;
+        const qp = project(pj.x, pj.y, pj.z);
+        if (!qp || qp.scale < 0.05) continue;
+        const dx = pp.x - qp.x;
+        const dy = pp.y - qp.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 60) {
+          ctx.beginPath();
+          ctx.moveTo(pp.x, pp.y);
+          ctx.lineTo(qp.x, qp.y);
+          ctx.strokeStyle = `rgba(${pi.color.r},${pi.color.g},${pi.color.b},${(1 - dist / 60) * 0.08 * Math.min(pp.scale * 3, 1)})`;
+          ctx.stroke();
+        }
+      }
+    }
+
+    for (const p of sorted) {
+      p.phase += p.orbitSpeed;
+      p.pulsePhase += p.pulseSpeed;
+
+      p.x = p.baseX + Math.cos(p.phase) * p.orbitRadius;
+      p.y = p.baseY + Math.sin(p.phase) * p.orbitRadius;
+
+      if (p.regime === 0 && Math.random() < 0.001) {
+        p.baseX += (Math.random() - 0.5) * 40;
+        p.baseY += (Math.random() - 0.5) * 40;
+      }
+
+      let pz = p.z;
+      if (pz - camZ < 10) { pz += 1800; p.z = pz; }
+      const proj = project(p.x, p.y, pz);
+      if (!proj || proj.scale < 0.03) continue;
+
+      const mx = proj.x - mouse.x;
+      const my = proj.y - mouse.y;
+      const md = Math.sqrt(mx * mx + my * my);
+      let fx = 0, fy = 0;
+      if (md < 80) {
+        const force = (80 - md) / 80 * 1.5;
+        fx = (mx / md) * force;
+        fy = (my / md) * force;
+      }
+
+      const drawX = proj.x + fx;
+      const drawY = proj.y + fy;
+      const drawR = p.r * proj.scale * 3;
+      const pulse = 0.7 + 0.3 * Math.sin(p.pulsePhase);
+      const drawAlpha = Math.min(proj.scale * 2.5, 0.9) * pulse;
+
+      const glowR = drawR * 4;
+      const glowGrad = ctx.createRadialGradient(drawX, drawY, 0, drawX, drawY, glowR);
+      glowGrad.addColorStop(0, `rgba(${p.color.r},${p.color.g},${p.color.b},${drawAlpha * 0.15})`);
+      glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(drawX - glowR, drawY - glowR, glowR * 2, glowR * 2);
+
+      ctx.beginPath();
+      ctx.arc(drawX, drawY, Math.max(drawR, 0.5), 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color.r},${p.color.g},${p.color.b},${drawAlpha})`;
+      ctx.fill();
+
+      if (drawR > 1.5) {
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, drawR * 0.4, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${drawAlpha * 0.3})`;
+        ctx.fill();
+      }
+    }
+
+    const vigGrad = ctx.createRadialGradient(cw / 2, ch / 2, cw * 0.25, cw / 2, ch / 2, cw * 0.75);
+    vigGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    vigGrad.addColorStop(1, 'rgba(3,3,6,0.6)');
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, cw, ch);
+
+    requestAnimationFrame(draw);
+  }
+
+  canvas.parentElement.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+  });
+  canvas.parentElement.addEventListener('mouseleave', () => {
+    mouse.x = -1000; mouse.y = -1000;
+  });
+
+  window.addEventListener('resize', () => { resize(); init(); });
+  init();
+  requestAnimationFrame(draw);
+})();
+
+// TOC toggle
+function toggleToc() {
+  document.getElementById('tocOverlay').classList.toggle('open');
+  document.getElementById('tocNav').classList.toggle('open');
+}
+
+// Hide topbar on hero, show on scroll
+const topbar = document.getElementById('topbar');
+topbar.style.opacity = '0';
+window.addEventListener('scroll', () => {
+  topbar.style.opacity = window.scrollY > window.innerHeight * 0.5 ? '1' : '0';
+});
+</script>
+
+</body>
+</html>

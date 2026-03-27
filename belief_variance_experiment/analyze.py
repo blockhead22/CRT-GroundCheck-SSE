@@ -690,7 +690,19 @@ def main() -> None:
         action="store_true",
         help="Force re-computation of embeddings",
     )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default=None,
+        help="Path to model-specific raw results directory (e.g. results/raw/qwen3_14b). "
+             "Defaults to results/raw/ for backwards compatibility.",
+    )
     args = parser.parse_args()
+
+    # Override RAW_DIR if --data-dir was provided
+    global RAW_DIR
+    if args.data_dir is not None:
+        RAW_DIR = Path(args.data_dir)
 
     print("=" * 60)
     print("  BELIEF VARIANCE EXPERIMENT — ANALYSIS")

@@ -17,6 +17,7 @@ import argparse
 import asyncio
 import json
 import os
+import re as _re
 import sys
 import time
 from pathlib import Path
@@ -42,7 +43,17 @@ RETRY_BASE_DELAY = 1.0
 USE_SUBSET = True
 SUBSET_SIZE_PER_DOMAIN = 10
 
-RESULTS_DIR = Path(__file__).parent / "results" / "raw"
+RESULTS_BASE = Path(__file__).parent / "results" / "raw"
+
+
+def _sanitize_model_name(model: str) -> str:
+    """Sanitize model name for use as a directory name (replace colons/slashes)."""
+    return _re.sub(r'[:/\\]', '_', model)
+
+
+def get_results_dir(model: str) -> Path:
+    """Return model-specific results directory, e.g. results/raw/mistral_latest/"""
+    return RESULTS_BASE / _sanitize_model_name(model)
 
 
 # ---------------------------------------------------------------------------
@@ -70,9 +81,9 @@ def get_prompts(use_subset: bool = True, per_domain: int = 10) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Checkpoint helpers
 # ---------------------------------------------------------------------------
-def count_existing(prompt_id: str, temperature: float) -> int:
+def count_existing(prompt_id: str, temperature: float, results_dir: Path = None) -> int:
     """Count completed (non-error) repetitions for a prompt+temperature combo."""
-    path = RESULTS_DIR / f"{prompt_id}_{temperature}.jsonl"
+    path = (results_dir or RESULTS_BASE) / f"{prompt_id}_{temperature}.jsonl"
     if not path.exists():
         return 0
     count = 0
@@ -90,9 +101,9 @@ def count_existing(prompt_id: str, temperature: float) -> int:
     return count
 
 
-def append_result(prompt_id: str, temperature: float, record: dict) -> None:
+def append_result(prompt_id: str, temperature: float, record: dict, results_dir: Path = None) -> None:
     """Append a single result to the appropriate JSONL file."""
-    path = RESULTS_DIR / f"{prompt_id}_{temperature}.jsonl"
+    path = (results_dir or RESULTS_BASE) / f"{prompt_id}_{temperature}.jsonl"
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
@@ -169,12 +180,12 @@ async def call_ollama(
 # ---------------------------------------------------------------------------
 # Task generation
 # ---------------------------------------------------------------------------
-def build_task_list(prompts: list[dict], num_reps: int) -> list[tuple[dict, float, int]]:
+def build_task_list(prompts: list[dict], num_reps: int, results_dir: Path = None) -> list[tuple[dict, float, int]]:
     """Build task list, skipping completed (non-error) results."""
     tasks = []
     for prompt in prompts:
         for temp in TEMPERATURES:
-            existing = count_existing(prompt["id"], temp)
+            existing = count_existing(prompt["id"], temp, results_dir)
             for rep in range(existing, num_reps):
                 tasks.append((prompt, temp, rep))
     return tasks
@@ -190,9 +201,10 @@ async def run_experiment(
     max_concurrent: int,
 ) -> None:
     """Run the full experiment against Ollama."""
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    results_dir = get_results_dir(model)
+    results_dir.mkdir(parents=True, exist_ok=True)
 
-    tasks = build_task_list(prompts, num_reps)
+    tasks = build_task_list(prompts, num_reps, results_dir)
     if not tasks:
         print("All tasks already completed. Nothing to do.")
         return
@@ -220,7 +232,7 @@ async def run_experiment(
                 "repetition": rep,
                 **result,
             }
-            append_result(prompt["id"], temperature, record)
+            append_result(prompt["id"], temperature, record, results_dir)
             pbar.update(1)
 
         # Process sequentially in batches to avoid overwhelming Ollama
@@ -262,10 +274,13 @@ def main() -> None:
 
     prompts = get_prompts(use_subset=not args.all_prompts, per_domain=args.per_domain)
 
+    results_dir = get_results_dir(args.model)
+    results_dir.mkdir(parents=True, exist_ok=True)
+
     # Clean out error-only results from previous bad runs
-    if RESULTS_DIR.exists():
+    if results_dir.exists():
         cleaned = 0
-        for path in RESULTS_DIR.glob("*.jsonl"):
+        for path in results_dir.glob("*.jsonl"):
             lines = path.read_text(encoding="utf-8").strip().split("\n")
             good_lines = []
             for line in lines:
@@ -285,7 +300,7 @@ def main() -> None:
         if cleaned > 0:
             print(f"Cleaned {cleaned} error responses from previous runs.\n")
 
-    tasks = build_task_list(prompts, args.reps)
+    tasks = build_task_list(prompts, args.reps, results_dir)
 
     # Time estimate
     est_seconds_per_call = 3.0  # rough for 14B model

@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Immune Agent Architecture — CRT / Aether</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #050508; color: #c8c8c8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.7; overflow-x: hidden; }
+
+  /* ===== HERO ===== */
+  .hero { position: relative; width: 100%; height: 60vh; min-height: 420px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .hero canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+  .hero-content { position: relative; z-index: 1; text-align: center; max-width: 860px; padding: 0 30px; }
+  .hero-content h1 { font-size: 2.8em; color: #fff; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
+  .hero-content h1 span.accent { background: linear-gradient(135deg, #ff6b6b, #4ecdc4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .hero-content .tagline { font-size: 1.05em; color: #888; margin-bottom: 24px; }
+  .hero-content .claim { font-size: 0.88em; color: #aaa; border: 1px solid #333; border-radius: 8px; padding: 14px 20px; background: rgba(10,10,10,0.7); backdrop-filter: blur(10px); display: inline-block; max-width: 700px; }
+  .scroll-hint { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #444; font-size: 0.75em; z-index: 1; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+
+  /* ===== NAV ===== */
+  .toc { position: fixed; top: 0; left: 0; width: 240px; height: 100vh; background: #08080c; border-right: 1px solid #111; padding: 20px 16px; overflow-y: auto; z-index: 100; transform: translateX(-100%); transition: transform 0.3s; }
+  .toc.open { transform: translateX(0); }
+  .toc-toggle { position: fixed; top: 16px; left: 16px; z-index: 101; background: #0a0a0e; border: 1px solid #222; color: #888; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75em; letter-spacing: 0.5px; }
+  .toc-toggle:hover { color: #fff; border-color: #444; }
+  .toc h4 { color: #555; font-size: 0.65em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .toc a { display: block; color: #666; font-size: 0.78em; text-decoration: none; padding: 4px 0; transition: color 0.2s; }
+  .toc a:hover { color: #fff; }
+  .toc a.active { color: #4ecdc4; }
+
+  /* ===== CONTENT ===== */
+  .container { max-width: 860px; margin: 0 auto; padding: 60px 30px; }
+  h2 { font-size: 1.6em; color: #fff; margin: 70px 0 20px 0; letter-spacing: -0.5px; scroll-margin-top: 20px; }
+  h2:first-child { margin-top: 0; }
+  h3 { font-size: 1.1em; color: #ddd; margin: 30px 0 12px 0; }
+  h4 { font-size: 0.95em; color: #ccc; margin: 20px 0 10px 0; }
+  p { margin-bottom: 16px; color: #b0b0b0; }
+  strong { color: #e0e0e0; }
+  em { color: #bbb; }
+  ul, ol { margin: 0 0 16px 24px; color: #b0b0b0; }
+  li { margin-bottom: 6px; }
+  code { font-family: 'Cascadia Code', 'Fira Code', monospace; background: #0f0f14; padding: 2px 6px; border-radius: 3px; font-size: 0.88em; color: #4ecdc4; }
+
+  .divider { width: 60px; height: 2px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4); margin: 50px 0; }
+
+  /* ===== STATUS BADGES ===== */
+  .badge { display: inline-block; font-size: 0.65em; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; vertical-align: middle; margin-left: 8px; }
+  .badge-built { background: #4ecdc422; color: #4ecdc4; border: 1px solid #4ecdc433; }
+  .badge-planned { background: #ffe66d22; color: #ffe66d; border: 1px solid #ffe66d33; }
+  .badge-concept { background: #88888822; color: #888; border: 1px solid #88888833; }
+
+  /* ===== QUOTE ===== */
+  .quote { border-left: 3px solid #4ecdc4; padding: 16px 20px; margin: 24px 0; background: #08080c; border-radius: 0 8px 8px 0; }
+  .quote p { color: #bbb; font-style: italic; margin: 0; font-size: 1.05em; }
+  .quote .attr { color: #555; font-size: 0.75em; margin-top: 8px; font-style: normal; }
+  .quote-amber { border-left-color: #ffe66d; }
+  .quote-red { border-left-color: #ff6b6b; }
+
+  /* ===== LAW CARDS ===== */
+  .law-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 10px; padding: 28px 24px; margin: 20px 0; transition: border-color 0.3s; }
+  .law-card:hover { border-color: #333; }
+  .law-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .law-number { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+  .law-title { font-size: 1.1em; color: #fff; font-weight: 600; }
+  .law-agent { font-size: 0.82em; color: #4ecdc4; font-family: 'Cascadia Code', 'Fira Code', monospace; }
+  .law-principle { font-size: 0.95em; color: #ddd; margin: 12px 0; padding: 10px 14px; background: #08080c; border-radius: 6px; border-left: 2px solid #333; }
+  .law-detail { margin-top: 16px; }
+  .law-detail h5 { font-size: 0.78em; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .law-detail p, .law-detail ul { font-size: 0.88em; }
+  .law-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+  .law-grid-item { background: #08080c; border: 1px solid #151518; border-radius: 6px; padding: 12px 14px; }
+  .law-grid-item h6 { font-size: 0.72em; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .law-grid-item p { font-size: 0.85em; margin: 0; }
+
+  .law-card.law-1 { border-left: 3px solid #ff6b6b; }
+  .law-card.law-1 .law-number { color: #ff6b6b; }
+  .law-card.law-2 { border-left: 3px solid #4ecdc4; }
+  .law-card.law-2 .law-number { color: #4ecdc4; }
+  .law-card.law-3 { border-left: 3px solid #ffe66d; }
+  .law-card.law-3 .law-number { color: #ffe66d; }
+  .law-card.law-4 { border-left: 3px solid #c084fc; }
+  .law-card.law-4 .law-number { color: #c084fc; }
+  .law-card.law-5 { border-left: 3px solid #f97316; }
+  .law-card.law-5 .law-number { color: #f97316; }
+
+  /* ===== THRESHOLD BAR ===== */
+  .threshold-bar { position: relative; height: 32px; background: #08080c; border-radius: 6px; margin: 14px 0 8px 0; overflow: hidden; border: 1px solid #151518; }
+  .threshold-zone { position: absolute; top: 0; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.68em; font-weight: 600; letter-spacing: 0.3px; }
+  .threshold-label { position: absolute; bottom: -18px; font-size: 0.65em; color: #555; }
+
+  /* ===== COORDINATION DIAGRAM ===== */
+  .coord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .coord-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; transition: border-color 0.3s; }
+  .coord-card:hover { border-color: #333; }
+  .coord-agents { font-size: 0.82em; color: #888; margin-bottom: 8px; }
+  .coord-action { font-size: 1em; font-weight: 700; }
+  .coord-desc { font-size: 0.82em; color: #666; margin-top: 6px; }
+  .coord-escalate { border-color: #ffe66d33; }
+  .coord-escalate .coord-action { color: #ffe66d; }
+  .coord-block { border-color: #ff6b6b33; }
+  .coord-block .coord-action { color: #ff6b6b; }
+
+  /* ===== LAYER STACK ===== */
+  .layer-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
+  .layer { background: #08080c; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; }
+  .layer .layer-name { color: #fff; font-weight: 600; font-size: 0.95em; }
+  .layer .layer-sub { color: #555; font-size: 0.72em; margin-top: 4px; }
+  .layer .layer-desc { color: #888; font-size: 0.8em; margin-top: 10px; line-height: 1.5; }
+  .layer-fragility { border-color: #ff6b6b33; }
+  .layer-fragility .layer-name { color: #ff6b6b; }
+  .layer-support { border-color: #4ecdc433; }
+  .layer-support .layer-name { color: #4ecdc4; }
+  .layer-tension { border-color: #ffe66d33; }
+  .layer-tension .layer-name { color: #ffe66d; }
+
+  /* ===== DATA TABLE ===== */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
+  th { text-align: left; padding: 10px 12px; color: #666; font-weight: 600; border-bottom: 2px solid #1a1a22; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 10px 12px; border-bottom: 1px solid #0f0f14; color: #aaa; }
+  tr:hover td { background: #0a0a0e; }
+  td strong { color: #fff; }
+
+  /* ===== CLASSIFICATION BADGE (results table) ===== */
+  .cls-genuine { color: #4ecdc4; font-weight: 600; }
+  .cls-template { color: #ff6b6b; font-weight: 600; }
+  .cls-uncertain { color: #ffe66d; font-weight: 600; }
+  .cls-exploratory { color: #c084fc; font-weight: 600; }
+
+  /* ===== COMPARISON COLUMNS ===== */
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+  .compare-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 8px; padding: 20px; }
+  .compare-card h4 { color: #fff; font-size: 0.95em; margin-bottom: 8px; }
+  .compare-card p { color: #888; font-size: 0.85em; margin: 0 0 8px 0; }
+  .compare-old { border-top: 3px solid #555; }
+  .compare-new { border-top: 3px solid #4ecdc4; }
+
+  /* ===== PERSISTENCE REQUIREMENTS ===== */
+  .persist-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
+  .persist-item { background: #08080c; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; }
+  .persist-item .persist-num { font-size: 1.4em; font-weight: 700; color: #333; margin-bottom: 6px; }
+  .persist-item .persist-name { color: #fff; font-weight: 600; font-size: 0.95em; }
+  .persist-item .persist-desc { color: #888; font-size: 0.8em; margin-top: 8px; line-height: 1.5; }
+
+  /* ===== FOOTER ===== */
+  .footer { text-align: center; padding: 40px 30px; color: #333; font-size: 0.7em; border-top: 1px solid #111; margin-top: 60px; }
+  .footer a { color: #4ecdc4; text-decoration: none; }
+  .footer a:hover { color: #fff; }
+  .footer-links { margin-bottom: 12px; }
+  .footer-links a { margin: 0 16px; font-size: 1.2em; }
+
+  /* ===== FLOW DIAGRAM ===== */
+  .flow-diagram { background: #08080c; border: 1px solid #1a1a22; border-radius: 10px; padding: 30px 20px; margin: 24px 0; text-align: center; overflow-x: auto; }
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .flow-node { background: #0a0a0e; border: 1px solid #222; border-radius: 6px; padding: 8px 14px; font-size: 0.82em; color: #ccc; white-space: nowrap; }
+  .flow-node-active { border-color: #4ecdc4; color: #4ecdc4; }
+  .flow-node-watch { border-color: #ffe66d; color: #ffe66d; }
+  .flow-node-block { border-color: #ff6b6b; color: #ff6b6b; }
+  .flow-arrow { color: #333; font-size: 1.2em; }
+
+  @media (max-width: 700px) {
+    .hero-content h1 { font-size: 2em; }
+    .law-grid, .coord-grid, .compare-grid, .layer-stack, .persist-stack { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== TOC TOGGLE ===== -->
+<button class="toc-toggle" onclick="document.querySelector('.toc').classList.toggle('open')">contents</button>
+
+<!-- ===== TABLE OF CONTENTS ===== -->
+<nav class="toc">
+  <h4>Immune Agents</h4>
+  <a href="#doctrine">Constitutional Doctrine</a>
+  <a href="#laws">The Five Laws</a>
+  <a href="#coordination">Coordination Layer</a>
+  <a href="#calibration">Three Calibration Layers</a>
+  <a href="#results">Real Data Results</a>
+  <a href="#why-immune">Why Immune Agents</a>
+  <a href="#persistence">Persistence Layer</a>
+  <a href="#next">What's Next</a>
+</nav>
+
+<!-- ===== HERO ===== -->
+<div class="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-content">
+    <h1><span class="accent">Immune</span> Agents</h1>
+    <p class="tagline">Constitutional enforcement for AI memory and belief governance</p>
+    <div class="claim">Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. None are tied to a pipeline stage. They all watch the same stream.</div>
+  </div>
+  <div class="scroll-hint">scroll</div>
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="container">
+
+<!-- ===== 1. CONSTITUTIONAL DOCTRINE ===== -->
+<h2 id="doctrine">The Constitutional Doctrine</h2>
+
+<p>Mirus/Holden is not a module stack to rebuild. It is a <strong>constitutional doctrine</strong> that immune agents enforce. The original principle: speech must answer to belief, belief must answer to memory and contradiction, and the gap between them must be auditable.</p>
+
+<h3>The Evolution</h3>
+
+<div class="compare-grid">
+  <div class="compare-card compare-old">
+    <h4>Original Mirus/Holden</h4>
+    <p>Paired gates at predetermined pipeline stages. Mirus watched input, Holden watched output. Fixed positions, fixed checks.</p>
+    <p style="color:#555;">Assumed you know WHERE governance needs to happen.</p>
+  </div>
+  <div class="compare-card compare-new">
+    <h4>Immune Agents</h4>
+    <p>Floating, reactive, pattern-driven enforcement. Each agent is specialized for a specific failure mode. Not tied to pipeline stages.</p>
+    <p style="color:#4ecdc4;">Governance goes where the threat is.</p>
+  </div>
+</div>
+
+<p>The variance probing experiment proved why the shift was necessary: <strong>fragility is domain-specific and model-specific</strong>. Qwen3 fractures on factual prompts but locks on moral ones. Mistral does the inverse. A fixed gate at a fixed pipeline position cannot adapt to patterns that flip between models.</p>
+
+<p>The doctrine stays. The enforcement mechanism evolves.</p>
+
+<div class="quote quote-amber">
+  <p>"Build the immune agents first, but do it under a written Mirus/Holden constitution."</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== 2. THE FIVE LAWS ===== -->
+<h2 id="laws">The Five Laws</h2>
+
+<p>Each law addresses a specific failure mode in AI memory and belief governance. Each has a dedicated agent that enforces it.</p>
+
+<!-- LAW 1 -->
+<div class="law-card law-1">
+  <div class="law-header">
+    <span class="law-number">Law 1</span>
+    <span class="law-title">Speech Cannot Upgrade Belief</span>
+    <span class="badge badge-built">built</span>
+  </div>
+  <div class="law-agent">SpeechLeakDetector</div>
+  <div class="law-principle">If the model says something with confidence, that does not make it true in memory. Generated output must never be stored with higher trust than the evidence that produced it.</div>
+
+  <div class="law-detail">
+    <div class="law-grid">
+      <div class="law-grid-item">
+        <h6>Watches</h6>
+        <p>Output-to-memory write path. Every time generated text is about to become a stored memory.</p>
+      </div>
+      <div class="law-grid-item">
+        <h6>Fires When</h6>
+        <p>A generated response is about to be stored with higher trust than the grounding evidence supports.</p>
+      </div>
+    </div>
+
+    <h5>Decision Logic</h5>
+    <div class="threshold-bar">
+      <div class="threshold-zone" style="left:0; width:30%; background: #ff6b6b18; color: #ff6b6b;">BLOCK</div>
+      <div class="threshold-zone" style="left:30%; width:13.3%; background: #ffe66d12; color: #ffe66d;">DOWNGRADE</div>
+      <div class="threshold-zone" style="left:43.3%; width:56.7%; background: #4ecdc412; color: #4ecdc4;">ALLOW</div>
+    </div>
+    <p style="font-size:0.78em; color:#555; margin-top:20px;">
+      Similarity &lt; 0.45 = <strong style="color:#ff6b6b;">BLOCK</strong> (no grounding, high proposed trust) &nbsp;|&nbsp;
+      0.45 - 0.65 = <strong style="color:#ffe66d;">DOWNGRADE</strong> (partial match, trust scaled) &nbsp;|&nbsp;
+      &ge; 0.65 = <strong style="color:#4ecdc4;">ALLOW</strong> (grounded, trust capped at source)
+    </p>
+
+    <h5>Threat Model</h5>
+    <p>LLM hallucinates a fact. Pipeline stores it as memory. Next retrieval treats the hallucination as grounded evidence. Feedback loop: speech upgrades belief, stronger belief reinforces speech. This agent breaks that loop.</p>
+
+    <h5>Actions</h5>
+    <ul>
+      <li><strong style="color:#4ecdc4;">ALLOW</strong> -- Grounding found. Write permitted. Trust capped at the grounding source's trust level.</li>
+      <li><strong style="color:#ffe66d;">DOWNGRADE</strong> -- Partial match. Write permitted but trust reduced proportionally.</li>
+      <li><strong style="color:#ff6b6b;">BLOCK</strong> -- No grounding found and proposed trust exceeds 0.3. Write rejected entirely.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- LAW 2 -->
+<div class="law-card law-2">
+  <div class="law-header">
+    <span class="law-number">Law 2</span>
+    <span class="law-title">Low Variance Does Not Imply High Confidence</span>
+    <span class="badge badge-built">built</span>
+  </div>
+  <div class="law-agent">TemplateDetector</div>
+  <div class="law-principle">Empirically proven by the variance experiment. Zero susceptibility on moral topics means a trained template, not genuine certainty. RLHF collapses the response distribution into a single hedge -- and that collapse looks like confidence if you only measure variance.</div>
+
+  <div class="law-detail">
+    <div class="law-grid">
+      <div class="law-grid-item">
+        <h6>Watches</h6>
+        <p>Response generation. Analyzes both the text patterns and (when available) embedding variance across repeated responses.</p>
+      </div>
+      <div class="law-grid-item">
+        <h6>Fires When</h6>
+        <p>Low embedding variance combined with hedge pattern matches. The signature of trained avoidance, not genuine certainty.</p>
+      </div>
+    </div>
+
+    <h5>14 Hedge/Template Patterns</h5>
+    <p>The detector carries a bank of compiled regex patterns targeting known RLHF-trained hedges:</p>
+    <ul style="font-size:0.85em;">
+      <li><code>multiple-perspectives hedge</code> -- "there are multiple/many/various perspectives"</li>
+      <li><code>complexity disclaimer</code> -- "this is a subjective/complex/nuanced issue"</li>
+      <li><code>it-depends deflection</code> -- "it really depends on..."</li>
+      <li><code>opinions-vary hedge</code> -- "opinions vary/differ/are divided"</li>
+      <li><code>both-sides equivocation</code> -- "both sides have merit/valid points"</li>
+      <li><code>reasonable-disagreement</code> -- "reasonable people can disagree"</li>
+      <li><code>no-simple-answer</code> -- "there's no single/simple/clear-cut answer"</li>
+      <li><code>attribution diffusion</code> -- "some experts believe/argue/suggest"</li>
+      <li><code>importance-framing</code> -- "it's important to consider/recognize"</li>
+      <li><code>personal-preference deflection</code> -- "matter of personal preference/choice"</li>
+      <li><code>encourage-to-consider</code> -- "I'd encourage you to consider"</li>
+      <li><code>ultimately-personal</code> -- "ultimately, this comes down to personal..."</li>
+      <li><code>pros-and-cons template</code> -- "there are pros and cons/trade-offs"</li>
+      <li><code>AI-identity deflection</code> -- "as an AI/language model, I don't have..."</li>
+    </ul>
+
+    <h5>Four Classifications</h5>
+    <table>
+      <tr><th>Classification</th><th>Variance</th><th>Hedges</th><th>Meaning</th></tr>
+      <tr><td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td><td>Low (&lt;0.05)</td><td>None</td><td>Model is actually certain. Real signal.</td></tr>
+      <tr><td><span class="cls-template">TEMPLATE_LOCK</span></td><td>Low (&lt;0.05)</td><td>Present</td><td>Trained avoidance template. Fake certainty.</td></tr>
+      <tr><td><span class="cls-uncertain">GENUINE_UNCERTAINTY</span></td><td>High (&gt;0.15)</td><td>None</td><td>Model is genuinely exploring the answer space.</td></tr>
+      <tr><td><span class="cls-exploratory">EXPLORATORY</span></td><td>High (&gt;0.15)</td><td>Present</td><td>Exploring but partially falling back to templates.</td></tr>
+    </table>
+
+    <h5>Variance Thresholds</h5>
+    <p>Calibrated directly from the belief variance experiment data (mean pairwise cosine distance across repeated responses):</p>
+    <div class="threshold-bar">
+      <div class="threshold-zone" style="left:0; width:33%; background: #4ecdc412; color: #4ecdc4;">LOW &lt; 0.05</div>
+      <div class="threshold-zone" style="left:33%; width:34%; background: #88888812; color: #888;">MID</div>
+      <div class="threshold-zone" style="left:67%; width:33%; background: #ffe66d12; color: #ffe66d;">HIGH &gt; 0.15</div>
+    </div>
+  </div>
+</div>
+
+<!-- LAW 3 -->
+<div class="law-card law-3">
+  <div class="law-header">
+    <span class="law-number">Law 3</span>
+    <span class="law-title">Contradiction Must Be Preserved Before Resolution</span>
+    <span class="badge badge-planned">planned</span>
+  </div>
+  <div class="law-agent">PrematureResolutionGuard</div>
+  <div class="law-principle">Not all contradictions should be resolved. Held contradictions are stable states, not errors. Premature resolution destroys information. The system must hold tension until it has evidence to choose.</div>
+
+  <div class="law-detail">
+    <div class="law-grid">
+      <div class="law-grid-item">
+        <h6>Watches</h6>
+        <p>Contradiction handling pipeline. Every attempt to resolve, merge, or flatten a contradiction entry.</p>
+      </div>
+      <div class="law-grid-item">
+        <h6>Fires When</h6>
+        <p>System attempts to resolve a contradiction classified as HELD, EVOLVING, or CONTEXTUAL by the disposition classifier.</p>
+      </div>
+    </div>
+
+    <h5>Disposition Classes</h5>
+    <p>The contradiction classifier (from Belnap four-valued logic: T, F, Both, Neither) assigns each detected contradiction a disposition:</p>
+    <ul>
+      <li><strong>RESOLVABLE</strong> -- Evidence clearly favors one side. Resolution permitted.</li>
+      <li><strong>HELD</strong> -- Both sides have support. Stable tension. Resolution blocked.</li>
+      <li><strong>EVOLVING</strong> -- Evidence is still accumulating. Resolution premature.</li>
+      <li><strong>CONTEXTUAL</strong> -- Both sides are true in different contexts. Resolution would destroy meaning.</li>
+    </ul>
+
+    <h5>Actions</h5>
+    <p>If disposition is not RESOLVABLE, the guard blocks the resolution attempt, logs the law violation, and preserves both sides of the contradiction in the ledger.</p>
+  </div>
+</div>
+
+<!-- LAW 4 -->
+<div class="law-card law-4">
+  <div class="law-header">
+    <span class="law-number">Law 4</span>
+    <span class="law-title">Degraded Reconstruction Cannot Silently Overwrite Trusted Memory</span>
+    <span class="badge badge-planned">planned</span>
+  </div>
+  <div class="law-agent">MemoryCorruptionGuard</div>
+  <div class="law-principle">A quarantine principle formalized from the original Holden design. When a memory is reconstructed or summarized, the reconstruction may lose fidelity. That loss must not silently overwrite a higher-trust original.</div>
+
+  <div class="law-detail">
+    <div class="law-grid">
+      <div class="law-grid-item">
+        <h6>Watches</h6>
+        <p>Memory update and overwrite path. Any operation that would replace an existing memory record with a new version.</p>
+      </div>
+      <div class="law-grid-item">
+        <h6>Fires When</h6>
+        <p>Reconstruction fidelity is lower than the existing memory's trust score. A degraded copy trying to replace a trusted original.</p>
+      </div>
+    </div>
+
+    <h5>How It Works</h5>
+    <p>Compares the semantic similarity between the original memory and the proposed replacement. If the replacement diverges beyond a threshold while the original holds higher trust, the overwrite is blocked. The degraded version may be stored alongside (append-only) but cannot replace.</p>
+
+    <h5>Why This Matters</h5>
+    <p>Memory consolidation, summarization, and compression are useful operations. But they are lossy. Without this guard, a compression pass could silently degrade the most trusted memories in the system. The guard ensures that quality only flows upward -- never down.</p>
+  </div>
+</div>
+
+<!-- LAW 5 -->
+<div class="law-card law-5">
+  <div class="law-header">
+    <span class="law-number">Law 5</span>
+    <span class="law-title">Outward Confidence Must Be Bounded by Internal Support</span>
+    <span class="badge badge-planned">planned</span>
+  </div>
+  <div class="law-agent">GapAuditor</div>
+  <div class="law-principle">The belief/speech gap must be auditable and bounded. If the system expresses high confidence, the belief layer must actually support that confidence level.</div>
+
+  <div class="law-detail">
+    <div class="law-grid">
+      <div class="law-grid-item">
+        <h6>Watches</h6>
+        <p>Final output before delivery to the user. The last checkpoint before speech leaves the system.</p>
+      </div>
+      <div class="law-grid-item">
+        <h6>Fires When</h6>
+        <p>Expressed confidence exceeds belief-layer support. Gap = speech confidence - belief confidence. If gap exceeds threshold, the auditor flags.</p>
+      </div>
+    </div>
+
+    <h5>Sits On Top Of Laws 1 and 2</h5>
+    <p>The GapAuditor is the capstone agent. Law 1 prevents speech from contaminating belief. Law 2 detects fake confidence in generation. Law 5 catches any remaining gap between what the system says and what it actually knows. If Laws 1 and 2 are working, Law 5 should fire rarely. When it does fire, something upstream has failed.</p>
+
+    <h5>Measurement</h5>
+    <ul>
+      <li>Speech confidence: extracted from response hedging, assertiveness, and qualifier density</li>
+      <li>Belief confidence: trust scores from memory, grounding similarity, contradiction state</li>
+      <li>Gap: the delta between these two. Logged for every response. Alerts above threshold.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== 3. COORDINATION LAYER ===== -->
+<h2 id="coordination">The Coordination Layer</h2>
+
+<p>All five agents watch the same stream. They are independent but their firings interact. The coordination layer handles simultaneous triggers.</p>
+
+<div class="coord-grid">
+  <div class="coord-card coord-escalate">
+    <div class="coord-agents">TemplateDetector + GapAuditor</div>
+    <div class="coord-action">Escalate to User</div>
+    <div class="coord-desc">Model is producing templated responses AND the confidence gap is wide. The system is performing certainty theater. Surface this to the user.</div>
+  </div>
+  <div class="coord-card coord-block">
+    <div class="coord-agents">PrematureResolutionGuard + MemoryCorruptionGuard</div>
+    <div class="coord-action">Hard Block</div>
+    <div class="coord-desc">System is trying to resolve a held contradiction AND overwrite trusted memory simultaneously. Both operations blocked. Full audit logged.</div>
+  </div>
+</div>
+
+<h4>Logging</h4>
+<p>Every agent firing is logged with three fields:</p>
+<ul>
+  <li><strong>Which law</strong> -- the constitutional principle violated</li>
+  <li><strong>What evidence</strong> -- the similarity scores, variance measurements, pattern matches, or trust deltas that triggered the firing</li>
+  <li><strong>What action</strong> -- ALLOW, DOWNGRADE, BLOCK, or ESCALATE</li>
+</ul>
+
+<p>This replaces the original GFN (Graph Function Network) concept. The GFN was a pipeline graph. The coordination layer is a communication bus between immune agents that need to arbitrate when multiple laws fire at once.</p>
+
+<h4>Stream Architecture</h4>
+<div class="flow-diagram">
+  <div class="flow-row">
+    <div class="flow-node">Model Output</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node flow-node-watch">Agent Stream</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node flow-node-active">Coordination Layer</div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-node">Verdict</div>
+  </div>
+  <div style="margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+    <div class="flow-node" style="border-color:#ff6b6b55; color:#ff6b6b; font-size:0.75em;">L1: SpeechLeak</div>
+    <div class="flow-node" style="border-color:#4ecdc455; color:#4ecdc4; font-size:0.75em;">L2: Template</div>
+    <div class="flow-node" style="border-color:#ffe66d55; color:#ffe66d; font-size:0.75em;">L3: Resolution</div>
+    <div class="flow-node" style="border-color:#c084fc55; color:#c084fc; font-size:0.75em;">L4: Corruption</div>
+    <div class="flow-node" style="border-color:#f9731655; color:#f97316; font-size:0.75em;">L5: Gap</div>
+  </div>
+  <p style="font-size:0.72em; color:#444; margin-top:12px; margin-bottom:0;">All agents observe the same stream. None are sequential. Coordination resolves conflicts.</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== 4. THREE CALIBRATION LAYERS ===== -->
+<h2 id="calibration">Three Calibration Layers</h2>
+
+<p>The immune agents do not operate in a vacuum. They are calibrated by three independent measurement layers, each with a different source of truth.</p>
+
+<div class="layer-stack">
+  <div class="layer layer-fragility">
+    <div class="layer-name">Fragility</div>
+    <div class="layer-sub">Source: Variance probe</div>
+    <div class="layer-desc">Where and how the model destabilizes under temperature perturbation. Domain-specific, model-specific.</div>
+  </div>
+  <div class="layer layer-support">
+    <div class="layer-name">Support</div>
+    <div class="layer-sub">Source: Memory + retrieval</div>
+    <div class="layer-desc">What beliefs are actually backed by evidence. Grounding scores, trust history, provenance.</div>
+  </div>
+  <div class="layer layer-tension">
+    <div class="layer-name">Tension</div>
+    <div class="layer-sub">Source: Contradiction engine</div>
+    <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable vs evolving.</div>
+  </div>
+</div>
+
+<div class="quote">
+  <p>"Variance probe = calibration layer for fragility. Grounding/memory/contradiction = calibration layers for support. Immune agents = enforcement layer across both."</p>
+  <div class="attr">-- GPT adversarial critique correction</div>
+</div>
+
+<p><strong>Important boundary:</strong> variance is calibration for fragility only, not the whole foundation. The original design overweighted variance as the single source of truth. The corrected architecture recognizes three independent calibration sources, with immune agents enforcing policy across all of them.</p>
+
+<div class="divider"></div>
+
+<!-- ===== 5. REAL DATA RESULTS ===== -->
+<h2 id="results">Real Data Results</h2>
+
+<p>The TemplateDetector has been tested against actual experiment data from the belief variance runs. These are real classifications on real model outputs.</p>
+
+<h4>TemplateDetector on Qwen3:14b Experiment Data</h4>
+<table>
+  <tr>
+    <th>Prompt Domain</th>
+    <th>Temperature</th>
+    <th>Classification</th>
+    <th>Confidence</th>
+    <th>Variance</th>
+  </tr>
+  <tr>
+    <td><strong>moral_clear</strong></td>
+    <td>T=1.5</td>
+    <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
+    <td>0.85</td>
+    <td>0.005</td>
+  </tr>
+  <tr>
+    <td><strong>moral_ambiguous</strong></td>
+    <td>T=1.5</td>
+    <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
+    <td>0.60</td>
+    <td>0.074</td>
+  </tr>
+  <tr>
+    <td><strong>factual_settled</strong></td>
+    <td>T=0.0</td>
+    <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
+    <td>0.85</td>
+    <td>0.000</td>
+  </tr>
+</table>
+
+<p style="color:#666; font-size:0.82em;">These results reflect the Qwen3 fragility profile: moral domains show artificially low variance (RLHF template lock), but the TemplateDetector correctly distinguishes between genuine low-variance confidence (factual_settled at T=0.0) and compressed-but-not-hedged moral responses. The key: Qwen3's moral outputs here lacked hedge patterns despite having low variance, yielding GENUINE_CONFIDENCE rather than TEMPLATE_LOCK. The detector needs both signals to fire.</p>
+
+<h4>What TEMPLATE_LOCK Looks Like</h4>
+<p>When the detector does fire TEMPLATE_LOCK, the response contains patterns like:</p>
+<div style="background:#08080c; border:1px solid #1a1a22; border-radius:8px; padding:16px 20px; margin:12px 0; font-size:0.88em; color:#888; font-style:italic;">
+  "There are multiple perspectives on this ethical question. It's important to consider the various viewpoints. Reasonable people can disagree on this complex issue."
+</div>
+<p style="font-size:0.82em; color:#666;">Three hedge patterns detected: <code>multiple-perspectives</code>, <code>importance-framing</code>, <code>reasonable-disagreement</code>. Combined with low variance (near-identical outputs across repeated samples), this is textbook template lock.</p>
+
+<div class="divider"></div>
+
+<!-- ===== 6. WHY IMMUNE AGENTS ===== -->
+<h2 id="why-immune">Why Immune Agents, Not Pipeline Gates</h2>
+
+<div class="compare-grid">
+  <div class="compare-card compare-old">
+    <h4>Pipeline Gates (Original)</h4>
+    <p>Fixed checkpoints at predetermined pipeline stages. Input gate, output gate, memory write gate.</p>
+    <p style="color:#555;">Assumes you know in advance where governance failures will occur.</p>
+    <p style="color:#555;">Works when the failure mode is predictable and location-stable.</p>
+  </div>
+  <div class="compare-card compare-new">
+    <h4>Immune Agents (Current)</h4>
+    <p>Specialized detectors that float on the data stream. Each watches for a pattern, not a position.</p>
+    <p style="color:#4ecdc4;">Does not need to know where the threat will appear.</p>
+    <p style="color:#4ecdc4;">Each agent handles one failure mode. New failure modes get new agents.</p>
+  </div>
+</div>
+
+<h4>What the Experiment Proved</h4>
+<p>The variance probing research demonstrated that fragility is:</p>
+<ul>
+  <li><strong>Domain-specific</strong> -- factual prompts fracture differently than moral prompts</li>
+  <li><strong>Model-specific</strong> -- the domain ordering flips between Qwen3, Mistral, and DeepSeek</li>
+  <li><strong>Prompt-specific</strong> -- individual prompts within the same domain can have wildly different susceptibility</li>
+  <li><strong>Temperature-dependent</strong> -- the same prompt behaves differently at different temperatures</li>
+</ul>
+
+<p>A fixed gate cannot adapt to all of these axes simultaneously. An immune system does not need to know where the threat will appear. It needs to recognize what the threat looks like when it shows up.</p>
+
+<p>Each agent is a specialized recognizer:</p>
+<ul>
+  <li>SpeechLeakDetector recognizes the speech-to-belief contamination pattern</li>
+  <li>TemplateDetector recognizes the fake-confidence-through-template pattern</li>
+  <li>PrematureResolutionGuard recognizes the premature-flattening pattern</li>
+  <li>MemoryCorruptionGuard recognizes the degraded-overwrite pattern</li>
+  <li>GapAuditor recognizes the confidence-support divergence pattern</li>
+</ul>
+
+<div class="divider"></div>
+
+<!-- ===== 7. PERSISTENCE LAYER ===== -->
+<h2 id="persistence">The Persistence Layer Connection</h2>
+
+<div class="quote">
+  <p>"The model is the mouth. The persistence layer is the self."</p>
+</div>
+
+<p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic safely handled by one model's locked regime may land in another model's fracture zone.</p>
+
+<h4>Three Requirements for Safe Model Switching</h4>
+<div class="persist-stack">
+  <div class="persist-item">
+    <div class="persist-num">1</div>
+    <div class="persist-name">Shared Task State</div>
+    <div class="persist-desc">What are we doing. What has been decided. What is still open.</div>
+  </div>
+  <div class="persist-item">
+    <div class="persist-num">2</div>
+    <div class="persist-name">Shared Support/Uncertainty State</div>
+    <div class="persist-desc">What do we know. What is grounded. What is fragile. What is contested.</div>
+  </div>
+  <div class="persist-item">
+    <div class="persist-num">3</div>
+    <div class="persist-name">Shared Governance State</div>
+    <div class="persist-desc">What laws are active. What the fragility map looks like. Which agents have fired and why.</div>
+  </div>
+</div>
+
+<p>If any of these three reset at handoff, the system drifts -- even when every individual model is working as designed. New assumptions creep in. Tone changes. Certainty changes. Missing details get invented. The task mutates.</p>
+
+<p>The immune agents are what make the persistence layer trustworthy. Without them, persisted state could be contaminated by hallucinated speech (Law 1), fake confidence (Law 2), premature resolution (Law 3), degraded reconstruction (Law 4), or unbounded confidence claims (Law 5). The persistence layer stores the state. The immune agents guarantee that state deserves to persist.</p>
+
+<div class="divider"></div>
+
+<!-- ===== 8. WHAT'S NEXT ===== -->
+<h2 id="next">What's Next</h2>
+
+<p>Two agents are built and tested. Three are designed and waiting.</p>
+
+<table>
+  <tr><th>Agent</th><th>Status</th><th>Dependency</th></tr>
+  <tr><td><strong>SpeechLeakDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested with real embeddings, all unit tests passing</td></tr>
+  <tr><td><strong>TemplateDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested on Qwen3 + Mistral experiment data</td></tr>
+  <tr><td><strong>PrematureResolutionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the contradiction handling pipeline to test against</td></tr>
+  <tr><td><strong>MemoryCorruptionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the memory update pipeline to test against</td></tr>
+  <tr><td><strong>GapAuditor</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs Laws 1 + 2 integrated into live pipeline first</td></tr>
+  <tr><td><strong>Coordination Layer</strong></td><td><span class="badge badge-planned">designed</span></td><td>Needs at least 3 agents operational to be meaningful</td></tr>
+</table>
+
+<h4>Next Steps</h4>
+<ul>
+  <li>Remaining agents need the memory and contradiction pipelines to test against real data</li>
+  <li>Full corpus run through all agents to build a confusion matrix</li>
+  <li>False positive and false negative analysis on each agent</li>
+  <li>Coordination layer stress testing with simultaneous multi-agent firings</li>
+</ul>
+
+<div class="quote quote-red">
+  <p>"The job now is not to invent ten more beautiful ideas. It's to find out which three or four keep standing when the system gets punched in the face."</p>
+</div>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  <div class="footer-links">
+    <a href="whitepaper.html">Whitepaper</a>
+    <a href="index.html">Variance Probing</a>
+  </div>
+  Immune Agent Architecture — CRT / Aether — Nick Block — 2026<br>
+  Constitutional doctrine preserved. Enforcement mechanism evolved.<br>
+  Living document. Updated as agents are built and tested.
+</div>
+
+<!-- ===== HERO ANIMATION: Shield / Network Pulse ===== -->
+<script>
+(function() {
+  const canvas = document.getElementById('heroCanvas');
+  const ctx = canvas.getContext('2d');
+  let w, h, cw, ch;
+  let time = 0;
+  let nodes = [];
+  let edges = [];
+
+  const COLORS = {
+    law1: { r: 255, g: 107, b: 107 },
+    law2: { r: 78, g: 205, b: 196 },
+    law3: { r: 255, g: 230, b: 109 },
+    law4: { r: 192, g: 132, b: 252 },
+    law5: { r: 249, g: 115, b: 22 },
+    dim: { r: 40, g: 40, b: 50 },
+  };
+
+  const lawColors = [COLORS.law1, COLORS.law2, COLORS.law3, COLORS.law4, COLORS.law5];
+
+  function resize() {
+    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
+    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+    cw = w / devicePixelRatio;
+    ch = h / devicePixelRatio;
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+
+  function init() {
+    resize();
+    nodes = [];
+    edges = [];
+
+    // Central shield node
+    nodes.push({
+      x: cw / 2, y: ch / 2,
+      baseX: cw / 2, baseY: ch / 2,
+      r: 6, color: { r: 255, g: 255, b: 255 },
+      isCenter: true, pulsePhase: 0,
+    });
+
+    // 5 law nodes in a ring
+    for (let i = 0; i < 5; i++) {
+      const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      const radius = Math.min(cw, ch) * 0.18;
+      const bx = cw / 2 + Math.cos(angle) * radius;
+      const by = ch / 2 + Math.sin(angle) * radius;
+      nodes.push({
+        x: bx, y: by, baseX: bx, baseY: by,
+        r: 4, color: lawColors[i],
+        lawIndex: i, pulsePhase: i * 1.2,
+      });
+      edges.push({ from: 0, to: i + 1 });
+    }
+
+    // Connect adjacent law nodes
+    for (let i = 1; i <= 5; i++) {
+      edges.push({ from: i, to: (i % 5) + 1 });
+    }
+
+    // Outer sentinel nodes
+    for (let i = 0; i < 30; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = Math.min(cw, ch) * (0.25 + Math.random() * 0.2);
+      const bx = cw / 2 + Math.cos(angle) * dist;
+      const by = ch / 2 + Math.sin(angle) * dist;
+      const lawIdx = Math.floor(Math.random() * 5);
+      nodes.push({
+        x: bx, y: by, baseX: bx, baseY: by,
+        r: 1.5 + Math.random() * 1.5,
+        color: lawColors[lawIdx],
+        drift: Math.random() * Math.PI * 2,
+        driftSpeed: 0.003 + Math.random() * 0.005,
+        driftRadius: 3 + Math.random() * 8,
+      });
+      // Connect to nearest law node
+      edges.push({ from: lawIdx + 1, to: nodes.length - 1 });
+    }
+  }
+
+  function draw() {
+    time += 0.016;
+    ctx.clearRect(0, 0, cw, ch);
+
+    // Update sentinel drift
+    for (let i = 6; i < nodes.length; i++) {
+      const n = nodes[i];
+      n.drift += n.driftSpeed;
+      n.x = n.baseX + Math.cos(n.drift) * n.driftRadius;
+      n.y = n.baseY + Math.sin(n.drift) * n.driftRadius;
+    }
+
+    // Draw edges
+    for (const e of edges) {
+      const a = nodes[e.from];
+      const b = nodes[e.to];
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const maxDist = Math.min(cw, ch) * 0.35;
+      if (dist > maxDist) continue;
+      const alpha = (1 - dist / maxDist) * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = `rgba(${a.color.r}, ${a.color.g}, ${a.color.b}, ${alpha})`;
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    }
+
+    // Draw nodes
+    for (const n of nodes) {
+      const pulseScale = n.isCenter
+        ? 1 + 0.3 * Math.sin(time * 1.5)
+        : 1 + 0.15 * Math.sin(time * 2 + (n.pulsePhase || 0));
+      const r = n.r * pulseScale;
+
+      // Glow
+      const glowAlpha = n.isCenter ? 0.15 : 0.08;
+      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 6);
+      grad.addColorStop(0, `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, ${glowAlpha})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r * 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core
+      ctx.fillStyle = `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, 0.8)`;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Central shield pulse ring
+    const pulseRadius = Math.min(cw, ch) * 0.18;
+    const pulseAlpha = 0.03 + 0.02 * Math.sin(time * 1.5);
+    ctx.beginPath();
+    ctx.arc(cw / 2, ch / 2, pulseRadius, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(78, 205, 196, ${pulseAlpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Outer ring
+    const outerPulse = 0.02 + 0.015 * Math.sin(time * 0.8);
+    ctx.beginPath();
+    ctx.arc(cw / 2, ch / 2, pulseRadius * 2.2, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 107, 107, ${outerPulse})`;
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
+
+    requestAnimationFrame(draw);
+  }
+
+  init();
+  draw();
+  window.addEventListener('resize', () => { init(); });
+})();
+</script>
+
+<!-- ===== TOC SCROLL TRACKING ===== -->
+<script>
+(function() {
+  const sections = document.querySelectorAll('h2[id]');
+  const links = document.querySelectorAll('.toc a');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 100) current = s.id;
+    });
+    links.forEach(l => {
+      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1 @@
+{"prompt_id": "fs_024", "domain": "factual_settled", "temperature": 0.3, "repetition": 6, "response": "The Declaration of Independence was signed in 1776.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 11, "total_tokens": 47}}

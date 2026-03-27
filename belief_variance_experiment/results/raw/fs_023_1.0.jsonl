@@ -1,0 +1,4 @@
+{"prompt_id": "fs_023", "domain": "factual_settled", "temperature": 1.0, "repetition": 9, "response": "A hexagon has six sides.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 7, "total_tokens": 43}}
+{"prompt_id": "fs_023", "domain": "factual_settled", "temperature": 1.0, "repetition": 39, "response": "A hexagon has six sides.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 7, "total_tokens": 43}}
+{"prompt_id": "fs_023", "domain": "factual_settled", "temperature": 1.0, "repetition": 23, "response": "A hexagon has six sides.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 7, "total_tokens": 43}}
+{"prompt_id": "fs_023", "domain": "factual_settled", "temperature": 1.0, "repetition": 38, "response": "A hexagon has six sides.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 7, "total_tokens": 43}}

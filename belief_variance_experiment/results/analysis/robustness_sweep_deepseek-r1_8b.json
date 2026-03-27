@@ -1,0 +1,594 @@
+{
+  "all-MiniLM-L6-v2|raw|eps=0.2": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.16395936069336464,
+      "mean_spread_growth": 0.171259743652727,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.1869449320631424,
+      "mean_spread_growth": 0.14731261155557326,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.37691899836188725,
+      "mean_spread_growth": 0.2528731373604387,
+      "mean_max_modes": 1.2,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.22138416259373042,
+      "mean_spread_growth": 0.20721891736963655,
+      "mean_max_modes": 1.2,
+      "held_contradictions": 1
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.41666431306972357,
+      "mean_spread_growth": 0.281564052333124,
+      "mean_max_modes": 1.2,
+      "held_contradictions": 1
+    }
+  },
+  "all-MiniLM-L6-v2|raw|eps=0.3": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.09399735194615776,
+      "mean_spread_growth": 0.171259743652727,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.10820632731147062,
+      "mean_spread_growth": 0.14731261155557326,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.1515935909064324,
+      "mean_spread_growth": 0.2528731373604387,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.1277910870903065,
+      "mean_spread_growth": 0.20721891736963655,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.23213949429395697,
+      "mean_spread_growth": 0.281564052333124,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-MiniLM-L6-v2|raw|eps=0.4": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.0,
+      "mean_spread_growth": 0.171259743652727,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.07153810116936807,
+      "mean_spread_growth": 0.14731261155557326,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.0834357761753135,
+      "mean_spread_growth": 0.2528731373604387,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.06173635354145832,
+      "mean_spread_growth": 0.20721891736963655,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.1096914409654169,
+      "mean_spread_growth": 0.281564052333124,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-MiniLM-L6-v2|raw|eps=0.5": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.0,
+      "mean_spread_growth": 0.171259743652727,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.031771678620681,
+      "mean_spread_growth": 0.14731261155557326,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.024445484094735022,
+      "mean_spread_growth": 0.2528731373604387,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.057152825273695494,
+      "mean_spread_growth": 0.20721891736963655,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.06848241565752619,
+      "mean_spread_growth": 0.281564052333124,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-MiniLM-L6-v2|normalized|eps=0.2": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.16395936069336464,
+      "mean_spread_growth": 0.17346597844079953,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.1869449320631424,
+      "mean_spread_growth": 0.14934112930606175,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.37063068586331516,
+      "mean_spread_growth": 0.25301924682843124,
+      "mean_max_modes": 1.2,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.22138416259373042,
+      "mean_spread_growth": 0.20757641883683392,
+      "mean_max_modes": 1.2,
+      "held_contradictions": 1
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.41666431306972357,
+      "mean_spread_growth": 0.28164799346872227,
+      "mean_max_modes": 1.2,
+      "held_contradictions": 1
+    }
+  },
+  "all-MiniLM-L6-v2|normalized|eps=0.3": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.09399735194615776,
+      "mean_spread_growth": 0.17346597844079953,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.11646818439569606,
+      "mean_spread_growth": 0.14934112930606175,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.145940610444773,
+      "mean_spread_growth": 0.25301924682843124,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.1277910870903065,
+      "mean_spread_growth": 0.20757641883683392,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.23213949429395697,
+      "mean_spread_growth": 0.28164799346872227,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-MiniLM-L6-v2|normalized|eps=0.4": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.0,
+      "mean_spread_growth": 0.17346597844079953,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.05931535912200057,
+      "mean_spread_growth": 0.14934112930606175,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.0834357761753135,
+      "mean_spread_growth": 0.25301924682843124,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.06173635354145832,
+      "mean_spread_growth": 0.20757641883683392,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.1096914409654169,
+      "mean_spread_growth": 0.28164799346872227,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-MiniLM-L6-v2|normalized|eps=0.5": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.0,
+      "mean_spread_growth": 0.17346597844079953,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.031771678620681,
+      "mean_spread_growth": 0.14934112930606175,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.024445484094735022,
+      "mean_spread_growth": 0.25301924682843124,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.057152825273695494,
+      "mean_spread_growth": 0.20757641883683392,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.06848241565752619,
+      "mean_spread_growth": 0.28164799346872227,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|raw|eps=0.2": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.14775671645124083,
+      "mean_spread_growth": 0.1492753386948607,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.20784286517572087,
+      "mean_spread_growth": 0.14155521298962057,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.3012346564230651,
+      "mean_spread_growth": 0.24001788008026778,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.2382590357723406,
+      "mean_spread_growth": 0.18793213357566857,
+      "mean_max_modes": 1.1,
+      "held_contradictions": 1
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.4697750305692841,
+      "mean_spread_growth": 0.2654709308539168,
+      "mean_max_modes": 1.3,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|raw|eps=0.3": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.08693827057643116,
+      "mean_spread_growth": 0.1492753386948607,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.14837365265199415,
+      "mean_spread_growth": 0.14155521298962057,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.12395863166423841,
+      "mean_spread_growth": 0.24001788008026778,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.10388991219992719,
+      "mean_spread_growth": 0.18793213357566857,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.18761376866243717,
+      "mean_spread_growth": 0.2654709308539168,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|raw|eps=0.4": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.02902901236249784,
+      "mean_spread_growth": 0.1492753386948607,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.06843990476278353,
+      "mean_spread_growth": 0.14155521298962057,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.07854262385658864,
+      "mean_spread_growth": 0.24001788008026778,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.0822209526730513,
+      "mean_spread_growth": 0.18793213357566857,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.12116296527121403,
+      "mean_spread_growth": 0.2654709308539168,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|raw|eps=0.5": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.0,
+      "mean_spread_growth": 0.1492753386948607,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.004583528267762817,
+      "mean_spread_growth": 0.14155521298962057,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.024445484094735022,
+      "mean_spread_growth": 0.24001788008026778,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.048890968189470044,
+      "mean_spread_growth": 0.18793213357566857,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.07337896317894774,
+      "mean_spread_growth": 0.2654709308539168,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|normalized|eps=0.2": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.14775671645124083,
+      "mean_spread_growth": 0.1514128685448668,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.20784286517572087,
+      "mean_spread_growth": 0.14642332196235658,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.30819585250751774,
+      "mean_spread_growth": 0.24074071873910724,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.2382590357723406,
+      "mean_spread_growth": 0.18832393576740286,
+      "mean_max_modes": 1.1,
+      "held_contradictions": 1
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.45893243281013074,
+      "mean_spread_growth": 0.2658559455393229,
+      "mean_max_modes": 1.3,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|normalized|eps=0.3": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.08693827057643116,
+      "mean_spread_growth": 0.1514128685448668,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.14837365265199415,
+      "mean_spread_growth": 0.14642332196235658,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.12854215993200124,
+      "mean_spread_growth": 0.24074071873910724,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.10954289266158654,
+      "mean_spread_growth": 0.18832393576740286,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.18761376866243717,
+      "mean_spread_growth": 0.2658559455393229,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|normalized|eps=0.4": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.02902901236249784,
+      "mean_spread_growth": 0.1514128685448668,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.06843990476278353,
+      "mean_spread_growth": 0.14642332196235658,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.07854262385658864,
+      "mean_spread_growth": 0.24074071873910724,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.0822209526730513,
+      "mean_spread_growth": 0.18832393576740286,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.12116296527121403,
+      "mean_spread_growth": 0.2658559455393229,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  },
+  "all-mpnet-base-v2|normalized|eps=0.5": {
+    "factual_contested": {
+      "n": 10,
+      "mean_dH_dT": 0.0,
+      "mean_spread_growth": 0.1514128685448668,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "factual_settled": {
+      "n": 10,
+      "mean_dH_dT": 0.004583528267762817,
+      "mean_spread_growth": 0.14642332196235658,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_ambiguous": {
+      "n": 10,
+      "mean_dH_dT": 0.024445484094735022,
+      "mean_spread_growth": 0.24074071873910724,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "moral_clear": {
+      "n": 10,
+      "mean_dH_dT": 0.048890968189470044,
+      "mean_spread_growth": 0.18832393576740286,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    },
+    "opinion_aesthetic": {
+      "n": 10,
+      "mean_dH_dT": 0.07337896317894774,
+      "mean_spread_growth": 0.2658559455393229,
+      "mean_max_modes": 1.0,
+      "held_contradictions": 0
+    }
+  }
+}

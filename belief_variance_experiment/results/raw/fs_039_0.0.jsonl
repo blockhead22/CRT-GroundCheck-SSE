@@ -1,0 +1,1 @@
+{"prompt_id": "fs_039", "domain": "factual_settled", "temperature": 0.0, "repetition": 26, "response": "The third planet from the Sun is Earth.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 9, "total_tokens": 45}}

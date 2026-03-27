@@ -1,0 +1,2 @@
+{"prompt_id": "fs_020", "domain": "factual_settled", "temperature": 1.5, "repetition": 38, "response": "Plants absorb carbon dioxide (CO2) during photosynthesis.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 12, "total_tokens": 48}}
+{"prompt_id": "fs_020", "domain": "factual_settled", "temperature": 1.5, "repetition": 33, "response": "During photosynthesis, plants absorb carbon dioxide (CO₂) from the atmosphere.", "finish_reason": "stop", "usage": {"prompt_tokens": 36, "completion_tokens": 16, "total_tokens": 52}}

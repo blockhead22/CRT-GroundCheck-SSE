@@ -1,0 +1,1 @@
+{"prompt_id": "fs_030", "domain": "factual_settled", "temperature": 1.0, "repetition": 48, "response": "The Mona Lisa was painted by the Italian artist Leonardo da Vinci.", "finish_reason": "stop", "usage": {"prompt_tokens": 33, "completion_tokens": 13, "total_tokens": 46}}
