@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether Walk Cycle — Fez-Style 3D</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Mono', monospace;
+      background: #141210;
+      color: #F0EBE1;
+      min-height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .lab-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(240,235,225,0.08);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .lab-header h1 {
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #D4845C;
+    }
+
+    .lab-header span { font-size: 11px; color: #635c50; }
+
+    /* ── Stage ── */
+    .stage {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      /* Global perspective for the whole scene */
+      perspective: 600px;
+    }
+
+    .walk-line-container {
+      position: relative;
+      width: 80%;
+      max-width: 900px;
+      height: 240px;
+    }
+
+    .walk-line {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent 0%, #D4845C 10%, #D4845C 90%, transparent 100%);
+      border-radius: 2px;
+      box-shadow: 0 0 12px rgba(212,132,92,0.4), 0 0 30px rgba(212,132,92,0.15);
+    }
+
+    .walk-line-progress {
+      position: absolute;
+      bottom: 60px;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #E0A080, #D4845C);
+      border-radius: 2px;
+      box-shadow: 0 0 20px rgba(212,132,92,0.6);
+    }
+
+    /* ── Character anchor (moves along the line) ── */
+    .character-anchor {
+      position: absolute;
+      bottom: 62px;
+      left: 10%;
+      transform-style: preserve-3d;
+    }
+
+    /* ── 3D Prism container — this is what rotates ── */
+    .char-prism {
+      width: 60px;
+      height: 80px;
+      position: relative;
+      transform-style: preserve-3d;
+      /* JS controls rotateY directly */
+    }
+
+    /* ── Faces of the 3D prism ── */
+    .face {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      backface-visibility: visible;
+    }
+
+    /* Front face — full sprite, pushed forward by half the depth */
+    .face-front {
+      transform: translateZ(7px);
+    }
+
+    /* Back face — pushed back, flipped */
+    .face-back {
+      transform: rotateY(180deg) translateZ(7px);
+    }
+
+
+    /* ── SVG character sprite ── */
+    .character-svg {
+      width: 60px;
+      height: 80px;
+      display: block;
+      filter: drop-shadow(0 4px 12px rgba(212,132,92,0.3));
+    }
+
+    /* ── Walk bob ── */
+    .character-anchor.walking .char-prism {
+      animation: walkBob 0.35s ease-in-out infinite;
+    }
+
+    @keyframes walkBob {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    /* We need to override the prism animation when walk bob is active —
+       the rotateY is applied via JS inline transform, so we use a wrapper */
+    .bob-wrapper {
+      transform-style: preserve-3d;
+    }
+
+    .character-anchor.walking .bob-wrapper {
+      animation: walkBob 0.35s ease-in-out infinite;
+    }
+
+    /* ── Leg swing ── */
+    .leg-left, .leg-right { transition: transform 0.15s ease; }
+
+    .walking .leg-left {
+      animation: legSwingLeft 0.35s ease-in-out infinite;
+      transform-origin: 29px 68px;
+    }
+    .walking .leg-right {
+      animation: legSwingRight 0.35s ease-in-out infinite;
+      transform-origin: 41px 68px;
+    }
+
+    @keyframes legSwingLeft {
+      0%, 100% { transform: rotate(-12deg); }
+      50% { transform: rotate(12deg); }
+    }
+    @keyframes legSwingRight {
+      0%, 100% { transform: rotate(12deg); }
+      50% { transform: rotate(-12deg); }
+    }
+
+    /* ── Arm swing ── */
+    .arm-left, .arm-right { transition: transform 0.15s ease; }
+
+    .walking .arm-left {
+      animation: armSwingLeft 0.35s ease-in-out infinite;
+      transform-origin: 14px 48px;
+    }
+    .walking .arm-right {
+      animation: armSwingRight 0.35s ease-in-out infinite;
+      transform-origin: 52px 48px;
+    }
+
+    @keyframes armSwingLeft {
+      0%, 100% { transform: rotate(10deg); }
+      50% { transform: rotate(-10deg); }
+    }
+    @keyframes armSwingRight {
+      0%, 100% { transform: rotate(-10deg); }
+      50% { transform: rotate(10deg); }
+    }
+
+    /* ── Idle breathe ── */
+    .character-anchor:not(.walking) .bob-wrapper {
+      animation: idleBreathe 2.5s ease-in-out infinite;
+    }
+
+    @keyframes idleBreathe {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-2px); }
+    }
+
+    /* ── Antenna ── */
+    .antenna-group {
+      transform-origin: 35px 8px;
+      animation: antennaWiggle 2.5s ease-in-out infinite;
+    }
+    .walking .antenna-group {
+      animation: antennaWalk 0.4s ease-in-out infinite;
+    }
+
+    @keyframes antennaWiggle {
+      0%, 100% { transform: rotate(-2deg); }
+      50% { transform: rotate(2deg); }
+    }
+    @keyframes antennaWalk {
+      0%, 100% { transform: rotate(-4deg); }
+      50% { transform: rotate(4deg); }
+    }
+
+    /* ── Thought bubble ── */
+    .thought-bubble {
+      position: absolute;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-30%) translateZ(10px);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .thought-bubble.visible { opacity: 1; }
+
+    .thought-content {
+      background: rgba(212,132,92,0.15);
+      border: 1px solid rgba(212,132,92,0.3);
+      border-radius: 12px;
+      padding: 6px 12px;
+      font-size: 11px;
+      color: #E0A080;
+      white-space: nowrap;
+      backdrop-filter: blur(8px);
+    }
+
+    .thought-dots {
+      display: flex;
+      gap: 3px;
+      margin-top: 2px;
+      margin-left: 4px;
+    }
+    .thought-dots span {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(212,132,92,0.4);
+    }
+
+    /* ── Thinking particles ── */
+    .thinking-particle {
+      position: absolute;
+      width: 4px; height: 4px; border-radius: 50%;
+      background: #E0A080;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .thinking-particle.active {
+      animation: particleFloat 1.5s ease-out infinite;
+    }
+
+    @keyframes particleFloat {
+      0% { opacity: 0; transform: translateY(0) scale(1); }
+      30% { opacity: 0.8; }
+      100% { opacity: 0; transform: translateY(-30px) scale(0.3); }
+    }
+
+    /* ── Laptop typing mode ── */
+
+    /* Phone — JS drives position during pull-out animation, then CSS takes over for hold */
+    .phone-prop {
+      position: absolute;
+      width: 18px;
+      height: 28px;
+      opacity: 0;
+      pointer-events: none;
+      /* Start position: in "pocket" — down by right hip, small, tilted */
+      top: 62px;
+      left: 52px;
+      transform: translateZ(15px) rotate(15deg) scale(0.4);
+      transition: none;
+    }
+
+    .phone-prop svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5));
+    }
+
+    /* Final held position */
+    .phone-prop.held {
+      top: 44px;
+      left: 50%;
+      transform: translateX(-50%) translateZ(15px) rotate(0deg) scale(1);
+    }
+
+    /* ── Arm phases ── */
+
+    /* Phase 1: Right arm reaches down to pocket */
+    .phone-reach .arm-right {
+      transform: rotate(8deg) translateY(4px) !important;
+      transform-origin: 52px 48px !important;
+      transition: transform 0.3s ease-in-out !important;
+      animation: none !important;
+    }
+
+    /* Phase 2: Right arm comes up holding phone */
+    .phone-lifting .arm-right {
+      transform: rotate(-15deg) !important;
+      transform-origin: 52px 48px !important;
+      transition: transform 0.4s ease-out !important;
+      animation: none !important;
+    }
+
+    /* Phase 3: Both arms hold phone, subtle typing */
+    .phone-holding .arm-left {
+      animation: phoneArmLeft 0.35s ease-in-out infinite !important;
+      transform-origin: 14px 48px !important;
+    }
+
+    .phone-holding .arm-right {
+      animation: phoneArmRight 0.35s ease-in-out infinite !important;
+      transform-origin: 52px 48px !important;
+    }
+
+    @keyframes phoneArmLeft {
+      0%, 100% { transform: rotate(16deg); }
+      50% { transform: rotate(19deg); }
+    }
+
+    @keyframes phoneArmRight {
+      0%, 100% { transform: rotate(-19deg); }
+      50% { transform: rotate(-16deg); }
+    }
+
+    /* Head tilts down to look at phone */
+    .phone-holding .head-group {
+      animation: headLookDown 2.5s ease-in-out infinite;
+    }
+
+    @keyframes headLookDown {
+      0%, 100% { transform: translateY(1px); }
+      50% { transform: translateY(2px); }
+    }
+
+    /* Eyes look down at phone */
+    .phone-holding .eyes-group {
+      animation: eyesDown 2.5s ease-in-out infinite;
+    }
+
+    @keyframes eyesDown {
+      0%, 100% { transform: translateY(1px); }
+      50% { transform: translateY(2px); }
+    }
+
+    /* ── Put away: arm tucks phone back down ── */
+    .phone-stowing .arm-right {
+      transform: rotate(8deg) translateY(4px) !important;
+      transform-origin: 52px 48px !important;
+      transition: transform 0.35s ease-in !important;
+      animation: none !important;
+    }
+
+    /* Keystroke particles — tiny characters flying up */
+    .key-particle {
+      position: absolute;
+      font-family: 'Space Mono', monospace;
+      font-size: 8px;
+      color: #E0A080;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .key-particle.pop {
+      animation: keyPop 0.8s ease-out forwards;
+    }
+
+    @keyframes keyPop {
+      0% { opacity: 0.7; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-18px) scale(0.3); }
+    }
+
+    /* ── Shadow under character ── */
+    .char-shadow {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%) translateZ(-8px);
+      width: 50px;
+      height: 10px;
+      background: radial-gradient(ellipse, rgba(212,132,92,0.3), transparent);
+      border-radius: 50%;
+    }
+
+    .walking .char-shadow {
+      animation: shadowPulse 0.35s ease-in-out infinite;
+    }
+
+    @keyframes shadowPulse {
+      0%, 100% { transform: translateX(-50%) translateZ(-8px) scaleX(1); opacity: 0.6; }
+      50% { transform: translateX(-50%) translateZ(-8px) scaleX(0.75); opacity: 0.35; }
+    }
+
+    /* ── Controls ── */
+    .controls-panel {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(240,235,225,0.08);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: rgba(20,18,16,0.95);
+    }
+
+    .controls-panel button {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 8px 16px;
+      border: 1px solid rgba(212,132,92,0.3);
+      border-radius: 6px;
+      background: rgba(212,132,92,0.08);
+      color: #D4845C;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+    .controls-panel button:hover {
+      background: rgba(212,132,92,0.2);
+      border-color: rgba(212,132,92,0.5);
+    }
+    .controls-panel button.active {
+      background: rgba(212,132,92,0.25);
+      border-color: #D4845C;
+      box-shadow: 0 0 12px rgba(212,132,92,0.2);
+    }
+
+    .separator {
+      width: 1px; height: 24px;
+      background: rgba(240,235,225,0.08);
+    }
+
+    .label {
+      font-size: 10px;
+      color: #635c50;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .speed-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 100px; height: 3px;
+      background: rgba(212,132,92,0.2);
+      border-radius: 2px; outline: none;
+    }
+    .speed-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #D4845C; cursor: pointer;
+    }
+
+    /* ── State HUD ── */
+    .state-display {
+      position: absolute;
+      top: 20px; right: 24px;
+      font-size: 11px;
+      color: #635c50;
+      text-align: right;
+      line-height: 1.6;
+    }
+    .state-display .sv { color: #D4845C; font-weight: bold; }
+
+    /* ── Turn flash effect ── */
+    .turn-flash {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(212,132,92,0.3), transparent 70%);
+      opacity: 0;
+      transform: scale(0.5);
+      transition: none;
+    }
+    .turn-flash.pop {
+      animation: flashPop 0.4s ease-out forwards;
+    }
+
+    @keyframes flashPop {
+      0% { opacity: 0.6; transform: scale(0.5); }
+      100% { opacity: 0; transform: scale(2.5); }
+    }
+
+    /* ── Depth slider ── */
+    .depth-slider {
+      -webkit-appearance: none; appearance: none;
+      width: 80px; height: 3px;
+      background: rgba(212,132,92,0.2);
+      border-radius: 2px; outline: none;
+    }
+    .depth-slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: #80B0A0; cursor: pointer;
+    }
+
+    /* ═══════════════════════════════════════
+       JETPACK LANDING ZONE
+       ═══════════════════════════════════════ */
+
+    .landing-zone {
+      position: absolute;
+      bottom: 0;
+      right: 5%;
+      width: 180px;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    /* Fake message box target */
+    .msg-box-target {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 36px;
+      border: 1px solid rgba(212,132,92,0.2);
+      border-radius: 8px;
+      background: rgba(212,132,92,0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #635c50;
+      letter-spacing: 0.05em;
+    }
+
+    /* The jetpack character clone */
+    .jetpack-char {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      pointer-events: none;
+      transform-style: preserve-3d;
+    }
+
+    .jetpack-char.active {
+      opacity: 1;
+    }
+
+    .jetpack-svg {
+      width: 48px;
+      height: 64px;
+      display: block;
+      filter: drop-shadow(0 4px 16px rgba(212,132,92,0.4));
+    }
+
+    /* Jetpack flame */
+    .jet-flame {
+      position: absolute;
+      bottom: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 24px;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .jet-flame.firing {
+      opacity: 1;
+    }
+
+    .jet-flame svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Jet trail particles */
+    .jet-trail {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    /* Landing dust puff */
+    .landing-dust {
+      position: absolute;
+      bottom: 66px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 20px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .dust-puff {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(212,132,92,0.2);
+    }
+
+    .landing-dust.poof .dust-puff {
+      animation: dustExpand 0.5s ease-out forwards;
+    }
+
+    @keyframes dustExpand {
+      0% { opacity: 0.6; transform: scale(0.3) translateY(0); }
+      100% { opacity: 0; transform: scale(2.5) translateY(-10px); }
+    }
+
+    /* Jetpack wobble during descent */
+    @keyframes jetWobble {
+      0%, 100% { transform: translateX(-50%) rotate(-2deg); }
+      25% { transform: translateX(-48%) rotate(3deg); }
+      50% { transform: translateX(-52%) rotate(-1deg); }
+      75% { transform: translateX(-50%) rotate(2deg); }
+    }
+
+    /* Flame flicker */
+    @keyframes flameFlicker {
+      0%, 100% { transform: translateX(-50%) scaleY(1) scaleX(1); }
+      25% { transform: translateX(-50%) scaleY(1.2) scaleX(0.8); }
+      50% { transform: translateX(-50%) scaleY(0.8) scaleX(1.1); }
+      75% { transform: translateX(-50%) scaleY(1.15) scaleX(0.9); }
+    }
+
+    .jet-flame.firing {
+      animation: flameFlicker 0.15s ease-in-out infinite;
+    }
+
+    /* Landing settle bounce */
+    @keyframes landBounce {
+      0% { transform: translateX(-50%) translateY(0); }
+      30% { transform: translateX(-50%) translateY(4px); }
+      50% { transform: translateX(-50%) translateY(-3px); }
+      70% { transform: translateX(-50%) translateY(1px); }
+      100% { transform: translateX(-50%) translateY(0); }
+    }
+
+    /* Idle hover at message box */
+    @keyframes idleHover {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(-4px); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="lab-header">
+    <h1>Walk Cycle — Fez-Style 3D</h1>
+    <span>prism depth + perspective rotation</span>
+  </div>
+
+  <div class="stage">
+    <div class="walk-line-container">
+      <div class="walk-line"></div>
+      <div class="walk-line-progress" id="lineProgress"></div>
+
+      <div class="character-anchor" id="character">
+        <!-- Thought bubble (outside prism so it doesn't rotate) -->
+        <div class="thought-bubble" id="thought">
+          <div class="thought-content" id="thoughtText">hmm...</div>
+          <div class="thought-dots"><span></span><span></span><span></span></div>
+        </div>
+
+        <!-- Thinking particles -->
+        <div class="thinking-particle" id="p1" style="left: 10px; top: -10px;"></div>
+        <div class="thinking-particle" id="p2" style="left: 30px; top: -14px;"></div>
+        <div class="thinking-particle" id="p3" style="left: 50px; top: -8px;"></div>
+
+        <div class="bob-wrapper">
+          <!-- The 3D prism — JS sets rotateY on this -->
+          <div class="char-prism" id="charPrism">
+
+            <!-- ═══ FRONT FACE ═══ -->
+            <div class="face face-front">
+              <svg class="character-svg" viewBox="0 0 66 90" fill="none" style="height:90px; overflow:visible;">
+                <!-- Head group (tilts down when typing) -->
+                <g class="head-group">
+                  <g class="antenna-group">
+                    <line x1="35" y1="12" x2="35" y2="3" stroke="#E0A080" stroke-width="2" stroke-linecap="round"/>
+                    <circle cx="35" cy="2" r="2.5" fill="#E0A080" opacity="0.9">
+                      <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+                    </circle>
+                  </g>
+                  <rect x="10" y="12" width="50" height="30" rx="9" fill="#D4845C"/>
+                  <rect x="16" y="18" width="38" height="20" rx="5" fill="#141210" opacity="0.6"/>
+                  <g class="eyes-group" id="eyesGroup">
+                    <rect class="eye-left" x="24" y="25" width="5" height="5" rx="1.5" fill="#F0EBE1"/>
+                    <rect class="eye-right" x="41" y="25" width="5" height="5" rx="1.5" fill="#F0EBE1"/>
+                  </g>
+                  <rect x="30" y="33" width="8" height="1.5" rx="0.75" fill="#F0EBE1" opacity="0.5"/>
+                </g>
+
+                <!-- Body -->
+                <rect x="18" y="44" width="32" height="18" rx="5" fill="#D4845C" opacity="0.85"/>
+                <rect x="25" y="48" width="18" height="9" rx="3" fill="#141210" opacity="0.35"/>
+                <circle cx="34" cy="52" r="1.8" fill="#E0A080">
+                  <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"/>
+                </circle>
+
+                <!-- Arms -->
+                <rect class="arm-left" x="10" y="46" width="5.5" height="13" rx="2.75" fill="#D4845C" opacity="0.7"/>
+                <rect class="arm-right" x="52" y="46" width="5.5" height="13" rx="2.75" fill="#D4845C" opacity="0.7"/>
+
+                <!-- Legs -->
+                <g class="leg-left"><rect x="22" y="63" width="9" height="6" rx="3" fill="#D4845C" opacity="0.7"/></g>
+                <g class="leg-right"><rect x="37" y="63" width="9" height="6" rx="3" fill="#D4845C" opacity="0.7"/></g>
+
+              </svg>
+            </div>
+
+            <!-- ═══ BACK FACE ═══ -->
+            <div class="face face-back">
+              <svg class="character-svg" viewBox="0 0 66 80" fill="none">
+                <!-- Simplified back view — no eyes, dimmer colors -->
+                <g class="antenna-group">
+                  <line x1="35" y1="12" x2="35" y2="3" stroke="#C09070" stroke-width="2" stroke-linecap="round"/>
+                  <circle cx="35" cy="2" r="2.5" fill="#C09070" opacity="0.6"/>
+                </g>
+                <rect x="10" y="12" width="50" height="30" rx="9" fill="#B87050"/>
+                <!-- Back panel detail -->
+                <rect x="18" y="16" width="34" height="22" rx="4" fill="#9E6048" opacity="0.4"/>
+                <!-- Screws/rivets on back -->
+                <circle cx="22" cy="20" r="1.5" fill="#8B5540" opacity="0.5"/>
+                <circle cx="48" cy="20" r="1.5" fill="#8B5540" opacity="0.5"/>
+                <circle cx="22" cy="34" r="1.5" fill="#8B5540" opacity="0.5"/>
+                <circle cx="48" cy="34" r="1.5" fill="#8B5540" opacity="0.5"/>
+                <!-- Battery/vent panel -->
+                <rect x="26" y="22" width="18" height="12" rx="2" fill="#141210" opacity="0.3"/>
+                <line x1="29" y1="25" x2="41" y2="25" stroke="#8B5540" stroke-width="0.8" opacity="0.4"/>
+                <line x1="29" y1="28" x2="41" y2="28" stroke="#8B5540" stroke-width="0.8" opacity="0.4"/>
+                <line x1="29" y1="31" x2="41" y2="31" stroke="#8B5540" stroke-width="0.8" opacity="0.4"/>
+
+                <rect x="18" y="44" width="32" height="18" rx="5" fill="#B87050" opacity="0.85"/>
+                <rect x="25" y="48" width="18" height="9" rx="3" fill="#141210" opacity="0.25"/>
+                <rect x="10" y="46" width="5.5" height="13" rx="2.75" fill="#B87050" opacity="0.6"/>
+                <rect x="52" y="46" width="5.5" height="13" rx="2.75" fill="#B87050" opacity="0.6"/>
+                <rect x="22" y="63" width="9" height="6" rx="3" fill="#B87050" opacity="0.6"/>
+                <rect x="37" y="63" width="9" height="6" rx="3" fill="#B87050" opacity="0.6"/>
+              </svg>
+            </div>
+
+            <!-- Turn flash effect -->
+            <div class="turn-flash" id="turnFlash"></div>
+
+          </div>
+        </div>
+
+        <!-- Phone held between arms -->
+        <div class="phone-prop" id="phoneProp">
+          <svg viewBox="0 0 14 22" fill="none">
+            <!-- Phone body — space gray -->
+            <rect x="0" y="0" width="14" height="22" rx="2.5" fill="#8E8E93"/>
+            <!-- Inner bezel -->
+            <rect x="0.6" y="0.6" width="12.8" height="20.8" rx="2" fill="#3A3A3C"/>
+            <!-- Screen -->
+            <rect x="1" y="2" width="12" height="17.5" rx="1.2" fill="#2C2C2E"/>
+            <!-- Screen glow -->
+            <rect id="screenGlow" x="1" y="2" width="12" height="17.5" rx="1.2" fill="#80B0A0" opacity="0"/>
+            <!-- Chat bubbles on screen -->
+            <g id="screenCode" opacity="0">
+              <!-- Incoming message bubbles (left-aligned, teal) -->
+              <rect x="2" y="3.5" width="7" height="2" rx="1" fill="#80B0A0" opacity="0.5"/>
+              <rect x="2" y="6.5" width="9" height="2" rx="1" fill="#80B0A0" opacity="0.4"/>
+              <rect x="2" y="9.5" width="5" height="2" rx="1" fill="#80B0A0" opacity="0.45"/>
+              <!-- Outgoing message bubbles (right-aligned, orange) -->
+              <rect x="5" y="12.5" width="7.5" height="2" rx="1" fill="#D4845C" opacity="0.45"/>
+              <rect x="7" y="15.5" width="5.5" height="2" rx="1" fill="#D4845C" opacity="0.4"/>
+              <!-- Typing cursor in text field -->
+              <rect id="screenCursor" x="3" y="17.5" width="0.6" height="1.2" fill="#F0EBE1" opacity="0"/>
+            </g>
+            <!-- Notch / camera -->
+            <rect x="4.5" y="0.8" width="5" height="1" rx="0.5" fill="#2C2C2E"/>
+            <!-- Home indicator -->
+            <rect x="4" y="20.5" width="6" height="0.6" rx="0.3" fill="#636366" opacity="0.4"/>
+            <!-- Side button -->
+            <rect x="13.5" y="5" width="0.5" height="3" rx="0.25" fill="#7A7A7E"/>
+          </svg>
+        </div>
+
+        <div class="char-shadow"></div>
+      </div>
+    </div>
+
+    <!-- ═══ JETPACK LANDING ZONE ═══ -->
+    <div class="landing-zone" id="landingZone">
+      <div class="msg-box-target">[ message box ]</div>
+
+      <div class="jetpack-char" id="jetpackChar">
+        <svg class="jetpack-svg" viewBox="0 0 48 64" fill="none" style="width:48px;height:64px;filter:drop-shadow(0 4px 16px rgba(212,132,92,0.4));">
+          <!-- Antenna -->
+          <line x1="26" y1="9" x2="26" y2="2" stroke="#E0A080" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="26" cy="1.5" r="2" fill="#E0A080" opacity="0.9">
+            <animate attributeName="opacity" values="0.5;1;0.5" dur="1s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Head -->
+          <rect x="6" y="8" width="38" height="22" rx="7" fill="#D4845C"/>
+          <rect x="10" y="12" width="30" height="15" rx="4" fill="#141210" opacity="0.6"/>
+          <!-- Eyes -->
+          <rect x="16" y="17" width="4" height="4" rx="1" fill="#F0EBE1"/>
+          <rect x="30" y="17" width="4" height="4" rx="1" fill="#F0EBE1"/>
+          <!-- Mouth -->
+          <rect x="22" y="24" width="6" height="1.2" rx="0.6" fill="#F0EBE1" opacity="0.5"/>
+          <!-- Jetpack on back -->
+          <rect x="2" y="32" width="8" height="14" rx="3" fill="#A06840" opacity="0.8"/>
+          <rect x="40" y="32" width="8" height="14" rx="3" fill="#A06840" opacity="0.8"/>
+          <!-- Jetpack nozzles -->
+          <rect x="3" y="46" width="6" height="4" rx="1.5" fill="#8B5540"/>
+          <rect x="41" y="46" width="6" height="4" rx="1.5" fill="#8B5540"/>
+          <!-- Body -->
+          <rect x="12" y="32" width="26" height="15" rx="4" fill="#D4845C" opacity="0.85"/>
+          <rect x="17" y="35" width="16" height="8" rx="2.5" fill="#141210" opacity="0.35"/>
+          <circle cx="25" cy="39" r="1.5" fill="#E0A080">
+            <animate attributeName="opacity" values="0.3;0.9;0.3" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Legs (dangling) -->
+          <rect x="16" y="48" width="7" height="5" rx="2.5" fill="#D4845C" opacity="0.7"/>
+          <rect x="27" y="48" width="7" height="5" rx="2.5" fill="#D4845C" opacity="0.7"/>
+        </svg>
+
+        <!-- Flame effect -->
+        <div class="jet-flame" id="jetFlame">
+          <svg viewBox="0 0 24 28" fill="none">
+            <!-- Left thruster flame -->
+            <ellipse cx="5" cy="4" rx="4" ry="10" fill="url(#flameGrad)" opacity="0.9"/>
+            <!-- Right thruster flame -->
+            <ellipse cx="19" cy="4" rx="4" ry="10" fill="url(#flameGrad)" opacity="0.9"/>
+            <defs>
+              <radialGradient id="flameGrad" cx="50%" cy="0%" r="100%">
+                <stop offset="0%" stop-color="#FFD080"/>
+                <stop offset="40%" stop-color="#E08040"/>
+                <stop offset="100%" stop-color="#D4845C" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Landing dust -->
+      <div class="landing-dust" id="landingDust">
+        <div class="dust-puff" style="left:0; bottom:0; width:12px; height:8px;"></div>
+        <div class="dust-puff" style="left:15px; bottom:2px; width:10px; height:6px;"></div>
+        <div class="dust-puff" style="left:30px; bottom:0; width:14px; height:9px;"></div>
+        <div class="dust-puff" style="left:48px; bottom:1px; width:10px; height:7px;"></div>
+      </div>
+    </div>
+
+    <div class="state-display">
+      state: <span class="sv" id="stateVal">idle</span><br>
+      pos: <span class="sv" id="posVal">10%</span><br>
+      dir: <span class="sv" id="dirVal">—</span><br>
+      angle: <span class="sv" id="angleVal">0</span>°
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls-panel">
+    <span class="label">Walk</span>
+    <button id="btnWalkRight" onclick="startWalk('right')">Walk Right</button>
+    <button id="btnWalkLeft" onclick="startWalk('left')">Walk Left</button>
+    <button id="btnPatrol" onclick="togglePatrol()">Patrol</button>
+    <button id="btnStop" onclick="stopWalk()">Stop</button>
+
+    <div class="separator"></div>
+
+    <span class="label">Turn</span>
+    <button onclick="fezTurn('right')">Fez Turn →</button>
+    <button onclick="fezTurn('left')">← Fez Turn</button>
+    <button onclick="fezSpin()">Full Spin</button>
+
+    <div class="separator"></div>
+
+    <span class="label">Actions</span>
+    <button id="btnThink" onclick="toggleThinking()">Think</button>
+    <button id="btnLaptop" onclick="toggleLaptop()">Phone</button>
+    <button onclick="doWave()">Wave</button>
+    <button onclick="doLookAround()">Look</button>
+
+    <div class="separator"></div>
+
+    <span class="label">Speed</span>
+    <input type="range" class="speed-slider" id="speedSlider" min="0.3" max="3" step="0.1" value="1" oninput="walkSpeed=parseFloat(this.value)">
+
+    <div class="separator"></div>
+
+    <span class="label">Jetpack</span>
+    <button onclick="jetpackLand()">Land</button>
+    <button onclick="jetpackReset()">Reset</button>
+
+    <div class="separator"></div>
+
+    <span class="label" style="margin-left:8px">Depth</span>
+    <input type="range" class="depth-slider" id="depthSlider" min="4" max="30" step="1" value="14" oninput="updateDepth(this.value)">
+  </div>
+
+  <script>
+    // ── DOM refs ──
+    const charEl       = document.getElementById('character');
+    const prism        = document.getElementById('charPrism');
+    const lineProgress = document.getElementById('lineProgress');
+    const stateVal     = document.getElementById('stateVal');
+    const posVal       = document.getElementById('posVal');
+    const dirVal       = document.getElementById('dirVal');
+    const angleVal     = document.getElementById('angleVal');
+    const thought      = document.getElementById('thought');
+    const thoughtText  = document.getElementById('thoughtText');
+    const turnFlash    = document.getElementById('turnFlash');
+
+    // ── State ──
+    let posPercent   = 10;
+    let direction    = 'front'; // 'left' | 'right' | 'front'
+    let currentAngle = 0;       // current rotateY degrees
+    let targetAngle  = 0;       // where we're animating to
+    let isWalking    = false;
+    let isPatrolling = false;
+    let isThinking   = false;
+    let walkSpeed    = 1;
+    let walkRAF      = null;
+    let turnRAF      = null;
+    let prismDepth   = 14;      // px
+
+    const LEFT_BOUND        = 8;
+    const RIGHT_BOUND       = 88;
+    const PATROL_STOP_LEFT  = 20;
+    const PATROL_STOP_RIGHT = 75;
+    const BASE_SPEED        = 0.12;
+
+    const FACING_RIGHT_ANGLE = -30;   // slight perspective when walking right
+    const FACING_LEFT_ANGLE  = 210;   // ~180 + 30 to show back slightly when walking left
+    const FACING_FRONT_ANGLE = 0;
+
+    const thoughts = ['hmm...','interesting...','what if...','processing...','recalibrating...','01101...','curious...','analyzing...'];
+
+    // ── Init ──
+    applyPrismDepth();
+    updateCharPosition();
+    startBlinking();
+    applyAngle();
+
+    // ═══════════════════════════════════════
+    //  FEZ-STYLE 3D TURN
+    // ═══════════════════════════════════════
+
+    function fezTurn(dir) {
+      // Each turn rotates 90 degrees, like a Fez world rotation
+      if (dir === 'right') {
+        targetAngle = currentAngle - 90;
+      } else {
+        targetAngle = currentAngle + 90;
+      }
+      triggerTurnFlash();
+      animateTurn();
+    }
+
+    function fezSpin() {
+      targetAngle = currentAngle - 360;
+      triggerTurnFlash();
+      animateTurn();
+    }
+
+    function animateTurn() {
+      if (turnRAF) cancelAnimationFrame(turnRAF);
+
+      const turnLoop = () => {
+        const diff = targetAngle - currentAngle;
+        if (Math.abs(diff) < 0.5) {
+          currentAngle = targetAngle;
+          applyAngle();
+          turnRAF = null;
+          // Normalize angle to 0–360
+          currentAngle = ((currentAngle % 360) + 360) % 360;
+          targetAngle = currentAngle;
+          updateDirectionFromAngle();
+          return;
+        }
+
+        // Ease toward target — gentle enough that antenna stays attached
+        currentAngle += diff * 0.06;
+        applyAngle();
+        turnRAF = requestAnimationFrame(turnLoop);
+      };
+
+      turnRAF = requestAnimationFrame(turnLoop);
+    }
+
+    function applyAngle() {
+      prism.style.transform = `rotateY(${currentAngle}deg)`;
+      angleVal.textContent = Math.round(((currentAngle % 360) + 360) % 360);
+    }
+
+    function updateDirectionFromAngle() {
+      const norm = ((currentAngle % 360) + 360) % 360;
+      if (norm > 315 || norm <= 45)  { direction = 'front';   dirVal.textContent = 'front'; }
+      else if (norm > 45 && norm <= 135)  { direction = 'left';  dirVal.textContent = 'left'; }
+      else if (norm > 135 && norm <= 225) { direction = 'back';  dirVal.textContent = 'back'; }
+      else                                { direction = 'right'; dirVal.textContent = 'right'; }
+    }
+
+    function triggerTurnFlash() {
+      turnFlash.classList.remove('pop');
+      void turnFlash.offsetWidth; // reflow
+      turnFlash.classList.add('pop');
+    }
+
+    // ═══════════════════════════════════════
+    //  WALK
+    // ═══════════════════════════════════════
+
+    function startWalk(dir) {
+      direction = dir;
+      isWalking = true;
+      isPatrolling = false;
+      charEl.classList.add('walking');
+
+      // Animate the prism to the walk-facing angle
+      if (dir === 'right') {
+        targetAngle = FACING_RIGHT_ANGLE;
+      } else {
+        targetAngle = FACING_LEFT_ANGLE;
+      }
+      triggerTurnFlash();
+      animateTurn();
+      updateButtons();
+
+      if (!walkRAF) walkLoop();
+    }
+
+    function stopWalk() {
+      isWalking = false;
+      isPatrolling = false;
+      charEl.classList.remove('walking');
+
+      // Turn back to face front
+      targetAngle = 0;
+      animateTurn();
+
+      if (walkRAF) { cancelAnimationFrame(walkRAF); walkRAF = null; }
+      updateState('idle');
+      updateButtons();
+    }
+
+    function togglePatrol() {
+      if (isPatrolling) { stopWalk(); return; }
+      isPatrolling = true;
+      isWalking = true;
+      direction = 'right';
+      charEl.classList.add('walking');
+
+      targetAngle = FACING_RIGHT_ANGLE;
+      triggerTurnFlash();
+      animateTurn();
+      updateButtons();
+
+      patrolState = 'walking';
+      if (!walkRAF) walkLoop();
+    }
+
+    let lastTime = 0;
+    let patrolPauseUntil = 0;
+    let patrolState = 'walking';
+
+    function walkLoop(timestamp = 0) {
+      if (!isWalking) { walkRAF = null; return; }
+
+      const dt = lastTime ? (timestamp - lastTime) / 16.67 : 1;
+      lastTime = timestamp;
+
+      if (isPatrolling) {
+        patrolLogic(timestamp, dt);
+      } else {
+        const step = BASE_SPEED * walkSpeed * dt;
+        if (direction === 'right') {
+          posPercent = Math.min(posPercent + step, RIGHT_BOUND);
+          if (posPercent >= RIGHT_BOUND) { stopWalk(); return; }
+        } else {
+          posPercent = Math.max(posPercent - step, LEFT_BOUND);
+          if (posPercent <= LEFT_BOUND) { stopWalk(); return; }
+        }
+        updateState('walking');
+      }
+
+      updateCharPosition();
+      walkRAF = requestAnimationFrame(walkLoop);
+    }
+
+    function patrolLogic(timestamp, dt) {
+      if (patrolState === 'pausing') {
+        if (timestamp >= patrolPauseUntil) {
+          patrolState = 'turning';
+          direction = direction === 'right' ? 'left' : 'right';
+
+          // Fez-style turn at patrol endpoints
+          targetAngle = direction === 'right' ? FACING_RIGHT_ANGLE : FACING_LEFT_ANGLE;
+          triggerTurnFlash();
+          animateTurn();
+
+          patrolPauseUntil = timestamp + 500;
+          updateState('turning');
+        } else {
+          charEl.classList.remove('walking');
+          updateState('paused');
+        }
+        return;
+      }
+
+      if (patrolState === 'turning') {
+        if (timestamp >= patrolPauseUntil) {
+          patrolState = 'walking';
+          charEl.classList.add('walking');
+        }
+        return;
+      }
+
+      const step = BASE_SPEED * walkSpeed * dt;
+      if (direction === 'right') {
+        posPercent += step;
+        if (posPercent >= PATROL_STOP_RIGHT) {
+          posPercent = PATROL_STOP_RIGHT;
+          patrolState = 'pausing';
+          patrolPauseUntil = timestamp + 1000 + Math.random() * 600;
+        }
+      } else {
+        posPercent -= step;
+        if (posPercent <= PATROL_STOP_LEFT) {
+          posPercent = PATROL_STOP_LEFT;
+          patrolState = 'pausing';
+          patrolPauseUntil = timestamp + 1000 + Math.random() * 600;
+        }
+      }
+      updateState('patrolling');
+    }
+
+    // ═══════════════════════════════════════
+    //  DEPTH CONTROL
+    // ═══════════════════════════════════════
+
+    function updateDepth(val) {
+      prismDepth = parseInt(val);
+      applyPrismDepth();
+    }
+
+    function applyPrismDepth() {
+      const halfD = prismDepth / 2;
+      document.querySelector('.face-front').style.transform = `translateZ(${halfD}px)`;
+      document.querySelector('.face-back').style.transform  = `rotateY(180deg) translateZ(${halfD}px)`;
+    }
+
+    // ═══════════════════════════════════════
+    //  ACTIONS
+    // ═══════════════════════════════════════
+
+    function toggleThinking() {
+      isThinking = !isThinking;
+      thought.classList.toggle('visible', isThinking);
+      updateButtons();
+      if (isThinking) { cycleThoughts(); activateParticles(true); }
+      else { activateParticles(false); }
+    }
+
+    let thoughtCycle = null;
+    function cycleThoughts() {
+      if (!isThinking) { clearInterval(thoughtCycle); return; }
+      thoughtText.textContent = thoughts[Math.floor(Math.random() * thoughts.length)];
+      thoughtCycle = setInterval(() => {
+        if (!isThinking) { clearInterval(thoughtCycle); return; }
+        thoughtText.textContent = thoughts[Math.floor(Math.random() * thoughts.length)];
+      }, 2000);
+    }
+
+    function activateParticles(on) {
+      ['p1','p2','p3'].forEach((id, i) => {
+        const el = document.getElementById(id);
+        if (on) { el.classList.add('active'); el.style.animationDelay = (i * 0.4) + 's'; }
+        else { el.classList.remove('active'); }
+      });
+    }
+
+    // ═══════════════════════════════════════
+    //  LAPTOP TYPING
+    // ═══════════════════════════════════════
+
+    let isPhoneOut = false;
+    let keyParticleInterval = null;
+
+    const phoneProp    = document.getElementById('phoneProp');
+    const screenGlow   = document.getElementById('screenGlow');
+    const screenCode   = document.getElementById('screenCode');
+    const screenCursor = document.getElementById('screenCursor');
+
+    function toggleLaptop() {
+      if (isPhoneOut) {
+        putPhoneAway();
+      } else {
+        pullPhoneOut();
+      }
+    }
+
+    function pullPhoneOut() {
+      isPhoneOut = true;
+      stopWalk();
+      document.getElementById('btnLaptop').classList.add('active');
+
+      // Reset phone to pocket position
+      phoneProp.classList.remove('held');
+      phoneProp.style.transition = 'none';
+      phoneProp.style.top = '62px';
+      phoneProp.style.left = '52px';
+      phoneProp.style.transform = 'translateZ(15px) rotate(15deg) scale(0.4)';
+      phoneProp.style.opacity = '0';
+
+      // Phase 1: Right arm reaches down to pocket (300ms)
+      charEl.classList.add('phone-reach');
+
+      setTimeout(() => {
+        // Phase 2: Phone appears at pocket, arm lifts it up (400ms)
+        phoneProp.style.opacity = '1';
+        phoneProp.style.transition = 'top 0.5s cubic-bezier(0.25, 1, 0.5, 1), left 0.5s cubic-bezier(0.25, 1, 0.5, 1), transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)';
+
+        charEl.classList.remove('phone-reach');
+        charEl.classList.add('phone-lifting');
+
+        // Animate phone from pocket to held position
+        requestAnimationFrame(() => {
+          phoneProp.style.top = '44px';
+          phoneProp.style.left = 'calc(50% - 9px)';
+          phoneProp.style.transform = 'translateZ(15px) rotate(0deg) scale(1)';
+        });
+
+        // Phase 3: Settle into held position (after phone arrives)
+        setTimeout(() => {
+          charEl.classList.remove('phone-lifting');
+          charEl.classList.add('phone-holding');
+
+          // Screen flickers on
+          let flickers = [0, 0.3, 0.1, 0.4, 0.15, 0.5, 0.2];
+          let fi = 0;
+          const flick = setInterval(() => {
+            if (fi >= flickers.length) {
+              clearInterval(flick);
+              screenGlow.setAttribute('opacity', '0.1');
+              screenCode.setAttribute('opacity', '1');
+              blinkCursor();
+              return;
+            }
+            screenGlow.setAttribute('opacity', String(flickers[fi]));
+            fi++;
+          }, 50);
+
+          startKeyParticles();
+        }, 500);
+
+      }, 300);
+    }
+
+    function putPhoneAway() {
+      isPhoneOut = false;
+      charEl.classList.remove('phone-holding');
+      document.getElementById('btnLaptop').classList.remove('active');
+      if (keyParticleInterval) { clearInterval(keyParticleInterval); keyParticleInterval = null; }
+
+      // Screen off
+      screenGlow.setAttribute('opacity', '0');
+      screenCode.setAttribute('opacity', '0');
+      screenCursor.setAttribute('opacity', '0');
+
+      // Phase 1: Arm tucks phone back down
+      charEl.classList.add('phone-stowing');
+      phoneProp.style.transition = 'top 0.4s ease-in, left 0.4s ease-in, transform 0.4s ease-in, opacity 0.3s ease-in 0.2s';
+      phoneProp.style.top = '62px';
+      phoneProp.style.left = '52px';
+      phoneProp.style.transform = 'translateZ(15px) rotate(15deg) scale(0.4)';
+      phoneProp.style.opacity = '0';
+
+      setTimeout(() => {
+        charEl.classList.remove('phone-stowing');
+      }, 450);
+    }
+
+    function blinkCursor() {
+      if (!isPhoneOut) return;
+      const on = screenCursor.getAttribute('opacity') === '0';
+      screenCursor.setAttribute('opacity', on ? '0.8' : '0');
+      setTimeout(() => { if (isPhoneOut) blinkCursor(); }, 500);
+    }
+
+    const keyChars = ['hi','ok','lol','yes','brb','no','...','hey','ty','np',':)','k','wow','omg','!!'];
+
+    function startKeyParticles() {
+      keyParticleInterval = setInterval(() => {
+        if (!isPhoneOut) return;
+        const ch = keyChars[Math.floor(Math.random() * keyChars.length)];
+        const el = document.createElement('div');
+        el.className = 'key-particle';
+        el.textContent = ch;
+        el.style.left = (22 + Math.random() * 16) + 'px';
+        el.style.top = '56px';
+        charEl.appendChild(el);
+        requestAnimationFrame(() => el.classList.add('pop'));
+        setTimeout(() => el.remove(), 800);
+      }, 300 + Math.random() * 200);
+    }
+
+    function doWave() {
+      const arm = document.querySelector('.arm-right');
+      arm.style.transformOrigin = '52px 46px';
+      arm.style.animation = 'none';
+      let f = 0;
+      const angles = [0, -30, -10, -35, -5, -30, 0];
+      const iv = setInterval(() => {
+        if (f >= angles.length) { clearInterval(iv); arm.style.transform = ''; arm.style.animation = ''; return; }
+        arm.style.transform = `rotate(${angles[f]}deg)`;
+        f++;
+      }, 120);
+    }
+
+    function doLookAround() {
+      const eyes = document.getElementById('eyesGroup');
+      const shifts = [0, 4, 0, -4, 0, 3, -2, 0];
+      let f = 0;
+      const iv = setInterval(() => {
+        if (f >= shifts.length) { clearInterval(iv); eyes.style.transform = ''; return; }
+        eyes.style.transform = `translateX(${shifts[f]}px)`;
+        f++;
+      }, 200);
+    }
+
+    function startBlinking() {
+      const blink = () => {
+        document.querySelectorAll('.eye-left, .eye-right').forEach(e => {
+          e.setAttribute('height', '1');
+          e.setAttribute('y', '27');
+        });
+        setTimeout(() => {
+          document.querySelectorAll('.eye-left, .eye-right').forEach(e => {
+            e.setAttribute('height', '5');
+            e.setAttribute('y', '25');
+          });
+        }, 130);
+      };
+      const schedule = () => {
+        setTimeout(() => { blink(); schedule(); }, 2500 + Math.random() * 2500);
+      };
+      schedule();
+    }
+
+    // ── Helpers ──
+    function updateCharPosition() {
+      charEl.style.left = posPercent + '%';
+      lineProgress.style.width = posPercent + '%';
+      posVal.textContent = Math.round(posPercent) + '%';
+    }
+
+    function updateState(s) { stateVal.textContent = s; }
+
+    function updateButtons() {
+      document.getElementById('btnPatrol').classList.toggle('active', isPatrolling);
+      document.getElementById('btnThink').classList.toggle('active', isThinking);
+    }
+
+    // ═══════════════════════════════════════
+    //  JETPACK LANDING
+    // ═══════════════════════════════════════
+
+    const jetChar    = document.getElementById('jetpackChar');
+    const jetFlame   = document.getElementById('jetFlame');
+    const landDust   = document.getElementById('landingDust');
+    let jetRAF       = null;
+    let jetTrails    = [];
+
+    // Landing target Y (just above the message box)
+    const JET_START_Y  = -40;   // start off-screen top (relative to landing zone)
+    const JET_LAND_Y   = 110;   // px from top of landing-zone where feet touch down
+    // Phases: entry (fast drop) → brake (flames fire, decelerate) → settle (bounce)
+
+    function jetpackLand() {
+      jetpackReset();
+
+      jetChar.classList.add('active');
+      jetChar.style.top = JET_START_Y + 'px';
+      jetFlame.classList.remove('firing');
+
+      let y = JET_START_Y;
+      let vy = 0;           // velocity (px per frame)
+      let phase = 'freefall'; // freefall → braking → settle
+      let wobbleT = 0;
+      let settleFrame = 0;
+
+      // Spawn some trail particles
+      spawnTrails();
+
+      const loop = () => {
+        wobbleT += 0.15;
+
+        if (phase === 'freefall') {
+          // Accelerate downward
+          vy += 0.6;
+          y += vy;
+
+          // Slight wobble
+          const wx = Math.sin(wobbleT * 2) * 3;
+          jetChar.style.transform = `translateX(calc(-50% + ${wx}px)) rotate(${Math.sin(wobbleT) * 4}deg)`;
+
+          // Start braking when getting close
+          if (y > JET_LAND_Y - 80) {
+            phase = 'braking';
+            jetFlame.classList.add('firing');
+          }
+        }
+        else if (phase === 'braking') {
+          // Decelerate — flames fighting gravity
+          vy *= 0.88;
+          vy -= 0.15; // thrust upward
+          if (vy < 0.3) vy = 0.3; // minimum descent speed
+          y += vy;
+
+          // Tighter wobble as stabilizing
+          const wx = Math.sin(wobbleT * 3) * 1.5;
+          jetChar.style.transform = `translateX(calc(-50% + ${wx}px)) rotate(${Math.sin(wobbleT * 2) * 2}deg)`;
+
+          // Landed
+          if (y >= JET_LAND_Y) {
+            y = JET_LAND_Y;
+            phase = 'settle';
+            settleFrame = 0;
+            jetFlame.classList.remove('firing');
+
+            // Trigger dust puff
+            landDust.classList.remove('poof');
+            void landDust.offsetWidth;
+            landDust.classList.add('poof');
+          }
+        }
+        else if (phase === 'settle') {
+          // Bounce settle
+          settleFrame++;
+          const bounce = Math.sin(settleFrame * 0.3) * Math.exp(-settleFrame * 0.12) * 6;
+          y = JET_LAND_Y - Math.abs(bounce);
+          jetChar.style.transform = `translateX(-50%) rotate(0deg)`;
+
+          if (settleFrame > 30) {
+            // Done — idle hover
+            y = JET_LAND_Y;
+            phase = 'idle';
+            jetChar.style.animation = 'idleHover 2s ease-in-out infinite';
+            jetRAF = null;
+
+            // Clean up trails
+            jetTrails.forEach(t => t.el.remove());
+            jetTrails = [];
+            return;
+          }
+        }
+
+        jetChar.style.top = y + 'px';
+
+        // Update trail particles
+        updateTrails(y);
+
+        jetRAF = requestAnimationFrame(loop);
+      };
+
+      jetRAF = requestAnimationFrame(loop);
+    }
+
+    function jetpackReset() {
+      if (jetRAF) { cancelAnimationFrame(jetRAF); jetRAF = null; }
+      jetChar.classList.remove('active');
+      jetChar.style.animation = '';
+      jetChar.style.transform = 'translateX(-50%)';
+      jetFlame.classList.remove('firing');
+      landDust.classList.remove('poof');
+      jetTrails.forEach(t => t.el.remove());
+      jetTrails = [];
+    }
+
+    function spawnTrails() {
+      const zone = document.getElementById('landingZone');
+      for (let i = 0; i < 8; i++) {
+        const el = document.createElement('div');
+        el.className = 'jet-trail';
+        el.style.background = i % 2 === 0 ? '#E0A080' : '#FFD080';
+        el.style.left = (70 + Math.random() * 40) + 'px';
+        zone.appendChild(el);
+        jetTrails.push({
+          el,
+          offsetX: (Math.random() - 0.5) * 30,
+          delay: i * 3,
+          speed: 1 + Math.random() * 2,
+          age: -i * 4,
+        });
+      }
+    }
+
+    function updateTrails(charY) {
+      jetTrails.forEach(t => {
+        t.age++;
+        if (t.age < 0) return;
+        const trailY = charY + 55 + t.age * t.speed;
+        t.el.style.top = trailY + 'px';
+        t.el.style.left = (90 + t.offsetX + Math.sin(t.age * 0.2) * 5) + 'px';
+        const fade = Math.max(0, 1 - t.age / 30);
+        t.el.style.opacity = fade * 0.6;
+        t.el.style.width = t.el.style.height = (3 * fade + 1) + 'px';
+
+        // Reset when faded
+        if (fade <= 0) {
+          t.age = 0;
+          t.offsetX = (Math.random() - 0.5) * 30;
+        }
+      });
+    }
+  </script>
+</body>
+</html>

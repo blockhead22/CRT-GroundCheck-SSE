@@ -14,6 +14,7 @@ import { DemoModeLightbox } from './components/DemoModeLightbox'
 import { WelcomeTutorial } from './components/onboarding/WelcomeTutorial'
 import { LoginScreen } from './components/LoginScreen'
 import { MoodBackground, MoodIndicator, type MoodData } from './components/MoodBackground'
+import type { MascotAnimation } from './components/AetherMascot'
 import { DashboardPage } from './pages/DashboardPage'
 import { DocsPage } from './pages/DocsPage'
 import { JobsPage } from './pages/JobsPage'
@@ -135,6 +136,40 @@ export default function App() {
   // Mood background state
   const [currentMood, setCurrentMood] = useState<MoodData | null>(null)
 
+  // Mascot animation state — driven by SSE events
+  const [mascotAnimation, setMascotAnimation] = useState<MascotAnimation>('idle')
+  const mascotTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mascotRevertRef = useRef<MascotAnimation>('idle')
+
+  /** Play a timed animation, then revert to `revertTo` (default: 'idle') */
+  const playMascotAnim = useCallback((anim: MascotAnimation, durationMs?: number, revertTo: MascotAnimation = 'idle') => {
+    if (mascotTimerRef.current) clearTimeout(mascotTimerRef.current)
+    setMascotAnimation(anim)
+    // Reset idle timer on any activity
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    idleTimerRef.current = setTimeout(() => setMascotAnimation('sleepy'), 60_000)
+    if (durationMs) {
+      mascotRevertRef.current = revertTo
+      mascotTimerRef.current = setTimeout(() => setMascotAnimation(revertTo), durationMs)
+    }
+  }, [])
+
+  // Cleanup timers
+  useEffect(() => {
+    return () => {
+      if (mascotTimerRef.current) clearTimeout(mascotTimerRef.current)
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
+    }
+  }, [])
+
+  // API status → mascot
+  useEffect(() => {
+    if (apiStatus === 'disconnected') setMascotAnimation('alert')
+    else if (apiStatus === 'checking') setMascotAnimation('loading')
+    else if (apiStatus === 'connected' && mascotAnimation === 'alert') playMascotAnim('nod', 600)
+  }, [apiStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Agent checkpoint state — when the task agent asks for confirmation
   const [pendingCheckpoint, setPendingCheckpoint] = useState<{
     message: string
@@ -157,6 +192,56 @@ export default function App() {
     if (!selectedThread || !selectedMessageId) return null
     return selectedThread.messages.find((m) => m.id === selectedMessageId) ?? null
   }, [selectedThread, selectedMessageId])
+
+  // Greeting wave on empty thread
+  useEffect(() => {
+    if (selectedThread && selectedThread.messages.length === 0 && apiStatus === 'connected') {
+      playMascotAnim('greeting', 2000)
+    }
+  }, [selectedThread?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Idle life cycle — random micro-animations on empty chat page
+  useEffect(() => {
+    if (!selectedThread || selectedThread.messages.length > 0) return
+    if (apiStatus !== 'connected') return
+
+    let idleCycleTimer: ReturnType<typeof setTimeout> | null = null
+
+    const microAnims: { anim: MascotAnimation; dur: number; weight: number }[] = [
+      { anim: 'curious', dur: 3000, weight: 4 },
+      { anim: 'nod', dur: 600, weight: 3 },
+      { anim: 'greeting', dur: 2000, weight: 1 },
+      { anim: 'surprised', dur: 500, weight: 1 },
+      { anim: 'working', dur: 2500, weight: 1 },
+    ]
+
+    const totalWeight = microAnims.reduce((s, m) => s + m.weight, 0)
+
+    function pickRandom() {
+      let r = Math.random() * totalWeight
+      for (const m of microAnims) {
+        r -= m.weight
+        if (r <= 0) return m
+      }
+      return microAnims[0]
+    }
+
+    function scheduleNext() {
+      const delay = 8000 + Math.random() * 7000 // 8-15s between animations
+      idleCycleTimer = setTimeout(() => {
+        const pick = pickRandom()
+        playMascotAnim(pick.anim, pick.dur, 'idle')
+        scheduleNext()
+      }, delay)
+    }
+
+    // Start cycle after the initial greeting finishes (2s)
+    idleCycleTimer = setTimeout(() => scheduleNext(), 2500)
+
+    return () => {
+      if (idleCycleTimer) clearTimeout(idleCycleTimer)
+    }
+  }, [selectedThread?.id, selectedThread?.messages.length, apiStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function upsertThread(updated: ChatThread) {
     setThreads((prev) => {
@@ -294,6 +379,9 @@ export default function App() {
                   : t
               ))
             } else if (data.type === 'heartbeat_contradiction') {
+              // Mascot reacts to its own discovery
+              setMascotAnimation('surprised')
+              setTimeout(() => setMascotAnimation('idle'), 500)
               // Show browser notification for contradiction detection
               if (Notification.permission === 'granted') {
                 new Notification('Aether noticed something', {
@@ -557,6 +645,8 @@ export default function App() {
               const next = { intent, route, slots, confidence, source, toolSteps: [] }
               agentThinkingRef.current = next
               setAgentThinkingState(next)
+              // High-confidence intent → quick nod
+              if (confidence && confidence > 0.9) playMascotAnim('nod', 500, 'thinking')
             },
             onPlanReady: (steps) => {
               setAgentThinkingState((prev) => {
@@ -566,6 +656,7 @@ export default function App() {
               })
             },
             onToolStart: (toolName, input, stepIndex) => {
+              playMascotAnim('working')
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 // Freeze any pending reasoning into the new tool step
@@ -581,6 +672,7 @@ export default function App() {
               })
             },
             onToolResult: (step) => {
+              playMascotAnim(step.status === 'error' ? 'alert' : 'nod', step.status === 'error' ? 1500 : 600, 'thinking')
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 const exists = prev.toolSteps.find(s => s.step_index === step.step_index)
@@ -712,6 +804,7 @@ export default function App() {
             },
             onThinkingStart: () => {
               setIsThinking(true)
+              playMascotAnim('thinking')
             },
             onThinkingToken: (token) => {
               thinkingContent += token
@@ -722,6 +815,7 @@ export default function App() {
             },
             onPhaseStart: (phase) => {
               setStreamPhase(phase)
+              if (phase === 'analyze') playMascotAnim('curious')
             },
             onPhaseEnd: (phase) => {
               if (phase === 'plan') {
@@ -755,6 +849,17 @@ export default function App() {
               // Extract mood data for dynamic background
               if (metadata?.mood) {
                 setCurrentMood(metadata.mood as MoodData)
+              }
+
+              // Mascot reaction based on response outcome
+              if ((metadata?.contradiction_detected as boolean) || (metadata?.gate_reason as string) === 'contradiction') {
+                playMascotAnim('headshake', 1500)
+              } else if ((metadata?.gates_passed as boolean) === false) {
+                playMascotAnim('headshake', 1500)
+              } else if ((metadata?.confidence as number) < 0.5) {
+                playMascotAnim('nervous', 1500)
+              } else {
+                playMascotAnim('celebrate', 1500)
               }
               
               // Capture agent thinking state from ref (avoids stale closure — ref is always current)
@@ -1218,6 +1323,7 @@ export default function App() {
                       onCheckpointRespond={handleCheckpointRespond}
                       onCheckpointDismiss={() => setPendingCheckpoint(null)}
                       onStopGeneration={handleStopGeneration}
+                      mascotAnimation={mascotAnimation}
                       proactiveSuggestion={proactiveSuggestion}
                       onProactiveSuggestionClick={(action) => {
                         // Send the suggestion action as a chat message

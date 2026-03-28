@@ -1444,9 +1444,9 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
 
     # Build self-knowledge context
     self_context_parts = [
-        "You are Aether, a personal AI assistant built by Nick Block.",
+        "You are Aether, a personal AI assistant built by Nick Block, deployed using Claude as your language model.",
         "You run on CRT (Contradiction-aware Reconciliation and Trust).",
-        "IMPORTANT: You ARE Aether. Do not refer to yourself as Claude or say you are 'powered by' another model. Speak as yourself in first person.",
+        "When speaking to users, respond as Aether — this is your deployment identity. You may acknowledge using Claude as your underlying model if directly asked, but your name is Aether and you should speak as Aether in first person. Do not lead with 'I'm Claude' or meta-analyze the deployment.",
         "",
         "Your core design principles:",
         "- You preserve contradictions instead of silently resolving them",
@@ -5287,6 +5287,64 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.debug("[STREAM] Plan engine check failed: %s", _pe_err)
 
             # ── AGENT TOOL LOOP PATH (Sprint 14) ──────────────────────────
+            # ── REMINDER FAST-PATH (deterministic, no LLM needed) ────────
+            # If the message looks like a reminder request, handle it directly
+            # without entering the agent loop (cookie Claude can't use tools).
+            _is_reminder_msg = any(kw in q_lower for kw in ("remind", "reminder", "alert me", "notify me"))
+            _safe_print(f"[REMINDER_GATE] intent_type={getattr(_task_intent, 'intent_type', None)}, is_reminder={_is_reminder_msg}")
+            if (
+                _task_intent is not None
+                and _task_intent.intent_type in ("create_commitment",)
+                and _is_reminder_msg
+            ):
+                _safe_print("[REMINDER_GATE] >>> ENTERING reminder fast-path")
+                try:
+                    _reminder_result = extract_reminder_from_message(req.message)
+                    _safe_print(f"[REMINDER_GATE] extract result: {_reminder_result}")
+                    if _reminder_result:
+                        _rem_text, _rem_dt = _reminder_result
+                        _rem_ts = float(_rem_dt.timestamp())
+                        if _rem_ts > time.time():
+                            _session_db = get_thread_session_db()
+                            _session_db.set_pending_reminder(
+                                req.thread_id,
+                                reminder_text=str(_rem_text),
+                                scheduled_at=_rem_ts,
+                                source_message=req.message,
+                                expires_seconds=900,
+                            )
+                            _human_time = _format_reminder_time(_rem_ts)
+                            _rem_answer = (
+                                f"Set reminder: '{str(_rem_text).strip()}' at {_human_time}?"
+                            )
+                            # Emit as agent_checkpoint so the frontend shows the confirmation card
+                            yield _sse({
+                                "type": "agent_checkpoint",
+                                "content": _rem_answer,
+                                "metadata": {
+                                    "checkpoint_tier": "reminder",
+                                    "requires_confirmation": True,
+                                    "intent": "create_reminder",
+                                    "confidence": 0.97,
+                                    "reminder_text": str(_rem_text),
+                                    "reminder_time": _rem_ts,
+                                },
+                            })
+                            # Must emit done so frontend exits streaming state and shows the action card
+                            yield _sse({
+                                "type": "done",
+                                "content": _rem_answer,
+                                "metadata": {"mode": "deterministic_reminder"},
+                            })
+                            return
+                        else:
+                            yield _sse({"type": "token", "content": "That time is in the past. Please provide a future time."})
+                            yield _sse({"type": "done", "content": "That time is in the past."})
+                            return
+                except Exception as _rem_err:
+                    logger.debug("[STREAM] Reminder fast-path failed: %s", _rem_err)
+                    # Fall through to agent loop
+
             # If agent_loop is enabled, use the LLM-driven agentic tool loop
             # instead of the classify-once-execute-blind pattern. The LLM sees
             # tool results and decides what to do next autonomously.

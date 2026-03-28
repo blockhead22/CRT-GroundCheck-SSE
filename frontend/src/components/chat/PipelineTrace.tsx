@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { AetherMascot } from '../AetherMascot'
+import type { MascotAnimation } from '../AetherMascot'
+import type { MoodType } from '../MoodBackground'
 
 type StepMeta = { icon: string; tooltip: string; color: string }
 
@@ -25,6 +28,23 @@ export function classifyStatus(s: string): StepMeta {
   return { icon: '·', tooltip: s, color: '#a09880' }
 }
 
+function stepToMascotState(s: string): { anim: MascotAnimation; mood: MoodType } {
+  const l = s.toLowerCase()
+  if (l.includes('reading context'))     return { anim: 'curious', mood: 'curious' }
+  if (l.includes('searching memory'))    return { anim: 'curious', mood: 'curious' }
+  if (l.includes('reasoning'))           return { anim: 'thinking', mood: 'curious' }
+  if (l.includes('planning'))            return { anim: 'thinking', mood: 'curious' }
+  if (l.includes('analyzing'))           return { anim: 'thinking', mood: 'curious' }
+  if (l.includes('verif'))               return { anim: 'working', mood: 'warm' }
+  if (l.includes('drafting'))            return { anim: 'working', mood: 'warm' }
+  if (l.includes('generating'))          return { anim: 'working', mood: 'warm' }
+  if (l.includes('contradict'))          return { anim: 'alert', mood: 'intense' }
+  if (l.includes('classifying'))         return { anim: 'nod', mood: 'curious' }
+  if (l.includes('gate'))               return { anim: 'nod', mood: 'uncertain' }
+  if (l.includes('agent'))              return { anim: 'working', mood: 'intense' }
+  return { anim: 'loading', mood: 'curious' }
+}
+
 export function PipelineTrace({
   statuses,
   streaming = false,
@@ -46,10 +66,40 @@ export function PipelineTrace({
 
   const progressPct = streaming ? `${Math.min(((deduped.length) / Math.max(deduped.length + 2, 6)) * 100, 90)}%` : '100%'
 
+  const { anim: mascotAnim, mood: mascotMood } = stepToMascotState(activeStep)
+
   return (
     <div className="mb-3">
-      {/* Progress bar — thin accent line */}
-      <div className="mb-2 h-[2px] rounded-full overflow-hidden" style={{ background: 'rgba(240,235,225,0.04)' }}>
+      {/* Progress bar + walking mascot */}
+      <div className="relative mb-2">
+        {/* Mascot walking along the bar */}
+        <AnimatePresence>
+          {streaming && (
+            <motion.div
+              key="pipeline-mascot"
+              className="absolute z-10"
+              style={{ bottom: 2, marginLeft: -12 }}
+              initial={{ left: '0%', opacity: 0 }}
+              animate={{ left: progressPct, opacity: 1 }}
+              exit={{
+                left: '0%',
+                bottom: -180,
+                opacity: 0,
+                transition: { duration: 1, ease: [0.25, 0.1, 0.25, 1] },
+              }}
+              transition={{ left: { duration: 0.6, ease: 'easeOut' }, opacity: { duration: 0.3 } }}
+            >
+              <AetherMascot
+                mood={mascotMood}
+                animation={mascotAnim}
+                size={24}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Progress bar — thin accent line */}
+        <div className="h-[2px] rounded-full overflow-hidden" style={{ background: 'rgba(240,235,225,0.04)' }}>
         <motion.div
           className="h-full rounded-full"
           style={{
@@ -62,6 +112,7 @@ export function PipelineTrace({
           animate={{ width: progressPct }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
         />
+        </div>
       </div>
 
       {/* Header row */}

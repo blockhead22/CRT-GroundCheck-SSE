@@ -19,6 +19,7 @@ const { BackendManager } = require('./backend');
 const { AetherTray } = require('./tray');
 const { ClipboardMonitor } = require('./clipboard-monitor');
 const { AmbientMonitor } = require('./ambient-monitor');
+const { DesktopPet } = require('./pet-window');
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ let tray = null;
 let backendManager = null;
 let clipboardMonitor = null;
 let ambientMonitor = null;
+let desktopPet = null;
 let frontendLoaded = false;
 
 // ── Window ────────────────────────────────────────────────────────────
@@ -76,11 +78,12 @@ function createWindow() {
     },
   });
 
-  // Hide instead of close (tray keeps running)
+  // Hide instead of close (tray keeps running) — show pet
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
       event.preventDefault();
       mainWindow.hide();
+      if (desktopPet) desktopPet.show();
     }
   });
 
@@ -363,7 +366,9 @@ function setupIPC() {
   ipcMain.on('app:toggle', () => {
     if (mainWindow.isVisible()) {
       mainWindow.hide();
+      if (desktopPet) desktopPet.show();
     } else {
+      if (desktopPet) desktopPet.hide();
       mainWindow.show();
       mainWindow.focus();
     }
@@ -371,6 +376,124 @@ function setupIPC() {
 
   ipcMain.on('app:minimize-to-tray', () => {
     mainWindow.hide();
+    if (desktopPet) desktopPet.show();
+  });
+
+  // Pet mouse interaction — toggle click-through
+  ipcMain.on('pet:mouse-enter', () => {
+    if (desktopPet) desktopPet.enableClicks();
+  });
+  ipcMain.on('pet:mouse-leave', () => {
+    if (desktopPet) desktopPet.disableClicks();
+  });
+
+  // Pet hide
+  ipcMain.on('pet:hide', () => {
+    if (desktopPet) desktopPet.hide();
+  });
+
+  // Pet chat — send message to backend, return short response
+  ipcMain.on('pet:chat', (_event, message) => {
+    console.log('[pet] Chat request:', message);
+    const petPrompt = `[SYSTEM: You are Aether's desktop pet companion. Respond in 1-2 short sentences max. Be playful, brief, personality-forward. No markdown, no lists, no formatting. Just casual speech like a tiny AI buddy.]\n\nUser: ${message}`;
+    const payload = JSON.stringify({
+      thread_id: 'desktop_pet',
+      message: petPrompt,
+      channel: 'desktop_pet',
+    });
+
+    const req = http.request(
+      {
+        hostname: BACKEND_HOST,
+        port: BACKEND_PORT,
+        path: '/api/chat/send',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        timeout: 15000,
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const answer = data.answer || data.detail || 'hmm...';
+            console.log('[pet] Chat response:', answer.slice(0, 80));
+            if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+              desktopPet.win.webContents.send('pet:response', { type: 'chat', text: answer });
+            }
+          } catch (err) {
+            console.error('[pet] Chat parse error:', err.message, body.slice(0, 200));
+            if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+              desktopPet.win.webContents.send('pet:response', { type: 'chat', text: 'brain glitch... try again?' });
+            }
+          }
+        });
+      }
+    );
+    req.on('error', () => {
+      if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+        desktopPet.win.webContents.send('pet:response', { type: 'chat', text: "can't reach my brain rn..." });
+      }
+    });
+    req.write(payload);
+    req.end();
+  });
+
+  // Pet think — generate a context-aware thought
+  ipcMain.on('pet:think', () => {
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 6 ? 'late night' : hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : hour < 21 ? 'evening' : 'night';
+
+    const thinkPrompt = `[SYSTEM: You are Aether's desktop pet. Generate ONE short casual thought (max 8 words) that a tiny AI buddy might have right now. It's ${timeOfDay}. Be cute, random, philosophical, or observational. No quotes, no punctuation drama. Just the thought.]\n\nGenerate a thought:`;
+
+    const payload = JSON.stringify({
+      thread_id: 'desktop_pet',
+      message: thinkPrompt,
+      channel: 'desktop_pet',
+    });
+
+    const req = http.request(
+      {
+        hostname: BACKEND_HOST,
+        port: BACKEND_PORT,
+        path: '/api/chat/send',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+        timeout: 15000,
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(body);
+            const thought = (data.answer || '...').slice(0, 60);
+            if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+              desktopPet.win.webContents.send('pet:response', { type: 'think', text: thought });
+            }
+          } catch {
+            if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+              desktopPet.win.webContents.send('pet:response', { type: 'think', text: 'hmm...' });
+            }
+          }
+        });
+      }
+    );
+    req.on('error', () => {
+      if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+        desktopPet.win.webContents.send('pet:response', { type: 'think', text: 'brain offline...' });
+      }
+    });
+    req.write(payload);
+    req.end();
+  });
+
+  // Forward clipboard events to pet window
+  ipcMain.on('clipboard:capture', (_event, text) => {
+    if (desktopPet && desktopPet.win && !desktopPet.win.isDestroyed()) {
+      desktopPet.win.webContents.send('pet:context', { type: 'clipboard', preview: text.slice(0, 40) });
+    }
   });
 
   ipcMain.on('window:minimize', () => {
@@ -429,7 +552,9 @@ function registerHotkey() {
     if (!mainWindow) return;
     if (mainWindow.isVisible() && mainWindow.isFocused()) {
       mainWindow.hide();
+      if (desktopPet) desktopPet.show();
     } else {
+      if (desktopPet) desktopPet.hide();
       mainWindow.show();
       mainWindow.focus();
     }
@@ -744,14 +869,17 @@ app.whenReady().then(async () => {
   });
   console.log('[ambient] Monitor created (disabled by default)');
 
-  // 5. Create tray (after backendManager, clipboardMonitor, ambientMonitor exist)
+  // 5. Create desktop pet (shown when main window is hidden)
+  desktopPet = new DesktopPet();
+
+  // 6. Create tray (after backendManager, clipboardMonitor, ambientMonitor exist)
   tray = new AetherTray(mainWindow, backendManager, clipboardMonitor, ambientMonitor);
   tray.create();
 
-  // 6. Register global hotkey
+  // 7. Register global hotkey
   registerHotkey();
 
-  // 7. Start SSE listener for native OS notifications (contradictions, etc.)
+  // 8. Start SSE listener for native OS notifications (contradictions, etc.)
   startSSEListener();
 });
 
@@ -766,6 +894,9 @@ app.on('will-quit', async () => {
   }
   if (ambientMonitor) {
     ambientMonitor.stop();
+  }
+  if (desktopPet) {
+    desktopPet.destroy();
   }
   if (backendManager) {
     await backendManager.stop();
@@ -782,6 +913,7 @@ app.on('before-quit', () => {
 // macOS: re-show window when dock icon clicked
 app.on('activate', () => {
   if (mainWindow) {
+    if (desktopPet) desktopPet.hide();
     mainWindow.show();
     mainWindow.focus();
   }

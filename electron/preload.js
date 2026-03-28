@@ -46,6 +46,23 @@ contextBridge.exposeInMainWorld('aether', {
   },
   toggleAmbient: (enabled) => ipcRenderer.send('ambient:toggle', enabled),
 
+  // Desktop pet
+  petChat: (message) => ipcRenderer.send('pet:chat', message),
+  petThink: () => ipcRenderer.send('pet:think'),
+  petHide: () => ipcRenderer.send('pet:hide'),
+  onPetResponse: (callback) => {
+    ipcRenderer.on('pet:response', (_event, data) => callback(data));
+  },
+  onPetContext: (callback) => {
+    ipcRenderer.on('pet:context', (_event, data) => callback(data));
+  },
+
+  // Generic send (for pet mouse events etc.)
+  send: (channel, ...args) => {
+    const allowed = ['pet:mouse-enter', 'pet:mouse-leave', 'pet:chat', 'pet:think', 'pet:hide'];
+    if (allowed.includes(channel)) ipcRenderer.send(channel, ...args);
+  },
+
   // Platform info
   platform: process.platform,
   isElectron: true,

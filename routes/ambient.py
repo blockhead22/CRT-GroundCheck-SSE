@@ -102,7 +102,27 @@ def _call_vision_api(image_b64: str, llm_client) -> str:
         except Exception as e:
             logger.warning("[ambient] OpenAI vision fallback failed: %s", e)
 
-    raise RuntimeError("No vision-capable API available (need Anthropic or OpenAI key)")
+    # Fallback: Cookie Claude (no API key needed)
+    try:
+        from tests.cloud_providers.providers import CookieProvider
+        cookie = CookieProvider()
+        result = cookie.complete_with_image(
+            system="",
+            prompt=AMBIENT_VISION_PROMPT,
+            image_b64=image_b64,
+            image_media_type="image/png",
+            max_tokens=200,
+        )
+        if result and not getattr(result, "error", None):
+            content = getattr(result, "content", "") or ""
+            if content.strip():
+                logger.info("[ambient] Cookie vision succeeded")
+                return content.strip()
+        logger.warning("[ambient] Cookie vision returned empty or error: %s", getattr(result, "error", ""))
+    except Exception as e:
+        logger.warning("[ambient] Cookie vision fallback failed: %s", e)
+
+    raise RuntimeError("No vision-capable API available (need Anthropic or OpenAI key or cookie session)")
 
 
 def _store_ambient_memory(

@@ -9,7 +9,7 @@ import { listOpenContradictions, type ContradictionListItem } from '../../lib/ap
 import { PipelineTrace } from './PipelineTrace'
 import { AgentThinkingStrip, type AgentThinkingState } from './AgentThinkingStrip'
 import { ActionCard } from './ActionCard'
-import { AetherMascot } from '../AetherMascot'
+import { AetherMascot, type MascotAnimation } from '../AetherMascot'
 
 // Adaptive font size for theater mode — shrinks as text grows
 function theaterFontSize(charCount: number): string {
@@ -161,6 +161,7 @@ export function ChatThreadView(props: {
   onCheckpointRespond?: (text: string) => void
   onCheckpointDismiss?: () => void
   onStopGeneration?: () => void
+  mascotAnimation?: MascotAnimation
   proactiveSuggestion?: { trigger: string; suggestion: string; action: string } | null
   onProactiveSuggestionClick?: (action: string) => void
   onDismissProactiveSuggestion?: () => void
@@ -519,7 +520,7 @@ export function ChatThreadView(props: {
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                     className="mb-6"
                   >
-                    <AetherMascot mood="calm" size={96} />
+                    <AetherMascot mood="calm" animation={props.mascotAnimation ?? 'greeting'} size={96} />
                   </motion.div>
 
                   {/* Subtle ambient glow behind hero text */}
@@ -787,21 +788,25 @@ export function ChatThreadView(props: {
 
       {/* Composer + companion mascot */}
       <div className="flex-shrink-0 relative">
-        {/* Persistent companion — sits left of the composer */}
-        {!empty && (
-          <motion.div
-            className="absolute -top-10 left-3 z-10"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.4 }}
-          >
-            <AetherMascot
-              mood={props.isThinking ? 'curious' : props.typing ? 'warm' : 'calm'}
-              isThinking={Boolean(props.isThinking)}
-              size={36}
-            />
-          </motion.div>
-        )}
+        {/* Persistent companion — hides during streaming, jetpacks back when done */}
+        <AnimatePresence>
+          {!empty && !isStreaming && (
+            <motion.div
+              key="companion-mascot"
+              className="absolute -top-10 left-3 z-10"
+              initial={{ opacity: 0, y: -60 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -40, transition: { duration: 0.3, ease: 'easeIn' } }}
+              transition={{ delay: 0.3, duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+            >
+              <AetherMascot
+                mood={props.typing ? 'warm' : 'calm'}
+                animation={props.mascotAnimation}
+                size={36}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <Composer
           onSend={props.onSend}
           onResearch={props.onResearch}

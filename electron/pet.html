@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: transparent;
+    user-select: none;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  /* ── Stage ── */
+  .pet-stage {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 160px;
+  }
+
+  /* ── Pet character ── */
+  .pet {
+    position: absolute;
+    bottom: 0;
+    left: 10%;
+    width: 48px;
+    height: 58px;
+    cursor: pointer;
+    z-index: 10;
+  }
+
+  .pet svg {
+    width: 100%; height: 100%;
+    filter: drop-shadow(0 2px 8px rgba(128,176,160,0.35));
+    transition: filter 0.3s;
+  }
+
+  .pet:hover svg {
+    filter: drop-shadow(0 2px 12px rgba(128,176,160,0.6));
+  }
+
+  /* ── Mood dot ── */
+  .mood-dot {
+    position: absolute;
+    top: -6px; left: 50%;
+    transform: translateX(-50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #60D0B0;
+    box-shadow: 0 0 6px currentColor;
+    transition: background 0.5s, box-shadow 0.5s;
+  }
+
+  /* ── Walk animations ── */
+  .pet.walking .pet-inner { animation: walkBob 0.35s ease-in-out infinite; }
+  .pet:not(.walking) .pet-inner { animation: breathe 2.5s ease-in-out infinite; }
+
+  @keyframes walkBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+  @keyframes breathe { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+
+  .pet.walking .leg-l { animation: legL 0.35s ease-in-out infinite; transform-origin:22px 52px; }
+  .pet.walking .leg-r { animation: legR 0.35s ease-in-out infinite; transform-origin:32px 52px; }
+  @keyframes legL { 0%,100%{transform:rotate(-10deg)} 50%{transform:rotate(10deg)} }
+  @keyframes legR { 0%,100%{transform:rotate(10deg)} 50%{transform:rotate(-10deg)} }
+
+  .pet.walking .arm-l { animation: armL 0.35s ease-in-out infinite; transform-origin:10px 36px; }
+  .pet.walking .arm-r { animation: armR 0.35s ease-in-out infinite; transform-origin:44px 36px; }
+  @keyframes armL { 0%,100%{transform:rotate(8deg)} 50%{transform:rotate(-8deg)} }
+  @keyframes armR { 0%,100%{transform:rotate(-8deg)} 50%{transform:rotate(8deg)} }
+
+  .antenna { transform-origin:27px 6px; animation: antIdle 2.5s ease-in-out infinite; }
+  .pet.walking .antenna { animation: antWalk 0.4s ease-in-out infinite; }
+  @keyframes antIdle { 0%,100%{transform:rotate(-2deg)} 50%{transform:rotate(2deg)} }
+  @keyframes antWalk { 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+
+  .pet.face-left svg { transform: scaleX(-1); }
+
+  /* ── Sleepy ── */
+  .pet.sleepy .pet-inner { animation: sleepBob 4s ease-in-out infinite; }
+  @keyframes sleepBob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(2px)} }
+
+  /* ── Z particles ── */
+  .zzz {
+    position: absolute;
+    top: -4px; right: -4px;
+    font-size: 10px;
+    color: #60D0B0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .zzz.active { animation: zFloat 2s ease-out infinite; }
+  .zzz:nth-child(2) { animation-delay: 0.6s; right: 2px; }
+  .zzz:nth-child(3) { animation-delay: 1.2s; right: -2px; }
+  @keyframes zFloat { 0%{opacity:0;transform:translateY(0)} 30%{opacity:0.7} 100%{opacity:0;transform:translateY(-18px)} }
+
+  /* ── Speech bubble ── */
+  .speech {
+    position: absolute;
+    bottom: 62px; left: 50%;
+    transform: translateX(-50%);
+    max-width: 300px;
+    background: rgba(20,18,16,0.92);
+    border: 1px solid rgba(128,176,160,0.3);
+    border-radius: 12px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #E0FFF0;
+    line-height: 1.4;
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: none;
+    backdrop-filter: blur(12px);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    text-align: center;
+    z-index: 20;
+  }
+  .speech.show { opacity: 1; }
+  .speech::after {
+    content: '';
+    position: absolute;
+    bottom: -6px; left: 50%; transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid rgba(20,18,16,0.92);
+  }
+
+  /* Loading dots in speech */
+  .speech .dots span {
+    display: inline-block;
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #60D0B0; opacity: 0.5;
+    animation: dotBounce 0.6s ease-in-out infinite;
+    margin: 0 2px;
+  }
+  .speech .dots span:nth-child(2) { animation-delay: 0.15s; }
+  .speech .dots span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes dotBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px);opacity:1} }
+
+  /* ── Radial menu ── */
+  .radial-menu {
+    position: absolute;
+    bottom: 62px; left: 50%;
+    transform: translateX(-50%);
+    width: 120px; height: 60px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 30;
+  }
+  .radial-menu.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .menu-btn {
+    position: absolute;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(128,176,160,0.3);
+    background: rgba(20,18,16,0.9);
+    color: #E0FFF0;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    backdrop-filter: blur(8px);
+  }
+  .menu-btn:hover {
+    background: rgba(128,176,160,0.2);
+    border-color: rgba(128,176,160,0.6);
+    transform: scale(1.15);
+  }
+
+  .menu-btn.btn-chat  { left: 0; bottom: 20px; }
+  .menu-btn.btn-pet   { left: 44px; bottom: 36px; }
+  .menu-btn.btn-think { left: 88px; bottom: 20px; }
+  .menu-btn.btn-hide  { left: 44px; bottom: 0; }
+
+  .menu-btn .tooltip {
+    position: absolute;
+    bottom: 36px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; color: #80B0A0;
+    white-space: nowrap;
+    opacity: 0; transition: opacity 0.15s;
+    pointer-events: none;
+  }
+  .menu-btn:hover .tooltip { opacity: 1; }
+
+  /* ── Chat input ── */
+  .chat-input-wrap {
+    position: absolute;
+    bottom: 68px; left: 50%;
+    transform: translateX(-50%);
+    width: 220px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 25;
+  }
+  .chat-input-wrap.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .chat-input {
+    width: 100%;
+    background: rgba(20,18,16,0.95);
+    border: 1px solid rgba(128,176,160,0.3);
+    border-radius: 16px;
+    padding: 8px 14px;
+    font-size: 12px;
+    color: #E0FFF0;
+    outline: none;
+    font-family: inherit;
+    backdrop-filter: blur(12px);
+    -webkit-app-region: no-drag;
+  }
+  .chat-input::placeholder { color: rgba(128,176,160,0.4); }
+  .chat-input:focus { border-color: rgba(128,176,160,0.6); box-shadow: 0 0 8px rgba(128,176,160,0.2); }
+
+  /* ── Phone prop ── */
+  .phone {
+    position: absolute;
+    bottom: 16px; left: 50%;
+    transform: translateX(-50%) translateY(8px) scale(0);
+    width: 10px; height: 16px;
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .phone.out {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+  .phone svg { width: 100%; height: 100%; }
+
+  /* ── Sitting pose ── */
+  .pet.sitting .leg-l, .pet.sitting .leg-r {
+    animation: none !important;
+  }
+  .pet.sitting .arm-l { animation: phoneArmL 0.3s ease-in-out infinite !important; transform-origin: 10px 36px !important; }
+  .pet.sitting .arm-r { animation: phoneArmR 0.3s ease-in-out infinite !important; transform-origin: 44px 36px !important; }
+  @keyframes phoneArmL { 0%,100%{transform:rotate(14deg)} 50%{transform:rotate(17deg)} }
+  @keyframes phoneArmR { 0%,100%{transform:rotate(-17deg)} 50%{transform:rotate(-14deg)} }
+
+  /* ── Look-around ── */
+  .pet.looking .pet-inner { animation: lookBob 2s ease-in-out; }
+  @keyframes lookBob { 0%,100%{transform:translateY(0) rotate(0)} 25%{transform:translateY(-1px) rotate(-3deg)} 75%{transform:translateY(-1px) rotate(3deg)} }
+
+  /* ── Wave ── */
+  .pet.waving .arm-r { animation: waveArm 0.6s ease-in-out !important; transform-origin: 44px 36px !important; }
+  @keyframes waveArm { 0%,100%{transform:rotate(0)} 25%{transform:rotate(-35deg)} 50%{transform:rotate(-15deg)} 75%{transform:rotate(-30deg)} }
+
+  /* ── Alert flash ── */
+  .pet.alert-flash svg {
+    filter: drop-shadow(0 2px 12px rgba(212,132,92,0.6)) !important;
+    animation: alertPulse 0.4s ease-in-out 3;
+  }
+  @keyframes alertPulse { 0%,100%{filter:drop-shadow(0 2px 8px rgba(212,132,92,0.4))} 50%{filter:drop-shadow(0 2px 16px rgba(212,132,92,0.8))} }
+</style>
+</head>
+<body>
+
+<div class="pet-stage" id="stage">
+  <div class="pet walking" id="pet">
+    <div class="mood-dot" id="moodDot"></div>
+
+    <!-- Z particles (sleep) -->
+    <span class="zzz" id="z1">z</span>
+    <span class="zzz" id="z2">z</span>
+    <span class="zzz" id="z3">z</span>
+
+    <!-- Speech bubble -->
+    <div class="speech" id="speech"></div>
+
+    <!-- Radial menu -->
+    <div class="radial-menu" id="menu">
+      <div class="menu-btn btn-chat" onclick="openChat()">💬<span class="tooltip">chat</span></div>
+      <div class="menu-btn btn-pet" onclick="doPet()">👋<span class="tooltip">pet</span></div>
+      <div class="menu-btn btn-think" onclick="doThink()">🧠<span class="tooltip">think</span></div>
+      <div class="menu-btn btn-hide" onclick="closeMenu()">✕<span class="tooltip">close</span></div>
+    </div>
+
+    <!-- Chat input -->
+    <div class="chat-input-wrap" id="chatWrap">
+      <input class="chat-input" id="chatInput" placeholder="say something..." autocomplete="off" />
+    </div>
+
+    <!-- Phone prop -->
+    <div class="phone" id="phone">
+      <svg viewBox="0 0 10 16" fill="none">
+        <rect x="0" y="0" width="10" height="16" rx="1.8" fill="#8E8E93"/>
+        <rect x="0.5" y="0.5" width="9" height="15" rx="1.5" fill="#3A3A3C"/>
+        <rect x="1" y="1.5" width="8" height="12" rx="0.8" fill="#2C2C2E"/>
+        <rect x="1" y="1.5" width="8" height="12" rx="0.8" fill="#80B0A0" opacity="0.1"/>
+        <rect x="2" y="3" width="5" height="1.2" rx="0.6" fill="#80B0A0" opacity="0.3"/>
+        <rect x="2" y="5" width="6" height="1.2" rx="0.6" fill="#60D0B0" opacity="0.25"/>
+        <rect x="2" y="7" width="4" height="1.2" rx="0.6" fill="#80B0A0" opacity="0.3"/>
+        <rect x="3" y="14" width="4" height="0.5" rx="0.25" fill="#636366" opacity="0.4"/>
+      </svg>
+    </div>
+
+    <div class="pet-inner">
+      <svg viewBox="0 0 54 58" fill="none">
+        <g class="antenna">
+          <line x1="27" y1="9" x2="27" y2="2" stroke="#60D0B0" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="27" cy="1.5" r="2" fill="#60D0B0" opacity="0.9" id="antennaBall">
+            <animate attributeName="opacity" values="0.5;1;0.5" dur="1.5s" repeatCount="indefinite"/>
+          </circle>
+        </g>
+        <rect x="6" y="8" width="42" height="24" rx="7" fill="#80B0A0" id="headRect"/>
+        <rect x="11" y="13" width="32" height="16" rx="4" fill="#141210" opacity="0.6"/>
+        <g class="eyes" id="eyes">
+          <rect class="eye-l" id="eyeL" x="18" y="19" width="4" height="4" rx="1" fill="#E0FFF0"/>
+          <rect class="eye-r" id="eyeR" x="32" y="19" width="4" height="4" rx="1" fill="#E0FFF0"/>
+        </g>
+        <rect id="mouth" x="23" y="26" width="8" height="1.2" rx="0.6" fill="#E0FFF0" opacity="0.5"/>
+        <rect x="13" y="34" width="28" height="15" rx="4" fill="#80B0A0" opacity="0.85" id="bodyRect"/>
+        <rect x="19" y="37" width="16" height="8" rx="2.5" fill="#141210" opacity="0.35"/>
+        <circle cx="27" cy="41" r="1.5" fill="#60D0B0" id="chestLight">
+          <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <rect class="arm-l" x="7" y="35" width="4.5" height="11" rx="2.25" fill="#80B0A0" opacity="0.7"/>
+        <rect class="arm-r" x="42.5" y="35" width="4.5" height="11" rx="2.25" fill="#80B0A0" opacity="0.7"/>
+        <g class="leg-l"><rect x="17" y="50" width="7" height="5" rx="2.5" fill="#80B0A0" opacity="0.7"/></g>
+        <g class="leg-r"><rect x="30" y="50" width="7" height="5" rx="2.5" fill="#80B0A0" opacity="0.7"/></g>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<script>
+  const pet = document.getElementById('pet');
+  const speech = document.getElementById('speech');
+  const menu = document.getElementById('menu');
+  const chatWrap = document.getElementById('chatWrap');
+  const chatInput = document.getElementById('chatInput');
+  const moodDot = document.getElementById('moodDot');
+  const eyeL = document.getElementById('eyeL');
+  const eyeR = document.getElementById('eyeR');
+  const mouth = document.getElementById('mouth');
+
+  // ═══════════════════════════════════════
+  //  MOOD SYSTEM
+  // ═══════════════════════════════════════
+  let stats = { happiness: 7, energy: 8, curiosity: 6 };
+  let lastInteraction = Date.now();
+  let currentMood = 'calm';
+
+  const moodColors = {
+    happy: '#D47088',
+    curious: '#60D0B0',
+    calm: '#E0A080',
+    sleepy: '#A09080',
+    lonely: '#8080A0',
+  };
+
+  function deriveMood() {
+    const sinceInteraction = (Date.now() - lastInteraction) / 1000;
+    if (stats.energy < 3) return 'sleepy';
+    if (stats.happiness < 3 && sinceInteraction > 600) return 'lonely';
+    if (stats.happiness > 7) return 'happy';
+    if (stats.curiosity > 6) return 'curious';
+    return 'calm';
+  }
+
+  function updateMood() {
+    currentMood = deriveMood();
+    moodDot.style.background = moodColors[currentMood];
+    moodDot.style.boxShadow = `0 0 6px ${moodColors[currentMood]}`;
+
+    // Expression
+    if (currentMood === 'happy') {
+      mouth.setAttribute('width', '10');
+      mouth.setAttribute('rx', '5');
+      mouth.setAttribute('y', '25.5');
+      mouth.setAttribute('height', '2');
+    } else if (currentMood === 'sleepy') {
+      eyeL.setAttribute('height', '1.5'); eyeR.setAttribute('height', '1.5');
+      eyeL.setAttribute('y', '20.5'); eyeR.setAttribute('y', '20.5');
+    } else if (currentMood === 'lonely') {
+      mouth.setAttribute('y', '27');
+      mouth.setAttribute('width', '6');
+    } else {
+      mouth.setAttribute('width', '8'); mouth.setAttribute('height', '1.2');
+      mouth.setAttribute('rx', '0.6'); mouth.setAttribute('y', '26');
+      eyeL.setAttribute('height', '4'); eyeR.setAttribute('height', '4');
+      eyeL.setAttribute('y', '19'); eyeR.setAttribute('y', '19');
+    }
+  }
+
+  // Decay stats
+  setInterval(() => {
+    stats.happiness = Math.max(0, stats.happiness - 0.15);
+    stats.energy = Math.max(0, stats.energy - 0.08);
+    stats.curiosity = Math.max(0, stats.curiosity - 0.1);
+    updateMood();
+  }, 5000);
+
+  function boostStat(stat, amount) {
+    stats[stat] = Math.min(10, stats[stat] + amount);
+    lastInteraction = Date.now();
+    updateMood();
+  }
+
+  // ═══════════════════════════════════════
+  //  PATROL + IDLE BEHAVIORS
+  // ═══════════════════════════════════════
+  let pos = 10;
+  let dir = 'right';
+  let behaviorState = 'walking';
+  let pauseUntil = 0;
+  let pauseAction = null; // what to do during pause: null | 'phone' | 'look' | 'wave' | 'think'
+  const phone = document.getElementById('phone');
+
+  const LEFT = 5, RIGHT = 88;
+  const PAUSE_L = 15, PAUSE_R = 78;
+  const SPEED = 0.04;
+
+  // Idle actions pool — picked randomly at patrol endpoints
+  const idleActions = [
+    { name: 'phone', duration: 4000, weight: 3 },
+    { name: 'look',  duration: 2500, weight: 3 },
+    { name: 'wave',  duration: 1200, weight: 2 },
+    { name: 'think', duration: 6000, weight: 2 },
+    { name: null,    duration: 1500, weight: 4 }, // just stand
+  ];
+  const totalActionWeight = idleActions.reduce((s, a) => s + a.weight, 0);
+
+  function pickIdleAction() {
+    let r = Math.random() * totalActionWeight;
+    for (const a of idleActions) { r -= a.weight; if (r <= 0) return a; }
+    return idleActions[idleActions.length - 1];
+  }
+
+  function startPauseAction(action, ts) {
+    pauseAction = action.name;
+    pauseUntil = ts + action.duration;
+    pet.classList.remove('walking');
+
+    if (action.name === 'phone') {
+      pet.classList.add('sitting');
+      phone.classList.add('out');
+    } else if (action.name === 'look') {
+      pet.classList.add('looking');
+    } else if (action.name === 'wave') {
+      pet.classList.add('waving');
+      showSpeech(randomFrom(['hey!', 'o/', '👋', 'hi there!']), 1200);
+    } else if (action.name === 'think') {
+      autoThink();
+    }
+  }
+
+  function endPauseAction() {
+    pet.classList.remove('sitting', 'looking', 'waving');
+    phone.classList.remove('out');
+    pauseAction = null;
+  }
+
+  function patrol(ts) {
+    const idleSec = (Date.now() - lastInteraction) / 1000;
+
+    if (menuOpen || chatOpen) {
+      // Don't patrol while interacting
+    } else if (idleSec > 90 && behaviorState !== 'asleep') {
+      endPauseAction();
+      behaviorState = 'asleep';
+      pet.classList.remove('walking');
+      pet.classList.add('sleepy');
+      document.querySelectorAll('.zzz').forEach(z => z.classList.add('active'));
+    } else if (idleSec > 60 && behaviorState !== 'sleepy' && behaviorState !== 'asleep') {
+      endPauseAction();
+      behaviorState = 'sleepy';
+      pet.classList.remove('walking');
+      pet.classList.add('sleepy');
+    } else if (behaviorState === 'paused') {
+      if (ts >= pauseUntil) {
+        endPauseAction();
+        dir = dir === 'right' ? 'left' : 'right';
+        pet.classList.toggle('face-left', dir === 'left');
+        behaviorState = 'walking';
+        pet.classList.add('walking');
+        pet.classList.remove('sleepy');
+      }
+    } else if (behaviorState === 'walking') {
+      pet.classList.remove('sleepy');
+      document.querySelectorAll('.zzz').forEach(z => z.classList.remove('active'));
+      if (dir === 'right') {
+        pos += SPEED;
+        if (pos >= PAUSE_R) {
+          pos = PAUSE_R;
+          behaviorState = 'paused';
+          startPauseAction(pickIdleAction(), ts);
+        }
+      } else {
+        pos -= SPEED;
+        if (pos <= PAUSE_L) {
+          pos = PAUSE_L;
+          behaviorState = 'paused';
+          startPauseAction(pickIdleAction(), ts);
+        }
+      }
+    }
+
+    pet.style.left = pos + '%';
+    requestAnimationFrame(patrol);
+  }
+  requestAnimationFrame(patrol);
+
+  // ═══════════════════════════════════════
+  //  BLINK
+  // ═══════════════════════════════════════
+  function blink() {
+    if (currentMood === 'sleepy' || currentMood === 'asleep') return;
+    eyeL.setAttribute('height', '1'); eyeR.setAttribute('height', '1');
+    eyeL.setAttribute('y', '21'); eyeR.setAttribute('y', '21');
+    setTimeout(() => {
+      eyeL.setAttribute('height', '4'); eyeR.setAttribute('height', '4');
+      eyeL.setAttribute('y', '19'); eyeR.setAttribute('y', '19');
+    }, 120);
+  }
+  setInterval(blink, 3000 + Math.random() * 2500);
+
+  // ═══════════════════════════════════════
+  //  INTERACTIONS
+  // ═══════════════════════════════════════
+  let menuOpen = false;
+  let chatOpen = false;
+  let speechTimer = null;
+
+  function wakeUp() {
+    endPauseAction();
+    behaviorState = 'walking';
+    pet.classList.add('walking');
+    pet.classList.remove('sleepy', 'sitting', 'looking', 'waving');
+    document.querySelectorAll('.zzz').forEach(z => z.classList.remove('active'));
+    lastInteraction = Date.now();
+    boostStat('energy', 2);
+  }
+
+  // Tap → menu
+  pet.addEventListener('click', (e) => {
+    if (chatOpen) return;
+    if (behaviorState === 'sleepy' || behaviorState === 'asleep') {
+      wakeUp();
+      showSpeech('*yawn* hey!', 2000);
+      return;
+    }
+    toggleMenu();
+  });
+
+  // Double-tap → quick chat
+  let lastClick = 0;
+  pet.addEventListener('mousedown', () => {
+    const now = Date.now();
+    if (now - lastClick < 300) {
+      closeMenu();
+      openChat();
+    }
+    lastClick = now;
+  });
+
+  // Hover → eyes track cursor
+  document.addEventListener('mousemove', (e) => {
+    if (currentMood === 'sleepy') return;
+    const petRect = pet.getBoundingClientRect();
+    const cx = petRect.left + petRect.width / 2;
+    const dx = Math.max(-2, Math.min(2, (e.clientX - cx) / 80));
+    eyeL.setAttribute('x', 18 + dx);
+    eyeR.setAttribute('x', 32 + dx);
+  });
+
+  // Mouse enter/leave for click-through
+  const interactiveEls = [pet, menu, chatWrap];
+  interactiveEls.forEach(el => {
+    el.addEventListener('mouseenter', () => {
+      window.aether && window.aether.send('pet:mouse-enter');
+    });
+    el.addEventListener('mouseleave', () => {
+      if (!menuOpen && !chatOpen) {
+        window.aether && window.aether.send('pet:mouse-leave');
+      }
+    });
+  });
+
+  function toggleMenu() {
+    menuOpen = !menuOpen;
+    menu.classList.toggle('open', menuOpen);
+    if (menuOpen) closeSpeech();
+  }
+
+  function closeMenu() {
+    menuOpen = false;
+    menu.classList.remove('open');
+  }
+
+  // ── Menu actions ──
+
+  function openChat() {
+    closeMenu();
+    closeSpeech();
+    chatOpen = true;
+    chatWrap.classList.add('open');
+    chatInput.value = '';
+    // Tell main process to make window focusable for keyboard input
+    window.aether && window.aether.send('pet:mouse-enter');
+    // Focus after a beat — Electron transparent windows need this
+    setTimeout(() => {
+      chatInput.focus();
+      chatInput.click(); // force focus in some Electron versions
+    }, 100);
+    endPauseAction();
+    behaviorState = 'idle';
+    pet.classList.remove('walking', 'sitting', 'looking', 'waving');
+  }
+
+  function closeChat() {
+    chatOpen = false;
+    chatWrap.classList.remove('open');
+    chatInput.blur();
+    behaviorState = 'walking';
+    pet.classList.add('walking');
+    setTimeout(() => {
+      window.aether && window.aether.send('pet:mouse-leave');
+    }, 100);
+  }
+
+  function doPet() {
+    closeMenu();
+    boostStat('happiness', 3);
+    // Happy bounce
+    pet.style.transition = 'transform 0.15s';
+    pet.style.transform = 'translateY(-6px)';
+    setTimeout(() => { pet.style.transform = ''; }, 150);
+    showSpeech(randomFrom(['😊', 'hehe!', 'yay!', '💚', ':D', 'that tickles!']), 1500);
+  }
+
+  const offlineThoughts = [
+    'i wonder...', 'what if...', 'interesting...', '*pondering*',
+    'nice day', 'hmm...', '...thinking...', '*looks around*',
+    'what are we building?', 'patterns everywhere', 'need coffee?',
+    'the code is speaking', 'bugs are features', '*contemplating*',
+    '01101000 01101001', 'is it friday yet?', 'ship it!',
+  ];
+
+  function doThink() {
+    closeMenu();
+    boostStat('curiosity', 3);
+    showSpeech('<div class="dots"><span></span><span></span><span></span></div>', 0);
+
+    // Try backend, fall back to local after 4s
+    let responded = false;
+    if (window.aether && window.aether.petThink) {
+      window.aether.petThink();
+      setTimeout(() => {
+        if (!responded) showSpeech(randomFrom(offlineThoughts), 5000);
+      }, 4000);
+    } else {
+      setTimeout(() => showSpeech(randomFrom(offlineThoughts), 5000), 500);
+    }
+
+    // Mark responded when IPC comes back
+    const origHandler = window._petThinkResolved;
+    window._petThinkResolved = () => { responded = true; };
+  }
+
+  function autoThink() {
+    showSpeech(randomFrom(offlineThoughts), 5000);
+    if (window.aether && window.aether.petThink) {
+      window.aether.petThink(); // fire and forget — response will override
+    }
+  }
+
+  function doHide() {
+    closeMenu();
+    closeChat();
+    if (window.aether && window.aether.petHide) {
+      window.aether.petHide();
+    }
+  }
+
+  // ── Chat submit ──
+  chatInput.addEventListener('keydown', (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter' && chatInput.value.trim()) {
+      const msg = chatInput.value.trim();
+      chatInput.value = '';
+      closeChat();
+      boostStat('happiness', 2);
+      boostStat('curiosity', 1);
+      showSpeech('<div class="dots"><span></span><span></span><span></span></div>', 0);
+      if (window.aether && window.aether.petChat) {
+        window.aether.petChat(msg);
+      } else {
+        setTimeout(() => showSpeech("can't reach my brain...", 3000), 1000);
+      }
+    }
+    if (e.key === 'Escape') {
+      closeChat();
+    }
+  });
+
+  // Global Escape to close anything open
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (chatOpen) closeChat();
+      else if (menuOpen) closeMenu();
+    }
+  });
+
+  // Click outside pet area closes menu/chat
+  document.addEventListener('click', (e) => {
+    if (!pet.contains(e.target) && !menu.contains(e.target) && !chatWrap.contains(e.target)) {
+      if (menuOpen) closeMenu();
+      if (chatOpen) closeChat();
+    }
+  });
+
+  // ── IPC responses ──
+  if (window.aether) {
+    if (window.aether.onPetResponse) {
+      window.aether.onPetResponse((data) => {
+        showSpeech(data.text, data.type === 'chat' ? 6000 : 5000);
+        if (data.type === 'chat') boostStat('happiness', 1);
+        if (data.type === 'think') boostStat('curiosity', 2);
+      });
+    }
+
+    if (window.aether.onPetContext) {
+      window.aether.onPetContext((data) => {
+        if (data.type === 'clipboard') {
+          // Perk up on clipboard
+          wakeUp();
+          pet.classList.add('alert-flash');
+          setTimeout(() => pet.classList.remove('alert-flash'), 1200);
+          showSpeech('!', 1000);
+          boostStat('curiosity', 2);
+        }
+      });
+    }
+
+    if (window.aether.onBackendStatus) {
+      window.aether.onBackendStatus((status) => {
+        if (status === 'unhealthy' || status === 'crashed') {
+          showSpeech('lost connection...', 3000);
+          pet.classList.add('alert-flash');
+          setTimeout(() => pet.classList.remove('alert-flash'), 1200);
+        }
+      });
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  SPEECH BUBBLE
+  // ═══════════════════════════════════════
+  function showSpeech(text, duration) {
+    if (speechTimer) clearTimeout(speechTimer);
+    speech.innerHTML = text;
+    speech.classList.add('show');
+    if (duration > 0) {
+      speechTimer = setTimeout(closeSpeech, duration);
+    }
+  }
+
+  function closeSpeech() {
+    speech.classList.remove('show');
+    if (speechTimer) { clearTimeout(speechTimer); speechTimer = null; }
+  }
+
+  // ═══════════════════════════════════════
+  //  UTILS
+  // ═══════════════════════════════════════
+  function randomFrom(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  // Init mood
+  updateMood();
+</script>
+</body>
+</html>

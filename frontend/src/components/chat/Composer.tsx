@@ -319,7 +319,7 @@ export function Composer(props: {
                     </button>
                   ))}
 
-                  {/* Models + Advanced rows — chevrons open side cards */}
+                  {/* All Models — inline accordion */}
                   <div
                     className="border-t mt-1"
                     style={{ borderColor: 'rgba(240,235,225,0.06)' }}
@@ -335,9 +335,101 @@ export function Composer(props: {
                         stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                         style={{ transform: modelsOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
                       >
-                        <polyline points="9 6 15 12 9 18" />
+                        <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>
+
+                    {/* Inline model list (accordion) */}
+                    {modelsOpen && availableModels && (
+                      <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                        {/* Local models */}
+                        {availableModels.local.length > 0 && (
+                          <>
+                            <div className="px-3 pt-1.5 pb-0.5">
+                              <div className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.25)' }}>
+                                Local (Ollama)
+                              </div>
+                            </div>
+                            {availableModels.local.map((m) => (
+                              <button
+                                key={`local-${m.name}`}
+                                onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('local', m.name) }}
+                                className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
+                                style={{
+                                  color: generationMode === 'local' && selectedModelName === m.name
+                                    ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.5)',
+                                }}
+                              >
+                                <span className="flex-shrink-0 opacity-40">{SERVER_ICON}</span>
+                                <span className="flex-1 font-medium truncate">{m.name}</span>
+                                {m.size && <span className="text-[9px] opacity-25 flex-shrink-0">{m.size}</span>}
+                                {generationMode === 'local' && selectedModelName === m.name && (
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                                )}
+                              </button>
+                            ))}
+                          </>
+                        )}
+
+                        {/* OpenAI models */}
+                        {availableModels.cloud.length > 0 && (
+                          <>
+                            <div className="px-3 pt-2 pb-0.5 border-t" style={{ borderColor: 'rgba(240,235,225,0.05)' }}>
+                              <div className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.25)' }}>
+                                OpenAI
+                              </div>
+                            </div>
+                            {availableModels.cloud.map((m) => (
+                              <button
+                                key={`cloud-${m.name}`}
+                                onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('cloud_openai', m.name) }}
+                                className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
+                                style={{
+                                  color: generationMode === 'cloud_openai' && selectedModelName === m.name
+                                    ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.5)',
+                                }}
+                              >
+                                <span className="flex-shrink-0"><OpenAILogo size={11} color="currentColor" /></span>
+                                <span className="flex-1 font-medium truncate">{m.label || m.name}</span>
+                                {generationMode === 'cloud_openai' && selectedModelName === m.name && (
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                                )}
+                              </button>
+                            ))}
+                          </>
+                        )}
+
+                        {/* Anthropic models */}
+                        {availableModels.anthropic.length > 0 && (
+                          <>
+                            <div className="px-3 pt-2 pb-0.5 border-t" style={{ borderColor: 'rgba(240,235,225,0.05)' }}>
+                              <div className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.25)' }}>
+                                Anthropic
+                              </div>
+                            </div>
+                            {availableModels.anthropic.map((m) => (
+                              <button
+                                key={`anthropic-${m.name}`}
+                                onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('cloud_claude', m.name) }}
+                                className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
+                                style={{
+                                  color: generationMode === 'cloud_claude' && selectedModelName === m.name
+                                    ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.5)',
+                                }}
+                              >
+                                <span className="flex-shrink-0"><ClaudeLogo size={11} color="currentColor" /></span>
+                                <span className="flex-1 font-medium truncate">{m.label || m.name}</span>
+                                {generationMode === 'cloud_claude' && selectedModelName === m.name && (
+                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                                )}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Advanced toggle */}
                     <button
                       onClick={(e) => { e.stopPropagation(); setAdvancedOpen(!advancedOpen); setModelsOpen(false) }}
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-medium uppercase tracking-wide transition-colors hover:bg-white/[0.06]"
@@ -349,128 +441,10 @@ export function Composer(props: {
                         stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
                         style={{ transform: advancedOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s' }}
                       >
-                        <polyline points="9 6 15 12 9 18" />
+                        <polyline points="6 9 12 15 18 9" />
                       </svg>
                     </button>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Models side card — appears to the right of dropdown */}
-            <AnimatePresence>
-              {modelSelectorOpen && modelsOpen && availableModels && (
-                <motion.div
-                  initial={{ opacity: 0, x: -4, scale: 0.95 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -4, scale: 0.95 }}
-                  transition={{ duration: 0.12 }}
-                  className="absolute top-full z-50 mt-1 w-[220px] overflow-hidden rounded border"
-                  style={{
-                    left: '188px',
-                    borderColor: 'rgba(240,235,225,0.08)',
-                    background: 'rgba(18,16,12,0.95)',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
-                    maxHeight: '320px',
-                    overflowY: 'auto',
-                  }}
-                >
-                  {/* Local models */}
-                  {availableModels.local.length > 0 && (
-                    <>
-                      <div className="px-3 pt-2.5 pb-1">
-                        <div className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.3)' }}>
-                          Local (Ollama)
-                        </div>
-                      </div>
-                      <div className="pb-1">
-                        {availableModels.local.map((m) => (
-                          <button
-                            key={m.name}
-                            onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('local', m.name) }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
-                            style={{
-                              color: generationMode === 'local' && selectedModelName === m.name
-                                ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.55)',
-                            }}
-                          >
-                            <span className="flex-shrink-0 opacity-50">{SERVER_ICON}</span>
-                            <span className="flex-1 font-medium truncate">{m.name}</span>
-                            {m.size && <span className="text-[9px] opacity-30 flex-shrink-0">{m.size}</span>}
-                            {generationMode === 'local' && selectedModelName === m.name && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Cloud OpenAI models */}
-                  {availableModels.cloud.length > 0 && (
-                    <>
-                      <div className="px-3 pt-2 pb-1 border-t" style={{ borderColor: 'rgba(240,235,225,0.06)' }}>
-                        <div className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.3)' }}>
-                          OpenAI
-                        </div>
-                      </div>
-                      <div className="pb-1">
-                        {availableModels.cloud.map((m) => (
-                          <button
-                            key={m.name}
-                            onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('cloud_openai', m.name) }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
-                            style={{
-                              color: generationMode === 'cloud_openai' && selectedModelName === m.name
-                                ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.55)',
-                            }}
-                          >
-                            <span className="flex-shrink-0"><OpenAILogo size={11} color="currentColor" /></span>
-                            <span className="flex-1 font-medium truncate">{m.label || m.name}</span>
-                            {generationMode === 'cloud_openai' && selectedModelName === m.name && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Anthropic models */}
-                  {availableModels.anthropic.length > 0 && (
-                    <>
-                      <div className="px-3 pt-2 pb-1 border-t" style={{ borderColor: 'rgba(240,235,225,0.06)' }}>
-                        <div className="text-[10px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.3)' }}>
-                          Anthropic
-                        </div>
-                      </div>
-                      <div className="pb-1.5">
-                        {availableModels.anthropic.map((m) => (
-                          <button
-                            key={m.name}
-                            onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('cloud_claude', m.name) }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
-                            style={{
-                              color: generationMode === 'cloud_claude' && selectedModelName === m.name
-                                ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.55)',
-                            }}
-                          >
-                            <span className="flex-shrink-0"><ClaudeLogo size={11} color="currentColor" /></span>
-                            <span className="flex-1 font-medium truncate">{m.label || m.name}</span>
-                            {generationMode === 'cloud_claude' && selectedModelName === m.name && (
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
                 </motion.div>
               )}
             </AnimatePresence>

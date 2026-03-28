@@ -13,6 +13,52 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 # ---------------------------------------------------------------------------
+# Word-number normalization
+# ---------------------------------------------------------------------------
+
+_WORD_NUMBERS: Dict[str, int] = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+    "fifteen": 15, "twenty": 20, "thirty": 30, "forty": 40,
+    "forty-five": 45, "an": 1, "a": 1, "half": 30,
+}
+
+
+def _normalize_word_numbers(text: str) -> str:
+    """Replace word-form numbers with digits so regex patterns can match.
+
+    Handles:
+      - "in two minutes" -> "in 2 minutes"
+      - "in a minute"    -> "in 1 minute"
+      - "in an hour"     -> "in 1 hour"
+      - "in half an hour" -> "in 30 minutes"
+    """
+    text = text.lower()
+    # Special case: "half an hour" / "half hour"
+    text = re.sub(r"\bhalf\s+(?:an?\s+)?hour\b", "30 minutes", text)
+    # "a couple" -> "2"
+    text = re.sub(r"\ba\s+couple\s+(?:of\s+)?", "2 ", text)
+    # "a few" -> "3"
+    text = re.sub(r"\ba\s+few\s+", "3 ", text)
+    # Replace "in a minute" / "in an hour" etc.
+    text = re.sub(
+        r"\b(in\s+)an?\s+(minute|min|hour|hr|day|week|second|sec)\b",
+        r"\g<1>1 \2",
+        text,
+    )
+    # Replace standalone word numbers adjacent to time units
+    _units = r"(seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|weeks?)"
+    for word, digit in _WORD_NUMBERS.items():
+        text = re.sub(
+            rf"\b{re.escape(word)}\s+{_units}",
+            rf"{digit} \1",
+            text,
+        )
+    return text
+
+
+# ---------------------------------------------------------------------------
 # Patterns
 # ---------------------------------------------------------------------------
 
@@ -100,7 +146,7 @@ def parse_time_expression(text: str) -> Dict[str, Any]:
         {"deadline": float_epoch, "recurrence": str | None}
         or {"deadline": None, "recurrence": None} if parsing fails.
     """
-    text = text.strip()
+    text = _normalize_word_numbers(text.strip())
 
     # --- Recurring patterns first ---
 
@@ -222,8 +268,8 @@ def extract_reminder_intent(text: str) -> Dict[str, Any]:
             "recurrence": "daily",
         }
     """
-    # Strip common prefixes
-    cleaned = text
+    # Normalize word numbers so regex stripping works on "two minutes" etc.
+    cleaned = _normalize_word_numbers(text)
     for prefix in [
         r"remind\s+me\s+to\s+",
         r"set\s+a?\s*reminder\s+(?:to\s+)?",

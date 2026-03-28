@@ -418,7 +418,7 @@ const characters = {
   cat: { name: 'Cat', draw: drawCat },
 };
 
-const animations = ['idle', 'bounce', 'wave', 'wave-L', 'wave-R', 'spin', 'pulse', 'shake', 'dance'];
+const animations = ['idle', 'greeting', 'thinking', 'curious', 'working', 'nod', 'celebrate', 'headshake', 'surprised', 'nervous', 'sleepy', 'alert', 'loading', 'bounce', 'wave', 'wave-L', 'wave-R', 'spin', 'pulse', 'shake', 'dance'];
 const moods = Object.keys(moodColors);
 
 // ═══════════════════════════════════════════════════════
@@ -441,6 +441,48 @@ function animate(time) {
   switch (state.animation) {
     case 'idle':
       ty = Math.sin(t * 1.5) * 6;
+      break;
+    case 'greeting':
+      ty = Math.sin(t * 1.5) * 4;
+      break;
+    case 'thinking':
+      ty = Math.sin(t * 1.5) * 5;
+      break;
+    case 'curious':
+      ty = Math.sin(t * 1.2) * 4;
+      rot = Math.sin(t * 0.8) * 4;
+      break;
+    case 'working':
+      ty = Math.sin(t * 2) * 3;
+      break;
+    case 'nod':
+      ty = Math.sin(t * 8) * 6 * Math.max(0, Math.cos(t * 2));
+      break;
+    case 'celebrate':
+      ty = -Math.abs(Math.sin(t * 5)) * 20;
+      scale = 1 + Math.sin(t * 10) * 0.04;
+      break;
+    case 'headshake':
+      tx = Math.sin(t * 12) * 8 * Math.max(0, Math.cos(t * 1.5));
+      break;
+    case 'surprised':
+      ty = -Math.abs(Math.sin(t * 4)) * 12;
+      scale = 1 + Math.max(0, Math.sin(t * 4)) * 0.08;
+      break;
+    case 'nervous':
+      tx = Math.sin(t * 25) * 3;
+      ty = Math.sin(t * 18) * 2;
+      break;
+    case 'sleepy':
+      ty = Math.sin(t * 0.5) * 8;
+      rot = Math.sin(t * 0.3) * 3;
+      break;
+    case 'alert':
+      tx = Math.sin(t * 15) * 2;
+      break;
+    case 'loading':
+      scale = 1 + Math.sin(t * 3) * 0.1;
+      rot = Math.sin(t * 2) * 5;
       break;
     case 'bounce':
       ty = -Math.abs(Math.sin(t * 3)) * 30;
@@ -502,16 +544,47 @@ function updateCharacterAnimation(svg, t) {
   // Animate antenna ball
   const antennaBall = svg.querySelector('.antenna-ball');
   if (antennaBall) {
-    const pulseScale = state.thinking ? (1 + Math.sin(t * 5) * 0.3) : (1 + Math.sin(t * 2) * 0.1);
-    const r = parseFloat(antennaBall.dataset.r) * pulseScale;
-    antennaBall.setAttribute('r', String(r));
-    antennaBall.style.opacity = state.thinking ? (0.5 + Math.sin(t * 5) * 0.5) : (0.6 + Math.sin(t * 2) * 0.3);
+    const anim = state.animation;
+    const baseR = parseFloat(antennaBall.dataset.r);
+    let pulseScale, opacity;
+    if (anim === 'alert') {
+      pulseScale = 1 + Math.sin(t * 10) * 0.4;
+      opacity = Math.abs(Math.sin(t * 8));
+      antennaBall.setAttribute('fill', '#FF4040');
+    } else if (anim === 'thinking' || state.thinking) {
+      pulseScale = 1 + Math.sin(t * 5) * 0.3;
+      opacity = 0.5 + Math.sin(t * 5) * 0.5;
+      antennaBall.removeAttribute('fill');
+    } else if (anim === 'working') {
+      pulseScale = 1 + Math.sin(t * 6) * 0.2;
+      opacity = 0.5 + Math.sin(t * 4) * 0.5;
+      antennaBall.removeAttribute('fill');
+    } else if (anim === 'celebrate') {
+      pulseScale = 1 + Math.sin(t * 10) * 0.4;
+      opacity = 0.8 + Math.sin(t * 10) * 0.2;
+      antennaBall.removeAttribute('fill');
+    } else if (anim === 'sleepy') {
+      pulseScale = 1;
+      opacity = 0.2 + Math.sin(t * 0.5) * 0.15;
+      antennaBall.removeAttribute('fill');
+    } else if (anim === 'loading') {
+      pulseScale = 1 + Math.sin(t * 4) * 0.25;
+      opacity = 0.3 + Math.abs(Math.sin(t * 3)) * 0.7;
+      antennaBall.removeAttribute('fill');
+    } else {
+      pulseScale = 1 + Math.sin(t * 2) * 0.1;
+      opacity = 0.6 + Math.sin(t * 2) * 0.3;
+      antennaBall.removeAttribute('fill');
+    }
+    antennaBall.setAttribute('r', String(baseR * pulseScale));
+    antennaBall.style.opacity = String(opacity);
   }
 
   // Animate thinking particles
   const particles = svg.querySelectorAll('.think-particle');
+  const showParticles = state.thinking || ['thinking', 'curious', 'celebrate'].includes(state.animation);
   particles.forEach((p, i) => {
-    if (state.thinking) {
+    if (showParticles) {
       const phase = t * 2 + i * 1.2;
       const py = -((phase * 15) % 50) - 10;
       const px = Math.sin(phase * 0.7 + i) * 8;
@@ -536,34 +609,40 @@ function updateCharacterAnimation(svg, t) {
   if (armRight) {
     const ox = armRight.dataset.ox;
     const oy = armRight.dataset.oy;
-    if (state.animation === 'wave-R') {
-      const waveAngle = -60 + Math.sin(t * 6) * 30;
-      armRight.setAttribute('transform', `rotate(${waveAngle} ${ox} ${oy})`);
-    } else if (state.animation === 'wave-L') {
-      const sway = Math.sin(t * 1.5) * 3;
-      armRight.setAttribute('transform', `rotate(${sway} ${ox} ${oy})`);
-    } else if (state.animation === 'dance') {
-      const danceAngle = Math.sin(t * 4) * 25;
-      armRight.setAttribute('transform', `rotate(${danceAngle} ${ox} ${oy})`);
-    } else {
-      armRight.setAttribute('transform', `rotate(0 ${ox} ${oy})`);
-    }
+    const rAngle = (() => {
+      switch (state.animation) {
+        case 'wave-R':
+        case 'greeting': return -60 + Math.sin(t * 6) * 30;
+        case 'celebrate': return -70 + Math.sin(t * 8) * 15;
+        case 'working': return Math.sin(t * 4 + 0.3) * 12;
+        case 'thinking': return Math.sin(t * 1.5 + 0.2) * 5;
+        case 'nervous': return Math.sin(t * 20) * 6;
+        case 'dance': return Math.sin(t * 4) * 25;
+        case 'wave-L': return Math.sin(t * 1.5) * 3;
+        case 'surprised': return -15 + Math.sin(t * 6) * 5;
+        default: return Math.sin(t * 1.5) * 2;
+      }
+    })();
+    armRight.setAttribute('transform', `rotate(${rAngle} ${ox} ${oy})`);
   }
   if (armLeft) {
     const ox = armLeft.dataset.ox;
     const oy = armLeft.dataset.oy;
-    if (state.animation === 'wave-L') {
-      const waveAngle = 60 + Math.sin(t * 6) * -30;
-      armLeft.setAttribute('transform', `rotate(${waveAngle} ${ox} ${oy})`);
-    } else if (state.animation === 'wave-R') {
-      const sway = Math.sin(t * 1.5) * 3;
-      armLeft.setAttribute('transform', `rotate(${sway} ${ox} ${oy})`);
-    } else if (state.animation === 'dance') {
-      const danceAngle = Math.sin(t * 4 + 1.5) * 25;
-      armLeft.setAttribute('transform', `rotate(${danceAngle} ${ox} ${oy})`);
-    } else {
-      armLeft.setAttribute('transform', `rotate(0 ${ox} ${oy})`);
-    }
+    const lAngle = (() => {
+      switch (state.animation) {
+        case 'wave-L': return 60 + Math.sin(t * 6) * -30;
+        case 'celebrate': return 70 + Math.sin(t * 8) * -15;
+        case 'working': return Math.sin(t * 4) * -12;
+        case 'thinking': return Math.sin(t * 1.5) * -5;
+        case 'nervous': return Math.sin(t * 20 + 0.5) * -6;
+        case 'dance': return Math.sin(t * 4 + 1.5) * 25;
+        case 'wave-R':
+        case 'greeting': return Math.sin(t * 1.5) * 3;
+        case 'surprised': return 15 + Math.sin(t * 6) * -5;
+        default: return Math.sin(t * 1.5) * -2;
+      }
+    })();
+    armLeft.setAttribute('transform', `rotate(${lAngle} ${ox} ${oy})`);
   }
 }
 
