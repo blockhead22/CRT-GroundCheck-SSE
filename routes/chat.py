@@ -3616,10 +3616,19 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     )
 
     # ====== CLOUD SLOT CLASSIFICATION (optional) ======
+    # Skip for conversational/self-referential messages (no facts to extract, saves 1-2s)
+    _gate_reason_for_skip = str(result.get("gate_reason") or "").lower()
+    _skip_governance = any(kw in _gate_reason_for_skip for kw in (
+        "greeting", "self_referential", "conversational", "no_memories",
+        "identity", "chitchat", "explanation",
+    ))
+    if _skip_governance:
+        _safe_print(f"[GOVERNANCE] Skipping slot classification for conversational message (gate_reason={_gate_reason_for_skip})")
+
     # If local fact extraction couldn't classify a slot, try cloud classification.
     try:
         _local_slots = result.get("slots_extracted") or result.get("facts") or {}
-        if not _local_slots or (isinstance(_local_slots, dict) and not _local_slots):
+        if not _skip_governance and (not _local_slots or (isinstance(_local_slots, dict) and not _local_slots)):
             import auth as _auth_mod
             _uid_int = int(uid) if uid else 1
             _cloud_slot_enabled = str(
