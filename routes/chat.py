@@ -5354,6 +5354,157 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.debug("[STREAM] Reminder fast-path failed: %s", _rem_err)
                     # Fall through to agent loop
 
+            # ── CORRECTION FAST-PATH (deterministic, no LLM needed) ───────
+            # If the user is correcting a prior fact ("that was a lie",
+            # "I'm not allergic to X"), find matching memories and demote
+            # their trust scores directly.
+            if (
+                _task_intent is not None
+                and _task_intent.intent_type == "fact_correction"
+            ):
+                _safe_print("[CORRECTION_GATE] >>> ENTERING correction fast-path")
+                try:
+                    _corr_engine = request.app.state.get_engine(req.thread_id)
+                    _corr_mem = _corr_engine.memory
+
+                    # --- Extract what's being corrected ---
+                    # Use the raw message as the search query.  Strip common
+                    # correction prefixes so the semantic search focuses on
+                    # the *subject* of the correction.
+                    _corr_raw = req.message
+                    _corr_query = re.sub(
+                        r"(?i)^(that(?:'s|\s+is|\s+was)\s+(?:a\s+lie|wrong|not\s+true|false|incorrect|bs|bullshit)"
+                        r"|those\s+were\s+lies"
+                        r"|i\s+lied(?:\s+about)?"
+                        r"|actually\s*,?\s*"
+                        r"|forget\s+(?:that|what\s+i\s+said|what\s+i\s+told\s+you)\s*,?\s*"
+                        r"|ignore\s+(?:that|what\s+i\s+said)\s*,?\s*"
+                        r"|correction:\s*"
+                        r"|correct:\s*)\s*",
+                        "",
+                        _corr_raw,
+                    ).strip()
+                    # If stripping left nothing, fall back to the full message
+                    if not _corr_query or len(_corr_query) < 3:
+                        _corr_query = _corr_raw
+
+                    # Also pull recent conversation context to improve matching
+                    _corr_context_msgs = []
+                    try:
+                        _corr_context_msgs = _load_recent_history_messages(
+                            _session_db, req.thread_id, window=4,
+                        )
+                    except Exception:
+                        pass
+
+                    # Build an augmented query from recent context + correction
+                    _aug_parts = []
+                    for _cm in _corr_context_msgs[-4:]:
+                        if _cm.get("role") == "assistant":
+                            _aug_parts.append(str(_cm.get("content", ""))[:200])
+                    _aug_parts.append(_corr_query)
+                    _aug_query = " ".join(_aug_parts)[-500:]
+
+                    _safe_print(f"[CORRECTION] Search query: {_corr_query[:80]}")
+                    _safe_print(f"[CORRECTION] Augmented query length: {len(_aug_query)}")
+
+                    # --- Search for matching memories ---
+                    _corr_results = _corr_mem.retrieve_memories(
+                        _aug_query,
+                        k=10,
+                        min_trust=0.05,
+                        exclude_deprecated=True,
+                        kinds={"user_fact", "preference"},
+                        user_id=uid,
+                    )
+
+                    # Filter to reasonably relevant matches (similarity > 0.3)
+                    _corr_candidates = [
+                        (mem, score) for mem, score in _corr_results
+                        if score > 0.3 and mem.trust > 0.15
+                    ]
+
+                    _safe_print(f"[CORRECTION] Found {len(_corr_candidates)} candidate memories (from {len(_corr_results)} total)")
+
+                    _demoted_count = 0
+                    _demoted_texts = []
+                    _CORRECTION_TRUST = 0.15  # Target trust for corrected memories
+
+                    for _c_mem, _c_score in _corr_candidates[:5]:  # Cap at 5 demotions
+                        _old_trust = float(_c_mem.trust)
+                        if _old_trust <= _CORRECTION_TRUST:
+                            continue  # Already low, skip
+
+                        _corr_mem._update_memory_trust(_c_mem.memory_id, _CORRECTION_TRUST)
+                        _corr_mem.record_memory_event(
+                            memory_id=_c_mem.memory_id,
+                            event_type="user_correction_demoted",
+                            actor="user",
+                            reason=f"User correction: {_corr_raw[:120]}",
+                            metadata={
+                                "correction_message": _corr_raw[:200],
+                                "old_trust": _old_trust,
+                                "new_trust": _CORRECTION_TRUST,
+                                "similarity_score": round(_c_score, 3),
+                                "search_query": _corr_query[:200],
+                            },
+                        )
+                        _demoted_count += 1
+                        _short_text = _c_mem.text[:80].replace("\n", " ")
+                        _demoted_texts.append(f"  - \"{_short_text}\" (trust {_old_trust:.2f} -> {_CORRECTION_TRUST:.2f})")
+                        _safe_print(
+                            f"[CORRECTION] Demoted memory {_c_mem.memory_id}: "
+                            f"trust {_old_trust:.3f} -> {_CORRECTION_TRUST} "
+                            f"(sim={_c_score:.3f}): {_short_text}"
+                        )
+
+                    # --- Record in active learning DB ---
+                    try:
+                        _al_coord = get_active_learning_coordinator()
+                        if _al_coord is not None:
+                            _al_coord.record_feedback_correction(
+                                interaction_id=str(uuid.uuid4()),
+                                correction_type="fact_retraction",
+                                field_name=None,
+                                incorrect_value=_corr_query[:200],
+                                correct_value=None,
+                                user_comment=_corr_raw[:200],
+                            )
+                    except Exception as _al_err:
+                        logger.debug("[CORRECTION] Active learning record failed: %s", _al_err)
+
+                    # --- Emit response ---
+                    if _demoted_count > 0:
+                        _corr_response = (
+                            f"Got it -- I've lowered the trust on {_demoted_count} "
+                            f"memor{'y' if _demoted_count == 1 else 'ies'} "
+                            f"that {'was' if _demoted_count == 1 else 'were'} incorrect:\n"
+                            + "\n".join(_demoted_texts)
+                            + "\n\nThese memories will still exist but carry very low weight."
+                        )
+                    else:
+                        _corr_response = (
+                            "I hear you, but I couldn't find matching memories to correct. "
+                            "Could you be more specific about what was wrong? "
+                            "For example: \"I'm not actually allergic to peanuts\" or "
+                            "\"I don't live in Portland\"."
+                        )
+
+                    yield _sse({"type": "token", "content": _corr_response})
+                    yield _sse({
+                        "type": "done",
+                        "content": _corr_response,
+                        "metadata": {
+                            "mode": "correction_fast_path",
+                            "demoted_count": _demoted_count,
+                        },
+                    })
+                    return
+                except Exception as _corr_err:
+                    _safe_print(f"[CORRECTION] Fast-path failed: {_corr_err}")
+                    logger.warning("[STREAM] Correction fast-path failed: %s", _corr_err, exc_info=True)
+                    # Fall through to normal generation
+
             # If agent_loop is enabled, use the LLM-driven agentic tool loop
             # instead of the classify-once-execute-blind pattern. The LLM sees
             # tool results and decides what to do next autonomously.
@@ -5817,9 +5968,20 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     t = text.lower().strip()
                     correction_starters = ('no,', 'no.', 'no!', "that's wrong", "that is wrong",
                                            'actually,', 'actually.', 'wrong,', 'wrong.', 'not right',
-                                           'incorrect', 'you said', 'you told')
+                                           'incorrect', 'you said', 'you told',
+                                           "that's a lie", "that was a lie", "those were lies",
+                                           "i lied", "that's false", "that's not true",
+                                           "forget that", "forget what i said",
+                                           "ignore what i said", "correction:",
+                                           "i was wrong", "i was lying", "i was mistaken",
+                                           "disregard what i said", "disregard that")
                     name_starters = ('my name is', 'call me', "i'm ", "i am ")
                     if any(t.startswith(s) for s in correction_starters):
+                        return 'correction'
+                    # Also catch mid-sentence correction patterns
+                    if any(w in t for w in ("i lied about", "i'm not allergic",
+                                            "i don't have", "i never said",
+                                            "actually i'm not", "actually i don't")):
                         return 'correction'
                     if any(t.startswith(s) for s in name_starters) and len(t.split()) <= 6:
                         return 'learning'

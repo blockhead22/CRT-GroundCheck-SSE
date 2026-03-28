@@ -265,6 +265,37 @@ _CANCEL_COMMITMENT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ---------------------------------------------------------------------------
+# Correction intent patterns — catches user retracting/correcting prior facts
+# ---------------------------------------------------------------------------
+_CORRECTION_RE = re.compile(
+    r"(?:^|\b)("
+    # Explicit lie/wrong declarations
+    r"that(?:'s|\s+is|\s+was)\s+(?:a\s+lie|wrong|not\s+true|not\s+right|false|incorrect|bullshit|bs)"
+    r"|(?:those|these)\s+were\s+lies"
+    r"|(?:i|I)\s+lied(?:\s+about)?"
+    r"|that\s+(?:was|were)\s+(?:a\s+)?lie[s]?"
+    # "actually I'm not X", "actually I don't X"
+    r"|actually\s+(?:i(?:'m|\s+am)\s+not|i\s+don'?t|i\s+(?:never|didn'?t))"
+    # "forget that", "forget what I said", "ignore what I said"
+    r"|forget\s+(?:that|what\s+i\s+said|what\s+i\s+told)"
+    r"|ignore\s+(?:that|what\s+i\s+said|what\s+i\s+told)"
+    r"|disregard\s+(?:that|what\s+i\s+said)"
+    # "correction:" prefix
+    r"|correct(?:ion)?:"
+    # "I'm not allergic to X", "I don't have X"
+    r"|(?:i(?:'m|\s+am)\s+not\s+(?:allergic|intolerant|sensitive|vegan|vegetarian))"
+    r"|(?:i\s+don'?t\s+(?:have|like|own|use|want|need|live|work))"
+    # "I never said", "I never told you"
+    r"|i\s+never\s+(?:said|told)"
+    # "that was a mistake", "I was wrong about"
+    r"|(?:that|it)\s+was\s+(?:a\s+)?mistake"
+    r"|(?:i|I)\s+was\s+wrong\s+about"
+    r"|(?:i|I)\s+was\s+(?:lying|mistaken)"
+    r")",
+    re.IGNORECASE,
+)
+
 # Sprint 11 — Desktop control patterns
 _DESKTOP_ACTION_RE = re.compile(
     r"\b((?:(?:can|could|would)\s+you\s+)?(?:please\s+)?"
@@ -931,6 +962,16 @@ def classify_intent(
             slots={"raw_message": message},
             confidence=0.92,
             reason="commitment_pattern",
+        )
+
+    # ── 1b-corr. Fact correction — "that was a lie", "I'm not allergic" etc. ──
+    if _CORRECTION_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="fact_correction",
+            slots={"raw_message": message},
+            confidence=0.93,
+            reason="correction_pattern",
         )
 
     # ── 1b2. Git action — "git commit", "git push" etc. (before project_scan) ──
