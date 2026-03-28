@@ -1302,3 +1302,83 @@ def list_volatile_memories(
     # Sort by volatility descending
     volatile.sort(key=lambda x: x["volatility"], reverse=True)
     return volatile[:limit]
+
+
+# ========================================================================
+# Variance Tracker — opinion/belief drift over time
+# ========================================================================
+
+
+@router.get("/api/variance/topics")
+def variance_topics(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    min_entries: int = Query(default=3),
+):
+    """List discovered topics with per-topic variance metrics."""
+    engine = _get_engine(request, thread_id)
+    try:
+        from personal_agent.variance_tracker import VarianceTracker
+        tracker = VarianceTracker(db_path=engine.memory.db_path)
+        topics = tracker.get_all_topics_summary(min_entries=min_entries)
+        snapshot = tracker.get_global_snapshot()
+        return {"topics": topics, "snapshot": snapshot}
+    except Exception as e:
+        logger.warning(f"[VARIANCE] topics error: {e}")
+        return {"topics": [], "snapshot": None, "error": str(e)}
+
+
+@router.get("/api/variance/topic/{topic_id}")
+def variance_topic_detail(
+    topic_id: int,
+    request: Request,
+    thread_id: str = Query(default="default"),
+):
+    """Detailed per-topic variance data with per-entry drift series."""
+    engine = _get_engine(request, thread_id)
+    try:
+        from personal_agent.variance_tracker import VarianceTracker
+        tracker = VarianceTracker(db_path=engine.memory.db_path)
+        detail = tracker.get_topic_detail(topic_id)
+        if not detail:
+            raise HTTPException(status_code=404, detail=f"Topic {topic_id} not found")
+        return detail
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"[VARIANCE] topic detail error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/variance/analyze")
+def variance_analyze(
+    request: Request,
+    thread_id: str = Query(default="default"),
+):
+    """Trigger on-demand variance analysis."""
+    engine = _get_engine(request, thread_id)
+    try:
+        from personal_agent.variance_tracker import VarianceTracker
+        tracker = VarianceTracker(db_path=engine.memory.db_path)
+        result = tracker.run_analysis(force=True)
+        return result
+    except Exception as e:
+        logger.warning(f"[VARIANCE] analyze error: {e}")
+        return {"error": str(e)}
+
+
+@router.get("/api/variance/snapshots")
+def variance_snapshots(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    limit: int = Query(default=20),
+):
+    """Historical variance snapshots for trending."""
+    engine = _get_engine(request, thread_id)
+    try:
+        from personal_agent.variance_tracker import VarianceTracker
+        tracker = VarianceTracker(db_path=engine.memory.db_path)
+        return tracker.get_snapshots(limit=limit)
+    except Exception as e:
+        logger.warning(f"[VARIANCE] snapshots error: {e}")
+        return []

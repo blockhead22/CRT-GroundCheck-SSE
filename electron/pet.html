@@ -220,31 +220,33 @@
   .chat-input::placeholder { color: rgba(128,176,160,0.4); }
   .chat-input:focus { border-color: rgba(128,176,160,0.6); box-shadow: 0 0 8px rgba(128,176,160,0.2); }
 
-  /* ── Phone prop ── */
+  /* ── Phone prop — hangs from hands ── */
   .phone {
     position: absolute;
-    bottom: 16px; left: 50%;
-    transform: translateX(-50%) translateY(8px) scale(0);
-    width: 10px; height: 16px;
+    top: 38px;  /* level with the bottom of the arms */
+    left: 50%;
+    transform: translateX(-50%) translateY(6px) scale(0);
+    width: 12px; height: 18px;
     opacity: 0;
     transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
     pointer-events: none;
-    z-index: 5;
+    z-index: 15;
   }
   .phone.out {
     transform: translateX(-50%) translateY(0) scale(1);
     opacity: 1;
   }
-  .phone svg { width: 100%; height: 100%; }
+  .phone svg { width: 100%; height: 100%; filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4)); }
 
   /* ── Sitting pose ── */
   .pet.sitting .leg-l, .pet.sitting .leg-r {
     animation: none !important;
   }
-  .pet.sitting .arm-l { animation: phoneArmL 0.3s ease-in-out infinite !important; transform-origin: 10px 36px !important; }
-  .pet.sitting .arm-r { animation: phoneArmR 0.3s ease-in-out infinite !important; transform-origin: 44px 36px !important; }
-  @keyframes phoneArmL { 0%,100%{transform:rotate(14deg)} 50%{transform:rotate(17deg)} }
-  @keyframes phoneArmR { 0%,100%{transform:rotate(-17deg)} 50%{transform:rotate(-14deg)} }
+  /* Arms angle inward to hold the phone — pivot from shoulders */
+  .pet.sitting .arm-l { animation: phoneArmL 0.4s ease-in-out infinite !important; transform-origin: 10px 35px !important; }
+  .pet.sitting .arm-r { animation: phoneArmR 0.4s ease-in-out infinite !important; transform-origin: 44px 35px !important; }
+  @keyframes phoneArmL { 0%,100%{transform:rotate(22deg)} 50%{transform:rotate(25deg)} }
+  @keyframes phoneArmR { 0%,100%{transform:rotate(-25deg)} 50%{transform:rotate(-22deg)} }
 
   /* ── Look-around ── */
   .pet.looking .pet-inner { animation: lookBob 2s ease-in-out; }
@@ -289,17 +291,27 @@
       <input class="chat-input" id="chatInput" placeholder="say something..." autocomplete="off" />
     </div>
 
-    <!-- Phone prop -->
+    <!-- Phone prop — held between hands -->
     <div class="phone" id="phone">
-      <svg viewBox="0 0 10 16" fill="none">
-        <rect x="0" y="0" width="10" height="16" rx="1.8" fill="#8E8E93"/>
-        <rect x="0.5" y="0.5" width="9" height="15" rx="1.5" fill="#3A3A3C"/>
-        <rect x="1" y="1.5" width="8" height="12" rx="0.8" fill="#2C2C2E"/>
-        <rect x="1" y="1.5" width="8" height="12" rx="0.8" fill="#80B0A0" opacity="0.1"/>
-        <rect x="2" y="3" width="5" height="1.2" rx="0.6" fill="#80B0A0" opacity="0.3"/>
-        <rect x="2" y="5" width="6" height="1.2" rx="0.6" fill="#60D0B0" opacity="0.25"/>
-        <rect x="2" y="7" width="4" height="1.2" rx="0.6" fill="#80B0A0" opacity="0.3"/>
-        <rect x="3" y="14" width="4" height="0.5" rx="0.25" fill="#636366" opacity="0.4"/>
+      <svg viewBox="0 0 12 18" fill="none">
+        <!-- Body -->
+        <rect x="0" y="0" width="12" height="18" rx="2" fill="#8E8E93"/>
+        <rect x="0.5" y="0.5" width="11" height="17" rx="1.8" fill="#3A3A3C"/>
+        <!-- Screen -->
+        <rect x="1" y="2" width="10" height="13.5" rx="1" fill="#2C2C2E"/>
+        <!-- Screen glow -->
+        <rect x="1" y="2" width="10" height="13.5" rx="1" fill="#80B0A0" opacity="0.12">
+          <animate attributeName="opacity" values="0.08;0.15;0.08" dur="3s" repeatCount="indefinite"/>
+        </rect>
+        <!-- Chat bubbles -->
+        <rect x="2" y="3.5" width="5" height="1.5" rx="0.75" fill="#80B0A0" opacity="0.35"/>
+        <rect x="2" y="5.8" width="7" height="1.5" rx="0.75" fill="#80B0A0" opacity="0.25"/>
+        <rect x="4" y="8.1" width="6.5" height="1.5" rx="0.75" fill="#60D0B0" opacity="0.3"/>
+        <rect x="5" y="10.4" width="5.5" height="1.5" rx="0.75" fill="#60D0B0" opacity="0.25"/>
+        <!-- Notch -->
+        <rect x="3.5" y="0.7" width="5" height="0.8" rx="0.4" fill="#2C2C2E"/>
+        <!-- Home bar -->
+        <rect x="3.5" y="16.2" width="5" height="0.6" rx="0.3" fill="#636366" opacity="0.3"/>
       </svg>
     </div>
 
@@ -379,8 +391,12 @@
       mouth.setAttribute('y', '25.5');
       mouth.setAttribute('height', '2');
     } else if (currentMood === 'sleepy') {
-      eyeL.setAttribute('height', '1.5'); eyeR.setAttribute('height', '1.5');
-      eyeL.setAttribute('y', '20.5'); eyeR.setAttribute('y', '20.5');
+      // Half-closed when drowsy, fully closed when asleep
+      const h = behaviorState === 'asleep' ? '0.8' : '1.5';
+      const y = behaviorState === 'asleep' ? '21' : '20.5';
+      eyeL.setAttribute('height', h); eyeR.setAttribute('height', h);
+      eyeL.setAttribute('y', y); eyeR.setAttribute('y', y);
+      eyeL.setAttribute('rx', '0.5'); eyeR.setAttribute('rx', '0.5');
     } else if (currentMood === 'lonely') {
       mouth.setAttribute('y', '27');
       mouth.setAttribute('width', '6');
@@ -389,6 +405,7 @@
       mouth.setAttribute('rx', '0.6'); mouth.setAttribute('y', '26');
       eyeL.setAttribute('height', '4'); eyeR.setAttribute('height', '4');
       eyeL.setAttribute('y', '19'); eyeR.setAttribute('y', '19');
+      eyeL.setAttribute('rx', '1'); eyeR.setAttribute('rx', '1');
     }
   }
 
@@ -471,6 +488,7 @@
       pet.classList.remove('walking');
       pet.classList.add('sleepy');
       document.querySelectorAll('.zzz').forEach(z => z.classList.add('active'));
+      updateMood(); // close eyes fully
     } else if (idleSec > 60 && behaviorState !== 'sleepy' && behaviorState !== 'asleep') {
       endPauseAction();
       behaviorState = 'sleepy';

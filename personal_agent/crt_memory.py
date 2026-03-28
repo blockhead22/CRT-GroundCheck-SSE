@@ -468,10 +468,41 @@ class CRTMemorySystem:
                 is_belief INTEGER NOT NULL,
                 memory_ids_json TEXT,
                 trust_avg REAL,
-                source TEXT
+                source TEXT,
+                query_embedding BLOB,
+                response_embedding BLOB,
+                topic_id INTEGER
             )
         """)
-        
+
+        # Opinion/belief variance tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS opinion_topics (
+                topic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                label TEXT,
+                centroid_embedding BLOB NOT NULL,
+                entry_count INTEGER DEFAULT 0,
+                first_seen REAL NOT NULL,
+                last_seen REAL NOT NULL,
+                last_analyzed REAL,
+                metrics_json TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS variance_snapshots (
+                snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp REAL NOT NULL,
+                num_topics INTEGER,
+                avg_drift REAL,
+                avg_belief_stability REAL,
+                avg_speech_entropy REAL,
+                global_flip_rate REAL,
+                details_json TEXT
+            )
+        """)
+        # Note: belief_speech indexes are created in _migrate_schema() to handle
+        # existing DBs where topic_id column doesn't exist yet.
+
         # Reasoning traces - full thinking content for lazy loading
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS reasoning_traces (
@@ -729,6 +760,50 @@ class CRTMemorySystem:
             cursor.execute("ALTER TABLE memories ADD COLUMN memory_type TEXT DEFAULT 'observation'")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_belnap_state ON memories(belnap_state)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type)")
+
+        # --- belief_speech table migrations ---
+        cursor.execute("PRAGMA table_info(belief_speech)")
+        bs_columns = [row[1] for row in cursor.fetchall()]
+
+        if "query_embedding" not in bs_columns:
+            logger.info(f"[MIGRATION] Adding query_embedding to belief_speech in {self.db_path}")
+            cursor.execute("ALTER TABLE belief_speech ADD COLUMN query_embedding BLOB")
+
+        if "response_embedding" not in bs_columns:
+            logger.info(f"[MIGRATION] Adding response_embedding to belief_speech in {self.db_path}")
+            cursor.execute("ALTER TABLE belief_speech ADD COLUMN response_embedding BLOB")
+
+        if "topic_id" not in bs_columns:
+            logger.info(f"[MIGRATION] Adding topic_id to belief_speech in {self.db_path}")
+            cursor.execute("ALTER TABLE belief_speech ADD COLUMN topic_id INTEGER")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_belief_speech_topic ON belief_speech(topic_id, timestamp)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_belief_speech_timestamp ON belief_speech(timestamp DESC)")
+
+        # Create opinion_topics and variance_snapshots if missing
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS opinion_topics (
+                topic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                label TEXT,
+                centroid_embedding BLOB NOT NULL,
+                entry_count INTEGER DEFAULT 0,
+                first_seen REAL NOT NULL,
+                last_seen REAL NOT NULL,
+                last_analyzed REAL,
+                metrics_json TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS variance_snapshots (
+                snapshot_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp REAL NOT NULL,
+                num_topics INTEGER,
+                avg_drift REAL,
+                avg_belief_stability REAL,
+                avg_speech_entropy REAL,
+                global_flip_rate REAL,
+                details_json TEXT
+            )
+        """)
 
         conn.commit()
         conn.close()
@@ -2567,47 +2642,51 @@ class CRTMemorySystem:
         query: str,
         response: str,
         memory_ids: List[str],
-        avg_trust: float
-    ):
-        """
-        Record response as belief (high trust).
-        
-        Only responses passing reconstruction gates become beliefs.
-        """
+        avg_trust: float,
+        query_embedding: Optional[bytes] = None,
+        response_embedding: Optional[bytes] = None,
+    ) -> int:
+        """Record response as belief (high trust). Returns entry_id."""
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            INSERT INTO belief_speech 
-            (timestamp, query, response, is_belief, memory_ids_json, trust_avg, source)
-            VALUES (?, ?, ?, 1, ?, ?, 'belief')
-        """, (time.time(), query, response, json.dumps(memory_ids), avg_trust))
-        
+            INSERT INTO belief_speech
+            (timestamp, query, response, is_belief, memory_ids_json, trust_avg, source,
+             query_embedding, response_embedding)
+            VALUES (?, ?, ?, 1, ?, ?, 'belief', ?, ?)
+        """, (time.time(), query, response, json.dumps(memory_ids), avg_trust,
+              query_embedding, response_embedding))
+
+        entry_id = cursor.lastrowid
         conn.commit()
         conn.close()
+        return entry_id
     
     def record_speech(
         self,
         query: str,
         response: str,
-        source: str = "fallback"
-    ):
-        """
-        Record response as speech (low trust fallback).
-        
-        Speech can be shown to user but doesn't update beliefs.
-        """
+        source: str = "fallback",
+        query_embedding: Optional[bytes] = None,
+        response_embedding: Optional[bytes] = None,
+    ) -> int:
+        """Record response as speech (low trust fallback). Returns entry_id."""
         conn = self._get_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("""
-            INSERT INTO belief_speech 
-            (timestamp, query, response, is_belief, memory_ids_json, trust_avg, source)
-            VALUES (?, ?, ?, 0, NULL, NULL, ?)
-        """, (time.time(), query, response, source))
-        
+            INSERT INTO belief_speech
+            (timestamp, query, response, is_belief, memory_ids_json, trust_avg, source,
+             query_embedding, response_embedding)
+            VALUES (?, ?, ?, 0, NULL, NULL, ?, ?, ?)
+        """, (time.time(), query, response, source,
+              query_embedding, response_embedding))
+
+        entry_id = cursor.lastrowid
         conn.commit()
         conn.close()
+        return entry_id
     
     # ========================================================================
     # Reasoning Trace Storage (Lazy Loading)

@@ -609,7 +609,7 @@ export function Composer(props: {
             className="w-full resize-none bg-transparent px-5 pb-3 pt-4 text-[15px] leading-relaxed text-white/90 placeholder:text-white/20 focus:outline-none disabled:opacity-50"
             style={{ scrollbarWidth: 'none' }}
             autoComplete="off"
-            spellCheck="false"
+            spellCheck="true"
           />
 
           {/* Bottom bar with attach + hint + buttons */}

@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "aether": {
+      "command": "D:/AI_round2/.venv/Scripts/python.exe",
+      "args": ["-m", "personal_agent.aether_mcp_server"],
+      "cwd": "D:/AI_round2"
+    }
+  }
+}

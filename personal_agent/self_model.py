@@ -411,6 +411,78 @@ class SelfModel:
             logger.debug("[SELF_MODEL] get_top_facts failed: %s", exc)
             return []
 
+    def read_all_active_entries(self) -> List[Dict[str, Any]]:
+        """Return all active self-model entries with full metadata for auditing."""
+        mem_db = self._find_memory_db()
+        if mem_db is None:
+            return []
+        try:
+            conn = _get_db_connection(str(mem_db))
+            rows = conn.execute(
+                """SELECT memory_id, text, trust, vector_json, timestamp
+                   FROM memories
+                   WHERE kind = 'self_model'
+                     AND (deprecated IS NULL OR deprecated = 0)
+                   ORDER BY trust DESC""",
+            ).fetchall()
+            conn.close()
+            results = []
+            for r in rows:
+                text = r["text"]
+                slot = None
+                for s in SELF_MODEL_SLOTS:
+                    if text.startswith(f"[self_model:{s}]"):
+                        slot = s
+                        break
+                results.append({
+                    "memory_id": r["memory_id"],
+                    "text": text,
+                    "trust": r["trust"],
+                    "vector_json": r["vector_json"],
+                    "timestamp": r["timestamp"],
+                    "slot": slot,
+                })
+            return results
+        except Exception as exc:
+            logger.debug("[SELF_MODEL] read_all_active_entries failed: %s", exc)
+            return []
+
+    def deprecate_entry(self, memory_id: str, reason: str) -> bool:
+        """Deprecate a specific self-model entry by memory_id."""
+        mem_db = self._find_memory_db()
+        if mem_db is None:
+            return False
+        try:
+            conn = _get_db_connection(str(mem_db))
+            conn.execute(
+                "UPDATE memories SET deprecated=1, deprecation_reason=? WHERE memory_id=?",
+                (reason, memory_id),
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as exc:
+            logger.warning("[SELF_MODEL] deprecate_entry failed: %s", exc)
+            return False
+
+    def update_entry_trust(self, memory_id: str, new_trust: float) -> bool:
+        """Update trust for a specific self-model entry."""
+        mem_db = self._find_memory_db()
+        if mem_db is None:
+            return False
+        try:
+            conn = _get_db_connection(str(mem_db))
+            conn.execute(
+                "UPDATE memories SET trust=? WHERE memory_id=?",
+                (new_trust, memory_id),
+            )
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as exc:
+            logger.warning("[SELF_MODEL] update_entry_trust failed: %s", exc)
+            return False
+
 
 # ---------------------------------------------------------------------------
 # Module-level singleton

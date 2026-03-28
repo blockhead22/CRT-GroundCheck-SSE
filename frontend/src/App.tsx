@@ -913,6 +913,8 @@ export default function App() {
                   generation_source: (metadata?.generation_source as string) || null,
                   escalation: (metadata as any)?.escalation ?? null,
                   cloud_governance_used: (metadata as any)?.cloud_governance_used ?? false,
+                  tools_executed: (metadata as any)?.tools_executed ?? null,
+                  agent_loop: (metadata as any)?.agent_loop ?? false,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

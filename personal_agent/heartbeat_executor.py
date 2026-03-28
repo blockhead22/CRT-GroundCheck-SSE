@@ -1417,6 +1417,22 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Self-reflection skipped: {e}")
 
+        # --- 8b. Self-model audit (validate entries against evidence) ---
+        try:
+            from personal_agent.self_model_audit import run_self_model_audit
+            _audit_result = run_self_model_audit(thread_id)
+            if _audit_result and not _audit_result.get("skipped"):
+                _actions_count = _audit_result.get("warned", 0) + _audit_result.get("demoted", 0) + _audit_result.get("deprecated", 0)
+                if _actions_count > 0:
+                    actions_taken.append({
+                        "action": "self_model_audit",
+                        "detail": f"Audit: {_audit_result['supported']} supported, {_audit_result['warned']} warned, {_audit_result['demoted']} demoted, {_audit_result['deprecated']} deprecated",
+                        **{k: v for k, v in _audit_result.items() if k != "skipped"},
+                    })
+                    logger.info(f"[HEARTBEAT] Self-model audit: {_audit_result}")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Self-model audit skipped: {e}")
+
         # --- 9. Intent router self-improvement (review corrections) ---
         try:
             from personal_agent.task_agent import _get_semantic_router
@@ -1515,6 +1531,22 @@ Reason carefully. If unsure, reply with action=none.
                         logger.debug(f"[HEARTBEAT] Contradiction notification failed: {_ce}")
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Learning digest skipped: {e}")
+
+        # --- 12. Opinion/belief variance analysis (6-hour cooldown) ---
+        try:
+            _mem_db_path_var = self._resolve_memory_db_path(thread_id)
+            if _mem_db_path_var and Path(_mem_db_path_var).exists():
+                from personal_agent.variance_tracker import VarianceTracker
+                _vtracker = VarianceTracker(db_path=str(_mem_db_path_var))
+                _vresult = _vtracker.run_analysis(force=False)
+                if _vresult.get("topics_updated", 0) > 0:
+                    actions_taken.append({
+                        "action": "variance_analysis",
+                        "detail": f"Analyzed {_vresult['topics_updated']} topics, {_vresult.get('num_topics', 0)} total",
+                    })
+                    logger.info(f"[HEARTBEAT] Variance analysis: {_vresult['topics_updated']} topics updated")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Variance analysis skipped: {e}")
 
         elapsed = _time.time() - start
         summary = "; ".join(a["detail"] for a in actions_taken) if actions_taken else "Heartbeat OK, no actions needed"

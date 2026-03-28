@@ -189,19 +189,39 @@ export function ChatThreadView(props: {
     createdAt: number
   } | null>(null)
 
-  // Scroll to bottom in history mode when new content arrives
+  // Track whether user is near the bottom of the scroll container
+  const userNearBottom = useRef(true)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      userNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 150
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Scroll to bottom in history mode when new content arrives (only if user is near bottom)
+  // Always snap to bottom when a new message is added (user just sent something)
+  const prevMsgCount = useRef(props.thread.messages.length)
   useEffect(() => {
     if (theaterMode) return
     const el = scrollRef.current
     if (!el) return
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
-    // Always scroll on new messages; only smooth-scroll during streaming if near bottom
-    if (props.thread.messages.length > 0) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-    } else if (atBottom) {
+    const msgCountChanged = props.thread.messages.length !== prevMsgCount.current
+    prevMsgCount.current = props.thread.messages.length
+    // If new message added, always scroll. Otherwise only if near bottom.
+    if (msgCountChanged || userNearBottom.current) {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
     }
-  }, [props.thread.messages.length, props.streamingResponse, props.isThinking, theaterMode])
+  }, [
+    props.thread.messages.length,
+    props.streamingResponse,
+    props.isThinking,
+    props.streamStatusLog?.length,
+    theaterMode,
+  ])
 
   // Stay in history mode by default — user can switch to theater manually
 
@@ -479,6 +499,11 @@ export function ChatThreadView(props: {
                       )}
                       {lastAssistant.crt.response_type && lastAssistant.crt.response_type !== 'speech' && (
                         <span className="text-[10px] font-mono uppercase tracking-wide" style={{ color: 'var(--text-faint)' }}>{lastAssistant.crt.response_type}</span>
+                      )}
+                      {lastAssistant.crt.agent_loop && (
+                        lastAssistant.crt.tools_executed
+                          ? <span className="rounded-full px-2 py-0.5 text-[10px] font-mono" style={{ background: 'rgba(106,191,123,0.15)', color: '#6abf7b' }}>tool-backed</span>
+                          : <span className="rounded-full px-2 py-0.5 text-[10px] font-mono" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}>narrated</span>
                       )}
                     </div>
                   )}

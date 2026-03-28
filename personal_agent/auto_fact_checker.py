@@ -308,7 +308,7 @@ def _run_verification(
         })
 
     # Collect contradictions — apply CRT second-pass filter
-    for contra in (report.contradictions or []):
+    for contra in (report.contradicted_claims or []):
         claim_text = contra.get("claim", "") if isinstance(contra, dict) else str(contra)
         slot = contra.get("slot", "") if isinstance(contra, dict) else ""
 

@@ -5931,7 +5931,8 @@ class CRTEnhancedRAG:
             )
 
         candidate_vector = encode_vector(candidate_output)
-        
+        query_vector_for_bs = encode_vector(user_query)
+
         # 3. Check reconstruction gates
         # For conversational AI, intent alignment = reasoning confidence
         # (Did we confidently answer the question?)
@@ -6327,19 +6328,25 @@ class CRTEnhancedRAG:
                 if mem.source == MemorySource.USER:
                     self.memory.evolve_trust_for_alignment(mem, candidate_vector)
         
-        # 7. Record belief or speech
+        # 7. Record belief or speech (with embeddings for variance tracking)
+        _q_emb = query_vector_for_bs.astype(np.float32).tobytes() if query_vector_for_bs is not None else None
+        _r_emb = candidate_vector.astype(np.float32).tobytes() if candidate_vector is not None else None
         if response_type == "belief":
             self.memory.record_belief(
                 query=user_query,
                 response=final_answer,
                 memory_ids=[mem.memory_id for mem, _ in retrieved],
-                avg_trust=np.mean([mem.trust for mem, _ in retrieved])
+                avg_trust=np.mean([mem.trust for mem, _ in retrieved]),
+                query_embedding=_q_emb,
+                response_embedding=_r_emb,
             )
         else:
             self.memory.record_speech(
                 query=user_query,
                 response=final_answer,
-                source="fallback_gates_failed"
+                source="fallback_gates_failed",
+                query_embedding=_q_emb,
+                response_embedding=_r_emb,
             )
         
         # 8. Return comprehensive result
@@ -8141,7 +8148,16 @@ class CRTEnhancedRAG:
             thread_id=thread_id,
         )
 
-        self.memory.record_speech(query, _answer, "no_memory")
+        try:
+            _fb_q_emb = encode_vector(query).astype(np.float32).tobytes()
+            _fb_r_emb = encode_vector(_answer).astype(np.float32).tobytes() if _answer else None
+        except Exception:
+            _fb_q_emb = _fb_r_emb = None
+        self.memory.record_speech(
+            query, _answer, "no_memory",
+            query_embedding=_fb_q_emb,
+            response_embedding=_fb_r_emb,
+        )
 
         return {
             'answer': _answer,
@@ -8149,7 +8165,7 @@ class CRTEnhancedRAG:
             'mode': 'quick',
             'confidence': 0.5 if _has_valid_answer else 0.3,
             'response_type': 'speech',
-            'gates_passed': _has_valid_answer,  # Pass gate if local model generated a real answer
+            'gates_passed': _has_valid_answer,
             'gate_reason': 'no_memories_local_generation' if _has_valid_answer else 'No memories available',
             'contradiction_detected': False,
             'retrieved_memories': []

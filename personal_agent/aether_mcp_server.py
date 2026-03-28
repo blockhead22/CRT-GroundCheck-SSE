@@ -265,6 +265,45 @@ def aether_volatile(limit: int = 10) -> str:
     return _fmt(data)
 
 
+@mcp.tool()
+def aether_opinion_variance(topic_query: str = "", min_entries: int = 3) -> str:
+    """Show how Aether's responses on the same topic drift over time.
+
+    Returns per-topic variance metrics: response drift, belief flip rate,
+    opinion convergence, and belief stability. Use this to understand how
+    consistent Aether's beliefs and opinions are.
+
+    Args:
+        topic_query: Optional filter — show topics matching this text.
+        min_entries: Minimum entries for a topic to be shown (default 3).
+    """
+    data = _get("/api/variance/topics", {"min_entries": min_entries})
+    if isinstance(data, dict) and "error" in data:
+        return _fmt(data)
+    topics = data.get("topics", [])
+    if topic_query:
+        topics = [t for t in topics if topic_query.lower() in (t.get("label") or "").lower()]
+    if not topics:
+        return "No topics with enough entries found. Keep chatting and run /api/variance/analyze to cluster."
+    lines = [f"{len(topics)} topic(s):\n"]
+    for t in topics:
+        m = t.get("metrics") or {}
+        lines.append(
+            f"  [{t.get('topic_id')}] \"{t.get('label', '?')}\" "
+            f"({t.get('entry_count', 0)} entries)\n"
+            f"    drift={m.get('mean_drift', '?'):.3f}  "
+            f"flip_rate={m.get('belief_flip_rate', '?'):.2f}  "
+            f"stability={m.get('belief_stability', '?'):.2f}  "
+            f"convergence={m.get('convergence_direction', '?')}"
+        )
+    snapshot = data.get("snapshot")
+    if snapshot:
+        lines.append(f"\nGlobal: {snapshot.get('num_topics', 0)} topics, "
+                      f"avg_drift={snapshot.get('avg_drift', 0):.3f}, "
+                      f"avg_stability={snapshot.get('avg_belief_stability', 0):.2f}")
+    return "\n".join(lines)
+
+
 # ===========================================================================
 # Tier 3: Write
 # ===========================================================================

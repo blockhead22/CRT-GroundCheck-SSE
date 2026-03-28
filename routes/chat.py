@@ -827,6 +827,21 @@ _CAPABILITY_REROUTE_PATTERNS = [
         "desktop_action",
         lambda msg: {"task_description": msg},
     ),
+    # Debugging / inspection / auditing queries that should enter agent loop
+    (
+        _re_mod.compile(
+            r"\b(?:check|inspect|debug|audit|verify|test|examine|look at|review)"
+            r"\s+(?:your\s+|the\s+|my\s+)?"
+            r"(?:self[- ]?model|auditor|memory|memories|contradiction|ledger|trust|"
+            r"governance|pipeline|heartbeat|belief|system|logs?|config|status|state)\b"
+            r"|(?:what(?:'s| is| has)?\s+(?:changed|different|new|updated|broken|wrong))"
+            r"|(?:run\s+(?:the\s+)?(?:audit|check|test|diagnostic))"
+            r"|(?:show\s+(?:me\s+)?(?:the\s+)?(?:audit|self[- ]?model|contradiction|trust)\s+(?:results?|data|log|state))",
+            _re_mod.IGNORECASE,
+        ),
+        "system_info",
+        {},
+    ),
 ]
 
 
@@ -1447,6 +1462,11 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         "You are Aether, a personal AI assistant built by Nick Block, deployed using Claude as your language model.",
         "You run on CRT (Contradiction-aware Reconciliation and Trust).",
         "When speaking to users, respond as Aether — this is your deployment identity. You may acknowledge using Claude as your underlying model if directly asked, but your name is Aether and you should speak as Aether in first person. Do not lead with 'I'm Claude' or meta-analyze the deployment.",
+        "",
+        "CRITICAL EPISTEMIC RULE:",
+        "- NEVER say 'I ran', 'I checked', 'I verified', 'I audited', 'I tested', or 'I executed' unless you actually invoked a tool and received results in this conversation turn.",
+        "- If you did not execute a tool, say 'Based on what I know' or 'From my memory' instead of claiming procedural execution.",
+        "- Narrating a process you did not perform is a fabrication. The governance layer will flag it.",
         "",
         "Your core design principles:",
         "- You preserve contradictions instead of silently resolving them",
@@ -3831,6 +3851,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _critic_msg_clean in _GREETING_WORDS
         or (len(_critic_msg_lower) < 20 and any(_critic_msg_lower.startswith(g) for g in _GREETING_WORDS))
     )
+    # Also skip critic for opinion/conversational questions (no facts to verify against)
+    _OPINION_SIGNALS = (
+        "what do you think", "do you think", "what's your", "whats your",
+        "how do you feel", "what worries", "what scares", "scariest",
+        "what matters", "what's important", "your opinion", "your take",
+        "do you believe", "would you say", "where do you see",
+        "what excites", "what concerns", "how would you",
+    )
+    if any(sig in _critic_msg_lower for sig in _OPINION_SIGNALS):
+        _skip_critic_greeting = True
+        logger.debug("[CRT-CRITIC] Skipping contradiction gate for opinion question: %s", effective_message[:60])
     critic_meta = None
     if _skip_critic_greeting:
         logger.debug("[CRT-CRITIC] Skipping contradiction gate for greeting: %s", effective_message[:60])
@@ -5397,26 +5428,38 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception:
                         pass
 
-                    # Build an augmented query from recent context + correction
-                    _aug_parts = []
-                    for _cm in _corr_context_msgs[-4:]:
-                        if _cm.get("role") == "assistant":
-                            _aug_parts.append(str(_cm.get("content", ""))[:200])
-                    _aug_parts.append(_corr_query)
-                    _aug_query = " ".join(_aug_parts)[-500:]
-
                     _safe_print(f"[CORRECTION] Search query: {_corr_query[:80]}")
-                    _safe_print(f"[CORRECTION] Augmented query length: {len(_aug_query)}")
 
                     # --- Search for matching memories ---
+                    # Use the direct correction subject (not augmented with conversation)
+                    # to avoid polluting the search with unrelated context.
+                    # Do TWO searches: one for the stripped query, one for the raw message.
                     _corr_results = _corr_mem.retrieve_memories(
-                        _aug_query,
+                        _corr_query,
                         k=10,
                         min_trust=0.05,
                         exclude_deprecated=True,
-                        kinds={"user_fact", "preference"},
+                        kinds={"user_fact", "preference", "observation"},
                         user_id=uid,
                     )
+                    # Second search with raw message for broader matching
+                    try:
+                        _corr_results_raw = _corr_mem.retrieve_memories(
+                            _corr_raw,
+                            k=10,
+                            min_trust=0.05,
+                            exclude_deprecated=True,
+                            kinds={"user_fact", "preference", "observation"},
+                            user_id=uid,
+                        )
+                        # Merge, dedup by memory_id
+                        _seen_ids = {getattr(m, 'memory_id', None) for m, _ in _corr_results}
+                        for m, s in _corr_results_raw:
+                            if getattr(m, 'memory_id', None) not in _seen_ids:
+                                _corr_results.append((m, s))
+                                _seen_ids.add(getattr(m, 'memory_id', None))
+                    except Exception:
+                        pass
 
                     # Filter to reasonably relevant matches (similarity > 0.3)
                     _corr_candidates = [
@@ -5685,9 +5728,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                     # Agent loop completed — emit done
                     logger.info("[SSE_DEBUG] Emitting final done, al_answer_len=%d, preview=%.200s", len(_al_answer), _al_answer[:200])
+                    _tools_executed = len(_al_steps) > 0
                     _done_meta_al = {
                         "tool_calls": _al_steps,
                         "agent_loop": True,
+                        "tools_executed": _tools_executed,
                         "response_type": "task",
                         "gates_passed": True,
                     }
