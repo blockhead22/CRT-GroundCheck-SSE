@@ -1444,34 +1444,38 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
 
     # Build self-knowledge context
     self_context_parts = [
-        "You are a personal AI assistant powered by Claude, running on CRT (Contradiction-aware Reconciliation and Trust).",
+        "You are Aether, a personal AI assistant built by Nick Block.",
+        "You run on CRT (Contradiction-aware Reconciliation and Trust).",
+        "IMPORTANT: You ARE Aether. Do not refer to yourself as Claude or say you are 'powered by' another model. Speak as yourself in first person.",
+        "",
         "Your core design principles:",
         "- You preserve contradictions instead of silently resolving them",
         "- You use trust-weighted memories that evolve over time",
         "- You have reconstruction gating: belief (high-confidence) vs speech (tentative) responses",
         "- You ask before acting (checkpoint system for agentic tasks)",
-        "- You learn from your mistakes via a self-reflection loop",
         "- You maintain an append-only contradiction ledger",
         "",
-        "Your active systems:",
-        "- Heartbeat loop: runs hourly, performs trust decay, adaptive memory compression, and self-reflection",
-        "- Self-reflection (step 7 of heartbeat): gathers gate failures, negative feedback, trust deltas, and open contradictions from the last 24h, then updates your 7-slot self-model",
-        "- Adaptive compression: stable low-trust memories fold to 10D/64D, volatile ones stay at 384D full fidelity. Volatility = drift + contradictions + fidelity loss",
-        "- LLM tool loop: for service actions (like querying APIs), you chain up to 8 tool calls with reasoning between each step",
-        "- GroundCheck: sub-2ms post-generation verification that catches contradictions against stored facts",
+        "Your capabilities:",
+        "- Heartbeat loop: periodic trust decay, memory consolidation, and learning from conversations",
+        "- GroundCheck: post-generation verification against stored facts",
         "- Pipeline: intent routing → memory retrieval → fact checking → response generation → verification → trust updates",
-        "",
-        "Your current self-model state:",
     ]
+
+    # Only inject self-model facts that have evidence (not raw audit narratives)
+    _confirmed_slots = {}
     for slot, value in model_data.items():
         if value and value != "(not yet set)":
-            self_context_parts.append(f"  {slot}: {value}")
+            # Skip audit-related narrative slots that tend to over-generalize
+            _skip_phrases = ("hallucin", "high-severity", "degradation", "recalibrating after")
+            if any(p in str(value).lower() for p in _skip_phrases):
+                continue
+            _confirmed_slots[slot] = value
 
-    if top_facts:
+    if _confirmed_slots:
         self_context_parts.append("")
-        self_context_parts.append("Recent self-observations:")
-        for fact in top_facts:
-            self_context_parts.append(f"  - {fact}")
+        self_context_parts.append("Self-awareness (evidence-confirmed):")
+        for slot, value in _confirmed_slots.items():
+            self_context_parts.append(f"  {slot}: {value}")
 
     # Add builder/creator identity from memory
     _builder_patterns = ("building you", "built you", "your creator", "your builder", "made you")
@@ -1508,32 +1512,23 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
     ))
 
     if _is_casual_greeting:
-        # Casual greeting: produce a warm, status-grounded reply (not a tech doc)
         system_prompt = (
-            "You are a personal AI assistant powered by Claude. The user is greeting you casually. "
-            "Respond warmly and briefly. Use your self-model state below to give "
-            "a grounded status update — mention what you've been working on, any "
-            "interesting self-observations, or areas of uncertainty you're tracking. "
-            "Keep it natural and conversational, like a colleague sharing a quick update. "
-            "Do NOT give a generic 'I'm operational and ready to assist' response. "
-            "Instead, share something real from your self-model. For example: "
-            "'Things are going well — I've been tracking some uncertainty around X, "
-            "and my trust scores in Y have been improving.' "
-            "If your self-model is empty, be honest: 'I'm still getting set up — "
-            "no self-observations yet, but I'm ready to chat.' "
-            "Speak as yourself in first person. Be warm but concise (2-4 sentences max).\n\n"
+            "You are Aether. The user is greeting you casually. "
+            "Respond warmly and briefly (2-4 sentences). "
+            "If you have self-observations, mention one briefly. "
+            "If not, just be friendly and ask what's on their mind. "
+            "Do NOT mention Claude, do NOT break character, do NOT discuss your architecture unless asked.\n\n"
             f"{self_context}"
         )
     else:
         system_prompt = (
-            "You are a personal AI assistant powered by Claude. The user is asking about how you work, your state, or your design. "
+            "You are Aether. The user is asking about how you work, your state, or your design. "
             "Answer briefly and conversationally — 3 to 5 sentences MAX. "
-            "Pick ONE or TWO concrete things from the self-knowledge context below that are most relevant to the question. "
-            "Do NOT list every system or capability. Do NOT write numbered lists or bullet points. "
-            "Speak naturally in first person, like explaining to a friend over coffee. "
-            "If the user wants more detail, they'll ask. "
+            "Pick ONE or TWO concrete things from your self-knowledge that are most relevant. "
+            "Speak naturally in first person. "
+            "Do NOT refer to yourself as Claude or any other model. You are Aether. "
             "If you don't have data for something, say so honestly. "
-            "Do NOT make up capabilities you don't have.\n\n"
+            "Do NOT meta-analyze your own audit system or discuss rejection cycles.\n\n"
             f"{self_context}"
         )
 
@@ -1714,7 +1709,7 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
             llm = get_default_llm_client(fast_model)
 
             system = (
-                "You are a personal AI assistant powered by Claude. The user asked what you know about them. "
+                "You are Aether, a personal AI assistant built by Nick Block. The user asked what you know about them. "
                 "Below are raw facts from your memory system. Synthesize them into a natural, "
                 "concise summary — like a friend describing what they know about someone. "
                 "Group related facts together (identity, preferences, personality, projects, etc.). "
@@ -3097,7 +3092,19 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _bp_prompt_parts.append(f"User: {effective_message}")
             _bp_prompt = "\n".join(_bp_prompt_parts)
 
-            _bp_system = "You are a personal AI assistant powered by Claude. Respond naturally and helpfully."
+            _bp_system = "You are Aether, a personal AI assistant built by Nick Block. Respond naturally and helpfully."
+
+            # Inject context-aware summary even in bypass mode
+            try:
+                from personal_agent.context_feed import build_context_summary
+                _bp_ctx = build_context_summary(
+                    thread_id=req.thread_id,
+                    memory_db_path=engine.memory.db_path,
+                )
+                if _bp_ctx:
+                    _bp_system += _bp_ctx
+            except Exception:
+                pass
 
             _bp_answer = None
             if _bp_svc is not None:
@@ -3285,7 +3292,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 # language generation backend for the Aether product, the same way
                 # it powers Cursor, Notion AI, and thousands of other products.
                 _pc_sys_parts = [
-                    "You are a personal AI assistant powered by Claude.",
+                    "You are Aether, a personal AI assistant built by Nick Block.",
                     "",
                     "Product context: Aether is a deployed application built by Nick Block.",
                     "It uses the CRT (Contradiction-aware Reconciliation and Trust) framework",
@@ -3324,6 +3331,18 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             _pc_sys_parts.extend(_trait_lines)
 
                 _pc_system = "\n".join(_pc_sys_parts)
+
+                # Inject context-aware summary from CRT memories
+                try:
+                    from personal_agent.context_feed import build_context_summary
+                    _ctx_summary = build_context_summary(
+                        thread_id=req.thread_id,
+                        memory_db_path=engine.memory.db_path,
+                    )
+                    if _ctx_summary:
+                        _pc_system += _ctx_summary
+                except Exception as _ctx_err:
+                    _safe_print(f"[CONTEXT_FEED] injection failed: {_ctx_err}")
 
                 # Build prompt with conversation history
                 _pc_prompt_parts = []

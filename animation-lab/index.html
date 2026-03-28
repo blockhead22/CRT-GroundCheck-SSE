@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aether Animation Lab</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap');
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Space Grotesk', sans-serif;
+      background: #141210;
+      color: #F0EBE1;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .lab-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid rgba(240,235,225,0.08);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .lab-header h1 {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #D4845C;
+    }
+
+    .lab-header span {
+      font-size: 12px;
+      color: #635c50;
+    }
+
+    .lab-layout {
+      display: flex;
+      height: calc(100vh - 65px);
+    }
+
+    /* Controls sidebar */
+    .controls {
+      width: 280px;
+      border-right: 1px solid rgba(240,235,225,0.08);
+      padding: 20px;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .control-group {
+      margin-bottom: 24px;
+    }
+
+    .control-group label {
+      display: block;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #a89d8a;
+      margin-bottom: 8px;
+    }
+
+    .control-group select,
+    .control-group input[type="range"] {
+      width: 100%;
+      background: #1a1714;
+      border: 1px solid rgba(240,235,225,0.08);
+      color: #F0EBE1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .control-group select:focus {
+      border-color: #D4845C;
+    }
+
+    .control-group input[type="range"] {
+      -webkit-appearance: none;
+      height: 4px;
+      padding: 0;
+      border: none;
+      background: #28241e;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #D4845C;
+      cursor: pointer;
+    }
+
+    .range-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: #635c50;
+      margin-top: 4px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(240,235,225,0.1);
+      background: transparent;
+      color: #a89d8a;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .btn:hover { border-color: #D4845C; color: #D4845C; }
+    .btn.active { background: #D4845C22; border-color: #D4845C; color: #D4845C; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .toggle {
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: #28241e;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      border: none;
+    }
+
+    .toggle.on { background: #D4845C; }
+
+    .toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #F0EBE1;
+      transition: transform 0.2s;
+    }
+
+    .toggle.on::after { transform: translateX(16px); }
+
+    .toggle-label {
+      font-size: 12px;
+      color: #a89d8a;
+    }
+
+    /* Stage */
+    .stage-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stage {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stage-bg {
+      position: absolute;
+      inset: 0;
+      transition: background 0.5s;
+    }
+
+    .character-container {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Timeline / preview strip */
+    .preview-strip {
+      height: 120px;
+      border-top: 1px solid rgba(240,235,225,0.08);
+      padding: 12px 20px;
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+    }
+
+    .preview-card {
+      flex-shrink: 0;
+      width: 100px;
+      height: 90px;
+      border-radius: 8px;
+      border: 1px solid rgba(240,235,225,0.08);
+      background: #1a1714;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      gap: 6px;
+    }
+
+    .preview-card:hover { border-color: #D4845C44; }
+    .preview-card.active { border-color: #D4845C; background: #D4845C11; }
+
+    .preview-card span {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      color: #635c50;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Grid overlay */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.06;
+      background-image:
+        linear-gradient(rgba(240,235,225,0.3) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,235,225,0.3) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 40px;
+      height: 40px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0.15;
+    }
+
+    .crosshair::before, .crosshair::after {
+      content: '';
+      position: absolute;
+      background: #D4845C;
+    }
+
+    .crosshair::before {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+    }
+
+    .crosshair::after {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+    }
+
+    /* Export panel */
+    .export-info {
+      padding: 12px;
+      margin-top: 12px;
+      background: #1a1714;
+      border-radius: 8px;
+      border: 1px solid rgba(240,235,225,0.06);
+    }
+
+    .export-info pre {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: #635c50;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<div class="lab-header">
+  <h1>Animation Lab</h1>
+  <span>Aether Character Designer</span>
+</div>
+
+<div class="lab-layout">
+  <!-- Controls -->
+  <div class="controls">
+    <div class="control-group">
+      <label>Character</label>
+      <div class="btn-row" id="characterBtns"></div>
+    </div>
+
+    <div class="control-group">
+      <label>Mood</label>
+      <div class="btn-row" id="moodBtns"></div>
+    </div>
+
+    <div class="control-group">
+      <label>Animation</label>
+      <div class="btn-row" id="animBtns"></div>
+    </div>
+
+    <div class="control-group">
+      <label>Size</label>
+      <input type="range" id="sizeSlider" min="32" max="300" value="120">
+      <div class="range-value" id="sizeValue">120px</div>
+    </div>
+
+    <div class="control-group">
+      <label>Speed</label>
+      <input type="range" id="speedSlider" min="0.2" max="3" step="0.1" value="1">
+      <div class="range-value" id="speedValue">1.0x</div>
+    </div>
+
+    <div class="control-group">
+      <label>Options</label>
+      <div class="toggle-row">
+        <button class="toggle on" id="toggleThinking" onclick="toggleBtn(this, 'thinking')"></button>
+        <span class="toggle-label">Thinking</span>
+      </div>
+      <div class="toggle-row">
+        <button class="toggle" id="toggleGrid" onclick="toggleBtn(this, 'grid')"></button>
+        <span class="toggle-label">Grid overlay</span>
+      </div>
+      <div class="toggle-row">
+        <button class="toggle on" id="toggleGlow" onclick="toggleBtn(this, 'glow')"></button>
+        <span class="toggle-label">Glow effect</span>
+      </div>
+      <div class="toggle-row">
+        <button class="toggle" id="toggleDark" onclick="toggleBtn(this, 'darkbg')"></button>
+        <span class="toggle-label">Lighter background</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>State Info</label>
+      <div class="export-info">
+        <pre id="stateInfo">mood: calm
+thinking: true
+size: 120px
+speed: 1.0x
+character: robot</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stage -->
+  <div class="stage-area">
+    <div class="stage" id="stage">
+      <div class="stage-bg" id="stageBg"></div>
+      <div class="grid-overlay" id="gridOverlay" style="display:none"></div>
+      <div class="crosshair"></div>
+      <div class="character-container" id="characterContainer"></div>
+    </div>
+
+    <!-- Preview strip -->
+    <div class="preview-strip" id="previewStrip"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const state = {
+  character: 'robot',
+  mood: 'calm',
+  animation: 'idle',
+  size: 120,
+  speed: 1,
+  thinking: true,
+  grid: false,
+  glow: true,
+  darkbg: false,
+};
+
+// ═══════════════════════════════════════════════════════
+// MOOD COLORS
+// ═══════════════════════════════════════════════════════
+const moodColors = {
+  calm:      { body: '#D4845C', glow: '#D4845C', eye: '#F0EBE1', antenna: '#E0A080', bg: 'radial-gradient(ellipse at center, rgba(212,132,92,0.08) 0%, transparent 70%)' },
+  warm:      { body: '#E0A080', glow: '#E0A080', eye: '#FFF5E6', antenna: '#F0C090', bg: 'radial-gradient(ellipse at center, rgba(224,160,128,0.08) 0%, transparent 70%)' },
+  playful:   { body: '#D47088', glow: '#D47088', eye: '#FFE0E8', antenna: '#FF90B0', bg: 'radial-gradient(ellipse at center, rgba(212,112,136,0.08) 0%, transparent 70%)' },
+  intense:   { body: '#D47058', glow: '#D47058', eye: '#FFD0C0', antenna: '#FF8060', bg: 'radial-gradient(ellipse at center, rgba(212,112,88,0.1) 0%, transparent 70%)' },
+  curious:   { body: '#80B0A0', glow: '#80B0A0', eye: '#E0FFF0', antenna: '#60D0B0', bg: 'radial-gradient(ellipse at center, rgba(128,176,160,0.08) 0%, transparent 70%)' },
+  uncertain: { body: '#A09080', glow: '#A09080', eye: '#D0C8C0', antenna: '#B0A090', bg: 'radial-gradient(ellipse at center, rgba(160,144,128,0.08) 0%, transparent 70%)' },
+};
+
+// ═══════════════════════════════════════════════════════
+// CHARACTERS
+// ═══════════════════════════════════════════════════════
+const characters = {
+  robot: { name: 'Robot', draw: drawRobot },
+  blob: { name: 'Blob', draw: drawBlob },
+  orb: { name: 'Orb', draw: drawOrb },
+  ghost: { name: 'Ghost', draw: drawGhost },
+  cat: { name: 'Cat', draw: drawCat },
+};
+
+const animations = ['idle', 'bounce', 'wave', 'wave-L', 'wave-R', 'spin', 'pulse', 'shake', 'dance'];
+const moods = Object.keys(moodColors);
+
+// ═══════════════════════════════════════════════════════
+// ANIMATION ENGINE
+// ═══════════════════════════════════════════════════════
+let animFrame = 0;
+let lastTime = 0;
+
+function animate(time) {
+  const dt = (time - lastTime) / 1000;
+  lastTime = time;
+  animFrame++;
+
+  const container = document.getElementById('characterContainer');
+  const t = time * 0.001 * state.speed;
+
+  // Apply container-level animations
+  let tx = 0, ty = 0, rot = 0, scale = 1;
+
+  switch (state.animation) {
+    case 'idle':
+      ty = Math.sin(t * 1.5) * 6;
+      break;
+    case 'bounce':
+      ty = -Math.abs(Math.sin(t * 3)) * 30;
+      scale = 1 + Math.sin(t * 6) * 0.05;
+      break;
+    case 'wave':
+      tx = Math.sin(t * 2) * 20;
+      ty = Math.cos(t * 3) * 8;
+      rot = Math.sin(t * 2) * 5;
+      break;
+    case 'wave-L':
+    case 'wave-R':
+      ty = Math.sin(t * 1.5) * 4;
+      break;
+    case 'spin':
+      rot = (t * 90) % 360;
+      break;
+    case 'pulse':
+      scale = 1 + Math.sin(t * 3) * 0.15;
+      break;
+    case 'shake':
+      tx = Math.sin(t * 20) * 4 * Math.max(0, Math.sin(t * 2));
+      break;
+    case 'dance':
+      tx = Math.sin(t * 4) * 15;
+      ty = -Math.abs(Math.sin(t * 4)) * 20;
+      rot = Math.sin(t * 4) * 10;
+      scale = 1 + Math.sin(t * 8) * 0.05;
+      break;
+  }
+
+  container.style.transform = `translate(${tx}px, ${ty}px) rotate(${rot}deg) scale(${scale})`;
+
+  // Redraw SVG internals with time
+  const svg = container.querySelector('svg');
+  if (svg) {
+    updateCharacterAnimation(svg, t);
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function updateCharacterAnimation(svg, t) {
+  // Animate eyes (blink)
+  const eyes = svg.querySelectorAll('.eye');
+  const blinkCycle = t % 4;
+  const isBlinking = blinkCycle > 3.8;
+
+  eyes.forEach(eye => {
+    if (isBlinking) {
+      eye.setAttribute('height', String(state.size * 0.02));
+      eye.setAttribute('ry', String(state.size * 0.01));
+    } else {
+      eye.setAttribute('height', eye.dataset.h);
+      eye.setAttribute('ry', eye.dataset.ry || eye.dataset.h);
+    }
+  });
+
+  // Animate antenna ball
+  const antennaBall = svg.querySelector('.antenna-ball');
+  if (antennaBall) {
+    const pulseScale = state.thinking ? (1 + Math.sin(t * 5) * 0.3) : (1 + Math.sin(t * 2) * 0.1);
+    const r = parseFloat(antennaBall.dataset.r) * pulseScale;
+    antennaBall.setAttribute('r', String(r));
+    antennaBall.style.opacity = state.thinking ? (0.5 + Math.sin(t * 5) * 0.5) : (0.6 + Math.sin(t * 2) * 0.3);
+  }
+
+  // Animate thinking particles
+  const particles = svg.querySelectorAll('.think-particle');
+  particles.forEach((p, i) => {
+    if (state.thinking) {
+      const phase = t * 2 + i * 1.2;
+      const py = -((phase * 15) % 50) - 10;
+      const px = Math.sin(phase * 0.7 + i) * 8;
+      p.setAttribute('cy', String(state.size * 0.15 + py));
+      p.setAttribute('cx', String(parseFloat(p.dataset.cx) + px));
+      p.style.opacity = String(Math.max(0, 1 - ((phase * 15) % 50) / 50));
+    } else {
+      p.style.opacity = '0';
+    }
+  });
+
+  // Body breathing
+  const body = svg.querySelector('.char-body');
+  if (body) {
+    const breathe = Math.sin(t * 1.2) * state.size * 0.01;
+    body.setAttribute('y', String(parseFloat(body.dataset.y) + breathe));
+  }
+
+  // Arm animations
+  const armRight = svg.querySelector('.arm-right');
+  const armLeft = svg.querySelector('.arm-left');
+  if (armRight) {
+    const ox = armRight.dataset.ox;
+    const oy = armRight.dataset.oy;
+    if (state.animation === 'wave-R') {
+      const waveAngle = -60 + Math.sin(t * 6) * 30;
+      armRight.setAttribute('transform', `rotate(${waveAngle} ${ox} ${oy})`);
+    } else if (state.animation === 'wave-L') {
+      const sway = Math.sin(t * 1.5) * 3;
+      armRight.setAttribute('transform', `rotate(${sway} ${ox} ${oy})`);
+    } else if (state.animation === 'dance') {
+      const danceAngle = Math.sin(t * 4) * 25;
+      armRight.setAttribute('transform', `rotate(${danceAngle} ${ox} ${oy})`);
+    } else {
+      armRight.setAttribute('transform', `rotate(0 ${ox} ${oy})`);
+    }
+  }
+  if (armLeft) {
+    const ox = armLeft.dataset.ox;
+    const oy = armLeft.dataset.oy;
+    if (state.animation === 'wave-L') {
+      const waveAngle = 60 + Math.sin(t * 6) * -30;
+      armLeft.setAttribute('transform', `rotate(${waveAngle} ${ox} ${oy})`);
+    } else if (state.animation === 'wave-R') {
+      const sway = Math.sin(t * 1.5) * 3;
+      armLeft.setAttribute('transform', `rotate(${sway} ${ox} ${oy})`);
+    } else if (state.animation === 'dance') {
+      const danceAngle = Math.sin(t * 4 + 1.5) * 25;
+      armLeft.setAttribute('transform', `rotate(${danceAngle} ${ox} ${oy})`);
+    } else {
+      armLeft.setAttribute('transform', `rotate(0 ${ox} ${oy})`);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// CHARACTER RENDERERS
+// ═══════════════════════════════════════════════════════
+
+function drawRobot(size, colors) {
+  const s = size / 80;
+  return `
+    <svg width="${size}" height="${size * 1.15}" viewBox="0 0 ${80*s} ${92*s}" fill="none">
+      <!-- Glow -->
+      ${state.glow ? `<ellipse cx="${40*s}" cy="${85*s}" rx="${25*s}" ry="${6*s}" fill="${colors.glow}" opacity="0.15" filter="blur(${4*s}px)"/>` : ''}
+
+      <!-- Thinking particles -->
+      <circle class="think-particle" data-cx="${25*s}" cx="${25*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${40*s}" cx="${40*s}" cy="${10*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${55*s}" cx="${55*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+
+      <!-- Antenna -->
+      <line x1="${40*s}" y1="${16*s}" x2="${40*s}" y2="${6*s}" stroke="${colors.antenna}" stroke-width="${2*s}" stroke-linecap="round"/>
+      <circle class="antenna-ball" data-r="${3*s}" cx="${40*s}" cy="${4*s}" r="${3*s}" fill="${colors.antenna}"/>
+
+      <!-- Head -->
+      <rect x="${12*s}" y="${16*s}" width="${56*s}" height="${34*s}" rx="${10*s}" fill="${colors.body}"/>
+
+      <!-- Face visor -->
+      <rect x="${18*s}" y="${22*s}" width="${44*s}" height="${22*s}" rx="${6*s}" fill="#141210" opacity="0.6"/>
+
+      <!-- Eyes -->
+      <rect class="eye" data-h="${6*s}" data-ry="${1.5*s}" x="${28*s}" y="${27*s}" width="${6*s}" height="${6*s}" rx="${1.5*s}" fill="${colors.eye}"/>
+      <rect class="eye" data-h="${6*s}" data-ry="${1.5*s}" x="${46*s}" y="${27*s}" width="${6*s}" height="${6*s}" rx="${1.5*s}" fill="${colors.eye}"/>
+
+      <!-- Mouth -->
+      <rect x="${36*s}" y="${37*s}" width="${8*s}" height="${1.5*s}" rx="${0.75*s}" fill="${colors.eye}" opacity="0.6"/>
+
+      <!-- Body -->
+      <rect class="char-body" data-y="${52*s}" x="${22*s}" y="${52*s}" width="${36*s}" height="${20*s}" rx="${6*s}" fill="${colors.body}" opacity="0.85"/>
+
+      <!-- Chest screen -->
+      <rect x="${30*s}" y="${56*s}" width="${20*s}" height="${10*s}" rx="${3*s}" fill="#141210" opacity="0.4"/>
+      <circle cx="${40*s}" cy="${61*s}" r="${2*s}" fill="${colors.antenna}" opacity="0.6"/>
+
+      <!-- Arms -->
+      <rect class="arm-left" data-ox="${17*s}" data-oy="${54*s}" x="${14*s}" y="${54*s}" width="${6*s}" height="${14*s}" rx="${3*s}" fill="${colors.body}" opacity="0.7"/>
+      <rect class="arm-right" data-ox="${63*s}" data-oy="${54*s}" x="${60*s}" y="${54*s}" width="${6*s}" height="${14*s}" rx="${3*s}" fill="${colors.body}" opacity="0.7"/>
+
+      <!-- Feet -->
+      <rect x="${26*s}" y="${73*s}" width="${10*s}" height="${6*s}" rx="${3*s}" fill="${colors.body}" opacity="0.7"/>
+      <rect x="${44*s}" y="${73*s}" width="${10*s}" height="${6*s}" rx="${3*s}" fill="${colors.body}" opacity="0.7"/>
+    </svg>
+  `;
+}
+
+function drawBlob(size, colors) {
+  const s = size / 80;
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${80*s} ${80*s}" fill="none">
+      ${state.glow ? `<ellipse cx="${40*s}" cy="${70*s}" rx="${22*s}" ry="${5*s}" fill="${colors.glow}" opacity="0.15" filter="blur(${4*s}px)"/>` : ''}
+
+      <circle class="think-particle" data-cx="${25*s}" cx="${25*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${40*s}" cx="${40*s}" cy="${10*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${55*s}" cx="${55*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+
+      <!-- Blob body -->
+      <ellipse class="char-body" data-y="${40*s}" cx="${40*s}" cy="${40*s}" rx="${28*s}" ry="${26*s}" fill="${colors.body}"/>
+
+      <!-- Highlight -->
+      <ellipse cx="${32*s}" cy="${30*s}" rx="${8*s}" ry="${6*s}" fill="white" opacity="0.12"/>
+
+      <!-- Eyes -->
+      <ellipse class="eye" data-h="${7*s}" data-ry="${3.5*s}" cx="${32*s}" cy="${38*s}" rx="${4*s}" ry="${3.5*s}" fill="${colors.eye}"/>
+      <ellipse class="eye" data-h="${7*s}" data-ry="${3.5*s}" cx="${48*s}" cy="${38*s}" rx="${4*s}" ry="${3.5*s}" fill="${colors.eye}"/>
+
+      <!-- Pupils -->
+      <circle cx="${33*s}" cy="${38*s}" r="${1.5*s}" fill="#141210"/>
+      <circle cx="${49*s}" cy="${38*s}" r="${1.5*s}" fill="#141210"/>
+
+      <!-- Mouth -->
+      <path d="M${35*s},${48*s} Q${40*s},${52*s} ${45*s},${48*s}" stroke="${colors.eye}" stroke-width="${1.5*s}" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+      <!-- Tiny feet -->
+      <ellipse cx="${32*s}" cy="${65*s}" rx="${6*s}" ry="${3*s}" fill="${colors.body}" opacity="0.7"/>
+      <ellipse cx="${48*s}" cy="${65*s}" rx="${6*s}" ry="${3*s}" fill="${colors.body}" opacity="0.7"/>
+    </svg>
+  `;
+}
+
+function drawOrb(size, colors) {
+  const s = size / 80;
+  return `
+    <svg width="${size}" height="${size}" viewBox="0 0 ${80*s} ${80*s}" fill="none">
+      ${state.glow ? `<circle cx="${40*s}" cy="${40*s}" r="${35*s}" fill="${colors.glow}" opacity="0.1" filter="blur(${8*s}px)"/>` : ''}
+
+      <circle class="think-particle" data-cx="${25*s}" cx="${25*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${40*s}" cx="${40*s}" cy="${5*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${55*s}" cx="${55*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+
+      <!-- Outer ring -->
+      <circle cx="${40*s}" cy="${40*s}" r="${28*s}" fill="none" stroke="${colors.body}" stroke-width="${2*s}" opacity="0.3"/>
+
+      <!-- Core -->
+      <circle class="char-body" data-y="${40*s}" cx="${40*s}" cy="${40*s}" r="${20*s}" fill="${colors.body}"/>
+
+      <!-- Inner glow -->
+      <circle cx="${40*s}" cy="${36*s}" r="${12*s}" fill="white" opacity="0.08"/>
+
+      <!-- Eye — single cyclopean -->
+      <ellipse class="eye" data-h="${10*s}" data-ry="${5*s}" cx="${40*s}" cy="${38*s}" rx="${6*s}" ry="${5*s}" fill="${colors.eye}"/>
+      <circle cx="${41*s}" cy="${37*s}" r="${2.5*s}" fill="#141210"/>
+
+      <!-- Orbit dots -->
+      <circle cx="${40*s}" cy="${10*s}" r="${2*s}" fill="${colors.antenna}" opacity="0.5"/>
+      <circle cx="${65*s}" cy="${55*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0.3"/>
+      <circle cx="${15*s}" cy="${55*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0.3"/>
+    </svg>
+  `;
+}
+
+function drawGhost(size, colors) {
+  const s = size / 80;
+  return `
+    <svg width="${size}" height="${size * 1.1}" viewBox="0 0 ${80*s} ${88*s}" fill="none">
+      ${state.glow ? `<ellipse cx="${40*s}" cy="${78*s}" rx="${20*s}" ry="${5*s}" fill="${colors.glow}" opacity="0.12" filter="blur(${4*s}px)"/>` : ''}
+
+      <circle class="think-particle" data-cx="${25*s}" cx="${25*s}" cy="${8*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${40*s}" cx="${40*s}" cy="${5*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${55*s}" cx="${55*s}" cy="${8*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+
+      <!-- Ghost body -->
+      <path class="char-body" data-y="${0}" d="
+        M${16*s},${45*s}
+        Q${16*s},${14*s} ${40*s},${14*s}
+        Q${64*s},${14*s} ${64*s},${45*s}
+        L${64*s},${70*s}
+        Q${58*s},${62*s} ${52*s},${70*s}
+        Q${46*s},${62*s} ${40*s},${70*s}
+        Q${34*s},${62*s} ${28*s},${70*s}
+        Q${22*s},${62*s} ${16*s},${70*s}
+        Z
+      " fill="${colors.body}" opacity="0.9"/>
+
+      <!-- Highlight -->
+      <ellipse cx="${34*s}" cy="${28*s}" rx="${8*s}" ry="${6*s}" fill="white" opacity="0.1"/>
+
+      <!-- Eyes -->
+      <ellipse class="eye" data-h="${8*s}" data-ry="${4*s}" cx="${32*s}" cy="${36*s}" rx="${5*s}" ry="${4*s}" fill="${colors.eye}"/>
+      <ellipse class="eye" data-h="${8*s}" data-ry="${4*s}" cx="${48*s}" cy="${36*s}" rx="${5*s}" ry="${4*s}" fill="${colors.eye}"/>
+
+      <circle cx="${33*s}" cy="${35*s}" r="${2*s}" fill="#141210"/>
+      <circle cx="${49*s}" cy="${35*s}" r="${2*s}" fill="#141210"/>
+
+      <!-- Mouth -->
+      <ellipse cx="${40*s}" cy="${48*s}" rx="${3*s}" ry="${2*s}" fill="${colors.eye}" opacity="0.5"/>
+    </svg>
+  `;
+}
+
+function drawCat(size, colors) {
+  const s = size / 80;
+  return `
+    <svg width="${size}" height="${size * 1.1}" viewBox="0 0 ${80*s} ${88*s}" fill="none">
+      ${state.glow ? `<ellipse cx="${40*s}" cy="${80*s}" rx="${20*s}" ry="${5*s}" fill="${colors.glow}" opacity="0.12" filter="blur(${4*s}px)"/>` : ''}
+
+      <circle class="think-particle" data-cx="${25*s}" cx="${25*s}" cy="${5*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${40*s}" cx="${40*s}" cy="${2*s}" r="${1.5*s}" fill="${colors.antenna}" opacity="0"/>
+      <circle class="think-particle" data-cx="${55*s}" cx="${55*s}" cy="${5*s}" r="${2*s}" fill="${colors.antenna}" opacity="0"/>
+
+      <!-- Ears -->
+      <polygon points="${16*s},${28*s} ${22*s},${8*s} ${30*s},${24*s}" fill="${colors.body}"/>
+      <polygon points="${64*s},${28*s} ${58*s},${8*s} ${50*s},${24*s}" fill="${colors.body}"/>
+      <polygon points="${19*s},${26*s} ${23*s},${13*s} ${28*s},${24*s}" fill="${colors.antenna}" opacity="0.3"/>
+      <polygon points="${61*s},${26*s} ${57*s},${13*s} ${52*s},${24*s}" fill="${colors.antenna}" opacity="0.3"/>
+
+      <!-- Head -->
+      <ellipse cx="${40*s}" cy="${34*s}" rx="${24*s}" ry="${18*s}" fill="${colors.body}"/>
+
+      <!-- Eyes -->
+      <ellipse class="eye" data-h="${7*s}" data-ry="${4*s}" cx="${32*s}" cy="${33*s}" rx="${4.5*s}" ry="${4*s}" fill="${colors.eye}"/>
+      <ellipse class="eye" data-h="${7*s}" data-ry="${4*s}" cx="${48*s}" cy="${33*s}" rx="${4.5*s}" ry="${4*s}" fill="${colors.eye}"/>
+
+      <!-- Slit pupils -->
+      <ellipse cx="${32*s}" cy="${33*s}" rx="${1.5*s}" ry="${3*s}" fill="#141210"/>
+      <ellipse cx="${48*s}" cy="${33*s}" rx="${1.5*s}" ry="${3*s}" fill="#141210"/>
+
+      <!-- Nose -->
+      <polygon points="${40*s},${40*s} ${38*s},${42*s} ${42*s},${42*s}" fill="${colors.antenna}" opacity="0.7"/>
+
+      <!-- Whiskers -->
+      <line x1="${20*s}" y1="${40*s}" x2="${32*s}" y2="${42*s}" stroke="${colors.eye}" stroke-width="${0.8*s}" opacity="0.3"/>
+      <line x1="${20*s}" y1="${44*s}" x2="${32*s}" y2="${43*s}" stroke="${colors.eye}" stroke-width="${0.8*s}" opacity="0.3"/>
+      <line x1="${60*s}" y1="${40*s}" x2="${48*s}" y2="${42*s}" stroke="${colors.eye}" stroke-width="${0.8*s}" opacity="0.3"/>
+      <line x1="${60*s}" y1="${44*s}" x2="${48*s}" y2="${43*s}" stroke="${colors.eye}" stroke-width="${0.8*s}" opacity="0.3"/>
+
+      <!-- Body -->
+      <ellipse class="char-body" data-y="${60*s}" cx="${40*s}" cy="${60*s}" rx="${18*s}" ry="${16*s}" fill="${colors.body}" opacity="0.85"/>
+
+      <!-- Tail -->
+      <path d="M${58*s},${60*s} Q${70*s},${50*s} ${65*s},${40*s}" stroke="${colors.body}" stroke-width="${3*s}" stroke-linecap="round" fill="none" opacity="0.7"/>
+
+      <!-- Paws -->
+      <ellipse cx="${30*s}" cy="${74*s}" rx="${6*s}" ry="${3*s}" fill="${colors.body}" opacity="0.7"/>
+      <ellipse cx="${50*s}" cy="${74*s}" rx="${6*s}" ry="${3*s}" fill="${colors.body}" opacity="0.7"/>
+    </svg>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+
+function render() {
+  const colors = moodColors[state.mood];
+  const container = document.getElementById('characterContainer');
+  container.innerHTML = characters[state.character].draw(state.size, colors);
+
+  // Background
+  document.getElementById('stageBg').style.background = state.darkbg
+    ? '#1a1714'
+    : `#141210`;
+  document.getElementById('stageBg').style.backgroundImage = colors.bg;
+
+  // Grid
+  document.getElementById('gridOverlay').style.display = state.grid ? 'block' : 'none';
+
+  // State info
+  document.getElementById('stateInfo').textContent =
+    `mood: ${state.mood}\nthinking: ${state.thinking}\nsize: ${state.size}px\nspeed: ${state.speed}x\ncharacter: ${state.character}\nanimation: ${state.animation}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// UI SETUP
+// ═══════════════════════════════════════════════════════
+
+function setupButtons() {
+  // Characters
+  const charContainer = document.getElementById('characterBtns');
+  Object.entries(characters).forEach(([key, val]) => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${key === state.character ? 'active' : ''}`;
+    btn.textContent = val.name;
+    btn.onclick = () => {
+      state.character = key;
+      charContainer.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    };
+    charContainer.appendChild(btn);
+  });
+
+  // Moods
+  const moodContainer = document.getElementById('moodBtns');
+  moods.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${m === state.mood ? 'active' : ''}`;
+    btn.textContent = m;
+    btn.onclick = () => {
+      state.mood = m;
+      moodContainer.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    };
+    moodContainer.appendChild(btn);
+  });
+
+  // Animations
+  const animContainer = document.getElementById('animBtns');
+  animations.forEach(a => {
+    const btn = document.createElement('button');
+    btn.className = `btn ${a === state.animation ? 'active' : ''}`;
+    btn.textContent = a;
+    btn.onclick = () => {
+      state.animation = a;
+      animContainer.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    };
+    animContainer.appendChild(btn);
+  });
+
+  // Preview strip — show all characters in current mood
+  const strip = document.getElementById('previewStrip');
+  Object.entries(characters).forEach(([key, val]) => {
+    const card = document.createElement('div');
+    card.className = `preview-card ${key === state.character ? 'active' : ''}`;
+    card.innerHTML = val.draw(48, moodColors[state.mood]) + `<span>${val.name}</span>`;
+    card.onclick = () => {
+      state.character = key;
+      charContainer.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+      charContainer.querySelector(`.btn:nth-child(${Object.keys(characters).indexOf(key) + 1})`).classList.add('active');
+      render();
+      updatePreviewStrip();
+    };
+    strip.appendChild(card);
+  });
+}
+
+function updatePreviewStrip() {
+  const strip = document.getElementById('previewStrip');
+  const cards = strip.querySelectorAll('.preview-card');
+  const keys = Object.keys(characters);
+  cards.forEach((card, i) => {
+    card.className = `preview-card ${keys[i] === state.character ? 'active' : ''}`;
+    // Update SVG in card
+    const svgContainer = card.querySelector('svg');
+    if (svgContainer) svgContainer.remove();
+    const span = card.querySelector('span');
+    card.innerHTML = characters[keys[i]].draw(48, moodColors[state.mood]);
+    card.appendChild(span || document.createElement('span'));
+  });
+}
+
+function toggleBtn(el, key) {
+  state[key] = !state[key];
+  el.classList.toggle('on');
+  render();
+}
+
+// Sliders
+document.getElementById('sizeSlider').addEventListener('input', (e) => {
+  state.size = parseInt(e.target.value);
+  document.getElementById('sizeValue').textContent = state.size + 'px';
+  render();
+});
+
+document.getElementById('speedSlider').addEventListener('input', (e) => {
+  state.speed = parseFloat(e.target.value);
+  document.getElementById('speedValue').textContent = state.speed.toFixed(1) + 'x';
+});
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+setupButtons();
+render();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>

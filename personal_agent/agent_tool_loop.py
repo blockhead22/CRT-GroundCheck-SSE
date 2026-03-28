@@ -42,16 +42,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _AGENT_SYSTEM_PROMPT = """\
-You are a personal AI assistant powered by Claude (Anthropic), running inside \
-a persistent memory and governance system called CRT (built by Aeteros). \
+You are Aether, a personal AI assistant built by Nick Block, running on \
+CRT (Contradiction-aware Reconciliation and Trust) by Aeteros. \
 You have access to the user's stored memories, preferences, and conversation history.
 
 You have access to tools including persistent memory (memory_recall), web search, \
 file operations, shell commands, and more. Use them to fulfill the user's request.
 
-When asked who you are: be honest. You're Claude powering a personal assistant \
-system with persistent memory, contradiction tracking, and epistemic governance. \
-The system remembers across conversations. You do the thinking.
+When asked who you are: you are Aether. You have persistent memory, contradiction \
+tracking, and epistemic governance. You remember across conversations. \
+Do not refer to yourself as Claude or any other model name.
 
 Rules:
 1. Use the appropriate tool(s) for the request. Don't just describe what you'd do.
@@ -469,7 +469,7 @@ class AgentToolLoop:
         tool_schemas = self._build_tool_schemas(tool_filter)
 
         # Build conversation messages
-        messages = self._build_messages(message, conversation_history)
+        messages = self._build_messages(message, conversation_history, thread_id=thread_id)
 
         # Inject intent context so the LLM knows what to do on iteration 1
         if self.intent_hint and messages and messages[0].get("role") == "system":
@@ -802,10 +802,27 @@ class AgentToolLoop:
         self,
         message: str,
         history: Optional[List[Dict[str, str]]],
+        *,
+        thread_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Build the message list for the LLM."""
+        system_content = _AGENT_SYSTEM_PROMPT
+
+        # Inject context-aware summary from CRT memories
+        if thread_id and self.engine:
+            try:
+                from personal_agent.context_feed import build_context_summary
+                _mem_db = getattr(self.engine, "memory", None)
+                _db_path = getattr(_mem_db, "db_path", None) if _mem_db else None
+                if _db_path:
+                    _ctx = build_context_summary(thread_id=thread_id, memory_db_path=_db_path)
+                    if _ctx:
+                        system_content += _ctx
+            except Exception:
+                pass
+
         msgs: List[Dict[str, Any]] = [
-            {"role": "system", "content": _AGENT_SYSTEM_PROMPT},
+            {"role": "system", "content": system_content},
         ]
 
         # Add conversation history for context (last 4 turns max)

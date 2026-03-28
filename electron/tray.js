@@ -7,10 +7,11 @@ const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 
 class AetherTray {
-  constructor(mainWindow, backendManager, clipboardMonitor) {
+  constructor(mainWindow, backendManager, clipboardMonitor, ambientMonitor) {
     this.mainWindow = mainWindow;
     this.backendManager = backendManager;
     this.clipboardMonitor = clipboardMonitor;
+    this.ambientMonitor = ambientMonitor;
     this.tray = null;
     this.status = 'loading';
   }
@@ -151,6 +152,16 @@ class AetherTray {
         click: (menuItem) => {
           if (this.clipboardMonitor) {
             this.clipboardMonitor.toggle(menuItem.checked);
+          }
+        },
+      },
+      {
+        label: 'Ambient Mode',
+        type: 'checkbox',
+        checked: this.ambientMonitor ? this.ambientMonitor.enabled : false,
+        click: (menuItem) => {
+          if (this.ambientMonitor) {
+            this.ambientMonitor.toggle(menuItem.checked);
           }
         },
       },

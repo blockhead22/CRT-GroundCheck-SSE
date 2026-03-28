@@ -18,6 +18,7 @@ const http = require('http');
 const { BackendManager } = require('./backend');
 const { AetherTray } = require('./tray');
 const { ClipboardMonitor } = require('./clipboard-monitor');
+const { AmbientMonitor } = require('./ambient-monitor');
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ let mainWindow = null;
 let tray = null;
 let backendManager = null;
 let clipboardMonitor = null;
+let ambientMonitor = null;
 let frontendLoaded = false;
 
 // ── Window ────────────────────────────────────────────────────────────
@@ -398,6 +400,19 @@ function setupIPC() {
     storeClipboardMemory(text);
   });
 
+  // ── Ambient IPC ────────────────────────────────────────────────────
+  ipcMain.on('ambient:toggle', (_event, enabled) => {
+    if (ambientMonitor) {
+      ambientMonitor.toggle(enabled);
+    }
+  });
+
+  ipcMain.on('ambient:capture-now', () => {
+    if (ambientMonitor) {
+      ambientMonitor.captureNow();
+    }
+  });
+
   // ── File Ingest IPC ───────────────────────────────────────────────
   ipcMain.on('file:ingest', (_event, filePath) => {
     console.log(`[file-drop] Ingesting: ${filePath}`);
@@ -717,8 +732,20 @@ app.whenReady().then(async () => {
   // 4. Setup clipboard monitor (off by default)
   setupClipboardMonitor();
 
-  // 5. Create tray (after backendManager and clipboardMonitor exist)
-  tray = new AetherTray(mainWindow, backendManager, clipboardMonitor);
+  // 4b. Setup ambient monitor (off by default)
+  ambientMonitor = new AmbientMonitor({
+    backendHost: BACKEND_HOST,
+    backendPort: BACKEND_PORT,
+  });
+  ambientMonitor.on('context', (data) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('ambient:context', data);
+    }
+  });
+  console.log('[ambient] Monitor created (disabled by default)');
+
+  // 5. Create tray (after backendManager, clipboardMonitor, ambientMonitor exist)
+  tray = new AetherTray(mainWindow, backendManager, clipboardMonitor, ambientMonitor);
   tray.create();
 
   // 6. Register global hotkey
@@ -736,6 +763,9 @@ app.on('will-quit', async () => {
   }
   if (clipboardMonitor) {
     clipboardMonitor.stop();
+  }
+  if (ambientMonitor) {
+    ambientMonitor.stop();
   }
   if (backendManager) {
     await backendManager.stop();

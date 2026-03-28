@@ -40,6 +40,12 @@ contextBridge.exposeInMainWorld('aether', {
   },
   _sendFileIngest: (filePath) => ipcRenderer.send('file:ingest', filePath),
 
+  // Ambient mode
+  onAmbientContext: (callback) => {
+    ipcRenderer.on('ambient:context', (_event, data) => callback(data));
+  },
+  toggleAmbient: (enabled) => ipcRenderer.send('ambient:toggle', enabled),
+
   // Platform info
   platform: process.platform,
   isElectron: true,

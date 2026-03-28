@@ -22,7 +22,8 @@
       "WebFetch(domain:upload.wikimedia.org)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:research.google)",
-      "WebFetch(domain:arxiv.org)"
+      "WebFetch(domain:arxiv.org)",
+      "mcp__Claude_Preview__preview_start"
     ]
   }
 }

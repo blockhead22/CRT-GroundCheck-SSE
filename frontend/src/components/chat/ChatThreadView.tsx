@@ -9,6 +9,7 @@ import { listOpenContradictions, type ContradictionListItem } from '../../lib/ap
 import { PipelineTrace } from './PipelineTrace'
 import { AgentThinkingStrip, type AgentThinkingState } from './AgentThinkingStrip'
 import { ActionCard } from './ActionCard'
+import { AetherMascot } from '../AetherMascot'
 
 // Adaptive font size for theater mode — shrinks as text grows
 function theaterFontSize(charCount: number): string {
@@ -511,6 +512,16 @@ export function ChatThreadView(props: {
                   transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                   className="flex min-h-[60vh] flex-col items-center justify-center text-center"
                 >
+                  {/* Mascot */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    className="mb-6"
+                  >
+                    <AetherMascot mood="calm" size={96} />
+                  </motion.div>
+
                   {/* Subtle ambient glow behind hero text */}
                   <div className="relative">
                     <div
@@ -774,8 +785,23 @@ export function ChatThreadView(props: {
         )}
       </AnimatePresence>
 
-      {/* Composer */}
-      <div className="flex-shrink-0">
+      {/* Composer + companion mascot */}
+      <div className="flex-shrink-0 relative">
+        {/* Persistent companion — sits left of the composer */}
+        {!empty && (
+          <motion.div
+            className="absolute -top-10 left-3 z-10"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+          >
+            <AetherMascot
+              mood={props.isThinking ? 'curious' : props.typing ? 'warm' : 'calm'}
+              isThinking={Boolean(props.isThinking)}
+              size={36}
+            />
+          </motion.div>
+        )}
         <Composer
           onSend={props.onSend}
           onResearch={props.onResearch}
