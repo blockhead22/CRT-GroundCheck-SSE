@@ -27,6 +27,19 @@ contextBridge.exposeInMainWorld('aether', {
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
 
+  // Clipboard monitoring
+  onClipboardCapture: (callback) => {
+    ipcRenderer.on('clipboard:capture', (_event, text) => callback(text));
+  },
+  toggleClipboard: (enabled) => ipcRenderer.send('clipboard:toggle', enabled),
+  rememberClipboard: (text) => ipcRenderer.send('clipboard:remember', text),
+
+  // File drop
+  onFileDrop: (callback) => {
+    ipcRenderer.on('file:dropped', (_event, result) => callback(result));
+  },
+  _sendFileIngest: (filePath) => ipcRenderer.send('file:ingest', filePath),
+
   // Platform info
   platform: process.platform,
   isElectron: true,

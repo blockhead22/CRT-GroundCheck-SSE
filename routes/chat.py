@@ -2462,6 +2462,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             )
         except Exception as e:
             logger.debug(f"[SESSION] Error recording deterministic provenance query: {e}")
+        try:
+            from personal_agent.training_log import log_chat_turn
+            log_chat_turn(
+                thread_id=req.thread_id,
+                user_message=req.message,
+                assistant_response=provenance_answer,
+                generation_mode="deterministic",
+                intent="provenance",
+            )
+        except Exception:
+            pass
         control_state.mark("decide", "ready", detail=provenance_gate_reason)
         control_state.mark("learn", "recorded", detail="fast_query")
         return _chat_response(
@@ -2486,6 +2497,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             )
         except Exception as e:
             logger.debug(f"[SESSION] Error recording deterministic query: {e}")
+        try:
+            from personal_agent.training_log import log_chat_turn
+            log_chat_turn(
+                thread_id=req.thread_id,
+                user_message=req.message,
+                assistant_response=answer_text,
+                generation_mode="deterministic",
+                intent=detected_slot or "fast_path",
+            )
+        except Exception:
+            pass
 
     # Reminder confirmation flow (explicit yes/no before scheduling).
     pending_reminder: Optional[Dict[str, Any]] = None
@@ -2894,6 +2916,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             )
         except Exception as e:
             logger.debug(f"[SESSION] Error recording direct workplan query: {e}")
+        try:
+            from personal_agent.training_log import log_chat_turn
+            log_chat_turn(
+                thread_id=req.thread_id,
+                user_message=req.message,
+                assistant_response=direct_answer,
+                generation_mode="deterministic",
+                intent="work_plan_item",
+            )
+        except Exception:
+            pass
 
         control_state.mark("decide", "ready", detail="groundcheck_workplan_direct")
         control_state.mark("learn", "recorded", detail="session_query")
@@ -2940,6 +2973,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             )
         except Exception as e:
             logger.debug(f"[SESSION] Error recording direct MCP-tools query: {e}")
+        try:
+            from personal_agent.training_log import log_chat_turn
+            log_chat_turn(
+                thread_id=req.thread_id,
+                user_message=req.message,
+                assistant_response=direct_answer,
+                generation_mode="deterministic",
+                intent="mcp_tools",
+            )
+        except Exception:
+            pass
 
         control_state.mark("decide", "ready", detail="groundcheck_mcp_tools_direct")
         control_state.mark("learn", "recorded", detail="session_query")
@@ -3024,11 +3068,11 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _auth_bypass.get_user_setting(_uid_bypass, "bypass_crt", "false")
         ).lower() in ("true", "1", "yes", "on")
         _bypass_gen_mode = str(
-            _auth_bypass.get_user_setting(_uid_bypass, "generation_mode", "local") or "local"
+            _auth_bypass.get_user_setting(_uid_bypass, "generation_mode", "cloud_openai") or "cloud_openai"
         ).strip()
     except Exception as _bp_err:
         _safe_print(f"[BYPASS_CRT] Settings check failed: {_bp_err}")
-        _bypass_gen_mode = "local"
+        _bypass_gen_mode = "cloud_openai"
 
     if _bypass_crt and _bypass_gen_mode in ("cloud_openai", "cloud_claude"):
         _safe_print(f"[BYPASS_CRT] Raw cloud mode — skipping CRT pipeline, model={_bypass_gen_mode}")
@@ -3072,6 +3116,18 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         query_text=req.message,
                         response_text=_bp_answer,
                         detected_slot="bypass_crt",
+                    )
+                except Exception:
+                    pass
+                try:
+                    from personal_agent.training_log import log_chat_turn
+                    log_chat_turn(
+                        thread_id=req.thread_id,
+                        user_message=req.message,
+                        assistant_response=_bp_answer,
+                        model_used=_bp_cloud_model,
+                        generation_mode=f"bypass_{_bp_provider}",
+                        intent="bypass",
                     )
                 except Exception:
                     pass
@@ -3155,7 +3211,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     try:
         import auth as _auth_gen
         _uid_gen = int(uid) if uid else 1
-        _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "local") or "local").strip()
+        _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "cloud_openai") or "cloud_openai").strip()
         _safe_print(f"[GENERATION] mode_select: generation_mode={_generation_mode}, uid={_uid_gen}")
         _emit_pipeline_status(f"generating ({_generation_mode})")
 
@@ -4581,6 +4637,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     def _run_post_response_bookkeeping(
         _thread_id, _message, _final_answer, _result, _prompt_mems, _session_db, _engine_memory,
         _iid: str = "",
+        _gen_info: Optional[Dict[str, Any]] = None,
     ):
         # Active learning
         try:
@@ -4633,10 +4690,48 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         except Exception as _e:
             logger.debug(f"[EPISODIC_BG] Error processing interaction: {_e}")
 
+        # Training data log (append-only JSONL)
+        try:
+            from personal_agent.training_log import log_chat_turn
+            _gi = _gen_info or {}
+            log_chat_turn(
+                thread_id=_thread_id,
+                user_message=_message,
+                assistant_response=_final_answer,
+                model_used=str(_gi.get("model_used", "")),
+                generation_mode=str(_gi.get("generation_mode", "local")),
+                intent=str(_result.get("response_type") or "conversational"),
+                latency_ms=int(_gi.get("latency_ms", 0)),
+                memories_cited=len(_prompt_mems) if _prompt_mems else 0,
+                governance_tier=str(_gi.get("governance_tier", "")),
+                metadata={
+                    "confidence": _result.get("confidence"),
+                    "gates_passed": bool(_result.get("gates_passed")),
+                    "gate_reason": str(_result.get("gate_reason") or ""),
+                    "escalation": str(_result.get("escalation") or ""),
+                    "generation_source": str(_result.get("generation_source") or ""),
+                },
+            )
+        except Exception as _e:
+            logger.debug(f"[TRAINING_LOG_BG] Error logging chat turn: {_e}")
+
+    try:
+        _training_gen_info = {
+            "model_used": str((model_route or {}).get("model") or "") if isinstance(model_route, dict) else "",
+            "generation_mode": str(_gen_tracking.get("gen", "local")),
+            "latency_ms": int(_gen_latency_ms),
+            "governance_tier": str(metadata.get("governance_tier", "")),
+        }
+    except Exception:
+        _training_gen_info = {}
+
     threading.Thread(
         target=_run_post_response_bookkeeping,
         args=(req.thread_id, req.message, final_answer, result, prompt_mems, session_db, engine.memory),
-        kwargs={"_iid": _interaction_id},
+        kwargs={
+            "_iid": _interaction_id,
+            "_gen_info": _training_gen_info,
+        },
         daemon=True,
     ).start()
 
@@ -5120,7 +5215,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # ── PLAN ENGINE CHECK (v2.9.3) ──────────────────────────────
             # If the message warrants a plan (multi-step work), generate one
             # and upgrade the intent to use the plan orchestrator.
-            if _task_intent is not None and _task_intent.route in ("task", "conversational"):
+            if _task_intent is not None and _task_intent.route == "task":
                 try:
                     from personal_agent.plan_engine import PlanEngine as _PlanEngine
                     _get_llm_pe = request.app.state.get_llm_client

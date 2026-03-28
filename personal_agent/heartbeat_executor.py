@@ -1448,6 +1448,74 @@ Reason carefully. If unsure, reply with action=none.
         except Exception as e:
             logger.debug(f"[HEARTBEAT] Route pattern learning skipped: {e}")
 
+        # --- 11. Conversation learning digest (extract facts -> CRT memory) ---
+        try:
+            from personal_agent.heartbeat_learning import run_learning_digest
+            _mem_db_path_learn = self._resolve_memory_db_path(thread_id)
+            if _mem_db_path_learn and Path(_mem_db_path_learn).exists() and self.thread_session_db_path:
+                from personal_agent.crt_memory import CRTMemorySystem as _CRTMem
+                from personal_agent.litellm_client import UnifiedLLMClient as _ULLM
+
+                _learn_mem = _CRTMem(db_path=str(_mem_db_path_learn))
+                _learn_llm = getattr(self, "llm_client", None) or _ULLM()
+
+                # Watermark accessors via session DB
+                def _get_wm(tid):
+                    if self.session_db and hasattr(self.session_db, "get_learning_watermark"):
+                        return self.session_db.get_learning_watermark(tid)
+                    return 0
+
+                def _set_wm(tid, qid):
+                    if self.session_db and hasattr(self.session_db, "set_learning_watermark"):
+                        self.session_db.set_learning_watermark(tid, qid)
+
+                _digest = run_learning_digest(
+                    thread_id=thread_id,
+                    session_db_path=self.thread_session_db_path,
+                    memory_system=_learn_mem,
+                    llm_client=_learn_llm,
+                    get_watermark=_get_wm,
+                    set_watermark=_set_wm,
+                    model=config.get("model") if config else None,
+                    dry_run=dry_run,
+                )
+                if _digest.get("stored", 0) > 0:
+                    actions_taken.append({
+                        "action": "learning_digest",
+                        "detail": f"Learned {_digest['stored']} new facts from {_digest['digested']} messages",
+                        "digested_messages": _digest.get("digested", 0),
+                        "extracted_claims": _digest.get("extracted", 0),
+                        "novel_claims": _digest.get("novel", 0),
+                        "stored_memories": _digest["stored"],
+                    })
+                    logger.info(f"[HEARTBEAT] Learning digest: stored {_digest['stored']} new memories")
+                elif _digest.get("digested", 0) > 0:
+                    logger.debug(f"[HEARTBEAT] Learning digest: processed {_digest['digested']} messages, nothing novel")
+
+                # Emit SSE notifications for detected contradictions
+                _contras = _digest.get("contradictions", [])
+                if _contras:
+                    try:
+                        from personal_agent.notifications import emit_generic_notification_sync
+                        for _c in _contras:
+                            _old = (_c.get("existing_memory") or "")[:80]
+                            _new = (_c.get("new_claim") or "")[:80]
+                            emit_generic_notification_sync(
+                                event_type="heartbeat_contradiction",
+                                content=f"I noticed something: you previously said '{_old}' but recently said '{_new}'. What changed?",
+                                metadata=_c,
+                            )
+                        actions_taken.append({
+                            "action": "contradiction_detected",
+                            "detail": f"Detected {len(_contras)} contradiction(s) with existing memories",
+                            "contradictions": _contras,
+                        })
+                        logger.info(f"[HEARTBEAT] Emitted {len(_contras)} contradiction notification(s)")
+                    except Exception as _ce:
+                        logger.debug(f"[HEARTBEAT] Contradiction notification failed: {_ce}")
+        except Exception as e:
+            logger.debug(f"[HEARTBEAT] Learning digest skipped: {e}")
+
         elapsed = _time.time() - start
         summary = "; ".join(a["detail"] for a in actions_taken) if actions_taken else "Heartbeat OK, no actions needed"
         

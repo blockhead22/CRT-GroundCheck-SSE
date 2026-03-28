@@ -29,6 +29,9 @@ data/browser_profile/
 .DS_Store
 Thumbs.db
 
+# Training data logs (chat conversation JSONL files)
+training_data/chat_logs/
+
 # Test outputs
 *.log
 test_output*.txt

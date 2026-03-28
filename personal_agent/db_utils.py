@@ -218,6 +218,7 @@ class ThreadSessionDB:
                 "last_channel_updated_at": "REAL",
                 "pending_reminder_json": "TEXT",
                 "pending_reminder_expires_at": "REAL",
+                "learning_last_query_id": "INTEGER",
             },
         )
         
@@ -1566,6 +1567,32 @@ class ThreadSessionDB:
         conn.close()
         
         return results
+
+    def get_learning_watermark(self, thread_id: str) -> int:
+        """Get the last digested recent_queries.id for the learning loop."""
+        conn = self._get_connection()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT learning_last_query_id FROM thread_sessions WHERE thread_id = ?",
+                (thread_id,),
+            )
+            row = cursor.fetchone()
+            return int(row["learning_last_query_id"] or 0) if row and row["learning_last_query_id"] else 0
+        finally:
+            conn.close()
+
+    def set_learning_watermark(self, thread_id: str, query_id: int) -> None:
+        """Update the last digested recent_queries.id for the learning loop."""
+        conn = self._get_connection()
+        try:
+            conn.execute(
+                "UPDATE thread_sessions SET learning_last_query_id = ? WHERE thread_id = ?",
+                (query_id, thread_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
     def list_threads(self, limit: int = 200) -> list[str]:
         """List active thread IDs by most recent activity."""

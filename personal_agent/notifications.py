@@ -163,4 +163,38 @@ async def emit_generic_notification(
         except Exception:
             pass
 
+    if pushed:
+        logger.info("[NOTIFICATIONS] Pushed %s event to %d connections", event_type, pushed)
+
     return pushed
+
+
+def emit_generic_notification_sync(
+    event_type: str,
+    content: str,
+    metadata: Optional[Dict[str, Any]] = None,
+    user_id: str = "default",
+) -> int:
+    """Synchronous wrapper for emit_generic_notification.
+
+    Used from heartbeat executor which may not be in an async context.
+    """
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            future = asyncio.run_coroutine_threadsafe(
+                emit_generic_notification(event_type, content, metadata, user_id), loop
+            )
+            try:
+                return future.result(timeout=2.0)
+            except Exception:
+                return 0
+        else:
+            return loop.run_until_complete(
+                emit_generic_notification(event_type, content, metadata, user_id)
+            )
+    except RuntimeError:
+        try:
+            return asyncio.run(emit_generic_notification(event_type, content, metadata, user_id))
+        except Exception:
+            return 0

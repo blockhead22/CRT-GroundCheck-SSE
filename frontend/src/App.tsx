@@ -293,6 +293,32 @@ export default function App() {
                   ? { ...t, messages: [...t.messages, notifMsg], updatedAt: Date.now() }
                   : t
               ))
+            } else if (data.type === 'heartbeat_contradiction') {
+              // Show browser notification for contradiction detection
+              if (Notification.permission === 'granted') {
+                new Notification('Aether noticed something', {
+                  body: data.content?.slice(0, 200),
+                  icon: '/favicon.ico',
+                })
+              }
+              // Inject as system message in active thread
+              const contraMsg = {
+                id: newId('m'),
+                role: 'assistant' as const,
+                text: `**Contradiction detected:** ${data.content}`,
+                createdAt: Date.now(),
+                crt: {
+                  response_type: 'notification',
+                  notification_type: 'contradiction',
+                  drift_score: data.metadata?.drift_score,
+                  existing_memory_id: data.metadata?.existing_memory_id,
+                },
+              }
+              setThreads(prev => prev.map(t =>
+                t.id === selectedThreadId
+                  ? { ...t, messages: [...t.messages, contraMsg], updatedAt: Date.now() }
+                  : t
+              ))
             }
           } catch { /* ignore parse errors */ }
         }
@@ -511,6 +537,8 @@ export default function App() {
     try {
       if (useStreaming) {
         // Use streaming API
+        // Abort any in-flight stream before starting a new one
+        streamAbortRef.current?.abort()
         let thinkingContent = ''
         const abortController = new AbortController()
         streamAbortRef.current = abortController
@@ -873,20 +901,30 @@ export default function App() {
         upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
       }
     } catch (e) {
-      const at = Date.now()
+      // Suppress abort errors — these are expected when the user stops generation
+      // or sends a new message while a stream is in progress
       const errText = e instanceof Error ? e.message : String(e)
-      const asstMsg = {
-        id: newId('m'),
-        role: 'assistant' as const,
-        text: `CRT API error: ${errText}`,
-        createdAt: at,
-        crt: {
-          response_type: 'speech',
-          gates_passed: false,
-          gate_reason: 'api_error',
-        },
+      if (
+        e instanceof DOMException && e.name === 'AbortError' ||
+        errText.includes('aborted') ||
+        errText.includes('BodyStreamBuffer')
+      ) {
+        // Not a real error — stream was intentionally cancelled
+      } else {
+        const at = Date.now()
+        const asstMsg = {
+          id: newId('m'),
+          role: 'assistant' as const,
+          text: `CRT API error: ${errText}`,
+          createdAt: at,
+          crt: {
+            response_type: 'speech',
+            gates_passed: false,
+            gate_reason: 'api_error',
+          },
+        }
+        upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
       }
-      upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
     } finally {
       setTyping(false)
       streamAbortRef.current = null

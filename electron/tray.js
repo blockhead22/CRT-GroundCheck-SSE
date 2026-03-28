@@ -7,9 +7,10 @@ const { Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 
 class AetherTray {
-  constructor(mainWindow, backendManager) {
+  constructor(mainWindow, backendManager, clipboardMonitor) {
     this.mainWindow = mainWindow;
     this.backendManager = backendManager;
+    this.clipboardMonitor = clipboardMonitor;
     this.tray = null;
     this.status = 'loading';
   }
@@ -140,6 +141,17 @@ class AetherTray {
         label: 'Restart Backend',
         click: () => {
           this.backendManager.restart();
+        },
+      },
+      { type: 'separator' },
+      {
+        label: 'Clipboard Monitor',
+        type: 'checkbox',
+        checked: this.clipboardMonitor ? this.clipboardMonitor.enabled : false,
+        click: (menuItem) => {
+          if (this.clipboardMonitor) {
+            this.clipboardMonitor.toggle(menuItem.checked);
+          }
         },
       },
       { type: 'separator' },

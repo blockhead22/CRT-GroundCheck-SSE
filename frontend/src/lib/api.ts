@@ -540,7 +540,15 @@ export async function streamFromCrtApi(args: {
   try {
     while (true) {
       if (args.signal?.aborted) break
-      const { done, value } = await reader.read()
+      let done: boolean
+      let value: Uint8Array | undefined
+      try {
+        ({ done, value } = await reader.read())
+      } catch (readErr) {
+        // Stream was aborted (e.g. user clicked stop or sent a new message)
+        if (args.signal?.aborted) break
+        throw readErr
+      }
       if (done) break
 
       buffer += decoder.decode(value, { stream: true })

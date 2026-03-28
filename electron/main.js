@@ -8,6 +8,7 @@ const {
   app,
   BrowserWindow,
   Menu,
+  Notification,
   globalShortcut,
   ipcMain,
   shell,
@@ -16,6 +17,7 @@ const path = require('path');
 const http = require('http');
 const { BackendManager } = require('./backend');
 const { AetherTray } = require('./tray');
+const { ClipboardMonitor } = require('./clipboard-monitor');
 
 // ── Config ────────────────────────────────────────────────────────────
 
@@ -33,6 +35,7 @@ const FRONTEND_PROD_URL = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
 let mainWindow = null;
 let tray = null;
 let backendManager = null;
+let clipboardMonitor = null;
 let frontendLoaded = false;
 
 // ── Window ────────────────────────────────────────────────────────────
@@ -83,6 +86,13 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Prevent navigation when files are dropped (Electron tries to load file:// URLs)
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file://')) {
+      event.preventDefault();
+    }
   });
 
   // Inject frameless window styles after page loads
@@ -143,6 +153,131 @@ function createWindow() {
         const interval = setInterval(() => {
           if (findAndPadTopbar() || ++attempts > 20) clearInterval(interval);
         }, 250);
+      })();
+    `);
+
+    // Inject drop zone overlay CSS
+    mainWindow.webContents.insertCSS(`
+      #aether-drop-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        background: rgba(99, 102, 241, 0.12);
+        backdrop-filter: blur(2px);
+        border: 3px dashed rgba(99, 102, 241, 0.5);
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      #aether-drop-overlay.active {
+        display: flex;
+      }
+      #aether-drop-overlay .drop-label {
+        background: rgba(10, 10, 15, 0.85);
+        color: #c4b5fd;
+        padding: 16px 32px;
+        border-radius: 12px;
+        font-size: 18px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-weight: 500;
+        letter-spacing: 0.02em;
+      }
+      #aether-drop-toast {
+        display: none;
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 99999;
+        background: rgba(10, 10, 15, 0.9);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        color: #a0a0b0;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        transition: opacity 0.3s;
+      }
+      #aether-drop-toast.success { border-color: rgba(34, 197, 94, 0.4); color: #86efac; }
+      #aether-drop-toast.error { border-color: rgba(239, 68, 68, 0.4); color: #fca5a5; }
+    `);
+
+    // Inject drop zone overlay + drag/drop event handlers
+    mainWindow.webContents.executeJavaScript(`
+      (function setupFileDrop() {
+        // Create overlay
+        if (document.getElementById('aether-drop-overlay')) return;
+        const overlay = document.createElement('div');
+        overlay.id = 'aether-drop-overlay';
+        overlay.innerHTML = '<div class="drop-label">Drop to remember</div>';
+        document.body.appendChild(overlay);
+
+        // Create toast
+        const toast = document.createElement('div');
+        toast.id = 'aether-drop-toast';
+        document.body.appendChild(toast);
+
+        let dragCounter = 0;
+
+        document.addEventListener('dragenter', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dragCounter++;
+          if (e.dataTransfer && e.dataTransfer.types.includes('Files')) {
+            overlay.classList.add('active');
+          }
+        });
+
+        document.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        document.addEventListener('dragleave', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dragCounter--;
+          if (dragCounter <= 0) {
+            dragCounter = 0;
+            overlay.classList.remove('active');
+          }
+        });
+
+        document.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dragCounter = 0;
+          overlay.classList.remove('active');
+
+          const files = e.dataTransfer ? e.dataTransfer.files : [];
+          for (const file of files) {
+            if (file.path) {
+              window.aether && window.aether._sendFileIngest
+                ? window.aether._sendFileIngest(file.path)
+                : null;
+            }
+          }
+        });
+
+        // Listen for ingest results
+        if (window.aether && window.aether.onFileDrop) {
+          window.aether.onFileDrop((result) => {
+            toast.style.display = 'block';
+            toast.style.opacity = '1';
+            if (result.success) {
+              toast.className = 'success';
+              toast.textContent = 'Remembered ' + result.filename + ' (' + result.memories + ' memories)';
+            } else {
+              toast.className = 'error';
+              toast.textContent = 'Failed: ' + (result.error || result.filename);
+            }
+            setTimeout(() => {
+              toast.style.opacity = '0';
+              setTimeout(() => { toast.style.display = 'none'; }, 300);
+            }, 3000);
+          });
+        }
       })();
     `);
   });
@@ -251,6 +386,23 @@ function setupIPC() {
   ipcMain.on('window:close', () => {
     mainWindow.close();
   });
+
+  // ── Clipboard IPC ──────────────────────────────────────────────────
+  ipcMain.on('clipboard:toggle', (_event, enabled) => {
+    if (clipboardMonitor) {
+      clipboardMonitor.toggle(enabled);
+    }
+  });
+
+  ipcMain.on('clipboard:remember', (_event, text) => {
+    storeClipboardMemory(text);
+  });
+
+  // ── File Ingest IPC ───────────────────────────────────────────────
+  ipcMain.on('file:ingest', (_event, filePath) => {
+    console.log(`[file-drop] Ingesting: ${filePath}`);
+    ingestFile(filePath);
+  });
 }
 
 // ── Global Hotkey ─────────────────────────────────────────────────────
@@ -284,6 +436,147 @@ function registerHotkey() {
   }
 }
 
+// ── Clipboard Memory ──────────────────────────────────────────────────
+
+function storeClipboardMemory(text) {
+  const payload = JSON.stringify({
+    text,
+    source: 'clipboard',
+    confidence: 0.8,
+    user_marked_important: false,
+    context: { captured_by: 'clipboard-monitor' },
+  });
+
+  const req = http.request(
+    {
+      hostname: BACKEND_HOST,
+      port: BACKEND_PORT,
+      path: '/api/memory/store',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+      timeout: 5000,
+    },
+    (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          console.log('[clipboard] Memory stored successfully');
+        } else {
+          console.warn(`[clipboard] Memory store failed (${res.statusCode}): ${body}`);
+        }
+      });
+    }
+  );
+  req.on('error', (err) => {
+    console.warn('[clipboard] Memory store request failed:', err.message);
+  });
+  req.write(payload);
+  req.end();
+}
+
+// ── File Ingest ──────────────────────────────────────────────────────
+
+function ingestFile(filePath) {
+  const payload = JSON.stringify({
+    file_path: filePath,
+    thread_id: 'default',
+  });
+
+  const req = http.request(
+    {
+      hostname: BACKEND_HOST,
+      port: BACKEND_PORT,
+      path: '/api/ingest/file',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+      timeout: 30000, // file ingestion can take a moment
+    },
+    (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        let result;
+        try {
+          result = JSON.parse(body);
+        } catch {
+          result = { success: false, error: body };
+        }
+
+        if (res.statusCode === 200 && result.success) {
+          console.log(`[file-drop] Ingested ${result.filename}: ${result.chars_ingested} chars, ${result.memory_count} memories`);
+        } else {
+          console.warn(`[file-drop] Ingest failed (${res.statusCode}):`, result.error || result.detail || body);
+        }
+
+        // Notify renderer of result
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('file:dropped', {
+            success: res.statusCode === 200 && result.success,
+            filename: result.filename || path.basename(filePath),
+            chars: result.chars_ingested || 0,
+            memories: result.memory_count || 0,
+            error: result.error || result.detail || null,
+          });
+        }
+      });
+    }
+  );
+  req.on('error', (err) => {
+    console.warn('[file-drop] Ingest request failed:', err.message);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('file:dropped', {
+        success: false,
+        filename: path.basename(filePath),
+        error: err.message,
+      });
+    }
+  });
+  req.write(payload);
+  req.end();
+}
+
+function setupClipboardMonitor() {
+  clipboardMonitor = new ClipboardMonitor();
+
+  clipboardMonitor.on('capture', (text) => {
+    const preview = text.length > 60 ? text.slice(0, 57) + '...' : text;
+    console.log(`[clipboard] Captured: "${preview}"`);
+
+    // Show native notification
+    if (Notification.isSupported()) {
+      const notif = new Notification({
+        title: 'Aether',
+        body: `Want me to remember that?\n${preview}`,
+        silent: true,
+      });
+      notif.on('click', () => {
+        storeClipboardMemory(text);
+        // Also bring the window up
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      });
+      notif.show();
+    }
+
+    // Forward to renderer for inline UI
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('clipboard:capture', text);
+    }
+  });
+
+  // Do NOT auto-start — user must enable via tray or settings
+  console.log('[clipboard] Monitor created (disabled by default)');
+}
+
 // ── App Lifecycle ─────────────────────────────────────────────────────
 
 // Single instance lock — only one Aether at a time
@@ -298,6 +591,90 @@ if (!gotLock) {
       mainWindow.focus();
     }
   });
+}
+
+// ── SSE Notification Listener ─────────────────────────────────────────
+
+let sseReq = null;
+
+function startSSEListener() {
+  if (sseReq) return; // already connected
+
+  function connect() {
+    console.log('[main] Connecting to notification SSE stream...');
+    sseReq = http.get(
+      {
+        hostname: BACKEND_HOST,
+        port: BACKEND_PORT,
+        path: '/api/notifications/stream',
+        timeout: 0, // SSE is long-lived
+      },
+      (res) => {
+        if (res.statusCode !== 200) {
+          console.warn(`[main] SSE stream returned ${res.statusCode}, retrying in 15s`);
+          sseReq = null;
+          setTimeout(connect, 15000);
+          return;
+        }
+
+        let buffer = '';
+        res.on('data', (chunk) => {
+          buffer += chunk.toString();
+          // SSE events are delimited by double newlines
+          const parts = buffer.split('\n\n');
+          buffer = parts.pop() || '';
+          for (const part of parts) {
+            const dataLine = part.split('\n').find(l => l.startsWith('data:'));
+            if (!dataLine) continue;
+            try {
+              const data = JSON.parse(dataLine.slice(5).trim());
+              if (data.type === 'heartbeat_contradiction') {
+                showContradictionNotification(data);
+              }
+            } catch { /* ignore parse errors */ }
+          }
+        });
+
+        res.on('end', () => {
+          console.log('[main] SSE stream ended, reconnecting in 10s');
+          sseReq = null;
+          setTimeout(connect, 10000);
+        });
+
+        res.on('error', () => {
+          sseReq = null;
+          setTimeout(connect, 15000);
+        });
+      }
+    );
+    sseReq.on('error', () => {
+      sseReq = null;
+      setTimeout(connect, 15000);
+    });
+  }
+
+  connect();
+}
+
+function showContradictionNotification(data) {
+  if (!Notification.isSupported()) return;
+
+  const body = (data.content || 'A belief contradiction was detected').slice(0, 200);
+  const notif = new Notification({
+    title: 'Aether noticed something',
+    body,
+    silent: false,
+  });
+
+  notif.on('click', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  notif.show();
+  console.log('[main] Showed contradiction notification');
 }
 
 app.whenReady().then(async () => {
@@ -337,16 +714,29 @@ app.whenReady().then(async () => {
   // 3. Start backend (detects if already running)
   await startBackend();
 
-  // 4. Create tray (after backendManager exists)
-  tray = new AetherTray(mainWindow, backendManager);
+  // 4. Setup clipboard monitor (off by default)
+  setupClipboardMonitor();
+
+  // 5. Create tray (after backendManager and clipboardMonitor exist)
+  tray = new AetherTray(mainWindow, backendManager, clipboardMonitor);
   tray.create();
 
-  // 5. Register global hotkey
+  // 6. Register global hotkey
   registerHotkey();
+
+  // 7. Start SSE listener for native OS notifications (contradictions, etc.)
+  startSSEListener();
 });
 
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
+  if (sseReq) {
+    sseReq.destroy();
+    sseReq = null;
+  }
+  if (clipboardMonitor) {
+    clipboardMonitor.stop();
+  }
   if (backendManager) {
     await backendManager.stop();
   }

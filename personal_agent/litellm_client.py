@@ -175,7 +175,7 @@ class UnifiedLLMClient:
             slot_denylist=tuple(cfg.get("slot_denylist", ())),
         )
         self.rate_limiter = cfg.get("rate_limiter")
-        self.fallback_policy: str = "local_to_cloud"
+        self.fallback_policy: str = "cloud_to_local"
         self.last_thinking: str = ""
 
         logger.info(
@@ -916,7 +916,7 @@ class UnifiedLLMClient:
             if self.rate_limiter:
                 self.rate_limiter.record_fallback()
 
-        policy = self.fallback_policy or "local_to_cloud"
+        policy = self.fallback_policy or "cloud_to_local"
 
         # Respect cloud_claude_enabled setting — downgrade cloud policies to local_only
         if policy in ("local_to_cloud", "cloud_only", "cloud_to_local"):
@@ -970,20 +970,20 @@ class UnifiedLLMClient:
             )
             return result or {"tool_calls": [], "content": "", "used_tools": False}
 
-        # Default: local_to_cloud
-        result = self._try_local_tools(
-            messages, tools, max_tokens, temperature, model_name,
-        )
-        if result:
-            return result
-        print("[LITELLM] Local failed, trying Anthropic fallback")
+        # Default: cloud_to_local (cloud-first, local as last resort)
         result = self._try_anthropic_tools(
             messages, tools, max_tokens, temperature, model_name,
         )
         if result:
             return result
-        # Last resort: cookie-based Claude for text answer
+        print("[LITELLM] Cloud failed, trying cookie fallback")
         result = self._try_cookie_text_fallback(messages)
+        if result:
+            return result
+        print("[LITELLM] Cookie failed, trying local (Ollama) as last resort")
+        result = self._try_local_tools(
+            messages, tools, max_tokens, temperature, model_name,
+        )
         return result or {"tool_calls": [], "content": "", "used_tools": False}
 
     # ── chat_stream() ─────────────────────────────────────────────────
