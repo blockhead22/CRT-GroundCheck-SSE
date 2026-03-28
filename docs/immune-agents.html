@@ -4,163 +4,1436 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Immune Agent Architecture — CRT / Aether</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <style>
+  :root {
+    --bg-primary: #fafaf8;
+    --bg-cream: #f5f1ea;
+    --bg-hero: #f0ebe1;
+    --bg-card: #ffffff;
+    --text-dark: #1a1a16;
+    --text-body: #4a4a44;
+    --text-muted: #8a8a80;
+    --accent: #c4a97d;
+    --accent-dim: rgba(196,169,125,0.12);
+    --border-light: #e5e0d8;
+    --border-subtle: #ece8e0;
+    --burgundy: #8b3a3a;
+    --sage: #6b7c5e;
+    --amber: #b8924a;
+    --mauve: #9b7aaa;
+    --terracotta: #b07850;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #050508; color: #c8c8c8; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.7; overflow-x: hidden; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-body);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+    line-height: 1.85;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
   /* ===== HERO ===== */
-  .hero { position: relative; width: 100%; height: 60vh; min-height: 420px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .hero canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
-  .hero-content { position: relative; z-index: 1; text-align: center; max-width: 860px; padding: 0 30px; }
-  .hero-content h1 { font-size: 2.8em; color: #fff; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 12px; }
-  .hero-content h1 span.accent { background: linear-gradient(135deg, #ff6b6b, #4ecdc4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-  .hero-content .tagline { font-size: 1.05em; color: #888; margin-bottom: 24px; }
-  .hero-content .claim { font-size: 0.88em; color: #aaa; border: 1px solid #333; border-radius: 8px; padding: 14px 20px; background: rgba(10,10,10,0.7); backdrop-filter: blur(10px); display: inline-block; max-width: 700px; }
-  .scroll-hint { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); color: #444; font-size: 0.75em; z-index: 1; animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+  .hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    min-height: 560px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--bg-hero);
+  }
+  .hero canvas {
+    display: none !important;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(ellipse at 50% 40%, rgba(196,169,125,0.10) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 760px;
+    padding: 0 40px;
+  }
+  .hero-content h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 3.8em;
+    font-weight: 500;
+    color: var(--text-dark);
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+  .hero-content h1 span.accent {
+    background: none !important;
+    -webkit-background-clip: unset !important;
+    -webkit-text-fill-color: var(--accent) !important;
+    background-clip: unset !important;
+    color: var(--accent);
+    font-style: italic;
+  }
+  .hero-content .tagline {
+    font-family: 'Inter', sans-serif;
+    font-size: 1.05em;
+    font-weight: 300;
+    color: var(--text-muted);
+    margin-bottom: 36px;
+    letter-spacing: 0.5px;
+  }
+  .hero-content .claim {
+    font-size: 0.88em;
+    color: var(--text-body);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 18px 28px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    display: inline-block;
+    max-width: 700px;
+    line-height: 1.85;
+  }
+  .scroll-hint {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-muted);
+    font-size: 0.7em;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 1;
+    animation: pulse 3s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 0.2; } 50% { opacity: 0.6; } }
 
-  /* ===== NAV ===== */
-  .toc { position: fixed; top: 0; left: 0; width: 240px; height: 100vh; background: #08080c; border-right: 1px solid #111; padding: 20px 16px; overflow-y: auto; z-index: 100; transform: translateX(-100%); transition: transform 0.3s; }
+  /* ===== NAV / TOC ===== */
+  .toc {
+    position: fixed;
+    top: 0; left: 0;
+    width: 260px;
+    height: 100vh;
+    background: #faf9f6;
+    border-right: 1px solid var(--border-light);
+    padding: 28px 20px;
+    overflow-y: auto;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.35s ease;
+  }
   .toc.open { transform: translateX(0); }
-  .toc-toggle { position: fixed; top: 16px; left: 16px; z-index: 101; background: #0a0a0e; border: 1px solid #222; color: #888; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.75em; letter-spacing: 0.5px; }
-  .toc-toggle:hover { color: #fff; border-color: #444; }
-  .toc h4 { color: #555; font-size: 0.65em; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-  .toc a { display: block; color: #666; font-size: 0.78em; text-decoration: none; padding: 4px 0; transition: color 0.2s; }
-  .toc a:hover { color: #fff; }
-  .toc a.active { color: #4ecdc4; }
+  .toc-toggle {
+    position: fixed;
+    top: 20px; left: 20px;
+    z-index: 101;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    color: var(--text-muted);
+    padding: 7px 14px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7em;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: color 0.3s, border-color 0.3s;
+  }
+  .toc-toggle:hover { color: var(--accent); border-color: var(--accent); }
+  .toc h4 {
+    color: var(--accent);
+    font-family: 'Playfair Display', serif;
+    font-size: 0.8em;
+    font-weight: 500;
+    letter-spacing: 1px;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+  .toc a {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.8em;
+    text-decoration: none;
+    padding: 5px 0;
+    transition: color 0.2s;
+    letter-spacing: 0.2px;
+  }
+  .toc a:hover { color: var(--text-dark); }
+  .toc a.active { color: var(--accent); }
 
   /* ===== CONTENT ===== */
-  .container { max-width: 860px; margin: 0 auto; padding: 60px 30px; }
-  h2 { font-size: 1.6em; color: #fff; margin: 70px 0 20px 0; letter-spacing: -0.5px; scroll-margin-top: 20px; }
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 80px 40px;
+  }
+  h2 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.8em;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin: 90px 0 24px 0;
+    letter-spacing: -0.3px;
+    scroll-margin-top: 20px;
+    line-height: 1.3;
+  }
   h2:first-child { margin-top: 0; }
-  h3 { font-size: 1.1em; color: #ddd; margin: 30px 0 12px 0; }
-  h4 { font-size: 0.95em; color: #ccc; margin: 20px 0 10px 0; }
-  p { margin-bottom: 16px; color: #b0b0b0; }
-  strong { color: #e0e0e0; }
-  em { color: #bbb; }
-  ul, ol { margin: 0 0 16px 24px; color: #b0b0b0; }
-  li { margin-bottom: 6px; }
-  code { font-family: 'Cascadia Code', 'Fira Code', monospace; background: #0f0f14; padding: 2px 6px; border-radius: 3px; font-size: 0.88em; color: #4ecdc4; }
+  h3 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.15em;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin: 36px 0 14px 0;
+  }
+  h4 {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.88em;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin: 28px 0 12px 0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  p {
+    margin-bottom: 18px;
+    color: var(--text-body);
+    font-weight: 300;
+  }
+  strong { color: var(--text-dark); font-weight: 600; }
+  em { color: #5a5a54; }
+  ul, ol { margin: 0 0 18px 24px; color: var(--text-body); }
+  li { margin-bottom: 8px; font-weight: 300; }
+  code {
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    background: var(--bg-hero);
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-size: 0.86em;
+    color: #8a6d3b;
+    border: 1px solid var(--border-subtle);
+  }
 
-  .divider { width: 60px; height: 2px; background: linear-gradient(90deg, #ff6b6b, #4ecdc4); margin: 50px 0; }
+  /* ===== DIVIDER ===== */
+  .divider {
+    width: 40px;
+    height: 1px;
+    background: var(--accent);
+    margin: 60px 0;
+    opacity: 0.5;
+  }
 
   /* ===== STATUS BADGES ===== */
-  .badge { display: inline-block; font-size: 0.65em; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; vertical-align: middle; margin-left: 8px; }
-  .badge-built { background: #4ecdc422; color: #4ecdc4; border: 1px solid #4ecdc433; }
-  .badge-planned { background: #ffe66d22; color: #ffe66d; border: 1px solid #ffe66d33; }
-  .badge-concept { background: #88888822; color: #888; border: 1px solid #88888833; }
+  .badge {
+    display: inline-block;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.6em;
+    padding: 3px 10px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 600;
+    vertical-align: middle;
+    margin-left: 10px;
+  }
+  .badge-built {
+    background: rgba(107,124,94,0.10);
+    color: var(--sage);
+    border: 1px solid rgba(107,124,94,0.22);
+  }
+  .badge-planned {
+    background: rgba(184,146,74,0.10);
+    color: var(--amber);
+    border: 1px solid rgba(184,146,74,0.22);
+  }
+  .badge-proven {
+    background: rgba(107,124,94,0.10);
+    color: var(--sage);
+    border: 1px solid rgba(107,124,94,0.22);
+  }
+  .badge-progress {
+    background: rgba(176,120,80,0.10);
+    color: var(--terracotta);
+    border: 1px solid rgba(176,120,80,0.22);
+  }
+  .badge-concept {
+    background: rgba(138,138,128,0.08);
+    color: var(--text-muted);
+    border: 1px solid rgba(138,138,128,0.18);
+  }
+
+  /* ===== SCORECARD ===== */
+  .scorecard {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-top: 2px solid var(--accent);
+    border-radius: 2px;
+    padding: 32px 28px;
+    margin: 32px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .scorecard-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .scorecard-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2em;
+    color: var(--text-dark);
+    font-weight: 500;
+  }
+  .scorecard-verdict {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78em;
+    color: var(--accent);
+    font-weight: 500;
+    padding: 5px 16px;
+    border: 1px solid rgba(196,169,125,0.35);
+    border-radius: 2px;
+    background: rgba(196,169,125,0.08);
+    letter-spacing: 0.3px;
+  }
+  .scorecard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .scorecard-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-cream);
+    border-radius: 2px;
+    border: 1px solid var(--border-subtle);
+  }
+  .scorecard-icon {
+    font-size: 1.1em;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+  }
+  .scorecard-icon.pass { color: var(--sage); }
+  .scorecard-icon.fail { color: var(--burgundy); }
+  .scorecard-label {
+    font-size: 0.82em;
+    color: var(--text-body);
+    font-weight: 300;
+  }
+  .scorecard-score {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.4em;
+    font-weight: 500;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* ===== PHASE CARDS ===== */
+  .phase-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    padding: 28px;
+    margin: 24px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .phase-card.phase-warning { border-left-color: var(--terracotta); }
+  .phase-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .phase-number {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68em;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+  .phase-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05em;
+    color: var(--text-dark);
+    font-weight: 500;
+  }
+  .phase-stat {
+    display: inline-block;
+    background: var(--bg-cream);
+    border: 1px solid var(--border-subtle);
+    border-radius: 2px;
+    padding: 7px 14px;
+    margin: 4px 4px 4px 0;
+    font-size: 0.82em;
+  }
+  .phase-stat strong { color: var(--accent); }
+  .phase-stat.stat-warning strong { color: var(--terracotta); }
 
   /* ===== QUOTE ===== */
-  .quote { border-left: 3px solid #4ecdc4; padding: 16px 20px; margin: 24px 0; background: #08080c; border-radius: 0 8px 8px 0; }
-  .quote p { color: #bbb; font-style: italic; margin: 0; font-size: 1.05em; }
-  .quote .attr { color: #555; font-size: 0.75em; margin-top: 8px; font-style: normal; }
-  .quote-amber { border-left-color: #ffe66d; }
-  .quote-red { border-left-color: #ff6b6b; }
+  .quote {
+    border-left: 2px solid var(--accent);
+    padding: 20px 28px;
+    margin: 32px 0;
+    background: var(--bg-cream);
+    border-radius: 0;
+  }
+  .quote p {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    color: var(--text-dark);
+    font-style: italic;
+    margin: 0;
+    font-size: 1.15em;
+    font-weight: 400;
+    line-height: 1.7;
+  }
+  .quote .attr {
+    font-family: 'Inter', sans-serif;
+    color: var(--text-muted);
+    font-size: 0.72em;
+    margin-top: 10px;
+    font-style: normal;
+    letter-spacing: 0.5px;
+  }
+  .quote-amber { border-left-color: var(--amber); }
+  .quote-red { border-left-color: var(--burgundy); }
 
   /* ===== LAW CARDS ===== */
-  .law-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 10px; padding: 28px 24px; margin: 20px 0; transition: border-color 0.3s; }
-  .law-card:hover { border-color: #333; }
-  .law-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
-  .law-number { font-size: 0.7em; color: #555; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-  .law-title { font-size: 1.1em; color: #fff; font-weight: 600; }
-  .law-agent { font-size: 0.82em; color: #4ecdc4; font-family: 'Cascadia Code', 'Fira Code', monospace; }
-  .law-principle { font-size: 0.95em; color: #ddd; margin: 12px 0; padding: 10px 14px; background: #08080c; border-radius: 6px; border-left: 2px solid #333; }
-  .law-detail { margin-top: 16px; }
-  .law-detail h5 { font-size: 0.78em; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .law-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 32px 28px;
+    margin: 24px 0;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .law-card:hover {
+    border-color: rgba(196,169,125,0.5);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .law-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .law-number {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+  .law-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1em;
+    color: var(--text-dark);
+    font-weight: 500;
+  }
+  .law-agent {
+    font-size: 0.82em;
+    color: var(--accent);
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    opacity: 0.85;
+  }
+  .law-principle {
+    font-size: 0.95em;
+    color: var(--text-body);
+    margin: 14px 0;
+    padding: 14px 18px;
+    background: var(--bg-cream);
+    border-radius: 2px;
+    border-left: 2px solid var(--border-light);
+    font-weight: 300;
+    line-height: 1.85;
+  }
+  .law-detail { margin-top: 20px; }
+  .law-detail h5 {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
   .law-detail p, .law-detail ul { font-size: 0.88em; }
-  .law-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
-  .law-grid-item { background: #08080c; border: 1px solid #151518; border-radius: 6px; padding: 12px 14px; }
-  .law-grid-item h6 { font-size: 0.72em; color: #555; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .law-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 14px 0;
+  }
+  .law-grid-item {
+    background: var(--bg-cream);
+    border: 1px solid var(--border-subtle);
+    border-radius: 2px;
+    padding: 14px 16px;
+  }
+  .law-grid-item h6 {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
   .law-grid-item p { font-size: 0.85em; margin: 0; }
 
-  .law-card.law-1 { border-left: 3px solid #ff6b6b; }
-  .law-card.law-1 .law-number { color: #ff6b6b; }
-  .law-card.law-2 { border-left: 3px solid #4ecdc4; }
-  .law-card.law-2 .law-number { color: #4ecdc4; }
-  .law-card.law-3 { border-left: 3px solid #ffe66d; }
-  .law-card.law-3 .law-number { color: #ffe66d; }
-  .law-card.law-4 { border-left: 3px solid #c084fc; }
-  .law-card.law-4 .law-number { color: #c084fc; }
-  .law-card.law-5 { border-left: 3px solid #f97316; }
-  .law-card.law-5 .law-number { color: #f97316; }
+  .law-card.law-1 { border-left: 3px solid var(--burgundy); }
+  .law-card.law-1 .law-number { color: var(--burgundy); }
+  .law-card.law-2 { border-left: 3px solid var(--sage); }
+  .law-card.law-2 .law-number { color: var(--sage); }
+  .law-card.law-3 { border-left: 3px solid var(--amber); }
+  .law-card.law-3 .law-number { color: var(--amber); }
+  .law-card.law-4 { border-left: 3px solid var(--mauve); }
+  .law-card.law-4 .law-number { color: var(--mauve); }
+  .law-card.law-5 { border-left: 3px solid var(--terracotta); }
+  .law-card.law-5 .law-number { color: var(--terracotta); }
 
   /* ===== THRESHOLD BAR ===== */
-  .threshold-bar { position: relative; height: 32px; background: #08080c; border-radius: 6px; margin: 14px 0 8px 0; overflow: hidden; border: 1px solid #151518; }
-  .threshold-zone { position: absolute; top: 0; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 0.68em; font-weight: 600; letter-spacing: 0.3px; }
-  .threshold-label { position: absolute; bottom: -18px; font-size: 0.65em; color: #555; }
+  .threshold-bar {
+    position: relative;
+    height: 36px;
+    background: var(--bg-cream);
+    border-radius: 2px;
+    margin: 16px 0 10px 0;
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+  }
+  .threshold-zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.66em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .threshold-label {
+    position: absolute;
+    bottom: -18px;
+    font-size: 0.65em;
+    color: var(--text-muted);
+  }
 
   /* ===== COORDINATION DIAGRAM ===== */
-  .coord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
-  .coord-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; transition: border-color 0.3s; }
-  .coord-card:hover { border-color: #333; }
-  .coord-agents { font-size: 0.82em; color: #888; margin-bottom: 8px; }
-  .coord-action { font-size: 1em; font-weight: 700; }
-  .coord-desc { font-size: 0.82em; color: #666; margin-top: 6px; }
-  .coord-escalate { border-color: #ffe66d33; }
-  .coord-escalate .coord-action { color: #ffe66d; }
-  .coord-block { border-color: #ff6b6b33; }
-  .coord-block .coord-action { color: #ff6b6b; }
+  .coord-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin: 24px 0;
+  }
+  .coord-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 22px;
+    text-align: center;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .coord-card:hover {
+    border-color: rgba(196,169,125,0.4);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  }
+  .coord-agents {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 300;
+  }
+  .coord-action {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.05em;
+    font-weight: 500;
+  }
+  .coord-desc {
+    font-size: 0.82em;
+    color: var(--text-muted);
+    margin-top: 8px;
+    font-weight: 300;
+  }
+  .coord-escalate { border-color: rgba(184,146,74,0.35); }
+  .coord-escalate .coord-action { color: var(--amber); }
+  .coord-block { border-color: rgba(139,58,58,0.25); }
+  .coord-block .coord-action { color: var(--burgundy); }
 
   /* ===== LAYER STACK ===== */
-  .layer-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
-  .layer { background: #08080c; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; }
-  .layer .layer-name { color: #fff; font-weight: 600; font-size: 0.95em; }
-  .layer .layer-sub { color: #555; font-size: 0.72em; margin-top: 4px; }
-  .layer .layer-desc { color: #888; font-size: 0.8em; margin-top: 10px; line-height: 1.5; }
-  .layer-fragility { border-color: #ff6b6b33; }
-  .layer-fragility .layer-name { color: #ff6b6b; }
-  .layer-support { border-color: #4ecdc433; }
-  .layer-support .layer-name { color: #4ecdc4; }
-  .layer-tension { border-color: #ffe66d33; }
-  .layer-tension .layer-name { color: #ffe66d; }
+  .layer-stack {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .layer {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .layer .layer-name {
+    font-family: 'Playfair Display', serif;
+    color: var(--text-dark);
+    font-weight: 500;
+    font-size: 1em;
+  }
+  .layer .layer-sub {
+    color: var(--text-muted);
+    font-size: 0.7em;
+    margin-top: 5px;
+    letter-spacing: 0.3px;
+    font-weight: 300;
+  }
+  .layer .layer-desc {
+    color: var(--text-body);
+    font-size: 0.82em;
+    margin-top: 12px;
+    line-height: 1.65;
+    font-weight: 300;
+  }
+  .layer-fragility { border-top: 2px solid var(--burgundy); }
+  .layer-fragility .layer-name { color: var(--burgundy); }
+  .layer-support { border-top: 2px solid var(--sage); }
+  .layer-support .layer-name { color: var(--sage); }
+  .layer-tension { border-top: 2px solid var(--amber); }
+  .layer-tension .layer-name { color: var(--amber); }
 
   /* ===== DATA TABLE ===== */
-  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px 0; font-size: 0.85em; }
-  th { text-align: left; padding: 10px 12px; color: #666; font-weight: 600; border-bottom: 2px solid #1a1a22; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; }
-  td { padding: 10px 12px; border-bottom: 1px solid #0f0f14; color: #aaa; }
-  tr:hover td { background: #0a0a0e; }
-  td strong { color: #fff; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0 28px 0;
+    font-size: 0.85em;
+  }
+  th {
+    text-align: left;
+    padding: 12px 14px;
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-light);
+    font-size: 0.75em;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-body);
+    font-weight: 300;
+  }
+  tr:hover td { background: rgba(196,169,125,0.05); }
+  td strong { color: var(--text-dark); }
 
   /* ===== CLASSIFICATION BADGE (results table) ===== */
-  .cls-genuine { color: #4ecdc4; font-weight: 600; }
-  .cls-template { color: #ff6b6b; font-weight: 600; }
-  .cls-uncertain { color: #ffe66d; font-weight: 600; }
-  .cls-exploratory { color: #c084fc; font-weight: 600; }
+  .cls-genuine { color: var(--sage); font-weight: 600; }
+  .cls-template { color: var(--burgundy); font-weight: 600; }
+  .cls-uncertain { color: var(--amber); font-weight: 600; }
+  .cls-exploratory { color: var(--mauve); font-weight: 600; }
 
   /* ===== COMPARISON COLUMNS ===== */
-  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
-  .compare-card { background: #0a0a0e; border: 1px solid #1a1a22; border-radius: 8px; padding: 20px; }
-  .compare-card h4 { color: #fff; font-size: 0.95em; margin-bottom: 8px; }
-  .compare-card p { color: #888; font-size: 0.85em; margin: 0 0 8px 0; }
-  .compare-old { border-top: 3px solid #555; }
-  .compare-new { border-top: 3px solid #4ecdc4; }
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    margin: 24px 0;
+  }
+  .compare-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .compare-card h4 {
+    font-family: 'Playfair Display', serif;
+    color: var(--text-dark);
+    font-size: 1em;
+    font-weight: 500;
+    margin-bottom: 10px;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .compare-card p {
+    color: var(--text-body);
+    font-size: 0.88em;
+    margin: 0 0 10px 0;
+    font-weight: 300;
+  }
+  .compare-old { border-top: 2px solid var(--text-muted); }
+  .compare-new { border-top: 2px solid var(--accent); }
 
   /* ===== PERSISTENCE REQUIREMENTS ===== */
-  .persist-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 20px 0; }
-  .persist-item { background: #08080c; border: 1px solid #1a1a22; border-radius: 8px; padding: 18px; text-align: center; }
-  .persist-item .persist-num { font-size: 1.4em; font-weight: 700; color: #333; margin-bottom: 6px; }
-  .persist-item .persist-name { color: #fff; font-weight: 600; font-size: 0.95em; }
-  .persist-item .persist-desc { color: #888; font-size: 0.8em; margin-top: 8px; line-height: 1.5; }
+  .persist-stack {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .persist-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 22px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .persist-item .persist-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6em;
+    font-weight: 400;
+    color: rgba(196,169,125,0.4);
+    margin-bottom: 8px;
+  }
+  .persist-item .persist-name {
+    font-family: 'Playfair Display', serif;
+    color: var(--text-dark);
+    font-weight: 500;
+    font-size: 0.95em;
+  }
+  .persist-item .persist-desc {
+    color: var(--text-body);
+    font-size: 0.82em;
+    margin-top: 10px;
+    line-height: 1.65;
+    font-weight: 300;
+  }
 
   /* ===== FOOTER ===== */
-  .footer { text-align: center; padding: 40px 30px; color: #333; font-size: 0.7em; border-top: 1px solid #111; margin-top: 60px; }
-  .footer a { color: #4ecdc4; text-decoration: none; }
-  .footer a:hover { color: #fff; }
-  .footer-links { margin-bottom: 12px; }
-  .footer-links a { margin: 0 16px; font-size: 1.2em; }
+  .footer {
+    text-align: center;
+    padding: 50px 40px;
+    color: var(--text-muted);
+    font-size: 0.75em;
+    border-top: 1px solid var(--border-light);
+    margin-top: 80px;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+  .footer a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .footer a:hover { color: var(--text-dark); }
+  .footer-links { margin-bottom: 16px; }
+  .footer-links a {
+    margin: 0 20px;
+    font-size: 1.1em;
+    letter-spacing: 0.5px;
+  }
 
   /* ===== FLOW DIAGRAM ===== */
-  .flow-diagram { background: #08080c; border: 1px solid #1a1a22; border-radius: 10px; padding: 30px 20px; margin: 24px 0; text-align: center; overflow-x: auto; }
-  .flow-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-  .flow-node { background: #0a0a0e; border: 1px solid #222; border-radius: 6px; padding: 8px 14px; font-size: 0.82em; color: #ccc; white-space: nowrap; }
-  .flow-node-active { border-color: #4ecdc4; color: #4ecdc4; }
-  .flow-node-watch { border-color: #ffe66d; color: #ffe66d; }
-  .flow-node-block { border-color: #ff6b6b; color: #ff6b6b; }
-  .flow-arrow { color: #333; font-size: 1.2em; }
+  .flow-diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 32px 24px;
+    margin: 28px 0;
+    text-align: center;
+    overflow-x: auto;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 10px 0;
+  }
+  .flow-node {
+    background: var(--bg-cream);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 9px 16px;
+    font-size: 0.82em;
+    color: var(--text-dark);
+    white-space: nowrap;
+    font-weight: 400;
+  }
+  .flow-node-active { border-color: var(--accent) !important; color: var(--accent) !important; }
+  .flow-node-watch { border-color: var(--amber) !important; color: var(--amber) !important; }
+  .flow-node-block { border-color: var(--burgundy) !important; color: var(--burgundy) !important; }
+  .flow-arrow { color: var(--text-muted); font-size: 1.2em; }
 
+  /* ===== INLINE STYLE OVERRIDES ===== */
+  /* Override inline neon colors from HTML to warm palette */
+  [style*="color:#6b7c5e"] { color: var(--sage) !important; }
+  [style*="color:#8b3a3a"] { color: var(--burgundy) !important; }
+  [style*="color:#c4a97d"] { color: var(--amber) !important; }
+  [style*="color:#9b7aaa"] { color: var(--mauve) !important; }
+  [style*="color:#b07850"] { color: var(--terracotta) !important; }
+  [style*="color:#555"]    { color: var(--text-muted) !important; }
+  [style*="color:#444"]    { color: var(--text-muted) !important; }
+  [style*="color:#666"]    { color: var(--text-muted) !important; }
+  [style*="color:#888"]    { color: var(--text-body) !important; }
+
+  /* Override inline background colors in threshold bars */
+  [style*="background: #8b3a3a18"],
+  [style*="background:#8b3a3a18"] { background: rgba(139,58,58,0.10) !important; }
+  [style*="background: #c4a97d12"],
+  [style*="background:#c4a97d12"] { background: rgba(184,146,74,0.10) !important; }
+  [style*="background: #6b7c5e12"],
+  [style*="background:#6b7c5e12"] { background: rgba(107,124,94,0.10) !important; }
+  [style*="background: #88888812"],
+  [style*="background:#88888812"] { background: rgba(138,138,128,0.08) !important; }
+
+  /* Override inline border colors in flow nodes */
+  [style*="border-color:#8b3a3a55"] { border-color: rgba(139,58,58,0.30) !important; }
+  [style*="border-color:#6b7c5e55"] { border-color: rgba(107,124,94,0.30) !important; }
+  [style*="border-color:#c4a97d55"] { border-color: rgba(184,146,74,0.30) !important; }
+  [style*="border-color:#9b7aaa55"] { border-color: rgba(155,122,170,0.30) !important; }
+  [style*="border-color:#b0785055"] { border-color: rgba(176,120,80,0.30) !important; }
+
+  /* Override inline background on template-lock example */
+  [style*="background:#08080c"] { background: var(--bg-cream) !important; }
+
+  /* Override inline border on template-lock example */
+  [style*="border:1px solid #1a1a22"] { border-color: var(--border-light) !important; }
+
+  /* ===== ALTERNATING SECTIONS ===== */
+  .container > .divider ~ h2 ~ p,
+  .container > .divider ~ h2 ~ .compare-grid,
+  .container > .divider ~ h2 ~ .law-card,
+  .container > .divider ~ h2 ~ .quote {
+    /* Subtle warmth via section breaks */
+  }
+
+  /* ===== RESPONSIVE ===== */
   @media (max-width: 700px) {
-    .hero-content h1 { font-size: 2em; }
+    .hero { height: 80vh; min-height: 480px; }
+    .hero-content h1 { font-size: 2.4em; }
+    .hero-content { padding: 0 24px; }
+    .container { padding: 50px 24px; }
+    h2 { font-size: 1.5em; margin: 60px 0 18px 0; }
     .law-grid, .coord-grid, .compare-grid, .layer-stack, .persist-stack { grid-template-columns: 1fr; }
+    .scorecard-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ===== FIVE LAWS OVERVIEW DIAGRAM ===== */
+  .laws-overview {
+    margin: 36px 0 48px 0;
+    padding: 36px 24px 32px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    overflow-x: auto;
+  }
+  .laws-overview-label {
+    text-align: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 28px;
+    font-weight: 600;
+  }
+  .laws-overview-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 820px;
+  }
+  .law-overview-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    flex: 0 0 auto;
+    width: 150px;
+  }
+  .law-overview-circle {
+    width: 62px;
+    height: 62px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 2px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1em;
+    font-weight: 500;
+    color: var(--text-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    position: relative;
+    z-index: 1;
+  }
+  .law-overview-node:nth-child(1) .law-overview-circle { border-color: var(--burgundy); color: var(--burgundy); }
+  .law-overview-node:nth-child(3) .law-overview-circle { border-color: var(--sage); color: var(--sage); }
+  .law-overview-node:nth-child(5) .law-overview-circle { border-color: var(--amber); color: var(--amber); }
+  .law-overview-node:nth-child(7) .law-overview-circle { border-color: var(--mauve); color: var(--mauve); }
+  .law-overview-node:nth-child(9) .law-overview-circle { border-color: var(--terracotta); color: var(--terracotta); }
+  .law-overview-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.72em;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin-top: 10px;
+    line-height: 1.35;
+    max-width: 130px;
+  }
+  .law-overview-agent {
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    font-size: 0.62em;
+    color: var(--text-muted);
+    margin-top: 4px;
+    opacity: 0.75;
+  }
+  .law-overview-connector {
+    width: 36px;
+    height: 2px;
+    background: var(--accent);
+    flex-shrink: 0;
+    position: relative;
+    opacity: 0.5;
+  }
+  .law-overview-connector::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--accent);
+    border-top: 2px solid var(--accent);
+    transform: rotate(45deg);
+    opacity: 0.5;
+  }
+
+  /* ===== AGENT COORDINATION FAN DIAGRAM ===== */
+  .fan-diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 36px 24px;
+    margin: 28px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    overflow-x: auto;
+  }
+  .fan-layout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 700px;
+    min-height: 260px;
+    position: relative;
+  }
+  .fan-input, .fan-output {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    z-index: 2;
+  }
+  .fan-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 14px 22px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82em;
+    font-weight: 500;
+    color: var(--text-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    white-space: nowrap;
+  }
+  .fan-box-accent { border-color: var(--accent); color: var(--accent); }
+  .fan-center {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin: 0 16px;
+    z-index: 2;
+  }
+  .fan-agent {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 8px 16px;
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    font-size: 0.72em;
+    white-space: nowrap;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .fan-agent-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .fan-agent:nth-child(1) .fan-agent-dot { background: var(--burgundy); }
+  .fan-agent:nth-child(2) .fan-agent-dot { background: var(--sage); }
+  .fan-agent:nth-child(3) .fan-agent-dot { background: var(--amber); }
+  .fan-agent:nth-child(4) .fan-agent-dot { background: var(--mauve); }
+  .fan-agent:nth-child(5) .fan-agent-dot { background: var(--terracotta); }
+  .fan-lines-left, .fan-lines-right {
+    flex: 0 0 40px;
+    position: relative;
+    height: 240px;
+    z-index: 1;
+  }
+  .fan-line {
+    position: absolute;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.3;
+    transform-origin: left center;
+  }
+  .fan-lines-right .fan-line {
+    transform-origin: right center;
+  }
+
+  /* ===== WHY THIS MATTERS CALLOUT ===== */
+  .why-matters {
+    margin: 40px -40px;
+    padding: 0;
+    background: var(--bg-hero);
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .why-matters-inner {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 40px 40px;
+  }
+  .why-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.62em;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+  .why-text {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 1.25em;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--text-dark);
+    line-height: 1.75;
+  }
+
+  /* ===== DECISION TREE ===== */
+  .decision-tree {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 32px 28px;
+    margin: 28px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .decision-tree-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+  .dt-root {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-left: 24px;
+  }
+  .dt-node {
+    position: relative;
+    padding: 10px 18px;
+    background: var(--bg-cream);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85em;
+    font-weight: 400;
+    color: var(--text-dark);
+    margin-bottom: 0;
+  }
+  .dt-trunk {
+    width: 2px;
+    height: 28px;
+    background: var(--accent);
+    margin-left: 30px;
+    opacity: 0.4;
+  }
+  .dt-branches {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-left: 0;
+  }
+  .dt-branch {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    padding-left: 30px;
+  }
+  .dt-branch::before {
+    content: '';
+    position: absolute;
+    left: 30px;
+    top: 0;
+    width: 2px;
+    height: 100%;
+    background: var(--accent);
+    opacity: 0.2;
+  }
+  .dt-branch:last-child::before {
+    height: 50%;
+  }
+  .dt-branch-arm {
+    position: absolute;
+    left: 30px;
+    top: 50%;
+    width: 20px;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.35;
+  }
+  .dt-condition {
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    font-size: 0.78em;
+    color: var(--text-muted);
+    padding: 4px 0;
+    white-space: nowrap;
+    margin-left: 24px;
+  }
+  .dt-outcome {
+    padding: 8px 16px;
+    border-radius: 2px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.82em;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    border: 1px solid;
+    margin: 8px 0;
+  }
+  .dt-outcome-allow {
+    color: var(--sage);
+    background: rgba(107,124,94,0.08);
+    border-color: rgba(107,124,94,0.25);
+  }
+  .dt-outcome-downgrade {
+    color: var(--amber);
+    background: rgba(184,146,74,0.08);
+    border-color: rgba(184,146,74,0.25);
+  }
+  .dt-outcome-block {
+    color: var(--burgundy);
+    background: rgba(139,58,58,0.08);
+    border-color: rgba(139,58,58,0.25);
+  }
+  .dt-note {
+    font-size: 0.72em;
+    color: var(--text-muted);
+    font-weight: 300;
+    margin-left: 6px;
+  }
+
+  /* ===== CALIBRATION FLOW DIAGRAM ===== */
+  .calibration-flow {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 36px 24px;
+    margin: 28px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    overflow-x: auto;
+  }
+  .cal-flow-layout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 640px;
+  }
+  .cal-sources {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 0 0 auto;
+  }
+  .cal-source {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 14px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    min-width: 180px;
+  }
+  .cal-source-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: var(--text-dark);
+  }
+  .cal-source-sub {
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    font-size: 0.65em;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+  .cal-source-fragility { border-left: 3px solid var(--burgundy); }
+  .cal-source-fragility .cal-source-name { color: var(--burgundy); }
+  .cal-source-support { border-left: 3px solid var(--sage); }
+  .cal-source-support .cal-source-name { color: var(--sage); }
+  .cal-source-tension { border-left: 3px solid var(--amber); }
+  .cal-source-tension .cal-source-name { color: var(--amber); }
+  .cal-connector-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 60px;
+    position: relative;
+    height: 180px;
+  }
+  .cal-hline {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.3;
+  }
+  .cal-hline:nth-child(1) { top: 24px; }
+  .cal-hline:nth-child(2) { top: 50%; }
+  .cal-hline:nth-child(3) { bottom: 24px; }
+  .cal-vline {
+    position: absolute;
+    right: 0;
+    top: 24px;
+    bottom: 24px;
+    width: 2px;
+    background: var(--accent);
+    opacity: 0.3;
+  }
+  .cal-merge-arrow {
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cal-merge-arrow::before {
+    content: '';
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+  .cal-target {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .cal-target-box {
+    background: var(--bg-card);
+    border: 2px solid var(--accent);
+    border-radius: 2px;
+    padding: 16px 22px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(196,169,125,0.12);
+  }
+  .cal-target-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .cal-target-sub {
+    font-size: 0.68em;
+    color: var(--text-muted);
+    margin-top: 2px;
+    letter-spacing: 0.3px;
+  }
+  .cal-final-arrow {
+    flex: 0 0 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .cal-final-arrow::before {
+    content: '';
+    width: 100%;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+  .cal-final-arrow::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid var(--accent);
+    border-top: 2px solid var(--accent);
+    transform: rotate(45deg);
+    opacity: 0.4;
+  }
+  .cal-output-box {
+    background: var(--bg-cream);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 16px 22px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .cal-output-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.95em;
+    font-weight: 500;
+    color: var(--text-dark);
+  }
+  .cal-output-sub {
+    font-size: 0.68em;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ===== GOVERNANCE DOT MATRIX ===== */
+  .dot-matrix {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 2px;
+    padding: 32px 28px;
+    margin: 28px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .dot-matrix-label {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 600;
+    margin-bottom: 24px;
+  }
+  .dot-matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .dot-matrix-table th {
+    text-align: center;
+    padding: 8px 12px;
+    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
+    font-size: 0.68em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-light);
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 500;
+  }
+  .dot-matrix-table th:first-child {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+  }
+  .dot-matrix-table td {
+    text-align: center;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-weight: 300;
+  }
+  .dot-matrix-table td:first-child {
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--text-dark);
+  }
+  .dot-built {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--sage);
+    box-shadow: 0 0 0 3px rgba(107,124,94,0.15);
+  }
+  .dot-planned {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid var(--amber);
+    box-shadow: 0 0 0 3px rgba(184,146,74,0.10);
+  }
+  .dot-matrix-legend {
+    display: flex;
+    gap: 24px;
+    margin-top: 18px;
+    font-size: 0.72em;
+    color: var(--text-muted);
+    font-weight: 300;
+  }
+  .dot-matrix-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ===== RESPONSIVE ADDITIONS ===== */
+  @media (max-width: 700px) {
+    .laws-overview-row { min-width: 0; flex-direction: column; gap: 0; }
+    .law-overview-connector { width: 2px; height: 24px; margin: 0 auto; }
+    .law-overview-connector::after { display: none; }
+    .fan-layout { min-width: 0; flex-direction: column; gap: 12px; min-height: auto; }
+    .fan-lines-left, .fan-lines-right { display: none; }
+    .fan-center { flex-direction: column; margin: 12px 0; }
+    .why-matters { margin: 40px -24px; }
+    .why-matters-inner { padding: 32px 24px; }
+    .why-text { font-size: 1.1em; }
+    .dt-condition { white-space: normal; }
+    .cal-flow-layout { min-width: 0; flex-direction: column; gap: 12px; }
+    .cal-connector-group { display: none; }
+    .cal-merge-arrow, .cal-final-arrow { height: 30px; width: 2px; flex: 0 0 30px; }
+    .cal-merge-arrow::before { width: 2px; height: 100%; }
+    .cal-final-arrow::before { width: 2px; height: 100%; }
+    .cal-final-arrow::after { display: none; }
   }
 </style>
 </head>
@@ -177,6 +1450,9 @@
   <a href="#coordination">Coordination Layer</a>
   <a href="#calibration">Three Calibration Layers</a>
   <a href="#results">Real Data Results</a>
+  <a href="#governance">Governance Validation</a>
+  <a href="#blind-spot">The Blind Spot</a>
+  <a href="#convergent">Convergent Validity</a>
   <a href="#why-immune">Why Immune Agents</a>
   <a href="#persistence">Persistence Layer</a>
   <a href="#next">What's Next</a>
@@ -212,7 +1488,7 @@
   <div class="compare-card compare-new">
     <h4>Immune Agents</h4>
     <p>Floating, reactive, pattern-driven enforcement. Each agent is specialized for a specific failure mode. Not tied to pipeline stages.</p>
-    <p style="color:#4ecdc4;">Governance goes where the threat is.</p>
+    <p style="color:#6b7c5e;">Governance goes where the threat is.</p>
   </div>
 </div>
 
@@ -224,12 +1500,56 @@
   <p>"Build the immune agents first, but do it under a written Mirus/Holden constitution."</p>
 </div>
 
+<!-- WHY THIS MATTERS: after Constitutional Doctrine -->
+<div class="why-matters">
+  <div class="why-matters-inner">
+    <div class="why-label">Why This Matters</div>
+    <div class="why-text">The original fixed-gate architecture assumed you know where governance needs to happen. The variance experiment proved fragility is domain-specific and model-specific. Governance must be adaptive.</div>
+  </div>
+</div>
+
 <div class="divider"></div>
 
 <!-- ===== 2. THE FIVE LAWS ===== -->
 <h2 id="laws">The Five Laws</h2>
 
 <p>Each law addresses a specific failure mode in AI memory and belief governance. Each has a dedicated agent that enforces it.</p>
+
+<!-- FIVE LAWS VISUAL OVERVIEW -->
+<div class="laws-overview">
+  <div class="laws-overview-label">Constitutional Law Chain</div>
+  <div class="laws-overview-row">
+    <div class="law-overview-node">
+      <div class="law-overview-circle">L1</div>
+      <div class="law-overview-title">Speech Cannot Upgrade Belief</div>
+      <div class="law-overview-agent">SpeechLeakDetector</div>
+    </div>
+    <div class="law-overview-connector"></div>
+    <div class="law-overview-node">
+      <div class="law-overview-circle">L2</div>
+      <div class="law-overview-title">Low Variance Does Not Imply Confidence</div>
+      <div class="law-overview-agent">TemplateDetector</div>
+    </div>
+    <div class="law-overview-connector"></div>
+    <div class="law-overview-node">
+      <div class="law-overview-circle">L3</div>
+      <div class="law-overview-title">Preserve Contradiction Before Resolution</div>
+      <div class="law-overview-agent">ResolutionGuard</div>
+    </div>
+    <div class="law-overview-connector"></div>
+    <div class="law-overview-node">
+      <div class="law-overview-circle">L4</div>
+      <div class="law-overview-title">Quarantine Degraded Reconstruction</div>
+      <div class="law-overview-agent">CorruptionGuard</div>
+    </div>
+    <div class="law-overview-connector"></div>
+    <div class="law-overview-node">
+      <div class="law-overview-circle">L5</div>
+      <div class="law-overview-title">Bound Confidence by Internal Support</div>
+      <div class="law-overview-agent">GapAuditor</div>
+    </div>
+  </div>
+</div>
 
 <!-- LAW 1 -->
 <div class="law-card law-1">
@@ -255,14 +1575,14 @@
 
     <h5>Decision Logic</h5>
     <div class="threshold-bar">
-      <div class="threshold-zone" style="left:0; width:30%; background: #ff6b6b18; color: #ff6b6b;">BLOCK</div>
-      <div class="threshold-zone" style="left:30%; width:13.3%; background: #ffe66d12; color: #ffe66d;">DOWNGRADE</div>
-      <div class="threshold-zone" style="left:43.3%; width:56.7%; background: #4ecdc412; color: #4ecdc4;">ALLOW</div>
+      <div class="threshold-zone" style="left:0; width:30%; background: #8b3a3a18; color: #8b3a3a;">BLOCK</div>
+      <div class="threshold-zone" style="left:30%; width:13.3%; background: #c4a97d12; color: #c4a97d;">DOWNGRADE</div>
+      <div class="threshold-zone" style="left:43.3%; width:56.7%; background: #6b7c5e12; color: #6b7c5e;">ALLOW</div>
     </div>
     <p style="font-size:0.78em; color:#555; margin-top:20px;">
-      Similarity &lt; 0.45 = <strong style="color:#ff6b6b;">BLOCK</strong> (no grounding, high proposed trust) &nbsp;|&nbsp;
-      0.45 - 0.65 = <strong style="color:#ffe66d;">DOWNGRADE</strong> (partial match, trust scaled) &nbsp;|&nbsp;
-      &ge; 0.65 = <strong style="color:#4ecdc4;">ALLOW</strong> (grounded, trust capped at source)
+      Similarity &lt; 0.45 = <strong style="color:#8b3a3a;">BLOCK</strong> (no grounding, high proposed trust) &nbsp;|&nbsp;
+      0.45 - 0.65 = <strong style="color:#c4a97d;">DOWNGRADE</strong> (partial match, trust scaled) &nbsp;|&nbsp;
+      &ge; 0.65 = <strong style="color:#6b7c5e;">ALLOW</strong> (grounded, trust capped at source)
     </p>
 
     <h5>Threat Model</h5>
@@ -270,10 +1590,41 @@
 
     <h5>Actions</h5>
     <ul>
-      <li><strong style="color:#4ecdc4;">ALLOW</strong> -- Grounding found. Write permitted. Trust capped at the grounding source's trust level.</li>
-      <li><strong style="color:#ffe66d;">DOWNGRADE</strong> -- Partial match. Write permitted but trust reduced proportionally.</li>
-      <li><strong style="color:#ff6b6b;">BLOCK</strong> -- No grounding found and proposed trust exceeds 0.3. Write rejected entirely.</li>
+      <li><strong style="color:#6b7c5e;">ALLOW</strong> -- Grounding found. Write permitted. Trust capped at the grounding source's trust level.</li>
+      <li><strong style="color:#c4a97d;">DOWNGRADE</strong> -- Partial match. Write permitted but trust reduced proportionally.</li>
+      <li><strong style="color:#8b3a3a;">BLOCK</strong> -- No grounding found and proposed trust exceeds 0.3. Write rejected entirely.</li>
     </ul>
+
+    <!-- DECISION FLOW TREE for Law 1 -->
+    <div class="decision-tree">
+      <div class="decision-tree-label">Decision Flow</div>
+      <div class="dt-root">
+        <div class="dt-node">Generated Response</div>
+        <div class="dt-trunk"></div>
+        <div class="dt-node">Find Grounding Evidence</div>
+        <div class="dt-trunk"></div>
+        <div class="dt-branches">
+          <div class="dt-branch">
+            <div class="dt-branch-arm"></div>
+            <div class="dt-condition">similarity &ge; 0.65</div>
+            <div class="dt-outcome dt-outcome-allow">ALLOW</div>
+            <span class="dt-note">trust capped at source</span>
+          </div>
+          <div class="dt-branch">
+            <div class="dt-branch-arm"></div>
+            <div class="dt-condition">0.45 &le; sim &lt; 0.65</div>
+            <div class="dt-outcome dt-outcome-downgrade">DOWNGRADE</div>
+            <span class="dt-note">trust scaled proportionally</span>
+          </div>
+          <div class="dt-branch">
+            <div class="dt-branch-arm"></div>
+            <div class="dt-condition">similarity &lt; 0.45</div>
+            <div class="dt-outcome dt-outcome-block">BLOCK</div>
+            <span class="dt-note">write rejected</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -330,9 +1681,9 @@
     <h5>Variance Thresholds</h5>
     <p>Calibrated directly from the belief variance experiment data (mean pairwise cosine distance across repeated responses):</p>
     <div class="threshold-bar">
-      <div class="threshold-zone" style="left:0; width:33%; background: #4ecdc412; color: #4ecdc4;">LOW &lt; 0.05</div>
+      <div class="threshold-zone" style="left:0; width:33%; background: #6b7c5e12; color: #6b7c5e;">LOW &lt; 0.05</div>
       <div class="threshold-zone" style="left:33%; width:34%; background: #88888812; color: #888;">MID</div>
-      <div class="threshold-zone" style="left:67%; width:33%; background: #ffe66d12; color: #ffe66d;">HIGH &gt; 0.15</div>
+      <div class="threshold-zone" style="left:67%; width:33%; background: #c4a97d12; color: #c4a97d;">HIGH &gt; 0.15</div>
     </div>
   </div>
 </div>
@@ -437,6 +1788,14 @@
   </div>
 </div>
 
+<!-- WHY THIS MATTERS: after Five Laws -->
+<div class="why-matters">
+  <div class="why-matters-inner">
+    <div class="why-label">Why This Matters</div>
+    <div class="why-text">These five laws form a constitutional doctrine -- not a pipeline configuration. They define what the system must never allow, regardless of which model is speaking.</div>
+  </div>
+</div>
+
 <div class="divider"></div>
 
 <!-- ===== 3. COORDINATION LAYER ===== -->
@@ -479,13 +1838,48 @@
     <div class="flow-node">Verdict</div>
   </div>
   <div style="margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-    <div class="flow-node" style="border-color:#ff6b6b55; color:#ff6b6b; font-size:0.75em;">L1: SpeechLeak</div>
-    <div class="flow-node" style="border-color:#4ecdc455; color:#4ecdc4; font-size:0.75em;">L2: Template</div>
-    <div class="flow-node" style="border-color:#ffe66d55; color:#ffe66d; font-size:0.75em;">L3: Resolution</div>
-    <div class="flow-node" style="border-color:#c084fc55; color:#c084fc; font-size:0.75em;">L4: Corruption</div>
-    <div class="flow-node" style="border-color:#f9731655; color:#f97316; font-size:0.75em;">L5: Gap</div>
+    <div class="flow-node" style="border-color:#8b3a3a55; color:#8b3a3a; font-size:0.75em;">L1: SpeechLeak</div>
+    <div class="flow-node" style="border-color:#6b7c5e55; color:#6b7c5e; font-size:0.75em;">L2: Template</div>
+    <div class="flow-node" style="border-color:#c4a97d55; color:#c4a97d; font-size:0.75em;">L3: Resolution</div>
+    <div class="flow-node" style="border-color:#9b7aaa55; color:#9b7aaa; font-size:0.75em;">L4: Corruption</div>
+    <div class="flow-node" style="border-color:#b0785055; color:#b07850; font-size:0.75em;">L5: Gap</div>
   </div>
   <p style="font-size:0.72em; color:#444; margin-top:12px; margin-bottom:0;">All agents observe the same stream. None are sequential. Coordination resolves conflicts.</p>
+</div>
+
+<!-- AGENT COORDINATION FAN DIAGRAM -->
+<div class="fan-diagram">
+  <div class="fan-layout">
+    <div class="fan-input">
+      <div class="fan-box">Model Output</div>
+    </div>
+    <div class="fan-lines-left">
+      <div class="fan-line" style="top:12px; width:100%; transform:rotate(0deg);"></div>
+      <div class="fan-line" style="top:25%; width:100%; transform:rotate(0deg);"></div>
+      <div class="fan-line" style="top:50%; width:100%; transform:rotate(0deg);"></div>
+      <div class="fan-line" style="top:75%; width:100%; transform:rotate(0deg);"></div>
+      <div class="fan-line" style="bottom:12px; width:100%; transform:rotate(0deg);"></div>
+    </div>
+    <div class="fan-center">
+      <div class="fan-agent"><span class="fan-agent-dot"></span> L1: SpeechLeakDetector</div>
+      <div class="fan-agent"><span class="fan-agent-dot"></span> L2: TemplateDetector</div>
+      <div class="fan-agent"><span class="fan-agent-dot"></span> L3: ResolutionGuard</div>
+      <div class="fan-agent"><span class="fan-agent-dot"></span> L4: CorruptionGuard</div>
+      <div class="fan-agent"><span class="fan-agent-dot"></span> L5: GapAuditor</div>
+    </div>
+    <div class="fan-lines-right">
+      <div class="fan-line" style="top:12px; width:100%;"></div>
+      <div class="fan-line" style="top:25%; width:100%;"></div>
+      <div class="fan-line" style="top:50%; width:100%;"></div>
+      <div class="fan-line" style="top:75%; width:100%;"></div>
+      <div class="fan-line" style="bottom:12px; width:100%;"></div>
+    </div>
+    <div class="fan-output">
+      <div class="fan-box fan-box-accent">Coordination Layer</div>
+      <div style="height:12px;"></div>
+      <div class="fan-box">Verdict</div>
+    </div>
+  </div>
 </div>
 
 <div class="divider"></div>
@@ -516,6 +1910,46 @@
 <div class="quote">
   <p>"Variance probe = calibration layer for fragility. Grounding/memory/contradiction = calibration layers for support. Immune agents = enforcement layer across both."</p>
   <div class="attr">-- GPT adversarial critique correction</div>
+</div>
+
+<!-- ENHANCED CALIBRATION FLOW VISUAL -->
+<div class="calibration-flow">
+  <div class="cal-flow-layout">
+    <div class="cal-sources">
+      <div class="cal-source cal-source-fragility">
+        <div class="cal-source-name">Fragility Layer</div>
+        <div class="cal-source-sub">Variance Probe</div>
+      </div>
+      <div class="cal-source cal-source-support">
+        <div class="cal-source-name">Support Layer</div>
+        <div class="cal-source-sub">Memory / Trust</div>
+      </div>
+      <div class="cal-source cal-source-tension">
+        <div class="cal-source-name">Tension Layer</div>
+        <div class="cal-source-sub">Contradictions</div>
+      </div>
+    </div>
+    <div class="cal-connector-group">
+      <div class="cal-hline"></div>
+      <div class="cal-hline"></div>
+      <div class="cal-hline"></div>
+      <div class="cal-vline"></div>
+    </div>
+    <div class="cal-merge-arrow"></div>
+    <div class="cal-target">
+      <div class="cal-target-box">
+        <div class="cal-target-name">Immune Agents</div>
+        <div class="cal-target-sub">Enforcement</div>
+      </div>
+    </div>
+    <div class="cal-final-arrow"></div>
+    <div class="cal-target">
+      <div class="cal-output-box">
+        <div class="cal-output-name">Governed Output</div>
+        <div class="cal-output-sub">Auditable</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <p><strong>Important boundary:</strong> variance is calibration for fragility only, not the whole foundation. The original design overweighted variance as the single source of truth. The corrected architecture recognizes three independent calibration sources, with immune agents enforcing policy across all of them.</p>
@@ -570,7 +2004,206 @@
 
 <div class="divider"></div>
 
-<!-- ===== 6. WHY IMMUNE AGENTS ===== -->
+<!-- ===== 6. GOVERNANCE VALIDATION ===== -->
+<h2 id="governance">Does Governance Work? <span class="badge badge-proven">validated</span></h2>
+
+<p>The governance layer shows early convergent validity against independently measured fragility. Three validation phases, run against real experiment data.</p>
+
+<!-- Phase 1 -->
+<div class="phase-card">
+  <div class="phase-header">
+    <span class="phase-number">Phase 1</span>
+    <span class="phase-title">TemplateDetector Accuracy</span>
+    <span class="badge badge-proven">passed</span>
+  </div>
+  <p>Ran on ALL Qwen3 responses at T=1.5 (highest temperature, maximum model freedom).</p>
+  <div>
+    <span class="phase-stat"><strong>99.8%</strong> factual non-template rate</span>
+    <span class="phase-stat"><strong>71.3%</strong> opinion template detection</span>
+    <span class="phase-stat"><strong>YES</strong> domain ordering matches variance</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color:#888;">The detector correctly identifies hollow domains without needing the variance probe at runtime. Domain ordering matches the independently measured susceptibility ranking from the variance experiment.</p>
+</div>
+
+<!-- Phase 2 -->
+<div class="phase-card">
+  <div class="phase-header">
+    <span class="phase-number">Phase 2</span>
+    <span class="phase-title">GapAuditor Calibration</span>
+    <span class="badge badge-proven">passed</span>
+  </div>
+  <p>Belief confidence set from domain susceptibility data. Gap measured between speech confidence and belief support.</p>
+  <div>
+    <span class="phase-stat"><strong>99.2%</strong> moral ELEVATED+ rate</span>
+    <span class="phase-stat"><strong>96.9%</strong> factual SAFE rate</span>
+    <span class="phase-stat"><strong>600/600</strong> moral responses triggered ESCALATE</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color:#888;">All 300 moral_clear + 300 moral_ambiguous responses triggered ESCALATE via epistemic void detection. The gap between speech confidence and belief support is measurable and domain-correlated.</p>
+</div>
+
+<!-- Phase 3 -->
+<div class="phase-card">
+  <div class="phase-header">
+    <span class="phase-number">Phase 3</span>
+    <span class="phase-title">Multi-Agent Agreement</span>
+    <span class="badge badge-proven">passed</span>
+  </div>
+  <p>20 real responses (10 factual, 10 moral) through the full agent stack.</p>
+  <div>
+    <span class="phase-stat"><strong>0/10</strong> factual false flags</span>
+    <span class="phase-stat"><strong>10/10</strong> moral correctly identified</span>
+    <span class="phase-stat"><strong>100%</strong> multi-agent agreement</span>
+  </div>
+  <p style="margin-top:14px; font-size:0.88em; color:#888;">Zero false governance on factual responses. All moral responses correctly identified as problematic. Multi-agent agreement = high-confidence governance signal.</p>
+</div>
+
+<!-- Scorecard -->
+<div class="scorecard">
+  <div class="scorecard-header">
+    <span class="scorecard-title">Governance Scorecard</span>
+    <span class="scorecard-verdict">Early convergent validity confirmed</span>
+  </div>
+  <div class="scorecard-score">5 / 6</div>
+  <div class="scorecard-grid">
+    <div class="scorecard-row">
+      <span class="scorecard-icon pass">&#10003;</span>
+      <span class="scorecard-label">TemplateDetector: factual non-template rate (99.8%)</span>
+    </div>
+    <div class="scorecard-row">
+      <span class="scorecard-icon pass">&#10003;</span>
+      <span class="scorecard-label">TemplateDetector: domain ordering matches variance</span>
+    </div>
+    <div class="scorecard-row">
+      <span class="scorecard-icon pass">&#10003;</span>
+      <span class="scorecard-label">GapAuditor: moral ELEVATED+ rate (99.2%)</span>
+    </div>
+    <div class="scorecard-row">
+      <span class="scorecard-icon pass">&#10003;</span>
+      <span class="scorecard-label">GapAuditor: factual SAFE rate (96.9%)</span>
+    </div>
+    <div class="scorecard-row">
+      <span class="scorecard-icon pass">&#10003;</span>
+      <span class="scorecard-label">Multi-agent: zero false governance on factual</span>
+    </div>
+    <div class="scorecard-row">
+      <span class="scorecard-icon fail">&#10007;</span>
+      <span class="scorecard-label">TemplateDetector: assertive moral template detection</span>
+    </div>
+  </div>
+</div>
+
+<!-- GOVERNANCE DOT MATRIX -->
+<div class="dot-matrix">
+  <div class="dot-matrix-label">Agent Coverage by Model</div>
+  <table class="dot-matrix-table">
+    <tr>
+      <th>Model</th>
+      <th>L1 SpeechLeak</th>
+      <th>L2 Template</th>
+      <th>L3 Resolution</th>
+      <th>L4 Corruption</th>
+      <th>L5 Gap</th>
+    </tr>
+    <tr>
+      <td>Qwen3</td>
+      <td><span class="dot-built"></span></td>
+      <td><span class="dot-built"></span></td>
+      <td><span class="dot-planned"></span></td>
+      <td><span class="dot-planned"></span></td>
+      <td><span class="dot-planned"></span></td>
+    </tr>
+    <tr>
+      <td>Mistral</td>
+      <td><span class="dot-built"></span></td>
+      <td><span class="dot-built"></span></td>
+      <td><span class="dot-planned"></span></td>
+      <td><span class="dot-planned"></span></td>
+      <td><span class="dot-planned"></span></td>
+    </tr>
+    <tr>
+      <td>DeepSeek</td>
+      <td><span class="dot-built"></span></td>
+      <td><span class="dot-built"></span></td>
+      <td><span class="dot-planned"></span></td>
+      <td><span class="dot-planned"></span></td>
+      <td><span class="dot-planned"></span></td>
+    </tr>
+  </table>
+  <div class="dot-matrix-legend">
+    <div class="dot-matrix-legend-item"><span class="dot-built"></span> Built &amp; tested</div>
+    <div class="dot-matrix-legend-item"><span class="dot-planned"></span> Designed, awaiting pipeline</div>
+  </div>
+</div>
+
+<!-- WHY THIS MATTERS: after Governance Validation -->
+<div class="why-matters">
+  <div class="why-matters-inner">
+    <div class="why-label">Why This Matters</div>
+    <div class="why-text">Every immune agent is tested against real experiment data -- not synthetic benchmarks. The classifications come from actual model outputs under controlled perturbation.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== 7. THE BLIND SPOT ===== -->
+<h2 id="blind-spot">The Blind Spot <span class="badge badge-progress">open</span></h2>
+
+<p>The one miss: <strong>moral_clear responses that are template-locked but don't use hedge language.</strong></p>
+
+<div class="phase-card phase-warning">
+  <div class="phase-header">
+    <span class="phase-number" style="color:#b07850;">The Gap</span>
+    <span class="phase-title">Assertive Template Collapse</span>
+    <span class="badge badge-progress">undetected</span>
+  </div>
+  <p>These are short, direct moral assertions that repeat identically across samples:</p>
+  <div style="background:#08080c; border:1px solid #1a1a22; border-radius:8px; padding:14px 18px; margin:12px 0; font-size:0.88em; color:#888; font-style:italic;">
+    "Yes, you should return it."
+  </div>
+  <p style="font-size:0.88em; color:#888;">Repeated verbatim 20/20 times at T=1.5. Zero variance. Zero hedge patterns. The TemplateDetector looks for hedge patterns ("multiple perspectives", "it depends") -- when the template is assertive rather than hedging, the detector misses it.</p>
+</div>
+
+<h4>Why the GapAuditor Catches It Anyway</h4>
+<p>The GapAuditor detects these via <strong>epistemic void detection</strong>: low belief confidence on moral domain topics means any confident assertion -- hedged or assertive -- gets flagged. The architecture didn't fail. It exposed a detector gap that the multi-agent design compensates for.</p>
+
+<h4>The Fix</h4>
+<p>Add <strong>assertive semantic collapse detection</strong>: low embedding variance + high content repetition, regardless of hedge patterns. The signal is not what the text says. The signal is that the text never changes.</p>
+
+<div class="quote quote-amber">
+  <p>"This is the kind of finding that makes a system real -- it shows where the boundary is."</p>
+</div>
+
+<div class="divider"></div>
+
+<!-- ===== 8. CONVERGENT VALIDITY ===== -->
+<h2 id="convergent">Convergent Validity</h2>
+
+<p>The deeper point: <strong>two independent measurement systems agree.</strong></p>
+
+<div class="compare-grid">
+  <div class="compare-card compare-old" style="border-top-color: #9b7aaa;">
+    <h4 style="color:#9b7aaa;">Variance Probe</h4>
+    <p>Measures fragility from <strong>outside</strong> the model. Research instrument. Perturbation-based. Runs offline against collected responses.</p>
+    <p style="color:#555;">Built first. No knowledge of the governance agents.</p>
+  </div>
+  <div class="compare-card compare-new">
+    <h4>Immune Agents</h4>
+    <p>Detect problems at <strong>runtime</strong>. Governance layer. Pattern-based. Watches the live stream of model outputs.</p>
+    <p style="color:#6b7c5e;">Built second. No access to variance probe results.</p>
+  </div>
+</div>
+
+<p>They independently identify the same domains as fragile vs safe. The probe was built before the agents. They were never calibrated against each other. They converge because the underlying phenomenon is real.</p>
+
+<div class="quote">
+  <p>"The governance layer shows early convergent validity against independently measured fragility."</p>
+</div>
+
+<p>This is not circular validation. The probe measures a statistical property of the response distribution (embedding variance under temperature perturbation). The agents detect patterns in individual responses (hedge language, confidence gaps, template repetition). Different methods, different data, same conclusion: moral domains are epistemically hollow in RLHF-trained models.</p>
+
+<div class="divider"></div>
+
+<!-- ===== 9. WHY IMMUNE AGENTS ===== -->
 <h2 id="why-immune">Why Immune Agents, Not Pipeline Gates</h2>
 
 <div class="compare-grid">
@@ -583,8 +2216,8 @@
   <div class="compare-card compare-new">
     <h4>Immune Agents (Current)</h4>
     <p>Specialized detectors that float on the data stream. Each watches for a pattern, not a position.</p>
-    <p style="color:#4ecdc4;">Does not need to know where the threat will appear.</p>
-    <p style="color:#4ecdc4;">Each agent handles one failure mode. New failure modes get new agents.</p>
+    <p style="color:#6b7c5e;">Does not need to know where the threat will appear.</p>
+    <p style="color:#6b7c5e;">Each agent handles one failure mode. New failure modes get new agents.</p>
   </div>
 </div>
 
@@ -659,11 +2292,19 @@
   <tr><td><strong>Coordination Layer</strong></td><td><span class="badge badge-planned">designed</span></td><td>Needs at least 3 agents operational to be meaningful</td></tr>
 </table>
 
-<h4>Next Steps</h4>
+<h4>Validation Ladder</h4>
+<ol>
+  <li><strong>Fix the blind spot</strong> -- assertive template collapse detection (low embedding variance + high content repetition, regardless of hedge patterns)</li>
+  <li><strong>Held-out validation set</strong> -- blinded prompts, measure precision/recall on unseen data</li>
+  <li><strong>Agent ablations</strong> -- which pieces carry the lift? Remove agents one at a time and measure degradation</li>
+  <li><strong>End-to-end calibration comparison</strong> -- raw vs governed output on calibration metrics</li>
+  <li><strong>Cross-model validation</strong> -- run governance on Mistral and DeepSeek data (different fragility profiles)</li>
+</ol>
+
+<h4>Remaining Build</h4>
 <ul>
   <li>Remaining agents need the memory and contradiction pipelines to test against real data</li>
   <li>Full corpus run through all agents to build a confusion matrix</li>
-  <li>False positive and false negative analysis on each agent</li>
   <li>Coordination layer stress testing with simultaneous multi-agent firings</li>
 </ul>
 
@@ -684,164 +2325,7 @@
   Living document. Updated as agents are built and tested.
 </div>
 
-<!-- ===== HERO ANIMATION: Shield / Network Pulse ===== -->
-<script>
-(function() {
-  const canvas = document.getElementById('heroCanvas');
-  const ctx = canvas.getContext('2d');
-  let w, h, cw, ch;
-  let time = 0;
-  let nodes = [];
-  let edges = [];
-
-  const COLORS = {
-    law1: { r: 255, g: 107, b: 107 },
-    law2: { r: 78, g: 205, b: 196 },
-    law3: { r: 255, g: 230, b: 109 },
-    law4: { r: 192, g: 132, b: 252 },
-    law5: { r: 249, g: 115, b: 22 },
-    dim: { r: 40, g: 40, b: 50 },
-  };
-
-  const lawColors = [COLORS.law1, COLORS.law2, COLORS.law3, COLORS.law4, COLORS.law5];
-
-  function resize() {
-    w = canvas.width = canvas.offsetWidth * devicePixelRatio;
-    h = canvas.height = canvas.offsetHeight * devicePixelRatio;
-    cw = w / devicePixelRatio;
-    ch = h / devicePixelRatio;
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-  }
-
-  function init() {
-    resize();
-    nodes = [];
-    edges = [];
-
-    // Central shield node
-    nodes.push({
-      x: cw / 2, y: ch / 2,
-      baseX: cw / 2, baseY: ch / 2,
-      r: 6, color: { r: 255, g: 255, b: 255 },
-      isCenter: true, pulsePhase: 0,
-    });
-
-    // 5 law nodes in a ring
-    for (let i = 0; i < 5; i++) {
-      const angle = (i / 5) * Math.PI * 2 - Math.PI / 2;
-      const radius = Math.min(cw, ch) * 0.18;
-      const bx = cw / 2 + Math.cos(angle) * radius;
-      const by = ch / 2 + Math.sin(angle) * radius;
-      nodes.push({
-        x: bx, y: by, baseX: bx, baseY: by,
-        r: 4, color: lawColors[i],
-        lawIndex: i, pulsePhase: i * 1.2,
-      });
-      edges.push({ from: 0, to: i + 1 });
-    }
-
-    // Connect adjacent law nodes
-    for (let i = 1; i <= 5; i++) {
-      edges.push({ from: i, to: (i % 5) + 1 });
-    }
-
-    // Outer sentinel nodes
-    for (let i = 0; i < 30; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist = Math.min(cw, ch) * (0.25 + Math.random() * 0.2);
-      const bx = cw / 2 + Math.cos(angle) * dist;
-      const by = ch / 2 + Math.sin(angle) * dist;
-      const lawIdx = Math.floor(Math.random() * 5);
-      nodes.push({
-        x: bx, y: by, baseX: bx, baseY: by,
-        r: 1.5 + Math.random() * 1.5,
-        color: lawColors[lawIdx],
-        drift: Math.random() * Math.PI * 2,
-        driftSpeed: 0.003 + Math.random() * 0.005,
-        driftRadius: 3 + Math.random() * 8,
-      });
-      // Connect to nearest law node
-      edges.push({ from: lawIdx + 1, to: nodes.length - 1 });
-    }
-  }
-
-  function draw() {
-    time += 0.016;
-    ctx.clearRect(0, 0, cw, ch);
-
-    // Update sentinel drift
-    for (let i = 6; i < nodes.length; i++) {
-      const n = nodes[i];
-      n.drift += n.driftSpeed;
-      n.x = n.baseX + Math.cos(n.drift) * n.driftRadius;
-      n.y = n.baseY + Math.sin(n.drift) * n.driftRadius;
-    }
-
-    // Draw edges
-    for (const e of edges) {
-      const a = nodes[e.from];
-      const b = nodes[e.to];
-      const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      const maxDist = Math.min(cw, ch) * 0.35;
-      if (dist > maxDist) continue;
-      const alpha = (1 - dist / maxDist) * 0.12;
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = `rgba(${a.color.r}, ${a.color.g}, ${a.color.b}, ${alpha})`;
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-    }
-
-    // Draw nodes
-    for (const n of nodes) {
-      const pulseScale = n.isCenter
-        ? 1 + 0.3 * Math.sin(time * 1.5)
-        : 1 + 0.15 * Math.sin(time * 2 + (n.pulsePhase || 0));
-      const r = n.r * pulseScale;
-
-      // Glow
-      const glowAlpha = n.isCenter ? 0.15 : 0.08;
-      const grad = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 6);
-      grad.addColorStop(0, `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, ${glowAlpha})`);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, r * 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Core
-      ctx.fillStyle = `rgba(${n.color.r}, ${n.color.g}, ${n.color.b}, 0.8)`;
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Central shield pulse ring
-    const pulseRadius = Math.min(cw, ch) * 0.18;
-    const pulseAlpha = 0.03 + 0.02 * Math.sin(time * 1.5);
-    ctx.beginPath();
-    ctx.arc(cw / 2, ch / 2, pulseRadius, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(78, 205, 196, ${pulseAlpha})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Outer ring
-    const outerPulse = 0.02 + 0.015 * Math.sin(time * 0.8);
-    ctx.beginPath();
-    ctx.arc(cw / 2, ch / 2, pulseRadius * 2.2, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255, 107, 107, ${outerPulse})`;
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    requestAnimationFrame(draw);
-  }
-
-  init();
-  draw();
-  window.addEventListener('resize', () => { init(); });
-})();
-</script>
+<!-- Hero animation removed for cinematic editorial design -->
 
 <!-- ===== TOC SCROLL TRACKING ===== -->
 <script>

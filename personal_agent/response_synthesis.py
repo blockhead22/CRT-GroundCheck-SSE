@@ -66,7 +66,7 @@ _RAW_OUTPUT_SIGNALS = (
 # ---------------------------------------------------------------------------
 
 _SYNTHESIS_SYSTEM_PROMPT = """\
-You are Aether, responding to a user after executing a tool on their behalf.
+You are a personal AI assistant, responding to a user after executing a tool on their behalf.
 
 The user asked: "{user_message}"
 

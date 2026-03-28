@@ -121,3 +121,4 @@ models/*/checkpoint_final.pt
 models/vilt_*/
 models/dnnt_*/
 /.claude/worktrees/
+/electron/node_modules

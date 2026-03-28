@@ -417,7 +417,82 @@ class UnifiedLLMClient:
 
     # ── Core LiteLLM call ─────────────────────────────────────────────
 
-    @staticmethod
+    def _ollama_direct_tool_call(self, messages, tools, max_tokens, temperature, model_name):
+        """Bypass litellm and call Ollama directly for tool calls.
+
+        Litellm corrupts Qwen3 thinking+tools responses (returns '{}').
+        Direct Ollama /api/chat works correctly.
+        """
+        import requests as _req
+
+        model = (model_name or self.ollama_model or "").replace("ollama/", "")
+        effective_max = self._effective_max_tokens(max_tokens, model)
+
+        # Flatten tool messages for multi-turn
+        flat_messages = self._flatten_tool_messages_for_ollama(messages)
+
+        payload = {
+            "model": model,
+            "messages": flat_messages,
+            "stream": False,
+            "options": {
+                "temperature": temperature,
+                "num_predict": effective_max,
+            },
+        }
+        if tools:
+            payload["tools"] = tools
+
+        try:
+            resp = _req.post(
+                f"{self.ollama_base_url}/api/chat",
+                json=payload,
+                timeout=120,
+            )
+            if resp.status_code != 200:
+                print(f"[LITELLM] Ollama direct call failed: HTTP {resp.status_code}")
+                return None
+
+            data = resp.json()
+            msg = data.get("message", {})
+            content = msg.get("content", "")
+            tool_calls = msg.get("tool_calls", [])
+            thinking = msg.get("thinking", "")
+
+            # If thinking but no content, try to use thinking as fallback
+            if not content and thinking:
+                print(f"[LITELLM] Ollama thinking-only response, extracting visible text")
+                content = self._resolve_visible_text(content, thinking=thinking)
+
+            parsed_calls = []
+            if tool_calls:
+                for tc in tool_calls:
+                    fn = tc.get("function", {})
+                    parsed_calls.append({
+                        "name": fn.get("name", ""),
+                        "arguments": fn.get("arguments", {}),
+                    })
+
+            result = {
+                "tool_calls": parsed_calls,
+                "content": content,
+                "used_tools": len(parsed_calls) > 0,
+            }
+
+            # Quality gate
+            if parsed_calls:
+                return result
+            stripped = content.strip().lower()
+            if stripped and stripped not in ("{}", "[]", "null", '""', "''"):
+                return result
+
+            print(f"[LITELLM] Ollama direct returned degenerate: {repr(content[:80])}")
+            return None
+
+        except Exception as e:
+            print(f"[LITELLM] Ollama direct call error: {e}")
+            return None
+
     @staticmethod
     def _flatten_tool_messages_for_ollama(messages: List[Dict]) -> List[Dict]:
         """Flatten tool_call / tool_result messages into plain chat for Ollama.
@@ -583,6 +658,11 @@ class UnifiedLLMClient:
         if tools:
             kwargs["tools"] = tools
 
+        if provider == "local" and tools:
+            print(f"[LITELLM_DEBUG] Local tool call: model={resolved_model}, max_tokens={effective_max}, "
+                  f"tools={len(tools)}, msgs={len(messages)}, "
+                  f"msg_chars={sum(len(str(m.get('content',''))) for m in messages)}")
+
         return litellm.completion(**kwargs)
 
     # ── generate() ────────────────────────────────────────────────────
@@ -662,7 +742,13 @@ class UnifiedLLMClient:
         """Parse LiteLLM response into CRT tool call format."""
         msg = response.choices[0].message
         raw_content = msg.content or ""
-        content = self._resolve_visible_text(raw_content)
+
+        # Qwen3 thinking models: content may be in thinking_content or reasoning_content
+        thinking = getattr(msg, "thinking_content", None) or getattr(msg, "reasoning_content", None) or ""
+        if not raw_content and thinking:
+            print(f"[LITELLM] Thinking model returned empty content, thinking={str(thinking)[:120]}")
+
+        content = self._resolve_visible_text(raw_content, thinking=str(thinking))
 
         parsed_calls: List[Dict[str, Any]] = []
         if msg.tool_calls:
@@ -687,6 +773,11 @@ class UnifiedLLMClient:
     def _try_local_tools(self, messages, tools, max_tokens, temperature, model_name):
         """Attempt local tool call with quality gate. Returns result or None."""
         try:
+            # Bypass litellm for Ollama tool calls — litellm corrupts Qwen3 thinking+tools
+            result = self._ollama_direct_tool_call(messages, tools, max_tokens, temperature, model_name)
+            if result is not None:
+                return result
+            # Fallback to litellm path
             resp = self._call("local", model_name, messages, max_tokens,
                               temperature, tools=tools)
             result = self._parse_tool_response(resp)
@@ -760,10 +851,10 @@ class UnifiedLLMClient:
                 return None
 
             system = (
-                "You are Aether, a personal AI assistant built by Aeteros, powered by Claude. "
+                "You are a personal AI assistant powered by Claude, running in a persistent memory system. "
                 "The user asked a question and tools have already gathered the information below. "
                 "Synthesize a direct, natural answer from the tool results. "
-                "Be concise and warm. Speak as Aether in first person. "
+                "Be concise and warm. Speak in first person. "
                 "When stating facts about the user, use second person (your/you). "
                 "Reply with ONLY the answer text — no JSON, no markdown fences, no wrapping."
             )

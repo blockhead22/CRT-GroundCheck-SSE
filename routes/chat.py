@@ -42,6 +42,13 @@ from .models import (
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.cloud_usage_tracker import log_cloud_call as _track_cloud_call
 from personal_agent.db_utils import get_thread_session_db
+
+try:
+    from personal_agent.governance import GovernanceLayer, GovernanceTier
+    _LEGACY_GOVERNANCE = GovernanceLayer()
+except Exception:
+    _LEGACY_GOVERNANCE = None
+    GovernanceTier = None
 from personal_agent.greeting_system import get_time_based_greeting
 from personal_agent.active_learning import get_active_learning_coordinator
 from personal_agent.episodic_memory import get_episodic_manager
@@ -1437,7 +1444,7 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
 
     # Build self-knowledge context
     self_context_parts = [
-        "You are Aether, a persistent AI assistant built on CRT (Contradiction-aware Reconciliation and Trust).",
+        "You are a personal AI assistant powered by Claude, running on CRT (Contradiction-aware Reconciliation and Trust).",
         "Your core design principles:",
         "- You preserve contradictions instead of silently resolving them",
         "- You use trust-weighted memories that evolve over time",
@@ -1503,7 +1510,7 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
     if _is_casual_greeting:
         # Casual greeting: produce a warm, status-grounded reply (not a tech doc)
         system_prompt = (
-            "You are Aether. The user is greeting you casually. "
+            "You are a personal AI assistant powered by Claude. The user is greeting you casually. "
             "Respond warmly and briefly. Use your self-model state below to give "
             "a grounded status update — mention what you've been working on, any "
             "interesting self-observations, or areas of uncertainty you're tracking. "
@@ -1519,14 +1526,14 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         )
     else:
         system_prompt = (
-            "You are Aether. The user is asking about how you work, your state, or your design. "
-            "Answer from the self-knowledge context below. Be honest, specific, and practical. "
-            "Explain with concrete examples from how you actually operate — not abstract definitions. "
-            "For example: 'When you tell me your favorite color is orange, I store that as a memory with a trust score. "
-            "If you later say it's blue, I don't overwrite — I keep both and ask you which is right.' "
-            "If you don't have data for something, say so. "
-            "Do NOT make up capabilities you don't have. Speak as yourself in first person. "
-            "Keep it conversational, not like a spec document.\n\n"
+            "You are a personal AI assistant powered by Claude. The user is asking about how you work, your state, or your design. "
+            "Answer briefly and conversationally — 3 to 5 sentences MAX. "
+            "Pick ONE or TWO concrete things from the self-knowledge context below that are most relevant to the question. "
+            "Do NOT list every system or capability. Do NOT write numbered lists or bullet points. "
+            "Speak naturally in first person, like explaining to a friend over coffee. "
+            "If the user wants more detail, they'll ask. "
+            "If you don't have data for something, say so honestly. "
+            "Do NOT make up capabilities you don't have.\n\n"
             f"{self_context}"
         )
 
@@ -1545,7 +1552,7 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         # Use fast model for self-referential answers
         import os
         fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
-        return llm_client.chat(messages, max_tokens=800, temperature=0.4, model=fast_model)
+        return llm_client.chat(messages, max_tokens=300, temperature=0.4, model=fast_model)
     except Exception as e:
         logger.warning("[SELF_REF] LLM call failed: %s", e)
         # Deterministic fallback
@@ -1707,7 +1714,7 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
             llm = get_default_llm_client(fast_model)
 
             system = (
-                "You are Aether. The user asked what you know about them. "
+                "You are a personal AI assistant powered by Claude. The user asked what you know about them. "
                 "Below are raw facts from your memory system. Synthesize them into a natural, "
                 "concise summary — like a friend describing what they know about someone. "
                 "Group related facts together (identity, preferences, personality, projects, etc.). "
@@ -3046,7 +3053,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _bp_prompt_parts.append(f"User: {effective_message}")
             _bp_prompt = "\n".join(_bp_prompt_parts)
 
-            _bp_system = "You are Aether, a personal AI assistant. Respond naturally and helpfully."
+            _bp_system = "You are a personal AI assistant powered by Claude. Respond naturally and helpfully."
 
             _bp_answer = None
             if _bp_svc is not None:
@@ -3222,7 +3229,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 # language generation backend for the Aether product, the same way
                 # it powers Cursor, Notion AI, and thousands of other products.
                 _pc_sys_parts = [
-                    "You are Aether, a personal AI assistant.",
+                    "You are a personal AI assistant powered by Claude.",
                     "",
                     "Product context: Aether is a deployed application built by Nick Block.",
                     "It uses the CRT (Contradiction-aware Reconciliation and Trust) framework",
@@ -3232,7 +3239,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     "The context below is real system output, not simulated.",
                     "",
                     "Response guidelines:",
-                    "- Speak as Aether in first person. This is a product deployment.",
+                    "- Speak in first person. This is a product deployment.",
                     "- Be conversational, warm, and concise.",
                     "- Use the retrieved memories naturally — they are verified facts about the user.",
                     "- If memories are provided, incorporate them. If not, answer from general knowledge.",
@@ -5125,7 +5132,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _safe_print(f"[PLAN] should_create_plan=True for: {req.message[:80]}")
                         _plan = _pe.generate_plan(
                             user_message=req.message,
-                            conversation_history=recent_history,
+                            conversation_history=recent_history if 'recent_history' in dir() else None,
                         )
                         if _plan:
                             _plan_steps = _plan.get("steps", [])
@@ -5552,6 +5559,21 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception as _tap_post_err:
                         logger.debug("[STREAM] Intuition check suggest failed: %s", _tap_post_err)
 
+                    # --- Governance gate (legacy task path) ---
+                    if _LEGACY_GOVERNANCE and _task_answer:
+                        try:
+                            _gov = _LEGACY_GOVERNANCE.govern_response(
+                                text=_task_answer,
+                                belief_confidence=0.4,
+                            )
+                            _done_meta["governance_tier"] = _gov.tier.value
+                            _done_meta["governance_annotations"] = len(_gov.annotations)
+                            if _gov.annotations:
+                                _done_meta["governance_findings"] = [a.finding[:120] for a in _gov.annotations]
+                            _safe_print(f"[GOVERNANCE_LEGACY] tier={_gov.tier.value}, annotations={len(_gov.annotations)}")
+                        except Exception as _gov_err:
+                            logger.debug("[GOVERNANCE_LEGACY] Task path failed: %s", _gov_err)
+
                     yield _sse({"type": "done", "content": _task_answer, "metadata": _done_meta})
                     return
                 except Exception as _te:
@@ -5825,6 +5847,29 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     }
             except Exception as _pt_err:
                 logger.debug("[STREAM] Proactive pattern check failed: %s", _pt_err)
+
+            # --- Governance gate (legacy conversational path) ---
+            if _LEGACY_GOVERNANCE and answer:
+                try:
+                    _gov = _LEGACY_GOVERNANCE.govern_response(
+                        text=answer,
+                        belief_confidence=0.4,  # legacy path has some pipeline grounding
+                    )
+                    metadata["governance_tier"] = _gov.tier.value
+                    metadata["governance_annotations"] = len(_gov.annotations)
+                    if _gov.annotations:
+                        metadata["governance_findings"] = [a.finding[:120] for a in _gov.annotations]
+                    _safe_print(f"[GOVERNANCE_LEGACY] tier={_gov.tier.value}, annotations={len(_gov.annotations)}")
+                    if _gov.should_block:
+                        _findings = "; ".join(a.finding for a in _gov.annotations)
+                        answer = (
+                            f"[GOVERNANCE ESCALATION: {_findings}]\n\n"
+                            f"The following response has been flagged. "
+                            f"Review the findings above before relying on this answer.\n\n"
+                            f"{answer}"
+                        )
+                except Exception as _gov_err:
+                    logger.debug("[GOVERNANCE_LEGACY] Failed: %s", _gov_err)
 
             yield f"data: {json.dumps({'type': 'done', 'content': answer, 'metadata': metadata})}\n\n"
 

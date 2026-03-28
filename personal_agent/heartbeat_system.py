@@ -617,7 +617,7 @@ class HeartbeatScheduler:
     # Self-reflection pass (personality / self-awareness)
     # ------------------------------------------------------------------
 
-    _SELF_REFLECTION_PROMPT = """You are Aether performing a private calibration check.
+    _SELF_REFLECTION_PROMPT = """You are performing a private calibration check.
 
 This is routine self-governance — reviewing recent data to adjust your operating parameters.
 Frame findings as system calibration, not self-judgment. You are working as designed.

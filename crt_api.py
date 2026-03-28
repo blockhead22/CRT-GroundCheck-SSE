@@ -1049,14 +1049,15 @@ def create_app() -> FastAPI:
     # Heartbeat scheduler (OpenClaw-style 24/7 proactive engagement)
     # Continuous reflection + personality + heartbeat loops (24/7, limited scope)
     session_db = get_thread_session_db()
-    reflection_loop, personality_loop, journal_self_reply_loop, heartbeat_loop = build_loops(session_db)
+    reflection_loop, personality_loop, journal_self_reply_loop, heartbeat_loop, contradiction_scan_loop = build_loops(session_db)
     app.state.reflection_loop = reflection_loop
     app.state.personality_loop = personality_loop
     app.state.journal_self_reply_loop = journal_self_reply_loop
     app.state.heartbeat_loop = heartbeat_loop
+    app.state.contradiction_scan_loop = contradiction_scan_loop
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list or "*" for all.
-    cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174")
+    cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,app://aether")
     if cors_env.strip() == "*":
         origins = ["*"]
         # CORS spec forbids allow_credentials=True with allow_origins=["*"]
@@ -1542,6 +1543,28 @@ def create_app() -> FastAPI:
 
     # --- Endpoints extracted to routes/ ---
     # See routes/{module}.py for route handlers.
+
+    # ── Serve frontend dist (for Electron production mode) ─────────────
+    # Mounted LAST so /api/* routes take priority over the catch-all.
+    _frontend_dist = root / "frontend" / "dist"
+    if _frontend_dist.is_dir():
+        from fastapi.staticfiles import StaticFiles
+        from fastapi.responses import FileResponse
+
+        # Serve static assets (JS, CSS, images)
+        app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="frontend-assets")
+
+        # Catch-all: serve index.html for SPA routing (must be after all API routes)
+        @app.get("/{full_path:path}", include_in_schema=False)
+        async def _serve_spa(full_path: str):
+            """Serve the React SPA for any non-API route."""
+            # Don't intercept API or known backend paths
+            if full_path.startswith(("api/", "health", "docs", "openapi")):
+                raise HTTPException(status_code=404)
+            file_path = _frontend_dist / full_path
+            if file_path.is_file():
+                return FileResponse(str(file_path))
+            return FileResponse(str(_frontend_dist / "index.html"))
 
     return app
 

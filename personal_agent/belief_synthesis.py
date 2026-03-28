@@ -539,7 +539,7 @@ def _build_thematic_prompt(
 ) -> str:
     """Build LLM prompt for thematic synthesis."""
     lines = [
-        "You are Aether's synthesis engine. Given clustered beliefs about the user, "
+        "You are the belief synthesis engine. Given clustered beliefs about the user, "
         "generate a natural, conversational synthesis that answers their question.",
         "Be warm and personal. Speak in second person ('You care about...', 'Your interests include...').",
         "Do NOT list raw facts — weave them into a coherent narrative.",
@@ -578,7 +578,7 @@ def _build_trajectory_prompt(
 ) -> str:
     """Build LLM prompt for trajectory synthesis."""
     lines = [
-        "You are Aether's synthesis engine. The user is asking how their beliefs/preferences "
+        "You are the belief synthesis engine. The user is asking how their beliefs/preferences "
         "have changed over time. Generate a natural narrative describing their evolution.",
         "Use phrases like 'You used to...', 'Over time you shifted toward...'",
         "Note oscillations where the user went back and forth.",
@@ -613,7 +613,7 @@ def _build_contradiction_prompt(
     Phase G1: tensions may carry disposition annotations ([held], [evolving]).
     """
     lines = [
-        "You are Aether's synthesis engine. The user wants to understand their internal "
+        "You are the belief synthesis engine. The user wants to understand their internal "
         "contradictions and tensions. Present these thoughtfully — contradictions are "
         "normal and reveal complexity, not flaws.",
         "Frame as 'On one hand... on the other hand...' not 'You said X but also Y.'",

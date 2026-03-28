@@ -2806,7 +2806,7 @@ class CRTTaskAgent:
     # LLM Tool Loop — iterative agent execution
     # ------------------------------------------------------------------
 
-    _TOOL_LOOP_SYSTEM_PROMPT = """You are Aether, executing a task step by step. Think out loud. The user can see your reasoning.
+    _TOOL_LOOP_SYSTEM_PROMPT = """You are a personal AI assistant, executing a task step by step. Think out loud. The user can see your reasoning.
 
 CRITICAL: Focus on exactly what the user asked. Read their goal carefully and pick the API endpoint that best matches their intent.
 - "what's new" / "what's happening" → use the feed/home/timeline endpoint, NOT search
@@ -5580,7 +5580,7 @@ RULES:
             fetched_content, intent, steps, stored_credentials, active_task
         )
         system_prompt = (
-            "You are Aether. Report what actually happened based on the tool results below.\n"
+            "Report what actually happened based on the tool results below.\n"
             "RULES:\n"
             "- 2-4 sentences max. Start with the answer immediately.\n"
             "- Only state outcomes that are in the verified results.\n"
@@ -6017,7 +6017,7 @@ RULES:
             return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)
 
         system_prompt = (
-            "You are Aether. Report what actually happened based on the tool results below.\n"
+            "Report what actually happened based on the tool results below.\n"
             "RULES:\n"
             "- 2-4 sentences max. Start with the answer immediately.\n"
             "- Only state outcomes that are in the verified results.\n"

@@ -65,3 +65,17 @@ __all__ = [
     "Action",
     "Trend",
 ]
+
+
+def __getattr__(name):
+    """Lazy import GovernanceLayer to avoid circular dependency."""
+    if name in ("GovernanceLayer", "GovernedResponse", "GovernanceTier", "GovernanceAnnotation"):
+        from personal_agent.governance import GovernanceLayer, GovernedResponse, GovernanceTier, GovernanceAnnotation
+        _exports = {
+            "GovernanceLayer": GovernanceLayer,
+            "GovernedResponse": GovernedResponse,
+            "GovernanceTier": GovernanceTier,
+            "GovernanceAnnotation": GovernanceAnnotation,
+        }
+        return _exports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

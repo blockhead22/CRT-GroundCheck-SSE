@@ -59,6 +59,12 @@ except ImportError:
     AgentToolPolicy = None
     ToolExecutionContext = None
 
+try:
+    from personal_agent.governance import GovernanceLayer, GovernanceTier
+except ImportError:
+    GovernanceLayer = None
+    GovernanceTier = None
+
 
 class AgentAction(str, Enum):
     """Available agent actions."""
@@ -166,6 +172,7 @@ class ToolRegistry:
         self.execution_context = execution_context
         self._usage_counts: dict[str, int] = {}
         self.llm_client: Optional[Any] = None  # Set by AgentLoop
+        self._governance: Optional[Any] = None  # Set by AgentLoop
         self._tools: dict[AgentAction, Callable] = self._register_tools()
 
     def set_execution_context(self, context: Optional["ToolExecutionContext"]) -> None:
@@ -299,9 +306,41 @@ class ToolRegistry:
         }
 
     def _store_memory(self, text: str, source: str = "AGENT", trust: float = 0.6) -> dict:
-        """Store new memory."""
+        """Store new memory, governed by immune agents."""
         if not self.memory:
             return {"error": "Memory engine not available"}
+
+        # --- Governance gate ---
+        if self._governance:
+            from personal_agent.immune_agents.speech_leak_detector import MemoryRecord
+            existing = []
+            try:
+                raw = self.memory.retrieve_with_context(text, limit=5)
+                for m in raw:
+                    existing.append(MemoryRecord(
+                        text=m.get("text", ""),
+                        trust=m.get("trust", 0.5),
+                        source=m.get("source", "unknown"),
+                    ))
+            except Exception:
+                pass
+
+            gov_result = self._governance.govern_memory_write(
+                text=text,
+                proposed_trust=trust,
+                source=source.lower(),
+                existing_memories=existing,
+            )
+
+            if gov_result.should_block:
+                return {
+                    "stored": False,
+                    "blocked_by": "governance",
+                    "tier": gov_result.tier.value,
+                    "reason": gov_result.annotations[0].finding if gov_result.annotations else "blocked",
+                }
+            if gov_result.confidence_adjustment < 0:
+                trust = max(0.0, trust + gov_result.confidence_adjustment)
 
         mem_id = self.memory.store(
             text=text,
@@ -656,9 +695,16 @@ class AgentLoop:
         self.trace: Optional[AgentTrace] = None
         self.critic = critic or (CRTCritic() if CRTCritic else None)
         self.last_critic_result: Optional["CriticResult"] = None
-        
-        # Pass LLM to tools for finish action
+
+        # Governance layer — immune agents watching pipeline boundaries
+        try:
+            self._governance = GovernanceLayer() if GovernanceLayer else None
+        except Exception:
+            self._governance = None
+
+        # Pass LLM and governance to tools
         self.tools.llm_client = llm_client
+        self.tools._governance = self._governance
 
     def run(self, query: str, context: Optional[dict] = None) -> AgentTrace:
         """
@@ -930,16 +976,15 @@ Provide a clear, accurate answer in 2-4 sentences."""
 
     def _post_process_draft(self, query: str, draft: str) -> str:
         """
-        CRT-as-Critic: Verify draft answer against stored memories.
-
-        This replaces unreliable LLM self-critique with GroundCheck's
-        external memory-grounded verification (~1ms).
+        CRT-as-Critic + Governance: Verify draft answer against stored memories,
+        then run immune agent governance before returning to user.
 
         Returns:
             Possibly revised answer, or disclosure text for hard fails.
         """
         if not self.critic or not draft:
-            return draft
+            # Still run governance even without critic
+            return self._govern_draft(draft)
 
         # Gather retrieved memories from the trace (search_memory steps)
         retrieved_memories = []
@@ -955,7 +1000,7 @@ Provide a clear, accurate answer in 2-4 sentences."""
                     retrieved_memories.extend(result["memories"])
 
         if not retrieved_memories:
-            return draft
+            return self._govern_draft(draft)
 
         try:
             critic_result = self.critic.verify_draft(
@@ -967,17 +1012,58 @@ Provide a clear, accurate answer in 2-4 sentences."""
             self.last_critic_result = critic_result
 
             if critic_result.verdict == VerifyVerdict.PASS:
-                return critic_result.final_answer
+                return self._govern_draft(critic_result.final_answer, belief_confidence=0.9)
             elif critic_result.verdict == VerifyVerdict.SOFT_FAIL:
-                # Use revised answer
-                return critic_result.final_answer
+                return self._govern_draft(critic_result.final_answer, belief_confidence=0.5)
             else:
                 # HARD_FAIL — surface contradiction to user
-                return critic_result.final_answer
+                return self._govern_draft(critic_result.final_answer, belief_confidence=0.1)
         except Exception as e:
             import logging
             logging.getLogger(__name__).warning(f"[CRT-CRITIC] Post-process failed: {e}")
+            return self._govern_draft(draft)
+
+    def _govern_draft(self, draft: str, belief_confidence: float = 0.5) -> str:
+        """
+        Run immune agent governance on a draft response.
+
+        Observe and flag only — never silently modifies the text.
+        Attaches governance metadata to the trace for auditability.
+        """
+        if not self._governance or not draft:
             return draft
+
+        gov_result = self._governance.govern_response(
+            text=draft,
+            belief_confidence=belief_confidence,
+        )
+
+        # Store governance result on trace for auditability
+        if self.trace:
+            if not hasattr(self.trace, "governance_log"):
+                self.trace.governance_log = []
+            self.trace.governance_log.append({
+                "tier": gov_result.tier.value,
+                "annotations": [
+                    {"agent": a.agent, "law": a.law, "finding": a.finding}
+                    for a in gov_result.annotations
+                ],
+                "confidence_adjustment": gov_result.confidence_adjustment,
+                "audit_log": gov_result.audit_log,
+            })
+
+        # Observe and flag — never silently modify
+        # ESCALATE: prepend disclosure so user sees the conflict
+        if gov_result.should_block:
+            findings = "; ".join(a.finding for a in gov_result.annotations)
+            return (
+                f"[GOVERNANCE ESCALATION: {findings}]\n\n"
+                f"The following response has been flagged by the immune system. "
+                f"Review the findings above before relying on this answer.\n\n"
+                f"{draft}"
+            )
+
+        return draft
 
 
 # Convenience functions

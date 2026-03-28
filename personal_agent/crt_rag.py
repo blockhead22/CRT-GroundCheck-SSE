@@ -6995,7 +6995,7 @@ class CRTEnhancedRAG:
             )
 
         # Generic fallback for "who/what are you".
-        return _resp("identity", "I'm Aether - a verified AI assistant built on CRT-GroundCheck. My memory, contradiction checks, verification, routing, and observability stay under the local CRT control layer. Depending on configuration, generation may use a local or cloud model.")
+        return _resp("identity", "I'm a personal AI assistant powered by Claude, built on CRT-GroundCheck. My memory, contradiction checks, verification, routing, and observability stay under the local CRT control layer. Depending on configuration, generation may use a local or cloud model.")
 
     def _augment_retrieval_with_slot_memories(
         self,

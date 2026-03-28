@@ -353,7 +353,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
                 "contradiction handling, and verification grounded in a local control layer."
             ),
             "identity": (
-                "I'm Aether, a verified AI assistant system. My memory, contradiction checks, "
+                "I'm a personal AI assistant powered by Claude, built on CRT-GroundCheck. My memory, contradiction checks, "
                 "verification, routing, and observability stay under the local CRT control layer. "
                 "Depending on configuration, generation may use a local or cloud model."
             ),

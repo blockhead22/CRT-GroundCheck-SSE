@@ -13,6 +13,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from .db_utils import ThreadSessionDB
 from .text_utils import strip_thinking_tags as _strip_thinking_tags
 
+try:
+    from .governance import GovernanceLayer, GovernanceTier
+    _GOVERNANCE = GovernanceLayer()
+except Exception:
+    _GOVERNANCE = None
+    GovernanceTier = None
+
 logger = logging.getLogger(__name__)
 
 _JOURNAL_LLM_CLIENT: Optional[object] = None
@@ -1225,6 +1232,25 @@ class ReflectionLoop:
                 if reason:
                     meta["sanitizer_reason"] = reason
 
+            # --- Governance gate on reflection output ---
+            if _GOVERNANCE and body:
+                _belief_conf = float(scorecard.get("preference_confidence", 0.5))
+                _gov = _GOVERNANCE.govern_response(
+                    text=body,
+                    belief_confidence=_belief_conf,
+                )
+                meta["governance_tier"] = _gov.tier.value
+                meta["governance_annotations"] = len(_gov.annotations)
+                if _gov.annotations:
+                    meta["governance_findings"] = [a.finding[:120] for a in _gov.annotations]
+                    logger.info(f"[REFLECTION_GOVERNANCE] tier={_gov.tier.value}, findings={len(_gov.annotations)}")
+                    for _ann in _gov.annotations:
+                        logger.info(f"[REFLECTION_GOVERNANCE]   {_ann.agent}: {_ann.finding[:120]}")
+                if _gov.should_block:
+                    # Don't post template-locked or ungrounded reflections
+                    logger.warning(f"[REFLECTION_GOVERNANCE] ESCALATE — suppressing reflection post")
+                    body = None  # will skip Moltbook post below
+
             entry_id = self.session_db.add_reflection_journal_entry(
                 thread_id=thread_id,
                 entry_type="reflection",
@@ -1252,7 +1278,7 @@ class ReflectionLoop:
                 except Exception as check_error:
                     logger.debug(f"[REFLECTION_LOOP] Error checking post necessity: {check_error}")
                 
-                if should_post:
+                if should_post and body:
                     post = self.session_db.create_post(
                         submolt="reflections",
                         title=title,

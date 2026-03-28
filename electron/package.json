@@ -1,0 +1,32 @@
+{
+  "name": "aether-desktop",
+  "version": "0.1.0",
+  "description": "Aether — resident AI intelligence powered by CRT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder"
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "cross-env": "^7.0.3"
+  },
+  "build": {
+    "appId": "com.aeteros.aether",
+    "productName": "Aether",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  }
+}

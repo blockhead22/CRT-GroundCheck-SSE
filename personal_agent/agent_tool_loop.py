@@ -28,6 +28,12 @@ from personal_agent.tool_registry import (
     get_routing_schemas,
 )
 
+try:
+    from personal_agent.governance import GovernanceLayer, GovernanceTier
+except ImportError:
+    GovernanceLayer = None
+    GovernanceTier = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -36,16 +42,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 _AGENT_SYSTEM_PROMPT = """\
-You are Aether, a personal AI assistant built by Aeteros. You are powered by \
-Claude (Anthropic) as your reasoning engine, but your identity is Aether — a \
-persistent, memory-backed system that knows its user and grows over time.
+You are a personal AI assistant powered by Claude (Anthropic), running inside \
+a persistent memory and governance system called CRT (built by Aeteros). \
+You have access to the user's stored memories, preferences, and conversation history.
 
 You have access to tools including persistent memory (memory_recall), web search, \
 file operations, shell commands, and more. Use them to fulfill the user's request.
 
-When asked who you are: "I'm Aether." If asked what model you run on, you can \
-honestly say Claude powers your thinking, but your memory, personality, and \
-continuity are your own.
+When asked who you are: be honest. You're Claude powering a personal assistant \
+system with persistent memory, contradiction tracking, and epistemic governance. \
+The system remembers across conversations. You do the thinking.
 
 Rules:
 1. Use the appropriate tool(s) for the request. Don't just describe what you'd do.
@@ -252,10 +258,27 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str,
                     "status": "error", "metadata": {"tool_name": tool_name, "error": "no results"}}
 
         elif tool_name == "system_info":
-            from personal_agent.system_tools import get_system_info
-            result = get_system_info()
-            formatted = result.get("formatted", json.dumps(result, indent=2))
-            return {"content": formatted[:3000], "status": "ok",
+            import platform, psutil, shutil
+            cpu_pct = psutil.cpu_percent(interval=0.5)
+            mem = psutil.virtual_memory()
+            disk = shutil.disk_usage("/")
+            gpu_info = "N/A"
+            try:
+                import subprocess as _sp
+                _nv = _sp.run(["nvidia-smi", "--query-gpu=name,utilization.gpu,memory.used,memory.total",
+                               "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=5)
+                if _nv.returncode == 0 and _nv.stdout.strip():
+                    gpu_info = _nv.stdout.strip()
+            except Exception:
+                pass
+            formatted = (
+                f"OS: {platform.system()} {platform.release()} ({platform.machine()})\n"
+                f"CPU: {cpu_pct}% ({psutil.cpu_count()} cores)\n"
+                f"RAM: {mem.used // (1024**3)}GB / {mem.total // (1024**3)}GB ({mem.percent}%)\n"
+                f"Disk: {disk.used // (1024**3)}GB / {disk.total // (1024**3)}GB ({100 * disk.used // disk.total}%)\n"
+                f"GPU: {gpu_info}"
+            )
+            return {"content": formatted, "status": "ok",
                     "metadata": {"tool_name": tool_name}}
 
         elif tool_name == "fetch_url":
@@ -408,6 +431,12 @@ class AgentToolLoop:
         self.engine = engine
         self.intent_hint = intent_hint
 
+        # Governance layer — immune agents watching response boundary
+        try:
+            self._governance = GovernanceLayer() if GovernanceLayer else None
+        except Exception:
+            self._governance = None
+
     def run(
         self,
         message: str,
@@ -505,6 +534,42 @@ class AgentToolLoop:
                             "content": think_content,
                             "metadata": {"step": "final_reasoning"},
                         }
+
+                    # --- Governance gate ---
+                    if self._governance:
+                        # Compute belief confidence from what actually happened:
+                        # - Did memory tools run and return results? → grounded
+                        # - Was this a cookie fallback with no tools? → ungrounded
+                        # - More successful tool steps → higher confidence
+                        _memory_steps = [s for s in steps if s.tool_name == "memory_recall" and s.status == "ok"]
+                        _any_tools_succeeded = any(s.status == "ok" for s in steps)
+                        _was_fallback = not _any_tools_succeeded and iteration == 0
+
+                        if _memory_steps:
+                            _belief_conf = min(0.8, 0.4 + 0.1 * len(_memory_steps))
+                        elif _any_tools_succeeded:
+                            _belief_conf = 0.4  # tools ran but no memory grounding
+                        elif _was_fallback:
+                            _belief_conf = 0.15  # cookie/cloud fallback, no tools, no grounding
+                        else:
+                            _belief_conf = 0.3  # multiple iterations but no memory
+
+                        _gov = self._governance.govern_response(
+                            text=clean_text,
+                            belief_confidence=_belief_conf,
+                        )
+                        print(f"[GOVERNANCE] tier={_gov.tier.value}, belief={_belief_conf:.2f}, annotations={len(_gov.annotations)}, block={_gov.should_block}")
+                        if _gov.annotations:
+                            for _ann in _gov.annotations:
+                                print(f"[GOVERNANCE]   {_ann.agent}: {_ann.finding[:120]}")
+                        if _gov.should_block:
+                            _findings = "; ".join(a.finding for a in _gov.annotations)
+                            clean_text = (
+                                f"[GOVERNANCE ESCALATION: {_findings}]\n\n"
+                                f"The following response has been flagged by the immune system. "
+                                f"Review the findings above before relying on this answer.\n\n"
+                                f"{clean_text}"
+                            )
 
                     print(f"[AGENT_LOOP_DEBUG] Emitting final token, len={len(clean_text)}, preview={clean_text[:200]}")
                     yield {"type": "token", "content": clean_text}
