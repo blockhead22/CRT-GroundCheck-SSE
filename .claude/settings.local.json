@@ -29,7 +29,9 @@
       "WebFetch(domain:fastmachinelearning.org)",
       "WebFetch(domain:www.researchgate.net)",
       "WebFetch(domain:www.oliviaweng.com)",
-      "WebFetch(domain:www.keysight.com)"
+      "WebFetch(domain:www.keysight.com)",
+      "WebFetch(domain:cloud.vast.ai)",
+      "WebFetch(domain:computeprices.com)"
     ]
   }
 }

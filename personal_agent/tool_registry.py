@@ -167,6 +167,30 @@ _register(ToolDefinition(
     ],
 ))
 
+# ---- search_code ----
+_register(ToolDefinition(
+    name="search_code",
+    description="Search the codebase for a text pattern (like grep). Returns matching lines with file paths and line numbers. Read-only, no side effects.",
+    parameters=[
+        ToolParam("pattern", "string", "Text or regex pattern to search for", required=True),
+        ToolParam("path", "string", "Directory to search in (default: project root)", required=False, default="."),
+        ToolParam("glob", "string", "File glob filter, e.g. '*.py' or '*.md'", required=False),
+        ToolParam("max_results", "integer", "Maximum number of matching lines to return", required=False, default=30),
+    ],
+    access_layer=2,
+    checkpoint_tier="none",
+    intent_type="search_code",
+    synthesis_mode="smart",
+    examples=[
+        "search for belief_speech in the code",
+        "find where governance is called",
+        "grep for TODO in python files",
+        "search the codebase for tension_detector",
+        "where is the trust scoring logic",
+        "find all uses of CRTMemorySystem",
+    ],
+))
+
 # ---- project_scan ----
 _register(ToolDefinition(
     name="project_scan",

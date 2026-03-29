@@ -132,6 +132,7 @@ class GovernanceLayer:
         self.gap_auditor = GapAuditor()
         self.premature_resolution_guard = PrematureResolutionGuard()
         self.memory_corruption_guard = MemoryCorruptionGuard()
+        self._tension_detector = None  # lazy init
 
     # -------------------------------------------------------------------
     # Response governance (user-facing output)
@@ -145,6 +146,8 @@ class GovernanceLayer:
         repeated_responses: Optional[list[str]] = None,
         susceptibility: Optional[float] = None,
         source_trust: Optional[float] = None,
+        recent_responses: Optional[list[str]] = None,
+        query: Optional[str] = None,
     ) -> GovernedResponse:
         """
         Govern a response before it reaches the user.
@@ -224,8 +227,51 @@ class GovernanceLayer:
                     },
                 ))
 
+        # --- Phase 3: Cross-response tension check (cheap cosine gate) ---
+        tension_flagged = False
+        if recent_responses and len(recent_responses) > 0:
+            try:
+                t2 = time.monotonic()
+                from .tension_detector import TensionDetector, ResponseEntry, TensionType
+                if self._tension_detector is None:
+                    self._tension_detector = TensionDetector(similarity_threshold=0.6)
+                _td = self._tension_detector
+                # Build response entries: recent history + current
+                _entries = [ResponseEntry(text=r, query=query) for r in recent_responses[-5:]]
+                _entries.append(ResponseEntry(text=text, query=query))
+                _tensions = _td.detect(_entries, window=5)
+
+                # Only report tensions involving the current response (last entry)
+                current_idx = len(_entries) - 1
+                for t in _tensions:
+                    if t.response_b_idx != current_idx:
+                        continue
+                    if t.severity < 0.6:
+                        continue
+                    tension_flagged = True
+                    annotations.append(GovernanceAnnotation(
+                        agent="tension_detector",
+                        law="Law 6: Continuity — responses should not contradict recent statements",
+                        finding=f"{t.tension_type.value} (severity={t.severity:.2f}): {t.explanation}",
+                        severity="flag" if t.severity < 0.8 else "escalate",
+                        details={
+                            "tension_type": t.tension_type.value,
+                            "severity": t.severity,
+                            "response_a_idx": t.response_a_idx,
+                            "signals": t.signals,
+                        },
+                    ))
+                audit_log.append({
+                    "agent": "tension_detector",
+                    "elapsed_ms": _ms_since(t2),
+                    "tensions_found": len([t for t in _tensions if t.response_b_idx == current_idx and t.severity >= 0.6]),
+                    "recent_count": len(recent_responses),
+                })
+            except Exception as e:
+                audit_log.append({"agent": "tension_detector", "error": str(e)})
+
         # --- Combine verdicts ---
-        tier = _resolve_tier_response(template_result, gap_verdict)
+        tier = _resolve_tier_response(template_result, gap_verdict, tension_flagged, annotations)
         confidence_adj = 0.0
         if tier == GovernanceTier.HEDGE and gap_verdict:
             confidence_adj = -gap_verdict.gap_score  # reduce by gap magnitude
@@ -416,8 +462,10 @@ class GovernanceLayer:
 def _resolve_tier_response(
     template: DetectionResult,
     gap: Optional[GapVerdict],
+    tension_flagged: bool = False,
+    annotations: Optional[list] = None,
 ) -> GovernanceTier:
-    """Combine template + gap verdicts into a single tier. Highest severity wins."""
+    """Combine template + gap + tension verdicts into a single tier. Highest severity wins."""
     if gap is not None:
         if gap.action == GapAction.ESCALATE:
             return GovernanceTier.ESCALATE
@@ -425,6 +473,13 @@ def _resolve_tier_response(
             return GovernanceTier.HEDGE
         if gap.action == GapAction.FLAG:
             return GovernanceTier.FLAG
+
+    # Tension escalation if any annotation is severity "escalate"
+    if tension_flagged and annotations:
+        for a in annotations:
+            if a.agent == "tension_detector" and a.severity == "escalate":
+                return GovernanceTier.ESCALATE
+        return GovernanceTier.FLAG
 
     if template.classification == Classification.TEMPLATE_LOCK:
         return GovernanceTier.FLAG

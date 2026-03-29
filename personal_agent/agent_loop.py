@@ -1023,7 +1023,8 @@ Provide a clear, accurate answer in 2-4 sentences."""
             logging.getLogger(__name__).warning(f"[CRT-CRITIC] Post-process failed: {e}")
             return self._govern_draft(draft)
 
-    def _govern_draft(self, draft: str, belief_confidence: float = 0.5) -> str:
+    def _govern_draft(self, draft: str, belief_confidence: float = 0.5,
+                      recent_responses: list | None = None, query: str | None = None) -> str:
         """
         Run immune agent governance on a draft response.
 
@@ -1036,6 +1037,8 @@ Provide a clear, accurate answer in 2-4 sentences."""
         gov_result = self._governance.govern_response(
             text=draft,
             belief_confidence=belief_confidence,
+            recent_responses=recent_responses,
+            query=query,
         )
 
         # Store governance result on trace for auditability

@@ -991,49 +991,27 @@ def create_app() -> FastAPI:
     
     # Callback for when a reminder is due
     def on_reminder_due(task: ScheduledTask):
-        """Handle a due reminder."""
+        """Handle a due reminder — push directly to SSE stream."""
         try:
+            from personal_agent.notifications import emit_generic_notification_sync
             reminder_text = str(task.payload.get("reminder_text") or "Reminder").strip()
             thread_id = _sanitize_thread_id(task.thread_id)
             original_time = str(task.payload.get("original_time_str") or "").strip()
 
-            ctx = _tasks_session_db.get_channel_context(thread_id)
-            channel = str((ctx or {}).get("channel") or "").strip().lower()
-            destination_id = str((ctx or {}).get("destination_id") or "").strip() or None
-            actor_id = str((ctx or {}).get("actor_id") or "").strip() or None
-            if not channel:
-                channel = "telegram" if thread_id.startswith("tg_") else "api"
-            if not destination_id and thread_id.startswith("tg_"):
-                destination_id = thread_id[len("tg_") :]
-
-            payload = {
-                "task_id": task.task_id,
-                "task_type": task.task_type,
-                "thread_id": thread_id,
-                "original_time_str": original_time,
-                "scheduled_at": float(task.scheduled_at),
-                "actor_id": actor_id,
-            }
-            enqueue_result = _tasks_session_db.enqueue_notification(
-                thread_id=thread_id,
-                channel=channel,
-                destination_id=destination_id,
+            pushed = emit_generic_notification_sync(
+                event_type="commitment_notification",
                 content=f"Reminder: {reminder_text}",
-                category="reminder",
-                priority="high",
-                payload=payload,
-                dedupe_key=f"reminder:{task.task_id}",
-                source_kind="scheduled_task",
-                source_id=task.task_id,
-                max_attempts=6,
+                metadata={
+                    "task_id": task.task_id,
+                    "thread_id": thread_id,
+                    "reminder_text": reminder_text,
+                    "original_time_str": original_time,
+                    "scheduled_at": float(task.scheduled_at),
+                    "category": "reminder",
+                    "priority": "high",
+                },
             )
-            logger.info(
-                "[REMINDER] Due reminder queued: thread=%s channel=%s destination=%s enqueue=%s",
-                thread_id,
-                channel,
-                destination_id or "-",
-                enqueue_result,
-            )
+            logger.info("[REMINDER] Fired: '%s' — pushed to %d SSE connection(s)", reminder_text, pushed)
         except Exception as e:
             logger.error(f"[REMINDER] Error handling reminder: {e}")
     # Callback for when a thought is due to be posted

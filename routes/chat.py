@@ -4905,6 +4905,38 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     parse_checkpoint_confirmation as _parse_confirm,
                 )
                 _session_db = get_thread_session_db()
+
+                # ── REMINDER CONFIRMATION (must be FIRST, before any LLM) ──
+                try:
+                    _pend_rem_early = _session_db.get_pending_reminder(req.thread_id)
+                    if isinstance(_pend_rem_early, dict) and _is_confirmation_yes(req.message):
+                        _safe_print("[REMINDER_CONFIRM] Fast-path: confirming pending reminder (early)")
+                        _rem_text_e = str(_pend_rem_early.get("reminder_text") or "").strip()
+                        _rem_ts_e = float(_pend_rem_early.get("scheduled_at") or 0.0)
+                        if _rem_text_e and _rem_ts_e > time.time():
+                            _db_path_e = str(getattr(request.app.state, "scheduled_tasks_db_path", "") or "")
+                            if _db_path_e:
+                                _task_e = schedule_reminder(
+                                    db_path=_db_path_e,
+                                    thread_id=req.thread_id,
+                                    reminder_text=_rem_text_e,
+                                    scheduled_time=datetime.fromtimestamp(_rem_ts_e),
+                                )
+                                _session_db.clear_pending_reminder(req.thread_id)
+                                _human_time_e = _format_reminder_time(_rem_ts_e)
+                                _confirm_ans = (
+                                    f"Confirmed. I will remind you to '{_rem_text_e}' on {_human_time_e}."
+                                )
+                                _safe_print(f"[REMINDER_CONFIRM] Scheduled: {_rem_text_e} at {_human_time_e}")
+                                yield _sse({"type": "token", "content": _confirm_ans})
+                                yield _sse({"type": "done", "content": _confirm_ans,
+                                            "metadata": {"mode": "deterministic_reminder",
+                                                         "reminder_scheduled": True}})
+                                return
+                        _session_db.clear_pending_reminder(req.thread_id)
+                except Exception as _rem_early_err:
+                    _safe_print(f"[REMINDER_CONFIRM] Early check failed: {_rem_early_err}")
+
                 _active_task = _session_db.get_pending_task(req.thread_id)
 
                 # ── Check for pending agentic checkpoint confirmation ─────
@@ -5955,15 +5987,33 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                         _legacy_belief = min(0.8, _legacy_belief + 0.1)
                             except Exception:
                                 pass
+                            # Fetch recent responses for tension detection
+                            _recent_resps = []
+                            try:
+                                _tension_engine = request.app.state.get_engine(req.thread_id)
+                                _bs_conn = _tension_engine.memory._get_connection()
+                                _recent_rows = _bs_conn.execute(
+                                    "SELECT response FROM belief_speech WHERE is_belief=0 ORDER BY timestamp DESC LIMIT 5"
+                                ).fetchall()
+                                _bs_conn.close()
+                                _recent_resps = [r[0] for r in reversed(_recent_rows) if r[0]]
+                            except Exception:
+                                pass
                             _gov = _LEGACY_GOVERNANCE.govern_response(
                                 text=_task_answer,
                                 belief_confidence=_legacy_belief,
+                                recent_responses=_recent_resps,
+                                query=effective_message,
                             )
                             _done_meta["governance_tier"] = _gov.tier.value
                             _done_meta["governance_annotations"] = len(_gov.annotations)
                             if _gov.annotations:
                                 _done_meta["governance_findings"] = [a.finding[:120] for a in _gov.annotations]
                             _safe_print(f"[GOVERNANCE_LEGACY] tier={_gov.tier.value}, annotations={len(_gov.annotations)}")
+                            _tension_anns = [a for a in _gov.annotations if a.agent == "tension_detector"]
+                            if _tension_anns:
+                                for _ta in _tension_anns:
+                                    _safe_print(f"[TENSION] {_ta.finding[:150]}")
                         except Exception as _gov_err:
                             logger.debug("[GOVERNANCE_LEGACY] Task path failed: %s", _gov_err)
 
@@ -6266,15 +6316,33 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 _conv_belief = min(0.8, _conv_belief + 0.1)
                     except Exception:
                         pass
+                    # Fetch recent responses for tension detection
+                    _recent_resps_conv = []
+                    try:
+                        _tension_engine2 = request.app.state.get_engine(req.thread_id)
+                        _bs_conn2 = _tension_engine2.memory._get_connection()
+                        _rr2 = _bs_conn2.execute(
+                            "SELECT response FROM belief_speech WHERE is_belief=0 ORDER BY timestamp DESC LIMIT 5"
+                        ).fetchall()
+                        _bs_conn2.close()
+                        _recent_resps_conv = [r[0] for r in reversed(_rr2) if r[0]]
+                    except Exception:
+                        pass
                     _gov = _LEGACY_GOVERNANCE.govern_response(
                         text=answer,
                         belief_confidence=_conv_belief,
+                        recent_responses=_recent_resps_conv,
+                        query=effective_message,
                     )
                     metadata["governance_tier"] = _gov.tier.value
                     metadata["governance_annotations"] = len(_gov.annotations)
                     if _gov.annotations:
                         metadata["governance_findings"] = [a.finding[:120] for a in _gov.annotations]
                     _safe_print(f"[GOVERNANCE_LEGACY] tier={_gov.tier.value}, annotations={len(_gov.annotations)}")
+                    _tension_anns2 = [a for a in _gov.annotations if a.agent == "tension_detector"]
+                    if _tension_anns2:
+                        for _ta2 in _tension_anns2:
+                            _safe_print(f"[TENSION] {_ta2.finding[:150]}")
                     if _gov.should_block:
                         _findings = "; ".join(a.finding for a in _gov.annotations)
                         answer = (

@@ -300,6 +300,30 @@ Does susceptibility survive rephrasing? If yes: property of the topic. If no: pr
 Feed the pipeline paraphrase sets from a deterministic template or synthetic answer pools.
 Does DBSCAN + embeddings recover planted structure? Makes the probe itself credible.
 
+[2026-03-29] HIGH — TENSION DETECTOR: TWO-TIER NLI UPGRADE
+Current tension detector uses cheap cosine similarity (94ms warm). Works for identity flips
+and stance reversals but generates noise on philosophical/opinion content.
+Next step: two-tier approach.
+  - Tier 1 (always): Cosine gate. If response sim < 0.6 on same-topic query, flag.
+  - Tier 2 (conditional): Run CRT critic / NLI contradiction check on flagged pairs only.
+    Only fire Tier 2 on fact-heavy queries (detected via intent classifier or domain tag).
+    Skip Tier 2 on opinion/philosophical queries where divergence is expected.
+Intent classifier already splits routes — reuse that signal to gate NLI cost.
+Blocked on: hardware upgrade (NLI adds ~2-5s per check on current setup).
+
+[2026-03-29] MEDIUM — GPT CORPUS DRIFT ANALYSIS COMPLETE
+Results in data/chatgpt_drift.db. 23 topic clusters analyzed.
+  GPT mean scatter: 0.657 vs CRT scatter: 0.345 (CRT 2x more consistent).
+  Domain ranking: practical (0.686) > emotional (0.658) > aspirational (0.650) > philosophical (0.614).
+  Cross-model drift up to 0.93 between GPT versions on same topic.
+  gpt-4o most internally scattered (0.605), thinking models most consistent.
+This is the comparative baseline. Can be cited in demo/writeup.
+
+[2026-03-29] MEDIUM — FULL SYSTEM LOGGING AUDIT & DOCUMENTATION
+Current logging is a mix of print() and logger.info() with no consistent format.
+Need: unified log format, documented log levels, structured output for analysis.
+Not urgent but needed before any external demo or library extraction.
+
 [2026-03-28] FUTURE — CASCADE COMPLEXITY PAPER
 Pure math, no data needed. Definitions and theorems for belief revision cascades.
 Session thread written. 5 theorems outlined. NP-hardness still conjecture.

@@ -300,26 +300,47 @@ class HeartbeatScheduler:
     def _run(self) -> None:
         """Main scheduler loop."""
         logger.info(f"[HEARTBEAT] Scheduler loop running (check every {self.check_interval}s)")
-        
+
         while not self._stop.is_set():
             try:
+                # --- Check commitments on EVERY tick (not just heartbeat cycles) ---
+                self._check_due_commitments()
+
                 # Get list of active threads from session DB
                 threads = self._get_active_threads()
-                
+
                 for thread_id in threads:
                     if self._stop.is_set():
                         break
-                    
+
                     # Check if this thread is due for heartbeat
                     if self._is_heartbeat_due(thread_id):
                         self._run_heartbeat_for_thread(thread_id)
-                
+
                 # Sleep before next check
                 self._stop.wait(self.check_interval)
-            
+
             except Exception as e:
                 logger.error(f"[HEARTBEAT] Scheduler error: {e}", exc_info=True)
                 self._stop.wait(5)  # Back off on error
+
+    def _check_due_commitments(self) -> None:
+        """Check and fire any due commitments. Runs every scheduler tick (~10s)."""
+        try:
+            import time as _time
+            from personal_agent.commitments import (
+                get_pending_commitments, fire_commitment,
+            )
+            from personal_agent.notifications import emit_commitment_notification_sync
+
+            due = get_pending_commitments(before_timestamp=_time.time() + 10)
+            for commitment in due:
+                fired = fire_commitment(commitment.commitment_id)
+                if fired:
+                    emit_commitment_notification_sync(fired)
+                    logger.info("[COMMITMENT] Fired: %s — %s", fired.intent, fired.description)
+        except Exception as e:
+            logger.debug(f"[COMMITMENT] Check failed (non-fatal): {e}")
     
     def _get_active_threads(self) -> List[str]:
         """Get list of active thread IDs from session DB."""

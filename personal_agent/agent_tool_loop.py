@@ -187,6 +187,52 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str,
             return {"content": text, "status": "error" if has_error else "ok",
                     "metadata": {"tool_name": tool_name, "error": result.get("error") if has_error else None}}
 
+        elif tool_name == "search_code":
+            import re as _re_search
+            from pathlib import Path as _Path_search
+            pattern = tool_args.get("pattern", "")
+            search_path = _Path_search(tool_args.get("path", "D:/AI_round2"))
+            glob_filter = tool_args.get("glob", "*.py")
+            max_results = int(tool_args.get("max_results", 30))
+
+            if not pattern:
+                return {"content": "Error: pattern is required", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+
+            try:
+                compiled = _re_search.compile(pattern, _re_search.IGNORECASE)
+            except _re_search.error:
+                compiled = None  # fall back to literal match
+
+            matches = []
+            skip_dirs = {".git", "__pycache__", "node_modules", ".venv", "venv", ".mypy_cache", "dist", "build"}
+            try:
+                for fpath in search_path.rglob(glob_filter):
+                    if any(skip in fpath.parts for skip in skip_dirs):
+                        continue
+                    if not fpath.is_file() or fpath.stat().st_size > 500_000:
+                        continue
+                    try:
+                        text = fpath.read_text(encoding="utf-8", errors="ignore")
+                        for i, line in enumerate(text.splitlines(), 1):
+                            hit = (compiled.search(line) if compiled else pattern.lower() in line.lower())
+                            if hit:
+                                rel = fpath.relative_to(search_path)
+                                matches.append(f"{rel}:{i}: {line.strip()[:120]}")
+                                if len(matches) >= max_results:
+                                    break
+                    except Exception:
+                        continue
+                    if len(matches) >= max_results:
+                        break
+            except Exception as e:
+                return {"content": f"Search failed: {e}", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+
+            output = "\n".join(matches) if matches else f"No matches found for '{pattern}'"
+            return {"content": output, "status": "ok",
+                    "metadata": {"tool_name": tool_name, "matches": len(matches)}}
+
         elif tool_name == "shell_exec":
             from personal_agent.shell_tools import execute_command
             from personal_agent.action_receipts import create_receipt, log_receipt
