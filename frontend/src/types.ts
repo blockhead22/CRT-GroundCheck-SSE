@@ -1,5 +1,5 @@
 // Mirror the Streamlit app's primary sections.
-export type NavId = 'chat' | 'dashboard' | 'loops' | 'journal' | 'jobs' | 'docs' | 'copilot' | 'live' | 'telemetry' | 'settings' | 'v2'
+export type NavId = 'chat' | 'dashboard' | 'loops' | 'journal' | 'jobs' | 'docs' | 'copilot' | 'live' | 'telemetry' | 'settings' | 'v2' | 'belief-map'
 
 export type ChatRole = 'user' | 'assistant'
 
@@ -174,6 +174,9 @@ export type CtrMessageMeta = {
   } | null
   // Whether cloud governance (slot classification, NLI) was used
   cloud_governance_used?: boolean | null
+  // Agent loop metadata — whether tools were actually executed
+  tools_executed?: boolean | null
+  agent_loop?: boolean
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {

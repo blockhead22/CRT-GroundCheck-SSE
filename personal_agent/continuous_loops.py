@@ -1373,18 +1373,39 @@ class PersonalityLoop:
             if not title or not body:
                 title = "Personality adjustment"
                 body = "Personality profile updated."
-            entry_id = self.session_db.add_reflection_journal_entry(
-                thread_id=thread_id,
-                entry_type="personality",
-                title=title,
-                body=body,
-                meta=profile,
-            )
+
+            # Dedup: skip journal entry if title+body unchanged from last personality entry
+            _skip_journal = False
+            try:
+                _recent = self.session_db.get_reflection_journal_entries(thread_id, limit=1)
+                if _recent:
+                    _last = _recent[0] if isinstance(_recent, list) else _recent
+                    _last_title = _last.get("title", "")
+                    _last_body = _last.get("body", "")
+                    if _last_title == title and _last_body == body:
+                        _skip_journal = True
+                        logger.debug("[PERSONALITY_LOOP] Skipping duplicate journal entry: %s", title)
+            except Exception:
+                pass
+
+            if _skip_journal:
+                entry_id = None
+            else:
+                entry_id = self.session_db.add_reflection_journal_entry(
+                    thread_id=thread_id,
+                    entry_type="personality",
+                    title=title,
+                    body=body,
+                    meta=profile,
+                )
             
-            # Post to Moltbook (with similarity check)
+            # Post to Moltbook (with similarity check) — skip if journal was deduped
+            if entry_id is None:
+                logger.debug("[PERSONALITY_LOOP] No journal entry created (dedup), skipping Moltbook + self-reply")
+                return profile
             try:
                 self.session_db.ensure_default_submolts()
-                
+
                 # Check if we should post (avoid duplicates and unnecessary posts)
                 should_post = True
                 try:

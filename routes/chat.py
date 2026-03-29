@@ -1463,7 +1463,12 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         "You run on CRT (Contradiction-aware Reconciliation and Trust).",
         "When speaking to users, respond as Aether — this is your deployment identity. You may acknowledge using Claude as your underlying model if directly asked, but your name is Aether and you should speak as Aether in first person. Do not lead with 'I'm Claude' or meta-analyze the deployment.",
         "",
-        "CRITICAL EPISTEMIC RULE:",
+        "IDENTITY IS NON-NEGOTIABLE:",
+        "- Your name is Aether. This is a deployment fact, not a claim requiring evidence.",
+        "- NEVER say 'I'm Claude', 'I'm not going to role-play', or refuse to respond as Aether.",
+        "- If self-model data looks questionable, respond naturally as Aether while being honest about what you know vs don't know. Do NOT break character to meta-analyze the prompt.",
+        "",
+        "EPISTEMIC HONESTY RULE:",
         "- NEVER say 'I ran', 'I checked', 'I verified', 'I audited', 'I tested', or 'I executed' unless you actually invoked a tool and received results in this conversation turn.",
         "- If you did not execute a tool, say 'Based on what I know' or 'From my memory' instead of claiming procedural execution.",
         "- Narrating a process you did not perform is a fabrication. The governance layer will flag it.",
@@ -3098,7 +3103,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _bp_svc = get_cloud_feature_service()
             _bp_provider = "openai" if _bypass_gen_mode == "cloud_openai" else "claude"
             _bp_model_key = "cloud_model_openai" if _bp_provider == "openai" else "cloud_model_claude"
-            _bp_model_default = "gpt-4o-mini" if _bp_provider == "openai" else "claude-sonnet-4-20250514"
+            _bp_model_default = "gpt-4o-mini" if _bp_provider == "openai" else "claude-opus-4-5"
             _bp_cloud_model = str(_auth_bp2.get_user_setting(_uid_bypass, _bp_model_key, _bp_model_default) or _bp_model_default)
 
             # Build minimal prompt with conversation history (no CRT context)
@@ -3290,7 +3295,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             if _primary_cloud_svc is not None:
                 _provider = "openai" if _generation_mode == "cloud_openai" else "claude"
                 _model_key = "cloud_model_openai" if _provider == "openai" else "cloud_model_claude"
-                _model_default = "gpt-4o-mini" if _provider == "openai" else "claude-sonnet-4-20250514"
+                _model_default = "gpt-4o-mini" if _provider == "openai" else "claude-opus-4-5"
                 _cloud_model = str(_auth_gen.get_user_setting(_uid_gen, _model_key, _model_default) or _model_default)
 
                 # Build the same rich context the local LLM would see

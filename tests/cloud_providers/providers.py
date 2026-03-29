@@ -400,7 +400,7 @@ class CookieProvider(CloudProvider):
                 pass
         return full_text
 
-    def complete(self, system: str, prompt: str, max_tokens: int = 300) -> ProviderResult:
+    def complete(self, system: str, prompt: str, max_tokens: int = 300, model: str = "claude-sonnet-4-5") -> ProviderResult:
         start = time.perf_counter()
         try:
             session = self._load_session()
@@ -413,7 +413,7 @@ class CookieProvider(CloudProvider):
             payload = {
                 "prompt": full_prompt,
                 "timezone": "America/Los_Angeles",
-                "model": "claude-sonnet-4-5",
+                "model": model,
                 "attachments": [],
                 "files": [],
                 "rendering_mode": "messages",

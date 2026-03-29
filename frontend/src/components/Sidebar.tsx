@@ -15,6 +15,7 @@ const navSections: NavSection[] = [
       { id: 'chat', label: 'Chat', icon: '✦' },
       { id: 'copilot', label: 'Aether', icon: '◈' },
       { id: 'live', label: 'Live', icon: '◉' },
+      { id: 'belief-map', label: 'Belief Map', icon: '◎' },
     ],
   },
   {

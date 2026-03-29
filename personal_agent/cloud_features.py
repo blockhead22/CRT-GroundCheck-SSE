@@ -256,6 +256,7 @@ class CloudFeatureService:
 
     def _call_cookie_text(
         self, system: str, prompt: str, max_tokens: int = 4096, *, feature: str = "unknown",
+        model: str = "claude-sonnet-4-5",
     ) -> Optional[str]:
         """Call the Cookie (Claude session) provider and return raw text (not JSON-parsed).
 
@@ -269,7 +270,7 @@ class CloudFeatureService:
         t0 = time.time()
         raw_content: str = ""
         try:
-            result = self.cookie.complete(system, prompt, max_tokens=max_tokens)
+            result = self.cookie.complete(system, prompt, max_tokens=max_tokens, model=model)
             latency = int((time.time() - t0) * 1000)
             raw_content = getattr(result, "content", "") or ""
             # Ignore JSON parse errors — complete() calls try_parse_json()
@@ -772,8 +773,16 @@ class CloudFeatureService:
                 return None
 
             resolved_model = model or "claude-sonnet-4-20250514"
+            # Map model IDs to cookie API model names
+            _cookie_model = resolved_model
+            if "opus" in resolved_model:
+                _cookie_model = "claude-opus-4-5"
+            elif "sonnet" in resolved_model:
+                _cookie_model = "claude-sonnet-4-5"
+            print(f"[GENERATION] cloud_primary: using claude ({resolved_model})")
             raw = self._call_cookie_text(
                 system_prompt, prompt, max_tokens=max_tokens, feature="claude_generation",
+                model=_cookie_model,
             )
 
             if raw:

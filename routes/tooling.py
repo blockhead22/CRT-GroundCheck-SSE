@@ -22,6 +22,7 @@ _CLOUD_MODELS: List[Dict[str, str]] = [
 ]
 
 _ANTHROPIC_MODELS: List[Dict[str, str]] = [
+    {"name": "claude-opus-4-5", "label": "Claude Opus 4.5"},
     {"name": "claude-sonnet-4-6", "label": "Claude Sonnet 4.6"},
     {"name": "claude-sonnet-4-20250514", "label": "Claude Sonnet 4"},
     {"name": "claude-haiku-3-5", "label": "Claude Haiku 3.5"},

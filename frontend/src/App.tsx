@@ -22,6 +22,7 @@ import { LoopsPage } from './pages/LoopsPage'
 import { JournalPage } from './pages/JournalPage'
 import { CopilotPage } from './pages/CopilotPage'
 import { LiveFeedPage } from './pages/LiveFeedPage'
+import BeliefMapPage from './pages/BeliefMapPage'
 import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
@@ -41,7 +42,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -1357,6 +1358,8 @@ export default function App() {
                   <CopilotPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'live' ? (
                   <LiveFeedPage />
+                ) : navActive === 'belief-map' ? (
+                  <BeliefMapPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'telemetry' ? (
                   <TelemetryPage threadId={selectedThread?.id} />
                 ) : navActive === 'v2' ? (

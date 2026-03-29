@@ -509,3 +509,92 @@ class VarianceTracker:
             }
             for r in rows
         ]
+
+    def get_embedding_map(self) -> Dict:
+        """Return PCA-projected 2D coordinates for all belief_speech entries."""
+        from sklearn.decomposition import PCA
+
+        conn = self._get_connection()
+        try:
+            rows = conn.execute(
+                """SELECT entry_id, timestamp, query, response, is_belief, trust_avg,
+                          response_embedding, topic_id
+                   FROM belief_speech
+                   WHERE response_embedding IS NOT NULL
+                   ORDER BY timestamp ASC"""
+            ).fetchall()
+
+            # Load topic labels
+            topic_rows = conn.execute(
+                "SELECT topic_id, label, centroid_embedding FROM opinion_topics"
+            ).fetchall()
+        finally:
+            conn.close()
+
+        if not rows:
+            return {"points": [], "contradictions": [], "topics": []}
+
+        entry_ids = [r[0] for r in rows]
+        embeddings = np.array([np.frombuffer(r[6], dtype=np.float32) for r in rows])
+
+        # PCA to 2D
+        if len(embeddings) < 2:
+            coords = np.zeros((len(embeddings), 2))
+        else:
+            pca = PCA(n_components=2)
+            coords = pca.fit_transform(embeddings)
+
+        # Normalize to [-1, 1] range for frontend
+        if coords.size > 0:
+            for dim in range(2):
+                vmin, vmax = coords[:, dim].min(), coords[:, dim].max()
+                span = vmax - vmin
+                if span > 1e-8:
+                    coords[:, dim] = 2.0 * (coords[:, dim] - vmin) / span - 1.0
+
+        # Build topic lookup
+        topic_labels = {r[0]: r[1] for r in topic_rows}
+
+        # Build points
+        points = []
+        for i, r in enumerate(rows):
+            points.append({
+                "entry_id": r[0],
+                "x": round(float(coords[i, 0]), 4),
+                "y": round(float(coords[i, 1]), 4),
+                "is_belief": bool(r[4]),
+                "trust_avg": r[5],
+                "topic_id": r[7],
+                "topic_label": topic_labels.get(r[7]),
+                "query": (r[2] or "")[:80],
+                "response_preview": (r[3] or "")[:120],
+                "timestamp": r[1],
+            })
+
+        # Project topic centroids (store raw PCA range for normalization)
+        topics = []
+        if topic_rows and len(embeddings) >= 2:
+            # We need raw PCA coords before normalization for centroid projection
+            raw_coords = pca.transform(embeddings)
+            for tr in topic_rows:
+                centroid = np.frombuffer(tr[2], dtype=np.float32).reshape(1, -1)
+                try:
+                    c2d = pca.transform(centroid)[0]
+                    # Apply same normalization as points
+                    for dim in range(2):
+                        vmin, vmax = raw_coords[:, dim].min(), raw_coords[:, dim].max()
+                        span = vmax - vmin
+                        if span > 1e-8:
+                            c2d[dim] = 2.0 * (c2d[dim] - vmin) / span - 1.0
+                    cx = round(float(c2d[0]), 4)
+                    cy = round(float(c2d[1]), 4)
+                except Exception:
+                    cx, cy = 0.0, 0.0
+                topics.append({
+                    "topic_id": tr[0],
+                    "label": tr[1],
+                    "centroid_x": cx,
+                    "centroid_y": cy,
+                })
+
+        return {"points": points, "contradictions": [], "topics": topics}
