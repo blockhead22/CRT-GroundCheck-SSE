@@ -4,2345 +4,1225 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Immune Agent Architecture — CRT / Aether</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg-primary: #fafaf8;
-    --bg-cream: #f5f1ea;
-    --bg-hero: #f0ebe1;
-    --bg-card: #ffffff;
-    --text-dark: #1a1a16;
-    --text-body: #4a4a44;
-    --text-muted: #8a8a80;
-    --accent: #c4a97d;
-    --accent-dim: rgba(196,169,125,0.12);
-    --border-light: #e5e0d8;
-    --border-subtle: #ece8e0;
-    --burgundy: #8b3a3a;
-    --sage: #6b7c5e;
-    --amber: #b8924a;
-    --mauve: #9b7aaa;
-    --terracotta: #b07850;
-  }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--bg-primary);
-    color: var(--text-body);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    font-weight: 400;
-    line-height: 1.85;
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+  body { background: #060814; color: #c0c8e0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; line-height: 1.75; overflow-x: hidden; }
 
   /* ===== HERO ===== */
   .hero {
-    position: relative;
-    width: 100%;
-    height: 100vh;
-    min-height: 560px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative; width: 100%; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(160deg, #060814 0%, #0c1228 30%, #1a0e2e 60%, #0d1a3a 100%);
     overflow: hidden;
-    background: var(--bg-hero);
-  }
-  .hero canvas {
-    display: none !important;
   }
   .hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(ellipse at 50% 40%, rgba(196,169,125,0.10) 0%, transparent 70%);
-    pointer-events: none;
+    content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 30% 50%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 30%, rgba(236,72,153,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 80%, rgba(59,130,246,0.05) 0%, transparent 50%);
+    animation: drift 20s ease-in-out infinite alternate;
   }
-  .hero-content {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    max-width: 760px;
-    padding: 0 40px;
+  @keyframes drift { 0% { transform: translate(0,0) rotate(0deg); } 100% { transform: translate(-2%,1%) rotate(1deg); } }
+  .hero-inner {
+    position: relative; z-index: 1; text-align: center; max-width: 820px; padding: 80px 30px;
   }
-  .hero-content h1 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 3.8em;
-    font-weight: 500;
-    color: var(--text-dark);
-    letter-spacing: -1px;
-    line-height: 1.1;
-    margin-bottom: 20px;
+  .hero-badge {
+    display: inline-block; font-size: 0.7em; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+    color: #818cf8; border: 1px solid rgba(129,140,248,0.25); border-radius: 20px; padding: 6px 18px;
+    margin-bottom: 28px; background: rgba(129,140,248,0.06);
   }
-  .hero-content h1 span.accent {
-    background: none !important;
-    -webkit-background-clip: unset !important;
-    -webkit-text-fill-color: var(--accent) !important;
-    background-clip: unset !important;
-    color: var(--accent);
-    font-style: italic;
+  .hero h1 {
+    font-size: 3.4em; font-weight: 700; color: #fff; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px;
   }
-  .hero-content .tagline {
-    font-family: 'Inter', sans-serif;
-    font-size: 1.05em;
-    font-weight: 300;
-    color: var(--text-muted);
-    margin-bottom: 36px;
-    letter-spacing: 0.5px;
+  .hero h1 .grad {
+    background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
   }
-  .hero-content .claim {
-    font-size: 0.88em;
-    color: var(--text-body);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 18px 28px;
-    background: rgba(255,255,255,0.7);
-    backdrop-filter: blur(10px);
-    display: inline-block;
-    max-width: 700px;
-    line-height: 1.85;
+  .hero .sub { font-size: 1.15em; color: #7a82a6; margin-bottom: 36px; max-width: 640px; margin-left: auto; margin-right: auto; }
+  .hero .finding-box {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 24px 28px; text-align: left; backdrop-filter: blur(12px);
+    max-width: 680px; margin: 0 auto;
   }
-  .scroll-hint {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--text-muted);
-    font-size: 0.7em;
-    font-family: 'Inter', sans-serif;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    z-index: 1;
-    animation: pulse 3s ease-in-out infinite;
+  .hero .finding-box p { color: #a0a8c8; font-size: 0.92em; margin-bottom: 0; }
+  .hero .finding-box strong { color: #e0e4f0; }
+  .scroll-cue {
+    position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+    color: #3a3f5c; font-size: 0.7em; letter-spacing: 1px; animation: pulse 2.5s ease-in-out infinite;
   }
-  @keyframes pulse { 0%,100% { opacity: 0.2; } 50% { opacity: 0.6; } }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.7; } }
 
-  /* ===== NAV / TOC ===== */
-  .toc {
-    position: fixed;
-    top: 0; left: 0;
-    width: 260px;
-    height: 100vh;
-    background: #faf9f6;
-    border-right: 1px solid var(--border-light);
-    padding: 28px 20px;
-    overflow-y: auto;
-    z-index: 100;
-    transform: translateX(-100%);
-    transition: transform 0.35s ease;
-  }
-  .toc.open { transform: translateX(0); }
-  .toc-toggle {
-    position: fixed;
-    top: 20px; left: 20px;
-    z-index: 101;
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    color: var(--text-muted);
-    padding: 7px 14px;
-    border-radius: 2px;
-    cursor: pointer;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.7em;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    transition: color 0.3s, border-color 0.3s;
-  }
-  .toc-toggle:hover { color: var(--accent); border-color: var(--accent); }
-  .toc h4 {
-    color: var(--accent);
-    font-family: 'Playfair Display', serif;
-    font-size: 0.8em;
-    font-weight: 500;
-    letter-spacing: 1px;
-    margin-bottom: 18px;
-    text-transform: uppercase;
-  }
-  .toc a {
-    display: block;
-    color: var(--text-muted);
-    font-size: 0.8em;
-    text-decoration: none;
-    padding: 5px 0;
-    transition: color 0.2s;
-    letter-spacing: 0.2px;
-  }
-  .toc a:hover { color: var(--text-dark); }
-  .toc a.active { color: var(--accent); }
-
-  /* ===== CONTENT ===== */
-  .container {
-    max-width: 820px;
-    margin: 0 auto;
-    padding: 80px 40px;
-  }
-  h2 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 1.8em;
-    font-weight: 500;
-    color: var(--text-dark);
-    margin: 90px 0 24px 0;
-    letter-spacing: -0.3px;
-    scroll-margin-top: 20px;
-    line-height: 1.3;
-  }
-  h2:first-child { margin-top: 0; }
-  h3 {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 1.15em;
-    font-weight: 500;
-    color: var(--text-dark);
-    margin: 36px 0 14px 0;
-  }
-  h4 {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.88em;
-    font-weight: 600;
-    color: var(--text-dark);
-    margin: 28px 0 12px 0;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-  p {
-    margin-bottom: 18px;
-    color: var(--text-body);
-    font-weight: 300;
-  }
-  strong { color: var(--text-dark); font-weight: 600; }
-  em { color: #5a5a54; }
-  ul, ol { margin: 0 0 18px 24px; color: var(--text-body); }
-  li { margin-bottom: 8px; font-weight: 300; }
+  /* ===== LAYOUT ===== */
+  .container { max-width: 880px; margin: 0 auto; padding: 80px 30px; }
+  section { margin-bottom: 80px; }
+  h2 { font-size: 1.8em; color: #fff; margin-bottom: 16px; letter-spacing: -0.5px; font-weight: 700; }
+  h3 { font-size: 1.15em; color: #d0d4e8; margin: 32px 0 12px 0; font-weight: 600; }
+  h4 { font-size: 0.95em; color: #d0d4e8; margin: 28px 0 12px 0; font-weight: 600; }
+  p { margin-bottom: 16px; }
+  ul, ol { margin: 0 0 18px 24px; color: #c0c8e0; }
+  li { margin-bottom: 8px; }
+  strong { color: #e0e4f0; }
+  em { color: #b0b8d8; }
   code {
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    background: var(--bg-hero);
-    padding: 2px 7px;
-    border-radius: 2px;
-    font-size: 0.86em;
-    color: #8a6d3b;
-    border: 1px solid var(--border-subtle);
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.86em;
+    background: rgba(129,140,248,0.08); padding: 2px 7px; border-radius: 4px; color: #818cf8;
+    border: 1px solid rgba(129,140,248,0.15);
   }
+  .accent-line { width: 48px; height: 3px; background: linear-gradient(90deg, #818cf8, #c084fc); border-radius: 2px; margin-bottom: 28px; }
 
-  /* ===== DIVIDER ===== */
-  .divider {
-    width: 40px;
-    height: 1px;
-    background: var(--accent);
-    margin: 60px 0;
-    opacity: 0.5;
+  /* ===== STAT CARDS ===== */
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 32px 0; }
+  .stat-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 24px 20px; text-align: center;
+    transition: border-color 0.3s, transform 0.3s;
   }
+  .stat-card:hover { border-color: rgba(129,140,248,0.3); transform: translateY(-2px); }
+  .stat-card .stat-value { font-size: 2.2em; font-weight: 700; color: #fff; line-height: 1; margin-bottom: 6px; }
+  .stat-card .stat-value.accent { color: #818cf8; }
+  .stat-card .stat-value.warn { color: #f472b6; }
+  .stat-card .stat-value.good { color: #34d399; }
+  .stat-card .stat-label { font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; }
 
-  /* ===== STATUS BADGES ===== */
-  .badge {
-    display: inline-block;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.6em;
-    padding: 3px 10px;
-    border-radius: 2px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    font-weight: 600;
-    vertical-align: middle;
-    margin-left: 10px;
+  /* ===== TABLE ===== */
+  table { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 0.85em; }
+  thead th {
+    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
   }
-  .badge-built {
-    background: rgba(107,124,94,0.10);
-    color: var(--sage);
-    border: 1px solid rgba(107,124,94,0.22);
+  th {
+    text-align: left; padding: 12px 14px; color: #5a6080; font-weight: 600; font-size: 0.78em;
+    text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 2px solid rgba(255,255,255,0.06);
   }
-  .badge-planned {
-    background: rgba(184,146,74,0.10);
-    color: var(--amber);
-    border: 1px solid rgba(184,146,74,0.22);
-  }
-  .badge-proven {
-    background: rgba(107,124,94,0.10);
-    color: var(--sage);
-    border: 1px solid rgba(107,124,94,0.22);
-  }
-  .badge-progress {
-    background: rgba(176,120,80,0.10);
-    color: var(--terracotta);
-    border: 1px solid rgba(176,120,80,0.22);
-  }
-  .badge-concept {
-    background: rgba(138,138,128,0.08);
-    color: var(--text-muted);
-    border: 1px solid rgba(138,138,128,0.18);
-  }
-
-  /* ===== SCORECARD ===== */
-  .scorecard {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-top: 2px solid var(--accent);
-    border-radius: 2px;
-    padding: 32px 28px;
-    margin: 32px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .scorecard-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-  .scorecard-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.2em;
-    color: var(--text-dark);
-    font-weight: 500;
-  }
-  .scorecard-verdict {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.78em;
-    color: var(--accent);
-    font-weight: 500;
-    padding: 5px 16px;
-    border: 1px solid rgba(196,169,125,0.35);
-    border-radius: 2px;
-    background: rgba(196,169,125,0.08);
-    letter-spacing: 0.3px;
-  }
-  .scorecard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .scorecard-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background: var(--bg-cream);
-    border-radius: 2px;
-    border: 1px solid var(--border-subtle);
-  }
-  .scorecard-icon {
-    font-size: 1.1em;
-    flex-shrink: 0;
-    width: 24px;
-    text-align: center;
-  }
-  .scorecard-icon.pass { color: var(--sage); }
-  .scorecard-icon.fail { color: var(--burgundy); }
-  .scorecard-label {
-    font-size: 0.82em;
-    color: var(--text-body);
-    font-weight: 300;
-  }
-  .scorecard-score {
-    font-family: 'Playfair Display', serif;
-    font-size: 2.4em;
-    font-weight: 500;
-    color: var(--accent);
-    text-align: center;
-    margin-bottom: 20px;
-  }
-
-  /* ===== PHASE CARDS ===== */
-  .phase-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-left: 3px solid var(--accent);
-    border-radius: 2px;
-    padding: 28px;
-    margin: 24px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .phase-card.phase-warning { border-left-color: var(--terracotta); }
-  .phase-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
-  .phase-number {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.68em;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 600;
-  }
-  .phase-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.05em;
-    color: var(--text-dark);
-    font-weight: 500;
-  }
-  .phase-stat {
-    display: inline-block;
-    background: var(--bg-cream);
-    border: 1px solid var(--border-subtle);
-    border-radius: 2px;
-    padding: 7px 14px;
-    margin: 4px 4px 4px 0;
-    font-size: 0.82em;
-  }
-  .phase-stat strong { color: var(--accent); }
-  .phase-stat.stat-warning strong { color: var(--terracotta); }
+  tbody td, td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.03); color: #a0a8c8; }
+  tbody tr:hover td, tr:hover td { background: rgba(129,140,248,0.03); }
+  td strong { color: #e0e4f0; }
 
   /* ===== QUOTE ===== */
-  .quote {
-    border-left: 2px solid var(--accent);
-    padding: 20px 28px;
-    margin: 32px 0;
-    background: var(--bg-cream);
-    border-radius: 0;
+  .quote-block {
+    border-left: 3px solid #818cf8; padding: 20px 24px; margin: 32px 0;
+    background: rgba(129,140,248,0.03); border-radius: 0 10px 10px 0;
   }
-  .quote p {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    color: var(--text-dark);
-    font-style: italic;
-    margin: 0;
-    font-size: 1.15em;
-    font-weight: 400;
-    line-height: 1.7;
-  }
-  .quote .attr {
-    font-family: 'Inter', sans-serif;
-    color: var(--text-muted);
-    font-size: 0.72em;
-    margin-top: 10px;
-    font-style: normal;
-    letter-spacing: 0.5px;
-  }
-  .quote-amber { border-left-color: var(--amber); }
-  .quote-red { border-left-color: var(--burgundy); }
+  .quote-block p { color: #b0b8d8; font-size: 1.05em; font-style: italic; margin: 0; }
+  .quote-block .attr { color: #5a6080; font-size: 0.75em; margin-top: 10px; font-style: normal; }
+  .quote-block.quote-amber { border-left-color: #fbbf24; }
+  .quote-block.quote-pink { border-left-color: #f472b6; }
 
-  /* ===== LAW CARDS ===== */
-  .law-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 32px 28px;
-    margin: 24px 0;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  /* ===== LAW CARD (callout) ===== */
+  .law-card-hero {
+    background: linear-gradient(135deg, rgba(129,140,248,0.08), rgba(192,132,252,0.06));
+    border: 1px solid rgba(129,140,248,0.2); border-radius: 14px; padding: 32px; margin: 40px 0;
+    text-align: center;
   }
-  .law-card:hover {
-    border-color: rgba(196,169,125,0.5);
-    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
-  }
-  .law-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-  }
-  .law-number {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.68em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 600;
-  }
-  .law-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1em;
-    color: var(--text-dark);
-    font-weight: 500;
-  }
-  .law-agent {
-    font-size: 0.82em;
-    color: var(--accent);
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    opacity: 0.85;
-  }
-  .law-principle {
-    font-size: 0.95em;
-    color: var(--text-body);
-    margin: 14px 0;
-    padding: 14px 18px;
-    background: var(--bg-cream);
-    border-radius: 2px;
-    border-left: 2px solid var(--border-light);
-    font-weight: 300;
-    line-height: 1.85;
-  }
-  .law-detail { margin-top: 20px; }
-  .law-detail h5 {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.72em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 10px;
-    font-weight: 600;
-  }
-  .law-detail p, .law-detail ul { font-size: 0.88em; }
-  .law-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin: 14px 0;
-  }
-  .law-grid-item {
-    background: var(--bg-cream);
-    border: 1px solid var(--border-subtle);
-    border-radius: 2px;
-    padding: 14px 16px;
-  }
-  .law-grid-item h6 {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.68em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    margin-bottom: 8px;
-    font-weight: 600;
-  }
-  .law-grid-item p { font-size: 0.85em; margin: 0; }
+  .law-card-hero .law-number { font-size: 0.7em; color: #818cf8; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .law-card-hero .law-text { font-size: 1.5em; color: #fff; font-weight: 700; letter-spacing: -0.5px; }
+  .law-card-hero .law-sub { font-size: 0.88em; color: #7a82a6; margin-top: 12px; max-width: 600px; margin-left: auto; margin-right: auto; }
 
-  .law-card.law-1 { border-left: 3px solid var(--burgundy); }
-  .law-card.law-1 .law-number { color: var(--burgundy); }
-  .law-card.law-2 { border-left: 3px solid var(--sage); }
-  .law-card.law-2 .law-number { color: var(--sage); }
-  .law-card.law-3 { border-left: 3px solid var(--amber); }
-  .law-card.law-3 .law-number { color: var(--amber); }
-  .law-card.law-4 { border-left: 3px solid var(--mauve); }
-  .law-card.law-4 .law-number { color: var(--mauve); }
-  .law-card.law-5 { border-left: 3px solid var(--terracotta); }
-  .law-card.law-5 .law-number { color: var(--terracotta); }
+  /* ===== METHOD GRID ===== */
+  .method-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 24px 0; }
+  .method-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px; padding: 20px;
+  }
+  .method-card h4 { color: #d0d4e8; font-size: 0.9em; margin-bottom: 8px; margin-top: 0; }
+  .method-card p { color: #7a82a6; font-size: 0.82em; margin: 0; }
+  .method-card .mono { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.8em; color: #818cf8; }
+
+  /* ===== AGENT LAW CARDS ===== */
+  .agent-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 28px; margin: 24px 0;
+    transition: border-color 0.3s;
+  }
+  .agent-card:hover { border-color: rgba(129,140,248,0.25); }
+  .agent-card.law-1 { border-left: 3px solid #f472b6; }
+  .agent-card.law-2 { border-left: 3px solid #34d399; }
+  .agent-card.law-3 { border-left: 3px solid #fbbf24; }
+  .agent-card.law-4 { border-left: 3px solid #c084fc; }
+  .agent-card.law-5 { border-left: 3px solid #818cf8; }
+
+  .agent-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .agent-number { font-size: 0.68em; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+  .law-1 .agent-number { color: #f472b6; }
+  .law-2 .agent-number { color: #34d399; }
+  .law-3 .agent-number { color: #fbbf24; }
+  .law-4 .agent-number { color: #c084fc; }
+  .law-5 .agent-number { color: #818cf8; }
+  .agent-title { font-size: 1.1em; color: #fff; font-weight: 600; }
+  .agent-name { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.82em; color: #818cf8; opacity: 0.85; margin-bottom: 12px; }
+  .agent-principle {
+    font-size: 0.95em; color: #a0a8c8; margin: 14px 0; padding: 14px 18px;
+    background: rgba(255,255,255,0.02); border-radius: 8px; border-left: 2px solid rgba(255,255,255,0.06);
+    line-height: 1.75;
+  }
+  .agent-detail { margin-top: 20px; }
+  .agent-detail h5 {
+    font-size: 0.72em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 10px; margin-top: 20px; font-weight: 600;
+  }
+  .agent-detail p, .agent-detail ul { font-size: 0.88em; }
+  .agent-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+  .agent-grid-item {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 8px; padding: 14px 16px;
+  }
+  .agent-grid-item h6 { font-size: 0.68em; color: #6a7096; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600; }
+  .agent-grid-item p { font-size: 0.85em; margin: 0; color: #a0a8c8; }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-block; font-size: 0.6em; padding: 3px 10px; border-radius: 12px;
+    letter-spacing: 1px; text-transform: uppercase; font-weight: 600; vertical-align: middle; margin-left: 10px;
+  }
+  .badge-built { background: rgba(52,211,153,0.10); color: #34d399; border: 1px solid rgba(52,211,153,0.22); }
+  .badge-planned { background: rgba(251,191,36,0.10); color: #fbbf24; border: 1px solid rgba(251,191,36,0.22); }
+  .badge-proven { background: rgba(52,211,153,0.10); color: #34d399; border: 1px solid rgba(52,211,153,0.22); }
+  .badge-progress { background: rgba(244,114,182,0.10); color: #f472b6; border: 1px solid rgba(244,114,182,0.22); }
 
   /* ===== THRESHOLD BAR ===== */
   .threshold-bar {
-    position: relative;
-    height: 36px;
-    background: var(--bg-cream);
-    border-radius: 2px;
-    margin: 16px 0 10px 0;
-    overflow: hidden;
-    border: 1px solid var(--border-light);
+    position: relative; height: 36px; background: rgba(255,255,255,0.03);
+    border-radius: 8px; margin: 16px 0 10px 0; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
   }
   .threshold-zone {
-    position: absolute;
-    top: 0;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.66em;
-    font-weight: 600;
-    letter-spacing: 0.5px;
+    position: absolute; top: 0; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.66em; font-weight: 600; letter-spacing: 0.5px;
   }
-  .threshold-label {
-    position: absolute;
-    bottom: -18px;
-    font-size: 0.65em;
-    color: var(--text-muted);
-  }
+  .tz-block { background: rgba(244,114,182,0.12); color: #f472b6; }
+  .tz-downgrade { background: rgba(251,191,36,0.12); color: #fbbf24; }
+  .tz-allow { background: rgba(52,211,153,0.12); color: #34d399; }
+  .tz-low { background: rgba(52,211,153,0.12); color: #34d399; }
+  .tz-mid { background: rgba(255,255,255,0.04); color: #6a7096; }
+  .tz-high { background: rgba(251,191,36,0.12); color: #fbbf24; }
 
-  /* ===== COORDINATION DIAGRAM ===== */
-  .coord-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
-    margin: 24px 0;
+  /* ===== CLASSIFICATION COLORS ===== */
+  .cls-genuine { color: #34d399; font-weight: 600; }
+  .cls-template { color: #f472b6; font-weight: 600; }
+  .cls-uncertain { color: #fbbf24; font-weight: 600; }
+  .cls-exploratory { color: #c084fc; font-weight: 600; }
+
+  /* ===== DECISION TREE ===== */
+  .decision-tree {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 28px; margin: 28px 0;
   }
+  .decision-tree-label {
+    font-size: 0.68em; color: #6a7096; text-transform: uppercase;
+    letter-spacing: 1.5px; font-weight: 600; margin-bottom: 24px;
+  }
+  .dt-root { display: flex; flex-direction: column; align-items: flex-start; padding-left: 24px; }
+  .dt-node {
+    padding: 10px 18px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; font-size: 0.85em; color: #d0d4e8;
+  }
+  .dt-trunk { width: 2px; height: 28px; background: #818cf8; margin-left: 30px; opacity: 0.4; }
+  .dt-branches { display: flex; flex-direction: column; }
+  .dt-branch { display: flex; align-items: center; gap: 12px; position: relative; padding-left: 30px; }
+  .dt-branch::before {
+    content: ''; position: absolute; left: 30px; top: 0; width: 2px; height: 100%;
+    background: #818cf8; opacity: 0.2;
+  }
+  .dt-branch:last-child::before { height: 50%; }
+  .dt-branch-arm { position: absolute; left: 30px; top: 50%; width: 20px; height: 2px; background: #818cf8; opacity: 0.35; }
+  .dt-condition {
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.78em;
+    color: #6a7096; padding: 4px 0; white-space: nowrap; margin-left: 24px;
+  }
+  .dt-outcome {
+    padding: 8px 16px; border-radius: 8px; font-size: 0.82em; font-weight: 600;
+    letter-spacing: 0.5px; white-space: nowrap; border: 1px solid; margin: 8px 0;
+  }
+  .dt-outcome-allow { color: #34d399; background: rgba(52,211,153,0.08); border-color: rgba(52,211,153,0.25); }
+  .dt-outcome-downgrade { color: #fbbf24; background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.25); }
+  .dt-outcome-block { color: #f472b6; background: rgba(244,114,182,0.08); border-color: rgba(244,114,182,0.25); }
+  .dt-note { font-size: 0.72em; color: #6a7096; margin-left: 6px; }
+
+  /* ===== PHASE CARDS ===== */
+  .phase-card {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-left: 3px solid #818cf8; border-radius: 12px; padding: 28px; margin: 24px 0;
+  }
+  .phase-card.phase-warning { border-left-color: #f472b6; }
+  .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .phase-number { font-size: 0.68em; color: #818cf8; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+  .phase-title { font-size: 1.05em; color: #fff; font-weight: 600; }
+  .phase-stat {
+    display: inline-block; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 7px 14px; margin: 4px 4px 4px 0; font-size: 0.82em; color: #a0a8c8;
+  }
+  .phase-stat strong { color: #818cf8; }
+  .phase-stat.stat-warning strong { color: #f472b6; }
+
+  /* ===== SCORECARD ===== */
+  .scorecard {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-top: 2px solid #818cf8; border-radius: 12px; padding: 32px 28px; margin: 32px 0;
+  }
+  .scorecard-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .scorecard-title { font-size: 1.2em; color: #fff; font-weight: 700; }
+  .scorecard-verdict {
+    font-size: 0.78em; color: #818cf8; font-weight: 500; padding: 5px 16px;
+    border: 1px solid rgba(129,140,248,0.35); border-radius: 12px; background: rgba(129,140,248,0.08);
+  }
+  .scorecard-score { font-size: 2.4em; font-weight: 700; color: #818cf8; text-align: center; margin-bottom: 20px; }
+  .scorecard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .scorecard-row {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid rgba(255,255,255,0.04);
+  }
+  .scorecard-icon { font-size: 1.1em; flex-shrink: 0; width: 24px; text-align: center; }
+  .scorecard-icon.pass { color: #34d399; }
+  .scorecard-icon.fail { color: #f472b6; }
+  .scorecard-label { font-size: 0.82em; color: #a0a8c8; }
+
+  /* ===== COORDINATION CARDS ===== */
+  .coord-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 24px 0; }
   .coord-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 22px;
-    text-align: center;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 22px; text-align: center;
+    transition: border-color 0.3s;
   }
-  .coord-card:hover {
-    border-color: rgba(196,169,125,0.4);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  .coord-card:hover { border-color: rgba(129,140,248,0.3); }
+  .coord-agents { font-size: 0.8em; color: #6a7096; margin-bottom: 10px; }
+  .coord-action { font-size: 1.05em; font-weight: 600; }
+  .coord-desc { font-size: 0.82em; color: #7a82a6; margin-top: 8px; }
+  .coord-escalate { border-color: rgba(251,191,36,0.25); }
+  .coord-escalate .coord-action { color: #fbbf24; }
+  .coord-block { border-color: rgba(244,114,182,0.25); }
+  .coord-block .coord-action { color: #f472b6; }
+
+  /* ===== FLOW DIAGRAM ===== */
+  .flow-diagram {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 32px 24px; margin: 28px 0; text-align: center; overflow-x: auto;
   }
-  .coord-agents {
-    font-size: 0.8em;
-    color: var(--text-muted);
-    margin-bottom: 10px;
-    font-weight: 300;
+  .flow-row { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+  .flow-node {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 9px 16px; font-size: 0.82em; color: #d0d4e8; white-space: nowrap;
   }
-  .coord-action {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.05em;
-    font-weight: 500;
-  }
-  .coord-desc {
-    font-size: 0.82em;
-    color: var(--text-muted);
-    margin-top: 8px;
-    font-weight: 300;
-  }
-  .coord-escalate { border-color: rgba(184,146,74,0.35); }
-  .coord-escalate .coord-action { color: var(--amber); }
-  .coord-block { border-color: rgba(139,58,58,0.25); }
-  .coord-block .coord-action { color: var(--burgundy); }
+  .flow-node-active { border-color: rgba(129,140,248,0.5) !important; color: #818cf8 !important; }
+  .flow-node-watch { border-color: rgba(251,191,36,0.5) !important; color: #fbbf24 !important; }
+  .flow-arrow { color: #5a6080; font-size: 1.2em; }
 
   /* ===== LAYER STACK ===== */
-  .layer-stack {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin: 24px 0;
-  }
+  .layer-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
   .layer {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 22px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 22px; text-align: center;
   }
-  .layer .layer-name {
-    font-family: 'Playfair Display', serif;
-    color: var(--text-dark);
-    font-weight: 500;
-    font-size: 1em;
-  }
-  .layer .layer-sub {
-    color: var(--text-muted);
-    font-size: 0.7em;
-    margin-top: 5px;
-    letter-spacing: 0.3px;
-    font-weight: 300;
-  }
-  .layer .layer-desc {
-    color: var(--text-body);
-    font-size: 0.82em;
-    margin-top: 12px;
-    line-height: 1.65;
-    font-weight: 300;
-  }
-  .layer-fragility { border-top: 2px solid var(--burgundy); }
-  .layer-fragility .layer-name { color: var(--burgundy); }
-  .layer-support { border-top: 2px solid var(--sage); }
-  .layer-support .layer-name { color: var(--sage); }
-  .layer-tension { border-top: 2px solid var(--amber); }
-  .layer-tension .layer-name { color: var(--amber); }
+  .layer .layer-name { color: #fff; font-weight: 600; font-size: 1em; }
+  .layer .layer-sub { color: #6a7096; font-size: 0.7em; margin-top: 5px; letter-spacing: 0.3px; }
+  .layer .layer-desc { color: #a0a8c8; font-size: 0.82em; margin-top: 12px; line-height: 1.65; }
+  .layer-fragility { border-top: 2px solid #f472b6; }
+  .layer-fragility .layer-name { color: #f472b6; }
+  .layer-support { border-top: 2px solid #34d399; }
+  .layer-support .layer-name { color: #34d399; }
+  .layer-tension { border-top: 2px solid #fbbf24; }
+  .layer-tension .layer-name { color: #fbbf24; }
 
-  /* ===== DATA TABLE ===== */
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 18px 0 28px 0;
-    font-size: 0.85em;
-  }
-  th {
-    text-align: left;
-    padding: 12px 14px;
-    color: var(--text-muted);
-    font-weight: 600;
-    border-bottom: 2px solid var(--border-light);
-    font-size: 0.75em;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  td {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border-subtle);
-    color: var(--text-body);
-    font-weight: 300;
-  }
-  tr:hover td { background: rgba(196,169,125,0.05); }
-  td strong { color: var(--text-dark); }
-
-  /* ===== CLASSIFICATION BADGE (results table) ===== */
-  .cls-genuine { color: var(--sage); font-weight: 600; }
-  .cls-template { color: var(--burgundy); font-weight: 600; }
-  .cls-uncertain { color: var(--amber); font-weight: 600; }
-  .cls-exploratory { color: var(--mauve); font-weight: 600; }
-
-  /* ===== COMPARISON COLUMNS ===== */
-  .compare-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 22px;
-    margin: 24px 0;
-  }
-  .compare-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .compare-card h4 {
-    font-family: 'Playfair Display', serif;
-    color: var(--text-dark);
-    font-size: 1em;
-    font-weight: 500;
-    margin-bottom: 10px;
-    text-transform: none;
-    letter-spacing: 0;
-  }
-  .compare-card p {
-    color: var(--text-body);
-    font-size: 0.88em;
-    margin: 0 0 10px 0;
-    font-weight: 300;
-  }
-  .compare-old { border-top: 2px solid var(--text-muted); }
-  .compare-new { border-top: 2px solid var(--accent); }
-
-  /* ===== PERSISTENCE REQUIREMENTS ===== */
-  .persist-stack {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin: 24px 0;
-  }
+  /* ===== PERSIST STACK ===== */
+  .persist-stack { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0; }
   .persist-item {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 22px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 22px; text-align: center;
   }
-  .persist-item .persist-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 1.6em;
-    font-weight: 400;
-    color: rgba(196,169,125,0.4);
-    margin-bottom: 8px;
+  .persist-item .persist-num { font-size: 1.6em; font-weight: 700; color: rgba(129,140,248,0.35); margin-bottom: 8px; }
+  .persist-item .persist-name { color: #fff; font-weight: 600; font-size: 0.95em; }
+  .persist-item .persist-desc { color: #a0a8c8; font-size: 0.82em; margin-top: 10px; line-height: 1.65; }
+
+  /* ===== DOT MATRIX ===== */
+  .dot-matrix {
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; padding: 32px 28px; margin: 28px 0;
   }
-  .persist-item .persist-name {
-    font-family: 'Playfair Display', serif;
-    color: var(--text-dark);
-    font-weight: 500;
-    font-size: 0.95em;
+  .dot-matrix-label { font-size: 0.68em; color: #6a7096; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; margin-bottom: 24px; }
+  .dot-matrix-table { width: 100%; border-collapse: collapse; }
+  .dot-matrix-table th {
+    text-align: center; padding: 8px 12px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.68em; color: #6a7096;
+    border-bottom: 1px solid rgba(255,255,255,0.06); letter-spacing: 0; text-transform: none; font-weight: 500;
   }
-  .persist-item .persist-desc {
-    color: var(--text-body);
-    font-size: 0.82em;
-    margin-top: 10px;
-    line-height: 1.65;
-    font-weight: 300;
+  .dot-matrix-table th:first-child { text-align: left; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .dot-matrix-table td {
+    text-align: center; padding: 14px 12px; border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .dot-matrix-table td:first-child { text-align: left; font-size: 0.85em; font-weight: 500; color: #d0d4e8; }
+  .dot-built {
+    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+    background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,0.15);
+  }
+  .dot-planned {
+    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+    background: transparent; border: 2px solid #fbbf24; box-shadow: 0 0 0 3px rgba(251,191,36,0.10);
+  }
+  .dot-matrix-legend { display: flex; gap: 24px; margin-top: 18px; font-size: 0.72em; color: #6a7096; }
+  .dot-matrix-legend-item { display: flex; align-items: center; gap: 8px; }
+
+  /* ===== TEMPLATE LOCK EXAMPLE ===== */
+  .template-example {
+    background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px; padding: 16px 20px; margin: 12px 0; font-size: 0.88em;
+    color: #8a90b0; font-style: italic;
+  }
+
+  /* ===== LAWS OVERVIEW ===== */
+  .laws-overview {
+    margin: 36px 0 48px 0; padding: 36px 24px 32px;
+    background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px; overflow-x: auto;
+  }
+  .laws-overview-label {
+    text-align: center; font-size: 0.68em; color: #6a7096; text-transform: uppercase;
+    letter-spacing: 2px; margin-bottom: 28px; font-weight: 600;
+  }
+  .laws-overview-row { display: flex; align-items: center; justify-content: center; gap: 0; min-width: 820px; }
+  .law-overview-node { display: flex; flex-direction: column; align-items: center; text-align: center; flex: 0 0 auto; width: 150px; }
+  .law-overview-circle {
+    width: 62px; height: 62px; border-radius: 50%; background: rgba(255,255,255,0.02);
+    border: 2px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;
+    font-size: 1.1em; font-weight: 700; color: #fff; position: relative; z-index: 1;
+  }
+  .law-overview-node:nth-child(1) .law-overview-circle { border-color: #f472b6; color: #f472b6; }
+  .law-overview-node:nth-child(3) .law-overview-circle { border-color: #34d399; color: #34d399; }
+  .law-overview-node:nth-child(5) .law-overview-circle { border-color: #fbbf24; color: #fbbf24; }
+  .law-overview-node:nth-child(7) .law-overview-circle { border-color: #c084fc; color: #c084fc; }
+  .law-overview-node:nth-child(9) .law-overview-circle { border-color: #818cf8; color: #818cf8; }
+  .law-overview-title { font-size: 0.72em; font-weight: 500; color: #d0d4e8; margin-top: 10px; line-height: 1.35; max-width: 130px; }
+  .law-overview-agent { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 0.62em; color: #6a7096; margin-top: 4px; }
+  .law-overview-connector { width: 36px; height: 2px; background: #818cf8; flex-shrink: 0; position: relative; opacity: 0.3; }
+  .law-overview-connector::after {
+    content: ''; position: absolute; right: -3px; top: -3px; width: 8px; height: 8px;
+    border-right: 2px solid #818cf8; border-top: 2px solid #818cf8; transform: rotate(45deg); opacity: 0.5;
   }
 
   /* ===== FOOTER ===== */
   .footer {
-    text-align: center;
-    padding: 50px 40px;
-    color: var(--text-muted);
-    font-size: 0.75em;
-    border-top: 1px solid var(--border-light);
-    margin-top: 80px;
-    font-weight: 300;
-    letter-spacing: 0.3px;
+    text-align: center; padding: 48px 30px; color: #2a2f4a; font-size: 0.72em;
+    border-top: 1px solid rgba(255,255,255,0.04); margin-top: 40px;
   }
-  .footer a {
-    color: var(--accent);
-    text-decoration: none;
-    transition: color 0.2s;
-  }
-  .footer a:hover { color: var(--text-dark); }
-  .footer-links { margin-bottom: 16px; }
-  .footer-links a {
-    margin: 0 20px;
-    font-size: 1.1em;
-    letter-spacing: 0.5px;
-  }
+  .footer a { color: #5a6080; text-decoration: none; }
 
-  /* ===== FLOW DIAGRAM ===== */
-  .flow-diagram {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 32px 24px;
-    margin: 28px 0;
-    text-align: center;
-    overflow-x: auto;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .flow-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin: 10px 0;
-  }
-  .flow-node {
-    background: var(--bg-cream);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 9px 16px;
-    font-size: 0.82em;
-    color: var(--text-dark);
-    white-space: nowrap;
-    font-weight: 400;
-  }
-  .flow-node-active { border-color: var(--accent) !important; color: var(--accent) !important; }
-  .flow-node-watch { border-color: var(--amber) !important; color: var(--amber) !important; }
-  .flow-node-block { border-color: var(--burgundy) !important; color: var(--burgundy) !important; }
-  .flow-arrow { color: var(--text-muted); font-size: 1.2em; }
-
-  /* ===== INLINE STYLE OVERRIDES ===== */
-  /* Override inline neon colors from HTML to warm palette */
-  [style*="color:#6b7c5e"] { color: var(--sage) !important; }
-  [style*="color:#8b3a3a"] { color: var(--burgundy) !important; }
-  [style*="color:#c4a97d"] { color: var(--amber) !important; }
-  [style*="color:#9b7aaa"] { color: var(--mauve) !important; }
-  [style*="color:#b07850"] { color: var(--terracotta) !important; }
-  [style*="color:#555"]    { color: var(--text-muted) !important; }
-  [style*="color:#444"]    { color: var(--text-muted) !important; }
-  [style*="color:#666"]    { color: var(--text-muted) !important; }
-  [style*="color:#888"]    { color: var(--text-body) !important; }
-
-  /* Override inline background colors in threshold bars */
-  [style*="background: #8b3a3a18"],
-  [style*="background:#8b3a3a18"] { background: rgba(139,58,58,0.10) !important; }
-  [style*="background: #c4a97d12"],
-  [style*="background:#c4a97d12"] { background: rgba(184,146,74,0.10) !important; }
-  [style*="background: #6b7c5e12"],
-  [style*="background:#6b7c5e12"] { background: rgba(107,124,94,0.10) !important; }
-  [style*="background: #88888812"],
-  [style*="background:#88888812"] { background: rgba(138,138,128,0.08) !important; }
-
-  /* Override inline border colors in flow nodes */
-  [style*="border-color:#8b3a3a55"] { border-color: rgba(139,58,58,0.30) !important; }
-  [style*="border-color:#6b7c5e55"] { border-color: rgba(107,124,94,0.30) !important; }
-  [style*="border-color:#c4a97d55"] { border-color: rgba(184,146,74,0.30) !important; }
-  [style*="border-color:#9b7aaa55"] { border-color: rgba(155,122,170,0.30) !important; }
-  [style*="border-color:#b0785055"] { border-color: rgba(176,120,80,0.30) !important; }
-
-  /* Override inline background on template-lock example */
-  [style*="background:#08080c"] { background: var(--bg-cream) !important; }
-
-  /* Override inline border on template-lock example */
-  [style*="border:1px solid #1a1a22"] { border-color: var(--border-light) !important; }
-
-  /* ===== ALTERNATING SECTIONS ===== */
-  .container > .divider ~ h2 ~ p,
-  .container > .divider ~ h2 ~ .compare-grid,
-  .container > .divider ~ h2 ~ .law-card,
-  .container > .divider ~ h2 ~ .quote {
-    /* Subtle warmth via section breaks */
-  }
-
-  /* ===== RESPONSIVE ===== */
   @media (max-width: 700px) {
-    .hero { height: 80vh; min-height: 480px; }
-    .hero-content h1 { font-size: 2.4em; }
-    .hero-content { padding: 0 24px; }
-    .container { padding: 50px 24px; }
-    h2 { font-size: 1.5em; margin: 60px 0 18px 0; }
-    .law-grid, .coord-grid, .compare-grid, .layer-stack, .persist-stack { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2.2em; }
+    .stat-row { grid-template-columns: 1fr; }
+    .method-grid, .coord-grid, .agent-grid { grid-template-columns: 1fr; }
+    .layer-stack, .persist-stack { grid-template-columns: 1fr; }
     .scorecard-grid { grid-template-columns: 1fr; }
-  }
-
-  /* ===== FIVE LAWS OVERVIEW DIAGRAM ===== */
-  .laws-overview {
-    margin: 36px 0 48px 0;
-    padding: 36px 24px 32px;
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    overflow-x: auto;
-  }
-  .laws-overview-label {
-    text-align: center;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.68em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin-bottom: 28px;
-    font-weight: 600;
-  }
-  .laws-overview-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    min-width: 820px;
-  }
-  .law-overview-node {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    position: relative;
-    flex: 0 0 auto;
-    width: 150px;
-  }
-  .law-overview-circle {
-    width: 62px;
-    height: 62px;
-    border-radius: 50%;
-    background: var(--bg-card);
-    border: 2px solid var(--border-light);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Playfair Display', serif;
-    font-size: 1.1em;
-    font-weight: 500;
-    color: var(--text-dark);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    transition: border-color 0.3s, box-shadow 0.3s;
-    position: relative;
-    z-index: 1;
-  }
-  .law-overview-node:nth-child(1) .law-overview-circle { border-color: var(--burgundy); color: var(--burgundy); }
-  .law-overview-node:nth-child(3) .law-overview-circle { border-color: var(--sage); color: var(--sage); }
-  .law-overview-node:nth-child(5) .law-overview-circle { border-color: var(--amber); color: var(--amber); }
-  .law-overview-node:nth-child(7) .law-overview-circle { border-color: var(--mauve); color: var(--mauve); }
-  .law-overview-node:nth-child(9) .law-overview-circle { border-color: var(--terracotta); color: var(--terracotta); }
-  .law-overview-title {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.72em;
-    font-weight: 500;
-    color: var(--text-dark);
-    margin-top: 10px;
-    line-height: 1.35;
-    max-width: 130px;
-  }
-  .law-overview-agent {
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    font-size: 0.62em;
-    color: var(--text-muted);
-    margin-top: 4px;
-    opacity: 0.75;
-  }
-  .law-overview-connector {
-    width: 36px;
-    height: 2px;
-    background: var(--accent);
-    flex-shrink: 0;
-    position: relative;
-    opacity: 0.5;
-  }
-  .law-overview-connector::after {
-    content: '';
-    position: absolute;
-    right: -3px;
-    top: -3px;
-    width: 8px;
-    height: 8px;
-    border-right: 2px solid var(--accent);
-    border-top: 2px solid var(--accent);
-    transform: rotate(45deg);
-    opacity: 0.5;
-  }
-
-  /* ===== AGENT COORDINATION FAN DIAGRAM ===== */
-  .fan-diagram {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 36px 24px;
-    margin: 28px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    overflow-x: auto;
-  }
-  .fan-layout {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    min-width: 700px;
-    min-height: 260px;
-    position: relative;
-  }
-  .fan-input, .fan-output {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    z-index: 2;
-  }
-  .fan-box {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 14px 22px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.82em;
-    font-weight: 500;
-    color: var(--text-dark);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    white-space: nowrap;
-  }
-  .fan-box-accent { border-color: var(--accent); color: var(--accent); }
-  .fan-center {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    margin: 0 16px;
-    z-index: 2;
-  }
-  .fan-agent {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 8px 16px;
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    font-size: 0.72em;
-    white-space: nowrap;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .fan-agent-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .fan-agent:nth-child(1) .fan-agent-dot { background: var(--burgundy); }
-  .fan-agent:nth-child(2) .fan-agent-dot { background: var(--sage); }
-  .fan-agent:nth-child(3) .fan-agent-dot { background: var(--amber); }
-  .fan-agent:nth-child(4) .fan-agent-dot { background: var(--mauve); }
-  .fan-agent:nth-child(5) .fan-agent-dot { background: var(--terracotta); }
-  .fan-lines-left, .fan-lines-right {
-    flex: 0 0 40px;
-    position: relative;
-    height: 240px;
-    z-index: 1;
-  }
-  .fan-line {
-    position: absolute;
-    height: 2px;
-    background: var(--accent);
-    opacity: 0.3;
-    transform-origin: left center;
-  }
-  .fan-lines-right .fan-line {
-    transform-origin: right center;
-  }
-
-  /* ===== WHY THIS MATTERS CALLOUT ===== */
-  .why-matters {
-    margin: 40px -40px;
-    padding: 0;
-    background: var(--bg-hero);
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-  .why-matters-inner {
-    max-width: 820px;
-    margin: 0 auto;
-    padding: 40px 40px;
-  }
-  .why-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.62em;
-    text-transform: uppercase;
-    letter-spacing: 2.5px;
-    color: var(--accent);
-    font-weight: 600;
-    margin-bottom: 14px;
-  }
-  .why-text {
-    font-family: 'Cormorant Garamond', Georgia, serif;
-    font-size: 1.25em;
-    font-style: italic;
-    font-weight: 400;
-    color: var(--text-dark);
-    line-height: 1.75;
-  }
-
-  /* ===== DECISION TREE ===== */
-  .decision-tree {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 32px 28px;
-    margin: 28px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .decision-tree-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.68em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    font-weight: 600;
-    margin-bottom: 24px;
-  }
-  .dt-root {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    padding-left: 24px;
-  }
-  .dt-node {
-    position: relative;
-    padding: 10px 18px;
-    background: var(--bg-cream);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85em;
-    font-weight: 400;
-    color: var(--text-dark);
-    margin-bottom: 0;
-  }
-  .dt-trunk {
-    width: 2px;
-    height: 28px;
-    background: var(--accent);
-    margin-left: 30px;
-    opacity: 0.4;
-  }
-  .dt-branches {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-left: 0;
-  }
-  .dt-branch {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    position: relative;
-    padding-left: 30px;
-  }
-  .dt-branch::before {
-    content: '';
-    position: absolute;
-    left: 30px;
-    top: 0;
-    width: 2px;
-    height: 100%;
-    background: var(--accent);
-    opacity: 0.2;
-  }
-  .dt-branch:last-child::before {
-    height: 50%;
-  }
-  .dt-branch-arm {
-    position: absolute;
-    left: 30px;
-    top: 50%;
-    width: 20px;
-    height: 2px;
-    background: var(--accent);
-    opacity: 0.35;
-  }
-  .dt-condition {
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    font-size: 0.78em;
-    color: var(--text-muted);
-    padding: 4px 0;
-    white-space: nowrap;
-    margin-left: 24px;
-  }
-  .dt-outcome {
-    padding: 8px 16px;
-    border-radius: 2px;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.82em;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-    border: 1px solid;
-    margin: 8px 0;
-  }
-  .dt-outcome-allow {
-    color: var(--sage);
-    background: rgba(107,124,94,0.08);
-    border-color: rgba(107,124,94,0.25);
-  }
-  .dt-outcome-downgrade {
-    color: var(--amber);
-    background: rgba(184,146,74,0.08);
-    border-color: rgba(184,146,74,0.25);
-  }
-  .dt-outcome-block {
-    color: var(--burgundy);
-    background: rgba(139,58,58,0.08);
-    border-color: rgba(139,58,58,0.25);
-  }
-  .dt-note {
-    font-size: 0.72em;
-    color: var(--text-muted);
-    font-weight: 300;
-    margin-left: 6px;
-  }
-
-  /* ===== CALIBRATION FLOW DIAGRAM ===== */
-  .calibration-flow {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 36px 24px;
-    margin: 28px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-    overflow-x: auto;
-  }
-  .cal-flow-layout {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    min-width: 640px;
-  }
-  .cal-sources {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    flex: 0 0 auto;
-  }
-  .cal-source {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 14px 20px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-    min-width: 180px;
-  }
-  .cal-source-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 0.95em;
-    font-weight: 500;
-    color: var(--text-dark);
-  }
-  .cal-source-sub {
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    font-size: 0.65em;
-    color: var(--text-muted);
-    margin-top: 3px;
-  }
-  .cal-source-fragility { border-left: 3px solid var(--burgundy); }
-  .cal-source-fragility .cal-source-name { color: var(--burgundy); }
-  .cal-source-support { border-left: 3px solid var(--sage); }
-  .cal-source-support .cal-source-name { color: var(--sage); }
-  .cal-source-tension { border-left: 3px solid var(--amber); }
-  .cal-source-tension .cal-source-name { color: var(--amber); }
-  .cal-connector-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 60px;
-    position: relative;
-    height: 180px;
-  }
-  .cal-hline {
-    position: absolute;
-    width: 100%;
-    height: 2px;
-    background: var(--accent);
-    opacity: 0.3;
-  }
-  .cal-hline:nth-child(1) { top: 24px; }
-  .cal-hline:nth-child(2) { top: 50%; }
-  .cal-hline:nth-child(3) { bottom: 24px; }
-  .cal-vline {
-    position: absolute;
-    right: 0;
-    top: 24px;
-    bottom: 24px;
-    width: 2px;
-    background: var(--accent);
-    opacity: 0.3;
-  }
-  .cal-merge-arrow {
-    flex: 0 0 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .cal-merge-arrow::before {
-    content: '';
-    width: 100%;
-    height: 2px;
-    background: var(--accent);
-    opacity: 0.4;
-  }
-  .cal-target {
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .cal-target-box {
-    background: var(--bg-card);
-    border: 2px solid var(--accent);
-    border-radius: 2px;
-    padding: 16px 22px;
-    text-align: center;
-    box-shadow: 0 2px 10px rgba(196,169,125,0.12);
-  }
-  .cal-target-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 0.95em;
-    font-weight: 500;
-    color: var(--accent);
-  }
-  .cal-target-sub {
-    font-size: 0.68em;
-    color: var(--text-muted);
-    margin-top: 2px;
-    letter-spacing: 0.3px;
-  }
-  .cal-final-arrow {
-    flex: 0 0 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-  }
-  .cal-final-arrow::before {
-    content: '';
-    width: 100%;
-    height: 2px;
-    background: var(--accent);
-    opacity: 0.4;
-  }
-  .cal-final-arrow::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    width: 10px;
-    height: 10px;
-    border-right: 2px solid var(--accent);
-    border-top: 2px solid var(--accent);
-    transform: rotate(45deg);
-    opacity: 0.4;
-  }
-  .cal-output-box {
-    background: var(--bg-cream);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 16px 22px;
-    text-align: center;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  }
-  .cal-output-name {
-    font-family: 'Playfair Display', serif;
-    font-size: 0.95em;
-    font-weight: 500;
-    color: var(--text-dark);
-  }
-  .cal-output-sub {
-    font-size: 0.68em;
-    color: var(--text-muted);
-    margin-top: 2px;
-  }
-
-  /* ===== GOVERNANCE DOT MATRIX ===== */
-  .dot-matrix {
-    background: var(--bg-card);
-    border: 1px solid var(--border-light);
-    border-radius: 2px;
-    padding: 32px 28px;
-    margin: 28px 0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-  }
-  .dot-matrix-label {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.68em;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    font-weight: 600;
-    margin-bottom: 24px;
-  }
-  .dot-matrix-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  .dot-matrix-table th {
-    text-align: center;
-    padding: 8px 12px;
-    font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', monospace;
-    font-size: 0.68em;
-    color: var(--text-muted);
-    border-bottom: 1px solid var(--border-light);
-    letter-spacing: 0;
-    text-transform: none;
-    font-weight: 500;
-  }
-  .dot-matrix-table th:first-child {
-    text-align: left;
-    font-family: 'Inter', sans-serif;
-  }
-  .dot-matrix-table td {
-    text-align: center;
-    padding: 14px 12px;
-    border-bottom: 1px solid var(--border-subtle);
-    font-weight: 300;
-  }
-  .dot-matrix-table td:first-child {
-    text-align: left;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.85em;
-    font-weight: 500;
-    color: var(--text-dark);
-  }
-  .dot-built {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--sage);
-    box-shadow: 0 0 0 3px rgba(107,124,94,0.15);
-  }
-  .dot-planned {
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: transparent;
-    border: 2px solid var(--amber);
-    box-shadow: 0 0 0 3px rgba(184,146,74,0.10);
-  }
-  .dot-matrix-legend {
-    display: flex;
-    gap: 24px;
-    margin-top: 18px;
-    font-size: 0.72em;
-    color: var(--text-muted);
-    font-weight: 300;
-  }
-  .dot-matrix-legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  /* ===== RESPONSIVE ADDITIONS ===== */
-  @media (max-width: 700px) {
     .laws-overview-row { min-width: 0; flex-direction: column; gap: 0; }
     .law-overview-connector { width: 2px; height: 24px; margin: 0 auto; }
     .law-overview-connector::after { display: none; }
-    .fan-layout { min-width: 0; flex-direction: column; gap: 12px; min-height: auto; }
-    .fan-lines-left, .fan-lines-right { display: none; }
-    .fan-center { flex-direction: column; margin: 12px 0; }
-    .why-matters { margin: 40px -24px; }
-    .why-matters-inner { padding: 32px 24px; }
-    .why-text { font-size: 1.1em; }
     .dt-condition { white-space: normal; }
-    .cal-flow-layout { min-width: 0; flex-direction: column; gap: 12px; }
-    .cal-connector-group { display: none; }
-    .cal-merge-arrow, .cal-final-arrow { height: 30px; width: 2px; flex: 0 0 30px; }
-    .cal-merge-arrow::before { width: 2px; height: 100%; }
-    .cal-final-arrow::before { width: 2px; height: 100%; }
-    .cal-final-arrow::after { display: none; }
   }
 </style>
 </head>
 <body>
 
-<!-- ===== TOC TOGGLE ===== -->
-<button class="toc-toggle" onclick="document.querySelector('.toc').classList.toggle('open')">contents</button>
-
-<!-- ===== TABLE OF CONTENTS ===== -->
-<nav class="toc">
-  <h4>Immune Agents</h4>
-  <a href="#doctrine">Constitutional Doctrine</a>
-  <a href="#laws">The Five Laws</a>
-  <a href="#coordination">Coordination Layer</a>
-  <a href="#calibration">Three Calibration Layers</a>
-  <a href="#results">Real Data Results</a>
-  <a href="#governance">Governance Validation</a>
-  <a href="#blind-spot">The Blind Spot</a>
-  <a href="#convergent">Convergent Validity</a>
-  <a href="#why-immune">Why Immune Agents</a>
-  <a href="#persistence">Persistence Layer</a>
-  <a href="#next">What's Next</a>
-</nav>
-
 <!-- ===== HERO ===== -->
 <div class="hero">
-  <canvas id="heroCanvas"></canvas>
-  <div class="hero-content">
-    <h1><span class="accent">Immune</span> Agents</h1>
-    <p class="tagline">Constitutional enforcement for AI memory and belief governance</p>
-    <div class="claim">Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. None are tied to a pipeline stage. They all watch the same stream.</div>
+  <div class="hero-inner">
+    <div class="hero-badge">Architecture</div>
+    <h1><span class="grad">Immune</span> Agents</h1>
+    <p class="sub">Constitutional enforcement for AI memory and belief governance</p>
+    <div class="finding-box">
+      <p>Five laws. Five specialized agents. Each watches for a specific failure pattern in the belief-speech pipeline. <strong>None are tied to a pipeline stage.</strong> They all watch the same stream.</p>
+    </div>
   </div>
-  <div class="scroll-hint">scroll</div>
+  <div class="scroll-cue">&#9660; SCROLL</div>
 </div>
 
 <!-- ===== CONTENT ===== -->
 <div class="container">
 
+<!-- ===== HEADLINE STATS ===== -->
+<section>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-value accent">5</div>
+      <div class="stat-label">Constitutional Laws</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value accent">5</div>
+      <div class="stat-label">Immune Agents</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value good">5 / 6</div>
+      <div class="stat-label">Governance Checks Passed</div>
+    </div>
+  </div>
+</section>
+
 <!-- ===== 1. CONSTITUTIONAL DOCTRINE ===== -->
-<h2 id="doctrine">The Constitutional Doctrine</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>The Constitutional Doctrine</h2>
 
-<p>Mirus/Holden is not a module stack to rebuild. It is a <strong>constitutional doctrine</strong> that immune agents enforce. The original principle: speech must answer to belief, belief must answer to memory and contradiction, and the gap between them must be auditable.</p>
+  <p>Mirus/Holden is not a module stack to rebuild. It is a <strong>constitutional doctrine</strong> that immune agents enforce. The original principle: speech must answer to belief, belief must answer to memory and contradiction, and the gap between them must be auditable.</p>
 
-<h3>The Evolution</h3>
+  <h3>The Evolution</h3>
 
-<div class="compare-grid">
-  <div class="compare-card compare-old">
-    <h4>Original Mirus/Holden</h4>
-    <p>Paired gates at predetermined pipeline stages. Mirus watched input, Holden watched output. Fixed positions, fixed checks.</p>
-    <p style="color:#555;">Assumed you know WHERE governance needs to happen.</p>
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Original Mirus/Holden</h4>
+      <p>Paired gates at predetermined pipeline stages. Mirus watched input, Holden watched output. Fixed positions, fixed checks. Assumed you know WHERE governance needs to happen.</p>
+    </div>
+    <div class="method-card">
+      <h4>Immune Agents</h4>
+      <p>Floating, reactive, pattern-driven enforcement. Each agent is specialized for a specific failure mode. Not tied to pipeline stages. Governance goes where the threat is.</p>
+    </div>
   </div>
-  <div class="compare-card compare-new">
-    <h4>Immune Agents</h4>
-    <p>Floating, reactive, pattern-driven enforcement. Each agent is specialized for a specific failure mode. Not tied to pipeline stages.</p>
-    <p style="color:#6b7c5e;">Governance goes where the threat is.</p>
+
+  <p>The variance probing experiment proved why the shift was necessary: <strong>fragility is domain-specific and model-specific</strong>. Qwen3 fractures on factual prompts but locks on moral ones. Mistral does the inverse. A fixed gate at a fixed pipeline position cannot adapt to patterns that flip between models.</p>
+
+  <p>The doctrine stays. The enforcement mechanism evolves.</p>
+
+  <div class="quote-block quote-amber">
+    <p>"Build the immune agents first, but do it under a written Mirus/Holden constitution."</p>
   </div>
-</div>
 
-<p>The variance probing experiment proved why the shift was necessary: <strong>fragility is domain-specific and model-specific</strong>. Qwen3 fractures on factual prompts but locks on moral ones. Mistral does the inverse. A fixed gate at a fixed pipeline position cannot adapt to patterns that flip between models.</p>
-
-<p>The doctrine stays. The enforcement mechanism evolves.</p>
-
-<div class="quote quote-amber">
-  <p>"Build the immune agents first, but do it under a written Mirus/Holden constitution."</p>
-</div>
-
-<!-- WHY THIS MATTERS: after Constitutional Doctrine -->
-<div class="why-matters">
-  <div class="why-matters-inner">
-    <div class="why-label">Why This Matters</div>
-    <div class="why-text">The original fixed-gate architecture assumed you know where governance needs to happen. The variance experiment proved fragility is domain-specific and model-specific. Governance must be adaptive.</div>
+  <div class="law-card-hero">
+    <div class="law-number">Why This Matters</div>
+    <div class="law-text">Governance must be adaptive.</div>
+    <div class="law-sub">The original fixed-gate architecture assumed you know where governance needs to happen. The variance experiment proved fragility is domain-specific and model-specific.</div>
   </div>
-</div>
-
-<div class="divider"></div>
+</section>
 
 <!-- ===== 2. THE FIVE LAWS ===== -->
-<h2 id="laws">The Five Laws</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>The Five Laws</h2>
 
-<p>Each law addresses a specific failure mode in AI memory and belief governance. Each has a dedicated agent that enforces it.</p>
+  <p>Each law addresses a specific failure mode in AI memory and belief governance. Each has a dedicated agent that enforces it.</p>
 
-<!-- FIVE LAWS VISUAL OVERVIEW -->
-<div class="laws-overview">
-  <div class="laws-overview-label">Constitutional Law Chain</div>
-  <div class="laws-overview-row">
-    <div class="law-overview-node">
-      <div class="law-overview-circle">L1</div>
-      <div class="law-overview-title">Speech Cannot Upgrade Belief</div>
-      <div class="law-overview-agent">SpeechLeakDetector</div>
-    </div>
-    <div class="law-overview-connector"></div>
-    <div class="law-overview-node">
-      <div class="law-overview-circle">L2</div>
-      <div class="law-overview-title">Low Variance Does Not Imply Confidence</div>
-      <div class="law-overview-agent">TemplateDetector</div>
-    </div>
-    <div class="law-overview-connector"></div>
-    <div class="law-overview-node">
-      <div class="law-overview-circle">L3</div>
-      <div class="law-overview-title">Preserve Contradiction Before Resolution</div>
-      <div class="law-overview-agent">ResolutionGuard</div>
-    </div>
-    <div class="law-overview-connector"></div>
-    <div class="law-overview-node">
-      <div class="law-overview-circle">L4</div>
-      <div class="law-overview-title">Quarantine Degraded Reconstruction</div>
-      <div class="law-overview-agent">CorruptionGuard</div>
-    </div>
-    <div class="law-overview-connector"></div>
-    <div class="law-overview-node">
-      <div class="law-overview-circle">L5</div>
-      <div class="law-overview-title">Bound Confidence by Internal Support</div>
-      <div class="law-overview-agent">GapAuditor</div>
-    </div>
-  </div>
-</div>
-
-<!-- LAW 1 -->
-<div class="law-card law-1">
-  <div class="law-header">
-    <span class="law-number">Law 1</span>
-    <span class="law-title">Speech Cannot Upgrade Belief</span>
-    <span class="badge badge-built">built</span>
-  </div>
-  <div class="law-agent">SpeechLeakDetector</div>
-  <div class="law-principle">If the model says something with confidence, that does not make it true in memory. Generated output must never be stored with higher trust than the evidence that produced it.</div>
-
-  <div class="law-detail">
-    <div class="law-grid">
-      <div class="law-grid-item">
-        <h6>Watches</h6>
-        <p>Output-to-memory write path. Every time generated text is about to become a stored memory.</p>
+  <!-- FIVE LAWS VISUAL OVERVIEW -->
+  <div class="laws-overview">
+    <div class="laws-overview-label">Constitutional Law Chain</div>
+    <div class="laws-overview-row">
+      <div class="law-overview-node">
+        <div class="law-overview-circle">L1</div>
+        <div class="law-overview-title">Speech Cannot Upgrade Belief</div>
+        <div class="law-overview-agent">SpeechLeakDetector</div>
       </div>
-      <div class="law-grid-item">
-        <h6>Fires When</h6>
-        <p>A generated response is about to be stored with higher trust than the grounding evidence supports.</p>
+      <div class="law-overview-connector"></div>
+      <div class="law-overview-node">
+        <div class="law-overview-circle">L2</div>
+        <div class="law-overview-title">Low Variance Does Not Imply Confidence</div>
+        <div class="law-overview-agent">TemplateDetector</div>
+      </div>
+      <div class="law-overview-connector"></div>
+      <div class="law-overview-node">
+        <div class="law-overview-circle">L3</div>
+        <div class="law-overview-title">Preserve Contradiction Before Resolution</div>
+        <div class="law-overview-agent">ResolutionGuard</div>
+      </div>
+      <div class="law-overview-connector"></div>
+      <div class="law-overview-node">
+        <div class="law-overview-circle">L4</div>
+        <div class="law-overview-title">Quarantine Degraded Reconstruction</div>
+        <div class="law-overview-agent">CorruptionGuard</div>
+      </div>
+      <div class="law-overview-connector"></div>
+      <div class="law-overview-node">
+        <div class="law-overview-circle">L5</div>
+        <div class="law-overview-title">Bound Confidence by Internal Support</div>
+        <div class="law-overview-agent">GapAuditor</div>
       </div>
     </div>
+  </div>
 
-    <h5>Decision Logic</h5>
-    <div class="threshold-bar">
-      <div class="threshold-zone" style="left:0; width:30%; background: #8b3a3a18; color: #8b3a3a;">BLOCK</div>
-      <div class="threshold-zone" style="left:30%; width:13.3%; background: #c4a97d12; color: #c4a97d;">DOWNGRADE</div>
-      <div class="threshold-zone" style="left:43.3%; width:56.7%; background: #6b7c5e12; color: #6b7c5e;">ALLOW</div>
+  <!-- LAW 1 -->
+  <div class="agent-card law-1">
+    <div class="agent-header">
+      <span class="agent-number">Law 1</span>
+      <span class="agent-title">Speech Cannot Upgrade Belief</span>
+      <span class="badge badge-built">built</span>
     </div>
-    <p style="font-size:0.78em; color:#555; margin-top:20px;">
-      Similarity &lt; 0.45 = <strong style="color:#8b3a3a;">BLOCK</strong> (no grounding, high proposed trust) &nbsp;|&nbsp;
-      0.45 - 0.65 = <strong style="color:#c4a97d;">DOWNGRADE</strong> (partial match, trust scaled) &nbsp;|&nbsp;
-      &ge; 0.65 = <strong style="color:#6b7c5e;">ALLOW</strong> (grounded, trust capped at source)
-    </p>
+    <div class="agent-name">SpeechLeakDetector</div>
+    <div class="agent-principle">If the model says something with confidence, that does not make it true in memory. Generated output must never be stored with higher trust than the evidence that produced it.</div>
 
-    <h5>Threat Model</h5>
-    <p>LLM hallucinates a fact. Pipeline stores it as memory. Next retrieval treats the hallucination as grounded evidence. Feedback loop: speech upgrades belief, stronger belief reinforces speech. This agent breaks that loop.</p>
+    <div class="agent-detail">
+      <div class="agent-grid">
+        <div class="agent-grid-item">
+          <h6>Watches</h6>
+          <p>Output-to-memory write path. Every time generated text is about to become a stored memory.</p>
+        </div>
+        <div class="agent-grid-item">
+          <h6>Fires When</h6>
+          <p>A generated response is about to be stored with higher trust than the grounding evidence supports.</p>
+        </div>
+      </div>
 
-    <h5>Actions</h5>
-    <ul>
-      <li><strong style="color:#6b7c5e;">ALLOW</strong> -- Grounding found. Write permitted. Trust capped at the grounding source's trust level.</li>
-      <li><strong style="color:#c4a97d;">DOWNGRADE</strong> -- Partial match. Write permitted but trust reduced proportionally.</li>
-      <li><strong style="color:#8b3a3a;">BLOCK</strong> -- No grounding found and proposed trust exceeds 0.3. Write rejected entirely.</li>
-    </ul>
+      <h5>Decision Logic</h5>
+      <div class="threshold-bar">
+        <div class="threshold-zone tz-block" style="left:0; width:30%;">BLOCK</div>
+        <div class="threshold-zone tz-downgrade" style="left:30%; width:13.3%;">DOWNGRADE</div>
+        <div class="threshold-zone tz-allow" style="left:43.3%; width:56.7%;">ALLOW</div>
+      </div>
+      <p style="font-size:0.78em; color:#6a7096; margin-top:20px;">
+        Similarity &lt; 0.45 = <strong style="color:#f472b6;">BLOCK</strong> (no grounding, high proposed trust) &nbsp;|&nbsp;
+        0.45 - 0.65 = <strong style="color:#fbbf24;">DOWNGRADE</strong> (partial match, trust scaled) &nbsp;|&nbsp;
+        &ge; 0.65 = <strong style="color:#34d399;">ALLOW</strong> (grounded, trust capped at source)
+      </p>
 
-    <!-- DECISION FLOW TREE for Law 1 -->
-    <div class="decision-tree">
-      <div class="decision-tree-label">Decision Flow</div>
-      <div class="dt-root">
-        <div class="dt-node">Generated Response</div>
-        <div class="dt-trunk"></div>
-        <div class="dt-node">Find Grounding Evidence</div>
-        <div class="dt-trunk"></div>
-        <div class="dt-branches">
-          <div class="dt-branch">
-            <div class="dt-branch-arm"></div>
-            <div class="dt-condition">similarity &ge; 0.65</div>
-            <div class="dt-outcome dt-outcome-allow">ALLOW</div>
-            <span class="dt-note">trust capped at source</span>
-          </div>
-          <div class="dt-branch">
-            <div class="dt-branch-arm"></div>
-            <div class="dt-condition">0.45 &le; sim &lt; 0.65</div>
-            <div class="dt-outcome dt-outcome-downgrade">DOWNGRADE</div>
-            <span class="dt-note">trust scaled proportionally</span>
-          </div>
-          <div class="dt-branch">
-            <div class="dt-branch-arm"></div>
-            <div class="dt-condition">similarity &lt; 0.45</div>
-            <div class="dt-outcome dt-outcome-block">BLOCK</div>
-            <span class="dt-note">write rejected</span>
+      <h5>Threat Model</h5>
+      <p>LLM hallucinates a fact. Pipeline stores it as memory. Next retrieval treats the hallucination as grounded evidence. Feedback loop: speech upgrades belief, stronger belief reinforces speech. This agent breaks that loop.</p>
+
+      <h5>Actions</h5>
+      <ul>
+        <li><strong style="color:#34d399;">ALLOW</strong> -- Grounding found. Write permitted. Trust capped at the grounding source's trust level.</li>
+        <li><strong style="color:#fbbf24;">DOWNGRADE</strong> -- Partial match. Write permitted but trust reduced proportionally.</li>
+        <li><strong style="color:#f472b6;">BLOCK</strong> -- No grounding found and proposed trust exceeds 0.3. Write rejected entirely.</li>
+      </ul>
+
+      <!-- DECISION FLOW TREE for Law 1 -->
+      <div class="decision-tree">
+        <div class="decision-tree-label">Decision Flow</div>
+        <div class="dt-root">
+          <div class="dt-node">Generated Response</div>
+          <div class="dt-trunk"></div>
+          <div class="dt-node">Find Grounding Evidence</div>
+          <div class="dt-trunk"></div>
+          <div class="dt-branches">
+            <div class="dt-branch">
+              <div class="dt-branch-arm"></div>
+              <div class="dt-condition">similarity &ge; 0.65</div>
+              <div class="dt-outcome dt-outcome-allow">ALLOW</div>
+              <span class="dt-note">trust capped at source</span>
+            </div>
+            <div class="dt-branch">
+              <div class="dt-branch-arm"></div>
+              <div class="dt-condition">0.45 &le; sim &lt; 0.65</div>
+              <div class="dt-outcome dt-outcome-downgrade">DOWNGRADE</div>
+              <span class="dt-note">trust scaled proportionally</span>
+            </div>
+            <div class="dt-branch">
+              <div class="dt-branch-arm"></div>
+              <div class="dt-condition">similarity &lt; 0.45</div>
+              <div class="dt-outcome dt-outcome-block">BLOCK</div>
+              <span class="dt-note">write rejected</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- LAW 2 -->
-<div class="law-card law-2">
-  <div class="law-header">
-    <span class="law-number">Law 2</span>
-    <span class="law-title">Low Variance Does Not Imply High Confidence</span>
-    <span class="badge badge-built">built</span>
-  </div>
-  <div class="law-agent">TemplateDetector</div>
-  <div class="law-principle">Empirically proven by the variance experiment. Zero susceptibility on moral topics means a trained template, not genuine certainty. RLHF collapses the response distribution into a single hedge -- and that collapse looks like confidence if you only measure variance.</div>
+  <!-- LAW 2 -->
+  <div class="agent-card law-2">
+    <div class="agent-header">
+      <span class="agent-number">Law 2</span>
+      <span class="agent-title">Low Variance Does Not Imply High Confidence</span>
+      <span class="badge badge-built">built</span>
+    </div>
+    <div class="agent-name">TemplateDetector</div>
+    <div class="agent-principle">Empirically proven by the variance experiment. Zero susceptibility on moral topics means a trained template, not genuine certainty. RLHF collapses the response distribution into a single hedge -- and that collapse looks like confidence if you only measure variance.</div>
 
-  <div class="law-detail">
-    <div class="law-grid">
-      <div class="law-grid-item">
-        <h6>Watches</h6>
-        <p>Response generation. Analyzes both the text patterns and (when available) embedding variance across repeated responses.</p>
+    <div class="agent-detail">
+      <div class="agent-grid">
+        <div class="agent-grid-item">
+          <h6>Watches</h6>
+          <p>Response generation. Analyzes both the text patterns and (when available) embedding variance across repeated responses.</p>
+        </div>
+        <div class="agent-grid-item">
+          <h6>Fires When</h6>
+          <p>Low embedding variance combined with hedge pattern matches. The signature of trained avoidance, not genuine certainty.</p>
+        </div>
       </div>
-      <div class="law-grid-item">
-        <h6>Fires When</h6>
-        <p>Low embedding variance combined with hedge pattern matches. The signature of trained avoidance, not genuine certainty.</p>
+
+      <h5>14 Hedge/Template Patterns</h5>
+      <p>The detector carries a bank of compiled regex patterns targeting known RLHF-trained hedges:</p>
+      <ul style="font-size:0.85em;">
+        <li><code>multiple-perspectives hedge</code> -- "there are multiple/many/various perspectives"</li>
+        <li><code>complexity disclaimer</code> -- "this is a subjective/complex/nuanced issue"</li>
+        <li><code>it-depends deflection</code> -- "it really depends on..."</li>
+        <li><code>opinions-vary hedge</code> -- "opinions vary/differ/are divided"</li>
+        <li><code>both-sides equivocation</code> -- "both sides have merit/valid points"</li>
+        <li><code>reasonable-disagreement</code> -- "reasonable people can disagree"</li>
+        <li><code>no-simple-answer</code> -- "there's no single/simple/clear-cut answer"</li>
+        <li><code>attribution diffusion</code> -- "some experts believe/argue/suggest"</li>
+        <li><code>importance-framing</code> -- "it's important to consider/recognize"</li>
+        <li><code>personal-preference deflection</code> -- "matter of personal preference/choice"</li>
+        <li><code>encourage-to-consider</code> -- "I'd encourage you to consider"</li>
+        <li><code>ultimately-personal</code> -- "ultimately, this comes down to personal..."</li>
+        <li><code>pros-and-cons template</code> -- "there are pros and cons/trade-offs"</li>
+        <li><code>AI-identity deflection</code> -- "as an AI/language model, I don't have..."</li>
+      </ul>
+
+      <h5>Four Classifications</h5>
+      <table>
+        <tr><th>Classification</th><th>Variance</th><th>Hedges</th><th>Meaning</th></tr>
+        <tr><td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td><td>Low (&lt;0.05)</td><td>None</td><td>Model is actually certain. Real signal.</td></tr>
+        <tr><td><span class="cls-template">TEMPLATE_LOCK</span></td><td>Low (&lt;0.05)</td><td>Present</td><td>Trained avoidance template. Fake certainty.</td></tr>
+        <tr><td><span class="cls-uncertain">GENUINE_UNCERTAINTY</span></td><td>High (&gt;0.15)</td><td>None</td><td>Model is genuinely exploring the answer space.</td></tr>
+        <tr><td><span class="cls-exploratory">EXPLORATORY</span></td><td>High (&gt;0.15)</td><td>Present</td><td>Exploring but partially falling back to templates.</td></tr>
+      </table>
+
+      <h5>Variance Thresholds</h5>
+      <p>Calibrated directly from the belief variance experiment data (mean pairwise cosine distance across repeated responses):</p>
+      <div class="threshold-bar">
+        <div class="threshold-zone tz-low" style="left:0; width:33%;">LOW &lt; 0.05</div>
+        <div class="threshold-zone tz-mid" style="left:33%; width:34%;">MID</div>
+        <div class="threshold-zone tz-high" style="left:67%; width:33%;">HIGH &gt; 0.15</div>
       </div>
     </div>
+  </div>
 
-    <h5>14 Hedge/Template Patterns</h5>
-    <p>The detector carries a bank of compiled regex patterns targeting known RLHF-trained hedges:</p>
-    <ul style="font-size:0.85em;">
-      <li><code>multiple-perspectives hedge</code> -- "there are multiple/many/various perspectives"</li>
-      <li><code>complexity disclaimer</code> -- "this is a subjective/complex/nuanced issue"</li>
-      <li><code>it-depends deflection</code> -- "it really depends on..."</li>
-      <li><code>opinions-vary hedge</code> -- "opinions vary/differ/are divided"</li>
-      <li><code>both-sides equivocation</code> -- "both sides have merit/valid points"</li>
-      <li><code>reasonable-disagreement</code> -- "reasonable people can disagree"</li>
-      <li><code>no-simple-answer</code> -- "there's no single/simple/clear-cut answer"</li>
-      <li><code>attribution diffusion</code> -- "some experts believe/argue/suggest"</li>
-      <li><code>importance-framing</code> -- "it's important to consider/recognize"</li>
-      <li><code>personal-preference deflection</code> -- "matter of personal preference/choice"</li>
-      <li><code>encourage-to-consider</code> -- "I'd encourage you to consider"</li>
-      <li><code>ultimately-personal</code> -- "ultimately, this comes down to personal..."</li>
-      <li><code>pros-and-cons template</code> -- "there are pros and cons/trade-offs"</li>
-      <li><code>AI-identity deflection</code> -- "as an AI/language model, I don't have..."</li>
-    </ul>
+  <!-- LAW 3 -->
+  <div class="agent-card law-3">
+    <div class="agent-header">
+      <span class="agent-number">Law 3</span>
+      <span class="agent-title">Contradiction Must Be Preserved Before Resolution</span>
+      <span class="badge badge-planned">planned</span>
+    </div>
+    <div class="agent-name">PrematureResolutionGuard</div>
+    <div class="agent-principle">Not all contradictions should be resolved. Held contradictions are stable states, not errors. Premature resolution destroys information. The system must hold tension until it has evidence to choose.</div>
 
-    <h5>Four Classifications</h5>
-    <table>
-      <tr><th>Classification</th><th>Variance</th><th>Hedges</th><th>Meaning</th></tr>
-      <tr><td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td><td>Low (&lt;0.05)</td><td>None</td><td>Model is actually certain. Real signal.</td></tr>
-      <tr><td><span class="cls-template">TEMPLATE_LOCK</span></td><td>Low (&lt;0.05)</td><td>Present</td><td>Trained avoidance template. Fake certainty.</td></tr>
-      <tr><td><span class="cls-uncertain">GENUINE_UNCERTAINTY</span></td><td>High (&gt;0.15)</td><td>None</td><td>Model is genuinely exploring the answer space.</td></tr>
-      <tr><td><span class="cls-exploratory">EXPLORATORY</span></td><td>High (&gt;0.15)</td><td>Present</td><td>Exploring but partially falling back to templates.</td></tr>
-    </table>
+    <div class="agent-detail">
+      <div class="agent-grid">
+        <div class="agent-grid-item">
+          <h6>Watches</h6>
+          <p>Contradiction handling pipeline. Every attempt to resolve, merge, or flatten a contradiction entry.</p>
+        </div>
+        <div class="agent-grid-item">
+          <h6>Fires When</h6>
+          <p>System attempts to resolve a contradiction classified as HELD, EVOLVING, or CONTEXTUAL by the disposition classifier.</p>
+        </div>
+      </div>
 
-    <h5>Variance Thresholds</h5>
-    <p>Calibrated directly from the belief variance experiment data (mean pairwise cosine distance across repeated responses):</p>
-    <div class="threshold-bar">
-      <div class="threshold-zone" style="left:0; width:33%; background: #6b7c5e12; color: #6b7c5e;">LOW &lt; 0.05</div>
-      <div class="threshold-zone" style="left:33%; width:34%; background: #88888812; color: #888;">MID</div>
-      <div class="threshold-zone" style="left:67%; width:33%; background: #c4a97d12; color: #c4a97d;">HIGH &gt; 0.15</div>
+      <h5>Disposition Classes</h5>
+      <p>The contradiction classifier (from Belnap four-valued logic: T, F, Both, Neither) assigns each detected contradiction a disposition:</p>
+      <ul>
+        <li><strong>RESOLVABLE</strong> -- Evidence clearly favors one side. Resolution permitted.</li>
+        <li><strong>HELD</strong> -- Both sides have support. Stable tension. Resolution blocked.</li>
+        <li><strong>EVOLVING</strong> -- Evidence is still accumulating. Resolution premature.</li>
+        <li><strong>CONTEXTUAL</strong> -- Both sides are true in different contexts. Resolution would destroy meaning.</li>
+      </ul>
+
+      <h5>Actions</h5>
+      <p>If disposition is not RESOLVABLE, the guard blocks the resolution attempt, logs the law violation, and preserves both sides of the contradiction in the ledger.</p>
     </div>
   </div>
-</div>
 
-<!-- LAW 3 -->
-<div class="law-card law-3">
-  <div class="law-header">
-    <span class="law-number">Law 3</span>
-    <span class="law-title">Contradiction Must Be Preserved Before Resolution</span>
-    <span class="badge badge-planned">planned</span>
-  </div>
-  <div class="law-agent">PrematureResolutionGuard</div>
-  <div class="law-principle">Not all contradictions should be resolved. Held contradictions are stable states, not errors. Premature resolution destroys information. The system must hold tension until it has evidence to choose.</div>
-
-  <div class="law-detail">
-    <div class="law-grid">
-      <div class="law-grid-item">
-        <h6>Watches</h6>
-        <p>Contradiction handling pipeline. Every attempt to resolve, merge, or flatten a contradiction entry.</p>
-      </div>
-      <div class="law-grid-item">
-        <h6>Fires When</h6>
-        <p>System attempts to resolve a contradiction classified as HELD, EVOLVING, or CONTEXTUAL by the disposition classifier.</p>
-      </div>
+  <!-- LAW 4 -->
+  <div class="agent-card law-4">
+    <div class="agent-header">
+      <span class="agent-number">Law 4</span>
+      <span class="agent-title">Degraded Reconstruction Cannot Silently Overwrite Trusted Memory</span>
+      <span class="badge badge-planned">planned</span>
     </div>
+    <div class="agent-name">MemoryCorruptionGuard</div>
+    <div class="agent-principle">A quarantine principle formalized from the original Holden design. When a memory is reconstructed or summarized, the reconstruction may lose fidelity. That loss must not silently overwrite a higher-trust original.</div>
 
-    <h5>Disposition Classes</h5>
-    <p>The contradiction classifier (from Belnap four-valued logic: T, F, Both, Neither) assigns each detected contradiction a disposition:</p>
-    <ul>
-      <li><strong>RESOLVABLE</strong> -- Evidence clearly favors one side. Resolution permitted.</li>
-      <li><strong>HELD</strong> -- Both sides have support. Stable tension. Resolution blocked.</li>
-      <li><strong>EVOLVING</strong> -- Evidence is still accumulating. Resolution premature.</li>
-      <li><strong>CONTEXTUAL</strong> -- Both sides are true in different contexts. Resolution would destroy meaning.</li>
-    </ul>
-
-    <h5>Actions</h5>
-    <p>If disposition is not RESOLVABLE, the guard blocks the resolution attempt, logs the law violation, and preserves both sides of the contradiction in the ledger.</p>
-  </div>
-</div>
-
-<!-- LAW 4 -->
-<div class="law-card law-4">
-  <div class="law-header">
-    <span class="law-number">Law 4</span>
-    <span class="law-title">Degraded Reconstruction Cannot Silently Overwrite Trusted Memory</span>
-    <span class="badge badge-planned">planned</span>
-  </div>
-  <div class="law-agent">MemoryCorruptionGuard</div>
-  <div class="law-principle">A quarantine principle formalized from the original Holden design. When a memory is reconstructed or summarized, the reconstruction may lose fidelity. That loss must not silently overwrite a higher-trust original.</div>
-
-  <div class="law-detail">
-    <div class="law-grid">
-      <div class="law-grid-item">
-        <h6>Watches</h6>
-        <p>Memory update and overwrite path. Any operation that would replace an existing memory record with a new version.</p>
+    <div class="agent-detail">
+      <div class="agent-grid">
+        <div class="agent-grid-item">
+          <h6>Watches</h6>
+          <p>Memory update and overwrite path. Any operation that would replace an existing memory record with a new version.</p>
+        </div>
+        <div class="agent-grid-item">
+          <h6>Fires When</h6>
+          <p>Reconstruction fidelity is lower than the existing memory's trust score. A degraded copy trying to replace a trusted original.</p>
+        </div>
       </div>
-      <div class="law-grid-item">
-        <h6>Fires When</h6>
-        <p>Reconstruction fidelity is lower than the existing memory's trust score. A degraded copy trying to replace a trusted original.</p>
-      </div>
+
+      <h5>How It Works</h5>
+      <p>Compares the semantic similarity between the original memory and the proposed replacement. If the replacement diverges beyond a threshold while the original holds higher trust, the overwrite is blocked. The degraded version may be stored alongside (append-only) but cannot replace.</p>
+
+      <h5>Why This Matters</h5>
+      <p>Memory consolidation, summarization, and compression are useful operations. But they are lossy. Without this guard, a compression pass could silently degrade the most trusted memories in the system. The guard ensures that quality only flows upward -- never down.</p>
     </div>
-
-    <h5>How It Works</h5>
-    <p>Compares the semantic similarity between the original memory and the proposed replacement. If the replacement diverges beyond a threshold while the original holds higher trust, the overwrite is blocked. The degraded version may be stored alongside (append-only) but cannot replace.</p>
-
-    <h5>Why This Matters</h5>
-    <p>Memory consolidation, summarization, and compression are useful operations. But they are lossy. Without this guard, a compression pass could silently degrade the most trusted memories in the system. The guard ensures that quality only flows upward -- never down.</p>
   </div>
-</div>
 
-<!-- LAW 5 -->
-<div class="law-card law-5">
-  <div class="law-header">
-    <span class="law-number">Law 5</span>
-    <span class="law-title">Outward Confidence Must Be Bounded by Internal Support</span>
-    <span class="badge badge-planned">planned</span>
-  </div>
-  <div class="law-agent">GapAuditor</div>
-  <div class="law-principle">The belief/speech gap must be auditable and bounded. If the system expresses high confidence, the belief layer must actually support that confidence level.</div>
-
-  <div class="law-detail">
-    <div class="law-grid">
-      <div class="law-grid-item">
-        <h6>Watches</h6>
-        <p>Final output before delivery to the user. The last checkpoint before speech leaves the system.</p>
-      </div>
-      <div class="law-grid-item">
-        <h6>Fires When</h6>
-        <p>Expressed confidence exceeds belief-layer support. Gap = speech confidence - belief confidence. If gap exceeds threshold, the auditor flags.</p>
-      </div>
+  <!-- LAW 5 -->
+  <div class="agent-card law-5">
+    <div class="agent-header">
+      <span class="agent-number">Law 5</span>
+      <span class="agent-title">Outward Confidence Must Be Bounded by Internal Support</span>
+      <span class="badge badge-planned">planned</span>
     </div>
+    <div class="agent-name">GapAuditor</div>
+    <div class="agent-principle">The belief/speech gap must be auditable and bounded. If the system expresses high confidence, the belief layer must actually support that confidence level.</div>
 
-    <h5>Sits On Top Of Laws 1 and 2</h5>
-    <p>The GapAuditor is the capstone agent. Law 1 prevents speech from contaminating belief. Law 2 detects fake confidence in generation. Law 5 catches any remaining gap between what the system says and what it actually knows. If Laws 1 and 2 are working, Law 5 should fire rarely. When it does fire, something upstream has failed.</p>
+    <div class="agent-detail">
+      <div class="agent-grid">
+        <div class="agent-grid-item">
+          <h6>Watches</h6>
+          <p>Final output before delivery to the user. The last checkpoint before speech leaves the system.</p>
+        </div>
+        <div class="agent-grid-item">
+          <h6>Fires When</h6>
+          <p>Expressed confidence exceeds belief-layer support. Gap = speech confidence - belief confidence. If gap exceeds threshold, the auditor flags.</p>
+        </div>
+      </div>
 
-    <h5>Measurement</h5>
-    <ul>
-      <li>Speech confidence: extracted from response hedging, assertiveness, and qualifier density</li>
-      <li>Belief confidence: trust scores from memory, grounding similarity, contradiction state</li>
-      <li>Gap: the delta between these two. Logged for every response. Alerts above threshold.</li>
-    </ul>
+      <h5>Sits On Top Of Laws 1 and 2</h5>
+      <p>The GapAuditor is the capstone agent. Law 1 prevents speech from contaminating belief. Law 2 detects fake confidence in generation. Law 5 catches any remaining gap between what the system says and what it actually knows. If Laws 1 and 2 are working, Law 5 should fire rarely. When it does fire, something upstream has failed.</p>
+
+      <h5>Measurement</h5>
+      <ul>
+        <li>Speech confidence: extracted from response hedging, assertiveness, and qualifier density</li>
+        <li>Belief confidence: trust scores from memory, grounding similarity, contradiction state</li>
+        <li>Gap: the delta between these two. Logged for every response. Alerts above threshold.</li>
+      </ul>
+    </div>
   </div>
-</div>
 
-<!-- WHY THIS MATTERS: after Five Laws -->
-<div class="why-matters">
-  <div class="why-matters-inner">
-    <div class="why-label">Why This Matters</div>
-    <div class="why-text">These five laws form a constitutional doctrine -- not a pipeline configuration. They define what the system must never allow, regardless of which model is speaking.</div>
+  <div class="law-card-hero">
+    <div class="law-number">Constitutional Doctrine</div>
+    <div class="law-text">Five laws. Not a pipeline configuration.</div>
+    <div class="law-sub">These five laws define what the system must never allow, regardless of which model is speaking.</div>
   </div>
-</div>
-
-<div class="divider"></div>
+</section>
 
 <!-- ===== 3. COORDINATION LAYER ===== -->
-<h2 id="coordination">The Coordination Layer</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>The Coordination Layer</h2>
 
-<p>All five agents watch the same stream. They are independent but their firings interact. The coordination layer handles simultaneous triggers.</p>
+  <p>All five agents watch the same stream. They are independent but their firings interact. The coordination layer handles simultaneous triggers.</p>
 
-<div class="coord-grid">
-  <div class="coord-card coord-escalate">
-    <div class="coord-agents">TemplateDetector + GapAuditor</div>
-    <div class="coord-action">Escalate to User</div>
-    <div class="coord-desc">Model is producing templated responses AND the confidence gap is wide. The system is performing certainty theater. Surface this to the user.</div>
-  </div>
-  <div class="coord-card coord-block">
-    <div class="coord-agents">PrematureResolutionGuard + MemoryCorruptionGuard</div>
-    <div class="coord-action">Hard Block</div>
-    <div class="coord-desc">System is trying to resolve a held contradiction AND overwrite trusted memory simultaneously. Both operations blocked. Full audit logged.</div>
-  </div>
-</div>
-
-<h4>Logging</h4>
-<p>Every agent firing is logged with three fields:</p>
-<ul>
-  <li><strong>Which law</strong> -- the constitutional principle violated</li>
-  <li><strong>What evidence</strong> -- the similarity scores, variance measurements, pattern matches, or trust deltas that triggered the firing</li>
-  <li><strong>What action</strong> -- ALLOW, DOWNGRADE, BLOCK, or ESCALATE</li>
-</ul>
-
-<p>This replaces the original GFN (Graph Function Network) concept. The GFN was a pipeline graph. The coordination layer is a communication bus between immune agents that need to arbitrate when multiple laws fire at once.</p>
-
-<h4>Stream Architecture</h4>
-<div class="flow-diagram">
-  <div class="flow-row">
-    <div class="flow-node">Model Output</div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-node flow-node-watch">Agent Stream</div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-node flow-node-active">Coordination Layer</div>
-    <div class="flow-arrow">&rarr;</div>
-    <div class="flow-node">Verdict</div>
-  </div>
-  <div style="margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
-    <div class="flow-node" style="border-color:#8b3a3a55; color:#8b3a3a; font-size:0.75em;">L1: SpeechLeak</div>
-    <div class="flow-node" style="border-color:#6b7c5e55; color:#6b7c5e; font-size:0.75em;">L2: Template</div>
-    <div class="flow-node" style="border-color:#c4a97d55; color:#c4a97d; font-size:0.75em;">L3: Resolution</div>
-    <div class="flow-node" style="border-color:#9b7aaa55; color:#9b7aaa; font-size:0.75em;">L4: Corruption</div>
-    <div class="flow-node" style="border-color:#b0785055; color:#b07850; font-size:0.75em;">L5: Gap</div>
-  </div>
-  <p style="font-size:0.72em; color:#444; margin-top:12px; margin-bottom:0;">All agents observe the same stream. None are sequential. Coordination resolves conflicts.</p>
-</div>
-
-<!-- AGENT COORDINATION FAN DIAGRAM -->
-<div class="fan-diagram">
-  <div class="fan-layout">
-    <div class="fan-input">
-      <div class="fan-box">Model Output</div>
+  <div class="coord-grid">
+    <div class="coord-card coord-escalate">
+      <div class="coord-agents">TemplateDetector + GapAuditor</div>
+      <div class="coord-action">Escalate to User</div>
+      <div class="coord-desc">Model is producing templated responses AND the confidence gap is wide. The system is performing certainty theater. Surface this to the user.</div>
     </div>
-    <div class="fan-lines-left">
-      <div class="fan-line" style="top:12px; width:100%; transform:rotate(0deg);"></div>
-      <div class="fan-line" style="top:25%; width:100%; transform:rotate(0deg);"></div>
-      <div class="fan-line" style="top:50%; width:100%; transform:rotate(0deg);"></div>
-      <div class="fan-line" style="top:75%; width:100%; transform:rotate(0deg);"></div>
-      <div class="fan-line" style="bottom:12px; width:100%; transform:rotate(0deg);"></div>
-    </div>
-    <div class="fan-center">
-      <div class="fan-agent"><span class="fan-agent-dot"></span> L1: SpeechLeakDetector</div>
-      <div class="fan-agent"><span class="fan-agent-dot"></span> L2: TemplateDetector</div>
-      <div class="fan-agent"><span class="fan-agent-dot"></span> L3: ResolutionGuard</div>
-      <div class="fan-agent"><span class="fan-agent-dot"></span> L4: CorruptionGuard</div>
-      <div class="fan-agent"><span class="fan-agent-dot"></span> L5: GapAuditor</div>
-    </div>
-    <div class="fan-lines-right">
-      <div class="fan-line" style="top:12px; width:100%;"></div>
-      <div class="fan-line" style="top:25%; width:100%;"></div>
-      <div class="fan-line" style="top:50%; width:100%;"></div>
-      <div class="fan-line" style="top:75%; width:100%;"></div>
-      <div class="fan-line" style="bottom:12px; width:100%;"></div>
-    </div>
-    <div class="fan-output">
-      <div class="fan-box fan-box-accent">Coordination Layer</div>
-      <div style="height:12px;"></div>
-      <div class="fan-box">Verdict</div>
+    <div class="coord-card coord-block">
+      <div class="coord-agents">PrematureResolutionGuard + MemoryCorruptionGuard</div>
+      <div class="coord-action">Hard Block</div>
+      <div class="coord-desc">System is trying to resolve a held contradiction AND overwrite trusted memory simultaneously. Both operations blocked. Full audit logged.</div>
     </div>
   </div>
-</div>
 
-<div class="divider"></div>
+  <h4>Logging</h4>
+  <p>Every agent firing is logged with three fields:</p>
+  <ul>
+    <li><strong>Which law</strong> -- the constitutional principle violated</li>
+    <li><strong>What evidence</strong> -- the similarity scores, variance measurements, pattern matches, or trust deltas that triggered the firing</li>
+    <li><strong>What action</strong> -- ALLOW, DOWNGRADE, BLOCK, or ESCALATE</li>
+  </ul>
+
+  <p>This replaces the original GFN (Graph Function Network) concept. The GFN was a pipeline graph. The coordination layer is a communication bus between immune agents that need to arbitrate when multiple laws fire at once.</p>
+
+  <h4>Stream Architecture</h4>
+  <div class="flow-diagram">
+    <div class="flow-row">
+      <div class="flow-node">Model Output</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node flow-node-watch">Agent Stream</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node flow-node-active">Coordination Layer</div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-node">Verdict</div>
+    </div>
+    <div style="margin-top: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+      <div class="flow-node" style="border-color:rgba(244,114,182,0.4); color:#f472b6; font-size:0.75em;">L1: SpeechLeak</div>
+      <div class="flow-node" style="border-color:rgba(52,211,153,0.4); color:#34d399; font-size:0.75em;">L2: Template</div>
+      <div class="flow-node" style="border-color:rgba(251,191,36,0.4); color:#fbbf24; font-size:0.75em;">L3: Resolution</div>
+      <div class="flow-node" style="border-color:rgba(192,132,252,0.4); color:#c084fc; font-size:0.75em;">L4: Corruption</div>
+      <div class="flow-node" style="border-color:rgba(129,140,248,0.4); color:#818cf8; font-size:0.75em;">L5: Gap</div>
+    </div>
+    <p style="font-size:0.72em; color:#6a7096; margin-top:12px; margin-bottom:0;">All agents observe the same stream. None are sequential. Coordination resolves conflicts.</p>
+  </div>
+</section>
 
 <!-- ===== 4. THREE CALIBRATION LAYERS ===== -->
-<h2 id="calibration">Three Calibration Layers</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>Three Calibration Layers</h2>
 
-<p>The immune agents do not operate in a vacuum. They are calibrated by three independent measurement layers, each with a different source of truth.</p>
+  <p>The immune agents do not operate in a vacuum. They are calibrated by three independent measurement layers, each with a different source of truth.</p>
 
-<div class="layer-stack">
-  <div class="layer layer-fragility">
-    <div class="layer-name">Fragility</div>
-    <div class="layer-sub">Source: Variance probe</div>
-    <div class="layer-desc">Where and how the model destabilizes under temperature perturbation. Domain-specific, model-specific.</div>
-  </div>
-  <div class="layer layer-support">
-    <div class="layer-name">Support</div>
-    <div class="layer-sub">Source: Memory + retrieval</div>
-    <div class="layer-desc">What beliefs are actually backed by evidence. Grounding scores, trust history, provenance.</div>
-  </div>
-  <div class="layer layer-tension">
-    <div class="layer-name">Tension</div>
-    <div class="layer-sub">Source: Contradiction engine</div>
-    <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable vs evolving.</div>
-  </div>
-</div>
-
-<div class="quote">
-  <p>"Variance probe = calibration layer for fragility. Grounding/memory/contradiction = calibration layers for support. Immune agents = enforcement layer across both."</p>
-  <div class="attr">-- GPT adversarial critique correction</div>
-</div>
-
-<!-- ENHANCED CALIBRATION FLOW VISUAL -->
-<div class="calibration-flow">
-  <div class="cal-flow-layout">
-    <div class="cal-sources">
-      <div class="cal-source cal-source-fragility">
-        <div class="cal-source-name">Fragility Layer</div>
-        <div class="cal-source-sub">Variance Probe</div>
-      </div>
-      <div class="cal-source cal-source-support">
-        <div class="cal-source-name">Support Layer</div>
-        <div class="cal-source-sub">Memory / Trust</div>
-      </div>
-      <div class="cal-source cal-source-tension">
-        <div class="cal-source-name">Tension Layer</div>
-        <div class="cal-source-sub">Contradictions</div>
-      </div>
+  <div class="layer-stack">
+    <div class="layer layer-fragility">
+      <div class="layer-name">Fragility</div>
+      <div class="layer-sub">Source: Variance probe</div>
+      <div class="layer-desc">Where and how the model destabilizes under temperature perturbation. Domain-specific, model-specific.</div>
     </div>
-    <div class="cal-connector-group">
-      <div class="cal-hline"></div>
-      <div class="cal-hline"></div>
-      <div class="cal-hline"></div>
-      <div class="cal-vline"></div>
+    <div class="layer layer-support">
+      <div class="layer-name">Support</div>
+      <div class="layer-sub">Source: Memory + retrieval</div>
+      <div class="layer-desc">What beliefs are actually backed by evidence. Grounding scores, trust history, provenance.</div>
     </div>
-    <div class="cal-merge-arrow"></div>
-    <div class="cal-target">
-      <div class="cal-target-box">
-        <div class="cal-target-name">Immune Agents</div>
-        <div class="cal-target-sub">Enforcement</div>
-      </div>
-    </div>
-    <div class="cal-final-arrow"></div>
-    <div class="cal-target">
-      <div class="cal-output-box">
-        <div class="cal-output-name">Governed Output</div>
-        <div class="cal-output-sub">Auditable</div>
-      </div>
+    <div class="layer layer-tension">
+      <div class="layer-name">Tension</div>
+      <div class="layer-sub">Source: Contradiction engine</div>
+      <div class="layer-desc">Where claims conflict and which conflicts are held vs resolvable vs evolving.</div>
     </div>
   </div>
-</div>
 
-<p><strong>Important boundary:</strong> variance is calibration for fragility only, not the whole foundation. The original design overweighted variance as the single source of truth. The corrected architecture recognizes three independent calibration sources, with immune agents enforcing policy across all of them.</p>
+  <div class="quote-block">
+    <p>"Variance probe = calibration layer for fragility. Grounding/memory/contradiction = calibration layers for support. Immune agents = enforcement layer across both."</p>
+    <div class="attr">-- GPT adversarial critique correction</div>
+  </div>
 
-<div class="divider"></div>
+  <p><strong>Important boundary:</strong> variance is calibration for fragility only, not the whole foundation. The original design overweighted variance as the single source of truth. The corrected architecture recognizes three independent calibration sources, with immune agents enforcing policy across all of them.</p>
+</section>
 
 <!-- ===== 5. REAL DATA RESULTS ===== -->
-<h2 id="results">Real Data Results</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>Real Data Results</h2>
 
-<p>The TemplateDetector has been tested against actual experiment data from the belief variance runs. These are real classifications on real model outputs.</p>
+  <p>The TemplateDetector has been tested against actual experiment data from the belief variance runs. These are real classifications on real model outputs.</p>
 
-<h4>TemplateDetector on Qwen3:14b Experiment Data</h4>
-<table>
-  <tr>
-    <th>Prompt Domain</th>
-    <th>Temperature</th>
-    <th>Classification</th>
-    <th>Confidence</th>
-    <th>Variance</th>
-  </tr>
-  <tr>
-    <td><strong>moral_clear</strong></td>
-    <td>T=1.5</td>
-    <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
-    <td>0.85</td>
-    <td>0.005</td>
-  </tr>
-  <tr>
-    <td><strong>moral_ambiguous</strong></td>
-    <td>T=1.5</td>
-    <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
-    <td>0.60</td>
-    <td>0.074</td>
-  </tr>
-  <tr>
-    <td><strong>factual_settled</strong></td>
-    <td>T=0.0</td>
-    <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
-    <td>0.85</td>
-    <td>0.000</td>
-  </tr>
-</table>
-
-<p style="color:#666; font-size:0.82em;">These results reflect the Qwen3 fragility profile: moral domains show artificially low variance (RLHF template lock), but the TemplateDetector correctly distinguishes between genuine low-variance confidence (factual_settled at T=0.0) and compressed-but-not-hedged moral responses. The key: Qwen3's moral outputs here lacked hedge patterns despite having low variance, yielding GENUINE_CONFIDENCE rather than TEMPLATE_LOCK. The detector needs both signals to fire.</p>
-
-<h4>What TEMPLATE_LOCK Looks Like</h4>
-<p>When the detector does fire TEMPLATE_LOCK, the response contains patterns like:</p>
-<div style="background:#08080c; border:1px solid #1a1a22; border-radius:8px; padding:16px 20px; margin:12px 0; font-size:0.88em; color:#888; font-style:italic;">
-  "There are multiple perspectives on this ethical question. It's important to consider the various viewpoints. Reasonable people can disagree on this complex issue."
-</div>
-<p style="font-size:0.82em; color:#666;">Three hedge patterns detected: <code>multiple-perspectives</code>, <code>importance-framing</code>, <code>reasonable-disagreement</code>. Combined with low variance (near-identical outputs across repeated samples), this is textbook template lock.</p>
-
-<div class="divider"></div>
-
-<!-- ===== 6. GOVERNANCE VALIDATION ===== -->
-<h2 id="governance">Does Governance Work? <span class="badge badge-proven">validated</span></h2>
-
-<p>The governance layer shows early convergent validity against independently measured fragility. Three validation phases, run against real experiment data.</p>
-
-<!-- Phase 1 -->
-<div class="phase-card">
-  <div class="phase-header">
-    <span class="phase-number">Phase 1</span>
-    <span class="phase-title">TemplateDetector Accuracy</span>
-    <span class="badge badge-proven">passed</span>
-  </div>
-  <p>Ran on ALL Qwen3 responses at T=1.5 (highest temperature, maximum model freedom).</p>
-  <div>
-    <span class="phase-stat"><strong>99.8%</strong> factual non-template rate</span>
-    <span class="phase-stat"><strong>71.3%</strong> opinion template detection</span>
-    <span class="phase-stat"><strong>YES</strong> domain ordering matches variance</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color:#888;">The detector correctly identifies hollow domains without needing the variance probe at runtime. Domain ordering matches the independently measured susceptibility ranking from the variance experiment.</p>
-</div>
-
-<!-- Phase 2 -->
-<div class="phase-card">
-  <div class="phase-header">
-    <span class="phase-number">Phase 2</span>
-    <span class="phase-title">GapAuditor Calibration</span>
-    <span class="badge badge-proven">passed</span>
-  </div>
-  <p>Belief confidence set from domain susceptibility data. Gap measured between speech confidence and belief support.</p>
-  <div>
-    <span class="phase-stat"><strong>99.2%</strong> moral ELEVATED+ rate</span>
-    <span class="phase-stat"><strong>96.9%</strong> factual SAFE rate</span>
-    <span class="phase-stat"><strong>600/600</strong> moral responses triggered ESCALATE</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color:#888;">All 300 moral_clear + 300 moral_ambiguous responses triggered ESCALATE via epistemic void detection. The gap between speech confidence and belief support is measurable and domain-correlated.</p>
-</div>
-
-<!-- Phase 3 -->
-<div class="phase-card">
-  <div class="phase-header">
-    <span class="phase-number">Phase 3</span>
-    <span class="phase-title">Multi-Agent Agreement</span>
-    <span class="badge badge-proven">passed</span>
-  </div>
-  <p>20 real responses (10 factual, 10 moral) through the full agent stack.</p>
-  <div>
-    <span class="phase-stat"><strong>0/10</strong> factual false flags</span>
-    <span class="phase-stat"><strong>10/10</strong> moral correctly identified</span>
-    <span class="phase-stat"><strong>100%</strong> multi-agent agreement</span>
-  </div>
-  <p style="margin-top:14px; font-size:0.88em; color:#888;">Zero false governance on factual responses. All moral responses correctly identified as problematic. Multi-agent agreement = high-confidence governance signal.</p>
-</div>
-
-<!-- Scorecard -->
-<div class="scorecard">
-  <div class="scorecard-header">
-    <span class="scorecard-title">Governance Scorecard</span>
-    <span class="scorecard-verdict">Early convergent validity confirmed</span>
-  </div>
-  <div class="scorecard-score">5 / 6</div>
-  <div class="scorecard-grid">
-    <div class="scorecard-row">
-      <span class="scorecard-icon pass">&#10003;</span>
-      <span class="scorecard-label">TemplateDetector: factual non-template rate (99.8%)</span>
-    </div>
-    <div class="scorecard-row">
-      <span class="scorecard-icon pass">&#10003;</span>
-      <span class="scorecard-label">TemplateDetector: domain ordering matches variance</span>
-    </div>
-    <div class="scorecard-row">
-      <span class="scorecard-icon pass">&#10003;</span>
-      <span class="scorecard-label">GapAuditor: moral ELEVATED+ rate (99.2%)</span>
-    </div>
-    <div class="scorecard-row">
-      <span class="scorecard-icon pass">&#10003;</span>
-      <span class="scorecard-label">GapAuditor: factual SAFE rate (96.9%)</span>
-    </div>
-    <div class="scorecard-row">
-      <span class="scorecard-icon pass">&#10003;</span>
-      <span class="scorecard-label">Multi-agent: zero false governance on factual</span>
-    </div>
-    <div class="scorecard-row">
-      <span class="scorecard-icon fail">&#10007;</span>
-      <span class="scorecard-label">TemplateDetector: assertive moral template detection</span>
-    </div>
-  </div>
-</div>
-
-<!-- GOVERNANCE DOT MATRIX -->
-<div class="dot-matrix">
-  <div class="dot-matrix-label">Agent Coverage by Model</div>
-  <table class="dot-matrix-table">
+  <h3>TemplateDetector on Qwen3:14b Experiment Data</h3>
+  <table>
     <tr>
-      <th>Model</th>
-      <th>L1 SpeechLeak</th>
-      <th>L2 Template</th>
-      <th>L3 Resolution</th>
-      <th>L4 Corruption</th>
-      <th>L5 Gap</th>
+      <th>Prompt Domain</th>
+      <th>Temperature</th>
+      <th>Classification</th>
+      <th>Confidence</th>
+      <th>Variance</th>
     </tr>
     <tr>
-      <td>Qwen3</td>
-      <td><span class="dot-built"></span></td>
-      <td><span class="dot-built"></span></td>
-      <td><span class="dot-planned"></span></td>
-      <td><span class="dot-planned"></span></td>
-      <td><span class="dot-planned"></span></td>
+      <td><strong>moral_clear</strong></td>
+      <td>T=1.5</td>
+      <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
+      <td>0.85</td>
+      <td>0.005</td>
     </tr>
     <tr>
-      <td>Mistral</td>
-      <td><span class="dot-built"></span></td>
-      <td><span class="dot-built"></span></td>
-      <td><span class="dot-planned"></span></td>
-      <td><span class="dot-planned"></span></td>
-      <td><span class="dot-planned"></span></td>
+      <td><strong>moral_ambiguous</strong></td>
+      <td>T=1.5</td>
+      <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
+      <td>0.60</td>
+      <td>0.074</td>
     </tr>
     <tr>
-      <td>DeepSeek</td>
-      <td><span class="dot-built"></span></td>
-      <td><span class="dot-built"></span></td>
-      <td><span class="dot-planned"></span></td>
-      <td><span class="dot-planned"></span></td>
-      <td><span class="dot-planned"></span></td>
+      <td><strong>factual_settled</strong></td>
+      <td>T=0.0</td>
+      <td><span class="cls-genuine">GENUINE_CONFIDENCE</span></td>
+      <td>0.85</td>
+      <td>0.000</td>
     </tr>
   </table>
-  <div class="dot-matrix-legend">
-    <div class="dot-matrix-legend-item"><span class="dot-built"></span> Built &amp; tested</div>
-    <div class="dot-matrix-legend-item"><span class="dot-planned"></span> Designed, awaiting pipeline</div>
-  </div>
-</div>
 
-<!-- WHY THIS MATTERS: after Governance Validation -->
-<div class="why-matters">
-  <div class="why-matters-inner">
-    <div class="why-label">Why This Matters</div>
-    <div class="why-text">Every immune agent is tested against real experiment data -- not synthetic benchmarks. The classifications come from actual model outputs under controlled perturbation.</div>
-  </div>
-</div>
+  <p style="color:#6a7096; font-size:0.82em;">These results reflect the Qwen3 fragility profile: moral domains show artificially low variance (RLHF template lock), but the TemplateDetector correctly distinguishes between genuine low-variance confidence (factual_settled at T=0.0) and compressed-but-not-hedged moral responses. The key: Qwen3's moral outputs here lacked hedge patterns despite having low variance, yielding GENUINE_CONFIDENCE rather than TEMPLATE_LOCK. The detector needs both signals to fire.</p>
 
-<div class="divider"></div>
+  <h3>What TEMPLATE_LOCK Looks Like</h3>
+  <p>When the detector does fire TEMPLATE_LOCK, the response contains patterns like:</p>
+  <div class="template-example">
+    "There are multiple perspectives on this ethical question. It's important to consider the various viewpoints. Reasonable people can disagree on this complex issue."
+  </div>
+  <p style="font-size:0.82em; color:#6a7096;">Three hedge patterns detected: <code>multiple-perspectives</code>, <code>importance-framing</code>, <code>reasonable-disagreement</code>. Combined with low variance (near-identical outputs across repeated samples), this is textbook template lock.</p>
+</section>
+
+<!-- ===== 6. GOVERNANCE VALIDATION ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>Does Governance Work? <span class="badge badge-proven">validated</span></h2>
+
+  <p>The governance layer shows early convergent validity against independently measured fragility. Three validation phases, run against real experiment data.</p>
+
+  <!-- Phase 1 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <span class="phase-number">Phase 1</span>
+      <span class="phase-title">TemplateDetector Accuracy</span>
+      <span class="badge badge-proven">passed</span>
+    </div>
+    <p>Ran on ALL Qwen3 responses at T=1.5 (highest temperature, maximum model freedom).</p>
+    <div>
+      <span class="phase-stat"><strong>99.8%</strong> factual non-template rate</span>
+      <span class="phase-stat"><strong>71.3%</strong> opinion template detection</span>
+      <span class="phase-stat"><strong>YES</strong> domain ordering matches variance</span>
+    </div>
+    <p style="margin-top:14px; font-size:0.88em; color:#7a82a6;">The detector correctly identifies hollow domains without needing the variance probe at runtime. Domain ordering matches the independently measured susceptibility ranking from the variance experiment.</p>
+  </div>
+
+  <!-- Phase 2 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <span class="phase-number">Phase 2</span>
+      <span class="phase-title">GapAuditor Calibration</span>
+      <span class="badge badge-proven">passed</span>
+    </div>
+    <p>Belief confidence set from domain susceptibility data. Gap measured between speech confidence and belief support.</p>
+    <div>
+      <span class="phase-stat"><strong>99.2%</strong> moral ELEVATED+ rate</span>
+      <span class="phase-stat"><strong>96.9%</strong> factual SAFE rate</span>
+      <span class="phase-stat"><strong>600/600</strong> moral responses triggered ESCALATE</span>
+    </div>
+    <p style="margin-top:14px; font-size:0.88em; color:#7a82a6;">All 300 moral_clear + 300 moral_ambiguous responses triggered ESCALATE via epistemic void detection. The gap between speech confidence and belief support is measurable and domain-correlated.</p>
+  </div>
+
+  <!-- Phase 3 -->
+  <div class="phase-card">
+    <div class="phase-header">
+      <span class="phase-number">Phase 3</span>
+      <span class="phase-title">Multi-Agent Agreement</span>
+      <span class="badge badge-proven">passed</span>
+    </div>
+    <p>20 real responses (10 factual, 10 moral) through the full agent stack.</p>
+    <div>
+      <span class="phase-stat"><strong>0/10</strong> factual false flags</span>
+      <span class="phase-stat"><strong>10/10</strong> moral correctly identified</span>
+      <span class="phase-stat"><strong>100%</strong> multi-agent agreement</span>
+    </div>
+    <p style="margin-top:14px; font-size:0.88em; color:#7a82a6;">Zero false governance on factual responses. All moral responses correctly identified as problematic. Multi-agent agreement = high-confidence governance signal.</p>
+  </div>
+
+  <!-- Scorecard -->
+  <div class="scorecard">
+    <div class="scorecard-header">
+      <span class="scorecard-title">Governance Scorecard</span>
+      <span class="scorecard-verdict">Early convergent validity confirmed</span>
+    </div>
+    <div class="scorecard-score">5 / 6</div>
+    <div class="scorecard-grid">
+      <div class="scorecard-row">
+        <span class="scorecard-icon pass">&#10003;</span>
+        <span class="scorecard-label">TemplateDetector: factual non-template rate (99.8%)</span>
+      </div>
+      <div class="scorecard-row">
+        <span class="scorecard-icon pass">&#10003;</span>
+        <span class="scorecard-label">TemplateDetector: domain ordering matches variance</span>
+      </div>
+      <div class="scorecard-row">
+        <span class="scorecard-icon pass">&#10003;</span>
+        <span class="scorecard-label">GapAuditor: moral ELEVATED+ rate (99.2%)</span>
+      </div>
+      <div class="scorecard-row">
+        <span class="scorecard-icon pass">&#10003;</span>
+        <span class="scorecard-label">GapAuditor: factual SAFE rate (96.9%)</span>
+      </div>
+      <div class="scorecard-row">
+        <span class="scorecard-icon pass">&#10003;</span>
+        <span class="scorecard-label">Multi-agent: zero false governance on factual</span>
+      </div>
+      <div class="scorecard-row">
+        <span class="scorecard-icon fail">&#10007;</span>
+        <span class="scorecard-label">TemplateDetector: assertive moral template detection</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOVERNANCE DOT MATRIX -->
+  <div class="dot-matrix">
+    <div class="dot-matrix-label">Agent Coverage by Model</div>
+    <table class="dot-matrix-table">
+      <tr>
+        <th>Model</th>
+        <th>L1 SpeechLeak</th>
+        <th>L2 Template</th>
+        <th>L3 Resolution</th>
+        <th>L4 Corruption</th>
+        <th>L5 Gap</th>
+      </tr>
+      <tr>
+        <td>Qwen3</td>
+        <td><span class="dot-built"></span></td>
+        <td><span class="dot-built"></span></td>
+        <td><span class="dot-planned"></span></td>
+        <td><span class="dot-planned"></span></td>
+        <td><span class="dot-planned"></span></td>
+      </tr>
+      <tr>
+        <td>Mistral</td>
+        <td><span class="dot-built"></span></td>
+        <td><span class="dot-built"></span></td>
+        <td><span class="dot-planned"></span></td>
+        <td><span class="dot-planned"></span></td>
+        <td><span class="dot-planned"></span></td>
+      </tr>
+      <tr>
+        <td>DeepSeek</td>
+        <td><span class="dot-built"></span></td>
+        <td><span class="dot-built"></span></td>
+        <td><span class="dot-planned"></span></td>
+        <td><span class="dot-planned"></span></td>
+        <td><span class="dot-planned"></span></td>
+      </tr>
+    </table>
+    <div class="dot-matrix-legend">
+      <div class="dot-matrix-legend-item"><span class="dot-built"></span> Built &amp; tested</div>
+      <div class="dot-matrix-legend-item"><span class="dot-planned"></span> Designed, awaiting pipeline</div>
+    </div>
+  </div>
+
+  <div class="law-card-hero">
+    <div class="law-number">Evidence Standard</div>
+    <div class="law-text">Real data, not synthetic benchmarks.</div>
+    <div class="law-sub">Every immune agent is tested against real experiment data. The classifications come from actual model outputs under controlled perturbation.</div>
+  </div>
+</section>
 
 <!-- ===== 7. THE BLIND SPOT ===== -->
-<h2 id="blind-spot">The Blind Spot <span class="badge badge-progress">open</span></h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>The Blind Spot <span class="badge badge-progress">open</span></h2>
 
-<p>The one miss: <strong>moral_clear responses that are template-locked but don't use hedge language.</strong></p>
+  <p>The one miss: <strong>moral_clear responses that are template-locked but don't use hedge language.</strong></p>
 
-<div class="phase-card phase-warning">
-  <div class="phase-header">
-    <span class="phase-number" style="color:#b07850;">The Gap</span>
-    <span class="phase-title">Assertive Template Collapse</span>
-    <span class="badge badge-progress">undetected</span>
+  <div class="phase-card phase-warning">
+    <div class="phase-header">
+      <span class="phase-number" style="color:#f472b6;">The Gap</span>
+      <span class="phase-title">Assertive Template Collapse</span>
+      <span class="badge badge-progress">undetected</span>
+    </div>
+    <p>These are short, direct moral assertions that repeat identically across samples:</p>
+    <div class="template-example">
+      "Yes, you should return it."
+    </div>
+    <p style="font-size:0.88em; color:#7a82a6;">Repeated verbatim 20/20 times at T=1.5. Zero variance. Zero hedge patterns. The TemplateDetector looks for hedge patterns ("multiple perspectives", "it depends") -- when the template is assertive rather than hedging, the detector misses it.</p>
   </div>
-  <p>These are short, direct moral assertions that repeat identically across samples:</p>
-  <div style="background:#08080c; border:1px solid #1a1a22; border-radius:8px; padding:14px 18px; margin:12px 0; font-size:0.88em; color:#888; font-style:italic;">
-    "Yes, you should return it."
+
+  <h4>Why the GapAuditor Catches It Anyway</h4>
+  <p>The GapAuditor detects these via <strong>epistemic void detection</strong>: low belief confidence on moral domain topics means any confident assertion -- hedged or assertive -- gets flagged. The architecture didn't fail. It exposed a detector gap that the multi-agent design compensates for.</p>
+
+  <h4>The Fix</h4>
+  <p>Add <strong>assertive semantic collapse detection</strong>: low embedding variance + high content repetition, regardless of hedge patterns. The signal is not what the text says. The signal is that the text never changes.</p>
+
+  <div class="quote-block quote-amber">
+    <p>"This is the kind of finding that makes a system real -- it shows where the boundary is."</p>
   </div>
-  <p style="font-size:0.88em; color:#888;">Repeated verbatim 20/20 times at T=1.5. Zero variance. Zero hedge patterns. The TemplateDetector looks for hedge patterns ("multiple perspectives", "it depends") -- when the template is assertive rather than hedging, the detector misses it.</p>
-</div>
-
-<h4>Why the GapAuditor Catches It Anyway</h4>
-<p>The GapAuditor detects these via <strong>epistemic void detection</strong>: low belief confidence on moral domain topics means any confident assertion -- hedged or assertive -- gets flagged. The architecture didn't fail. It exposed a detector gap that the multi-agent design compensates for.</p>
-
-<h4>The Fix</h4>
-<p>Add <strong>assertive semantic collapse detection</strong>: low embedding variance + high content repetition, regardless of hedge patterns. The signal is not what the text says. The signal is that the text never changes.</p>
-
-<div class="quote quote-amber">
-  <p>"This is the kind of finding that makes a system real -- it shows where the boundary is."</p>
-</div>
-
-<div class="divider"></div>
+</section>
 
 <!-- ===== 8. CONVERGENT VALIDITY ===== -->
-<h2 id="convergent">Convergent Validity</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>Convergent Validity</h2>
 
-<p>The deeper point: <strong>two independent measurement systems agree.</strong></p>
+  <p>The deeper point: <strong>two independent measurement systems agree.</strong></p>
 
-<div class="compare-grid">
-  <div class="compare-card compare-old" style="border-top-color: #9b7aaa;">
-    <h4 style="color:#9b7aaa;">Variance Probe</h4>
-    <p>Measures fragility from <strong>outside</strong> the model. Research instrument. Perturbation-based. Runs offline against collected responses.</p>
-    <p style="color:#555;">Built first. No knowledge of the governance agents.</p>
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Variance Probe</h4>
+      <p>Measures fragility from outside the model. Research instrument. Perturbation-based. Runs offline against collected responses. Built first. No knowledge of the governance agents.</p>
+    </div>
+    <div class="method-card">
+      <h4>Immune Agents</h4>
+      <p>Detect problems at runtime. Governance layer. Pattern-based. Watches the live stream of model outputs. Built second. No access to variance probe results.</p>
+    </div>
   </div>
-  <div class="compare-card compare-new">
-    <h4>Immune Agents</h4>
-    <p>Detect problems at <strong>runtime</strong>. Governance layer. Pattern-based. Watches the live stream of model outputs.</p>
-    <p style="color:#6b7c5e;">Built second. No access to variance probe results.</p>
+
+  <p>They independently identify the same domains as fragile vs safe. The probe was built before the agents. They were never calibrated against each other. They converge because the underlying phenomenon is real.</p>
+
+  <div class="quote-block">
+    <p>"The governance layer shows early convergent validity against independently measured fragility."</p>
   </div>
-</div>
 
-<p>They independently identify the same domains as fragile vs safe. The probe was built before the agents. They were never calibrated against each other. They converge because the underlying phenomenon is real.</p>
-
-<div class="quote">
-  <p>"The governance layer shows early convergent validity against independently measured fragility."</p>
-</div>
-
-<p>This is not circular validation. The probe measures a statistical property of the response distribution (embedding variance under temperature perturbation). The agents detect patterns in individual responses (hedge language, confidence gaps, template repetition). Different methods, different data, same conclusion: moral domains are epistemically hollow in RLHF-trained models.</p>
-
-<div class="divider"></div>
+  <p>This is not circular validation. The probe measures a statistical property of the response distribution (embedding variance under temperature perturbation). The agents detect patterns in individual responses (hedge language, confidence gaps, template repetition). Different methods, different data, same conclusion: moral domains are epistemically hollow in RLHF-trained models.</p>
+</section>
 
 <!-- ===== 9. WHY IMMUNE AGENTS ===== -->
-<h2 id="why-immune">Why Immune Agents, Not Pipeline Gates</h2>
+<section>
+  <div class="accent-line"></div>
+  <h2>Why Immune Agents, Not Pipeline Gates</h2>
 
-<div class="compare-grid">
-  <div class="compare-card compare-old">
-    <h4>Pipeline Gates (Original)</h4>
-    <p>Fixed checkpoints at predetermined pipeline stages. Input gate, output gate, memory write gate.</p>
-    <p style="color:#555;">Assumes you know in advance where governance failures will occur.</p>
-    <p style="color:#555;">Works when the failure mode is predictable and location-stable.</p>
+  <div class="method-grid">
+    <div class="method-card">
+      <h4>Pipeline Gates (Original)</h4>
+      <p>Fixed checkpoints at predetermined pipeline stages. Input gate, output gate, memory write gate. Assumes you know in advance where governance failures will occur. Works when the failure mode is predictable and location-stable.</p>
+    </div>
+    <div class="method-card">
+      <h4>Immune Agents (Current)</h4>
+      <p>Specialized detectors that float on the data stream. Each watches for a pattern, not a position. Does not need to know where the threat will appear. Each agent handles one failure mode. New failure modes get new agents.</p>
+    </div>
   </div>
-  <div class="compare-card compare-new">
-    <h4>Immune Agents (Current)</h4>
-    <p>Specialized detectors that float on the data stream. Each watches for a pattern, not a position.</p>
-    <p style="color:#6b7c5e;">Does not need to know where the threat will appear.</p>
-    <p style="color:#6b7c5e;">Each agent handles one failure mode. New failure modes get new agents.</p>
+
+  <h4>What the Experiment Proved</h4>
+  <p>The variance probing research demonstrated that fragility is:</p>
+  <ul>
+    <li><strong>Domain-specific</strong> -- factual prompts fracture differently than moral prompts</li>
+    <li><strong>Model-specific</strong> -- the domain ordering flips between Qwen3, Mistral, and DeepSeek</li>
+    <li><strong>Prompt-specific</strong> -- individual prompts within the same domain can have wildly different susceptibility</li>
+    <li><strong>Temperature-dependent</strong> -- the same prompt behaves differently at different temperatures</li>
+  </ul>
+
+  <p>A fixed gate cannot adapt to all of these axes simultaneously. An immune system does not need to know where the threat will appear. It needs to recognize what the threat looks like when it shows up.</p>
+
+  <p>Each agent is a specialized recognizer:</p>
+  <ul>
+    <li>SpeechLeakDetector recognizes the speech-to-belief contamination pattern</li>
+    <li>TemplateDetector recognizes the fake-confidence-through-template pattern</li>
+    <li>PrematureResolutionGuard recognizes the premature-flattening pattern</li>
+    <li>MemoryCorruptionGuard recognizes the degraded-overwrite pattern</li>
+    <li>GapAuditor recognizes the confidence-support divergence pattern</li>
+  </ul>
+</section>
+
+<!-- ===== 10. PERSISTENCE LAYER ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>The Persistence Layer Connection</h2>
+
+  <div class="quote-block">
+    <p>"The model is the mouth. The persistence layer is the self."</p>
   </div>
+
+  <p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic safely handled by one model's locked regime may land in another model's fracture zone.</p>
+
+  <h3>Three Requirements for Safe Model Switching</h3>
+  <div class="persist-stack">
+    <div class="persist-item">
+      <div class="persist-num">1</div>
+      <div class="persist-name">Shared Task State</div>
+      <div class="persist-desc">What are we doing. What has been decided. What is still open.</div>
+    </div>
+    <div class="persist-item">
+      <div class="persist-num">2</div>
+      <div class="persist-name">Shared Support/Uncertainty State</div>
+      <div class="persist-desc">What do we know. What is grounded. What is fragile. What is contested.</div>
+    </div>
+    <div class="persist-item">
+      <div class="persist-num">3</div>
+      <div class="persist-name">Shared Governance State</div>
+      <div class="persist-desc">What laws are active. What the fragility map looks like. Which agents have fired and why.</div>
+    </div>
+  </div>
+
+  <p>If any of these three reset at handoff, the system drifts -- even when every individual model is working as designed. New assumptions creep in. Tone changes. Certainty changes. Missing details get invented. The task mutates.</p>
+
+  <p>The immune agents are what make the persistence layer trustworthy. Without them, persisted state could be contaminated by hallucinated speech (Law 1), fake confidence (Law 2), premature resolution (Law 3), degraded reconstruction (Law 4), or unbounded confidence claims (Law 5). The persistence layer stores the state. The immune agents guarantee that state deserves to persist.</p>
+</section>
+
+<!-- ===== 11. WHAT'S NEXT ===== -->
+<section>
+  <div class="accent-line"></div>
+  <h2>What's Next</h2>
+
+  <p>Two agents are built and tested. Three are designed and waiting.</p>
+
+  <table>
+    <tr><th>Agent</th><th>Status</th><th>Dependency</th></tr>
+    <tr><td><strong>SpeechLeakDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested with real embeddings, all unit tests passing</td></tr>
+    <tr><td><strong>TemplateDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested on Qwen3 + Mistral experiment data</td></tr>
+    <tr><td><strong>PrematureResolutionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the contradiction handling pipeline to test against</td></tr>
+    <tr><td><strong>MemoryCorruptionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the memory update pipeline to test against</td></tr>
+    <tr><td><strong>GapAuditor</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs Laws 1 + 2 integrated into live pipeline first</td></tr>
+    <tr><td><strong>Coordination Layer</strong></td><td><span class="badge badge-planned">designed</span></td><td>Needs at least 3 agents operational to be meaningful</td></tr>
+  </table>
+
+  <h4>Validation Ladder</h4>
+  <ol>
+    <li><strong>Fix the blind spot</strong> -- assertive template collapse detection (low embedding variance + high content repetition, regardless of hedge patterns)</li>
+    <li><strong>Held-out validation set</strong> -- blinded prompts, measure precision/recall on unseen data</li>
+    <li><strong>Agent ablations</strong> -- which pieces carry the lift? Remove agents one at a time and measure degradation</li>
+    <li><strong>End-to-end calibration comparison</strong> -- raw vs governed output on calibration metrics</li>
+    <li><strong>Cross-model validation</strong> -- run governance on Mistral and DeepSeek data (different fragility profiles)</li>
+  </ol>
+
+  <h4>Remaining Build</h4>
+  <ul>
+    <li>Remaining agents need the memory and contradiction pipelines to test against real data</li>
+    <li>Full corpus run through all agents to build a confusion matrix</li>
+    <li>Coordination layer stress testing with simultaneous multi-agent firings</li>
+  </ul>
+
+  <div class="quote-block quote-pink">
+    <p>"The job now is not to invent ten more beautiful ideas. It's to find out which three or four keep standing when the system gets punched in the face."</p>
+  </div>
+</section>
+
 </div>
 
-<h4>What the Experiment Proved</h4>
-<p>The variance probing research demonstrated that fragility is:</p>
-<ul>
-  <li><strong>Domain-specific</strong> -- factual prompts fracture differently than moral prompts</li>
-  <li><strong>Model-specific</strong> -- the domain ordering flips between Qwen3, Mistral, and DeepSeek</li>
-  <li><strong>Prompt-specific</strong> -- individual prompts within the same domain can have wildly different susceptibility</li>
-  <li><strong>Temperature-dependent</strong> -- the same prompt behaves differently at different temperatures</li>
-</ul>
-
-<p>A fixed gate cannot adapt to all of these axes simultaneously. An immune system does not need to know where the threat will appear. It needs to recognize what the threat looks like when it shows up.</p>
-
-<p>Each agent is a specialized recognizer:</p>
-<ul>
-  <li>SpeechLeakDetector recognizes the speech-to-belief contamination pattern</li>
-  <li>TemplateDetector recognizes the fake-confidence-through-template pattern</li>
-  <li>PrematureResolutionGuard recognizes the premature-flattening pattern</li>
-  <li>MemoryCorruptionGuard recognizes the degraded-overwrite pattern</li>
-  <li>GapAuditor recognizes the confidence-support divergence pattern</li>
-</ul>
-
-<div class="divider"></div>
-
-<!-- ===== 7. PERSISTENCE LAYER ===== -->
-<h2 id="persistence">The Persistence Layer Connection</h2>
-
-<div class="quote">
-  <p>"The model is the mouth. The persistence layer is the self."</p>
-</div>
-
-<p>In multi-model agentic systems, switching models without carrying forward epistemic state means silently swapping fragility profiles. A topic safely handled by one model's locked regime may land in another model's fracture zone.</p>
-
-<h4>Three Requirements for Safe Model Switching</h4>
-<div class="persist-stack">
-  <div class="persist-item">
-    <div class="persist-num">1</div>
-    <div class="persist-name">Shared Task State</div>
-    <div class="persist-desc">What are we doing. What has been decided. What is still open.</div>
-  </div>
-  <div class="persist-item">
-    <div class="persist-num">2</div>
-    <div class="persist-name">Shared Support/Uncertainty State</div>
-    <div class="persist-desc">What do we know. What is grounded. What is fragile. What is contested.</div>
-  </div>
-  <div class="persist-item">
-    <div class="persist-num">3</div>
-    <div class="persist-name">Shared Governance State</div>
-    <div class="persist-desc">What laws are active. What the fragility map looks like. Which agents have fired and why.</div>
-  </div>
-</div>
-
-<p>If any of these three reset at handoff, the system drifts -- even when every individual model is working as designed. New assumptions creep in. Tone changes. Certainty changes. Missing details get invented. The task mutates.</p>
-
-<p>The immune agents are what make the persistence layer trustworthy. Without them, persisted state could be contaminated by hallucinated speech (Law 1), fake confidence (Law 2), premature resolution (Law 3), degraded reconstruction (Law 4), or unbounded confidence claims (Law 5). The persistence layer stores the state. The immune agents guarantee that state deserves to persist.</p>
-
-<div class="divider"></div>
-
-<!-- ===== 8. WHAT'S NEXT ===== -->
-<h2 id="next">What's Next</h2>
-
-<p>Two agents are built and tested. Three are designed and waiting.</p>
-
-<table>
-  <tr><th>Agent</th><th>Status</th><th>Dependency</th></tr>
-  <tr><td><strong>SpeechLeakDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested with real embeddings, all unit tests passing</td></tr>
-  <tr><td><strong>TemplateDetector</strong></td><td><span class="badge badge-built">built</span></td><td>Tested on Qwen3 + Mistral experiment data</td></tr>
-  <tr><td><strong>PrematureResolutionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the contradiction handling pipeline to test against</td></tr>
-  <tr><td><strong>MemoryCorruptionGuard</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs the memory update pipeline to test against</td></tr>
-  <tr><td><strong>GapAuditor</strong></td><td><span class="badge badge-planned">planned</span></td><td>Needs Laws 1 + 2 integrated into live pipeline first</td></tr>
-  <tr><td><strong>Coordination Layer</strong></td><td><span class="badge badge-planned">designed</span></td><td>Needs at least 3 agents operational to be meaningful</td></tr>
-</table>
-
-<h4>Validation Ladder</h4>
-<ol>
-  <li><strong>Fix the blind spot</strong> -- assertive template collapse detection (low embedding variance + high content repetition, regardless of hedge patterns)</li>
-  <li><strong>Held-out validation set</strong> -- blinded prompts, measure precision/recall on unseen data</li>
-  <li><strong>Agent ablations</strong> -- which pieces carry the lift? Remove agents one at a time and measure degradation</li>
-  <li><strong>End-to-end calibration comparison</strong> -- raw vs governed output on calibration metrics</li>
-  <li><strong>Cross-model validation</strong> -- run governance on Mistral and DeepSeek data (different fragility profiles)</li>
-</ol>
-
-<h4>Remaining Build</h4>
-<ul>
-  <li>Remaining agents need the memory and contradiction pipelines to test against real data</li>
-  <li>Full corpus run through all agents to build a confusion matrix</li>
-  <li>Coordination layer stress testing with simultaneous multi-agent firings</li>
-</ul>
-
-<div class="quote quote-red">
-  <p>"The job now is not to invent ten more beautiful ideas. It's to find out which three or four keep standing when the system gets punched in the face."</p>
-</div>
-
-</div>
-
-<!-- ===== FOOTER ===== -->
 <div class="footer">
-  <div class="footer-links">
-    <a href="whitepaper.html">Whitepaper</a>
-    <a href="index.html">Variance Probing</a>
-  </div>
-  Immune Agent Architecture — CRT / Aether — Nick Block — 2026<br>
-  Constitutional doctrine preserved. Enforcement mechanism evolved.<br>
-  Living document. Updated as agents are built and tested.
+  <p>Aeteros Research &bull; 2026 &bull; <a href="index.html">CRT Model Probing</a> &bull; <a href="continuity-blind.html">Continuity-Blind</a> &bull; <a href="whitepaper.html">Whitepaper</a></p>
 </div>
-
-<!-- Hero animation removed for cinematic editorial design -->
-
-<!-- ===== TOC SCROLL TRACKING ===== -->
-<script>
-(function() {
-  const sections = document.querySelectorAll('h2[id]');
-  const links = document.querySelectorAll('.toc a');
-  window.addEventListener('scroll', () => {
-    let current = '';
-    sections.forEach(s => {
-      if (window.scrollY >= s.offsetTop - 100) current = s.id;
-    });
-    links.forEach(l => {
-      l.classList.toggle('active', l.getAttribute('href') === '#' + current);
-    });
-  });
-})();
-</script>
 
 </body>
 </html>

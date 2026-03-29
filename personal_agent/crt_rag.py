@@ -350,6 +350,15 @@ class CRTEnhancedRAG:
         self._react_trace: List[Dict[str, Any]] = []
         # ====== END PRODUCTION ADDITIONS ======
         
+        # Law 6: Continuity auditor (pre-generation hook)
+        try:
+            from personal_agent.immune_agents.continuity_auditor import ContinuityAuditor
+            self.continuity_auditor = ContinuityAuditor(db_path=memory_db)
+            logger.info("[CONTINUITY_AUDITOR] Law 6 pre-generation gate initialized")
+        except Exception as e:
+            logger.warning(f"[CONTINUITY_AUDITOR] Failed to initialize: {e}")
+            self.continuity_auditor = None
+
         # Performance: LRU cache for fact extraction to avoid repeated regex parsing
         # Using OrderedDict for efficient LRU eviction (move_to_end + popitem)
         self._fact_extraction_cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
@@ -1052,6 +1061,42 @@ class CRTEnhancedRAG:
                            "evolution_observation", "evolution_proposal", "synthesis"},
         )
 
+        # Topic-aware retrieval boost: if query matches a known variance tracker topic,
+        # boost memories that were cited in prior responses on that topic.
+        _topic_memory_ids: set = set()
+        try:
+            import sqlite3 as _sql3
+            _bs_conn = _sql3.connect(self.memory.db_path)
+            # Find topic clusters whose centroid is similar to this query
+            _topic_rows = _bs_conn.execute(
+                "SELECT topic_id, centroid_embedding FROM opinion_topics WHERE entry_count >= 3"
+            ).fetchall()
+            if _topic_rows:
+                import numpy as _np2
+                for _tr in _topic_rows:
+                    _centroid = _np2.frombuffer(_tr[1], dtype=_np2.float32)
+                    _norm = _np2.linalg.norm(_centroid)
+                    if _norm > 0:
+                        _sim = float(_np2.dot(query_vector, _centroid / _norm))
+                        if _sim > 0.5:  # query matches this topic cluster
+                            # Get memory IDs cited in prior belief responses on this topic
+                            _cited_rows = _bs_conn.execute(
+                                """SELECT memory_ids_json FROM belief_speech
+                                   WHERE topic_id=? AND is_belief=1 AND memory_ids_json IS NOT NULL""",
+                                (_tr[0],),
+                            ).fetchall()
+                            for _cr in _cited_rows:
+                                try:
+                                    for _mid in json.loads(_cr[0]):
+                                        _topic_memory_ids.add(_mid)
+                                except Exception:
+                                    pass
+            _bs_conn.close()
+            if _topic_memory_ids:
+                logger.debug("[TOPIC_BOOST] Boosting %d memories from prior topic responses", len(_topic_memory_ids))
+        except Exception as _tbe:
+            logger.debug("[TOPIC_BOOST] Skipped: %s", _tbe)
+
         # Avoid retrieving derived helper outputs (they are grounded summaries/citations,
         # not new world facts) to prevent recursive quoting and prompt pollution.
         filtered: List[Tuple[MemoryItem, float]] = []
@@ -1072,6 +1117,11 @@ class CRTEnhancedRAG:
                     # Boost by 50% for domain match
                     score = score * 1.5
                     logger.debug(f"[DOMAIN_BOOST] Memory '{mem.text[:40]}...' boosted for domains {domain_overlap}")
+
+            # Topic-aware boost: memories cited in prior responses on the same topic
+            if _topic_memory_ids and mem.memory_id in _topic_memory_ids:
+                score = score * 1.8  # Strong boost for topic-relevant memories
+                logger.debug(f"[TOPIC_BOOST] Memory '{mem.text[:40]}...' boosted (cited in prior topic response)")
             
             try:
                 kind = ((mem.context or {}).get("kind") or "").strip().lower()
@@ -5862,6 +5912,28 @@ class CRTEnhancedRAG:
             'web_evidence_packet': _web_evidence_packet if _is_search_query else None,
             'is_general_knowledge': _is_general_knowledge,
         }
+
+        # ── Law 6: Continuity gate (pre-generation) ──────────────────
+        # Check if we have prior responses on this topic and inject as context
+        _continuity_verdict = None
+        if self.continuity_auditor:
+            try:
+                from personal_agent.immune_agents.continuity_auditor import ContinuityCheck
+                _continuity_verdict = self.continuity_auditor.check(
+                    ContinuityCheck(query=user_query, thread_id=thread_id)
+                )
+                if _continuity_verdict.continuity_context:
+                    reasoning_context['continuity_context'] = _continuity_verdict.continuity_context
+                    logger.info(
+                        "[LAW6] Continuity %s: %d priors, max_sim=%.3f, consistency=%s",
+                        _continuity_verdict.action.value,
+                        _continuity_verdict.prior_count,
+                        _continuity_verdict.max_similarity,
+                        _continuity_verdict.internal_consistency,
+                    )
+            except Exception as e:
+                log_swallowed_exception("crt_rag.query.continuity_check", e)
+
         reasoning_result = self.reasoning.reason(
             query=user_query,
             context=reasoning_context,

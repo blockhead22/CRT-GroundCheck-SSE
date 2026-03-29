@@ -125,3 +125,4 @@ models/vilt_*/
 models/dnnt_*/
 /.claude/worktrees/
 /electron/node_modules
+/data/chatgpt_export

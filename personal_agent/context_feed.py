@@ -138,9 +138,51 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
             text = m.text.strip()[:200]
             lines.append(f"- {text}")
 
+    # 5. Recent interaction summary — last session context for cross-thread continuity
+    recent_interaction = _build_recent_interaction_summary(memory_db_path)
+    if recent_interaction:
+        lines.append("")
+        lines.append(recent_interaction)
+
     block = "\n".join(lines)
     logger.debug(
         f"[CONTEXT_FEED] built {len(top_memories)}+{len(provisional)} items "
         f"for thread {thread_id}"
     )
     return block
+
+
+def _build_recent_interaction_summary(memory_db_path: str) -> str:
+    """Build a compact summary of recent belief/speech entries for cross-session continuity.
+
+    Pulls the last N belief_speech entries (across all threads) so Aether knows
+    what it recently discussed regardless of which thread is active.
+    """
+    import sqlite3
+
+    try:
+        conn = sqlite3.connect(memory_db_path)
+        rows = conn.execute(
+            """SELECT query, response, is_belief, trust_avg, timestamp
+               FROM belief_speech
+               ORDER BY timestamp DESC
+               LIMIT 8"""
+        ).fetchall()
+        conn.close()
+    except Exception:
+        return ""
+
+    if not rows:
+        return ""
+
+    lines = ["## Recent interactions (cross-session):"]
+    for r in rows:
+        query = (r[0] or "")[:80]
+        response = (r[1] or "")[:100]
+        typ = "belief" if r[2] else "speech"
+        trust = f"T:{r[3]:.2f}" if r[3] else ""
+        if query.strip():
+            lines.append(f"- Q: {query}")
+            lines.append(f"  A ({typ}{' ' + trust if trust else ''}): {response}")
+
+    return "\n".join(lines) if len(lines) > 1 else ""

@@ -1712,11 +1712,18 @@ FORMAT RULES (critical — you are in a chat interface, not a document editor):
                     prompt += f"{i}. [{source}] (ns={ns}, trust={trust:.2f}{ts_str}) {mem['text'][:300]}\n"
                 prompt += "\n"
 
+        # Law 6: Continuity context — inject prior stance for consistency
+        continuity_ctx = context.get('continuity_context')
+        if continuity_ctx:
+            prompt += "=== CONTINUITY CONTEXT (Law 6) ===\n"
+            prompt += continuity_ctx
+            prompt += "\n\n"
+
         prompt += f"User: {query}\n\n"
         prompt += "Assistant:"
-        
+
         return prompt
-    
+
     def _build_thinking_prompt(self, query: str, context: Dict, analysis: str, plan: str) -> str:
         """Build prompt for thinking mode."""
         docs = context.get('retrieved_docs', [])
@@ -1778,10 +1785,17 @@ THREAD COHERENCE: Your response must be consistent with what you said earlier in
         if contradictions:
             prompt += f"Note: {len(contradictions)} contradictions found. Present multiple perspectives honestly.\n\n"
 
+        # Law 6: Continuity context
+        continuity_ctx = context.get('continuity_context')
+        if continuity_ctx:
+            prompt += "=== CONTINUITY CONTEXT (Law 6) ===\n"
+            prompt += continuity_ctx
+            prompt += "\n\n"
+
         prompt += "Your response:"
 
         return prompt
-    
+
     def _build_deep_prompt(self, query: str, context: Dict, plan: str, execution: str) -> str:
         """Build prompt for deep mode."""
         style_hint = self._format_style_hint(context.get("style_profile"))

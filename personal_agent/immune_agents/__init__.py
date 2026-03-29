@@ -10,6 +10,7 @@ Agents:
 - PrematureResolutionGuard:  Enforces Law 3 ("Contradiction must be preserved before resolution")
 - MemoryCorruptionGuard:     Enforces Law 4 ("Degraded reconstruction cannot silently overwrite trusted memory")
 - GapAuditor:                Enforces Law 5 ("Outward confidence must be bounded by internal support")
+- ContinuityAuditor:         Enforces Law 6 ("Confidence must not exceed continuity")
 """
 
 from .template_detector import TemplateDetector, Classification, DetectionResult
@@ -41,6 +42,14 @@ from .gap_auditor import (
     Trend,
 )
 
+from .continuity_auditor import (
+    ContinuityAuditor,
+    ContinuityCheck,
+    ContinuityVerdict,
+    ContinuityAction,
+    PriorResponse,
+)
+
 __all__ = [
     "TemplateDetector",
     "Classification",
@@ -64,6 +73,11 @@ __all__ = [
     "Severity",
     "Action",
     "Trend",
+    "ContinuityAuditor",
+    "ContinuityCheck",
+    "ContinuityVerdict",
+    "ContinuityAction",
+    "PriorResponse",
 ]
 
 

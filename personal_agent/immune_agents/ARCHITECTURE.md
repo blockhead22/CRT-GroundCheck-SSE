@@ -40,10 +40,19 @@ The belief/speech gap must be auditable and bounded.
 - Fires when: expressed confidence exceeds belief-layer support
 - Unit test: assertive response on uncertain topic gets flagged
 
+### Law 6: Confidence must not exceed continuity
+Empirically proven by 13-month continuity-blind study (1,275 conversations, 59,370 messages). 0% continuity awareness. Mean consistency 0.34. Systems confidently contradict themselves across sessions.
+- Agent: ContinuityAuditor
+- Watches: pre-generation (before LLM call)
+- Fires when: similar question has been answered before
+- Actions: INJECT (prior stance as context), HEDGE (contradictory priors detected)
+- Unit test: repeated question gets prior context injected; contradictory priors trigger HEDGE
+
 ## Coordination Layer (evolved GFN)
 All agents watch the same stream. When multiple fire:
 - TemplateDetector + GapAuditor → escalate to user
 - PrematureResolutionGuard + MemoryCorruptionGuard → hard block
+- ContinuityAuditor HEDGE + GapAuditor ELEVATED → force hedge in output
 - Every firing logged: which law, what evidence, what action
 
 ## Architectural Evolution
