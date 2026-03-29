@@ -1,12 +1,23 @@
 import os
 import re
 import sqlite3
+import sys
 import time
 import uuid
 import json
 import logging
 import threading
 import numpy as np
+
+# Force UTF-8 stdout/stderr on Windows to prevent charmap encoding crashes
+# when responses contain emoji or non-ASCII characters.
+if sys.platform == "win32":
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -1369,15 +1380,23 @@ def create_app() -> FastAPI:
             logger.warning("[STARTUP] Ollama is NOT running at %s (%s)", _ollama_url, e)
             print(f"[STARTUP] WARNING: Ollama is NOT running. Local LLM will be unavailable. Start with: ollama serve")
 
-        # Pre-warm the default Ollama model so first request doesn't cold-load.
+        # Pre-warm Ollama models so first request doesn't cold-load.
+        # If a dedicated intent model is set, warm THAT instead of the heavy
+        # generation model (they compete for VRAM on limited hardware).
         if _ollama_available:
             try:
                 import ollama as _ollama_mod
-                _warm_model = _default_router_model or "qwen3:14b"
-                logger.info("[STARTUP] Pre-warming Ollama model: %s", _warm_model)
-                _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
-                logger.info("[STARTUP] Ollama model %s loaded into VRAM", _warm_model)
-                print(f"[STARTUP] Ollama model {_warm_model} loaded into VRAM")
+                _intent_model = os.getenv("CRT_INTENT_MODEL")
+                if _intent_model:
+                    # Intent model is lightweight — warm it, skip heavy gen model
+                    print(f"[STARTUP] Pre-warming intent model: {_intent_model}")
+                    _ollama_mod.generate(model=_intent_model, prompt="", keep_alive="24h")
+                    print(f"[STARTUP] Ollama model {_intent_model} loaded into VRAM")
+                else:
+                    _warm_model = _default_router_model or "qwen3:14b"
+                    print(f"[STARTUP] Pre-warming Ollama model: {_warm_model}")
+                    _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
+                    print(f"[STARTUP] Ollama model {_warm_model} loaded into VRAM")
             except Exception as e:
                 logger.warning("[STARTUP] Could not pre-warm Ollama model: %s", e)
                 print(f"[STARTUP] WARNING: Ollama running but model pre-warm failed: {e}")

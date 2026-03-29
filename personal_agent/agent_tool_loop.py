@@ -423,6 +423,8 @@ class AgentToolLoop:
         show_thinking: bool = True,
         engine=None,
         intent_hint: Optional[str] = None,
+        retrieval_count: int = 0,
+        retrieval_avg_trust: float = 0.0,
     ):
         self.llm_client = llm_client
         self.session_db = session_db
@@ -430,6 +432,8 @@ class AgentToolLoop:
         self.show_thinking = show_thinking
         self.engine = engine
         self.intent_hint = intent_hint
+        self.retrieval_count = retrieval_count
+        self.retrieval_avg_trust = retrieval_avg_trust
 
         # Governance layer — immune agents watching response boundary
         try:
@@ -547,6 +551,24 @@ class AgentToolLoop:
 
                         if _memory_steps:
                             _belief_conf = min(0.8, 0.4 + 0.1 * len(_memory_steps))
+                        elif self.retrieval_count > 0:
+                            # Memories were retrieved pre-loop (context assembly).
+                            # Scale belief by retrieval count and average trust.
+                            _belief_conf = min(0.75, 0.3 + 0.05 * self.retrieval_count)
+                            if self.retrieval_avg_trust > 0.7:
+                                _belief_conf = min(0.8, _belief_conf + 0.1)
+                        elif self.engine is not None and _was_fallback:
+                            # Cookie fallback with no tool steps, but engine has context.
+                            # Check if the system prompt injected memories.
+                            try:
+                                _sys_msg = next((m.get("content", "") for m in messages if m.get("role") == "system"), "")
+                                _has_memories = "memories cited" in _sys_msg.lower() or "trust:" in _sys_msg.lower() or "T:" in _sys_msg
+                                if _has_memories:
+                                    _belief_conf = 0.45  # system prompt has memory context
+                                else:
+                                    _belief_conf = 0.15
+                            except Exception:
+                                _belief_conf = 0.15
                         elif _any_tools_succeeded:
                             _belief_conf = 0.4  # tools ran but no memory grounding
                         elif _was_fallback:

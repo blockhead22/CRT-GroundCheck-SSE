@@ -18,6 +18,7 @@ Philosophy:
 
 import contextvars
 import math
+import os
 import sqlite3
 import json
 import logging
@@ -617,20 +618,25 @@ class CRTMemorySystem:
 
         conn.commit()
 
-        # Log DB identity on init
-        try:
-            active = cursor.execute(
-                "SELECT COUNT(*) FROM memories WHERE deprecated = 0"
-            ).fetchone()[0]
-            alias_ct = cursor.execute(
-                "SELECT COUNT(*) FROM memory_aliases"
-            ).fetchone()[0]
-            print(
-                "[MEMORY_DB] Initialized: %s (%d active memories, %d aliases)"
-                % (self.db_path, active, alias_ct)
-            )
-        except Exception:
-            print("[MEMORY_DB] Initialized: %s" % self.db_path)
+        # Log DB identity on init (once per unique path per process)
+        if not hasattr(CRTMemorySystem, '_logged_dbs'):
+            CRTMemorySystem._logged_dbs = set()
+        _abs = os.path.abspath(self.db_path)
+        if _abs not in CRTMemorySystem._logged_dbs:
+            CRTMemorySystem._logged_dbs.add(_abs)
+            try:
+                active = cursor.execute(
+                    "SELECT COUNT(*) FROM memories WHERE deprecated = 0"
+                ).fetchone()[0]
+                alias_ct = cursor.execute(
+                    "SELECT COUNT(*) FROM memory_aliases"
+                ).fetchone()[0]
+                print(
+                    "[MEMORY_DB] Initialized: %s (%d active memories, %d aliases)"
+                    % (self.db_path, active, alias_ct)
+                )
+            except Exception:
+                print("[MEMORY_DB] Initialized: %s" % self.db_path)
 
         conn.close()
 

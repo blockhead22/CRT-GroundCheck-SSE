@@ -1240,8 +1240,9 @@ export default function App() {
       {/* Dynamic mood-reactive background */}
       <MoodBackground mood={currentMood} isThinking={isThinking} />
       
-      {/* Mood indicator badge (for debugging - shows current mood) */}
+      {/* Mood indicator badge — disabled (was pushing electron content down)
       {currentMood && <MoodIndicator mood={currentMood} />}
+      */}
       
       <div className="h-full relative z-10">
         <div className="flex h-full min-h-0">

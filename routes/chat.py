@@ -5944,9 +5944,20 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     # --- Governance gate (legacy task path) ---
                     if _LEGACY_GOVERNANCE and _task_answer:
                         try:
+                            # Compute belief from retrieval grounding instead of hardcoding
+                            _legacy_belief = 0.4
+                            try:
+                                _legacy_mems = result.get("retrieved_memories") or result.get("prompt_memories") or []
+                                if _legacy_mems:
+                                    _legacy_belief = min(0.75, 0.3 + 0.05 * len(_legacy_mems))
+                                    _avg_t = sum(m.get("trust", 0.5) for m in _legacy_mems) / len(_legacy_mems)
+                                    if _avg_t > 0.7:
+                                        _legacy_belief = min(0.8, _legacy_belief + 0.1)
+                            except Exception:
+                                pass
                             _gov = _LEGACY_GOVERNANCE.govern_response(
                                 text=_task_answer,
-                                belief_confidence=0.4,
+                                belief_confidence=_legacy_belief,
                             )
                             _done_meta["governance_tier"] = _gov.tier.value
                             _done_meta["governance_annotations"] = len(_gov.annotations)
@@ -6244,9 +6255,20 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # --- Governance gate (legacy conversational path) ---
             if _LEGACY_GOVERNANCE and answer:
                 try:
+                    # Compute belief from retrieval grounding
+                    _conv_belief = 0.4
+                    try:
+                        _conv_mems = result.get("retrieved_memories") or result.get("prompt_memories") or []
+                        if _conv_mems:
+                            _conv_belief = min(0.75, 0.3 + 0.05 * len(_conv_mems))
+                            _avg_t = sum(m.get("trust", 0.5) for m in _conv_mems) / len(_conv_mems)
+                            if _avg_t > 0.7:
+                                _conv_belief = min(0.8, _conv_belief + 0.1)
+                    except Exception:
+                        pass
                     _gov = _LEGACY_GOVERNANCE.govern_response(
                         text=answer,
-                        belief_confidence=0.4,  # legacy path has some pipeline grounding
+                        belief_confidence=_conv_belief,
                     )
                     metadata["governance_tier"] = _gov.tier.value
                     metadata["governance_annotations"] = len(_gov.annotations)
