@@ -628,6 +628,7 @@ Gate interventions (responses that were filtered or adjusted): {gate_fails}
 User corrections (adjustments the user requested): {negative_feedback}
 Unresolved contradictions in memory: {open_contradictions}
 Trust score movements (memories that shifted): {trust_deltas}
+Recent system changes: {evolution_events}
 Current operating state:
 {current_self_model}
 
@@ -738,11 +739,29 @@ Output ONLY valid JSON, nothing else."""
             for k, v in current_model.items()
         )
 
+        # Fetch recent system evolution events
+        evolution_lines: List[str] = []
+        try:
+            from personal_agent.db_utils import ThreadSessionDB as _TSessionDB
+            _sess_candidates = [
+                Path("data/thread_sessions.db"),
+                Path("personal_agent/thread_sessions.db"),
+            ]
+            for _sc in _sess_candidates:
+                if _sc.exists():
+                    _sdb = _TSessionDB(str(_sc))
+                    for ev in _sdb.get_evolution_events(limit=5):
+                        evolution_lines.append(f"- [{ev['event_type']}] {ev['title']}")
+                    break
+        except Exception:
+            pass
+
         prompt = self._SELF_REFLECTION_PROMPT.format(
             gate_fails="\n".join(gate_fails_lines) or "(none in last 24h)",
             negative_feedback="\n".join(negative_feedback_lines) or "(none in last 24h)",
             open_contradictions=str(open_contradictions),
             trust_deltas="\n".join(trust_delta_lines) or "(none recorded)",
+            evolution_events="\n".join(evolution_lines) or "(no recent changes)",
             current_self_model=current_model_text,
         )
 

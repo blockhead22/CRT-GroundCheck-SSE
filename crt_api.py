@@ -1049,12 +1049,13 @@ def create_app() -> FastAPI:
     # Heartbeat scheduler (OpenClaw-style 24/7 proactive engagement)
     # Continuous reflection + personality + heartbeat loops (24/7, limited scope)
     session_db = get_thread_session_db()
-    reflection_loop, personality_loop, journal_self_reply_loop, heartbeat_loop, contradiction_scan_loop = build_loops(session_db)
+    reflection_loop, personality_loop, journal_self_reply_loop, heartbeat_loop, contradiction_scan_loop, narrative_loop = build_loops(session_db)
     app.state.reflection_loop = reflection_loop
     app.state.personality_loop = personality_loop
     app.state.journal_self_reply_loop = journal_self_reply_loop
     app.state.heartbeat_loop = heartbeat_loop
     app.state.contradiction_scan_loop = contradiction_scan_loop
+    app.state.narrative_loop = narrative_loop
 
     # CORS (dev-friendly). Configure via CRT_CORS_ORIGINS as comma-separated list or "*" for all.
     cors_env = os.getenv("CRT_CORS_ORIGINS", "http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174,app://aether")
@@ -1414,6 +1415,12 @@ def create_app() -> FastAPI:
             logger.info("[STARTUP] Heartbeat loop started")
         except Exception as e:
             logger.warning(f"[STARTUP] Failed to start heartbeat loop: {e}")
+
+        try:
+            app.state.narrative_loop.start()
+            logger.info("[STARTUP] Narrative synthesis loop started")
+        except Exception as e:
+            logger.warning(f"[STARTUP] Failed to start narrative synthesis loop: {e}")
 
         # Seed self-knowledge (idempotent â€” skips facts that already exist)
         try:

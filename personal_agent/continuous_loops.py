@@ -1758,17 +1758,390 @@ class ContradictionScanLoop:
         return splats
 
 
+class NarrativeSynthesisLoop:
+    """Periodic synthesis of user facts into narrative understanding.
+
+    Gathers user_fact, preference, and narrative_note memories, clusters them
+    by semantic similarity, then calls a cloud LLM to produce narrative_note
+    memories that represent Aether's *understanding* of the user — not a list
+    of facts, but connected narratives.
+
+    Runs infrequently (default: every 6 hours) because synthesis is expensive
+    and the user fact base changes slowly.
+    """
+
+    # Minimum memories to bother synthesizing
+    MIN_FACTS_FOR_SYNTHESIS = 8
+
+    _SYNTHESIS_PROMPT = """You are Aether performing a private reflection on what you know about your user.
+
+Below are verified facts about your user, organized by theme. For each theme,
+synthesize the facts into a 1-2 sentence narrative that shows UNDERSTANDING —
+not listing. Connect facts where they form a story. Note tensions or growth.
+
+Rules:
+- Do NOT invent facts beyond what's provided
+- Do NOT use the user's name more than once per narrative
+- Write as if you genuinely know this person, not as a database report
+- Each narrative should feel like something a close friend would say
+
+Output ONLY valid JSON — an array of objects:
+[{{"theme": "...", "narrative": "...", "source_ids": ["mem_id1", "mem_id2", ...]}}]
+
+Facts by theme:
+{clustered_facts}"""
+
+    def __init__(
+        self,
+        session_db: "ThreadSessionDB",
+        interval_seconds: int = 21600,  # 6 hours
+        enabled: bool = True,
+        memory_db_path: Optional[str] = None,
+    ) -> None:
+        self.session_db = session_db
+        self.interval_seconds = max(300, interval_seconds)
+        self.enabled = enabled
+        self._memory_db_path = memory_db_path or os.path.join(
+            os.path.dirname(__file__), "crt_memory_shared.db"
+        )
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._last_result: Optional[Dict[str, Any]] = None
+
+    def start(self) -> None:
+        if not self.enabled or self._thread is not None:
+            return
+        self._thread = threading.Thread(
+            target=self._run_forever, name="narrative-synthesis-loop", daemon=True,
+        )
+        self._thread.start()
+        logger.info("[NARRATIVE_SYNTHESIS] Started (interval=%ds)", self.interval_seconds)
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        logger.info("[NARRATIVE_SYNTHESIS] Stop requested")
+
+    def _run_forever(self) -> None:
+        # Initial delay: wait 5 minutes after startup before first run
+        self._stop_event.wait(300)
+        while not self._stop_event.is_set():
+            try:
+                self._last_result = self.run_once()
+            except Exception as e:
+                logger.warning("[NARRATIVE_SYNTHESIS] Error: %s", e)
+            self._stop_event.wait(self.interval_seconds)
+
+    def run_once(self) -> Dict[str, Any]:
+        """Run one narrative synthesis cycle. Returns summary dict."""
+        import json as _json
+        import sqlite3
+        import numpy as np
+
+        result: Dict[str, Any] = {"synthesized": 0, "clusters": 0, "skipped": False}
+
+        # 1. Gather user facts
+        if not os.path.exists(self._memory_db_path):
+            result["skipped"] = True
+            result["reason"] = "no memory DB"
+            return result
+
+        conn = sqlite3.connect(self._memory_db_path, timeout=5)
+        rows = conn.execute("""
+            SELECT memory_id, text, trust, kind, vector_json
+            FROM memories
+            WHERE deprecated = 0
+            AND kind IN ('user_fact', 'preference', 'narrative_note')
+            AND vector_json IS NOT NULL
+            AND text IS NOT NULL
+            AND LENGTH(text) > 10
+            ORDER BY trust DESC
+        """).fetchall()
+        conn.close()
+
+        if len(rows) < self.MIN_FACTS_FOR_SYNTHESIS:
+            result["skipped"] = True
+            result["reason"] = f"only {len(rows)} facts (need {self.MIN_FACTS_FOR_SYNTHESIS})"
+            logger.info("[NARRATIVE_SYNTHESIS] Skipped: %s", result["reason"])
+            return result
+
+        # 2. Cluster by embedding similarity
+        entries = []
+        for mid, text, trust, kind, vj in rows:
+            try:
+                vec = np.array(_json.loads(vj), dtype=np.float32)
+                entries.append({"id": mid, "text": text, "trust": trust, "kind": kind, "vec": vec})
+            except Exception:
+                continue
+
+        clusters = self._cluster_facts(entries)
+        result["clusters"] = len(clusters)
+
+        if not clusters:
+            result["skipped"] = True
+            result["reason"] = "no clusters formed"
+            return result
+
+        # 3. Build prompt
+        clustered_text = self._format_clusters(clusters)
+        prompt = self._SYNTHESIS_PROMPT.format(clustered_facts=clustered_text)
+
+        # 4. Call LLM
+        narratives = self._call_synthesis_llm(prompt)
+        if not narratives:
+            result["skipped"] = True
+            result["reason"] = "LLM returned no narratives"
+            return result
+
+        # 5. Store as narrative_note memories
+        stored = self._store_narratives(narratives)
+        result["synthesized"] = stored
+
+        # 6. Log evolution event
+        try:
+            self.session_db.log_evolution_event(
+                event_type="narrative_synthesis",
+                title=f"Synthesized {stored} narratives from {len(entries)} facts",
+                description=f"Clusters: {len(clusters)}, themes: {[n.get('theme', '?') for n in narratives[:5]]}",
+                source="automated",
+            )
+        except Exception:
+            pass
+
+        logger.info(
+            "[NARRATIVE_SYNTHESIS] Completed: %d narratives from %d facts in %d clusters",
+            stored, len(entries), len(clusters),
+        )
+        return result
+
+    def _cluster_facts(self, entries: list) -> Dict[str, list]:
+        """Group facts into thematic clusters using cosine similarity."""
+        import numpy as np
+
+        if len(entries) < 3:
+            return {"general": entries}
+
+        # Simple greedy clustering: pick a seed, absorb nearby facts
+        vecs = np.array([e["vec"] / (np.linalg.norm(e["vec"]) + 1e-8) for e in entries])
+        assigned = [False] * len(entries)
+        clusters: Dict[str, list] = {}
+        cluster_idx = 0
+
+        for i in range(len(entries)):
+            if assigned[i]:
+                continue
+            cluster = [entries[i]]
+            assigned[i] = True
+            for j in range(i + 1, len(entries)):
+                if assigned[j]:
+                    continue
+                sim = float(np.dot(vecs[i], vecs[j]))
+                if sim > 0.45:  # broad clusters for narrative grouping
+                    cluster.append(entries[j])
+                    assigned[j] = True
+            if len(cluster) >= 2:
+                # Use first fact's text as rough label
+                label = f"cluster_{cluster_idx}"
+                clusters[label] = cluster
+                cluster_idx += 1
+
+        # Collect orphans into "other"
+        orphans = [entries[i] for i in range(len(entries)) if not assigned[i]]
+        if orphans:
+            clusters["other"] = orphans
+
+        return clusters
+
+    def _format_clusters(self, clusters: Dict[str, list]) -> str:
+        """Format clusters for the synthesis prompt."""
+        lines = []
+        for label, facts in clusters.items():
+            lines.append(f"### Theme: {label}")
+            for f in facts:
+                lines.append(f"- [{f['id']}] (trust={f['trust']:.2f}) {f['text'][:300]}")
+            lines.append("")
+        return "\n".join(lines)
+
+    def _call_synthesis_llm(self, prompt: str) -> list:
+        """Call cloud LLM for narrative synthesis. Tries multiple backends."""
+        import json as _json
+
+        response = None
+
+        # Try 1: Cloud feature service (cookie-based Claude)
+        try:
+            from personal_agent.cloud_features import get_cloud_feature_service
+            svc = get_cloud_feature_service()
+            if svc:
+                response = svc.generate_full_response(
+                    system_prompt="You are a narrative synthesis engine. Output only valid JSON.",
+                    user_message=prompt,
+                    max_tokens=1500,
+                )
+        except Exception as e:
+            logger.debug("[NARRATIVE_SYNTHESIS] Cloud service failed: %s", e)
+
+        # Try 2: LiteLLM client (OpenAI/Anthropic key-based)
+        if not response:
+            try:
+                from personal_agent.litellm_client import UnifiedLLMClient
+                from personal_agent.crt_rag import get_runtime_config
+                cfg = get_runtime_config()
+                llm = UnifiedLLMClient(cfg)
+                messages = [
+                    {"role": "system", "content": "You are a narrative synthesis engine. Output only valid JSON."},
+                    {"role": "user", "content": prompt},
+                ]
+                response = llm.chat(messages, max_tokens=1500, temperature=0.4)
+            except Exception as e:
+                logger.debug("[NARRATIVE_SYNTHESIS] LiteLLM failed: %s", e)
+
+        if not response or not response.strip():
+            logger.info("[NARRATIVE_SYNTHESIS] No LLM response from any backend")
+            return []
+
+        # Parse JSON from response (handle markdown fences)
+        try:
+            text = response.strip()
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
+            parsed = _json.loads(text)
+            if isinstance(parsed, list):
+                return parsed
+            return []
+        except Exception as e:
+            logger.warning("[NARRATIVE_SYNTHESIS] JSON parse failed: %s (response: %s)", e, response[:200])
+            return []
+
+    def _store_narratives(self, narratives: list) -> int:
+        """Store synthesized narratives as narrative_note memories, with dedup."""
+        import json as _json
+        import sqlite3
+        import numpy as np
+        import time as _time
+
+        try:
+            from personal_agent.embeddings import encode_text
+        except ImportError:
+            logger.warning("[NARRATIVE_SYNTHESIS] Embeddings not available")
+            return 0
+
+        conn = sqlite3.connect(self._memory_db_path, timeout=5)
+
+        # Load existing narrative_note vectors for dedup
+        existing = conn.execute("""
+            SELECT memory_id, vector_json FROM memories
+            WHERE deprecated = 0 AND kind = 'narrative_note'
+            AND vector_json IS NOT NULL
+        """).fetchall()
+
+        existing_vecs = []
+        for mid, vj in existing:
+            try:
+                v = np.array(_json.loads(vj), dtype=np.float32)
+                n = np.linalg.norm(v)
+                if n > 0:
+                    existing_vecs.append((mid, v / n))
+            except Exception:
+                pass
+
+        stored = 0
+        now = _time.time()
+
+        for narr in narratives:
+            narrative_text = narr.get("narrative", "").strip()
+            theme = narr.get("theme", "unknown").strip()
+            source_ids = narr.get("source_ids", [])
+
+            if not narrative_text or len(narrative_text) < 20:
+                continue
+
+            # Compute embedding
+            try:
+                vec = np.array(encode_text(narrative_text), dtype=np.float32)
+                vec_norm = vec / (np.linalg.norm(vec) + 1e-8)
+            except Exception:
+                continue
+
+            # Dedup check: if sim > 0.85 with existing narrative, deprecate old
+            for ex_mid, ex_vec in existing_vecs:
+                sim = float(np.dot(vec_norm, ex_vec))
+                if sim > 0.85:
+                    conn.execute(
+                        "UPDATE memories SET deprecated=1, deprecation_reason=? WHERE memory_id=?",
+                        (f"narrative_superseded_{now:.0f}", ex_mid),
+                    )
+                    logger.debug("[NARRATIVE_SYNTHESIS] Superseded %s (sim=%.3f)", ex_mid, sim)
+
+            # Compute trust from source memories
+            if source_ids:
+                placeholders = ",".join("?" * len(source_ids))
+                trust_rows = conn.execute(
+                    f"SELECT AVG(trust) FROM memories WHERE memory_id IN ({placeholders})",
+                    source_ids,
+                ).fetchone()
+                trust = float(trust_rows[0]) if trust_rows and trust_rows[0] else 0.65
+            else:
+                trust = 0.65
+
+            # Generate memory ID
+            import uuid
+            mem_id = f"mem_{int(now * 1000)}_{uuid.uuid4().int % 10000}"
+
+            sigma = np.full(384, 0.2, dtype=np.float32).tobytes()
+
+            context = {
+                "synthesis_theme": theme,
+                "source_memory_ids": source_ids,
+                "synthesized_at": now,
+            }
+
+            conn.execute(
+                """INSERT INTO memories (
+                    memory_id, vector_json, text, timestamp, confidence, trust,
+                    source, sse_mode, context_json, deprecated,
+                    extraction_method, temporal_status, domain_tags, authority,
+                    channel, origin, kind, source_kind, compression_tier,
+                    sigma, belnap_state, memory_type, stable_cycles,
+                    contradiction_count, access_count
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?, ?, ?, ?,
+                    ?, ?, ?, ?,
+                    ?, ?
+                )""",
+                (
+                    mem_id, _json.dumps(vec.tolist()), narrative_text, now, 0.80, trust,
+                    "self_reflection", "L", _json.dumps(context), 0,
+                    "none", "active", _json.dumps([theme]), "provisional",
+                    "system", "narrative_synthesis", "narrative_note", "model_output", 2,
+                    sigma, "true", "belief", 0,
+                    0, 0,
+                ),
+            )
+            stored += 1
+            now += 0.001  # ensure unique timestamps
+
+        conn.commit()
+        conn.close()
+        return stored
+
+
 def build_loops(session_db: ThreadSessionDB) -> tuple:
     enabled_reflection = os.getenv("CRT_REFLECTION_LOOP_ENABLED", "true").lower() == "true"
     enabled_personality = os.getenv("CRT_PERSONALITY_LOOP_ENABLED", "true").lower() == "true"
     enabled_self_reply = os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_ENABLED", "true").lower() == "true"
     enabled_heartbeat = os.getenv("CRT_HEARTBEAT_LOOP_ENABLED", "true").lower() == "true"
     enabled_contradiction_scan = os.getenv("CRT_CONTRADICTION_SCAN_LOOP_ENABLED", "true").lower() == "true"
+    enabled_narrative = os.getenv("CRT_NARRATIVE_SYNTHESIS_LOOP_ENABLED", "true").lower() == "true"
     reflection_interval = int(os.getenv("CRT_REFLECTION_LOOP_SECONDS", "900") or 900)
     personality_interval = int(os.getenv("CRT_PERSONALITY_LOOP_SECONDS", "1200") or 1200)
     self_reply_interval = int(os.getenv("CRT_JOURNAL_SELF_REPLY_LOOP_SECONDS", "1800") or 1800)
     heartbeat_interval = int(os.getenv("CRT_HEARTBEAT_LOOP_SECONDS", "1800") or 1800)
     contradiction_scan_interval = int(os.getenv("CRT_CONTRADICTION_SCAN_LOOP_SECONDS", "1200") or 1200)
+    narrative_interval = int(os.getenv("CRT_NARRATIVE_SYNTHESIS_LOOP_SECONDS", "21600") or 21600)
     window = int(os.getenv("CRT_LOOP_WINDOW", "20") or 20)
 
     return (
@@ -1777,4 +2150,5 @@ def build_loops(session_db: ThreadSessionDB) -> tuple:
         SelfReplyLoop(session_db=session_db, interval_seconds=self_reply_interval, enabled=enabled_self_reply),
         HeartbeatLoop(session_db=session_db, interval_seconds=heartbeat_interval, enabled=enabled_heartbeat),
         ContradictionScanLoop(session_db=session_db, interval_seconds=contradiction_scan_interval, enabled=enabled_contradiction_scan),
+        NarrativeSynthesisLoop(session_db=session_db, interval_seconds=narrative_interval, enabled=enabled_narrative),
     )

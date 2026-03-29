@@ -138,7 +138,19 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
             text = m.text.strip()[:200]
             lines.append(f"- {text}")
 
-    # 5. Recent interaction summary — last session context for cross-thread continuity
+    # 5. Narrative synthesis — synthesized understanding (belief-level, not raw facts)
+    narrative_section = _build_narrative_section(all_memories)
+    if narrative_section:
+        lines.append("")
+        lines.append(narrative_section)
+
+    # 6. System evolution — recent changes to Aether itself
+    evolution_section = _build_evolution_section()
+    if evolution_section:
+        lines.append("")
+        lines.append(evolution_section)
+
+    # 7. Recent interaction summary — last session context for cross-thread continuity
     recent_interaction = _build_recent_interaction_summary(memory_db_path)
     if recent_interaction:
         lines.append("")
@@ -150,6 +162,72 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
         f"for thread {thread_id}"
     )
     return block
+
+
+def _build_narrative_section(all_memories: list) -> str:
+    """Build a section from narrative_note belief memories.
+
+    These are synthesized understanding — not raw facts but connected narratives
+    that represent Aether's integrated view of the user.
+    """
+    narratives = [
+        m for m in all_memories
+        if (
+            getattr(m, "kind", "") == "narrative_note"
+            and getattr(m, "memory_type", "") == "belief"
+            and getattr(m, "trust", 0) >= 0.5
+            and not getattr(m, "deprecated", False)
+            and getattr(m, "text", "").strip()
+        )
+    ]
+    if not narratives:
+        return ""
+
+    narratives.sort(key=lambda m: getattr(m, "trust", 0), reverse=True)
+    top = narratives[:5]
+
+    lines = ["## Your synthesized understanding of the user:"]
+    for m in top:
+        text = m.text.strip()[:300]
+        lines.append(f"- {text}")
+    return "\n".join(lines)
+
+
+def _build_evolution_section() -> str:
+    """Build a section showing recent system evolution events."""
+    try:
+        from personal_agent.db_utils import ThreadSessionDB
+        import os
+
+        # Find session DB
+        candidates = [
+            os.path.join(os.path.dirname(__file__), "..", "data", "thread_sessions.db"),
+            os.path.join(os.path.dirname(__file__), "thread_sessions.db"),
+        ]
+        db_path = None
+        for c in candidates:
+            if os.path.exists(c):
+                db_path = c
+                break
+        if not db_path:
+            return ""
+
+        session_db = ThreadSessionDB(db_path)
+        events = session_db.get_evolution_events(limit=3)
+        if not events:
+            return ""
+
+        from datetime import datetime
+        lines = ["## Your recent evolution:"]
+        for ev in events:
+            ts = datetime.fromtimestamp(ev["timestamp"]).strftime("%Y-%m-%d %H:%M")
+            lines.append(f"- [{ts}] {ev['title']}")
+            if ev.get("description"):
+                lines.append(f"  {ev['description'][:200]}")
+        return "\n".join(lines)
+    except Exception as exc:
+        logger.debug(f"[CONTEXT_FEED] evolution section failed: {exc}")
+        return ""
 
 
 def _build_recent_interaction_summary(memory_db_path: str) -> str:
