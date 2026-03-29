@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import sqlite3
 import time
@@ -1572,25 +1572,25 @@ def create_app() -> FastAPI:
 app = create_app()
 
 
-if __name__ == “__main__”:
+if __name__ == "__main__":
     import logging as _logging
     import uvicorn
 
-    # ── Suppress /health from access logs ─────────────────────────
+    # -- Suppress /health from access logs -------------------------
     # Health checks fire every few seconds from Electron + frontend.
     # Without this filter they drown out useful pipeline logs.
     class _HealthFilter(_logging.Filter):
         def filter(self, record: _logging.LogRecord) -> bool:
             msg = record.getMessage()
-            if '”GET /health HTTP' in msg:
+            if '"GET /health HTTP' in msg:
                 return False
             return True
 
-    _logging.getLogger(“uvicorn.access”).addFilter(_HealthFilter())
+    _logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
 
-    # Default to localhost — set CRT_HOST=0.0.0.0 only behind a reverse proxy
-    host = os.getenv(“CRT_HOST”, “127.0.0.1”)
-    port = int(os.getenv(“PORT”, “8000”))
+    # Default to localhost -- set CRT_HOST=0.0.0.0 only behind a reverse proxy
+    host = os.getenv("CRT_HOST", "127.0.0.1")
+    port = int(os.getenv("PORT", "8000"))
     uvicorn.run(app, host=host, port=port)
 
 
