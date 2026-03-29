@@ -9,7 +9,7 @@ const http = require('http');
 const { EventEmitter } = require('events');
 
 const MAX_RESTARTS = 5;
-const HEALTH_INTERVAL_MS = 10000;   // Check every 10s (not 5s)
+const HEALTH_INTERVAL_MS = 30000;   // Check every 30s (was 10s — reduced to cut log spam)
 const HEALTH_TIMEOUT_MS = 5000;     // Allow 5s for response (backend may be busy with Ollama)
 const STARTUP_TIMEOUT_MS = 120000;
 const UNHEALTHY_THRESHOLD = 3;      // Require 3 consecutive failures before marking unhealthy
