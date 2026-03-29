@@ -1662,7 +1662,7 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
         if has_deprecated:
             where_parts.append("(deprecated IS NULL OR deprecated = 0)")
         if has_source:
-            where_parts.append("source IN ('user', 'USER', 'inferred', 'INFERRED')")
+            where_parts.append("source IN ('user', 'USER', 'inferred', 'INFERRED', 'external', 'EXTERNAL')")
         where_sql = " AND ".join(where_parts)
 
         ctx_select = f", {ctx_col}" if ctx_col else ""

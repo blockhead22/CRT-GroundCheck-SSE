@@ -252,6 +252,9 @@ class UnifiedLLMClient:
             "model": resolved,
             "api_base": self.ollama_base_url,
             "timeout": 120,
+            # Ollama defaults to 2048 context tokens which silently drops
+            # conversation history. Set explicitly to use the model's full window.
+            "num_ctx": 8192,
         }
 
     def _is_thinking_model(self, model: str) -> bool:
@@ -438,6 +441,7 @@ class UnifiedLLMClient:
             "options": {
                 "temperature": temperature,
                 "num_predict": effective_max,
+                "num_ctx": 8192,
             },
         }
         if tools:

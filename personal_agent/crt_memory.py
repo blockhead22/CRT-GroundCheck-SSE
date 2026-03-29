@@ -1951,14 +1951,23 @@ class CRTMemorySystem:
             if best_sim < 0:
                 continue  # no valid similarity computed
 
-            # CRT scoring: R = sim * recency * belief_weight * tier_weight
+            # CRT scoring: R = sim * recency * belief_weight * tier_weight * kind_boost
             age = t_now - m.timestamp
             # Phase G3: type-dependent recency via temporal governance
             # Facts/identity decay slowly; events decay fast; preferences moderate.
             recency = _temporal_recency(age / 86400.0, getattr(m, "memory_type", "observation"))
             belief = 0.7 * m.trust + 0.3 * m.confidence
             tier_weight = _TIER_WEIGHT.get(tier, 1.0)
-            score = max(0.0, best_sim) * recency * belief * tier_weight
+            # Kind boost: user facts and preferences outrank generic observations.
+            # Without this, conversational noise ("What's on your mind?") drowns
+            # out structured facts ("Nick lives in Wisconsin") in retrieval.
+            _kind = str(getattr(m, "kind", "") or "").strip().lower()
+            _KIND_BOOST = {
+                "user_fact": 1.4, "preference": 1.3, "narrative_note": 1.25,
+                "identity_constant": 1.5,
+            }
+            kind_boost = _KIND_BOOST.get(_kind, 1.0)
+            score = max(0.0, best_sim) * recency * belief * tier_weight * kind_boost
             memory_dicts.append((m, score))
 
         # Sort by score descending

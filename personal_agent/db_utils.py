@@ -513,6 +513,19 @@ class ThreadSessionDB:
             )
         """)
 
+        # System evolution journal — tracks architectural changes, imports, milestones
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_evolution (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp REAL NOT NULL,
+                event_type TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                source TEXT DEFAULT 'manual',
+                metadata_json TEXT
+            )
+        """)
+
         conn.commit()
         conn.close()
 
@@ -1843,6 +1856,90 @@ class ThreadSessionDB:
             "body": row["body"],
             "meta": meta,
         }
+
+    # ====== System Evolution Journal ======
+
+    def log_evolution_event(
+        self,
+        event_type: str,
+        title: str,
+        description: Optional[str] = None,
+        source: str = "manual",
+        metadata: Optional[dict] = None,
+    ) -> int:
+        """Log a system evolution event (feature, import, config change, milestone)."""
+        import json
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO system_evolution
+            (timestamp, event_type, title, description, source, metadata_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (
+            time.time(), event_type, title, description, source,
+            json.dumps(metadata) if metadata else None,
+        ))
+        eid = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return int(eid) if eid is not None else -1
+
+    def get_evolution_events(self, limit: int = 20, event_type: Optional[str] = None) -> list:
+        """Fetch recent system evolution events (most recent first)."""
+        import json
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        if event_type:
+            cursor.execute("""
+                SELECT event_id, timestamp, event_type, title, description, source, metadata_json
+                FROM system_evolution WHERE event_type = ?
+                ORDER BY timestamp DESC LIMIT ?
+            """, (event_type, limit))
+        else:
+            cursor.execute("""
+                SELECT event_id, timestamp, event_type, title, description, source, metadata_json
+                FROM system_evolution
+                ORDER BY timestamp DESC LIMIT ?
+            """, (limit,))
+        rows = cursor.fetchall()
+        conn.close()
+        out = []
+        for row in rows:
+            meta = None
+            if row["metadata_json"]:
+                try:
+                    meta = json.loads(row["metadata_json"])
+                except Exception:
+                    pass
+            out.append({
+                "event_id": row["event_id"],
+                "timestamp": row["timestamp"],
+                "event_type": row["event_type"],
+                "title": row["title"],
+                "description": row["description"],
+                "source": row["source"],
+                "metadata": meta,
+            })
+        return out
+
+    def get_last_evolution_snapshot(self) -> Optional[dict]:
+        """Get the most recent startup_diff event for comparison."""
+        import json
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT metadata_json FROM system_evolution
+            WHERE event_type = 'startup_diff'
+            ORDER BY timestamp DESC LIMIT 1
+        """)
+        row = cursor.fetchone()
+        conn.close()
+        if row and row["metadata_json"]:
+            try:
+                return json.loads(row["metadata_json"])
+            except Exception:
+                pass
+        return None
 
     # ====== Moltbook-style local forum ======
 

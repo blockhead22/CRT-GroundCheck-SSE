@@ -23,7 +23,13 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:research.google)",
       "WebFetch(domain:arxiv.org)",
-      "mcp__Claude_Preview__preview_start"
+      "mcp__Claude_Preview__preview_start",
+      "WebFetch(domain:dl.acm.org)",
+      "WebFetch(domain:indico.cern.ch)",
+      "WebFetch(domain:fastmachinelearning.org)",
+      "WebFetch(domain:www.researchgate.net)",
+      "WebFetch(domain:www.oliviaweng.com)",
+      "WebFetch(domain:www.keysight.com)"
     ]
   }
 }
