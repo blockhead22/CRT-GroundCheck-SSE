@@ -1351,15 +1351,38 @@ def create_app() -> FastAPI:
         except Exception as e:
             logger.warning(f"[STARTUP] Could not pre-load embedding model: {e}")
         
-        # Pre-warm the default Ollama model so first request doesn't cold-load.
+        # Pre-flight: verify Ollama is running before attempting model load
+        _ollama_available = False
         try:
-            import ollama as _ollama_mod
-            _warm_model = _default_router_model or "qwen3:14b"
-            logger.info("[STARTUP] Pre-warming Ollama model: %s", _warm_model)
-            _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
-            logger.info("[STARTUP] \u2714 Ollama model %s loaded into VRAM", _warm_model)
+            import requests as _req
+            _ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            _resp = _req.get(f"{_ollama_url}/api/tags", timeout=3)
+            if _resp.status_code == 200:
+                _models = [m.get("name", "") for m in (_resp.json() or {}).get("models", [])]
+                _ollama_available = True
+                logger.info("[STARTUP] Ollama is running (%d models available)", len(_models))
+                print(f"[STARTUP] Ollama OK: {len(_models)} models loaded")
+            else:
+                logger.warning("[STARTUP] Ollama responded with HTTP %d", _resp.status_code)
+                print("[STARTUP] WARNING: Ollama responded but returned an error")
         except Exception as e:
-            logger.warning("[STARTUP] Could not pre-warm Ollama model: %s", e)
+            logger.warning("[STARTUP] Ollama is NOT running at %s (%s)", _ollama_url, e)
+            print(f"[STARTUP] WARNING: Ollama is NOT running. Local LLM will be unavailable. Start with: ollama serve")
+
+        # Pre-warm the default Ollama model so first request doesn't cold-load.
+        if _ollama_available:
+            try:
+                import ollama as _ollama_mod
+                _warm_model = _default_router_model or "qwen3:14b"
+                logger.info("[STARTUP] Pre-warming Ollama model: %s", _warm_model)
+                _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
+                logger.info("[STARTUP] Ollama model %s loaded into VRAM", _warm_model)
+                print(f"[STARTUP] Ollama model {_warm_model} loaded into VRAM")
+            except Exception as e:
+                logger.warning("[STARTUP] Could not pre-warm Ollama model: %s", e)
+                print(f"[STARTUP] WARNING: Ollama running but model pre-warm failed: {e}")
+        else:
+            logger.info("[STARTUP] Skipping Ollama pre-warm (not available)")
 
         # Start the (optional) training loop.
         try:
