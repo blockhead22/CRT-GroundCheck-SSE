@@ -598,7 +598,40 @@ class CRTMemorySystem:
             ON trajectory_snapshots(memory_id, timestamp DESC)
         """)
 
+        # Alias protection: route-redundancy embeddings for critical memories.
+        # Separate table — aliases aren't memories (no trust/confidence/kind).
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS memory_aliases (
+                alias_id TEXT PRIMARY KEY,
+                memory_id TEXT NOT NULL,
+                vector_json TEXT NOT NULL,
+                method TEXT NOT NULL,
+                created_at REAL NOT NULL,
+                FOREIGN KEY (memory_id) REFERENCES memories(memory_id)
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_aliases_memory
+            ON memory_aliases(memory_id)
+        """)
+
         conn.commit()
+
+        # Log DB identity on init
+        try:
+            active = cursor.execute(
+                "SELECT COUNT(*) FROM memories WHERE deprecated = 0"
+            ).fetchone()[0]
+            alias_ct = cursor.execute(
+                "SELECT COUNT(*) FROM memory_aliases"
+            ).fetchone()[0]
+            print(
+                "[MEMORY_DB] Initialized: %s (%d active memories, %d aliases)"
+                % (self.db_path, active, alias_ct)
+            )
+        except Exception:
+            print("[MEMORY_DB] Initialized: %s" % self.db_path)
+
         conn.close()
 
         # Migrate existing databases to add deprecated columns if needed
@@ -1777,8 +1810,14 @@ class CRTMemorySystem:
                 },
             )
 
+        # Auto-alias: generate route-redundancy aliases for high-risk memories
+        try:
+            self.maybe_alias_memory(memory)
+        except Exception as e:
+            logger.debug("[ALIAS] Auto-alias failed (non-fatal): %s", e)
+
         return memory
-    
+
     # ========================================================================
     # Trust-Weighted Retrieval
     # ========================================================================
@@ -1970,11 +2009,85 @@ class CRTMemorySystem:
             score = max(0.0, best_sim) * recency * belief * tier_weight * kind_boost
             memory_dicts.append((m, score))
 
+        # ----- Canonical collapse: score alias vectors, merge best per memory_id -----
+        alias_boosted_ids: set = set()
+        try:
+            alias_map = self.load_all_aliases()  # {memory_id: [vec, ...]}
+        except Exception:
+            alias_map = {}
+
+        if alias_map:
+            # Build lookup for memories we already scored (for metadata reuse)
+            mem_by_id: Dict[str, MemoryItem] = {m.memory_id: m for m in memories}
+            # Track best score per memory_id from canonical pass
+            best_scores: Dict[str, float] = {}
+            best_items: Dict[str, MemoryItem] = {}
+            for m, sc in memory_dicts:
+                if m.memory_id not in best_scores or sc > best_scores[m.memory_id]:
+                    best_scores[m.memory_id] = sc
+                    best_items[m.memory_id] = m
+
+            # Score alias vectors using parent memory metadata
+            for mid, alias_vecs in alias_map.items():
+                parent = mem_by_id.get(mid)
+                if parent is None:
+                    continue  # parent was filtered out
+                tier = getattr(parent, 'compression_tier', 2)
+                age = t_now - parent.timestamp
+                recency = _temporal_recency(age / 86400.0, getattr(parent, "memory_type", "observation"))
+                belief = 0.7 * parent.trust + 0.3 * parent.confidence
+                tier_w = _TIER_WEIGHT.get(tier, 1.0)
+                _kind = str(getattr(parent, "kind", "") or "").strip().lower()
+                kind_b = _KIND_BOOST.get(_kind, 1.0)
+                canonical_score = best_scores.get(mid, -1.0)
+
+                for av in alias_vecs:
+                    alias_best_sim = -1.0
+                    for qvec in expanded_vectors:
+                        try:
+                            sim = float(np.dot(qvec, av) / (
+                                np.linalg.norm(qvec) * np.linalg.norm(av) + 1e-8
+                            ))
+                            alias_best_sim = max(alias_best_sim, sim)
+                        except Exception:
+                            continue
+                    if alias_best_sim < 0:
+                        continue
+                    alias_score = max(0.0, alias_best_sim) * recency * belief * tier_w * kind_b
+                    if alias_score > canonical_score and (mid not in best_scores or alias_score > best_scores[mid]):
+                        best_scores[mid] = alias_score
+                        best_items[mid] = parent
+                        alias_boosted_ids.add(mid)
+
+            # Rebuild memory_dicts from merged best-per-id
+            memory_dicts = [(best_items[mid], sc) for mid, sc in best_scores.items()]
+
+            if alias_boosted_ids:
+                print(
+                    "[ALIAS_COLLAPSE] %d aliased memories checked, %d boosted by alias route"
+                    % (len(alias_map), len(alias_boosted_ids))
+                )
+
         # Sort by score descending
         memory_dicts.sort(key=lambda x: x[1], reverse=True)
 
         # Increment access_count for returned memories
         top_k = memory_dicts[:k]
+
+        # --- Retrieval log ---
+        if top_k:
+            lines = [
+                "[RETRIEVAL] query=\"%s\" k=%d results=%d db=%s"
+                % (query[:60], k, len(top_k), self.db_path)
+            ]
+            for idx, (m, sc) in enumerate(top_k[:5]):
+                _k = str(getattr(m, "kind", "") or "").strip().lower()
+                boosted = "yes" if m.memory_id in alias_boosted_ids else "no"
+                lines.append(
+                    "[RETRIEVAL]   #%d score=%.3f kind=%s alias_boost=%s: %s"
+                    % (idx + 1, sc, _k, boosted, (m.text or "")[:70])
+                )
+            print("\n".join(lines))
         try:
             conn = self._get_connection()
             for m, _ in top_k:
@@ -1999,9 +2112,253 @@ class CRTMemorySystem:
         return results[0][0] if results else None
     
     # ========================================================================
+    # Alias Protection (Route Redundancy)
+    # ========================================================================
+
+    # Risk weights — ported from compression_lab/four_arm_experiment.py
+    _KIND_CRITICALITY = {
+        "identity_constant": 1.0, "user_fact": 0.9, "narrative_note": 0.75,
+        "preference": 0.7, "hypothesis": 0.3, "observation": 0.15,
+        "ops": 0.1, "self_model": 0.05,
+    }
+    _SOURCE_RISK = {
+        "USER": 1.0, "EXTERNAL": 0.8, "SYSTEM": 0.3,
+        "FALLBACK": 0.1, "REFLECTION": 0.5,
+    }
+
+    def compute_memory_risk(self, m: MemoryItem) -> float:
+        """Compute retrieval-loss risk score for a memory. Returns [0, 1]."""
+        criticality = self._KIND_CRITICALITY.get(
+            str(getattr(m, "kind", "") or "").strip().lower(), 0.15
+        )
+        trust_w = float(getattr(m, "trust", 0.5))
+        access_w = min(1.0, getattr(m, "access_count", 0) / 15.0)
+        contradiction_w = min(1.0, getattr(m, "contradiction_count", 0) * 0.5)
+        source_w = self._SOURCE_RISK.get(
+            str(getattr(m, "source", "SYSTEM")).upper(), 0.3
+        )
+        stability_discount = min(0.3, getattr(m, "stable_cycles", 0) / 100.0)
+        risk = (
+            0.30 * criticality
+            + 0.25 * trust_w
+            + 0.15 * access_w
+            + 0.10 * contradiction_w
+            + 0.10 * source_w
+            - 0.10 * stability_discount
+        )
+        return max(0.0, min(1.0, risk))
+
+    def get_critical_memories(
+        self, threshold_percentile: float = 97, user_id: Optional[str] = None,
+    ) -> List[MemoryItem]:
+        """Return memories whose risk score is above the given percentile."""
+        all_mems = self._load_all_memories(user_id=user_id)
+        mems = [m for m in all_mems if not m.deprecated]
+        if not mems:
+            return []
+        risks = np.array([self.compute_memory_risk(m) for m in mems])
+        threshold = float(np.percentile(risks, threshold_percentile))
+        return [m for m, r in zip(mems, risks) if r >= threshold]
+
+    # --- Alias generation ---------------------------------------------------
+
+    def generate_aliases(
+        self, memory: MemoryItem, count: int = 2,
+    ) -> List[Dict[str, Any]]:
+        """Generate paraphrase alias embeddings for a memory.
+
+        Methods:
+          terse   — first sentence only
+          question — "What about <key phrase>?"
+          perturb — noise + renormalize (fallback)
+        """
+        from personal_agent.embeddings import encode_text
+
+        text = memory.text or ""
+        aliases: List[Dict[str, Any]] = []
+
+        # 1) Terse: first sentence
+        first_sentence = text.split(".")[0].strip() + "."
+        if len(first_sentence) > 15 and first_sentence != text.strip():
+            try:
+                v = np.array(encode_text(first_sentence), dtype=np.float32)
+                aliases.append({
+                    "vector": v, "method": "terse",
+                })
+            except Exception:
+                pass
+
+        # 2) Question form
+        words = text.split()
+        if len(words) > 3:
+            skip_first = words[0].lower() in (
+                "nick", "nick's", "the", "a", "an", "i", "my",
+            )
+            key_phrase = " ".join(words[1:6] if skip_first else words[:5])
+            question = f"What about {key_phrase}?"
+            try:
+                v = np.array(encode_text(question), dtype=np.float32)
+                aliases.append({
+                    "vector": v, "method": "question",
+                })
+            except Exception:
+                pass
+
+        # 3) Perturb fallback — fill remaining slots
+        canonical = memory.vector
+        while len(aliases) < count and canonical is not None and len(canonical) > 0:
+            rng = np.random.RandomState(
+                hash(memory.memory_id) % (2**31) + len(aliases)
+            )
+            noise = rng.randn(len(canonical)).astype(np.float32) * 0.08
+            perturbed = canonical + noise
+            perturbed = perturbed / (np.linalg.norm(perturbed) + 1e-8)
+            aliases.append({
+                "vector": perturbed, "method": "perturb",
+            })
+
+        return aliases[:count]
+
+    # --- Alias CRUD ---------------------------------------------------------
+
+    def store_aliases(
+        self, memory_id: str, aliases: List[Dict[str, Any]],
+    ) -> int:
+        """Persist alias embeddings. Returns count stored."""
+        conn = self._get_connection()
+        now = time.time()
+        stored = 0
+        for a in aliases:
+            alias_id = f"alias_{memory_id}_{a['method']}_{int(now*1000)}"
+            try:
+                conn.execute(
+                    "INSERT OR REPLACE INTO memory_aliases "
+                    "(alias_id, memory_id, vector_json, method, created_at) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (
+                        alias_id,
+                        memory_id,
+                        json.dumps(a["vector"].tolist()),
+                        a["method"],
+                        now,
+                    ),
+                )
+                stored += 1
+            except Exception as e:
+                logger.debug("[ALIAS] Store error for %s: %s", memory_id, e)
+        conn.commit()
+        conn.close()
+        return stored
+
+    def delete_aliases(self, memory_id: str) -> int:
+        """Delete all aliases for a memory. Returns count deleted."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            "DELETE FROM memory_aliases WHERE memory_id = ?", (memory_id,),
+        )
+        deleted = cursor.rowcount
+        conn.commit()
+        conn.close()
+        return deleted
+
+    def load_all_aliases(self) -> Dict[str, List[np.ndarray]]:
+        """Load all alias vectors grouped by memory_id.
+
+        Returns {memory_id: [vector, ...]}
+        """
+        conn = self._get_connection()
+        rows = conn.execute(
+            "SELECT memory_id, vector_json FROM memory_aliases"
+        ).fetchall()
+        conn.close()
+        result: Dict[str, List[np.ndarray]] = {}
+        for mid, vjson in rows:
+            try:
+                v = np.array(json.loads(vjson), dtype=np.float32)
+                result.setdefault(mid, []).append(v)
+            except Exception:
+                continue
+        return result
+
+    def get_alias_stats(self) -> Dict[str, Any]:
+        """Return alias coverage statistics."""
+        conn = self._get_connection()
+        total_aliases = conn.execute(
+            "SELECT COUNT(*) FROM memory_aliases"
+        ).fetchone()[0]
+        aliased_memories = conn.execute(
+            "SELECT COUNT(DISTINCT memory_id) FROM memory_aliases"
+        ).fetchone()[0]
+        by_method = {}
+        for method, cnt in conn.execute(
+            "SELECT method, COUNT(*) FROM memory_aliases GROUP BY method"
+        ).fetchall():
+            by_method[method] = cnt
+        conn.close()
+        return {
+            "total_aliases": total_aliases,
+            "aliased_memories": aliased_memories,
+            "by_method": by_method,
+        }
+
+    # --- Auto-alias + backfill ----------------------------------------------
+
+    # Kinds that always get aliases on store (high-value, route-mismatch-prone)
+    _ALIAS_AUTO_KINDS = {"user_fact", "identity_constant", "preference"}
+
+    def maybe_alias_memory(self, memory: MemoryItem) -> int:
+        """Generate aliases if memory kind/risk warrants it. Returns aliases created."""
+        kind = str(getattr(memory, "kind", "") or "").strip().lower()
+        src = getattr(memory, "source", None)
+        src_val = getattr(src, "value", str(src)).lower() if src else ""
+        # Auto-alias high-value kinds from user/external source
+        if kind not in self._ALIAS_AUTO_KINDS or src_val not in ("user", "external"):
+            return 0
+        aliases = self.generate_aliases(memory, count=2)
+        if not aliases:
+            return 0
+        stored = self.store_aliases(memory.memory_id, aliases)
+        if stored:
+            logger.info(
+                "[ALIAS] Generated %d aliases for %s (risk=%.2f, kind=%s)",
+                stored, memory.memory_id, risk,
+                getattr(memory, "kind", "unknown"),
+            )
+        return stored
+
+    def backfill_aliases(
+        self, user_id: Optional[str] = None, threshold_percentile: float = 97,
+    ) -> Dict[str, Any]:
+        """Generate aliases for all critical memories that don't have them yet."""
+        critical = self.get_critical_memories(
+            threshold_percentile=threshold_percentile, user_id=user_id,
+        )
+        # Find which already have aliases
+        existing = self.load_all_aliases()
+        new_count = 0
+        skipped = 0
+        for m in critical:
+            if m.memory_id in existing:
+                skipped += 1
+                continue
+            aliases = self.generate_aliases(m, count=2)
+            stored = self.store_aliases(m.memory_id, aliases)
+            new_count += stored
+            if stored:
+                logger.info(
+                    "[ALIAS] Backfill: %d aliases for %s (risk=%.2f)",
+                    stored, m.memory_id, self.compute_memory_risk(m),
+                )
+        return {
+            "critical_count": len(critical),
+            "new_aliases": new_count,
+            "skipped_existing": skipped,
+        }
+
+    # ========================================================================
     # Trust Evolution
     # ========================================================================
-    
+
     def is_memory_contested(self, memory_id: str) -> bool:
         """
         Check if a memory is referenced in an open contradiction.

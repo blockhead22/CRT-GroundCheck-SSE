@@ -1398,3 +1398,54 @@ def variance_snapshots(
     except Exception as e:
         logger.warning(f"[VARIANCE] snapshots error: {e}")
         return []
+
+
+# ── Alias Protection ────────────────────────────────────────────────────
+
+
+@router.get("/api/memory/alias-stats")
+async def alias_stats(request: Request, thread_id: str = Query(default="")):
+    """Return alias protection coverage statistics."""
+    engine = _get_engine(request, thread_id)
+    try:
+        stats = engine.memory.get_alias_stats()
+        return stats
+    except Exception as e:
+        logger.warning("[ALIAS] stats error: %s", e)
+        return {"total_aliases": 0, "aliased_memories": 0, "by_method": {}}
+
+
+@router.get("/api/memory/aliases")
+async def list_aliases(
+    request: Request,
+    memory_id: str = Query(...),
+    thread_id: str = Query(default=""),
+):
+    """List alias embeddings for a specific memory."""
+    engine = _get_engine(request, thread_id)
+    conn = engine.memory._get_connection()
+    rows = conn.execute(
+        "SELECT alias_id, method, created_at FROM memory_aliases WHERE memory_id = ?",
+        (memory_id,),
+    ).fetchall()
+    conn.close()
+    return [
+        {"alias_id": r[0], "method": r[1], "created_at": r[2]}
+        for r in rows
+    ]
+
+
+@router.post("/api/memory/aliases/backfill")
+async def backfill_aliases(
+    request: Request,
+    thread_id: str = Query(default=""),
+    threshold_percentile: float = Query(default=97),
+):
+    """Generate aliases for all critical memories that don't have them yet."""
+    engine = _get_engine(request, thread_id)
+    user_id = resolve_user_id(request)
+    result = engine.memory.backfill_aliases(
+        user_id=user_id,
+        threshold_percentile=threshold_percentile,
+    )
+    return result

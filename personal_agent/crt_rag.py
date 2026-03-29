@@ -1166,6 +1166,15 @@ class CRTEnhancedRAG:
 
         filtered.sort(key=lambda item: item[1], reverse=True)
         top_results = filtered[:k]
+
+        # RAG-level retrieval summary
+        _n_topic = sum(1 for m, _ in top_results if m.memory_id in _topic_memory_ids) if _topic_memory_ids else 0
+        _n_domain = 0  # counted inline above, not tracked separately
+        print(
+            "[RETRIEVAL_RAG] query=\"%s\" raw=%d filtered=%d final=%d boosts=[topic:%d]"
+            % (query[:60], len(retrieved), len(filtered), len(top_results), _n_topic)
+        )
+
         if top_results:
             self._record_memory_usage(
                 top_results,

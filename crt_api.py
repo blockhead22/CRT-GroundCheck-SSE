@@ -1195,10 +1195,10 @@ def create_app() -> FastAPI:
             if _shared_memory_enabled:
                 memory_db = "personal_agent/crt_memory_shared.db"
                 ledger_db = "personal_agent/crt_ledger_shared.db"
-                logger.info(f"[API] Thread {tid} using shared memory databases")
             else:
                 memory_db = f"personal_agent/crt_memory_{tid}.db"
                 ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+            print("[ENGINE] Thread %s -> memory=%s" % (tid, memory_db))
 
             # Initialize engine and inject LLM client for hybrid extraction
             llm_client = get_llm_client()
