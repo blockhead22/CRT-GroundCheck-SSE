@@ -1693,9 +1693,44 @@ class CRTEnhancedRAG:
             }
             profile_updates.append(update)
             try:
+                # Look up real memory IDs for this slot so BDG can cascade
+                _old_mem_id = f"profile_{slot}_old"  # fallback synthetic
+                _new_mem_id = f"profile_{slot}_new"
+                _old_val_norm = str(replacement.get("old") or "").strip().lower()
+                _new_val_norm = str(replacement.get("new") or "").strip().lower()
+                try:
+                    _conn_pid = self.memory._get_connection()
+                    _cur_pid = _conn_pid.cursor()
+                    # Find old value's memory
+                    if _old_val_norm:
+                        _cur_pid.execute("""
+                            SELECT mf.memory_id FROM memory_facts mf
+                            JOIN memories m ON mf.memory_id = m.memory_id
+                            WHERE mf.slot = ? AND LOWER(mf.value) = ? AND m.deprecated = 0
+                            ORDER BY m.trust DESC LIMIT 1
+                        """, (slot, _old_val_norm))
+                        _old_row = _cur_pid.fetchone()
+                        if _old_row:
+                            _old_mem_id = _old_row[0]
+                    # Find new value's memory (most recent)
+                    if _new_val_norm:
+                        _cur_pid.execute("""
+                            SELECT mf.memory_id FROM memory_facts mf
+                            JOIN memories m ON mf.memory_id = m.memory_id
+                            WHERE mf.slot = ? AND LOWER(mf.value) = ? AND m.deprecated = 0
+                            ORDER BY m.timestamp DESC LIMIT 1
+                        """, (slot, _new_val_norm))
+                        _new_row = _cur_pid.fetchone()
+                        if _new_row:
+                            _new_mem_id = _new_row[0]
+                    _conn_pid.close()
+                    print(f"[PROFILE] Resolved memory IDs: old={_old_mem_id}, new={_new_mem_id}")
+                except Exception as _pid_err:
+                    print(f"[PROFILE] Failed to resolve memory IDs (using synthetic): {_pid_err}")
+
                 profile_contra = self._record_and_cascade(
-                    old_memory_id=f"profile_{slot}_old",
-                    new_memory_id=f"profile_{slot}_new",
+                    old_memory_id=_old_mem_id,
+                    new_memory_id=_new_mem_id,
                     drift_mean=0.8,
                     confidence_delta=0.0,
                     old_text=f"FACT: {slot} = {replacement['old']}",
@@ -1704,11 +1739,11 @@ class CRTEnhancedRAG:
                     summary=f"Profile update: {slot} changed from '{replacement['old']}' to '{replacement['new']}'",
                     thread_id=thread_id,
                 )
-                self.ledger.resolve_contradiction(
-                    profile_contra.ledger_id,
-                    method="profile_sync_audit",
-                    new_status=ContradictionStatus.RESOLVED,
-                )
+                # NOTE: Previously auto-resolved here with profile_sync_audit.
+                # Removed to let contradictions stay OPEN in the ledger for
+                # user visibility. The user can resolve via /api/ledger/resolve.
+                print(f"[PROFILE] Contradiction logged (OPEN): {profile_contra.ledger_id} — "
+                      f"{slot}: '{replacement['old']}' → '{replacement['new']}'")
             except Exception as ledger_err:
                 logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
         return profile_updates
@@ -1765,15 +1800,53 @@ class CRTEnhancedRAG:
                 fact_store_updated = bool(
                     fact_result.get("extracted") or fact_result.get("updated")
                 )
+
+            # ── PROFILE TRUST GATE ──────────────────────────────────────
+            # Before updating the profile, check if the new facts conflict
+            # with high-trust memories. If so, block the profile update to
+            # prevent the profile from drifting away from verified beliefs.
+            _profile_blocked_slots = set()
             try:
-                profile_result = self.user_profile.update_from_text(
-                    text,
-                    thread_id=str(thread_id or "default"),
-                ) or {}
-                profile_updates = self._record_profile_replacements(
-                    profile_result=profile_result,
-                    thread_id=thread_id,
-                )
+                _new_facts = extract_fact_slots(text) or {}
+                for _pslot, _pval in _new_facts.items():
+                    if _pslot in ("assistant_name",):
+                        continue
+                    _new_val_lower = str(_pval).strip().lower()
+                    # Look up the highest-trust memory for this slot
+                    _conn_pg = self.memory._get_connection()
+                    _cur_pg = _conn_pg.cursor()
+                    _cur_pg.execute("""
+                        SELECT mf.value, m.trust, m.memory_id
+                        FROM memory_facts mf
+                        JOIN memories m ON mf.memory_id = m.memory_id
+                        WHERE mf.slot = ? AND m.deprecated = 0
+                        ORDER BY m.trust DESC LIMIT 1
+                    """, (_pslot,))
+                    _pg_row = _cur_pg.fetchone()
+                    _conn_pg.close()
+                    if _pg_row:
+                        _existing_val = str(_pg_row[0]).strip().lower()
+                        _existing_trust = _pg_row[1]
+                        if _existing_trust > 0.8 and _existing_val != _new_val_lower:
+                            _profile_blocked_slots.add(_pslot)
+                            print(f"[PROFILE_GATE] BLOCKED: {_pslot}={_pval} conflicts with "
+                                  f"memory {_pslot}={_pg_row[0]} at trust {_existing_trust:.2f} "
+                                  f"({_pg_row[2]})")
+            except Exception as _pg_err:
+                print(f"[PROFILE_GATE] Error checking trust gate: {_pg_err}")
+
+            try:
+                if _profile_blocked_slots:
+                    print(f"[PROFILE_GATE] Skipping profile update — blocked slots: {_profile_blocked_slots}")
+                else:
+                    profile_result = self.user_profile.update_from_text(
+                        text,
+                        thread_id=str(thread_id or "default"),
+                    ) or {}
+                    profile_updates = self._record_profile_replacements(
+                        profile_result=profile_result,
+                        thread_id=thread_id,
+                    )
             except Exception as e:
                 logger.error(f"[PROFILE_DEBUG] Failed to update user profile: {e}", exc_info=True)
 
@@ -4387,14 +4460,11 @@ class CRTEnhancedRAG:
                                 summary=f"Profile update: {slot} changed from '{replacement['old']}' to '{replacement['new']}'",
                                 thread_id=thread_id,
                             )
-                            self.ledger.resolve_contradiction(
-                                profile_contra.ledger_id,
-                                method="profile_sync_audit",
-                                new_status=ContradictionStatus.RESOLVED,
-                            )
+                            # NOTE: No longer auto-resolving. Contradiction stays OPEN.
+                            print(f"[PROFILE] Contradiction logged (OPEN): {profile_contra.ledger_id}")
                         except Exception as ledger_err:
                             logger.warning(f"[PROFILE] Failed to log contradiction to ledger: {ledger_err}")
-                
+
                 logger.info(f"[PROFILE_DEBUG] OK Profile update completed successfully")
             except Exception as e:
                 logger.error(f"[PROFILE_DEBUG] âŒ Failed to update user profile: {e}", exc_info=True)

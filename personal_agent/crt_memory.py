@@ -800,6 +800,12 @@ class CRTMemorySystem:
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_belnap_state ON memories(belnap_state)")
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_memories_memory_type ON memories(memory_type)")
 
+        # Temporal tracking: last_accessed and last_updated timestamps
+        if "last_accessed" not in columns:
+            logger.info(f"[MIGRATION] Adding last_accessed/last_updated to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN last_accessed REAL")
+            cursor.execute("ALTER TABLE memories ADD COLUMN last_updated REAL")
+
         # --- belief_speech table migrations ---
         cursor.execute("PRAGMA table_info(belief_speech)")
         bs_columns = [row[1] for row in cursor.fetchall()]
@@ -1875,7 +1881,21 @@ class CRTMemorySystem:
         
         Returns list of (memory, score) tuples.
         """
-        query_vector = encode_vector(query)
+        # Strip "Aether," prefix from queries to prevent the prefix from
+        # inflating similarity between unrelated queries that both start with "Aether"
+        _QUERY_PREFIXES = ("aether, ", "aether,", "aether ", "hey aether, ", "hey aether ",
+                           "hi aether, ", "hi aether ")
+        _query_clean = query
+        _q_lower = query.lower().strip()
+        for _pfx in _QUERY_PREFIXES:
+            if _q_lower.startswith(_pfx):
+                _stripped = query[len(_pfx):].strip()
+                if _stripped:  # don't return empty
+                    _query_clean = _stripped
+                    print(f"[RETRIEVAL] Stripped prefix: \"{query[:30]}\" → \"{_query_clean[:30]}\"")
+                break
+
+        query_vector = encode_vector(_query_clean)
 
         # Load all memories — scope to user when available (fall back to context var)
         effective_user_id = user_id or _request_user_id.get(None)
@@ -2110,11 +2130,13 @@ class CRTMemorySystem:
                 )
             print("\n".join(lines))
         try:
+            import time as _ret_time
+            _now_ts = _ret_time.time()
             conn = self._get_connection()
             for m, _ in top_k:
                 conn.execute(
-                    "UPDATE memories SET access_count = COALESCE(access_count, 0) + 1 WHERE memory_id = ?",
-                    (m.memory_id,),
+                    "UPDATE memories SET access_count = COALESCE(access_count, 0) + 1, last_accessed = ? WHERE memory_id = ?",
+                    (_now_ts, m.memory_id),
                 )
             conn.commit()
             conn.close()
@@ -2766,10 +2788,10 @@ class CRTMemorySystem:
             conn.close()
             return
         
-        # Update trust
+        # Update trust + last_updated timestamp
         cursor.execute(
-            "UPDATE memories SET trust = ? WHERE memory_id = ?",
-            (actual_new_trust, memory_id)
+            "UPDATE memories SET trust = ?, last_updated = ? WHERE memory_id = ?",
+            (actual_new_trust, time.time(), memory_id)
         )
         
         # Log change (if not already logged above for contested case)

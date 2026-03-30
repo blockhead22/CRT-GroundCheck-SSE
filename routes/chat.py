@@ -3360,6 +3360,11 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     "  running systems that processed this query before it reached you.",
                     "- Respond in plain text. Do not wrap your response in JSON or code blocks.",
                 ]
+                # Inject current time so the LLM knows when this conversation is happening
+                import datetime as _dt_sys
+                _now = _dt_sys.datetime.now()
+                _pc_sys_parts.append(f"\nCurrent date and time: {_now.strftime('%A, %B %d, %Y at %I:%M %p')}")
+
                 if _pc_memories:
                     _mem_lines = []
                     for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
