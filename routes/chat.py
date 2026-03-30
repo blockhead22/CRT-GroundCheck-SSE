@@ -5853,6 +5853,159 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.warning("[STREAM] Agent tool loop failed, falling back to legacy path: %s", _al_err, exc_info=True)
                     # Fall through to legacy path
 
+            # ── COOKIE ORCHESTRATOR PATH: Complex multi-step tasks ─────────
+            # Uses Cookie Opus as the brain for planning/reasoning,
+            # local tools for execution. Sandboxed file writes.
+            _ORCHESTRATOR_INTENTS = {"multi_step", "multi_intent", "imperative_task"}
+
+            # Keyword detection for messages that need tools but got classified as conversational
+            _ORCHESTRATOR_KEYWORDS = (
+                "read the file", "read file", "read the code", "summarize the",
+                "analyze the", "search for", "find the", "look at the code",
+                "write a script", "write a function", "create a file",
+                "debug", "fix the bug", "run the", "execute",
+                "what classes", "what functions", "list the files",
+                "read the paper", "read the cascade", "cascade paper",
+            )
+            _orch_msg = str(req.message or "")
+            _msg_lower = _orch_msg.lower()
+            _keywords_match = any(kw in _msg_lower for kw in _ORCHESTRATOR_KEYWORDS)
+
+            _use_orchestrator = (
+                not _user_confirmed
+                and (
+                    # Path 1: Intent router classified as complex task
+                    (
+                        _task_intent is not None
+                        and _task_intent.route == "task"
+                        and _task_intent.intent_type in _ORCHESTRATOR_INTENTS
+                    )
+                    # Path 2: Keywords suggest tool use even if classified conversational
+                    or _keywords_match
+                    # Path 3: Very long message likely needs multi-step processing
+                    or len(_orch_msg) > 300
+                )
+            )
+            if _use_orchestrator:
+                _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type})")
+                try:
+                    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain
+
+                    _orch_engine = request.app.state.get_engine(req.thread_id)
+                    _orch = Orchestrator(
+                        brain=CookieBrain(),
+                        memory_system=_orch_engine.memory,
+                        max_iterations=10,
+                    )
+
+                    # Load conversation history for multi-turn context
+                    _orch_history = []
+                    try:
+                        _orch_recent = _load_recent_history_messages(
+                            _session_db, req.thread_id, window=6)
+                        _orch_history = [
+                            f"{'User' if m['role'] == 'user' else 'Aether'}: {m['content'][:300]}"
+                            for m in _orch_recent
+                        ]
+                        if _orch_history:
+                            _safe_print(f"[ORCHESTRATOR] Loaded {len(_orch_history)} history messages")
+                    except Exception as _hist_err:
+                        _safe_print(f"[ORCHESTRATOR] History load failed (non-fatal): {_hist_err}")
+
+                    _orch_answer = ""
+                    _orch_steps = []
+
+                    for _orch_event in _orch.run(_orch_msg, conversation_history=_orch_history or None):
+                        _etype = _orch_event.get("type", "")
+
+                        if _etype == "thinking":
+                            yield _sse({
+                                "type": "agent_thinking_token",
+                                "content": _orch_event.get("content", ""),
+                                "metadata": {"step": "orchestrator_thinking"},
+                            })
+
+                        elif _etype == "tool_call":
+                            _tool_name = _orch_event.get("tool", "")
+                            _tool_args = _orch_event.get("args", {})
+                            _tool_result = _orch_event.get("result", "")
+                            _tool_status = _orch_event.get("status", "ok")
+                            yield _sse({
+                                "type": "tool_start",
+                                "content": f"Running {_tool_name}...",
+                                "metadata": {"tool_name": _tool_name, "input": _tool_args},
+                            })
+                            yield _sse({
+                                "type": "tool_result",
+                                "content": _tool_result[:500],
+                                "metadata": {
+                                    "tool_name": _tool_name,
+                                    "status": _tool_status,
+                                    "step_index": len(_orch_steps),
+                                },
+                            })
+                            _orch_steps.append({
+                                "tool": _tool_name,
+                                "args": _tool_args,
+                                "status": _tool_status,
+                            })
+
+                        elif _etype == "response":
+                            _orch_answer = _orch_event.get("content", "")
+                            yield _sse({
+                                "type": "token",
+                                "content": _orch_answer,
+                            })
+
+                        elif _etype == "ask_user":
+                            yield _sse({
+                                "type": "agent_checkpoint",
+                                "content": _orch_event.get("content", ""),
+                                "metadata": {
+                                    "requires_confirmation": True,
+                                    "checkpoint_tier": "medium",
+                                },
+                            })
+                            break
+
+                        elif _etype == "done":
+                            pass  # handled below
+
+                    # Store in conversation history for multi-turn continuity
+                    try:
+                        _session_db.record_query(
+                            thread_id=req.thread_id,
+                            query_text=_orch_msg,
+                            response_text=_orch_answer,
+                        )
+                        _safe_print(f"[ORCHESTRATOR] Stored in conversation history")
+                    except Exception as _store_err:
+                        _safe_print(f"[ORCHESTRATOR] Failed to store history (non-fatal): {_store_err}")
+
+                    # Emit final done event
+                    _safe_print(f"[ORCHESTRATOR] Complete: {len(_orch_steps)} steps, answer_len={len(_orch_answer)}")
+                    yield _sse({
+                        "type": "done",
+                        "content": _orch_answer,
+                        "metadata": {
+                            "tool_calls": _orch_steps,
+                            "agent_loop": True,
+                            "orchestrator": True,
+                            "tools_executed": len(_orch_steps) > 0,
+                            "response_type": "task",
+                            "gates_passed": True,
+                            "generation_source": "cookie_orchestrator",
+                        },
+                    })
+                    return
+
+                except Exception as _orch_err:
+                    _safe_print(f"[ORCHESTRATOR] >>> EXCEPTION: {_orch_err}")
+                    import traceback
+                    traceback.print_exc()
+                    logger.warning("[STREAM] Orchestrator failed, falling back to legacy path: %s", _orch_err)
+                    # Fall through to legacy path
+
             # ── TASK ROUTE: URL fetch / instruction execution ─────────────
             _safe_print("[AGENT_LOOP_GATE] >>> LEGACY PATH (agent loop was skipped or failed)")
             if _task_intent is not None and _task_intent.route == "task":

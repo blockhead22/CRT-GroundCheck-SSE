@@ -276,11 +276,39 @@ Rules:
 # Tool executor (standalone, wraps existing infrastructure)
 # ---------------------------------------------------------------------------
 
+PROJECT_ROOT = "D:/AI_round2"
+SANDBOX_DIR = os.path.join(PROJECT_ROOT, "workspace")
+os.makedirs(SANDBOX_DIR, exist_ok=True)
+
+# Dangerous shell patterns to block
+_BLOCKED_COMMANDS = ["rm -rf", "del /s", "format ", "rmdir /s", "rd /s",
+                     "shutdown", "reboot", "> /dev/", "mkfs", "dd if="]
+
+
+def _is_inside_sandbox(path: str) -> bool:
+    """Check if a path resolves inside the sandbox directory."""
+    resolved = os.path.realpath(os.path.abspath(path))
+    sandbox_resolved = os.path.realpath(os.path.abspath(SANDBOX_DIR))
+    return resolved.startswith(sandbox_resolved)
+
+
+def _is_inside_project(path: str) -> bool:
+    """Check if a path resolves inside the project root (for reads)."""
+    resolved = os.path.realpath(os.path.abspath(path))
+    root_resolved = os.path.realpath(os.path.abspath(PROJECT_ROOT))
+    return resolved.startswith(root_resolved)
+
+
 def execute_tool(tool_name: str, args: Dict[str, Any],
                  memory_system=None) -> Dict[str, Any]:
     """Execute a tool and return the result.
 
-    Reuses existing tool implementations where possible.
+    SANDBOX RULES:
+    - file_read, dir_list, search_code: allowed anywhere inside PROJECT_ROOT
+    - file_write: ONLY inside SANDBOX_DIR (workspace/)
+    - shell_exec: cwd set to SANDBOX_DIR, dangerous commands blocked
+    - memory_recall, web_search: no filesystem access, always safe
+
     Returns {"content": str, "status": "ok"|"error"}.
     """
     t0 = time.perf_counter()
@@ -290,23 +318,33 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
         if tool_name == "file_read":
             path = args.get("path", "")
             if not os.path.isabs(path):
-                path = os.path.join("D:/AI_round2", path)
-            with open(path, "r", encoding="utf-8", errors="replace") as f:
-                content = f.read()
-            # Truncate large files
-            if len(content) > 15000:
-                content = content[:15000] + f"\n\n... [truncated, {len(content)} total chars]"
-            result["content"] = content
+                path = os.path.join(PROJECT_ROOT, path)
+            if not _is_inside_project(path):
+                result["content"] = f"[SANDBOX] BLOCKED: file_read outside project root: {path}"
+                result["status"] = "error"
+                print(f"  [SANDBOX] BLOCKED file_read: {path}")
+            else:
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+                if len(content) > 15000:
+                    content = content[:15000] + f"\n\n... [truncated, {len(content)} total chars]"
+                result["content"] = content
 
         elif tool_name == "file_write":
             path = args.get("path", "")
             content = args.get("content", "")
             if not os.path.isabs(path):
-                path = os.path.join("D:/AI_round2", path)
-            os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-            result["content"] = f"Written {len(content)} chars to {path}"
+                path = os.path.join(PROJECT_ROOT, path)
+            if not _is_inside_sandbox(path):
+                result["content"] = (f"[SANDBOX] BLOCKED: file_write only allowed inside {SANDBOX_DIR}. "
+                                     f"Attempted: {path}")
+                result["status"] = "error"
+                print(f"  [SANDBOX] BLOCKED file_write: {path}")
+            else:
+                os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(content)
+                result["content"] = f"Written {len(content)} chars to {path}"
 
         elif tool_name == "dir_list":
             path = args.get("path", ".")
@@ -362,15 +400,24 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
 
         elif tool_name == "shell_exec":
             command = args.get("command", "")
-            import subprocess
-            proc = subprocess.run(
-                command, shell=True, capture_output=True, text=True,
-                timeout=30, cwd="D:/AI_round2",
-            )
-            output = proc.stdout[:3000]
-            if proc.stderr:
-                output += f"\n[stderr] {proc.stderr[:1000]}"
-            result["content"] = output or "(no output)"
+            cmd_lower = command.lower()
+            # Block dangerous commands
+            for blocked in _BLOCKED_COMMANDS:
+                if blocked in cmd_lower:
+                    result["content"] = f"[SANDBOX] BLOCKED dangerous command: {command}"
+                    result["status"] = "error"
+                    print(f"  [SANDBOX] BLOCKED shell_exec: {command}")
+                    break
+            else:
+                import subprocess
+                proc = subprocess.run(
+                    command, shell=True, capture_output=True, text=True,
+                    timeout=30, cwd=SANDBOX_DIR,
+                )
+                output = proc.stdout[:3000]
+                if proc.stderr:
+                    output += f"\n[stderr] {proc.stderr[:1000]}"
+                result["content"] = output or "(no output)"
 
         else:
             result["content"] = f"Unknown tool: {tool_name}"
@@ -494,19 +541,28 @@ class Orchestrator:
         for iteration in range(self.max_iterations):
             print(f"\n--- Iteration {iteration + 1}/{self.max_iterations} ---")
 
-            # Build context and call brain
+            # Build context and call brain (with retry on empty response)
             context = self._build_context(state, last_result)
-            brain_result = self.brain.complete(
-                system=ORCHESTRATOR_SYSTEM,
-                prompt=context,
-                max_tokens=800,
-            )
+            brain_result = None
+            for _retry in range(3):
+                brain_result = self.brain.complete(
+                    system=ORCHESTRATOR_SYSTEM,
+                    prompt=context,
+                    max_tokens=800,
+                )
+                if brain_result.content and brain_result.content.strip():
+                    break
+                if brain_result.error and "timeout" not in str(brain_result.error).lower():
+                    break
+                print(f"  [BRAIN] Empty/timeout response, retrying ({_retry + 1}/3)...")
+                time.sleep(1)
+
             state.total_cookie_ms += brain_result.latency_ms
 
             raw = brain_result.content or ""
             print(f"  [BRAIN:{brain_result.provider}] ({brain_result.latency_ms:.0f}ms) {raw[:200]}")
 
-            if brain_result.error:
+            if brain_result.error and not raw:
                 print(f"  [BRAIN ERROR] {brain_result.error}")
                 yield {"type": "response", "content": f"Orchestrator error: {brain_result.error}"}
                 break
