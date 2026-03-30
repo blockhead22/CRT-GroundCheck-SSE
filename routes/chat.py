@@ -2180,6 +2180,15 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         from personal_agent.crt_memory import _request_user_id
         _request_user_id.set(uid)
 
+    # --- Early diagnostic: log generation mode at pipeline entry ---
+    try:
+        import auth as _auth_early
+        _uid_early = int(uid) if uid else 1
+        _gen_mode_early = str(_auth_early.get_user_setting(_uid_early, "generation_mode", "cloud_openai") or "cloud_openai").strip()
+        _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" generation_mode={_gen_mode_early} uid={_uid_early} thread={req.thread_id}")
+    except Exception as _early_err:
+        _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" (settings read failed: {_early_err})")
+
     engine = get_engine(req.thread_id)
     runtime_config = get_runtime_config()
     control_state = ResponseControlState(request_text=str(req.message or ""))

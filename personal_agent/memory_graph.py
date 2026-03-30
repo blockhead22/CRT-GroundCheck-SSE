@@ -632,6 +632,260 @@ class BeliefDependencyGraph:
 
 
 # ---------------------------------------------------------------------------
+# Live BDG — Production singleton for cascade propagation
+# ---------------------------------------------------------------------------
+
+import threading as _bdg_threading
+
+CASCADE_TRUST_FACTOR = 0.3   # impact * this = trust reduction (conservative)
+SIMILARITY_THRESHOLD = 0.5   # cosine sim threshold for RELATED_TO edges
+LIPSCHITZ_CONSTANT = 0.9     # geometric damping per hop
+CASCADE_THRESHOLD = 0.01     # minimum impact to continue propagation
+
+
+class LiveBDG:
+    """Production wrapper around BeliefDependencyGraph.
+
+    Lazy-builds from the live memory DB on first use.
+    Incrementally updated as memories and contradictions are added.
+    Thread-safe via RLock.
+    """
+
+    def __init__(self, memory_system, ledger):
+        self.memory_system = memory_system
+        self.ledger = ledger
+        self.bdg = BeliefDependencyGraph(cascade_threshold=CASCADE_THRESHOLD)
+        self._built = False
+        self._lock = _bdg_threading.RLock()
+        self._vectors: Dict[str, object] = {}  # memory_id -> np.ndarray
+        print("[BDG] LiveBDG singleton created (lazy build on first use)")
+
+    def ensure_built(self):
+        """Lazy-build the full BDG from production data. Idempotent."""
+        with self._lock:
+            if self._built:
+                return
+
+            import json as _json
+            import time as _time
+            t0 = _time.perf_counter()
+
+            # Load all active memories
+            try:
+                conn = self.memory_system._get_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT memory_id, vector_json, text, memory_type,
+                           belnap_state, trust, sigma
+                    FROM memories
+                    WHERE deprecated = 0 AND vector_json IS NOT NULL
+                """)
+                rows = cursor.fetchall()
+                conn.close()
+            except Exception as e:
+                print(f"[BDG] ERROR loading memories: {e}")
+                return
+
+            if not HAS_NUMPY:
+                print("[BDG] ERROR: numpy not available, cannot build BDG")
+                return
+
+            # Parse embeddings and add nodes
+            ids = []
+            vectors = []
+            skipped = 0
+
+            for row in rows:
+                mid, vec_json, text, mtype, belnap, trust, sigma_blob = row
+                try:
+                    vec = np.array(_json.loads(vec_json), dtype=np.float32)
+                    if len(vec) == 0:
+                        skipped += 1
+                        continue
+                except Exception:
+                    skipped += 1
+                    continue
+
+                mtype_clean = mtype if mtype in ("fact", "preference", "event", "belief", "identity") else "belief"
+
+                # Add node to BDG graph directly (lightweight, no MemorySplat needed for edges)
+                self.bdg.graph.add_node(mid,
+                    text=(text or "")[:200],
+                    memory_type=mtype_clean,
+                    belnap_state=belnap or "true",
+                    trust=trust or 0.5,
+                    alpha=trust or 0.5,
+                )
+                self._vectors[mid] = vec
+                ids.append(mid)
+                vectors.append(vec)
+
+            node_count = len(ids)
+            print(f"[BDG] Loaded {node_count} nodes ({skipped} skipped)")
+
+            if node_count == 0:
+                self._built = True
+                return
+
+            # Compute pairwise cosine similarity (vectorized)
+            mat = np.stack(vectors)  # (n, 384)
+            norms = np.linalg.norm(mat, axis=1, keepdims=True)
+            norms = np.clip(norms, 1e-8, None)
+            mat_norm = mat / norms
+            sim_matrix = mat_norm @ mat_norm.T  # (n, n)
+
+            # Add RELATED_TO edges above threshold
+            edge_count = 0
+            pairs = np.argwhere(np.triu(sim_matrix > SIMILARITY_THRESHOLD, k=1))
+            for i, j in pairs:
+                mid_i, mid_j = ids[i], ids[j]
+                sim = float(sim_matrix[i, j])
+                # Direction: older -> newer by node index (approximation)
+                self.bdg.graph.add_edge(mid_i, mid_j,
+                    edge_type=EdgeType.RELATED_TO.value,
+                    weight=sim)
+                edge_count += 1
+
+            print(f"[BDG] Added {edge_count} RELATED_TO edges (threshold={SIMILARITY_THRESHOLD})")
+
+            # Load contradictions from ledger
+            contra_count = 0
+            try:
+                ledger_conn = self.ledger._get_connection()
+                ledger_cursor = ledger_conn.cursor()
+                ledger_cursor.execute("""
+                    SELECT old_memory_id, new_memory_id, drift_mean, disposition
+                    FROM contradictions
+                """)
+                for old_id, new_id, drift, disp in ledger_cursor.fetchall():
+                    if old_id in self.bdg.graph and new_id in self.bdg.graph:
+                        weight = max(0.1, min(1.0, drift or 0.5))
+                        self.bdg.graph.add_edge(old_id, new_id,
+                            edge_type=EdgeType.CONTRADICTS.value, weight=weight)
+                        self.bdg.graph.add_edge(new_id, old_id,
+                            edge_type=EdgeType.CONTRADICTS.value, weight=weight)
+                        contra_count += 1
+                ledger_conn.close()
+            except Exception as e:
+                print(f"[BDG] WARNING loading ledger contradictions: {e}")
+
+            elapsed = _time.perf_counter() - t0
+            print(f"[BDG] Built: {node_count} nodes, {edge_count + contra_count * 2} edges, "
+                  f"{contra_count} contradictions ({elapsed:.2f}s)")
+
+            self._built = True
+
+    def add_memory(self, memory_id: str, vector, text: str,
+                   memory_type: str = "observation", trust: float = 0.5):
+        """Incrementally add a new memory node + similarity edges."""
+        with self._lock:
+            if not HAS_NUMPY or vector is None:
+                return
+
+            vec = np.asarray(vector, dtype=np.float32)
+            if len(vec) == 0:
+                return
+
+            self.bdg.graph.add_node(memory_id,
+                text=text[:200],
+                memory_type=memory_type,
+                belnap_state="true",
+                trust=trust,
+                alpha=trust,
+            )
+            self._vectors[memory_id] = vec
+
+            # Compute similarity against existing nodes
+            new_edges = 0
+            vec_norm = vec / max(np.linalg.norm(vec), 1e-8)
+
+            for existing_id, existing_vec in self._vectors.items():
+                if existing_id == memory_id:
+                    continue
+                ev_norm = existing_vec / max(np.linalg.norm(existing_vec), 1e-8)
+                sim = float(np.dot(vec_norm, ev_norm))
+                if sim > SIMILARITY_THRESHOLD:
+                    self.bdg.graph.add_edge(existing_id, memory_id,
+                        edge_type=EdgeType.RELATED_TO.value, weight=sim)
+                    new_edges += 1
+
+            print(f"[BDG] add_memory: {memory_id}, {new_edges} new edges")
+
+    def add_contradiction(self, old_id: str, new_id: str, drift_mean: float):
+        """Add bidirectional CONTRADICTS edge."""
+        with self._lock:
+            weight = max(0.1, min(1.0, drift_mean))
+            self.bdg.graph.add_edge(old_id, new_id,
+                edge_type=EdgeType.CONTRADICTS.value, weight=weight)
+            self.bdg.graph.add_edge(new_id, old_id,
+                edge_type=EdgeType.CONTRADICTS.value, weight=weight)
+            print(f"[BDG] add_contradiction: {old_id} <-> {new_id}, weight={weight:.3f}")
+
+    def run_cascade(self, source_id: str, delta_0: float) -> Optional[CascadeResult]:
+        """Run cascade propagation from a revised node."""
+        self.ensure_built()
+
+        with self._lock:
+            if source_id not in self.bdg.graph:
+                print(f"[BDG_CASCADE] WARNING: source {source_id} not in graph, skipping")
+                return None
+
+            # Collect held nodes (Proposition 5.3)
+            held_nodes = set()
+            for nid, ndata in self.bdg.graph.nodes(data=True):
+                if ndata.get("belnap_state") == "both":
+                    held_nodes.add(nid)
+
+            if held_nodes:
+                print(f"[BDG_CASCADE] {len(held_nodes)} held nodes acting as firewalls")
+
+        # Run cascade (read-only on graph, safe outside lock)
+        result = self.bdg.propagate_cascade(
+            source_id, delta_0,
+            lipschitz_constant=LIPSCHITZ_CONSTANT,
+            held_nodes=held_nodes,
+        )
+
+        print(f"[BDG_CASCADE] source={source_id}, delta_0={delta_0:.3f}, "
+              f"affected={result.total_nodes}, depth={result.depth}, "
+              f"total_impact={result.total_impact:.3f}, converged={result.converged}")
+
+        if result.depth > 0:
+            # Log damping curve
+            from collections import defaultdict as _ddict
+            depth_impacts = _ddict(list)
+            for nid, impact in result.impacts.items():
+                depth_impacts[result.depth_map[nid]].append(impact)
+            for d in sorted(depth_impacts.keys()):
+                imps = depth_impacts[d]
+                print(f"[BDG_CASCADE]   depth {d}: {len(imps)} nodes, "
+                      f"avg_impact={sum(imps)/len(imps):.4f}")
+
+        return result
+
+
+# Module-level singleton
+_live_bdg_instance: Optional[LiveBDG] = None
+_live_bdg_lock = _bdg_threading.Lock()
+
+
+def get_live_bdg(memory_system=None, ledger=None) -> Optional[LiveBDG]:
+    """Get or create the LiveBDG singleton.
+
+    First call must provide memory_system and ledger.
+    Subsequent calls can omit them.
+    """
+    global _live_bdg_instance
+    with _live_bdg_lock:
+        if _live_bdg_instance is None:
+            if memory_system is not None and ledger is not None:
+                _live_bdg_instance = LiveBDG(memory_system, ledger)
+            else:
+                return None
+        return _live_bdg_instance
+
+
+# ---------------------------------------------------------------------------
 # Integration with disposition classifier
 # ---------------------------------------------------------------------------
 

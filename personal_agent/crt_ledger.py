@@ -1319,10 +1319,10 @@ class ContradictionLedger:
             )
             conn.commit()
             
-            logger.debug(f"[LEDGER] Updated metadata for {ledger_id}: {list(metadata_updates.keys())}")
+            _logger.debug(f"[LEDGER] Updated metadata for {ledger_id}: {list(metadata_updates.keys())}")
             return True
         except Exception as e:
-            logger.warning(f"[LEDGER] Failed to update metadata for {ledger_id}: {e}")
+            _logger.warning(f"[LEDGER] Failed to update metadata for {ledger_id}: {e}")
             return False
         finally:
             conn.close()

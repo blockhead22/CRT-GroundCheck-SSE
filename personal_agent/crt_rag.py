@@ -249,6 +249,15 @@ class CRTEnhancedRAG:
         self.memory = CRTMemorySystem(memory_db, self.config)
         self.ledger = ContradictionLedger(ledger_db, self.config)
 
+        # BDG cascade propagation (lazy — builds on first contradiction)
+        try:
+            from personal_agent.memory_graph import get_live_bdg
+            self._live_bdg = get_live_bdg(self.memory, self.ledger)
+            print("[BDG] LiveBDG singleton registered")
+        except Exception as _bdg_init_err:
+            print(f"[BDG] Failed to register LiveBDG (non-fatal): {_bdg_init_err}")
+            self._live_bdg = None
+
         # Keep profile storage isolated for non-default test/temp memory DBs unless
         # the caller explicitly passes profile_db.
         default_memory_db = "personal_agent/crt_memory.db"
@@ -1059,6 +1068,7 @@ class CRTEnhancedRAG:
             excluded_ids=excluded_mem_ids if exclude_contradiction_sources else None,
             exclude_kinds={"narrative_summary", "narrative_note", "self_model",
                            "evolution_observation", "evolution_proposal", "synthesis"},
+            exclude_authorities={"provisional"},  # Don't cite same-turn unverified claims
         )
 
         # Topic-aware retrieval boost: if query matches a known variance tracker topic,
@@ -1683,7 +1693,7 @@ class CRTEnhancedRAG:
             }
             profile_updates.append(update)
             try:
-                profile_contra = self.ledger.record_contradiction(
+                profile_contra = self._record_and_cascade(
                     old_memory_id=f"profile_{slot}_old",
                     new_memory_id=f"profile_{slot}_new",
                     drift_mean=0.8,
@@ -2785,9 +2795,116 @@ class CRTEnhancedRAG:
                 return mem
         return None
     
+    # ------------------------------------------------------------------
+    # BDG Cascade Propagation (wired into contradiction detection)
+    # ------------------------------------------------------------------
+
+    def _trigger_cascade_propagation(self, entry, old_vector, new_vector):
+        """Run cascade propagation after a contradiction is recorded.
+
+        Called on a daemon thread — does NOT block the response path.
+        Updates trust scores on affected downstream memories.
+        """
+        try:
+            from personal_agent.memory_graph import get_live_bdg, CASCADE_TRUST_FACTOR
+
+            bdg = get_live_bdg()
+            if bdg is None:
+                print("[BDG_CASCADE] No LiveBDG available, skipping cascade")
+                return
+
+            # Add the contradiction edge to the live graph
+            bdg.add_contradiction(entry.old_memory_id, entry.new_memory_id, entry.drift_mean)
+
+            # Run cascade from the OLD memory (the one being revised)
+            delta_0 = entry.drift_mean if entry.drift_mean > 0 else 0.5
+            result = bdg.run_cascade(entry.old_memory_id, delta_0)
+
+            if result is None or result.total_nodes <= 1:
+                print(f"[BDG_CASCADE] No propagation beyond source for {entry.ledger_id}")
+                return
+
+            # Apply trust reductions to affected nodes
+            skip_ids = {entry.old_memory_id, entry.new_memory_id}
+            trust_updates = 0
+
+            for node_id, impact in result.impacts.items():
+                if node_id in skip_ids:
+                    continue
+
+                depth = result.depth_map.get(node_id, 0)
+                trust_delta = impact * CASCADE_TRUST_FACTOR
+
+                # Get current trust
+                try:
+                    node_data = bdg.bdg.graph.nodes.get(node_id, {})
+                    current_trust = node_data.get("trust", 0.5)
+                    new_trust = max(0.0, current_trust - trust_delta)
+
+                    if trust_delta > 0.001:  # only update if meaningful
+                        self.memory.update_trust(
+                            node_id,
+                            new_trust,
+                            reason=f"cascade(depth={depth}, impact={impact:.3f}, source={entry.ledger_id[:20]})",
+                            drift=impact,
+                        )
+                        # Update the BDG's cached trust too
+                        bdg.bdg.graph.nodes[node_id]["trust"] = new_trust
+                        trust_updates += 1
+                        print(f"[BDG_CASCADE_TRUST] {node_id}: {current_trust:.3f} -> {new_trust:.3f} "
+                              f"(depth={depth}, impact={impact:.3f})")
+                except Exception as _tu_err:
+                    print(f"[BDG_CASCADE_TRUST] ERROR updating {node_id}: {_tu_err}")
+
+            # Store cascade metadata on the ledger entry
+            try:
+                self.ledger.update_contradiction_metadata(entry.ledger_id, {
+                    "cascade_affected_count": result.total_nodes - 1,
+                    "cascade_depth": result.depth,
+                    "cascade_total_impact": round(result.total_impact, 4),
+                    "cascade_trust_updates": trust_updates,
+                    "cascade_converged": result.converged,
+                    "cascade_blocked_firewalls": len(result.blocked_by_firewall),
+                })
+            except Exception as _meta_err:
+                print(f"[BDG_CASCADE] WARNING: failed to store cascade metadata: {_meta_err}")
+
+            print(f"[BDG_CASCADE_COMPLETE] {entry.ledger_id}: "
+                  f"affected={result.total_nodes - 1}, depth={result.depth}, "
+                  f"impact={result.total_impact:.3f}, trust_updates={trust_updates}")
+
+        except Exception as e:
+            print(f"[BDG_CASCADE] ERROR in cascade propagation: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _record_and_cascade(self, **kwargs):
+        """Record a contradiction AND trigger cascade propagation on a background thread.
+
+        Drop-in replacement for self.ledger.record_contradiction(**kwargs).
+        Extracts old_vector/new_vector for cascade use, passes all kwargs to ledger.
+        Returns the ContradictionEntry (same as record_contradiction).
+        """
+        # Extract vectors for cascade use (record_contradiction also accepts them)
+        old_vector = kwargs.get("old_vector")
+        new_vector = kwargs.get("new_vector")
+        entry = self.ledger.record_contradiction(**kwargs)
+
+        if entry is not None:
+            import threading as _cascade_t
+            _cascade_t.Thread(
+                target=self._trigger_cascade_propagation,
+                args=(entry, old_vector, new_vector),
+                daemon=True,
+                name=f"cascade_{entry.ledger_id[:20]}",
+            ).start()
+            print(f"[BDG] Cascade thread spawned for {entry.ledger_id}")
+
+        return entry
+
     def _check_all_fact_contradictions_ml(
-        self, 
-        new_memory: MemoryItem, 
+        self,
+        new_memory: MemoryItem,
         user_query: str,
         thread_id: Optional[str] = None,
     ) -> Tuple[bool, Optional[ContradictionEntry]]:
@@ -2928,7 +3045,9 @@ class CRTEnhancedRAG:
                     
                     if slot_matches:
                         # This is an explicit correction - record as REVISION
-                        contradiction_entry = self.ledger.record_contradiction(
+                        contradiction_entry = self._record_and_cascade(
+                            old_vector=getattr(prev_mem, 'vector', None),
+                            new_vector=getattr(new_memory, 'vector', None),
                             old_memory_id=prev_mem.memory_id,
                             new_memory_id=new_memory.memory_id,
                             drift_mean=drift,
@@ -2937,8 +3056,6 @@ class CRTEnhancedRAG:
                             summary=f"{slot}: {correction_type} - {old_val} -> {new_val}",
                             old_text=prev_mem.text,
                             new_text=user_query,
-                            old_vector=prev_mem.vector,
-                            new_vector=new_memory.vector,
                             contradiction_type=ContradictionType.REVISION,
                             suggested_policy="accept_new",
                             thread_id=thread_id,
@@ -2963,7 +3080,7 @@ class CRTEnhancedRAG:
                     logger.info(f"[NUMERIC_DRIFT] {numeric_reason}: {prev_value_str} vs {new_value_str}")
                     
                     # Record numeric drift as a CONFLICT (user should clarify)
-                    contradiction_entry = self.ledger.record_contradiction(
+                    contradiction_entry = self._record_and_cascade(
                         old_memory_id=prev_mem.memory_id,
                         new_memory_id=new_memory.memory_id,
                         drift_mean=drift,
@@ -3026,7 +3143,7 @@ class CRTEnhancedRAG:
                     fallback_type = ContradictionType.REVISION if explicit_revision_cue else ContradictionType.CONFLICT
                     fallback_policy = "accept_new" if fallback_type == ContradictionType.REVISION else "ask_user"
                     
-                    contradiction_entry = self.ledger.record_contradiction(
+                    contradiction_entry = self._record_and_cascade(
                         old_memory_id=prev_mem.memory_id,
                         new_memory_id=new_memory.memory_id,
                         drift_mean=drift,
@@ -3060,7 +3177,7 @@ class CRTEnhancedRAG:
                         prev_value_str_search = str(prev_fact.value).lower().strip()
                         if denied_value.lower() in prev_value_str_search:
                             # Found matching prior statement - this is a denial contradiction
-                            contradiction_entry = self.ledger.record_contradiction(
+                            contradiction_entry = self._record_and_cascade(
                                 old_memory_id=prev_mem_search.memory_id,
                                 new_memory_id=new_memory.memory_id,
                                 drift_mean=drift,
@@ -3090,7 +3207,7 @@ class CRTEnhancedRAG:
                     logger.info(f"[RETRACTION_OF_DENIAL] {retraction_reason}")
                     
                     # Record as REVISION - user is retracting their prior denial
-                    contradiction_entry = self.ledger.record_contradiction(
+                    contradiction_entry = self._record_and_cascade(
                         old_memory_id=prev_mem.memory_id,
                         new_memory_id=new_memory.memory_id,
                         drift_mean=drift,
@@ -3130,7 +3247,7 @@ class CRTEnhancedRAG:
                         continue
                     
                     # Record as REVISION type, not CONFLICT
-                    contradiction_entry = self.ledger.record_contradiction(
+                    contradiction_entry = self._record_and_cascade(
                         old_memory_id=prev_mem.memory_id,
                         new_memory_id=new_memory.memory_id,
                         drift_mean=drift,
@@ -3225,7 +3342,7 @@ class CRTEnhancedRAG:
                             f"[DISCLOSURE_POLICY] âš  Yellow zone - routing to clarification for {slot}"
                         )
                     
-                    contradiction_entry = self.ledger.record_contradiction(
+                    contradiction_entry = self._record_and_cascade(
                         old_memory_id=prev_mem.memory_id,
                         new_memory_id=new_memory.memory_id,
                         drift_mean=drift,
@@ -4043,7 +4160,7 @@ class CRTEnhancedRAG:
                         channel=channel,
                         origin=origin,
                     )
-                    self.ledger.record_contradiction(
+                    self._record_and_cascade(
                         old_memory_id=original_memory.memory_id,
                         new_memory_id=new_memory.memory_id,
                         drift_mean=0.9,  # High drift for gaslighting
@@ -4213,6 +4330,11 @@ class CRTEnhancedRAG:
                 _assertion_context["temporal_framing"] = "historical"
 
         if user_input_kind == "assertion":
+            # Store as PROVISIONAL — will be promoted to confirmed after
+            # contradiction detection passes. This prevents same-turn
+            # self-citation where the new claim retrieves itself as evidence.
+            _assertion_authority = authority or "provisional"
+            print(f"[PROVISIONAL] Storing assertion as authority={_assertion_authority}: \"{user_text[:60]}\"")
             ingest_result = self.ingest_memory_write(
                 text=user_text,
                 confidence=_assertion_confidence,
@@ -4222,7 +4344,7 @@ class CRTEnhancedRAG:
                 thread_id=thread_id,
                 channel=channel,
                 origin=origin,
-                authority=authority,
+                authority=_assertion_authority,
                 kind=(kind or "user_fact"),
             )
             user_memory = ingest_result["memory"]
@@ -4254,7 +4376,7 @@ class CRTEnhancedRAG:
                         })
                         try:
                             # Record in the contradiction ledger for transparency
-                            profile_contra = self.ledger.record_contradiction(
+                            profile_contra = self._record_and_cascade(
                                 old_memory_id=f"profile_{slot}_old",
                                 new_memory_id=f"profile_{slot}_new",
                                 drift_mean=0.8,  # High drift for profile changes
@@ -4443,7 +4565,7 @@ class CRTEnhancedRAG:
                                 if not is_real_contradiction:
                                     logger.info(f"[CRT_PARAPHRASE] Skipped name contradiction - {crt_reason}")
                                 else:
-                                    contradiction_entry = self.ledger.record_contradiction(
+                                    contradiction_entry = self._record_and_cascade(
                                         old_memory_id=selected_prev.memory_id,
                                         new_memory_id=user_memory.memory_id,
                                         drift_mean=drift,
@@ -6247,7 +6369,7 @@ class CRTEnhancedRAG:
                     if not is_real_contradiction:
                         logger.info(f"[CRT_PARAPHRASE] Skipped generic fact contradiction - {crt_reason}")
                     else:
-                        contradiction_entry = self.ledger.record_contradiction(
+                        contradiction_entry = self._record_and_cascade(
                             old_memory_id=selected_prev.memory_id,
                             new_memory_id=user_memory.memory_id,
                             drift_mean=drift,

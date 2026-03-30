@@ -1822,6 +1822,21 @@ class CRTMemorySystem:
         except Exception as e:
             logger.debug("[ALIAS] Auto-alias failed (non-fatal): %s", e)
 
+        # Notify LiveBDG of new memory (incremental graph update)
+        try:
+            from personal_agent.memory_graph import get_live_bdg
+            _bdg = get_live_bdg()
+            if _bdg is not None:
+                _bdg.add_memory(
+                    memory.memory_id,
+                    memory.vector,
+                    (memory.text or "")[:200],
+                    getattr(memory, 'memory_type', 'observation'),
+                    memory.trust,
+                )
+        except Exception as _bdg_err:
+            print(f"[BDG] add_memory failed (non-blocking): {_bdg_err}")
+
         return memory
 
     # ========================================================================
