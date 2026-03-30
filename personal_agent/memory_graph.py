@@ -60,6 +60,7 @@ class BelnapState(Enum):
 class EdgeType(Enum):
     CONTRADICTS = "contradicts"
     SUPERSEDES = "supersedes"
+    SUPPORTS = "supports"        # Paper Definition 3.2 — evidential grounding
     RELATED_TO = "related_to"
     DERIVED_FROM = "derived_from"
 
@@ -402,6 +403,232 @@ class MemoryGraph:
             if os.path.exists(emb_path):
                 loaded = np.load(emb_path)
                 self._embeddings = {k: loaded[k] for k in loaded.files}
+
+
+# ---------------------------------------------------------------------------
+# Belief Dependency Graph — Cascade Paper (Section 3)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class CascadeResult:
+    """Result of a cascade propagation (Definition 3.5)."""
+    source: str
+    affected_nodes: Set[str]
+    impacts: Dict[str, float]       # node_id -> impact
+    depth: int
+    width: int                      # max nodes at any single depth level
+    total_nodes: int
+    total_impact: float
+    converged: bool
+    depth_map: Dict[str, int]       # node_id -> depth
+    width_per_level: Dict[int, int]
+    blocked_by_firewall: Set[str] = field(default_factory=set)
+
+
+class BeliefDependencyGraph:
+    """Formal BDG for cascade complexity analysis (paper Definitions 3.2-3.6).
+
+    Wraps a NetworkX digraph with typed edges (SUPPORTS, CONTRADICTS, SUPERSEDES)
+    and cascade propagation with geometric damping (Theorem 4.3).
+
+    Nodes are MemorySplat instances (Definition 3.1).
+    """
+
+    def __init__(self, cascade_threshold: float = 0.01):
+        if not HAS_NETWORKX:
+            raise ImportError("networkx required: pip install networkx")
+        self.graph = nx.DiGraph()
+        self._splats: Dict[str, object] = {}
+        self.cascade_threshold = cascade_threshold
+
+    # --- Node operations ---
+
+    def add_belief(self, splat) -> str:
+        """Add a belief state (MemorySplat) to the graph."""
+        self.graph.add_node(splat.memory_id,
+                            text=splat.text,
+                            memory_type=splat.memory_type,
+                            alpha=splat.alpha)
+        self._splats[splat.memory_id] = splat
+        return splat.memory_id
+
+    def get_splat(self, memory_id: str):
+        return self._splats.get(memory_id)
+
+    # --- Edge operations ---
+
+    def add_dependency(self, source: str, target: str,
+                       edge_type: EdgeType, weight: float = 0.5):
+        """Add a typed, weighted dependency edge."""
+        self.graph.add_edge(source, target,
+                            edge_type=edge_type.value,
+                            weight=max(0.0, min(1.0, weight)))
+
+    # --- Graph properties ---
+
+    @property
+    def num_nodes(self) -> int:
+        return self.graph.number_of_nodes()
+
+    @property
+    def num_edges(self) -> int:
+        return self.graph.number_of_edges()
+
+    @property
+    def is_dag(self) -> bool:
+        return nx.is_directed_acyclic_graph(self.graph)
+
+    def longest_path_length(self) -> float:
+        if self.is_dag:
+            return nx.dag_longest_path_length(self.graph)
+        # For non-DAG, compute on SUPPORTS/SUPERSEDES subgraph
+        G_dag = nx.DiGraph()
+        for u, v, d in self.graph.edges(data=True):
+            if d.get("edge_type") != EdgeType.CONTRADICTS.value:
+                G_dag.add_edge(u, v, **d)
+        if nx.is_directed_acyclic_graph(G_dag) and G_dag.number_of_edges() > 0:
+            return nx.dag_longest_path_length(G_dag)
+        return 0
+
+    def max_out_degree(self) -> int:
+        if self.num_nodes == 0:
+            return 0
+        return max(d for _, d in self.graph.out_degree())
+
+    # --- Cascade propagation (Definition 3.5, Theorem 4.3) ---
+
+    def propagate_cascade(self, source_id: str, delta_0: float,
+                          lipschitz_constant: float = 0.9,
+                          use_dispositions: bool = True,
+                          held_nodes: Optional[Set[str]] = None,
+                          max_depth: int = 100) -> CascadeResult:
+        """BFS cascade with geometric damping and MAX aggregation.
+
+        Args:
+            source_id: Node to start cascade from.
+            delta_0: Initial revision impact (Fisher-Rao distance).
+            lipschitz_constant: L — how much each node amplifies/dampens.
+            use_dispositions: If True, HELD disposition blocks propagation.
+            held_nodes: Explicit set of held node IDs (overrides disposition).
+            max_depth: Safety limit.
+
+        Returns:
+            CascadeResult with affected nodes, impacts, depth, width.
+        """
+        from collections import deque
+
+        if held_nodes is None:
+            held_nodes = set()
+
+        affected = {source_id: delta_0}
+        depth_map = {source_id: 0}
+        width_per_level: Dict[int, int] = {0: 1}
+        blocked = set()
+        queue = deque([(source_id, delta_0, 0)])
+        total_impact = delta_0
+        max_depth_reached = 0
+
+        while queue:
+            node, impact, depth = queue.popleft()
+            if depth >= max_depth:
+                continue
+
+            # Held nodes absorb but don't propagate
+            if node in held_nodes and node != source_id:
+                continue
+            if use_dispositions and node != source_id:
+                node_data = self.graph.nodes.get(node, {})
+                if node_data.get("disposition") == Disposition.HELD.value:
+                    continue
+
+            for _, succ, edata in self.graph.out_edges(node, data=True):
+                w = edata.get("weight", 0.5)
+                propagated = w * lipschitz_constant * impact
+
+                if propagated <= self.cascade_threshold:
+                    continue
+
+                if succ in held_nodes:
+                    blocked.add(succ)
+
+                # MAX aggregation (Definition 3.5)
+                if succ in affected and propagated <= affected[succ]:
+                    continue
+
+                affected[succ] = propagated
+                new_depth = depth + 1
+                depth_map[succ] = new_depth
+                width_per_level[new_depth] = width_per_level.get(new_depth, 0) + 1
+                max_depth_reached = max(max_depth_reached, new_depth)
+                total_impact += propagated
+                queue.append((succ, propagated, new_depth))
+
+        max_width = max(width_per_level.values()) if width_per_level else 0
+        rho = lipschitz_constant * max(
+            (edata.get("weight", 0.5)
+             for _, _, edata in self.graph.edges(data=True)),
+            default=0.5
+        )
+
+        return CascadeResult(
+            source=source_id,
+            affected_nodes=set(affected.keys()),
+            impacts=affected,
+            depth=max_depth_reached,
+            width=max_width,
+            total_nodes=len(affected),
+            total_impact=total_impact,
+            converged=(rho < 1),
+            depth_map=depth_map,
+            width_per_level=dict(width_per_level),
+            blocked_by_firewall=blocked,
+        )
+
+    # --- Reachability (Proposition 5.3) ---
+
+    def effective_reachable_set(self, source: str,
+                                held_nodes: Set[str]) -> Set[str]:
+        """Nodes reachable from source without passing through held nodes."""
+        from collections import deque
+        visited = {source}
+        queue = deque([source])
+        while queue:
+            node = queue.popleft()
+            if node in held_nodes and node != source:
+                continue
+            for _, succ in self.graph.out_edges(node):
+                if succ not in visited:
+                    visited.add(succ)
+                    queue.append(succ)
+        return visited
+
+    # --- Instability analysis (Theorem 4.4) ---
+
+    def cycle_amplification(self, cycle_nodes: List[str]) -> float:
+        """Compute product of edge weights around a cycle."""
+        product = 1.0
+        for i in range(len(cycle_nodes)):
+            src = cycle_nodes[i]
+            tgt = cycle_nodes[(i + 1) % len(cycle_nodes)]
+            edata = self.graph.get_edge_data(src, tgt) or {}
+            product *= edata.get("weight", 0.5)
+        return product
+
+    def find_unstable_cycles(self, lipschitz_constant: float = 1.0,
+                             max_cycles: int = 100) -> List[Tuple[List[str], float]]:
+        """Find cycles with amplification factor > 1 (Theorem 4.4)."""
+        unstable = []
+        count = 0
+        for cycle in nx.simple_cycles(self.graph):
+            amp = self.cycle_amplification(cycle)
+            # Cycle amplification factor: product(w_i) * L^m
+            lambda_cycle = amp * (lipschitz_constant ** len(cycle))
+            if lambda_cycle > 1.0:
+                unstable.append((cycle, lambda_cycle))
+            count += 1
+            if count >= max_cycles:
+                break
+        return unstable
 
 
 # ---------------------------------------------------------------------------

@@ -614,7 +614,9 @@ class UnifiedLLMClient:
                                 },
                             }
                         elif "function" in tc:
-                            # Already OpenAI format — ensure arguments is a string
+                            # Already OpenAI format — ensure type and arguments are correct
+                            if "type" not in tc:
+                                tc["type"] = "function"
                             fn = tc["function"]
                             if isinstance(fn, dict) and isinstance(fn.get("arguments"), dict):
                                 tc["function"] = dict(fn)
@@ -834,6 +836,43 @@ class UnifiedLLMClient:
             logger.warning("[LITELLM] Anthropic tool call failed: %s", e)
             return None
 
+    def _try_openai_tools(self, messages, tools, max_tokens, temperature):
+        """Attempt OpenAI tool call for agent loop decisions.
+
+        Reads OPENAI_API_KEY directly from env so it works even when the cloud
+        provider is disabled for generation.  Uses CRT_AGENT_TOOL_MODEL (default
+        gpt-4o-mini) — cheap and reliable for tool-use decisions.
+        """
+        api_key = self.cloud_api_key or os.getenv("OPENAI_API_KEY", "")
+        if not api_key:
+            print("[LITELLM] _try_openai_tools: no API key available, skipping")
+            return None
+        # Ensure litellm routes to OpenAI explicitly — bare model name is ambiguous
+        raw_model = os.getenv("CRT_AGENT_TOOL_MODEL", "") or self.cloud_model or "gpt-4o-mini"
+        model = raw_model if raw_model.startswith("openai/") else f"openai/{raw_model}"
+        print(f"[LITELLM] _try_openai_tools: model={model} key_len={len(api_key)}")
+        try:
+            scrubbed = self._scrub_messages_for_cloud(messages)
+            scrubbed = self._fix_tool_call_ids(scrubbed)
+            effective_max = self._effective_max_tokens(max_tokens, raw_model)
+            kwargs: Dict[str, Any] = {
+                "model": model,
+                "messages": scrubbed,
+                "max_tokens": effective_max,
+                "temperature": temperature,
+                "api_key": api_key,
+            }
+            if tools:
+                kwargs["tools"] = tools
+            resp = litellm.completion(**kwargs)
+            result = self._parse_tool_response(resp)
+            result["generation_source"] = "openai"
+            print(f"[GEN_SOURCE] OPENAI TOOLS — model={model}")
+            return result
+        except Exception as e:
+            print(f"[LITELLM] OpenAI tool call failed: {e}")
+            return None
+
     def _try_cookie_text_fallback(self, messages) -> Optional[Dict[str, Any]]:
         """Last-resort fallback: use cookie-based Claude for a plain text answer.
 
@@ -967,6 +1006,9 @@ class UnifiedLLMClient:
             )
             if result:
                 return result
+            result = self._try_openai_tools(messages, tools, max_tokens, temperature)
+            if result:
+                return result
             result = self._try_cookie_text_fallback(messages)
             return result or {
                 "tool_calls": [], "content": "[Cloud unavailable or rate-limited]",
@@ -999,12 +1041,18 @@ class UnifiedLLMClient:
             return {"tool_calls": [], "content": "", "used_tools": False, "generation_source": "local_failed"}
 
         if policy == "cloud_to_local":
+            # Cloud first (better tool decisions), local as fallback.
+            # Try Anthropic first (if key available), then OpenAI, then local.
+            print("[LITELLM] cloud_to_local: trying cloud tool call first")
             result = self._try_anthropic_tools(
                 messages, tools, max_tokens, temperature, model_name,
             )
             if result:
                 return result
-            print("[LITELLM] Cloud unavailable, trying local")
+            result = self._try_openai_tools(messages, tools, max_tokens, temperature)
+            if result:
+                return result
+            print("[LITELLM] Cloud unavailable, falling back to local")
             result = self._try_local_tools(
                 messages, tools, max_tokens, temperature, model_name,
             )
@@ -1021,6 +1069,9 @@ class UnifiedLLMClient:
             result = self._try_anthropic_tools(
                 messages, tools, max_tokens, temperature, model_name,
             )
+            if result:
+                return result
+            result = self._try_openai_tools(messages, tools, max_tokens, temperature)
             if result:
                 return result
             # Cookie fallback is gated by cloud_claude_generation setting

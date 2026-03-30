@@ -51,6 +51,9 @@ class ToolDefinition:
         required: List[str] = []
         for p in self.parameters:
             prop: Dict[str, Any] = {"type": p.type, "description": p.description}
+            # OpenAI strictly requires "items" on every array schema
+            if p.type == "array":
+                prop["items"] = {"type": "string"}
             if p.enum:
                 prop["enum"] = p.enum
             if p.default is not None:

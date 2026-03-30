@@ -7,7 +7,7 @@ Aeteros Research
 
 ## Abstract
 
-We introduce *belief revision cascades* — the transitive propagation of belief changes through a dependency graph within a single agent's epistemic state. While AGM belief revision handles individual revisions and iterated revision handles sequences of external inputs, neither framework models what happens when revising belief $A$ forces re-evaluation of dependent beliefs $B$, $C$, $D$, and so on. We formalize this gap through *Belief Dependency Graphs* (BDGs), prove bounds on cascade depth and width, establish convergence conditions analogous to DeGroot's theorem in opinion dynamics, characterize instability conditions that produce belief system collapse, and conjecture NP-hardness of optimal cascade ordering. A key philosophical result: *held contradictions* — beliefs the system deliberately does not resolve — act as cascade firewalls, bounding propagation and preventing catastrophic revision storms. We ground all definitions in a running implementation and provide small-scale empirical illustrations.
+We introduce *belief revision cascades* — the transitive propagation of belief changes through a dependency graph within a single agent's epistemic state. While AGM belief revision handles individual revisions and iterated revision handles sequences of external inputs, neither framework models what happens when revising belief $A$ forces re-evaluation of dependent beliefs $B$, $C$, $D$, and so on. We formalize this gap through *Belief Dependency Graphs* (BDGs), prove bounds on cascade depth and width, and establish two convergence results: *per-node* impact decays geometrically when the damping factor $\rho = L \cdot w_{\max} < 1$ (the single-agent analog of DeGroot's theorem), while *graph-wide* total impact converges only under the stricter condition $d \cdot \rho < 1$ where $d$ is the out-degree. We characterize iterated cascade instability on cyclic graphs and conjecture NP-hardness of optimal cascade ordering. A key result: *held contradictions* — beliefs the system deliberately does not resolve — act as cascade firewalls, bounding propagation and preventing catastrophic revision storms. We validate on both constructed examples and a production BDG (599 beliefs), finding that real belief graphs have high fan-out ($d \approx 8$), making graph-wide cascade reach inherently broad even when per-node impact is well-controlled.
 
 **Keywords:** belief revision, dependency graphs, cascade complexity, held contradictions, epistemic stability, AGM, opinion dynamics
 
@@ -29,12 +29,13 @@ Three adjacent communities study related problems without occupying this interse
 
 **Our contribution.** We introduce *Belief Dependency Graphs* (BDGs) as a formal structure for studying intra-agent belief revision cascades. We provide:
 
-- Formal definitions grounding belief states, dependency structures, revision events, and cascade propagation in existing code (Section 3)
+- Formal definitions grounding belief states, dependency structures, revision events, and cascade propagation, including an explicit multi-parent aggregation rule (Section 3)
 - Complexity bounds: cascade depth is bounded by the longest DAG path (Theorem 4.1), width by $O(\min(d^k, n))$ (Theorem 4.2)
-- A convergence theorem: if dependency weights are strictly subunitary and the revision impact function is Lipschitz, cascades converge geometrically (Theorem 4.3) — the single-agent analog of DeGroot's convergence condition
-- An instability condition: cyclic dependencies with strong coupling produce divergent cascades (Theorem 4.4) — formalizing cognitive dissonance spirals
-- A conjecture that optimal cascade ordering is NP-hard (Conjecture 4.5)
+- Two convergence results: *per-node* impact decays geometrically when $\rho = L \cdot w_{\max} < 1$ (Theorem 4.3); *graph-wide* total impact converges only when $d \cdot \rho < 1$ (Corollary 4.3.1), where $d$ is the maximum out-degree
+- An iterated cascade instability condition: cyclic dependencies with strong coupling produce divergent revision sequences (Theorem 4.4) — formalizing cognitive dissonance spirals
+- A conjecture that optimal cascade ordering is NP-hard via reduction from Minimum Linear Arrangement (Conjecture 4.5)
 - A philosophical result: *held contradictions* — beliefs the system deliberately preserves in tension — act as cascade firewalls (Proposition 5.3), connecting epistemic pluralism to system stability
+- Empirical validation on a production BDG (599 beliefs), confirming per-node damping and revealing that real belief graphs have $d \cdot \rho \gg 1$, making broad cascade reach a structural property of typical belief systems (Section 7.5)
 
 All definitions map to modules in a running system. This is not a paper about that system — the contribution is the mathematics — but the implementation demonstrates that the formalism captures real mechanics.
 
@@ -134,14 +135,20 @@ where $\tau > 0$ is a threshold parameter. The triggered node $v'$ must be *re-e
 
 ### Definition 3.5 (Revision Cascade)
 
-The **revision cascade** $C(r)$ from revision event $r$ on node $v_0$ is the smallest set $S \subseteq V$ such that:
+The **revision cascade** $C(r)$ from revision event $r$ on node $v_0$ is the pair $(S, \delta)$ where $S \subseteq V$ is the set of affected nodes and $\delta: S \to \mathbb{R}_{> 0}$ assigns an impact to each, defined by:
 
-1. $v_0 \in S$ (the initially revised node)
-2. If $u \in S$ and $(u, u') \in E$ with $w(u, u') \cdot \delta_u > \tau$, then $u' \in S$, where $\delta_u$ is the cumulative revision impact at $u$
+1. $v_0 \in S$ with $\delta(v_0) = \delta(r)$ (the initial revision impact)
+2. For each node $u' \in V$ with at least one predecessor $u \in S$ such that $(u, u') \in E$, define the **incoming impact**:
 
-The cascade propagates transitively: each triggered node may trigger its own successors, with impact potentially decaying through the dependency weights.
+$$\delta_{\mathrm{in}}(u') = \max_{u \in S : (u, u') \in E} \, w(u, u') \cdot \delta(u)$$
 
-**Cascade execution.** At each triggered node $u'$, the local belief state is updated according to the revision at the upstream node. The local revision impact $\delta_{u'}$ is then computed, and propagation continues if $\delta_{u'}$ exceeds the threshold for any of $u'$'s successors.
+If $\delta_{\mathrm{in}}(u') > \tau$, then $u' \in S$ with $\delta(u') = L_{u'} \cdot \delta_{\mathrm{in}}(u')$, where $L_{u'}$ is the Lipschitz constant of the local revision function at $u'$.
+
+3. Propagation proceeds in topological order on DAGs. For graphs with cycles, see Theorem 4.4.
+
+**Multi-parent aggregation.** When a node has multiple predecessors in $S$, we take the *maximum* incoming impact (not the sum). This is the conservative choice: it ensures the per-node impact bound $\delta(v) \leq \rho^{d(v)} \cdot \delta_0$ (where $d(v)$ is the depth of $v$) still holds. Summation would be more realistic for some applications but breaks the geometric decay guarantee (see Section 7.5).
+
+**Remark.** The choice of MAX vs. SUM aggregation is a modeling decision. MAX preserves per-node decay bounds at the cost of underestimating total disruption. SUM better captures the intuition that a node with many revised predecessors faces more pressure, but requires a different convergence analysis.
 
 ### Definition 3.6 (Cascade Disposition)
 
@@ -166,9 +173,9 @@ Each triggered re-evaluation at a node $v$ inherits a **disposition** $\mathcal{
 
 *Upper bound.* In a DAG, every directed path has length at most $k$. A cascade propagates along directed edges. Since $G$ is acyclic, no node can be visited twice (visiting $v$ twice requires a cycle through $v$). Therefore the cascade can traverse at most $k$ edges from the initial node, giving depth $\leq k$. $\square$
 
-*Tightness.* Construct a path graph $v_0 \to v_1 \to \cdots \to v_k$ with $w(v_i, v_{i+1}) = 1$ for all $i$. Let the initial revision have impact $\delta_0 > \tau$, and let the revision impact function preserve impact exactly: $\delta_{i+1} = \delta_i$ at each node (i.e., each re-evaluation produces impact equal to its input). Then every node in the path is triggered, giving cascade depth exactly $k$. $\square$
+*Tightness.* Construct a path graph $v_0 \to v_1 \to \cdots \to v_k$ with $w(v_i, v_{i+1}) = 1$ for all $i$. Let the initial revision have impact $\delta_0 > \tau$, and let the revision impact function preserve impact exactly: $L_i = 1$ at each node, so $\delta_{i+1} = \delta_i$ (each re-evaluation produces impact equal to its input, with $\rho = L \cdot w = 1$). Then every node in the path is triggered, giving cascade depth exactly $k$. Note that tightness requires $\rho = 1$ exactly; for any $\rho < 1$, the cascade terminates before depth $k$ (at depth $\lceil \log(\delta_0/\tau) / \log(1/\rho) \rceil$ per Theorem 4.3). $\square$
 
-**Remark.** The DAG assumption is critical. With cycles, cascade depth is potentially unbounded (see Theorem 4.4).
+**Remark.** The DAG assumption is critical. With cycles, *iterated* cascades can revisit nodes (see Theorem 4.4).
 
 ### Theorem 4.2 (Cascade Width)
 
@@ -188,70 +195,84 @@ This is bounded by $n$ since no node is visited twice in a DAG. Therefore the ca
 
 **Corollary 4.2.2 (Dense Graphs).** For BDGs with $d = O(n)$, a single revision can trigger $\Theta(n)$ re-evaluations in one step. Dense dependency structures admit catastrophic cascades.
 
-### Theorem 4.3 (Cascade Damping and Convergence)
+### Theorem 4.3 (Per-Node Cascade Damping)
 
 **Statement.** Let $G = (V, E, w)$ be a BDG (DAG) with:
 
 1. $w_{\max} = \max_{(u,v) \in E} w(u,v) < 1$ (all dependency weights strictly subunitary)
-2. The revision impact function $f$ is Lipschitz continuous with constant $L > 0$, meaning: if the input impact to a node is $\delta_{\mathrm{in}}$, the output impact after re-evaluation satisfies $\delta_{\mathrm{out}} \leq L \cdot \delta_{\mathrm{in}}$
+2. The revision impact function at each node is Lipschitz continuous with constant $L > 0$: if the input impact is $\delta_{\mathrm{in}}$, the output impact satisfies $\delta_{\mathrm{out}} \leq L \cdot \delta_{\mathrm{in}}$
 
-If $\rho = L \cdot w_{\max} < 1$, then:
+If $\rho = L \cdot w_{\max} < 1$, then under MAX aggregation (Definition 3.5):
 
-(a) The cascade impact at depth $j$ satisfies $\delta_j \leq \rho^j \cdot \delta_0$
+(a) The impact at any node $v$ at depth $j$ from the source satisfies $\delta(v) \leq \rho^j \cdot \delta_0$
 
-(b) The cascade terminates in at most $\lceil \log(\delta_0 / \tau) / \log(1/\rho) \rceil$ steps
+(b) The cascade terminates in at most $k^* = \lceil \log(\delta_0 / \tau) / \log(1/\rho) \rceil$ depth steps
 
-(c) The total cascade cost is bounded: $\sum_{j=0}^{\infty} \delta_j \leq \frac{\delta_0}{1 - \rho}$
+(c) The total impact along any single directed path is bounded: $\sum_{j=0}^{k^*} \delta_j \leq \frac{\delta_0}{1 - \rho}$
 
 **Proof.**
 
-*(a) Geometric decay.* At depth 0, the impact is $\delta_0$. At depth 1, each triggered successor receives impact at most $w_{\max} \cdot \delta_0$. After local re-evaluation, the output impact is at most $L \cdot w_{\max} \cdot \delta_0 = \rho \cdot \delta_0$. By induction, at depth $j$: $\delta_j \leq \rho^j \cdot \delta_0$. Since $\rho < 1$, this is geometric decay. $\square$
+*(a) Per-node geometric decay.* At depth 0, the impact is $\delta_0$. At depth 1, each triggered successor receives incoming impact at most $w_{\max} \cdot \delta_0$ (since MAX over predecessors is bounded by the single-predecessor case). After local re-evaluation: $\delta(v) \leq L \cdot w_{\max} \cdot \delta_0 = \rho \cdot \delta_0$. By induction at depth $j$: $\delta(v) \leq \rho^j \cdot \delta_0$. Since $\rho < 1$, this is geometric decay. The MAX aggregation rule is critical: it ensures that multiple predecessors do not accumulate impact beyond the worst single predecessor. $\square$
 
-*(b) Finite termination.* The cascade terminates when $\delta_j \leq \tau$. From (a): $\rho^j \cdot \delta_0 \leq \tau$ iff $j \geq \log(\delta_0/\tau) / \log(1/\rho)$. $\square$
+*(b) Finite termination.* The cascade terminates when $\rho^j \cdot \delta_0 \leq \tau$, giving $j \geq \log(\delta_0/\tau) / \log(1/\rho)$. $\square$
 
-*(c) Total cost bound.* $\sum_{j=0}^{\infty} \delta_j \leq \sum_{j=0}^{\infty} \rho^j \cdot \delta_0 = \delta_0 / (1 - \rho)$. This converges since $\rho < 1$. $\square$
+*(c) Per-path total.* Along any single path from source to leaf: $\sum_{j=0}^{k^*} \delta_j \leq \sum_{j=0}^{k^*} \rho^j \cdot \delta_0 \leq \delta_0 / (1 - \rho)$. $\square$
 
-**Interpretation.** This is the single-agent analog of DeGroot's convergence theorem. In opinion dynamics, convergence requires the spectral radius of the influence matrix to be less than 1. Here, the damping factor $\rho = L \cdot w_{\max}$ plays the same role. If beliefs don't amplify each other too much ($L$ small) and dependencies aren't too strong ($w_{\max}$ small), cascades always converge.
+**Remark.** Part (c) bounds the total impact along *one path*, not the total across the entire graph. See Corollary 4.3.1 for the graph-wide bound.
+
+**Corollary 4.3.1 (Graph-Wide Cascade Cost).** Let $W_j$ denote the set of nodes at depth $j$ from the source in the cascade. The total impact across all affected nodes is bounded by:
+
+$$\sum_{v \in C(r)} \delta(v) \leq \delta_0 \sum_{j=0}^{k^*} |W_j| \cdot \rho^j$$
+
+Since $|W_j| \leq \min(d^j, n)$ where $d$ is the maximum out-degree (Theorem 4.2), this gives:
+
+$$\sum_{v \in C(r)} \delta(v) \leq \delta_0 \sum_{j=0}^{k^*} \min(d^j, n) \cdot \rho^j$$
+
+If $d \cdot \rho < 1$, the graph-wide total converges to at most $\delta_0 / (1 - d\rho)$, independent of graph size. If $d \cdot \rho \geq 1$, the total can grow as $O(n \cdot \delta_0)$ — a single revision can produce aggregate impact proportional to graph size.
+
+*Proof.* Each node at depth $j$ has impact $\leq \rho^j \cdot \delta_0$ by Theorem 4.3(a). Summing over all nodes at each depth level and applying the width bound from Theorem 4.2 gives the result. $\square$
+
+**Interpretation.** The condition $\rho < 1$ guarantees that *per-node* impacts decay geometrically — no individual belief is revised too violently. The stronger condition $d \cdot \rho < 1$ guarantees that *aggregate* disruption is bounded — the system as a whole absorbs the cascade without proportional damage. When $\rho < 1$ but $d \cdot \rho \geq 1$ (which is the typical case in real BDGs — see Section 7.5), individual nodes are safe but the cascade reaches most of the graph. This is the single-agent analog of the distinction in opinion dynamics between *local* convergence (each agent stabilizes) and *global* convergence (the population reaches consensus): DeGroot's theorem requires the spectral radius of the full influence matrix $W$ to be subunitary, not just the maximum single entry.
 
 **Remark.** The Lipschitz constant $L$ captures how much a node *amplifies* incoming revisions. If $L < 1$, the node dampens; if $L > 1$, it amplifies. Amplifying nodes are dangerous only when coupled with strong dependencies ($L \cdot w_{\max} \geq 1$).
 
-### Theorem 4.4 (Cascade Instability Condition)
+### Theorem 4.4 (Iterated Cascade Instability)
 
-**Statement.** If the BDG contains a directed cycle $v_1 \to v_2 \to \cdots \to v_m \to v_1$ with:
+Definition 3.5 defines a single cascade as a one-shot propagation through the BDG (in topological order for DAGs). On DAGs, cascades always terminate — acyclicity alone guarantees this, independent of $\rho$. When cycles are present, however, we must consider what happens when cascades are *iterated*: the output state of one cascade becomes the input to the next.
 
-$$\prod_{i=1}^{m} w(v_i, v_{i+1 \mod m}) \cdot L_i > 1$$
+**Definition 4.4.1 (Iterated Cascade).** Given a BDG with a directed cycle $\gamma = v_1 \to v_2 \to \cdots \to v_m \to v_1$, an **iterated cascade** is a sequence of single cascades $C^{(0)}, C^{(1)}, \ldots$ where each $C^{(t+1)}$ is triggered by the revised belief states produced by $C^{(t)}$. Specifically: after $C^{(t)}$ revises $v_m$, the revised state of $v_m$ triggers a new cascade $C^{(t+1)}$ starting at $v_1$ (via the edge $v_m \to v_1$).
 
-where $L_i$ is the Lipschitz constant of the revision impact function at node $v_i$, then a revision cascade entering the cycle can diverge — revision impacts grow without bound.
+**Statement.** If the BDG contains a directed cycle $\gamma = v_1 \to v_2 \to \cdots \to v_m \to v_1$ and the revision impact functions at each node have Lipschitz constants $L_1, \ldots, L_m$ that remain constant across iterations, then the impact at $v_1$ after $k$ iterations satisfies:
 
-**Proof.** Let $\delta^{(0)}$ be the impact entering the cycle at $v_1$. After one complete traversal of the cycle, the impact returning to $v_1$ is:
+$$\delta^{(k)} \leq \lambda^k \cdot \delta^{(0)}$$
 
-$$\delta^{(1)} \leq \left(\prod_{i=1}^{m} w(v_i, v_{i+1}) \cdot L_i\right) \cdot \delta^{(0)} = \lambda \cdot \delta^{(0)}$$
+where $\lambda = \prod_{i=1}^{m} w(v_i, v_{i+1 \bmod m}) \cdot L_i$ is the **cycle amplification factor**.
 
-where $\lambda = \prod_{i=1}^{m} w(v_i, v_{i+1}) \cdot L_i$. If $\lambda > 1$, then $\delta^{(k)} \geq \lambda^k \cdot \delta^{(0)} \to \infty$ as $k \to \infty$.
+If $\lambda > 1$, impacts grow without bound: $\delta^{(k)} \to \infty$ as $k \to \infty$.
 
-In practice, the system enters an oscillation where beliefs are repeatedly revised with increasing intensity. $\square$
+**Proof.** Each iteration traverses the cycle once. The impact entering $v_1$ at iteration $t$ propagates through $v_2, \ldots, v_m$, accumulating the product of edge weights and Lipschitz constants. By the Lipschitz property at each node, the impact returning to $v_1$ is at most $\lambda \cdot \delta^{(t)}$. By induction: $\delta^{(k)} \leq \lambda^k \cdot \delta^{(0)}$. $\square$
 
-**Interpretation.** This formalizes the intuition behind *cognitive dissonance spirals*. When two or more beliefs are circularly dependent and strongly coupled, attempting to resolve tension at one node amplifies tension at another, which feeds back to the first. The formal condition $\lambda > 1$ is the diagnostic: if the product of coupling strengths around any cycle exceeds 1, the belief system is unstable.
+**Caveat: constant-$L$ assumption.** The proof assumes the Lipschitz constants $L_i$ are the same on every iteration. In practice, belief revision is nonlinear: after a large revision at $v_i$, the belief state changes, and the effective Lipschitz constant on the next pass may differ. If revisions cause the belief to approach a fixed point, $L_i$ may decrease across iterations, producing convergence even when $\lambda > 1$ at the first iteration. The theorem characterizes instability of the *linearized* dynamics around the current state, analogous to how eigenvalue analysis characterizes local stability of nonlinear dynamical systems.
 
-**Remark.** Theorem 4.3 is the complement of Theorem 4.4. Together they partition the space: DAGs with subunitary damping always converge; graphs with strong cycles may diverge. The boundary is the spectral radius of the dependency-weighted impact amplification.
+**Interpretation.** This formalizes *cognitive dissonance spirals*. When two or more beliefs are circularly dependent and strongly coupled, attempting to resolve tension at one node amplifies tension at another, which feeds back to the first. The diagnostic is $\lambda > 1$: if the product of coupling strengths around any cycle exceeds 1, the linearized belief dynamics are unstable. In a real system, this instability manifests as oscillating revisions with increasing intensity until either (a) a nonlinear saturation effect stabilizes the system, or (b) the system implements a cycle-breaking mechanism (see Proposition 5.3 — held contradictions as firewalls).
+
+**Remark.** Theorems 4.3 and 4.4 partition the design space. For DAGs: cascades always terminate, and $\rho < 1$ gives tight bounds on depth and per-node impact. For cyclic graphs: single cascades still terminate (Definition 3.5 processes each node once), but *iterated* cascades can diverge when $\lambda > 1$. The practical implication: cycle detection in the BDG is a safety diagnostic. Any cycle with $\lambda > 1$ should be broken by designating one node as HELD (Proposition 5.3).
 
 ### Conjecture 4.5 (NP-Hardness of Optimal Cascade Ordering)
 
-**Statement.** Given a BDG $G$, a set of $k$ simultaneous revision events $\{r_1, \ldots, r_k\}$, and an objective of minimizing total post-cascade contradiction (measured as the sum of pairwise Fisher-Rao distances between conflicting beliefs), finding the optimal order in which to apply the revisions is NP-hard.
+**Problem (OPTIMAL-CASCADE-ORDER).** Given a BDG $G = (V, E, w)$, a set of $k$ simultaneous revision events $\{r_1, \ldots, r_k\}$ at distinct nodes, and an objective of minimizing total post-cascade contradiction:
 
-**Intuition.** When revision cascades from different events overlap — i.e., $C(r_i) \cap C(r_j) \neq \emptyset$ — the order matters. Applying $r_i$ first may leave shared nodes in a state that amplifies the cascade from $r_j$, or dampens it. The optimal ordering depends on the full structure of cascade interactions.
+$$\min_{\pi} \sum_{v \in V} \phi_\pi(v)$$
 
-**Approach to proof.** We sketch a reduction from Minimum Weighted Vertex Cover.
+where $\pi$ is a permutation of $\{1, \ldots, k\}$ and $\phi_\pi(v)$ is the contradiction at $v$ after applying revisions in order $r_{\pi(1)}, \ldots, r_{\pi(k)}$ with full cascade propagation between each. Is finding the optimal $\pi$ NP-hard?
 
-*Reduction.* Given a graph $H = (V_H, E_H)$ with vertex weights $c: V_H \to \mathbb{R}_{+}$, construct a BDG as follows:
+**Intuition.** When revision cascades from different events overlap — i.e., $C(r_i) \cap C(r_j) \neq \emptyset$ — the order matters. Applying $r_i$ first may leave shared nodes in a state that amplifies the cascade from $r_j$, or dampens it.
 
-- For each vertex $v \in V_H$, create a belief node $b_v$ and a revision event $r_v$
-- For each edge $(u, v) \in E_H$, create a shared downstream node $b_{uv}$ with edges from both $b_u$ and $b_v$
-- Set dependency weights such that revising $b_u$ before $b_v$ reduces contradiction at $b_{uv}$ by $c(u)$, and vice versa
+**Approach to proof.** The most promising reduction is from **Minimum Linear Arrangement** (MLA), known NP-hard (Garey, Johnson, & Stockmeyer, 1976). Given a graph $H = (V_H, E_H)$, MLA asks for a permutation $\pi$ of $V_H$ minimizing $\sum_{(u,v) \in E_H} |\pi(u) - \pi(v)|$.
 
-The optimal cascade ordering then corresponds to choosing which endpoint of each edge to revise first, minimizing the total residual contradiction — equivalent to minimum vertex cover.
+*Reduction sketch.* Each vertex in $H$ becomes a revision event. Each edge in $H$ becomes a shared downstream node in the BDG. The cascade interaction cost between revisions $r_i, r_j$ sharing a downstream node is monotone in $|\pi(i) - \pi(j)|$: revisions far apart in the ordering interact more destructively because intermediate revisions have modified the shared state.
 
-**Status.** This reduction requires careful verification that the constructed BDG faithfully simulates the vertex cover instance. The key technical challenge is ensuring that cascade interactions between non-adjacent revision events do not introduce polynomial-time shortcuts. We leave the formal proof (or disproof) as an open problem.
+**Status: open.** The reduction has the right structure — permutation to permutation, with interaction cost depending on ordering distance — but a formal proof that the BDG cascade cost faithfully encodes the MLA objective has not been completed. The key gap: showing that cascade interactions between non-adjacent events do not introduce structure that makes the problem easier. We have also investigated reductions from Minimum Weighted Vertex Cover and MAX-SAT (see Appendix B); neither maps cleanly to the permutation structure of cascade ordering.
 
 **Remark.** If this conjecture is *false* — i.e., optimal ordering is polynomial — that is equally publishable. It would mean AI systems can efficiently schedule multi-revision cascades, a positive result for practical system design.
 
@@ -289,15 +310,15 @@ This connects to value pluralism: an agent that insists on resolving every contr
 
 **Corollary 5.3.1 (Firewall placement).** If held nodes form a vertex cut in $G$ separating the revision source from a subgraph $G'$, then no node in $G'$ is affected by the cascade. Strategic placement of held contradictions can isolate subsystems.
 
-### Proposition 5.4 (Fisher-Weighted Cascade Priority)
+### Conjecture 5.4 (Fisher-Weighted Cascade Priority)
 
 **Statement.** If cascade re-evaluations at each depth level are ordered by Fisher-Rao distance from the revised predecessor (highest information distance first), the expected total contradiction after cascade completion is minimized among greedy orderings.
 
 **Intuition.** Revising the most informationally distant dependent first allows downstream nodes to absorb the largest perturbation early, when the system has the most room to adjust. Late revisions face a landscape already partially relaxed.
 
-*Proof sketch.* This follows from the submodularity of contradiction reduction under greedy ordering. The marginal reduction in total contradiction from revising node $v$ is monotone decreasing in the number of already-revised nodes (each revision resolves some tension, reducing the marginal benefit of further revisions). By the greedy algorithm for submodular maximization, the greedy ordering achieves a $(1 - 1/e)$-approximation to optimal ordering for each depth level. Ordering by Fisher distance maximizes the first-step marginal, which is optimal for the greedy strategy. $\square$
+**Status: unproven.** A natural proof strategy would show that contradiction reduction under greedy ordering is submodular, then apply the $(1-1/e)$ greedy approximation bound. However: (1) submodularity of contradiction reduction has not been established — it depends on the interaction structure of the BDG, which is problem-specific; (2) the standard greedy bound applies to submodular *maximization*, whereas minimizing total contradiction is a *minimization* problem, requiring the objective to be *supermodular* for the greedy bound to apply. These are not equivalent. We state this as a conjecture pending a proof or counterexample.
 
-> **Implementation.** `fisher_rao_distance()` in `info_geometry.py` provides the ordering metric. Fisher distance reranks retrieval: demotes uncertain neighbors, promotes confident ones. Confirmed experimentally.
+> **Implementation.** `fisher_rao_distance()` in `info_geometry.py` provides the ordering metric. Empirically, Fisher-distance ordering outperforms random ordering in cascade simulations, but we have not established theoretical optimality.
 
 ---
 
@@ -320,8 +341,10 @@ DeGroot's convergence theorem states that iterated weighted averaging converges 
 | Agent $i$ | Belief node $v_i$ |
 | Influence weight $w_{ij}$ | Dependency weight $w(v_i, v_j)$ |
 | Opinion update | Belief re-evaluation |
-| Spectral radius $< 1$ | $\rho = L \cdot w_{\max} < 1$ |
+| Spectral radius of $W$ $< 1$ | Per-node: $\rho = L \cdot w_{\max} < 1$; Graph-wide: $d \cdot \rho < 1$ |
 | Consensus | Cascade termination |
+
+**Important distinction.** DeGroot's convergence condition involves the spectral radius of the *full weight matrix* $W$, which captures global graph structure. Our per-node condition $\rho < 1$ is analogous to bounding the *maximum entry* of $W$, which is necessary but not sufficient for global convergence. The graph-wide condition $d \cdot \rho < 1$ (Corollary 4.3.1) is the closer analog to DeGroot's spectral condition, though it uses a degree-based bound rather than the true spectral radius.
 
 ### 6.4 Belief Propagation
 
@@ -399,6 +422,88 @@ Damping factor: $\rho = 0.8 \times 0.9 = 0.72$.
 | 14 | 0.010 | No ($\leq \tau$) |
 
 Cascade terminates at depth 14, matching the bound: $\lceil \log(1.0/0.01) / \log(1/0.72) \rceil = \lceil 4.605 / 0.329 \rceil = 14$.
+
+### 7.5 Production BDG: Empirical Topology and Cascade Behavior
+
+We construct a BDG from a production personal AI assistant's memory database (599 active memories, 384-dimensional sentence embeddings). Unlike the preceding small-scale illustrations (Sections 7.2–7.4), this section reports on a real belief graph not designed to validate the theory.
+
+**Graph construction.** Nodes are memories with embeddings, trust scores, confidence, and timestamps. Edges are assigned by pairwise cosine similarity: RELATED_TO for pairs with cosine similarity $> 0.5$ (directed from older to newer memory), and CONTRADICTS for pairs above $0.7$ that additionally trigger geometric contradiction detection (overlap integral with divergent centers). The resulting graph has 599 nodes, 4,976 edges (3,558 RELATED_TO, 1,418 CONTRADICTS), and density 0.014.
+
+**Topology.** The graph has 74 connected components. The largest component contains 498 nodes (83% of the graph); 64 nodes are isolated. The RELATED_TO subgraph is a DAG with longest directed path 27. Cycles exist in the full graph but are entirely from bidirectional CONTRADICTS edges (A contradicts B and B contradicts A), producing 500+ length-2 cycles. No support-chain cycles exist.
+
+| Statistic | Value |
+|-----------|-------|
+| Nodes | 599 |
+| Edges | 4,976 |
+| Largest component | 498 (83%) |
+| Isolated nodes | 64 |
+| RELATED_TO subgraph | DAG, longest path 27 |
+| Cycles | All from bidirectional CONTRADICTS |
+| Mean out-degree | 8.3 |
+| Max out-degree | 52 |
+| Median out-degree | 3 |
+| Nodes with fan-in > 1 | 407 (68%) |
+| Max fan-in | 54 |
+| Mean edge weight | 0.63 |
+
+**Cascade results.** We run cascades from the three highest out-degree nodes with $L = 0.9$, $\tau = 0.01$, and MAX aggregation (Definition 3.5). Results are consistent across sources:
+
+| Source | Depth | Max Width | Nodes Affected | Total Impact |
+|--------|-------|-----------|----------------|--------------|
+| Node A (out=52) | 8 | 207 | 383 (64%) | 109.8 |
+| Node B (out=48) | 8 | 169 | 381 (64%) | 106.8 |
+| Node C (out=44) | 9 | 228 | 375 (63%) | 109.0 |
+
+**Damping curve.** Per-node impact decays geometrically as Theorem 4.3 predicts. Averaging across the three cascades:
+
+| Depth | Avg Impact | Predicted ($\rho^j$, $\rho = 0.57$) |
+|-------|------------|--------------------------------------|
+| 0 | 1.000 | 1.000 |
+| 1 | 0.566 | 0.570 |
+| 2 | 0.314 | 0.325 |
+| 3 | 0.178 | 0.185 |
+| 4 | 0.102 | 0.106 |
+| 5 | 0.060 | 0.060 |
+| 6 | 0.039 | 0.034 |
+
+The per-node bound holds. However, the *graph-wide* total impact (Corollary 4.3.1) vastly exceeds the per-path bound: actual total $\approx 109$ vs. the per-path bound $\delta_0 / (1-\rho) = 2.33$. This is because $d \cdot \rho \approx 8.3 \times 0.57 = 4.7 \gg 1$: fan-out dominates damping, and a single revision affects 64% of the graph.
+
+**Key empirical findings:**
+
+1. **Multi-parent is the norm.** 68% of nodes have fan-in > 1. The single-path assumption of Theorem 4.3(c) does not describe typical cascade behavior.
+2. **Cascades are broad, not deep.** Depth 8–9 is well below the DAG longest path (27). Damping kills propagation vertically, but fan-out spreads it horizontally.
+3. **All cycles are contradiction-pair cycles.** Real BDGs do not exhibit support-chain cycles. Theorem 4.4's instability condition applies only to CONTRADICTS edges, making it a diagnostic for contradiction management rather than general cascade dynamics.
+4. **64% cascade reach is stable across sources.** The three highest-degree nodes all affect approximately the same 380 nodes — suggesting the reachable set is a structural property of the graph, not source-dependent.
+5. **The graph-wide convergence condition $d \cdot \rho < 1$ is not satisfied.** For real BDGs with mean out-degree $\sim 8$, graph-wide convergence requires $\rho < 0.12$ — much stricter than the per-node condition $\rho < 1$. This means cascade *reach* is inherently broad in typical belief graphs, even when per-node impact is well-controlled.
+
+### 7.6 Firewall Experiment (Proposition 5.3)
+
+We simulate held contradictions as cascade firewalls on the production BDG. Held nodes absorb incoming cascade impact but do not propagate to their successors.
+
+**Baseline.** From the highest out-degree source (out=53), the cascade affects 385 nodes with total impact 110.7.
+
+**Strategy 1: Block high fan-in nodes (sinks).** The top fan-in nodes (in-degree 42–55) have low out-degree (6–13). Blocking 1–5 of them reduces node count by 0% and impact by < 0.4%. High fan-in nodes are *sinks*, not *hubs* — they absorb cascades but don't spread them.
+
+**Strategy 2: Block high out-degree nodes (spreaders).** Blocking the top 10 out-degree nodes (excluding the source) reduces impact by 18.5%. Better, but the graph routes around them.
+
+**Strategy 3: Firewall ring at depth 1.** Blocking the source's direct successors creates a vertex cut (Corollary 5.3.1):
+
+| Depth-1 firewalls | Nodes affected | Reduction | Impact | Reduction |
+|---|---|---|---|---|
+| 5 of 53 | 383 | 0.5% | 90.6 | 18.2% |
+| 10 of 53 | 382 | 0.8% | 88.1 | 20.4% |
+| 20 of 53 | 361 | 6.2% | 77.5 | 30.0% |
+| **All 53** | **54** | **86.0%** | **31.2** | **71.8%** |
+
+**Strategy 4: Articulation points.** The graph has 53 articulation points (nodes whose removal disconnects the graph). Blocking the top 20 by degree reduces nodes by only 7.3% — the graph is too densely connected for individual structural bottlenecks to matter.
+
+**Key findings for Proposition 5.3:**
+
+1. **Firewalls are ineffective individually on dense graphs.** No single node blocks more than 0.5% of the cascade. The high connectivity of real BDGs provides many alternate paths.
+2. **Firewall placement matters more than firewall count.** 20 depth-1 firewalls (38% of the ring) cut 30% of impact. 20 random articulation points cut only 7.3% of nodes.
+3. **Complete vertex cuts are dramatically effective.** Blocking all depth-1 successors eliminates 86% of cascade reach — confirming Corollary 5.3.1 on real data.
+4. **The effectiveness curve is nonlinear.** 38% of the firewall ring gives 30% reduction; 100% gives 86%. There is a sharp phase transition between "barely helps" and "nearly total containment."
+5. **Practical implication.** In real systems, held contradictions are useful as firewalls only when they form a nearly complete cut. Sparse held beliefs in a dense graph provide negligible protection.
 
 ---
 

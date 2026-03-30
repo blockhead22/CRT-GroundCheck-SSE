@@ -5334,7 +5334,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         llm_client=_get_llm_pe(),
                         session_db=_session_db,
                     )
-                    if _pe.should_create_plan(req.message, intent=_task_intent):
+                    _PLAN_SKIP_INTENTS = {"broad_recall", "system_info", "inquiry_queue", "conversational"}
+                    _plan_intent_type = getattr(_task_intent, "intent_type", None)
+                    if _plan_intent_type in _PLAN_SKIP_INTENTS:
+                        _safe_print(f"[PLAN] skipping planner for memory-only intent: {_plan_intent_type}")
+                    elif _pe.should_create_plan(req.message, intent=_task_intent):
                         _safe_print(f"[PLAN] should_create_plan=True for: {req.message[:80]}")
                         _plan = _pe.generate_plan(
                             user_message=req.message,
@@ -5612,10 +5616,14 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 pass
 
             _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}")
+            # Memory-only intents must bypass the agent loop — they need direct retrieval,
+            # not an LLM tool loop that will spin up web_search / shell_exec.
+            _MEMORY_ONLY_INTENTS = {"broad_recall", "system_info", "inquiry_queue"}
             if (
                 _agent_loop_enabled
                 and _task_intent is not None
                 and _task_intent.route == "task"
+                and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
                 and not _user_confirmed  # Agent loop handles its own checkpoints
             ):
                 _safe_print("[AGENT_LOOP_GATE] >>> ENTERING agent tool loop path")
