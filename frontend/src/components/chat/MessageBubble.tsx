@@ -539,6 +539,8 @@ export function MessageBubble(props: {
                   return { label: 'GPT-4o', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'openai' }
                 case 'cloud_claude':
                   return { label: 'Claude', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'claude' }
+                case 'cookie_claude':
+                  return { label: 'Cookie Fallback', bg: 'rgba(251,146,60,0.12)', color: '#fb923c', border: 'rgba(251,146,60,0.25)', icon: 'claude' }
                 case 'cloud_fallback':
                   return { label: 'Fallback: GPT', bg: '#1a1a1a', color: '#ffffff', border: 'rgba(255,255,255,0.15)', icon: 'openai' }
                 case 'claude_fallback':

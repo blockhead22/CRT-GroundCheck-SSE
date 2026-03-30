@@ -4,7 +4,7 @@ import { getCloudSettings, updateCloudSettings, getAvailableModels, type Availab
 import { ClaudeLogo } from '../icons/ClaudeLogo'
 import { OpenAILogo } from '../icons/OpenAILogo'
 
-type GenerationMode = 'local' | 'cloud_openai' | 'cloud_claude'
+type GenerationMode = 'local' | 'local_network' | 'cloud_openai' | 'cloud_claude'
 
 const SERVER_ICON = (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -15,10 +15,19 @@ const SERVER_ICON = (
   </svg>
 )
 
+const NETWORK_ICON = (
+  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+)
+
 const MODEL_OPTIONS: { value: GenerationMode; label: string; shortLabel: string; icon: React.ReactNode }[] = [
-  { value: 'local', label: 'Local (qwen3:14b)', shortLabel: 'Local', icon: SERVER_ICON },
-  { value: 'cloud_openai', label: 'GPT-4o Mini', shortLabel: 'GPT-4o', icon: <OpenAILogo size={12} color="currentColor" /> },
-  { value: 'cloud_claude', label: 'Claude Sonnet', shortLabel: 'Claude', icon: <ClaudeLogo size={12} color="currentColor" /> },
+  { value: 'local', label: 'Local (Ollama)', shortLabel: 'Local', icon: SERVER_ICON },
+  { value: 'local_network', label: 'Network (Ollama/LAN)', shortLabel: 'Network', icon: NETWORK_ICON },
+  { value: 'cloud_openai', label: 'Cloud (OpenAI)', shortLabel: 'OpenAI', icon: <OpenAILogo size={12} color="currentColor" /> },
+  { value: 'cloud_claude', label: 'Cloud (Claude)', shortLabel: 'Claude', icon: <ClaudeLogo size={12} color="currentColor" /> },
 ]
 
 export function Composer(props: {
@@ -58,7 +67,7 @@ export function Composer(props: {
     getCloudSettings()
       .then((settings) => {
         const mode = settings.generation_mode as GenerationMode
-        if (mode && ['local', 'cloud_openai', 'cloud_claude'].includes(mode)) {
+        if (mode && ['local', 'local_network', 'cloud_openai', 'cloud_claude'].includes(mode)) {
           setGenerationMode(mode)
         }
         setBypassCrt(settings.bypass_crt === 'true' || settings.bypass_crt === 'on')
@@ -66,6 +75,7 @@ export function Composer(props: {
         // Track the specific model name for display
         if (mode === 'cloud_openai') setSelectedModelName(settings.cloud_model_openai || 'gpt-4o-mini')
         else if (mode === 'cloud_claude') setSelectedModelName(settings.cloud_model_claude || 'claude-sonnet-4-20250514')
+        else if (mode === 'local_network') setSelectedModelName(settings.network_ollama_model || settings.routing_llm_model || '')
         else setSelectedModelName(settings.routing_llm_model || '')
         setSettingsLoaded(true)
       })
@@ -219,6 +229,7 @@ export function Composer(props: {
     try {
       const updates: Record<string, string> = { generation_mode: mode }
       if (mode === 'local') updates.routing_llm_model = modelName
+      else if (mode === 'local_network') updates.network_ollama_model = modelName
       else if (mode === 'cloud_openai') updates.cloud_model_openai = modelName
       else if (mode === 'cloud_claude') updates.cloud_model_claude = modelName
       await updateCloudSettings(updates)
@@ -242,9 +253,10 @@ export function Composer(props: {
 
   const isDisabled = props.disabled || props.researching
   const activeModel = MODEL_OPTIONS.find((m) => m.value === generationMode) ?? MODEL_OPTIONS[0]
+  const isLocalMode = generationMode === 'local' || generationMode === 'local_network'
   // Show specific model name if user picked one from All Models
   const displayLabel = selectedModelName && selectedModelName !== ''
-    ? (generationMode === 'local' ? selectedModelName.split(':')[0] : selectedModelName.replace(/^gpt-/, '').replace(/^claude-/, 'claude ').split('-20')[0])
+    ? (isLocalMode ? selectedModelName.split(':')[0] : selectedModelName.replace(/^gpt-/, '').replace(/^claude-/, 'claude ').split('-20')[0])
     : activeModel.shortLabel
 
   return (
@@ -266,7 +278,7 @@ export function Composer(props: {
               }}
             >
               <span className="flex items-center gap-1.5">
-                {generationMode !== 'local' && (
+                {!isLocalMode && (
                   <span style={{ color: 'rgba(212,132,92,0.7)' }}>
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
@@ -344,28 +356,28 @@ export function Composer(props: {
                     {/* Inline model list (accordion) */}
                     {modelsOpen && availableModels && (
                       <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
-                        {/* Local models */}
+                        {/* Network (Ollama/LAN) models */}
                         {availableModels.local.length > 0 && (
                           <>
                             <div className="px-3 pt-1.5 pb-0.5">
                               <div className="text-[9px] font-medium uppercase tracking-wide" style={{ color: 'rgba(240,235,225,0.25)' }}>
-                                Local (Ollama)
+                                Network (Ollama/LAN)
                               </div>
                             </div>
                             {availableModels.local.map((m) => (
                               <button
                                 key={`local-${m.name}`}
-                                onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('local', m.name) }}
+                                onClick={(e) => { e.stopPropagation(); handleSpecificModelSelect('local_network', m.name) }}
                                 className="flex w-full items-center gap-2 px-4 py-1.5 text-left text-[11px] transition-colors hover:bg-white/[0.06]"
                                 style={{
-                                  color: generationMode === 'local' && selectedModelName === m.name
+                                  color: (generationMode === 'local_network' || generationMode === 'local') && selectedModelName === m.name
                                     ? 'rgba(212,132,92,0.9)' : 'rgba(240,235,225,0.5)',
                                 }}
                               >
-                                <span className="flex-shrink-0 opacity-40">{SERVER_ICON}</span>
+                                <span className="flex-shrink-0 opacity-40">{NETWORK_ICON}</span>
                                 <span className="flex-1 font-medium truncate">{m.name}</span>
                                 {m.size && <span className="text-[9px] opacity-25 flex-shrink-0">{m.size}</span>}
-                                {generationMode === 'local' && selectedModelName === m.name && (
+                                {(generationMode === 'local_network' || generationMode === 'local') && selectedModelName === m.name && (
                                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
                                 )}
                               </button>

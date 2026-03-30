@@ -123,7 +123,7 @@
     "generation_stack":  {
                              "local":  {
                                            "enabled":  true,
-                                           "default_model":  "qwen3:14b"
+                                           "default_model":  "llama3.2"
                                        },
                              "anthropic":  {
                                                "enabled":  true,
@@ -136,10 +136,10 @@
                                                                 }
                                            },
                              "model_roles":  {
-                                                 "fast":  "local:qwen3:14b",
-                                                 "reasoning":  "local:qwen3:14b",
-                                                 "tool_loop":  "local:qwen3:14b",
-                                                 "answer":  "local:qwen3:14b"
+                                                 "fast":  "local:llama3.2",
+                                                 "reasoning":  "local:llama3.2",
+                                                 "tool_loop":  "local:llama3.2",
+                                                 "answer":  "local:llama3.2"
                                              },
                              "cloud":  {
                                            "enabled":  false,

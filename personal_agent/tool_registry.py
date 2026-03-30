@@ -273,7 +273,7 @@ _register(ToolDefinition(
 # ---- desktop_action ----
 _register(ToolDefinition(
     name="desktop_action",
-    description="Perform a desktop automation action (open apps, click, type, take screenshots)",
+    description="Perform a literal desktop automation action (open apps, click UI elements, type text, take screenshots). ONLY for physical computer control — NEVER for questions, opinions, memory recall, or reflective conversation.",
     parameters=[
         ToolParam("task", "string", "Natural language description of the desktop task to perform", required=True),
     ],
@@ -457,7 +457,7 @@ _register(ToolDefinition(
 # ---- web_search ----
 _register(ToolDefinition(
     name="web_search",
-    description="Search the web for information using a search engine",
+    description="Search the web for external information. ONLY when user explicitly asks to search online, look something up, or needs current/external data not in memory. NEVER for opinions, personal questions about the user, or reflective conversation.",
     parameters=[
         ToolParam("query", "string", "The search query", required=True),
     ],

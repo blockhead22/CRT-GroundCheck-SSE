@@ -264,6 +264,7 @@ def auth_update_settings(
         "generation_mode",
         "cloud_model_openai",
         "cloud_model_claude",
+        "network_ollama_model",  # LAN Ollama model override (local_network mode)
         # Intuition Check
         "intuition_check_enabled",
         "intuition_check_clarify",

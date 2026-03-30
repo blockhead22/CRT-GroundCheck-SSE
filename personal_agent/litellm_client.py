@@ -251,13 +251,19 @@ class UnifiedLLMClient:
         resolved = model_name or self.ollama_model
         if not resolved.startswith("ollama/"):
             resolved = f"ollama/{resolved}"
+        # Thinking models (qwen3, deepseek-r1) need extra time for <think> generation.
+        # Use 300s for thinking models, 120s for fast models.
+        _is_thinking = self._is_thinking_model(resolved)
+        _timeout = 300 if _is_thinking else 120
         return {
             "model": resolved,
             "api_base": self.ollama_base_url,
-            "timeout": 120,
+            "timeout": _timeout,
             # Ollama defaults to 2048 context tokens which silently drops
             # conversation history. Set explicitly to use the model's full window.
-            "num_ctx": 8192,
+            # 4096 keeps VRAM usage manageable on M2; enough for personal assistant
+            # conversations which rarely exceed 3k tokens of history.
+            "num_ctx": 4096,
         }
 
     def _is_thinking_model(self, model: str) -> bool:
@@ -444,17 +450,18 @@ class UnifiedLLMClient:
             "options": {
                 "temperature": temperature,
                 "num_predict": effective_max,
-                "num_ctx": 8192,
+                "num_ctx": 4096,
             },
         }
         if tools:
             payload["tools"] = tools
 
         try:
+            _direct_timeout = 300 if self._is_thinking_model(model) else 120
             resp = _req.post(
                 f"{self.ollama_base_url}/api/chat",
                 json=payload,
-                timeout=120,
+                timeout=_direct_timeout,
             )
             if resp.status_code != 200:
                 print(f"[LITELLM] Ollama direct call failed: HTTP {resp.status_code}")
@@ -794,6 +801,8 @@ class UnifiedLLMClient:
 
         # Quality gate: tool calls are always valid
         if result["tool_calls"]:
+            result["generation_source"] = "local"
+            print(f"[GEN_SOURCE] LOCAL OLLAMA (tool call) — model={model_name}")
             return result
 
         content = (result["content"] or "").strip()
@@ -804,6 +813,8 @@ class UnifiedLLMClient:
                 print(f"[LITELLM] Local returned degenerate response '{content}', falling through")
                 return None
             if not any(_lower.startswith(p) for p in self._META_STARTS):
+                result["generation_source"] = "local"
+                print(f"[GEN_SOURCE] LOCAL OLLAMA (text) — model={model_name}")
                 return result
             print(f"[LITELLM] Local returned meta-reasoning, falling through: {content[:100]}")
         else:
@@ -829,7 +840,20 @@ class UnifiedLLMClient:
         When local returns garbage and there's no Anthropic API key, try the
         cookie provider (CLAUDE_SESSION_COOKIE) for a text-only synthesis.
         No tool calling — just ask Claude to answer based on the conversation.
+
+        Gated by cloud_claude_generation setting — if the user turned off
+        "Generation Fallback" in Settings, this is skipped entirely.
         """
+        # Gate: respect cloud_claude_generation setting
+        try:
+            import auth as _auth_mod
+            _gen_on = str(_auth_mod.get_user_setting(1, "cloud_claude_generation", "true")).lower() in ("true", "1", "yes", "on")
+            if not _gen_on:
+                print("[LITELLM] Cookie fallback gated: cloud_claude_generation=off in settings")
+                return None
+        except Exception:
+            pass  # If auth unavailable, allow fallback
+
         try:
             from .cloud_features import get_cloud_feature_service
             svc = get_cloud_feature_service()
@@ -874,7 +898,8 @@ class UnifiedLLMClient:
                 # Strip JSON/markdown wrapping if Claude ignores the instruction
                 text = self._unwrap_json_response(text)
                 print(f"[LITELLM] Cookie fallback succeeded: {len(text)} chars")
-                return {"tool_calls": [], "content": text, "used_tools": False}
+                print(f"[GEN_SOURCE] *** COOKIE CLAUDE (agent_fallback) *** — local Ollama and OpenAI both unavailable")
+                return {"tool_calls": [], "content": text, "used_tools": False, "generation_source": "cookie_claude"}
 
             print("[LITELLM] Cookie fallback returned empty")
         except Exception as e:
@@ -958,12 +983,20 @@ class UnifiedLLMClient:
             print("[LITELLM] Local tool call failed, retrying without tools for text answer")
             try:
                 resp = self._call("local", model_name, messages, max_tokens, temperature)
-                text = (resp.get("content") or "").strip() if isinstance(resp, dict) else str(resp).strip()
+                # _call returns a LiteLLM ModelResponse, not a dict — extract content properly
+                if hasattr(resp, "choices") and resp.choices:
+                    raw = resp.choices[0].message.content or ""
+                    text = self._resolve_visible_text(raw).strip()
+                elif isinstance(resp, dict):
+                    text = (resp.get("content") or "").strip()
+                else:
+                    text = ""
                 if text and text.lower() not in ("{}", "[]", "null", '""', "''"):
-                    return {"tool_calls": [], "content": text, "used_tools": False}
+                    print(f"[GEN_SOURCE] LOCAL OLLAMA (text-only retry) — model={model_name}")
+                    return {"tool_calls": [], "content": text, "used_tools": False, "generation_source": "local"}
             except Exception as _e:
                 print(f"[LITELLM] Local text-only retry also failed: {_e}")
-            return {"tool_calls": [], "content": "", "used_tools": False}
+            return {"tool_calls": [], "content": "", "used_tools": False, "generation_source": "local_failed"}
 
         if policy == "cloud_to_local":
             result = self._try_anthropic_tools(
@@ -977,7 +1010,30 @@ class UnifiedLLMClient:
             )
             return result or {"tool_calls": [], "content": "", "used_tools": False}
 
-        # Default: cloud_to_local (cloud-first, local as last resort)
+        if policy == "local_to_cloud":
+            # Local first, cloud only as fallback
+            result = self._try_local_tools(
+                messages, tools, max_tokens, temperature, model_name,
+            )
+            if result:
+                return result
+            print("[LITELLM] Local failed, trying cloud fallback")
+            result = self._try_anthropic_tools(
+                messages, tools, max_tokens, temperature, model_name,
+            )
+            if result:
+                return result
+            # Cookie fallback is gated by cloud_claude_generation setting
+            result = self._try_cookie_text_fallback(messages)
+            return result or {"tool_calls": [], "content": "", "used_tools": False}
+
+        # Default: local first, then cloud, then cookie (safe default)
+        result = self._try_local_tools(
+            messages, tools, max_tokens, temperature, model_name,
+        )
+        if result:
+            return result
+        print("[LITELLM] Local failed, trying cloud fallback")
         result = self._try_anthropic_tools(
             messages, tools, max_tokens, temperature, model_name,
         )
@@ -987,11 +1043,7 @@ class UnifiedLLMClient:
         result = self._try_cookie_text_fallback(messages)
         if result:
             return result
-        print("[LITELLM] Cookie failed, trying local (Ollama) as last resort")
-        result = self._try_local_tools(
-            messages, tools, max_tokens, temperature, model_name,
-        )
-        return result or {"tool_calls": [], "content": "", "used_tools": False}
+        return {"tool_calls": [], "content": "", "used_tools": False, "generation_source": "all_failed"}
 
     # ── chat_stream() ─────────────────────────────────────────────────
 

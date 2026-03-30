@@ -1373,14 +1373,28 @@ def create_app() -> FastAPI:
         if _ollama_available:
             try:
                 import ollama as _ollama_mod
+                import threading as _threading
                 _intent_model = os.getenv("CRT_INTENT_MODEL")
+                _gen_model = os.getenv("CRT_OLLAMA_MODEL") or "qwen3:14b"
+
                 if _intent_model:
-                    # Intent model is lightweight — warm it, skip heavy gen model
+                    # Warm intent model synchronously (lightweight, needed immediately for routing)
                     print(f"[STARTUP] Pre-warming intent model: {_intent_model}")
                     _ollama_mod.generate(model=_intent_model, prompt="", keep_alive="24h")
                     print(f"[STARTUP] Ollama model {_intent_model} loaded into VRAM")
+
+                    # Warm generation model in background — 14B takes time, don't block startup
+                    if _gen_model and _gen_model != _intent_model:
+                        def _warm_gen_model():
+                            try:
+                                print(f"[STARTUP] Background pre-warming gen model: {_gen_model}")
+                                _ollama_mod.generate(model=_gen_model, prompt="hi", keep_alive="24h")
+                                print(f"[STARTUP] Gen model {_gen_model} loaded into VRAM (background)")
+                            except Exception as _e:
+                                print(f"[STARTUP] Background gen model warm failed: {_e}")
+                        _threading.Thread(target=_warm_gen_model, daemon=True).start()
                 else:
-                    _warm_model = _default_router_model or "qwen3:14b"
+                    _warm_model = _gen_model or _default_router_model or "qwen3:14b"
                     print(f"[STARTUP] Pre-warming Ollama model: {_warm_model}")
                     _ollama_mod.generate(model=_warm_model, prompt="", keep_alive="24h")
                     print(f"[STARTUP] Ollama model {_warm_model} loaded into VRAM")

@@ -3100,6 +3100,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _bypass_gen_mode = str(
             _auth_bypass.get_user_setting(_uid_bypass, "generation_mode", "cloud_openai") or "cloud_openai"
         ).strip()
+        if _bypass_gen_mode == "local_network":
+            _bypass_gen_mode = "local"
     except Exception as _bp_err:
         _safe_print(f"[BYPASS_CRT] Settings check failed: {_bp_err}")
         _bypass_gen_mode = "cloud_openai"
@@ -3254,6 +3256,9 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         import auth as _auth_gen
         _uid_gen = int(uid) if uid else 1
         _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "cloud_openai") or "cloud_openai").strip()
+        # Normalize local_network → local for routing purposes (same Ollama backend, URL set via OLLAMA_BASE_URL)
+        if _generation_mode == "local_network":
+            _generation_mode = "local"
         _safe_print(f"[GENERATION] mode_select: generation_mode={_generation_mode}, uid={_uid_gen}")
         _emit_pipeline_status(f"generating ({_generation_mode})")
 
@@ -5715,6 +5720,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     _al_answer = ""
                     _al_steps: list = []
                     _al_done = False
+                    _al_generation_source = ""
 
                     try:
                         _event = next(_loop_gen)
@@ -5754,6 +5760,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 _al_steps.append(_event.get("metadata", {}))
                             elif _event["type"] == "agent_loop_complete":
                                 _al_done = True
+                                _al_generation_source = _event.get("metadata", {}).get("generation_source", "")
 
                             # Get next event (no checkpoint confirmation in SSE mode)
                             _event = _loop_gen.send(None)
@@ -5776,12 +5783,17 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     # Agent loop completed — emit done
                     logger.info("[SSE_DEBUG] Emitting final done, al_answer_len=%d, preview=%.200s", len(_al_answer), _al_answer[:200])
                     _tools_executed = len(_al_steps) > 0
+                    # Infer generation source if agent loop didn't report one
+                    if not _al_generation_source:
+                        _al_generation_source = "local" if _tools_executed else "cookie_claude"
+                    _safe_print(f"[GEN_SOURCE] SSE final: generation_source={_al_generation_source}, tools_executed={_tools_executed}")
                     _done_meta_al = {
                         "tool_calls": _al_steps,
                         "agent_loop": True,
                         "tools_executed": _tools_executed,
                         "response_type": "task",
                         "gates_passed": True,
+                        "generation_source": _al_generation_source,
                     }
                     yield _sse({"type": "done", "content": _al_answer, "metadata": _done_meta_al})
                     return

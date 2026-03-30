@@ -1351,6 +1351,23 @@ def classify_intent_hybrid(
             source="regex",
         )
 
+    # 0b-pre. Conversational pre-filter: intercept greetings/opinions/reflections
+    # MUST run before cache lookup so stale LLM misclassifications can't replay.
+    try:
+        from personal_agent.llm_intent_router import LLMIntentRouter as _RouterCls
+        if _RouterCls._is_conversational(_RouterCls, message) and not attached_paths:
+            logger.info("[INTENT_ROUTER] Conversational pre-filter (task_agent): '%s'", message[:60])
+            return TaskIntent(
+                route="conversational",
+                intent_type="conversational",
+                slots={"raw_message": message},
+                confidence=0.99,
+                reason="Conversational pre-filter",
+                source="pre_filter",
+            )
+    except Exception as _pf_err:
+        logger.debug("[INTENT_ROUTER] Pre-filter check failed: %s", _pf_err)
+
     # 0b. Route-learning cache: reuse a recent successful classification
     try:
         from personal_agent.route_learning import get_route_learning_db
@@ -1570,6 +1587,22 @@ def _try_embedding_classifier(
 
 def _log_route_learning(message: str, result: "TaskIntent") -> None:
     """Log a successful LLM-routed classification to the learning DB."""
+    # Never cache conversational/pre-filter results — they'd poison future lookups
+    # if the LLM happened to misclassify the message as a tool intent.
+    try:
+        from personal_agent.llm_intent_router import LLMIntentRouter as _RC
+        if _RC._is_conversational(_RC, message):
+            logger.debug("[ROUTE_LEARNING] skip cache for conversational message: %r", message[:60])
+            return
+    except Exception:
+        pass
+    # Also never cache tool intents for messages that are clearly conversational patterns
+    _NEVER_CACHE_INTENTS = {"desktop_action", "shell_exec", "web_browse"}
+    if result.intent_type in _NEVER_CACHE_INTENTS and len(message.strip()) < 80:
+        # Short messages routed to high-risk tools are suspicious — don't cache
+        logger.debug("[ROUTE_LEARNING] skip cache for short %s message: %r", result.intent_type, message[:60])
+        return
+
     try:
         from personal_agent.route_learning import get_route_learning_db
         db = get_route_learning_db()

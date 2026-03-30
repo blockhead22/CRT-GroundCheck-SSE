@@ -538,6 +538,8 @@ class AgentToolLoop:
             },
         }
 
+        _loop_generation_source = ""  # Tracks actual generation source across iterations
+
         for iteration in range(self.max_iterations):
             logger.info("[AGENT_LOOP] Iteration %d/%d", iteration + 1, self.max_iterations)
             _total_msg_chars = sum(len(str(m.get("content", ""))) for m in messages)
@@ -561,6 +563,10 @@ class AgentToolLoop:
                 break
 
             # ── 2. Check if LLM returned text (no tool calls) ─────────────
+            _resp_gen_source = llm_response.get("generation_source", "")
+            if _resp_gen_source:
+                # Track the last known generation source for the completion event
+                _loop_generation_source = _resp_gen_source
             print(f"[AGENT_LOOP_DEBUG] Raw LLM response keys={list(llm_response.keys())} used_tools={llm_response.get('used_tools')}")
             tool_calls = llm_response.get("tool_calls", [])
             text_content = (llm_response.get("content") or "").strip()
@@ -605,12 +611,16 @@ class AgentToolLoop:
                                 _belief_conf = min(0.8, _belief_conf + 0.1)
                         elif self.engine is not None and _was_fallback:
                             # Cookie fallback with no tool steps, but engine has context.
-                            # Check if the system prompt injected memories.
+                            # Check system prompt for memory injection and count them.
                             try:
                                 _sys_msg = next((m.get("content", "") for m in messages if m.get("role") == "system"), "")
-                                _has_memories = "memories cited" in _sys_msg.lower() or "trust:" in _sys_msg.lower() or "T:" in _sys_msg
+                                # Count how many memory entries appear in the system prompt
+                                _mem_cite_count = _sys_msg.count("trust:") + _sys_msg.count("T:0.") + _sys_msg.count("T:1.")
+                                _has_memories = "memories cited" in _sys_msg.lower() or _mem_cite_count > 0
                                 if _has_memories:
-                                    _belief_conf = 0.45  # system prompt has memory context
+                                    # Scale by memory count: more grounding = higher belief
+                                    # but cookie fallback caps at 0.55 (unverified synthesis)
+                                    _belief_conf = min(0.55, 0.25 + 0.04 * min(_mem_cite_count, 8))
                                 else:
                                     _belief_conf = 0.15
                             except Exception:
@@ -621,6 +631,23 @@ class AgentToolLoop:
                             _belief_conf = 0.15  # cookie/cloud fallback, no tools, no grounding
                         else:
                             _belief_conf = 0.3  # multiple iterations but no memory
+
+                        # Adjust based on response assertiveness vs hedging
+                        # Assertive claims about the user need higher grounding to be credible
+                        _text_lower = clean_text.lower()
+                        _assertive_markers = ["you are ", "you always ", "you never ", "you definitely ",
+                                              "you clearly ", "you obviously ", "you have always"]
+                        _hedge_markers = ["i think", "i believe", "might be", "may be", "possibly",
+                                          "perhaps", "it seems", "i'm not certain", "i'm not sure",
+                                          "could be", "i'd guess"]
+                        _assertive_count = sum(1 for m in _assertive_markers if m in _text_lower)
+                        _hedge_count = sum(1 for m in _hedge_markers if m in _text_lower)
+                        # Assertive claims without strong grounding → lower belief
+                        if _assertive_count >= 2 and _belief_conf < 0.6:
+                            _belief_conf = max(0.10, _belief_conf - 0.08 * min(_assertive_count, 3))
+                        # Explicit hedging is honest → small boost
+                        if _hedge_count >= 2:
+                            _belief_conf = min(0.75, _belief_conf + 0.04)
 
                         _gov = self._governance.govern_response(
                             text=clean_text,
@@ -833,6 +860,8 @@ class AgentToolLoop:
 
         # ── Emit completion event ──────────────────────────────────────────
         total_ms = (time.time() - start_time) * 1000
+        _final_gen_source = _loop_generation_source or ("local" if len(steps) > 0 else "unknown")
+        print(f"[GEN_SOURCE] Loop complete — generation_source={_final_gen_source}, tools_executed={len(steps)}")
         yield {
             "type": "agent_loop_complete",
             "content": f"Loop finished: {len(steps)} tool call(s) in {len(tools_used)} unique tool(s)",
@@ -840,6 +869,7 @@ class AgentToolLoop:
                 "iterations": min(len(steps), self.max_iterations),
                 "tools_used": tools_used,
                 "total_duration_ms": round(total_ms),
+                "generation_source": _final_gen_source,
                 "steps": [
                     {
                         "tool_name": s.tool_name,

@@ -668,6 +668,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                         className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
                       >
                         <option value="local" className="bg-gray-900">Local (Ollama)</option>
+                        <option value="local_network" className="bg-gray-900">Network (Ollama/LAN)</option>
                         <option value="cloud_openai" className="bg-gray-900">Cloud (OpenAI)</option>
                         <option value="cloud_claude" className="bg-gray-900">Cloud (Claude)</option>
                       </select>
@@ -780,8 +781,8 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     </div>
                     <input
                       type="number" min="1" max="50"
-                      value={cloudSettings.desktop_max_steps_per_task || '15'}
-                      onChange={(e) => handleCloudNumberInput('desktop_max_steps_per_task', e.target.value)}
+                      defaultValue={cloudSettings.desktop_max_steps_per_task || '15'}
+                      onBlur={(e) => handleCloudNumberInput('desktop_max_steps_per_task', e.target.value)}
                       className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
                     />
                   </div>
@@ -793,8 +794,8 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     </div>
                     <input
                       type="number" min="1" max="500"
-                      value={cloudSettings.desktop_max_actions_per_session || '50'}
-                      onChange={(e) => handleCloudNumberInput('desktop_max_actions_per_session', e.target.value)}
+                      defaultValue={cloudSettings.desktop_max_actions_per_session || '50'}
+                      onBlur={(e) => handleCloudNumberInput('desktop_max_actions_per_session', e.target.value)}
                       className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
                     />
                   </div>
@@ -931,8 +932,8 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     </div>
                     <input
                       type="number" min="5" max="50"
-                      value={cloudSettings.browser_max_steps || '20'}
-                      onChange={(e) => handleCloudNumberInput('browser_max_steps', e.target.value)}
+                      defaultValue={cloudSettings.browser_max_steps || '20'}
+                      onBlur={(e) => handleCloudNumberInput('browser_max_steps', e.target.value)}
                       className="w-20 rounded bg-white/10 border border-white/10 px-2 py-1 text-sm text-white text-right"
                     />
                   </div>
@@ -1440,8 +1441,8 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                         min={1}
                         max={50}
                         className="glass-field w-24 rounded px-3 py-2 text-sm text-white/90"
-                        value={cloudSettings.tooling_agent_loop_max_iterations || '10'}
-                        onChange={(e) => handleCloudNumberInput('tooling_agent_loop_max_iterations', e.target.value)}
+                        defaultValue={cloudSettings.tooling_agent_loop_max_iterations || '10'}
+                        onBlur={(e) => handleCloudNumberInput('tooling_agent_loop_max_iterations', e.target.value)}
                       />
                     </div>
                     <Toggle

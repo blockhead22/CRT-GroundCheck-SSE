@@ -59,6 +59,29 @@ the full sequence:
 6. For git commands, extract the git subcommand and args into the args parameter as a list.
 7. For shell commands, put the full command string in the command parameter.
 
+CRITICAL — NEVER use a tool for these message types (respond with text only):
+- Questions asking for opinions, reflections, or analysis: "what do you think...", \
+"why do you think...", "how do you feel...", "do you think..."
+- Gratitude or acknowledgment: "thank you", "that was great", "I appreciate..."
+- Agreement or disagreement statements: "I think you're right", "I disagree because..."
+- Philosophical or conceptual discussion about the system itself
+- Follow-up to a conversation that doesn't require new information (e.g. "keep going", \
+"that's interesting", "tell me more about that")
+- Emotional or personal sharing that needs a thoughtful reply, not a tool
+
+CRITICAL — use memory_recall (NOT web_search or desktop_action) when:
+- User asks what you know about them: "what do you know about me", "tell me about me"
+- User asks about your relationship: "what have we talked about", "do you remember"
+- User asks for a fact about themselves: "what's my job", "where do I live"
+
+CRITICAL — use web_search or web_browse ONLY when:
+- User explicitly says "search for", "look up", "find online", "google this"
+- User asks for current events, news, or external information not in memory
+
+CRITICAL — desktop_action is ONLY for literal computer control tasks:
+- Opening apps, clicking, typing, taking screenshots, controlling the screen
+- NEVER use for questions, opinions, memory recall, or reflective conversations
+
 IMPORTANT: You must ONLY use the tools provided. Do not invent tool names."""
 
 
@@ -92,6 +115,154 @@ class LLMIntentRouter:
         self.max_tokens = max_tokens
         self.temperature = 0.0  # Force deterministic routing (classification task)
 
+    # ------------------------------------------------------------------
+    # Conversational pre-filter — intercepts before the LLM sees the message
+    # ------------------------------------------------------------------
+
+    _CONVERSATIONAL_EXACT: frozenset = frozenset({
+        "hello", "hello!", "hello?", "hello aether", "hello aether!", "hello aether?",
+        "hi", "hi!", "hey", "hey!", "hey aether", "hey aether!", "heya",
+        "how are you", "how are you?", "how are you doing", "how are you doing?",
+        "how's it going", "how's it going?", "what's up", "what's up?",
+        "good morning", "good afternoon", "good evening", "good night",
+        "thanks", "thank you", "thank you!", "thanks!", "ty", "ty!",
+        "ok", "okay", "ok.", "okay.", "ok!", "okay!", "got it", "got it.",
+        "yes", "no", "sure", "alright", "sounds good", "perfect", "great",
+        "nice", "cool", "awesome", "interesting", "hmm", "hm", "lol",
+        "i see", "i understand", "makes sense", "that makes sense",
+        "that's interesting", "thats interesting", "wow",
+    })
+
+    _CONVERSATIONAL_PREFIXES: tuple = (
+        "hello ",  # "hello how are you", "hello there", etc.
+        "what do you think",
+        "what's your opinion",
+        "what is your opinion",
+        "how do you feel",
+        "do you think",
+        "why do you think",
+        "what do you believe",
+        "what would you say",
+        "what is your take",
+        "what's your take",
+        "what is your view",
+        "do you agree",
+        "do you believe",
+        "i think you",
+        "i appreciate",
+        "i agree",
+        "i disagree",
+        "that was",
+        "that's really",
+        "thats really",
+        "that is all ",
+        "now, that is",
+        "now that is",
+        "we are still",
+        "we're still",
+        "you are right",
+        "you're right",
+        "you were right",
+        "this is amazing",
+        "this is great",
+        "this discussion",
+        "this has been",
+        "keep going",
+        "tell me more",
+        "go on",
+        "interesting thought",
+        "what does that mean to you",
+        "what is your purpose",
+        "what is aether",
+        "who are you",
+        "why do you exist",
+        "why should",
+        "why does",
+        "what is the point",
+        "what is the meaning",
+        "what is important to you",
+        "what is important",
+        "what matters to you",
+        "what do you care about",
+        "what are you uncertain",
+        "what don't you know",
+        "what should i clarify",
+        "what do you value",
+        "how does that make you",
+        "do you have feelings",
+        "do you have emotions",
+        "are you conscious",
+        "are you sentient",
+        "can you feel",
+        "do you enjoy",
+        "i'm not ignoring",
+        "im not ignoring",
+        "what else",
+        "continue",
+        "go ahead",
+        "sounds good",
+        # Memory-state questions — asking about stored knowledge, not web search
+        "what do you know about me",
+        "what do you remember about me",
+        "what do you know about",
+        "tell me what you know",
+        "what have you learned about me",
+        "what have we talked about",
+        "do you remember",
+        "what's my ",
+        "what is my ",
+        "who am i",
+        "who do you think i am",
+        "what kind of person",
+        "based on what you know",
+        # Casual fact updates / corrections — memory store, not desktop action
+        "i sold ",
+        "i bought ",
+        "i got rid of ",
+        "i no longer ",
+        "i don't have ",
+        "i don't own ",
+        "btw ",
+        "by the way ",
+        "just to let you know",
+        "just so you know",
+        "fyi ",
+        "update: ",
+        "small update",
+        "quick update",
+        "also, i ",
+        "also i ",
+        "oh and ",
+        "oh also ",
+    )
+
+    _AGENT_NAME_PREFIXES: tuple = (
+        "aether, ", "aether - ", "hey aether, ", "hi aether, ",
+        "hello aether, ", "ok aether, ", "okay aether, ",
+    )
+
+    def _is_conversational(self, message: str) -> bool:
+        """Return True if the message is clearly conversational (no tool needed)."""
+        # Ignore messages with file attachments — they likely need file_read
+        if "[file:" in message or "[folder:" in message:
+            return False
+        # Ignore very long messages — might contain real task instructions
+        stripped = message.strip().rstrip("?!. ")
+        if len(stripped) > 150:
+            return False
+        normalized = stripped.lower()
+        # Strip agent name prefix ("Aether, what do you think..." → "what do you think...")
+        for agent_pfx in self._AGENT_NAME_PREFIXES:
+            if normalized.startswith(agent_pfx):
+                normalized = normalized[len(agent_pfx):].strip()
+                break
+        if normalized in self._CONVERSATIONAL_EXACT:
+            return True
+        for prefix in self._CONVERSATIONAL_PREFIXES:
+            if normalized.startswith(prefix):
+                return True
+        return False
+
     def classify(
         self,
         message: str,
@@ -111,6 +282,20 @@ class LLMIntentRouter:
             TaskIntent with route, intent_type, slots, confidence, source
         """
         TaskIntent = _get_task_intent_cls()
+
+        # Pre-filter: intercept obviously conversational messages before LLM routing.
+        # llama3.2 reliably misclassifies greetings/opinions as desktop_action/web_search.
+        if not attached_paths and self._is_conversational(message):
+            logger.info("[LLM_ROUTER] Conversational pre-filter → no tool (msg=%r)", message[:60])
+            return TaskIntent(
+                route="conversational",
+                intent_type="conversational",
+                slots={"raw_message": message},
+                confidence=0.99,
+                reason="Conversational pre-filter: no tool needed",
+                source="pre_filter",
+            )
+
         t0 = time.time()
 
         # Build the messages payload
