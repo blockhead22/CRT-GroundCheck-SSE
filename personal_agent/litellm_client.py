@@ -159,7 +159,10 @@ class UnifiedLLMClient:
     def __init__(self, config: dict):
         cfg = config or {}
         self.ollama_model = cfg.get("ollama_model", "qwen3:14b")
-        self.ollama_base_url = cfg.get("ollama_base_url", "http://localhost:11434")
+        self.ollama_base_url = cfg.get(
+            "ollama_base_url",
+            os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        )
         self.cloud_model = cfg.get("cloud_model", "")
         self.cloud_api_key = cfg.get("cloud_api_key", "")
         self.cloud_base_url = cfg.get("cloud_base_url", "")
@@ -1227,7 +1230,10 @@ def get_default_llm_client(model: str = None) -> UnifiedLLMClient:
     global _default_client
     model = model or os.getenv("CRT_OLLAMA_MODEL", "qwen3:14b")
     if _default_client is None or _default_client.ollama_model != model:
-        _default_client = UnifiedLLMClient({"ollama_model": model})
+        _default_client = UnifiedLLMClient({
+            "ollama_model": model,
+            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        })
     return _default_client
 
 

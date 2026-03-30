@@ -53,6 +53,8 @@ class BackendManager extends EventEmitter {
       CRT_SHARED_MEMORY: 'true',
       CRT_ENABLE_LLM: 'true',
       CRT_OLLAMA_MODEL: process.env.CRT_OLLAMA_MODEL || 'qwen3:14b',
+      OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || 'http://192.168.1.146:11434',
+      CRT_INTENT_MODEL: process.env.CRT_INTENT_MODEL || 'llama3.2',
       HF_HUB_OFFLINE: '1',
       TRANSFORMERS_OFFLINE: '1',
     };

@@ -324,6 +324,54 @@ Current logging is a mix of print() and logger.info() with no consistent format.
 Need: unified log format, documented log levels, structured output for analysis.
 Not urgent but needed before any external demo or library extraction.
 
+[2026-03-29] FUTURE — RICH NOTIFICATIONS & PROACTIVE AGENT DELIVERY
+
+Current state: reminders fire as SSE notifications into the active chat thread. Works for simple one-shot reminders with the user present. Not enough.
+
+Two axes of expansion needed:
+
+AXIS 1 — RICHER SCHEDULING
+  Current: one-shot reminders at a specific time.
+  Needed:
+    - Recurrence: daily / weekly / monthly patterns with skip/pause/resume
+    - Threshold-based triggers: fire when a condition is met (e.g. memory trust drops
+      below X, a belief contradiction is detected, a tracked metric crosses a bound)
+    - Chained triggers: reminder B fires only if reminder A was acknowledged
+    - Snooze / reschedule from the notification card itself
+
+AXIS 2 — SMARTER DELIVERY
+  Current: SSE push to whatever chat thread is open. If user isn't there, notification is lost.
+  Three delivery modes needed, selected by trigger type:
+
+  Mode A — Passive notification (current):
+    SSE push into active thread. Good for: low-priority reminders, status pings.
+
+  Mode B — New thread injection:
+    If user is not in the relevant thread (or reminder is system-initiated), open a new
+    thread, post the reminder as the first message, leave it in the thread history.
+    Backend creates the thread, writes to thread_sessions, posts via ledger.
+    User sees it when they next open the app. Good for: async alerts, digest summaries.
+
+  Mode C — Background heartbeat action:
+    For system-level triggers (threshold crossed, contradiction detected, belief drift),
+    the heartbeat handles it silently: logs to ledger, updates memory, optionally queues
+    a proactive message for next user session. No UI interruption. Good for: monitoring,
+    self-maintenance, research data collection.
+
+  Delivery routing logic:
+    is_user_active AND is_casual_reminder  -> Mode A (SSE into current thread)
+    is_user_inactive OR is_new_topic       -> Mode B (new thread, leave log)
+    is_system_triggered AND is_silent      -> Mode C (heartbeat/ledger only)
+
+IMPLEMENTATION NOTES:
+  - ScheduledTasksLoop recurrence field exists but is not hooked up (daily/weekly stubs only)
+  - Threshold triggers need a new TriggerType: CONDITION rather than TIME
+  - New thread creation needs a backend route: POST /api/threads/new with seed_message
+  - Ledger already supports writing to any thread_id — Mode B is mostly plumbing
+  - Notification card UI needs: snooze button, "open thread" link, ack tracking
+
+BLOCKED ON: thread creation API, recurrence hookup, condition trigger design.
+
 [2026-03-28] FUTURE — CASCADE COMPLEXITY PAPER
 Pure math, no data needed. Definitions and theorems for belief revision cascades.
 Session thread written. 5 theorems outlined. NP-hardness still conjecture.

@@ -982,6 +982,15 @@ def create_app() -> FastAPI:
     )
     app.state.idle_scheduler = idle_scheduler
 
+    # Belief classifier (two-tap belief head on DNNT)
+    try:
+        from personal_agent.belief_classifier import init_belief_classifier
+        _belief_clf = init_belief_classifier()
+        app.state.belief_classifier = _belief_clf
+    except Exception as _be:
+        logger.warning("[BELIEF] Failed to init belief classifier: %s", _be)
+        app.state.belief_classifier = None
+
     # Scheduled Tasks Loop (reminders, timed jobs, thoughts)
     scheduled_tasks_db_path = str(root / "data" / "scheduled_tasks.db")
     init_scheduled_tasks_db(scheduled_tasks_db_path)
@@ -1000,7 +1009,7 @@ def create_app() -> FastAPI:
 
             pushed = emit_generic_notification_sync(
                 event_type="commitment_notification",
-                content=f"Reminder: {reminder_text}",
+                content=reminder_text,
                 metadata={
                     "task_id": task.task_id,
                     "thread_id": thread_id,

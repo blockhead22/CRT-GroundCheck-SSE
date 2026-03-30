@@ -2350,6 +2350,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     increment_turn(req.thread_id)
     _mark("session_and_style_ready")
 
+    # Belief state classification (two-tap belief head)
+    try:
+        from personal_agent.belief_classifier import classify_query
+        _belief = classify_query(str(req.message or ""))
+        if _belief:
+            logger.info("[BELIEF] %s | latency=%.1fms | query=%r",
+                        _belief, _belief.latency_ms, str(req.message or "")[:60])
+    except Exception:
+        pass
+
     effective_message = _resolve_bare_web_search_command(
         message=req.message,
         session_db=session_db,
