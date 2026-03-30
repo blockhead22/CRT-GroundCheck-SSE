@@ -1838,6 +1838,39 @@ class CRTEnhancedRAG:
             try:
                 if _profile_blocked_slots:
                     print(f"[PROFILE_GATE] Skipping profile update — blocked slots: {_profile_blocked_slots}")
+                    # Still log contradictions to the ledger (as OPEN) so the user can see them
+                    for _blocked_slot in _profile_blocked_slots:
+                        _blocked_val = str(_new_facts.get(_blocked_slot, "")).strip()
+                        try:
+                            # Find real memory IDs
+                            _conn_bl = self.memory._get_connection()
+                            _cur_bl = _conn_bl.cursor()
+                            _cur_bl.execute("""
+                                SELECT mf.memory_id, mf.value FROM memory_facts mf
+                                JOIN memories m ON mf.memory_id = m.memory_id
+                                WHERE mf.slot = ? AND m.deprecated = 0
+                                ORDER BY m.trust DESC LIMIT 1
+                            """, (_blocked_slot,))
+                            _bl_row = _cur_bl.fetchone()
+                            _conn_bl.close()
+                            _old_mem_id = _bl_row[0] if _bl_row else f"profile_{_blocked_slot}_old"
+                            _old_val = _bl_row[1] if _bl_row else "unknown"
+
+                            self._record_and_cascade(
+                                old_memory_id=_old_mem_id,
+                                new_memory_id=memory.memory_id,
+                                drift_mean=0.8,
+                                confidence_delta=0.0,
+                                old_text=f"FACT: {_blocked_slot} = {_old_val}",
+                                new_text=f"FACT: {_blocked_slot} = {_blocked_val}",
+                                old_vector=getattr(memory, 'vector', None),
+                                contradiction_type="conflict",
+                                summary=f"Profile gate blocked: {_blocked_slot}={_blocked_val} vs established {_blocked_slot}={_old_val}",
+                                thread_id=thread_id,
+                            )
+                            print(f"[PROFILE_GATE] Logged OPEN contradiction for blocked slot {_blocked_slot}")
+                        except Exception as _bl_err:
+                            print(f"[PROFILE_GATE] Failed to log blocked contradiction: {_bl_err}")
                 else:
                     profile_result = self.user_profile.update_from_text(
                         text,

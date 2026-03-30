@@ -254,8 +254,11 @@ class CRTCritic:
                 hallucinations=hallucinations,
             )
 
-        # --- HARD FAIL: confidence very low or many contradictions ---
-        if confidence < self.low_threshold or len(contradictions) >= 3:
+        # --- HARD FAIL: confidence very low AND actual contradictions found ---
+        # NOTE: confidence=0.0 with no contradictions means GroundCheck had no
+        # opinion (e.g., conversational/meta response). Don't hard-fail on that.
+        _has_real_contradictions = len(contradictions) > 0 or len(hallucinations) > 0
+        if (confidence < self.low_threshold and _has_real_contradictions) or len(contradictions) >= 3:
             # Build disclosure text for the user
             conflict_lines = []
             for detail in (report.contradiction_details or []):
