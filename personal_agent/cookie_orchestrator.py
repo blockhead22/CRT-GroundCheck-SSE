@@ -1,14 +1,18 @@
-"""Cookie-Opus Orchestrator — Brain + Hands architecture.
+"""CRT Orchestrator — Brain + Hands architecture.
 
-Cookie (Claude Opus via session) is the brain: it reasons, plans, and decides.
-The existing CRT tool infrastructure is the hands: it executes.
+The brain (any LLM) reasons, plans, and decides via structured JSON.
+The hands (existing CRT tool infrastructure) execute.
 
-Cookie is stateless. The orchestrator holds all state and feeds context
-to Cookie each turn. Cookie returns structured JSON decisions.
+The brain is swappable via the BrainProvider abstraction:
+  - CookieBrain: Claude Opus via browser session (free, best quality)
+  - AnthropicBrain: Official Anthropic API (paid, production-grade)
+  - OpenAIBrain: OpenAI API (paid, fast)
+  - OllamaBrain: Local Ollama models (free, your hardware)
 
 Usage:
-    from personal_agent.cookie_orchestrator import CookieOrchestrator
-    orch = CookieOrchestrator()
+    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain
+    brain = CookieBrain()  # or AnthropicBrain(api_key=...), etc.
+    orch = Orchestrator(brain=brain)
     for event in orch.run("What classes are in memory_graph.py?"):
         print(event)
 """
@@ -23,6 +27,170 @@ from typing import Any, Dict, Generator, List, Optional
 
 # Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+
+# ---------------------------------------------------------------------------
+# Brain provider abstraction — swap LLMs without changing orchestrator logic
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BrainResult:
+    """Standardized result from any brain provider."""
+    content: str = ""
+    error: Optional[str] = None
+    latency_ms: float = 0.0
+    provider: str = "unknown"
+
+
+class BrainProvider:
+    """Abstract base for orchestrator brain providers."""
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+        raise NotImplementedError
+
+
+class CookieBrain(BrainProvider):
+    """Claude Opus via browser session cookie. Free, best quality."""
+
+    def __init__(self, model: str = "claude-opus-4-5"):
+        from tests.cloud_providers.providers import CookieProvider
+        self._cookie = CookieProvider()
+        self._model = model
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+        t0 = time.perf_counter()
+        result = self._cookie.complete(
+            system=system, prompt=prompt,
+            max_tokens=max_tokens, model=self._model,
+        )
+        elapsed = (time.perf_counter() - t0) * 1000
+        return BrainResult(
+            content=result.content or "",
+            error=result.error,
+            latency_ms=elapsed,
+            provider=f"cookie/{self._model}",
+        )
+
+
+class AnthropicBrain(BrainProvider):
+    """Official Anthropic Messages API. Paid, production-grade."""
+
+    def __init__(self, api_key: Optional[str] = None,
+                 model: str = "claude-sonnet-4-20250514"):
+        import anthropic
+        self._client = anthropic.Anthropic(
+            api_key=api_key or os.environ.get("ANTHROPIC_API_KEY"),
+        )
+        self._model = model
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+        t0 = time.perf_counter()
+        try:
+            response = self._client.messages.create(
+                model=self._model,
+                max_tokens=max_tokens,
+                system=system,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = response.content[0].text if response.content else ""
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(content=content, latency_ms=elapsed,
+                               provider=f"anthropic/{self._model}")
+        except Exception as e:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(error=str(e), latency_ms=elapsed,
+                               provider=f"anthropic/{self._model}")
+
+
+class OpenAIBrain(BrainProvider):
+    """OpenAI API (GPT-4o, etc). Paid, fast."""
+
+    def __init__(self, api_key: Optional[str] = None,
+                 model: str = "gpt-4o"):
+        from openai import OpenAI
+        self._client = OpenAI(
+            api_key=api_key or os.environ.get("OPENAI_API_KEY"),
+        )
+        self._model = model
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+        t0 = time.perf_counter()
+        try:
+            response = self._client.chat.completions.create(
+                model=self._model,
+                max_tokens=max_tokens,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            content = response.choices[0].message.content or ""
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(content=content, latency_ms=elapsed,
+                               provider=f"openai/{self._model}")
+        except Exception as e:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(error=str(e), latency_ms=elapsed,
+                               provider=f"openai/{self._model}")
+
+
+class OllamaBrain(BrainProvider):
+    """Local Ollama model. Free, your hardware."""
+
+    def __init__(self, model: str = "llama3.2",
+                 base_url: Optional[str] = None):
+        self._model = model
+        self._base_url = base_url or os.environ.get(
+            "OLLAMA_BASE_URL", "http://localhost:11434")
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+        import requests
+        t0 = time.perf_counter()
+        try:
+            response = requests.post(
+                f"{self._base_url}/api/chat",
+                json={
+                    "model": self._model,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": prompt},
+                    ],
+                    "stream": False,
+                    "options": {"num_predict": max_tokens},
+                },
+                timeout=60,
+            )
+            data = response.json()
+            content = data.get("message", {}).get("content", "")
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(content=content, latency_ms=elapsed,
+                               provider=f"ollama/{self._model}")
+        except Exception as e:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(error=str(e), latency_ms=elapsed,
+                               provider=f"ollama/{self._model}")
+
+
+def get_brain(provider: str = "cookie", **kwargs) -> BrainProvider:
+    """Factory function to get a brain provider by name.
+
+    Args:
+        provider: "cookie", "anthropic", "openai", "ollama"
+        **kwargs: passed to the provider constructor
+
+    Returns:
+        BrainProvider instance
+    """
+    providers = {
+        "cookie": CookieBrain,
+        "anthropic": AnthropicBrain,
+        "openai": OpenAIBrain,
+        "ollama": OllamaBrain,
+    }
+    cls = providers.get(provider)
+    if cls is None:
+        raise ValueError(f"Unknown brain provider: {provider}. Available: {list(providers.keys())}")
+    return cls(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -221,16 +389,19 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
 # The orchestrator
 # ---------------------------------------------------------------------------
 
-class CookieOrchestrator:
-    """Cookie-Opus-driven orchestrator with tool execution."""
+class Orchestrator:
+    """Brain-agnostic orchestrator with tool execution.
 
-    def __init__(self, memory_system=None, max_iterations: int = 8,
-                 model: str = "claude-opus-4-5"):
-        from tests.cloud_providers.providers import CookieProvider
-        self.cookie = CookieProvider()
+    The brain (any BrainProvider) makes decisions.
+    The hands (tool executor) carry them out.
+    Swap brains without changing any logic.
+    """
+
+    def __init__(self, brain: Optional[BrainProvider] = None,
+                 memory_system=None, max_iterations: int = 8):
+        self.brain = brain or CookieBrain()
         self.memory_system = memory_system
         self.max_iterations = max_iterations
-        self.model = model
 
     def _build_context(self, state: OrchestratorState,
                        last_result: Optional[str] = None) -> str:
@@ -323,24 +494,21 @@ class CookieOrchestrator:
         for iteration in range(self.max_iterations):
             print(f"\n--- Iteration {iteration + 1}/{self.max_iterations} ---")
 
-            # Build context and call Cookie
+            # Build context and call brain
             context = self._build_context(state, last_result)
-            t0 = time.perf_counter()
-            cookie_result = self.cookie.complete(
+            brain_result = self.brain.complete(
                 system=ORCHESTRATOR_SYSTEM,
                 prompt=context,
                 max_tokens=800,
-                model=self.model,
             )
-            cookie_ms = (time.perf_counter() - t0) * 1000
-            state.total_cookie_ms += cookie_ms
+            state.total_cookie_ms += brain_result.latency_ms
 
-            raw = cookie_result.content or ""
-            print(f"  [COOKIE] ({cookie_ms:.0f}ms) {raw[:200]}")
+            raw = brain_result.content or ""
+            print(f"  [BRAIN:{brain_result.provider}] ({brain_result.latency_ms:.0f}ms) {raw[:200]}")
 
-            if cookie_result.error:
-                print(f"  [COOKIE ERROR] {cookie_result.error}")
-                yield {"type": "response", "content": f"Orchestrator error: {cookie_result.error}"}
+            if brain_result.error:
+                print(f"  [BRAIN ERROR] {brain_result.error}")
+                yield {"type": "response", "content": f"Orchestrator error: {brain_result.error}"}
                 break
 
             # Parse decision
@@ -401,7 +569,7 @@ class CookieOrchestrator:
                 # For testing, we just note it and continue
                 state.add_step(StepRecord(
                     iteration=iteration, action="ask_user",
-                    reasoning=reasoning, latency_ms=cookie_ms,
+                    reasoning=reasoning, latency_ms=brain_result.latency_ms,
                 ))
                 break
 
@@ -416,11 +584,15 @@ class CookieOrchestrator:
         print(f"\n{'='*60}")
         print(f"ORCHESTRATOR COMPLETE")
         print(f"  Steps: {len(state.steps)}")
-        print(f"  Cookie time: {state.total_cookie_ms:.0f}ms")
+        print(f"  Brain time: {state.total_cookie_ms:.0f}ms")
         print(f"  Tool time: {state.total_tool_ms:.0f}ms")
         print(f"  Total: {state.total_cookie_ms + state.total_tool_ms:.0f}ms")
         print(f"{'='*60}")
 
         yield {"type": "done", "steps": len(state.steps),
-               "cookie_ms": state.total_cookie_ms,
+               "brain_ms": state.total_cookie_ms,
                "tool_ms": state.total_tool_ms}
+
+
+# Backwards-compatible alias
+CookieOrchestrator = Orchestrator
