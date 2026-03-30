@@ -5,7 +5,212 @@ Organized by version. Categories: Feature, Fix, Polish, Infra, Docs, Test.
 
 ---
 
-## v3.1 — In Progress (March 24, 2026)
+## v3.8 — March 30, 2026
+
+Agent Governance & Cookie Orchestrator — three-layer governance framework for agent runs, plus a brain/hands orchestrator architecture that lets Claude Opus direct local tool execution. Production cascade wiring replaces all 12 `record_contradiction()` call sites with real BDG propagation. Agent run logging captures every orchestrator execution to SQLite for Layer 2+ alignment checks.
+
+### Feature
+- **Cookie-Opus Orchestrator** (`personal_agent/cookie_orchestrator.py`) — brain/hands architecture where Claude Opus (brain) directs local tool execution (hands). Provider abstraction supports multiple LLM backends. 7 tools: file_read, file_write, dir_list, search_code, memory_recall, web_search, shell_exec. Multi-turn continuity with conversation context. Sandbox constraints for safe execution
+- **Agent Governance Layers 1-3** — Layer 1: measurement (RunLog, RunStep, DriftEvent dataclasses with SQLite persistence capturing every orchestrator run). Layer 2: alignment check (planned). Layer 3: contradiction detection (planned). Layer 4: epistemic routing (planned)
+- **Agent Run Log** (`personal_agent/agent_run_log.py`) — structured logging of orchestrator runs with step-level granularity, drift event tracking, SQLite persistence for post-hoc analysis
+- **Code Intelligence Agent** (`personal_agent/code_intel.py`) — 4 modes: `file_map` (structural overview), `trace` (call chain analysis), `detect` (pattern detection), `full_audit` (comprehensive code review)
+- **LiveBDG cascade wiring** — replaced all 12 `record_contradiction()` call sites across `crt_rag.py`, `crt_memory.py`, `crt_ledger.py`, `crt_critic.py`, and `routes/chat.py` with real BDG cascade propagation via `LiveBDG.singleton()`
+- **Provisional authority gate** — new memory assertions excluded from retrieval results until contradiction check passes, preventing unverified claims from influencing responses
+- **Slot demotion block** — prevents governance from downgrading already-classified intents during slot filling
+
+### Fix
+- **Cascade paper theorems patched** — all 6 theorems (4.1-4.4 + Prop 5.4) fixed: definitional contradictions resolved, multi-parent gap closed, wrong reduction replaced, fake proof rewritten with real BDG validation data (599 nodes from production)
+- **Time awareness** — system prompt now includes current date/time for temporal reasoning
+- **last_accessed tracking** — memory retrieval now updates `last_accessed` timestamps correctly
+- **Profile trust gate** — profile/identity memories bypass low-trust filtering
+- **Auto-resolve removal** — removed automatic contradiction resolution that was silently resolving held contradictions
+- **Real memory IDs** — memory lookups use actual DB IDs instead of fabricated ones
+- **Retrieval prefix stripping** — removes `[MEMORY_DB]` and similar prefixes before embedding search
+- **NLI critic fix** — critic no longer blocks on NLI comparison failures
+
+### Infra
+- **New file**: `personal_agent/cookie_orchestrator.py`
+- **New file**: `personal_agent/code_intel.py`
+- **New file**: `personal_agent/agent_run_log.py`
+- **New file**: `papers/cascade_complexity/real_bdg.py` — real BDG validation against production data
+- **Modified file**: `personal_agent/memory_graph.py` — BeliefDependencyGraph class + LiveBDG singleton
+- **Modified file**: `routes/chat.py` — cascade wiring, provisional gate, orchestrator routing
+
+---
+
+## v3.7 — March 29, 2026
+
+Alias Protection & Retrieval Overhaul — memory retrieval hardened against alias fragmentation. 36 aliases mapped across 17 critical memories with canonical collapse at query time. Belief scores computed from real data instead of hardcoded values. Mac M2 Ollama offload cuts intent classification from 120s to 1-3s.
+
+### Feature
+- **Alias protection system** — new `memory_aliases` table with risk scoring and alias generation (terse/question/perturb strategies). Canonical collapse in `retrieve_memories()` with backfill for 17 critical memories (36 aliases total)
+- **Computed belief scores** — belief scores derived from retrieval count + average trust instead of hardcoded 0.15/0.4
+- **Mac M2 Ollama offload** — intent classification routed to Mac at `192.168.1.146:11434` via `OLLAMA_BASE_URL`. Latency dropped from 120s to 1-3s
+- **Dedicated intent model** — `llama3.2:latest` for routing (2GB) instead of `qwen3:14b` (9.3GB). Set via `CRT_INTENT_MODEL` env var
+- **Retrieval logging** — tagged log lines: `[MEMORY_DB]`, `[ENGINE]`, `[RETRIEVAL]`, `[ALIAS_COLLAPSE]`, `[RETRIEVAL_RAG]` for full pipeline visibility
+- **GPT variance baseline** — established 0.223 mean pairwise similarity for GPT-4o-mini (vs Aether 0.345), 5K vectors collected
+
+### Fix
+- **Startup prewarm** — skips heavy generation model pull when dedicated intent model is configured
+- **UTF-8 stdout** — catches `UnicodeEncodeError` on Windows cp1252 console (emoji/arrow characters)
+- **Boilerplate purge** — 21 entries deprecated (8 "helpful assistant" patterns + 13 self_model contamination entries)
+- **Mood indicator removed** from Electron UI
+
+### Infra
+- **Modified file**: `personal_agent/crt_rag.py` — alias collapse, retrieval logging
+- **Modified file**: `personal_agent/crt_memory.py` — alias table, computed belief scores
+- **Modified file**: `personal_agent/litellm_client.py` — Mac offload routing
+- **Modified file**: `personal_agent/llm_intent_router.py` — dedicated intent model support
+- **New env vars**: `OLLAMA_BASE_URL`, `CRT_INTENT_MODEL`
+
+---
+
+## v3.6 — March 28, 2026
+
+Robustness Sweep & Immune Agents — three-model variance experiment confirms distinct failure regimes. Five immune agents (31/31 tests) enforce CRT's epistemic laws at runtime. Production governance validated against real experiment data.
+
+### Feature
+- **Three variance regimes confirmed** (16/16 robust across all models):
+  - Qwen3 = Selective Fracture (mode-splitting on factual domains)
+  - Mistral = Selective Spread (gradient erosion, no mode splits)
+  - DeepSeek = Uniform Softness (fog pattern, even degradation)
+  - GPT-4o-mini = Damped (provisional, runner fixed to 47 req/s)
+- **Five immune agents** (`personal_agent/immune_agents/`), all 31/31 tests passing:
+  - `SpeechLeakDetector` — speech cannot upgrade belief
+  - `TemplateDetector` — low variance ≠ confidence
+  - `PrematureResolutionGuard` — preserve contradictions before resolution
+  - `MemoryCorruptionGuard` — degraded reconstruction cannot overwrite originals
+  - `GapAuditor` — outward confidence bounded by internal support
+- **Density analysis** — 10 metrics computed per model (cluster compactness, mass distribution, silhouette scores, template similarity). Three-metric table (spread, modes, template similarity across domains)
+- **Governance validation** — 5/6 checks passed on real Qwen3 data (blind spot: assertive template collapse identified for future fix)
+- **3D belief splat viewer** — Three.js visualization of variance distributions with temperature animation
+
+### Docs
+- **New file**: `docs/whitepaper.html` — CRT white paper
+- **New file**: `docs/immune-agents.html` — immune agent architecture documentation
+- **New file**: `docs/variance-probing.html` — variance probing methodology and results
+- **New file**: `personal_agent/immune_agents/ARCHITECTURE.md` — 5 laws, 5 agents, coordination layer, two-axis taxonomy
+
+### Infra
+- **New directory**: `personal_agent/immune_agents/` (5 agent modules + `__init__.py`)
+- **New file**: `belief_variance_experiment/analyze_density.py`
+- **Modified file**: `belief_variance_experiment/runner.py` — GPT-4o-mini batching fix (12.49s→47 req/s)
+
+---
+
+## v3.5 — March 28, 2026
+
+Electron Desktop App & Feature Sprint — 20+ features shipped in a single session. Frameless Electron shell with system tray, heartbeat learning loop, ambient mode, MCP server with 12 tools, clipboard monitoring, file drag-and-drop, and a comprehensive set of pipeline optimizations.
+
+### Feature
+- **Electron shell** (`electron/`) — frameless window with custom titlebar, system tray with status icons (green/amber/red), global hotkey `Ctrl+Space`, single instance lock, backend lifecycle manager (health polling, auto-restart up to 5x, graceful shutdown)
+- **Heartbeat learning** (`personal_agent/heartbeat_learning.py`) — extracts facts from conversations, deduplicates via cosine similarity ≥ 0.82, stores as provisional beliefs
+- **Contradiction detection** — triggers on `drift_meaning ≥ 0.28` combined with `similarity ≥ 0.4`
+- **Training log persistence** (`personal_agent/training_log.py`) — JSONL per day, logs all 6 response paths
+- **Clipboard monitoring** (`electron/clipboard-monitor.js`) — polls every 2s, OS notification on change, tray toggle
+- **File drag-and-drop** (`routes/ingest.py`) — supports txt/md/py/json/pdf, chunked storage into memory
+- **Ambient mode** (`routes/ambient.py`, `electron/ambient-monitor.js`) — screen capture + vision analysis at 60s intervals
+- **Aether MCP server** (`personal_agent/aether_mcp_server.py`) — 12 tools in 4 tiers via FastMCP protocol
+- **Enhanced model selector** — inline accordion in frontend, dynamically populated from `/api/tooling/models`
+- **Context feed** (`personal_agent/context_feed.py`) — aggregates recent context for system prompt enrichment
+- **Reminder fast-path** — deterministic time parsing before agent loop, saves full LLM round-trip
+- **Correction handler** — dual memory search on correction, trust demotion to 0.15 for contradicted entries
+
+### Fix
+- **Identity fix** — "You are Aether, deployed using Claude" across all system prompts (was inconsistent)
+- **Self-model reset** — nuked fabricated self-model entries, replaced with "still calibrating" placeholders
+- **Plan engine skip** — conversational messages bypass plan creation heuristic, saves 2-5s
+- **Governance skip** — conversational intents bypass OpenAI slot classification
+- **CRT critic opinion skip** — opinion-type messages skip contradiction gate
+
+### Infra
+- **New files**: `personal_agent/heartbeat_learning.py`, `training_log.py`, `aether_mcp_server.py`, `context_feed.py`
+- **New files**: `electron/clipboard-monitor.js`, `ambient-monitor.js`
+- **New files**: `routes/ambient.py`, `routes/ingest.py`
+- **Modified file**: `electron/main.js` — frameless config, tray integration, hotkey binding
+- **Modified file**: `crt_api.py` — static file serving for SPA
+
+---
+
+## v3.4 — March 27, 2026
+
+LLM Belief Variance Experiment — three-model robustness study (Qwen3 7.5K responses, Mistral ~81%, GPT-4o-mini in progress). Domain inversion finding: factual topics 10x more susceptible to temperature-induced drift than moral topics. Adaptive temperature governance framework. Consciousness mapping validates CRT satisfies Higher-Order Theory + Predictive Processing criteria.
+
+### Feature
+- **Variance experiment runner** (`belief_variance_experiment/runner_ollama.py`) — checkpoint/resume, multi-temperature sweep (0.0-1.5), 10 prompts × 10 completions per temperature per model
+- **Domain inversion finding** — factual topics show 10x more variance susceptibility than moral topics across all models
+- **Learned hedging detection** — temperature-invariant hedge templates identified (models hedge identically regardless of temperature setting)
+- **Adaptive temperature governance** — proposed T-policy framework: lock to T=0 for factual, allow range for opinion, flag inversion domains
+- **Contradiction classifier** (`belief_variance_experiment/classify_contradictions.py`) — DBSCAN clustering for held contradictions vs variants vs drift
+- **3D WebGL belief splat viewer** (`belief_variance_experiment/viewer.py`) — Three.js visualization with temperature animation slider
+
+### Research
+- **Motive theory** — contradiction reframed as engine of agency, not error to resolve
+- **Consciousness mapping** — CRT architecture shown to satisfy Higher-Order Theory (belief about beliefs) + Predictive Processing (prediction error minimization via contradiction detection)
+- **Business framing** — diagnostic probe, library, therapy applications, EU AI Act compliance angle
+
+### Infra
+- **New directory**: `belief_variance_experiment/` with runner, analyzer, classifier, viewer
+- **New file**: `belief_variance_experiment/FINDINGS.md`
+
+---
+
+## v3.3 — March 27, 2026
+
+Electron Shell — standalone desktop wrapper for the Aether frontend. FastAPI static file serving enables SPA mode. Backend lifecycle management with health polling and auto-restart.
+
+### Feature
+- **Electron desktop shell** (`electron/main.js`) — BrowserWindow loading local FastAPI server, preload script for IPC
+- **Backend lifecycle** (`electron/backend.js`) — spawns `python crt_api.py`, health check polling at 10s intervals, auto-restart on failure (max 5 retries)
+- **System tray** (`electron/tray.js`) — status icons (green=healthy, amber=connecting, red=down), right-click menu with show/quit
+- **FastAPI static serving** — SPA routes + asset serving from `frontend/dist/` added to `crt_api.py`
+
+### Fix
+- **Self-referential verbosity** — responses about Aether's own capabilities capped at 300 tokens / 3-5 sentences
+- **Health check flapping** — requires 3 consecutive failures before marking unhealthy (was 1)
+
+### Infra
+- **New files**: `electron/main.js`, `backend.js`, `tray.js`, `preload.js`
+- **Modified file**: `crt_api.py` — static file serving routes
+
+---
+
+## v3.2 — March 26, 2026
+
+Deep Research Sprint — 8 research modules built and tested in a single session. Cascade complexity paper drafted with formal BDG definitions, 5 theorems, and empirical validation. Active inference module enables uncertainty-driven clarification requests.
+
+### Feature
+- **Disposition classifier** (`personal_agent/disposition_classifier.py`) — 18/18 tests: classifies contradictions as resolvable/held/evolving/contextual
+- **Memory graph** (`personal_agent/memory_graph.py`) — NetworkX-based belief dependency graph with CONTRADICTS/SUPERSEDES/RELATED_TO edge types, cascade propagation, firewall support, cycle detection
+- **Temporal governance** (`personal_agent/temporal_governance.py`) — type-dependent decay curves, recency scoring for retrieval ranking
+- **Memory splats** (`personal_agent/memory_splats.py`) — Gaussian belief representation with covariance + confidence (memories as distributions, not points)
+- **Predictive contradiction** (`personal_agent/predictive_contradiction.py`) — convergence trend detection, urgency classification for proactive contradiction handling
+- **Belief topology** (`personal_agent/belief_topology.py`) — persistent homology via ripser, detects belief restructuring events and avoidance patterns (H1 persistence=0.28)
+- **Belief/speech separation** (`personal_agent/belief_speech_engine.py`) — auditable gap tracking between internal belief state and external speech, policy-driven disclosure rules
+- **Information geometry** (`personal_agent/info_geometry.py`) — Fisher-Rao distance metric, per-dimension decomposition reveals hidden confidence differences (3.16x separation)
+- **Active inference** (`personal_agent/active_inference.py`) — uncertainty scanning across belief space, generates clarification requests when expected free energy exceeds threshold
+- **Cascade complexity paper** (`papers/cascade_complexity/cascade_paper.md`) — 8 sections, formal definitions 3.1-3.6, theorems 4.1-4.4, conjecture 4.5 (NP-hardness). All 5 experiments pass. Damping curve matches Theorem 4.3 exactly (depth 14 vs bound 15)
+
+### Research
+- **Key finding**: two-mode geometry — static beliefs cluster by cosine similarity, dynamic beliefs separate by overlap trend
+- **Fisher metric reranking** — reranks retrieval results by certainty, revealing 3.16x hidden confidence differences
+- **Belief/speech gap** — average magnitude 0.38 across test corpus, fully auditable
+
+### Infra
+- **New files**: `disposition_classifier.py`, `temporal_governance.py`, `memory_splats.py`, `predictive_contradiction.py`, `belief_topology.py`, `belief_speech_engine.py`, `info_geometry.py`, `active_inference.py`
+- **New file**: `papers/cascade_complexity/cascade_paper.md`
+- **New file**: `papers/cascade_complexity/experiments.py` — 5 empirical validations
+- **New file**: `papers/cascade_complexity/np_hardness_proof.md` — 3 reduction attempts documented
+- **Modified file**: `personal_agent/memory_graph.py` — BeliefDependencyGraph class
+
+### Docs
+- **New file**: `docs/CRT_RESEARCH_LOG.md`
+- **New file**: `docs/continuity-blind.html` — continuity blind contradiction findings
+- **New file**: `research/continuity_blind_contradiction/FINDINGS.md`
+
+---
+
+## v3.1 — March 24, 2026
 
 Agentic Tool Loop — LLM-driven ReAct loop for the main chat pipeline. Replaces the classify-once-execute-blind pattern with a true iterative tool-calling loop where the LLM sees intermediate results and decides what to do next. The LLM calls tools, observes results, and repeats until the task is complete. Multi-step compound requests ("read this file and copy it to X") now work in a single user message without manual intervention.
 

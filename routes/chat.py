@@ -5856,36 +5856,17 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # ── COOKIE ORCHESTRATOR PATH: Complex multi-step tasks ─────────
             # Uses Cookie Opus as the brain for planning/reasoning,
             # local tools for execution. Sandboxed file writes.
-            _ORCHESTRATOR_INTENTS = {"multi_step", "multi_intent", "imperative_task"}
-
-            # Keyword detection for messages that need tools but got classified as conversational
-            _ORCHESTRATOR_KEYWORDS = (
-                "read the file", "read file", "read the code", "summarize the",
-                "analyze the", "search for", "find the", "look at the code",
-                "write a script", "write a function", "create a file",
-                "debug", "fix the bug", "run the", "execute",
-                "what classes", "what functions", "list the files",
-                "read the paper", "read the cascade", "cascade paper",
-            )
+            # Layer 4: Epistemic routing — belief-weighted feature extraction
+            # replaces the old keyword hack.
             _orch_msg = str(req.message or "")
-            _msg_lower = _orch_msg.lower()
-            _keywords_match = any(kw in _msg_lower for kw in _ORCHESTRATOR_KEYWORDS)
-
-            _use_orchestrator = (
-                not _user_confirmed
-                and (
-                    # Path 1: Intent router classified as complex task
-                    (
-                        _task_intent is not None
-                        and _task_intent.route == "task"
-                        and _task_intent.intent_type in _ORCHESTRATOR_INTENTS
-                    )
-                    # Path 2: Keywords suggest tool use even if classified conversational
-                    or _keywords_match
-                    # Path 3: Very long message likely needs multi-step processing
-                    or len(_orch_msg) > 300
-                )
-            )
+            try:
+                from personal_agent.routing_beliefs import should_orchestrate as _route_check
+                _routing = _route_check(_orch_msg, _task_intent)
+                _use_orchestrator = not _user_confirmed and _routing.route == "orchestrator"
+                _safe_print(f"[ROUTING] {_routing.route} (conf={_routing.confidence:.2f}, reasons={_routing.reasons})")
+            except Exception as _route_err:
+                _safe_print(f"[ROUTING] Belief routing failed, falling back: {_route_err}")
+                _use_orchestrator = False
             if _use_orchestrator:
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type})")
                 try:

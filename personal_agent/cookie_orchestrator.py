@@ -841,6 +841,13 @@ class Orchestrator:
         except Exception as _log_err:
             print(f"[RUN_LOG] Failed to store (non-fatal): {_log_err}")
 
+        # Layer 4: Update routing beliefs from run outcome
+        try:
+            from personal_agent.routing_beliefs import update_from_run
+            update_from_run(objective, run_log)
+        except Exception as _rb_err:
+            print(f"[ROUTING_BELIEFS] Update failed (non-fatal): {_rb_err}")
+
         # Final summary
         print(f"\n{'='*60}")
         print(f"ORCHESTRATOR COMPLETE")
