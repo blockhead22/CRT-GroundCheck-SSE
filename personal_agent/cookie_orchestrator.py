@@ -715,6 +715,41 @@ class Orchestrator:
                 if _align is not None:
                     print(f"  [ALIGNMENT] {tool}: {_align:.3f}")
 
+                # Layer 3: Live contradiction check against prior steps
+                _current_step = run_log.steps[-1] if run_log.steps else None
+                if _current_step and len(run_log.steps) >= 2:
+                    _prior = run_log.steps[:-1]
+                    # Check: same file written twice
+                    if tool == "file_write":
+                        _write_path = str(args.get("path", ""))
+                        for ps in _prior:
+                            if (ps.action == "tool_call" and ps.tool == "file_write"
+                                    and str((ps.args or {}).get("path", "")) == _write_path):
+                                _contra_msg = (f"Writing to '{_write_path}' again — "
+                                               f"previously written at step {ps.iteration}")
+                                print(f"  [CONTRADICTION] {_contra_msg}")
+                                yield {
+                                    "type": "contradiction_warning",
+                                    "content": _contra_msg,
+                                    "step_a": ps.iteration,
+                                    "step_b": iteration,
+                                }
+                    # Check: same tool+args but different outcome from prior
+                    if tool_result["status"] == "error":
+                        for ps in _prior:
+                            if (ps.action == "tool_call" and ps.tool == tool
+                                    and ps.status == "ok"
+                                    and str(ps.args) == str(args)):
+                                _contra_msg = (f"{tool} previously succeeded with same args "
+                                               f"but now failed at step {iteration}")
+                                print(f"  [CONTRADICTION] {_contra_msg}")
+                                yield {
+                                    "type": "contradiction_warning",
+                                    "content": _contra_msg,
+                                    "step_a": ps.iteration,
+                                    "step_b": iteration,
+                                }
+
                 yield {
                     "type": "tool_call",
                     "tool": tool,
