@@ -326,8 +326,8 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             else:
                 with open(path, "r", encoding="utf-8", errors="replace") as f:
                     content = f.read()
-                if len(content) > 15000:
-                    content = content[:15000] + f"\n\n... [truncated, {len(content)} total chars]"
+                if len(content) > 30000:
+                    content = content[:30000] + f"\n\n... [truncated, {len(content)} total chars]"
                 result["content"] = content
 
         elif tool_name == "file_write":
@@ -402,19 +402,27 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             command = args.get("command", "")
             cmd_lower = command.lower()
             # Block dangerous commands
+            blocked_hit = False
             for blocked in _BLOCKED_COMMANDS:
                 if blocked in cmd_lower:
                     result["content"] = f"[SANDBOX] BLOCKED dangerous command: {command}"
                     result["status"] = "error"
                     print(f"  [SANDBOX] BLOCKED shell_exec: {command}")
+                    blocked_hit = True
                     break
-            else:
+            if not blocked_hit:
                 import subprocess
+                # Read-only commands run from project root; write commands from sandbox
+                _read_only_prefixes = ("cat ", "head ", "tail ", "wc ", "grep ", "rg ",
+                                       "find ", "ls ", "dir ", "type ", "findstr ",
+                                       "sed -n", "awk ", "python -c")
+                _is_read_only = any(cmd_lower.strip().startswith(p) for p in _read_only_prefixes)
+                _cwd = PROJECT_ROOT if _is_read_only else SANDBOX_DIR
                 proc = subprocess.run(
                     command, shell=True, capture_output=True, text=True,
-                    timeout=30, cwd=SANDBOX_DIR,
+                    timeout=30, cwd=_cwd,
                 )
-                output = proc.stdout[:3000]
+                output = proc.stdout[:5000]
                 if proc.stderr:
                     output += f"\n[stderr] {proc.stderr[:1000]}"
                 result["content"] = output or "(no output)"
@@ -468,44 +476,61 @@ class Orchestrator:
         if state.thinking:
             parts.append(f"\nYOUR PREVIOUS REASONING:\n" + "\n".join(state.thinking[-3:]))
 
-        parts.append("\nWhat is your next action? Return ONLY a JSON object.")
+        # Time pressure hint near end of iterations
+        remaining = getattr(state, '_remaining_iterations', None)
+        if remaining is not None and remaining <= 2:
+            parts.append(f"\nWARNING: Only {remaining} iteration(s) remaining. You MUST respond now with action=respond. Summarize what you know.")
+        else:
+            parts.append("\nWhat is your next action? Return ONLY a JSON object.")
         return "\n".join(parts)
 
     def _parse_decision(self, raw: str) -> Dict[str, Any]:
         """Parse Cookie's JSON decision, handling common formatting issues."""
         text = raw.strip()
 
-        # Strip markdown code fences
-        if "```" in text:
+        # Strip markdown code fences ONLY if they wrap the entire response
+        # (not if backticks appear inside JSON string values like markdown code blocks)
+        if text.startswith("```"):
             import re
-            # Extract content between code fences
-            match = re.search(r'```(?:json)?\s*\n?(.*?)\n?```', text, re.DOTALL)
+            match = re.search(r'^```(?:json)?\s*\n(.*)\n```\s*$', text, re.DOTALL)
             if match:
                 text = match.group(1).strip()
 
+        # Fix literal control characters in JSON
+        # Cookie sometimes returns actual newlines/tabs instead of escape sequences
+        # Replace them with proper JSON escapes using explicit char codes
+        text_fixed = text.replace(chr(13), chr(92) + chr(110))  # \r -> \n
+        text_fixed = text_fixed.replace(chr(10), chr(92) + chr(110))  # actual newline -> \n
+        text_fixed = text_fixed.replace(chr(9), chr(92) + chr(116))  # tab -> \t
+
         # Try direct parse first
         try:
-            return json.loads(text)
-        except json.JSONDecodeError:
+            return json.loads(text_fixed)
+        except json.JSONDecodeError as _jde:
+            print(f"  [PARSE_DEBUG] Direct parse failed: {_jde}")
+            print(f"  [PARSE_DEBUG] text_fixed has newline: {chr(10) in text_fixed}, len={len(text_fixed)}")
+            print(f"  [PARSE_DEBUG] text_fixed[:80] hex: {text_fixed[:80].encode('utf-8').hex()}")
             pass
 
-        # Find the first { and match to its closing }
-        start = text.find("{")
+        # Try extracting JSON by finding first { and trying every } from the end
+        start = text_fixed.find("{")
         if start >= 0:
-            depth = 0
-            for i in range(start, len(text)):
-                if text[i] == "{":
-                    depth += 1
-                elif text[i] == "}":
-                    depth -= 1
-                    if depth == 0:
-                        try:
-                            return json.loads(text[start:i+1])
-                        except json.JSONDecodeError:
-                            break
+            for end in range(len(text_fixed) - 1, start, -1):
+                if text_fixed[end] == "}":
+                    try:
+                        result = json.loads(text_fixed[start:end + 1])
+                        if isinstance(result, dict) and "action" in result:
+                            return result
+                    except json.JSONDecodeError:
+                        continue
 
         # Fallback: treat as a direct response
-        print(f"  [PARSE] Failed to extract JSON, using raw response")
+        # Debug: show hex of first failing area
+        _fail_start = text_fixed.find("{")
+        if _fail_start >= 0:
+            _sample = text_fixed[_fail_start:_fail_start+200]
+            print(f"  [PARSE] Failed. text_fixed hex sample: {_sample.encode('utf-8').hex()[:200]}")
+        print(f"  [PARSE] Failed to extract JSON ({len(raw)} chars), first 100: {repr(raw[:100])}")
         return {
             "action": "respond",
             "message": raw,
@@ -529,6 +554,14 @@ class Orchestrator:
         state = OrchestratorState(objective=objective)
         last_result = None
 
+        # Initialize run log (Layer 1: observation, Layer 2: alignment scoring)
+        from personal_agent.agent_run_log import RunLog, RunStep as LogStep, DriftEvent, get_run_log_db, score_alignment, detect_drift, detect_step_contradictions
+        run_log = RunLog(
+            intent=objective[:500],
+            thread_id="",  # filled by caller if available
+            brain_provider=getattr(self.brain, '_model', 'unknown'),
+        )
+
         # Inject conversation history into context if provided
         if conversation_history:
             history_text = "\n".join(conversation_history)
@@ -539,6 +572,7 @@ class Orchestrator:
         print(f"{'='*60}")
 
         for iteration in range(self.max_iterations):
+            state._remaining_iterations = self.max_iterations - iteration - 1
             print(f"\n--- Iteration {iteration + 1}/{self.max_iterations} ---")
 
             # Build context and call brain (with retry on empty response)
@@ -574,14 +608,49 @@ class Orchestrator:
 
             print(f"  [DECISION] action={action}, reasoning={reasoning[:100]}")
 
+            # Layer 2.5: Live alignment monitoring — flag drift to user
+            if action in ("tool_call", "think") and reasoning:
+                _live_align = score_alignment(objective, reasoning)
+                _recent_aligns = [s.intent_alignment for s in run_log.steps
+                                  if s.intent_alignment is not None]
+
+                if _live_align is not None and _recent_aligns:
+                    _avg_recent = sum(_recent_aligns[-3:]) / len(_recent_aligns[-3:])
+                    _dropping = _live_align < _avg_recent - 0.15
+                    _low = _live_align < 0.25
+
+                    if _dropping or _low:
+                        _drift_msg = (
+                            f"I may be drifting from your objective. "
+                            f"Alignment: {_live_align:.2f} (was averaging {_avg_recent:.2f}). "
+                            f"I was about to: {reasoning[:150]}"
+                        )
+                        print(f"  [DRIFT_FLAG] {_drift_msg}")
+                        yield {
+                            "type": "drift_warning",
+                            "content": _drift_msg,
+                            "alignment": _live_align,
+                            "avg_alignment": _avg_recent,
+                            "proposed_action": action,
+                            "proposed_tool": decision.get("tool", ""),
+                        }
+
             if action == "think":
                 state.thinking.append(reasoning)
                 state.add_step(StepRecord(
                     iteration=iteration, action="think",
-                    reasoning=reasoning, latency_ms=cookie_ms,
+                    reasoning=reasoning, latency_ms=brain_result.latency_ms,
                 ))
+                _align = score_alignment(objective, reasoning)
+                run_log.add_step(LogStep(
+                    iteration=iteration, action="think",
+                    reasoning=reasoning[:300], latency_ms=brain_result.latency_ms,
+                    intent_alignment=_align,
+                ))
+                if _align is not None:
+                    print(f"  [ALIGNMENT] think: {_align:.3f}")
                 yield {"type": "thinking", "content": reasoning}
-                last_result = None  # thinking doesn't produce a result
+                last_result = None
 
             elif action == "tool_call":
                 tool = decision.get("tool", "")
@@ -602,6 +671,50 @@ class Orchestrator:
                 state.add_step(step)
                 last_result = tool_result["content"]
 
+                # Log step: detect if this is a verification step
+                _is_verify = False
+                # Pattern 1: Running code to test it
+                if tool == "shell_exec":
+                    _cmd = str(args.get("command", "")).lower()
+                    _is_verify = any(kw in _cmd for kw in [
+                        "python ", "pytest", "node ", "npm test", "cargo test",
+                        "go test", "ruby ", "bash ", "sh ",
+                    ])
+                # Pattern 2: Reading back a file we previously wrote
+                if tool == "file_read":
+                    _read_path = str(args.get("path", ""))
+                    _prior_writes = [
+                        s.tool for s in run_log.steps
+                        if s.action == "tool_call" and s.tool == "file_write"
+                        and str((s.args or {}).get("path", "")) == _read_path
+                    ]
+                    if _prior_writes:
+                        _is_verify = True
+                # Pattern 3: Searching code after writing (checking integration)
+                if tool == "search_code" and any(
+                    s.tool == "file_write" for s in run_log.steps
+                    if s.action == "tool_call"
+                ):
+                    _is_verify = True
+                # Pattern 4: dir_list after file_write (checking file exists)
+                if tool == "dir_list" and any(
+                    s.tool == "file_write" for s in run_log.steps
+                    if s.action == "tool_call"
+                ):
+                    _is_verify = True
+                _align = score_alignment(objective, reasoning)
+                run_log.add_step(LogStep(
+                    iteration=iteration, action="tool_call",
+                    tool=tool, args=args, reasoning=reasoning[:300],
+                    result_preview=(tool_result["content"] or "")[:500],
+                    status=tool_result["status"],
+                    latency_ms=tool_ms,
+                    verified=_is_verify,
+                    intent_alignment=_align,
+                ))
+                if _align is not None:
+                    print(f"  [ALIGNMENT] {tool}: {_align:.3f}")
+
                 yield {
                     "type": "tool_call",
                     "tool": tool,
@@ -615,26 +728,83 @@ class Orchestrator:
                 state.final_response = message
                 state.done = True
 
+                _align = score_alignment(objective, message)
+                run_log.add_step(LogStep(
+                    iteration=iteration, action="respond",
+                    reasoning=reasoning[:300],
+                    result_preview=message[:500],
+                    latency_ms=brain_result.latency_ms,
+                    intent_alignment=_align,
+                ))
+                if _align is not None:
+                    print(f"  [ALIGNMENT] response: {_align:.3f}")
+
                 yield {"type": "response", "content": message}
                 break
 
             elif action == "ask_user":
                 question = decision.get("message", "Could you clarify?")
                 yield {"type": "ask_user", "content": question}
-                # In a real integration, we'd wait for user input here
-                # For testing, we just note it and continue
                 state.add_step(StepRecord(
                     iteration=iteration, action="ask_user",
                     reasoning=reasoning, latency_ms=brain_result.latency_ms,
                 ))
+                run_log.add_step(LogStep(
+                    iteration=iteration, action="ask_user",
+                    reasoning=reasoning[:300], latency_ms=brain_result.latency_ms,
+                ))
                 break
 
             else:
-                # Unknown action, treat as response
                 state.final_response = raw
                 state.done = True
+                run_log.add_step(LogStep(
+                    iteration=iteration, action="unknown",
+                    reasoning=f"Unknown action: {action}",
+                    latency_ms=brain_result.latency_ms,
+                ))
                 yield {"type": "response", "content": raw}
                 break
+
+        # Layer 2: Detect drift from alignment scores
+        drifts = detect_drift(objective, run_log.steps)
+        for d in drifts:
+            run_log.add_drift(d)
+            print(f"  [DRIFT] Step {d.at_step}: {d.description}")
+
+        # Layer 3: Detect step-to-step contradictions
+        contradictions = detect_step_contradictions(run_log.steps)
+        for step_i, step_j, desc in contradictions:
+            print(f"  [CONTRADICTION] Steps {step_i}↔{step_j}: {desc}")
+            run_log.add_drift(DriftEvent(
+                at_step=step_j,
+                description=f"Contradiction: {desc}",
+                from_belief=f"Step {step_i} outcome",
+                to_belief=f"Step {step_j} outcome",
+                had_reasoning=True,
+            ))
+
+        # Persist run log
+        run_log.brain_ms = state.total_cookie_ms
+        run_log.tool_ms = state.total_tool_ms
+        run_log.hit_iteration_limit = not state.done
+        run_log.complete(
+            success=state.done and state.final_response is not None,
+            confidence=0.5 if not state.done else 0.8,  # basic heuristic for now
+            response_length=len(state.final_response or ""),
+        )
+        # Count unverified claims: tool_call steps that wrote something but never ran/verified
+        _write_tools = {"file_write", "shell_exec"}
+        _wrote = any(s.tool in _write_tools for s in run_log.steps if s.action == "tool_call")
+        _verified = any(s.verified for s in run_log.steps)
+        if _wrote and not _verified:
+            run_log.unverified_claims = 1
+
+        try:
+            db = get_run_log_db()
+            db.store_run(run_log)
+        except Exception as _log_err:
+            print(f"[RUN_LOG] Failed to store (non-fatal): {_log_err}")
 
         # Final summary
         print(f"\n{'='*60}")
@@ -647,7 +817,8 @@ class Orchestrator:
 
         yield {"type": "done", "steps": len(state.steps),
                "brain_ms": state.total_cookie_ms,
-               "tool_ms": state.total_tool_ms}
+               "tool_ms": state.total_tool_ms,
+               "run_id": run_log.run_id}
 
 
 # Backwards-compatible alias
