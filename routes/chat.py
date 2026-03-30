@@ -3743,7 +3743,35 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             except Exception:
                                 _is_exclusive = _cloud_result.get("exclusive", _cloud_slot in _EXCLUSIVE_SLOTS_LEGACY)
                             _safe_print(f"[GOVERNANCE] slot_exclusivity: exclusive={_is_exclusive}")
+
+                            # GUARD: Do NOT demote established memories if ANY recent
+                            # memory is still provisional. This prevents a test/false
+                            # claim from destroying trust on real memories before
+                            # contradiction detection has had a chance to evaluate it.
+                            _skip_demotion = False
                             if _is_exclusive:
+                                try:
+                                    import time as _time_prov
+                                    _conn_prov = engine.memory._get_connection()
+                                    _cur_prov = _conn_prov.cursor()
+                                    _cur_prov.execute("""
+                                        SELECT memory_id, authority, text FROM memories
+                                        WHERE authority = 'provisional'
+                                        AND deprecated = 0
+                                        AND timestamp > ?
+                                        LIMIT 1
+                                    """, (_time_prov.time() - 30,))
+                                    _prov_row = _cur_prov.fetchone()
+                                    _conn_prov.close()
+                                    if _prov_row:
+                                        _skip_demotion = True
+                                        _safe_print(f"[GOVERNANCE] slot_exclusivity: BLOCKED demotion — "
+                                                    f"provisional memory exists: {_prov_row[0]} "
+                                                    f"(\"{str(_prov_row[2] or '')[:50]}\")")
+                                except Exception as _prov_err:
+                                    _safe_print(f"[GOVERNANCE] slot_exclusivity: provisional check error: {_prov_err}")
+
+                            if _is_exclusive and not _skip_demotion:
                                 try:
                                     _new_val_norm = str(_cloud_value).strip().lower()
                                     # memory_facts may be empty — also search memories table directly

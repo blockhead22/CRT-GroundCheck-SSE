@@ -4688,7 +4688,32 @@ class CRTEnhancedRAG:
         # The _is_assistant_profile_question() and _build_assistant_profile_answer()
         # methods still exist for the name-ack combo path ("Hi I'm Nick. Who are you?")
         # but are not used as an early return gate in the main query flow.
-        
+
+        # ── PROVISIONAL → CONFIRMED promotion ──────────────────────────
+        # If the user assertion passed contradiction detection without
+        # triggering a conflict, promote it from provisional to confirmed.
+        # This ensures it's available for future retrieval but was NOT
+        # available during THIS turn's retrieval (preventing self-citation).
+        if user_memory is not None and not contradiction_detected:
+            _mem_id = user_memory.memory_id
+            _current_auth = self.memory._normalize_authority(getattr(user_memory, "authority", None))
+            if _current_auth == "provisional":
+                try:
+                    conn = self.memory._get_connection()
+                    conn.execute(
+                        "UPDATE memories SET authority = 'confirmed' WHERE memory_id = ?",
+                        (_mem_id,)
+                    )
+                    conn.commit()
+                    conn.close()
+                    print(f"[PROVISIONAL] Promoted to confirmed: {_mem_id} (no contradiction detected)")
+                except Exception as _promo_err:
+                    print(f"[PROVISIONAL] ERROR promoting {_mem_id}: {_promo_err}")
+            else:
+                print(f"[PROVISIONAL] Skipped promotion: {_mem_id} already authority={_current_auth}")
+        elif user_memory is not None and contradiction_detected:
+            print(f"[PROVISIONAL] Keeping provisional: {user_memory.memory_id} (contradiction detected)")
+
         # 1. Trust-weighted retrieval
         # First pass to infer slots before retrieval (enables scope filtering)
         inferred_slots: List[str] = []
