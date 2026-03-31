@@ -84,17 +84,58 @@ class AnthropicBrain(BrainProvider):
         )
         self._model = model
 
-    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+    def complete(self, system, prompt: str, max_tokens: int = 800) -> BrainResult:
+        """Complete with optional prompt cache support.
+
+        Args:
+            system: Either a string (legacy) or a list of content blocks
+                    with cache_control (from build_system_prompt(structured=True)).
+            prompt: User message.
+            max_tokens: Max response tokens.
+        """
         t0 = time.perf_counter()
         try:
+            # Support both string and structured system blocks
+            system_arg = system
+            if isinstance(system, str):
+                # Wrap in content blocks for cache support
+                try:
+                    from .prompt_prefix import get_static_prefix, BOUNDARY_MARKER
+                    prefix = get_static_prefix()
+                    if system.startswith(prefix[:50]):
+                        # Split at boundary and apply cache_control to static part
+                        if BOUNDARY_MARKER in system:
+                            static, dynamic = system.split(BOUNDARY_MARKER, 1)
+                            system_arg = [
+                                {"type": "text", "text": static.strip(),
+                                 "cache_control": {"type": "ephemeral"}},
+                                {"type": "text", "text": dynamic.strip()},
+                            ]
+                        else:
+                            system_arg = [
+                                {"type": "text", "text": system,
+                                 "cache_control": {"type": "ephemeral"}},
+                            ]
+                except ImportError:
+                    pass  # prompt_prefix not available, use string as-is
+
             response = self._client.messages.create(
                 model=self._model,
                 max_tokens=max_tokens,
-                system=system,
+                system=system_arg,
                 messages=[{"role": "user", "content": prompt}],
             )
             content = response.content[0].text if response.content else ""
             elapsed = (time.perf_counter() - t0) * 1000
+
+            # Log cache performance if available
+            usage = getattr(response, "usage", None)
+            if usage:
+                cache_create = getattr(usage, "cache_creation_input_tokens", 0)
+                cache_read = getattr(usage, "cache_read_input_tokens", 0)
+                if cache_create or cache_read:
+                    print(f"[ANTHROPIC_CACHE] create={cache_create} read={cache_read}")
+
             return BrainResult(content=content, latency_ms=elapsed,
                                provider=f"anthropic/{self._model}")
         except Exception as e:
@@ -227,9 +268,15 @@ class ClaudeCliBrain(BrainProvider):
             or self._resolve_bin()
         )
 
-    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+    def complete(self, system, prompt: str, max_tokens: int = 800) -> BrainResult:
         import subprocess
         t0 = time.perf_counter()
+        # Flatten structured blocks to string (CLI doesn't support cache_control)
+        if isinstance(system, list):
+            system = "\n\n".join(
+                block.get("text", "") for block in system
+                if isinstance(block, dict) and block.get("text")
+            )
         try:
             cmd = [
                 self._bin,
@@ -1240,10 +1287,36 @@ class Orchestrator:
                 tool = decision.get("tool", "")
                 args = decision.get("args", {})
 
+                # Extract expectation from reasoning BEFORE execution
+                _expectation = None
+                try:
+                    from personal_agent.tool_verification import (
+                        extract_expectation, verify_tool_result as _verify_result,
+                        get_session_stats,
+                    )
+                    _expectation = extract_expectation(tool, args, reasoning)
+                except ImportError:
+                    pass
+
                 t1 = time.perf_counter()
                 tool_result = execute_tool(tool, args, self.memory_system)
                 tool_ms = (time.perf_counter() - t1) * 1000
                 state.total_tool_ms += tool_ms
+
+                # Verify result against expectation AFTER execution
+                _verification = None
+                if _expectation:
+                    try:
+                        _verification = _verify_result(
+                            _expectation,
+                            result_content=tool_result.get("content", "") or "",
+                            result_status=tool_result.get("status", "ok"),
+                        )
+                        get_session_stats().record(_verification)
+                        if _verification.surprise != "none":
+                            print(f"  [VERIFY] {_verification.surprise}: {tool} — {_verification.details}")
+                    except Exception as _ve:
+                        print(f"  [VERIFY] error: {_ve}")
 
                 step = StepRecord(
                     iteration=iteration, action="tool_call",
@@ -1508,6 +1581,27 @@ class Orchestrator:
         _verified = any(s.verified for s in run_log.steps)
         if _wrote and not _verified:
             run_log.unverified_claims = 1
+
+        # Attach execution belief verification stats to run metadata
+        try:
+            from personal_agent.tool_verification import get_session_stats, reset_session_stats
+            _vstats = get_session_stats()
+            if _vstats.total_verified > 0:
+                run_log.metadata_json = json.dumps({
+                    **(json.loads(run_log.metadata_json) if getattr(run_log, "metadata_json", None) else {}),
+                    "verification": {
+                        "total": _vstats.total_verified,
+                        "match_rate": round(_vstats.match_rate, 3),
+                        "surprise_rate": round(_vstats.surprise_rate, 3),
+                        "unexpected_failures": _vstats.unexpected_failures,
+                        "unexpected_successes": _vstats.unexpected_successes,
+                        "by_tool": _vstats.by_tool,
+                    },
+                })
+                print(f"[VERIFY] Run summary: {_vstats.summary()}")
+            reset_session_stats()
+        except Exception as _vs_err:
+            print(f"[VERIFY] Stats failed (non-fatal): {_vs_err}")
 
         try:
             db = get_run_log_db()

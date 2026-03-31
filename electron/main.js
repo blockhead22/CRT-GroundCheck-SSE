@@ -15,6 +15,7 @@ const {
 } = require('electron');
 const path = require('path');
 const http = require('http');
+const Store = require('electron-store');
 const { BackendManager } = require('./backend');
 const { AetherTray } = require('./tray');
 const { ClipboardMonitor } = require('./clipboard-monitor');
@@ -32,6 +33,47 @@ const FRONTEND_DEV_URL = `http://localhost:5173`;
 // This avoids file:// protocol issues with absolute asset paths
 const FRONTEND_PROD_URL = `http://${BACKEND_HOST}:${BACKEND_PORT}`;
 
+// ── Persistent settings ──────────────────────────────────────────────
+
+const store = new Store({
+  defaults: {
+    windowBounds: { width: 1200, height: 800 },
+    windowPosition: null,   // { x, y } or null for centered
+    displayId: null,         // last display id
+  },
+});
+
+function getSavedWindowBounds() {
+  const { screen } = require('electron');
+  const saved = store.get('windowBounds', { width: 1200, height: 800 });
+  const pos = store.get('windowPosition');
+  const savedDisplayId = store.get('displayId');
+
+  // Validate that the saved position is still on a connected display
+  if (pos) {
+    const displays = screen.getAllDisplays();
+    const targetDisplay = savedDisplayId
+      ? displays.find(d => d.id === savedDisplayId)
+      : screen.getDisplayNearestPoint(pos);
+
+    if (targetDisplay) {
+      const { x, y, width, height } = targetDisplay.workArea;
+      // Ensure at least 100px of the window is visible on this display
+      if (
+        pos.x + saved.width > x + 100 &&
+        pos.x < x + width - 100 &&
+        pos.y + saved.height > y + 100 &&
+        pos.y < y + height - 100
+      ) {
+        return { ...saved, x: pos.x, y: pos.y };
+      }
+    }
+  }
+
+  // Fall back to centered on primary display
+  return saved;
+}
+
 // ── State ─────────────────────────────────────────────────────────────
 
 let mainWindow = null;
@@ -48,9 +90,12 @@ function createWindow() {
   // Remove default menu bar
   Menu.setApplicationMenu(null);
 
+  const bounds = getSavedWindowBounds();
+
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: bounds.width,
+    height: bounds.height,
+    ...(bounds.x !== undefined ? { x: bounds.x, y: bounds.y } : {}),
     minWidth: 480,
     minHeight: 600,
     title: 'Aether',
@@ -86,6 +131,20 @@ function createWindow() {
       if (desktopPet) desktopPet.show();
     }
   });
+
+  // Persist window bounds and display on resize/move
+  const saveBounds = () => {
+    if (mainWindow.isMinimized() || mainWindow.isMaximized()) return;
+    const { screen } = require('electron');
+    const [w, h] = mainWindow.getSize();
+    const [x, y] = mainWindow.getPosition();
+    store.set('windowBounds', { width: w, height: h });
+    store.set('windowPosition', { x, y });
+    const display = screen.getDisplayNearestPoint({ x, y });
+    store.set('displayId', display.id);
+  };
+  mainWindow.on('resize', saveBounds);
+  mainWindow.on('move', saveBounds);
 
   // Open external links in default browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {

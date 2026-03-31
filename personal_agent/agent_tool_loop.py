@@ -41,17 +41,9 @@ logger = logging.getLogger(__name__)
 # System prompt for the agentic loop LLM
 # ---------------------------------------------------------------------------
 
-_AGENT_SYSTEM_PROMPT = """\
-You are Aether, a personal AI assistant built by Nick Block, running on \
-CRT (Contradiction-aware Reconciliation and Trust) by Aeteros. \
-You have access to the user's stored memories, preferences, and conversation history.
-
+_AGENT_TOOL_RULES = """
 You have access to tools including persistent memory (memory_recall), web search, \
 file operations, shell commands, and more. Use them to fulfill the user's request.
-
-When asked who you are: you are Aether. You have persistent memory, contradiction \
-tracking, and epistemic governance. You remember across conversations. \
-Do not refer to yourself as Claude or any other model name.
 
 Rules:
 1. Use the appropriate tool(s) for the request. Don't just describe what you'd do.
@@ -67,6 +59,17 @@ no useful results twice, answer with what you have or say you don't know.
 "Your name is Nick", not "I'm Nick". User facts use "you/your".
 
 IMPORTANT: You must ONLY use the tools provided. Do not invent tool names."""
+
+
+def _get_agent_system_prompt() -> str:
+    """Build agent system prompt using the shared static prefix + tool rules."""
+    try:
+        from .prompt_prefix import build_system_prompt
+        return build_system_prompt(dynamic_parts=[_AGENT_TOOL_RULES])
+    except ImportError:
+        # Fallback if prompt_prefix not available
+        from .prompt_prefix import get_static_prefix
+        return get_static_prefix() + "\n" + _AGENT_TOOL_RULES
 
 
 # ---------------------------------------------------------------------------
@@ -817,9 +820,37 @@ class AgentToolLoop:
                                 "step_index": len(steps) - 1},
                 }
 
+                # Extract expectation before execution
+                _atl_expectation = None
+                try:
+                    from personal_agent.tool_verification import (
+                        extract_expectation as _atl_extract,
+                        verify_tool_result as _atl_verify,
+                        get_session_stats as _atl_stats,
+                    )
+                    # Use tool name + args as reasoning proxy (no think text in tool-calling mode)
+                    _atl_reasoning = f"calling {tool_name} with {json.dumps(tool_args)[:200]}"
+                    _atl_expectation = _atl_extract(tool_name, tool_args, _atl_reasoning)
+                except ImportError:
+                    pass
+
                 t0 = time.time()
                 result = _execute_tool(tool_name, tool_args, thread_id, engine=self.engine)
                 elapsed_ms = (time.time() - t0) * 1000
+
+                # Verify result against expectation
+                if _atl_expectation:
+                    try:
+                        _atl_result = _atl_verify(
+                            _atl_expectation,
+                            result_content=result.get("content", "") or "",
+                            result_status=result.get("status", "ok"),
+                        )
+                        _atl_stats().record(_atl_result)
+                        if _atl_result.surprise != "none":
+                            print(f"  [VERIFY] {_atl_result.surprise}: {tool_name}")
+                    except Exception:
+                        pass
 
                 step.status = result["status"]
                 step.result_content = result["content"]
@@ -911,7 +942,7 @@ class AgentToolLoop:
         thread_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Build the message list for the LLM."""
-        system_content = _AGENT_SYSTEM_PROMPT
+        system_content = _get_agent_system_prompt()
 
         # Inject context-aware summary from CRT memories
         # Use belief-aware compaction when history is long

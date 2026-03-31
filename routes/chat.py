@@ -3238,10 +3238,9 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _bp_prompt_parts.append(f"User: {effective_message}")
             _bp_prompt = "\n".join(_bp_prompt_parts)
 
-            _bp_system = "You are Aether, a personal AI assistant built by Nick Block. Respond naturally and helpfully."
-
-            # Inject context-aware summary even in bypass mode
-            # Use compacted context when conversation history is long
+            # Build system prompt with static/dynamic boundary
+            from personal_agent.prompt_prefix import build_system_prompt as _bp_build
+            _bp_dynamic = []
             try:
                 _bp_token_est = len(effective_message) // 4
                 if _bp_history:
@@ -3263,9 +3262,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         memory_db_path=engine.memory.db_path,
                     )
                 if _bp_ctx:
-                    _bp_system += _bp_ctx
+                    _bp_dynamic.append(_bp_ctx)
             except Exception:
                 pass
+            _bp_system = _bp_build(dynamic_parts=_bp_dynamic)
 
             _bp_answer = None
             if _bp_svc is not None:
@@ -3455,54 +3455,39 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 # This is a standard product integration — Claude serves as the
                 # language generation backend for the Aether product, the same way
                 # it powers Cursor, Notion AI, and thousands of other products.
-                _pc_sys_parts = [
-                    "You are Aether, a personal AI assistant built by Nick Block.",
-                    "",
-                    "Product context: Aether is a deployed application built by Nick Block.",
-                    "It uses the CRT (Contradiction-aware Reconciliation and Trust) framework",
-                    "for memory governance, contradiction detection, and trust-scored response gating.",
-                    "Before this generation call, the CRT control plane has already executed:",
-                    "memory retrieval, trust scoring, contradiction checks, and reconstruction gates.",
-                    "The context below is real system output, not simulated.",
-                    "",
-                    "Response guidelines:",
-                    "- Speak in first person. This is a product deployment.",
-                    "- Be conversational, warm, and concise.",
-                    "- Use the retrieved memories naturally — they are verified facts about the user.",
-                    "- If memories are provided, incorporate them. If not, answer from general knowledge.",
-                    "- When asked about your architecture (CRT, contradiction ledger, trust scoring,",
-                    "  reconstruction gates, heartbeat system), answer factually — these are real",
-                    "  running systems that processed this query before it reached you.",
-                    "- Respond in plain text. Do not wrap your response in JSON or code blocks.",
-                ]
-                # Inject current time so the LLM knows when this conversation is happening
-                import datetime as _dt_sys
-                _now = _dt_sys.datetime.now()
-                _pc_sys_parts.append(f"\nCurrent date and time: {_now.strftime('%A, %B %d, %Y at %I:%M %p')}")
+                # Build system prompt with static/dynamic boundary
+                from personal_agent.prompt_prefix import build_system_prompt
 
+                # --- Dynamic evidence section ---
+                import datetime as _dt_sys
+                _dynamic_parts = []
+
+                # Current time
+                _now = _dt_sys.datetime.now()
+                _dynamic_parts.append(f"Current date and time: {_now.strftime('%A, %B %d, %Y at %I:%M %p')}")
+
+                # Retrieved memories with trust scores
                 if _pc_memories:
-                    _mem_lines = []
+                    _mem_lines = ["Relevant memories about the user:"]
                     for _m in (list(_pc_memories) if isinstance(_pc_memories, list) else [])[:10]:
                         _mt = (_m.get("text") or "").strip()
                         _mtr = _m.get("trust")
                         if _mt:
                             _trust_tag = f" [trust={_mtr:.2f}]" if _mtr is not None else ""
                             _mem_lines.append(f"- {_mt[:250]}{_trust_tag}")
-                    if _mem_lines:
-                        _pc_sys_parts.append("\nRelevant memories about the user:")
-                        _pc_sys_parts.extend(_mem_lines)
+                    if len(_mem_lines) > 1:
+                        _dynamic_parts.append("\n".join(_mem_lines))
+
+                # Self-model traits
                 if _pc_self_model:
                     _traits = _pc_self_model.get("top_facts") or []
                     if _traits:
-                        _trait_lines = [f"- {t}" for t in _traits[:5] if isinstance(t, str)]
-                        if _trait_lines:
-                            _pc_sys_parts.append("\nYour self-model (what you know about yourself):")
-                            _pc_sys_parts.extend(_trait_lines)
+                        _trait_lines = ["Your self-model (what you know about yourself):"]
+                        _trait_lines.extend(f"- {t}" for t in _traits[:5] if isinstance(t, str))
+                        if len(_trait_lines) > 1:
+                            _dynamic_parts.append("\n".join(_trait_lines))
 
-                _pc_system = "\n".join(_pc_sys_parts)
-
-                # Inject context-aware summary from CRT memories
-                # Use belief-aware compaction when context is heavy
+                # Context feed (regular or compacted)
                 try:
                     if _token_est > 2000:
                         from personal_agent.context_feed import build_compacted_context
@@ -3512,7 +3497,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             token_budget=max(2000, 4000 - _token_est),
                             trigger="token_overflow",
                         )
-                        _safe_print(f"[CONTEXT_FEED] compacted context injected ({len(_ctx_summary)} chars)")
+                        if _ctx_summary:
+                            _safe_print(f"[CONTEXT_FEED] compacted context injected ({len(_ctx_summary)} chars)")
                     else:
                         from personal_agent.context_feed import build_context_summary
                         _ctx_summary = build_context_summary(
@@ -3520,9 +3506,11 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             memory_db_path=engine.memory.db_path,
                         )
                     if _ctx_summary:
-                        _pc_system += _ctx_summary
+                        _dynamic_parts.append(_ctx_summary)
                 except Exception as _ctx_err:
                     _safe_print(f"[CONTEXT_FEED] injection failed: {_ctx_err}")
+
+                _pc_system = build_system_prompt(dynamic_parts=_dynamic_parts)
 
                 # Build prompt with conversation history
                 _pc_prompt_parts = []

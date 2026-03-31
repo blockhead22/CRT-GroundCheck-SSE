@@ -1449,3 +1449,191 @@ async def backfill_aliases(
         threshold_percentile=threshold_percentile,
     )
     return result
+
+
+# ---------------------------------------------------------------------------
+# Inspectable Memory Index — Belief State per Memory
+# ---------------------------------------------------------------------------
+
+@router.get("/api/memory/index")
+def memory_index(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    limit: int = Query(default=100, ge=1, le=500),
+    min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
+    sort_by: str = Query(default="trust", regex="^(trust|timestamp|compaction_count)$"),
+    format: str = Query(default="json", regex="^(json|text)$"),
+    authorization: Optional[str] = Header(None),
+):
+    """Inspectable memory index with full belief state per memory.
+
+    Each entry shows:
+    - Memory text + trust score + authority
+    - Contradiction status (open contradictions involving this memory)
+    - Compaction history (how many times compacted, observation type)
+    - Last confirmed/accessed timestamps
+    - Whether it's held, resolved, or evolving
+
+    This is not just what Aether knows — it's how much Aether trusts what it knows.
+    """
+    import time as _time
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+    uid = resolve_user_id(authorization)
+
+    # Load all active memories
+    items = _recent_scope_items(engine, tid, user_id=uid)
+    items = [m for m in items if getattr(m, "trust", 0) >= min_trust]
+
+    # Sort
+    if sort_by == "trust":
+        items.sort(key=lambda m: float(getattr(m, "trust", 0)), reverse=True)
+    elif sort_by == "timestamp":
+        items.sort(key=lambda m: float(getattr(m, "timestamp", 0)), reverse=True)
+    elif sort_by == "compaction_count":
+        items.sort(key=lambda m: int(getattr(m, "compaction_count", 0) or 0), reverse=True)
+
+    items = items[:limit]
+
+    # Load contradiction status for these memories
+    contradiction_map: Dict[str, list] = {}
+    try:
+        led_path = engine.memory.db_path.replace("crt_memory", "crt_ledger")
+        if Path(led_path).exists():
+            with get_db_connection(led_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT ledger_id, old_memory_id, new_memory_id, status,
+                           disposition, drift_mean, contradiction_type
+                    FROM contradictions
+                    WHERE status IN ('open', 'reflecting')
+                """)
+                for row in cursor.fetchall():
+                    for mid in (row[1], row[2]):
+                        if mid:
+                            contradiction_map.setdefault(mid, []).append({
+                                "ledger_id": row[0],
+                                "other_memory_id": row[2] if mid == row[1] else row[1],
+                                "status": row[3],
+                                "disposition": row[4],
+                                "drift": round(row[5], 3) if row[5] else None,
+                                "type": row[6],
+                            })
+    except Exception:
+        pass
+
+    # Build index entries
+    entries = []
+    for mem in items:
+        mid = getattr(mem, "memory_id", "")
+        trust = round(float(getattr(mem, "trust", 0)), 3)
+        confidence = round(float(getattr(mem, "confidence", 0)), 3)
+        authority = getattr(mem, "authority", "confirmed")
+        source_kind = getattr(mem, "source_kind", "principal")
+        kind = getattr(mem, "kind", "observation")
+        text = getattr(mem, "text", "")
+        ts = getattr(mem, "timestamp", 0)
+        obs_type = getattr(mem, "observation_type", "direct") or "direct"
+        comp_count = int(getattr(mem, "compaction_count", 0) or 0)
+        last_compacted = getattr(mem, "last_compacted", None)
+        last_accessed = getattr(mem, "last_accessed", None)
+        belnap = getattr(mem, "belnap_state", "true")
+        temporal = getattr(mem, "temporal_status", "active")
+        contras = contradiction_map.get(mid, [])
+
+        entry = {
+            "memory_id": mid,
+            "text": text[:300],
+            "trust": trust,
+            "confidence": confidence,
+            "authority": authority,
+            "source_kind": source_kind,
+            "kind": kind,
+            "timestamp": ts,
+            "observation_type": obs_type,
+            "compaction_count": comp_count,
+            "last_compacted": last_compacted,
+            "last_accessed": last_accessed,
+            "belnap_state": belnap,
+            "temporal_status": temporal,
+            "contradictions": contras,
+            "contradiction_count": len(contras),
+        }
+        entries.append(entry)
+
+    if format == "text":
+        return _render_text_index(entries)
+
+    return {
+        "thread_id": tid,
+        "total": len(entries),
+        "min_trust": min_trust,
+        "sort_by": sort_by,
+        "generated_at": _time.time(),
+        "entries": entries,
+    }
+
+
+def _render_text_index(entries: list) -> dict:
+    """Render the memory index as human-readable text.
+
+    Format:
+    Nick prefers concise communication (T:0.92, confirmed, direct, no contradictions)
+    Nick works at Aeteros (T:0.85, confirmed, survived 2 compactions, 1 open contradiction)
+    """
+    lines = [f"# Memory Index ({len(entries)} entries)\n"]
+
+    # Group by authority
+    locked = [e for e in entries if e["authority"] == "locked"]
+    confirmed = [e for e in entries if e["authority"] == "confirmed"]
+    provisional = [e for e in entries if e["authority"] == "provisional"]
+
+    if locked:
+        lines.append("## Locked (immutable)")
+        for e in locked:
+            lines.append(_format_index_line(e))
+        lines.append("")
+
+    if confirmed:
+        lines.append("## Confirmed")
+        for e in confirmed:
+            lines.append(_format_index_line(e))
+        lines.append("")
+
+    if provisional:
+        lines.append("## Provisional")
+        for e in provisional:
+            lines.append(_format_index_line(e))
+
+    return {"text": "\n".join(lines), "total": len(entries)}
+
+
+def _format_index_line(entry: dict) -> str:
+    """Format a single memory index entry."""
+    text = entry["text"][:120]
+    trust = entry["trust"]
+    auth = entry["authority"]
+    obs = entry["observation_type"]
+    comp = entry["compaction_count"]
+    contras = entry["contradiction_count"]
+    belnap = entry["belnap_state"]
+
+    parts = [f"T:{trust:.2f}"]
+    parts.append(auth)
+
+    if obs == "survived_compaction":
+        parts.append(f"survived {comp} compaction{'s' if comp != 1 else ''}")
+    elif obs == "direct":
+        parts.append("direct")
+
+    if contras > 0:
+        parts.append(f"{contras} contradiction{'s' if contras != 1 else ''}")
+    else:
+        parts.append("no contradictions")
+
+    if belnap == "both":
+        parts.append("HELD")
+    elif belnap == "neither":
+        parts.append("UNCERTAIN")
+
+    return f"- {text} ({', '.join(parts)})"
