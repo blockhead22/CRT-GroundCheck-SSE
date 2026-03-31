@@ -103,7 +103,7 @@ Be specific. Don't flag style issues — focus on correctness and safety.
 
 def run_code_intel(mode: str, file_path: str, function_name: str = None):
     """Run the code intelligence agent in the specified mode."""
-    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain
+    from personal_agent.cookie_orchestrator import Orchestrator, ClaudeCliBrain
 
     # Resolve file path
     if not os.path.isabs(file_path):
@@ -146,7 +146,7 @@ def run_code_intel(mode: str, file_path: str, function_name: str = None):
         print(f"# Function: {function_name}")
     print(f"{'#'*70}")
 
-    orch = Orchestrator(brain=CookieBrain(), max_iterations=12)
+    orch = Orchestrator(brain=ClaudeCliBrain(), max_iterations=12)
     t0 = time.perf_counter()
 
     for event in orch.run(objective):

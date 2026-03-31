@@ -1639,12 +1639,12 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
         _selfref_gen_mode = str(_auth_selfref.get_user_setting(_uid_selfref, "generation_mode", "cloud_claude") or "cloud_claude").strip()
 
         if _selfref_gen_mode == "cloud_claude":
-            # Use Claude directly via CookieProvider
-            from tests.cloud_providers.providers import CookieProvider
-            _cookie = CookieProvider()
-            _result = _cookie.complete(
+            # Use Claude via CLI (OAuth, no cookie scraping)
+            from personal_agent.cookie_orchestrator import ClaudeCliBrain
+            _cli = ClaudeCliBrain(model="claude-opus-4-20250514")
+            _result = _cli.complete(
                 system=system_prompt, prompt=text,
-                max_tokens=400, model="claude-opus-4-5",
+                max_tokens=400,
             )
             return _result.content or "(no response)"
         elif _selfref_gen_mode == "cloud_openai":
@@ -6012,7 +6012,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             if _layer4_orchestrator:
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type})")
                 try:
-                    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain, OpenAIBrain, get_brain
+                    from personal_agent.cookie_orchestrator import Orchestrator, ClaudeCliBrain, OpenAIBrain, get_brain
 
                     _orch_engine = request.app.state.get_engine(req.thread_id)
 
@@ -6023,7 +6023,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     if _orch_gen_mode == "cloud_openai":
                         _orch_brain = OpenAIBrain(model="gpt-4o")
                     else:
-                        _orch_brain = CookieBrain()
+                        _orch_brain = ClaudeCliBrain()
                     _safe_print(f"[ORCHESTRATOR] Brain selected: {_orch_gen_mode} -> {getattr(_orch_brain, '_model', 'unknown')}")
 
                     _orch = Orchestrator(

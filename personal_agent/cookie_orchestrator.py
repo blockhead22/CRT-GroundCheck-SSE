@@ -282,7 +282,7 @@ class ClaudeCliBrain(BrainProvider):
             )
 
 
-def get_brain(provider: str = "cookie", **kwargs) -> BrainProvider:
+def get_brain(provider: str = "claude-cli", **kwargs) -> BrainProvider:
     """Factory function to get a brain provider by name.
 
     Args:
@@ -995,7 +995,7 @@ class Orchestrator:
 
     def __init__(self, brain: Optional[BrainProvider] = None,
                  memory_system=None, max_iterations: int = 8):
-        self.brain = brain or CookieBrain()
+        self.brain = brain or ClaudeCliBrain()
         self.memory_system = memory_system
         self.max_iterations = max_iterations
 

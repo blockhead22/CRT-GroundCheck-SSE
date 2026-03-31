@@ -464,12 +464,65 @@ class CookieProvider(CloudProvider):
             )
 
 
+# ── Claude CLI provider (OAuth, replaces cookie scraping) ────────
+
+class ClaudeCliProvider(CloudProvider):
+    """Claude via the official Claude Code CLI.
+
+    Drop-in replacement for CookieProvider.  Uses OAuth (handled by the CLI)
+    instead of scraped browser cookies.  Returns ProviderResult so it plugs
+    into cloud_features.py without changes.
+    """
+
+    name = "claude-cli"
+
+    def __init__(self, model: str = "claude-sonnet-4-20250514"):
+        from personal_agent.cookie_orchestrator import ClaudeCliBrain
+        self._brain = ClaudeCliBrain(model=model)
+        self._model = model
+
+    def is_available(self) -> bool:
+        """Check if CLI is reachable and authenticated."""
+        import subprocess
+        try:
+            proc = subprocess.run(
+                [self._brain._bin, "auth", "status"],
+                capture_output=True, text=True, timeout=10,
+            )
+            return proc.returncode == 0 and "loggedIn" in (proc.stdout or "")
+        except Exception:
+            return False
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 300,
+                 model: str = "") -> ProviderResult:
+        _model = model or self._model
+        # Swap model on the brain if different from default
+        old = self._brain._model
+        self._brain._model = _model
+        t0 = time.perf_counter()
+        result = self._brain.complete(system=system, prompt=prompt,
+                                      max_tokens=max_tokens)
+        self._brain._model = old
+        elapsed = (time.perf_counter() - t0) * 1000
+        pr = ProviderResult(
+            content=result.content or "",
+            tokens_used=0,
+            cost_est=0.0,
+            latency_ms=elapsed,
+            provider=self.name,
+            model=_model,
+            error=result.error,
+        )
+        return pr.try_parse_json() if not result.error else pr
+
+
 # ── Factory ──────────────────────────────────────────────────────
 
 PROVIDERS = {
     "openai": OpenAIProvider,
     "ccproxy": CCProxyProvider,
     "cookie": CookieProvider,
+    "claude-cli": ClaudeCliProvider,
 }
 
 

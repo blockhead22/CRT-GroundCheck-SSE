@@ -1489,13 +1489,26 @@ def create_app() -> FastAPI:
                     api_key_env="OPENAI_API_KEY",
                     timeout_seconds=15.0,
                 )
-            _claude_cookie = os.getenv("CLAUDE_SESSION_COOKIE", "").strip()
-            if _claude_cookie:
+            try:
+                from tests.cloud_providers.providers import ClaudeCliProvider
+                _cli_provider = ClaudeCliProvider()
+                _cli_avail = _cli_provider.is_available()
+                print(f"[STARTUP] ClaudeCliProvider available={_cli_avail}, bin={_cli_provider._brain._bin}")
+                if _cli_avail:
+                    _cloud_cookie = _cli_provider
+                else:
+                    print("[STARTUP] ClaudeCliProvider not available, falling back to CookieProvider")
+                    _claude_cookie = os.getenv("CLAUDE_SESSION_COOKIE", "").strip()
+                    if _claude_cookie:
+                        from tests.cloud_providers.providers import CookieProvider
+                        _cloud_cookie = CookieProvider()
+            except Exception as _cli_err:
+                print(f"[STARTUP] ClaudeCliProvider failed: {_cli_err}, trying CookieProvider")
                 try:
                     from tests.cloud_providers.providers import CookieProvider
                     _cloud_cookie = CookieProvider()
                 except Exception as _cookie_err:
-                    logger.debug("[STARTUP] CookieProvider not available: %s", _cookie_err)
+                    print(f"[STARTUP] CookieProvider not available: {_cookie_err}")
             init_cloud_feature_service(
                 openai_client=_cloud_openai,
                 cookie_session=_cloud_cookie,
