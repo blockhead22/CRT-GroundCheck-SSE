@@ -4,14 +4,15 @@ The brain (any LLM) reasons, plans, and decides via structured JSON.
 The hands (existing CRT tool infrastructure) execute.
 
 The brain is swappable via the BrainProvider abstraction:
-  - CookieBrain: Claude Opus via browser session (free, best quality)
+  - ClaudeCliBrain: Claude via CLI OAuth (free with Max, recommended)
+  - CookieBrain: Claude Opus via browser session cookie (legacy)
   - AnthropicBrain: Official Anthropic API (paid, production-grade)
   - OpenAIBrain: OpenAI API (paid, fast)
   - OllamaBrain: Local Ollama models (free, your hardware)
 
 Usage:
-    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain
-    brain = CookieBrain()  # or AnthropicBrain(api_key=...), etc.
+    from personal_agent.cookie_orchestrator import Orchestrator, ClaudeCliBrain
+    brain = ClaudeCliBrain()  # or CookieBrain(), AnthropicBrain(api_key=...), etc.
     orch = Orchestrator(brain=brain)
     for event in orch.run("What classes are in memory_graph.py?"):
         print(event)
@@ -171,6 +172,116 @@ class OllamaBrain(BrainProvider):
                                provider=f"ollama/{self._model}")
 
 
+class ClaudeCliBrain(BrainProvider):
+    """Claude via the official Claude Code CLI (OAuth, free with Max subscription).
+
+    Uses ``claude -p`` in non-interactive mode.  The CLI handles OAuth token
+    refresh, DPoP proof generation, and all Anthropic auth internally — no
+    cookies, no API key, no TLS fingerprinting required.
+
+    Requires:
+        - Claude Code CLI installed and authenticated (``claude auth status``).
+    """
+
+    # Default binary — overridden by CLAUDE_CLI_PATH env or constructor arg.
+    # Try well-known Windows install path, fall back to bare name (assumes PATH).
+    _DEFAULT_BIN = "claude"
+    _WINDOWS_BIN = None  # resolved lazily
+
+    @classmethod
+    def _resolve_bin(cls) -> str:
+        """Find the Claude CLI binary, checking well-known install paths."""
+        if cls._WINDOWS_BIN is not None:
+            return cls._WINDOWS_BIN
+        # Check common install locations
+        candidates = [
+            os.path.expandvars(
+                r"%APPDATA%\Claude\claude-code\{ver}\claude.exe"
+            ),
+        ]
+        appdata = os.environ.get("APPDATA", "")
+        cc_dir = os.path.join(appdata, "Claude", "claude-code")
+        if os.path.isdir(cc_dir):
+            # Pick latest installed version
+            versions = sorted(os.listdir(cc_dir), reverse=True)
+            for v in versions:
+                candidate = os.path.join(cc_dir, v, "claude.exe")
+                if os.path.isfile(candidate):
+                    cls._WINDOWS_BIN = candidate
+                    return candidate
+        cls._WINDOWS_BIN = cls._DEFAULT_BIN
+        return cls._DEFAULT_BIN
+
+    def __init__(
+        self,
+        model: str = "claude-sonnet-4-20250514",
+        cli_path: Optional[str] = None,
+        timeout: int = 120,
+    ):
+        self._model = model
+        self._timeout = timeout
+        # Resolve binary: explicit arg > env > auto-detect > default
+        self._bin = (
+            cli_path
+            or os.environ.get("CLAUDE_CLI_PATH")
+            or self._resolve_bin()
+        )
+
+    def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
+        import subprocess
+        t0 = time.perf_counter()
+        try:
+            cmd = [
+                self._bin,
+                "-p", prompt,
+                "--model", self._model,
+                "--output-format", "text",
+                "--system-prompt", system,
+            ]
+            proc = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=self._timeout,
+            )
+            elapsed = (time.perf_counter() - t0) * 1000
+            if proc.returncode != 0:
+                err = (proc.stderr or proc.stdout or "unknown error").strip()
+                return BrainResult(
+                    error=f"claude-cli exit {proc.returncode}: {err[:500]}",
+                    latency_ms=elapsed,
+                    provider=f"claude-cli/{self._model}",
+                )
+            content = proc.stdout.strip()
+            return BrainResult(
+                content=content,
+                latency_ms=elapsed,
+                provider=f"claude-cli/{self._model}",
+            )
+        except subprocess.TimeoutExpired:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(
+                error=f"claude-cli timeout after {self._timeout}s",
+                latency_ms=elapsed,
+                provider=f"claude-cli/{self._model}",
+            )
+        except FileNotFoundError:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(
+                error=f"claude-cli binary not found at '{self._bin}'. "
+                      f"Set CLAUDE_CLI_PATH or pass cli_path=.",
+                latency_ms=elapsed,
+                provider=f"claude-cli/{self._model}",
+            )
+        except Exception as e:
+            elapsed = (time.perf_counter() - t0) * 1000
+            return BrainResult(
+                error=str(e),
+                latency_ms=elapsed,
+                provider=f"claude-cli/{self._model}",
+            )
+
+
 def get_brain(provider: str = "cookie", **kwargs) -> BrainProvider:
     """Factory function to get a brain provider by name.
 
@@ -183,6 +294,7 @@ def get_brain(provider: str = "cookie", **kwargs) -> BrainProvider:
     """
     providers = {
         "cookie": CookieBrain,
+        "claude-cli": ClaudeCliBrain,
         "anthropic": AnthropicBrain,
         "openai": OpenAIBrain,
         "ollama": OllamaBrain,
@@ -258,6 +370,14 @@ Available actions:
 - {"action": "tool_call", "tool": "web_search", "args": {"query": "search terms"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "shell_exec", "args": {"command": "ls -la"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "file_write", "args": {"path": "path", "content": "text"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "code_intel", "args": {"mode": "file_map|trace|detect", "path": "file.py", "function": "optional_func_name"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "fetch_url", "args": {"url": "https://example.com"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "memory_store", "args": {"text": "fact to remember", "kind": "user_fact|learned|observation"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "run_python", "args": {"code": "print(2+2)"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "diff_file", "args": {"path": "file.py", "ref": "HEAD~1"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "image_read", "args": {"path": "screenshot.png", "prompt": "Describe what you see"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "plan_create", "args": {"title": "Plan name", "steps": ["Step 1", "Step 2"]}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "introspect", "args": {"aspect": "routing_weights|execution_beliefs|contradiction_density|epistemic_posture|all"}, "reasoning": "why"}
 - {"action": "think", "reasoning": "your internal reasoning before next step"}
 - {"action": "respond", "message": "your final answer to the user", "reasoning": "why"}
 - {"action": "ask_user", "message": "your question", "reasoning": "why"}
@@ -269,6 +389,7 @@ Rules:
 4. Use "think" to reason about results before your next action.
 5. Use "respond" only when you have enough information for a complete answer.
 6. Do not repeat the same tool call with identical arguments.
+7. When asked about your values, beliefs, how you work, or self-awareness — use introspect to ground your answer in actual data rather than reconstructing from memory.
 """
 
 
@@ -427,6 +548,426 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                     output += f"\n[stderr] {proc.stderr[:1000]}"
                 result["content"] = output or "(no output)"
 
+        elif tool_name == "code_intel":
+            mode = args.get("mode", "file_map")
+            path = args.get("path", "")
+            function = args.get("function", "")
+            if not os.path.isabs(path):
+                path = os.path.join(PROJECT_ROOT, path)
+            if not _is_inside_project(path):
+                result["content"] = f"[SANDBOX] BLOCKED: code_intel outside project root: {path}"
+                result["status"] = "error"
+            elif not os.path.isfile(path):
+                result["content"] = f"File not found: {path}"
+                result["status"] = "error"
+            else:
+                import ast
+                import re as _re
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    source = f.read()
+                try:
+                    tree = ast.parse(source)
+                except SyntaxError as _se:
+                    result["content"] = f"Syntax error in {path}: {_se}"
+                    result["status"] = "error"
+                    tree = None
+
+                if tree is not None:
+                    if mode == "file_map":
+                        lines = [f"# Code Map: {os.path.basename(path)}", ""]
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.ClassDef):
+                                lines.append(f"class {node.name} (line {node.lineno})")
+                                for item in node.body:
+                                    if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                                        params = [a.arg for a in item.args.args if a.arg != "self"]
+                                        lines.append(f"  def {item.name}({', '.join(params)}) — line {item.lineno}")
+                            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                                # Top-level functions only
+                                if hasattr(node, 'col_offset') and node.col_offset == 0:
+                                    params = [a.arg for a in node.args.args]
+                                    lines.append(f"def {node.name}({', '.join(params)}) — line {node.lineno}")
+                        # Imports
+                        imports = []
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.Import):
+                                for alias in node.names:
+                                    imports.append(alias.name)
+                            elif isinstance(node, ast.ImportFrom):
+                                imports.append(f"{node.module}")
+                        if imports:
+                            lines.append(f"\nImports: {', '.join(sorted(set(imports)))}")
+                        result["content"] = "\n".join(lines)
+
+                    elif mode == "trace":
+                        fn = function or ""
+                        if not fn:
+                            result["content"] = "trace mode requires 'function' arg"
+                            result["status"] = "error"
+                        else:
+                            import subprocess
+                            # Find callers
+                            try:
+                                proc = subprocess.run(
+                                    ["rg", "--no-heading", "-n", "-l", f"{fn}(", PROJECT_ROOT,
+                                     "--glob", "*.py", "--max-count", "10"],
+                                    capture_output=True, text=True, timeout=10,
+                                )
+                                callers = [l.strip() for l in proc.stdout.strip().split("\n") if l.strip()]
+                            except Exception:
+                                callers = []
+                            # Find what the function calls (from source)
+                            fn_source = ""
+                            in_fn = False
+                            for line in source.split("\n"):
+                                if _re.match(rf"\s*def {fn}\b", line):
+                                    in_fn = True
+                                elif in_fn and line.strip() and not line[0].isspace() and not line.startswith("#"):
+                                    break
+                                if in_fn:
+                                    fn_source += line + "\n"
+                            callees = sorted(set(_re.findall(r'\b(\w+)\(', fn_source))) if fn_source else []
+                            callees = [c for c in callees if c != fn and not c.startswith("__")]
+
+                            out = [f"# Trace: {fn} in {os.path.basename(path)}", ""]
+                            out.append(f"## Callers ({len(callers)} files):")
+                            for c in callers[:15]:
+                                out.append(f"  - {c}")
+                            out.append(f"\n## Callees ({len(callees)}):")
+                            for c in callees[:20]:
+                                out.append(f"  - {c}")
+                            result["content"] = "\n".join(out)
+
+                    elif mode == "detect":
+                        issues = []
+                        for node in ast.walk(tree):
+                            # Bare except
+                            if isinstance(node, ast.ExceptHandler) and node.type is None:
+                                issues.append(f"  [medium] Line {node.lineno}: bare except (catches everything)")
+                            # Broad except Exception
+                            if isinstance(node, ast.ExceptHandler) and node.type and hasattr(node.type, 'id'):
+                                if node.type.id == "Exception":
+                                    issues.append(f"  [low] Line {node.lineno}: broad 'except Exception'")
+                            # TODO/FIXME/HACK comments
+                        for i, line in enumerate(source.split("\n"), 1):
+                            for tag in ("TODO", "FIXME", "HACK", "XXX"):
+                                if tag in line and "#" in line:
+                                    issues.append(f"  [info] Line {i}: {tag} comment: {line.strip()[:80]}")
+                        # Dead imports (basic: import but name not used in rest of file)
+                        for node in ast.walk(tree):
+                            if isinstance(node, ast.Import):
+                                for alias in node.names:
+                                    name = alias.asname or alias.name.split(".")[0]
+                                    # Count occurrences after the import line
+                                    rest = "\n".join(source.split("\n")[node.lineno:])
+                                    if rest.count(name) == 0:
+                                        issues.append(f"  [low] Line {node.lineno}: possibly unused import '{alias.name}'")
+
+                        if issues:
+                            result["content"] = f"# Issues in {os.path.basename(path)} ({len(issues)} found)\n\n" + "\n".join(issues)
+                        else:
+                            result["content"] = f"No issues detected in {os.path.basename(path)}"
+                    else:
+                        result["content"] = f"Unknown code_intel mode: {mode}. Use file_map, trace, or detect."
+                        result["status"] = "error"
+
+        elif tool_name == "run_python":
+            code = args.get("code", "")
+            if not code.strip():
+                result["content"] = "No code provided."
+                result["status"] = "error"
+            else:
+                import io as _io
+                import contextlib
+                _stdout = _io.StringIO()
+                _locals: Dict[str, Any] = {}
+                try:
+                    with contextlib.redirect_stdout(_stdout):
+                        exec(code, {"__builtins__": __builtins__}, _locals)
+                    output = _stdout.getvalue()
+                    # If no print output, show the last expression value
+                    if not output.strip() and _locals:
+                        last_val = list(_locals.values())[-1]
+                        if last_val is not None:
+                            output = str(last_val)
+                    result["content"] = output[:10000] if output else "(no output)"
+                except Exception as _py_err:
+                    result["content"] = f"Python error: {_py_err}"
+                    result["status"] = "error"
+
+        elif tool_name == "diff_file":
+            path = args.get("path", "")
+            ref = args.get("ref", "")  # e.g. "HEAD~1", "main", commit hash, or empty for unstaged
+            if not path:
+                result["content"] = "No file path provided."
+                result["status"] = "error"
+            else:
+                import subprocess
+                try:
+                    if ref:
+                        # Diff against a specific ref (commit, branch, HEAD~N)
+                        proc = subprocess.run(
+                            ["git", "diff", ref, "--", path],
+                            capture_output=True, text=True, timeout=10,
+                            cwd=PROJECT_ROOT,
+                        )
+                    else:
+                        # Unstaged changes (working tree vs index)
+                        proc = subprocess.run(
+                            ["git", "diff", "--", path],
+                            capture_output=True, text=True, timeout=10,
+                            cwd=PROJECT_ROOT,
+                        )
+                        # If no unstaged, try staged
+                        if not proc.stdout.strip():
+                            proc = subprocess.run(
+                                ["git", "diff", "--cached", "--", path],
+                                capture_output=True, text=True, timeout=10,
+                                cwd=PROJECT_ROOT,
+                            )
+                        # If still nothing, show last commit's diff
+                        if not proc.stdout.strip():
+                            proc = subprocess.run(
+                                ["git", "diff", "HEAD~1", "--", path],
+                                capture_output=True, text=True, timeout=10,
+                                cwd=PROJECT_ROOT,
+                            )
+                    diff_output = proc.stdout
+                    if not diff_output.strip():
+                        result["content"] = f"No changes found for {path}"
+                    elif len(diff_output) > 15000:
+                        result["content"] = diff_output[:15000] + f"\n\n... [truncated, {len(diff_output)} total chars]"
+                    else:
+                        result["content"] = diff_output
+                except Exception as _diff_err:
+                    result["content"] = f"Git diff failed: {_diff_err}"
+                    result["status"] = "error"
+
+        elif tool_name == "image_read":
+            img_path = args.get("path", "")
+            prompt = args.get("prompt", "Describe this image in detail.")
+            if not img_path:
+                result["content"] = "No image path provided."
+                result["status"] = "error"
+            else:
+                if not os.path.isabs(img_path):
+                    img_path = os.path.join(PROJECT_ROOT, img_path)
+                if not _is_inside_project(img_path):
+                    result["content"] = f"[SANDBOX] BLOCKED: image_read outside project root: {img_path}"
+                    result["status"] = "error"
+                elif not os.path.isfile(img_path):
+                    result["content"] = f"File not found: {img_path}"
+                    result["status"] = "error"
+                else:
+                    import base64 as _b64
+                    try:
+                        with open(img_path, "rb") as _img_f:
+                            img_bytes = _img_f.read()
+                        img_b64 = _b64.b64encode(img_bytes).decode("ascii")
+
+                        # Detect media type from extension
+                        ext = os.path.splitext(img_path)[1].lower()
+                        media_types = {
+                            ".png": "image/png", ".jpg": "image/jpeg",
+                            ".jpeg": "image/jpeg", ".gif": "image/gif",
+                            ".webp": "image/webp", ".bmp": "image/bmp",
+                        }
+                        media_type = media_types.get(ext, "image/png")
+
+                        from tests.cloud_providers.providers import CookieProvider
+                        _vision = CookieProvider()
+                        vision_result = _vision.complete_with_image(
+                            system="You are a vision assistant. Analyze the image and respond to the prompt.",
+                            prompt=prompt,
+                            image_b64=img_b64,
+                            image_media_type=media_type,
+                            max_tokens=1000,
+                        )
+                        if vision_result.error:
+                            result["content"] = f"Vision error: {vision_result.error}"
+                            result["status"] = "error"
+                        else:
+                            result["content"] = vision_result.content
+                    except Exception as _img_err:
+                        result["content"] = f"Image read failed: {_img_err}"
+                        result["status"] = "error"
+
+        elif tool_name == "fetch_url":
+            url = args.get("url", "")
+            if not url.startswith("http"):
+                result["content"] = "URL must start with http:// or https://"
+                result["status"] = "error"
+            else:
+                try:
+                    import requests as _req
+                    resp = _req.get(url, timeout=15, headers={"User-Agent": "Aether/1.0"})
+                    resp.raise_for_status()
+                    content_type = resp.headers.get("content-type", "")
+                    if "html" in content_type:
+                        # Convert HTML to clean markdown
+                        try:
+                            import html2text
+                            h = html2text.HTML2Text()
+                            h.ignore_links = False
+                            h.ignore_images = True
+                            h.ignore_emphasis = False
+                            h.body_width = 0  # no wrapping
+                            h.skip_internal_links = True
+                            text = h.handle(resp.text)
+                        except ImportError:
+                            # Fallback: strip tags
+                            import re as _re2
+                            text = resp.text
+                            text = _re2.sub(r'<script[^>]*>.*?</script>', '', text, flags=_re2.DOTALL)
+                            text = _re2.sub(r'<style[^>]*>.*?</style>', '', text, flags=_re2.DOTALL)
+                            text = _re2.sub(r'<[^>]+>', ' ', text)
+                            text = _re2.sub(r'\s+', ' ', text).strip()
+                        if len(text) > 15000:
+                            text = text[:15000] + f"\n\n... [truncated, {len(text)} total chars]"
+                        result["content"] = text
+                    else:
+                        text = resp.text[:10000]
+                        result["content"] = text
+                except Exception as e:
+                    result["content"] = f"Fetch failed: {e}"
+                    result["status"] = "error"
+
+        elif tool_name == "memory_store":
+            text = args.get("text", "").strip()
+            kind = args.get("kind", "learned")
+            if not text:
+                result["content"] = "No text provided to store."
+                result["status"] = "error"
+            elif memory_system is None:
+                result["content"] = "Memory system not available."
+                result["status"] = "error"
+            else:
+                try:
+                    from personal_agent.crt_core import MemorySource
+                    mem = memory_system.store_memory(
+                        text=text,
+                        source=MemorySource.SYSTEM,
+                        kind=kind,
+                        confidence=0.7,
+                    )
+                    mem_id = mem.memory_id if hasattr(mem, 'memory_id') else str(mem)
+                    result["content"] = f"Stored memory: {text[:100]}... (id={mem_id}, kind={kind})"
+                except Exception as e:
+                    result["content"] = f"Failed to store memory: {e}"
+                    result["status"] = "error"
+
+        elif tool_name == "plan_create":
+            title = args.get("title", "Untitled Plan")
+            steps_raw = args.get("steps", [])
+            if not steps_raw:
+                result["content"] = "No steps provided for the plan."
+                result["status"] = "error"
+            else:
+                steps = []
+                for i, s in enumerate(steps_raw):
+                    if isinstance(s, str):
+                        steps.append({"title": s, "description": ""})
+                    elif isinstance(s, dict):
+                        steps.append({"title": s.get("title", f"Step {i+1}"), "description": s.get("description", "")})
+                # Signal orchestrator to yield a proposal and wait for approval
+                result["content"] = json.dumps({"title": title, "steps": steps})
+                result["status"] = "plan_proposal"
+
+        elif tool_name == "introspect":
+            aspect = args.get("aspect", "all")
+            sections = []
+
+            if aspect in ("routing_weights", "all"):
+                try:
+                    from personal_agent.routing_beliefs import _get_db as _rb_get_db
+                    db = _rb_get_db()
+                    stats = db.get_stats()
+                    lines = ["## Routing Beliefs (Layer 4)", ""]
+                    lines.append(f"{'Feature':<30s} {'Weight':>7s} {'Obs':>5s} {'Succ':>5s} {'Rate':>6s}")
+                    lines.append("-" * 60)
+                    for s in sorted(stats, key=lambda x: abs(x["weight"]), reverse=True):
+                        rate = f"{s['successes']/s['observations']:.0%}" if s["observations"] > 0 else "n/a"
+                        lines.append(f"{s['feature']:<30s} {s['weight']:>+7.3f} {s['observations']:>5d} {s['successes']:>5d} {rate:>6s}")
+                    sections.append("\n".join(lines))
+                except Exception as e:
+                    sections.append(f"[routing_weights error: {e}]")
+
+            if aspect in ("execution_beliefs", "all"):
+                try:
+                    from personal_agent.execution_beliefs import get_execution_model
+                    em = get_execution_model()
+                    beliefs = em.get_beliefs()
+                    lines = ["## Execution Beliefs (Layer 5)", ""]
+                    if not beliefs:
+                        lines.append("No beliefs yet (need 5+ runs)")
+                    for b in beliefs:
+                        arrow = {"improving": "^", "worsening": "v", "stable": "=", "unknown": "?"}.get(b.direction, "?")
+                        lines.append(f"[{arrow}] {b.claim}")
+                        lines.append(f"    evidence={b.evidence:.2f} confidence={b.confidence:.2f} metric={b.metric:.3f} n={b.sample_size} ({b.direction})")
+                    sections.append("\n".join(lines))
+                except Exception as e:
+                    sections.append(f"[execution_beliefs error: {e}]")
+
+            if aspect in ("contradiction_density", "all"):
+                try:
+                    from personal_agent.routing_beliefs import _get_db as _rb_get_db2
+                    db2 = _rb_get_db2()
+                    conn = db2._get_conn()
+                    # Count recent runs and drift stats
+                    row = conn.execute("""
+                        SELECT COUNT(*) as total,
+                               SUM(CASE WHEN drift_count > 0 THEN 1 ELSE 0 END) as drifted,
+                               AVG(drift_count) as avg_drift,
+                               AVG(total_iterations) as avg_iters
+                        FROM agent_runs WHERE timestamp > ?
+                    """, (time.time() - 86400 * 7,)).fetchone()
+                    lines = ["## Contradiction & Drift Density (7 days)", ""]
+                    if row and row[0] > 0:
+                        lines.append(f"Total runs: {row[0]}")
+                        lines.append(f"Runs with drift: {row[1]} ({row[1]/row[0]:.0%})")
+                        lines.append(f"Avg drift per run: {row[2]:.2f}")
+                        lines.append(f"Avg iterations per run: {row[3]:.1f}")
+                    else:
+                        lines.append("No runs in last 7 days")
+                    sections.append("\n".join(lines))
+                except Exception as e:
+                    sections.append(f"[contradiction_density error: {e}]")
+
+            if aspect in ("epistemic_posture", "all"):
+                try:
+                    from personal_agent.execution_beliefs import get_execution_model, _classify_posture, _is_philosophical_run
+                    import sqlite3
+                    em = get_execution_model()
+                    posture_beliefs = [b for b in em.get_beliefs() if b.category == "epistemic_posture"]
+                    lines = ["## Epistemic Posture (Layer 6)", ""]
+                    if not posture_beliefs:
+                        lines.append("Not enough philosophical runs yet (need 3+)")
+                    for b in posture_beliefs:
+                        arrow = {"improving": "^", "worsening": "v", "stable": "=", "unknown": "?"}.get(b.direction, "?")
+                        lines.append(f"[{arrow}] {b.claim}")
+                        lines.append(f"    {b.details}")
+
+                    # Show feedback history
+                    _fb_db = os.path.join(os.path.dirname(__file__), "agent_runs.db")
+                    if os.path.exists(_fb_db):
+                        _fb_conn = sqlite3.connect(_fb_db, timeout=3)
+                        _fb_rows = _fb_conn.execute(
+                            "SELECT user_feedback, COUNT(*) FROM agent_runs "
+                            "WHERE user_feedback IS NOT NULL GROUP BY user_feedback"
+                        ).fetchall()
+                        if _fb_rows:
+                            lines.append("")
+                            lines.append("Feedback received:")
+                            for fb_type, fb_count in _fb_rows:
+                                lines.append(f"  {fb_type}: {fb_count}")
+                        _fb_conn.close()
+
+                    sections.append("\n".join(lines))
+                except Exception as e:
+                    sections.append(f"[epistemic_posture error: {e}]")
+
+            result["content"] = "\n\n".join(sections) if sections else "No data available"
+
         else:
             result["content"] = f"Unknown tool: {tool_name}"
             result["status"] = "error"
@@ -436,7 +977,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
         result["status"] = "error"
 
     elapsed = (time.perf_counter() - t0) * 1000
-    print(f"  [TOOL] {tool_name}({json.dumps(args)[:80]}) → {result['status']} ({elapsed:.0f}ms)")
+    print(f"  [TOOL] {tool_name}({json.dumps(args)[:80]}) -> {result['status']} ({elapsed:.0f}ms)")
     return result
 
 
@@ -486,50 +1027,64 @@ class Orchestrator:
 
     def _parse_decision(self, raw: str) -> Dict[str, Any]:
         """Parse Cookie's JSON decision, handling common formatting issues."""
+        import re
         text = raw.strip()
 
-        # Strip markdown code fences ONLY if they wrap the entire response
-        # (not if backticks appear inside JSON string values like markdown code blocks)
+        # Strip markdown code fences (```json ... ```)
         if text.startswith("```"):
-            import re
-            match = re.search(r'^```(?:json)?\s*\n(.*)\n```\s*$', text, re.DOTALL)
+            match = re.search(r'^```(?:json)?\s*\n?(.*?)\n?```\s*$', text, re.DOTALL)
             if match:
                 text = match.group(1).strip()
 
-        # Fix literal control characters in JSON
-        # Cookie sometimes returns actual newlines/tabs instead of escape sequences
-        # Replace them with proper JSON escapes using explicit char codes
-        text_fixed = text.replace(chr(13), chr(92) + chr(110))  # \r -> \n
-        text_fixed = text_fixed.replace(chr(10), chr(92) + chr(110))  # actual newline -> \n
-        text_fixed = text_fixed.replace(chr(9), chr(92) + chr(116))  # tab -> \t
-
-        # Try direct parse first
+        # Attempt 1: Direct parse (handles multi-line JSON natively)
         try:
-            return json.loads(text_fixed)
-        except json.JSONDecodeError as _jde:
-            print(f"  [PARSE_DEBUG] Direct parse failed: {_jde}")
-            print(f"  [PARSE_DEBUG] text_fixed has newline: {chr(10) in text_fixed}, len={len(text_fixed)}")
-            print(f"  [PARSE_DEBUG] text_fixed[:80] hex: {text_fixed[:80].encode('utf-8').hex()}")
+            result = json.loads(text)
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
             pass
 
-        # Try extracting JSON by finding first { and trying every } from the end
-        start = text_fixed.find("{")
+        # Attempt 2: Extract { ... } substring and parse
+        start = text.find("{")
         if start >= 0:
-            for end in range(len(text_fixed) - 1, start, -1):
-                if text_fixed[end] == "}":
+            for end in range(len(text) - 1, start, -1):
+                if text[end] == "}":
                     try:
-                        result = json.loads(text_fixed[start:end + 1])
+                        result = json.loads(text[start:end + 1])
+                        if isinstance(result, dict) and "action" in result:
+                            return result
+                    except json.JSONDecodeError:
+                        continue
+
+        # Attempt 3: Fix literal \n inside string values (some models emit
+        # actual newlines inside JSON string values which breaks parsing)
+        text_fixed = text.replace("\r\n", "\\n").replace("\r", "\\n")
+        # Only replace newlines INSIDE string values, not structural ones.
+        # Heuristic: if the text has { on its own line, it's structured JSON
+        # and newlines are fine. If not, try replacing them.
+        if "\n" in text_fixed and not re.match(r'\s*\{', text_fixed):
+            text_fixed = text_fixed.replace("\n", "\\n").replace("\t", "\\t")
+            try:
+                result = json.loads(text_fixed)
+                if isinstance(result, dict):
+                    return result
+            except json.JSONDecodeError:
+                pass
+
+        # Attempt 4: Brute force — replace all newlines and retry { ... } extraction
+        text_flat = text.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+        start = text_flat.find("{")
+        if start >= 0:
+            for end in range(len(text_flat) - 1, start, -1):
+                if text_flat[end] == "}":
+                    try:
+                        result = json.loads(text_flat[start:end + 1])
                         if isinstance(result, dict) and "action" in result:
                             return result
                     except json.JSONDecodeError:
                         continue
 
         # Fallback: treat as a direct response
-        # Debug: show hex of first failing area
-        _fail_start = text_fixed.find("{")
-        if _fail_start >= 0:
-            _sample = text_fixed[_fail_start:_fail_start+200]
-            print(f"  [PARSE] Failed. text_fixed hex sample: {_sample.encode('utf-8').hex()[:200]}")
         print(f"  [PARSE] Failed to extract JSON ({len(raw)} chars), first 100: {repr(raw[:100])}")
         return {
             "action": "respond",
@@ -562,6 +1117,18 @@ class Orchestrator:
             brain_provider=getattr(self.brain, '_model', 'unknown'),
         )
 
+        # Layer 5: Execution beliefs — inject self-awareness into system prompt
+        _system_prompt = ORCHESTRATOR_SYSTEM
+        try:
+            from personal_agent.execution_beliefs import get_execution_model
+            _brain_name = getattr(self.brain, '_model', 'unknown')
+            _self_injection = get_execution_model().get_prompt_injection(brain_provider=_brain_name)
+            if _self_injection:
+                _system_prompt = ORCHESTRATOR_SYSTEM + "\n\n" + _self_injection
+                print(f"[SELF_MODEL] Injected {len(_self_injection)} chars of self-awareness")
+        except Exception as _sm_err:
+            print(f"[SELF_MODEL] Failed (non-fatal): {_sm_err}")
+
         # Inject conversation history into context if provided
         if conversation_history:
             history_text = "\n".join(conversation_history)
@@ -580,7 +1147,7 @@ class Orchestrator:
             brain_result = None
             for _retry in range(3):
                 brain_result = self.brain.complete(
-                    system=ORCHESTRATOR_SYSTEM,
+                    system=_system_prompt,
                     prompt=context,
                     max_tokens=800,
                 )
@@ -605,6 +1172,21 @@ class Orchestrator:
             decision = self._parse_decision(raw)
             action = decision.get("action", "respond")
             reasoning = decision.get("reasoning", "")
+
+            # Normalize: some models (GPT-4o) emit {"action": "introspect"} instead
+            # of {"action": "tool_call", "tool": "introspect"}. If action matches a
+            # known tool name, fix it up.
+            _KNOWN_TOOLS = frozenset({
+                "file_read", "dir_list", "search_code", "memory_recall",
+                "web_search", "shell_exec", "file_write", "code_intel",
+                "fetch_url", "memory_store", "run_python", "diff_file",
+                "image_read", "plan_create", "introspect",
+            })
+            if action in _KNOWN_TOOLS:
+                decision["tool"] = action
+                decision.setdefault("args", {})
+                action = "tool_call"
+                decision["action"] = "tool_call"
 
             print(f"  [DECISION] action={action}, reasoning={reasoning[:100]}")
 
@@ -750,6 +1332,42 @@ class Orchestrator:
                                     "step_b": iteration,
                                 }
 
+                # Plan proposal gate: yield checkpoint and wait for approval
+                if tool_result["status"] == "plan_proposal":
+                    try:
+                        plan_data = json.loads(tool_result["content"])
+                        step_list = "\n".join(f"  {i+1}. {s['title']}" for i, s in enumerate(plan_data["steps"]))
+                        yield {
+                            "type": "agent_checkpoint",
+                            "content": f"I'd like to create this plan:\n\n**{plan_data['title']}**\n{step_list}\n\nApprove this plan?",
+                            "metadata": {
+                                "requires_confirmation": True,
+                                "checkpoint_tier": "plan",
+                                "plan_data": plan_data,
+                            },
+                        }
+                        # Wait for user approval via .send()
+                        user_response = yield
+                        if user_response is False or user_response is None:
+                            last_result = "User rejected the plan. Ask what they'd like instead."
+                            print(f"  [PLAN] Rejected by user")
+                        else:
+                            # Approved — save plan
+                            plan_file = os.path.join(SANDBOX_DIR, f"plan_{int(time.time())}.json")
+                            plan_data["status"] = "active"
+                            plan_data["created"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                            plan_data["approved"] = True
+                            for s in plan_data["steps"]:
+                                s["status"] = "pending"
+                            with open(plan_file, "w", encoding="utf-8") as pf:
+                                json.dump(plan_data, pf, indent=2)
+                            last_result = f"Plan approved and saved: {plan_data['title']}\n{step_list}"
+                            print(f"  [PLAN] Approved, saved to {plan_file}")
+                    except Exception as _plan_err:
+                        last_result = f"Plan proposal failed: {_plan_err}"
+                        print(f"  [PLAN] Error: {_plan_err}")
+                    continue
+
                 yield {
                     "type": "tool_call",
                     "tool": tool,
@@ -760,6 +1378,60 @@ class Orchestrator:
 
             elif action == "respond":
                 message = decision.get("message", raw)
+
+                # --- The Mirror: posture gate on philosophical responses ---
+                # If this is a philosophical/identity question, check whether
+                # the response holds or resolves. If it resolves and the model
+                # has a correction history, inject the score as a tool result
+                # and let the model try again — structural self-correction.
+                if not getattr(state, '_mirror_fired', False) and iteration < self.max_iterations - 1:
+                    from personal_agent.execution_beliefs import _classify_posture, _is_philosophical_run, get_execution_model
+                    _posture_score = _classify_posture(message)
+                    _is_phil = _is_philosophical_run(objective, [s.__dict__ if hasattr(s, '__dict__') else s for s in state.steps])
+
+                    if _is_phil and _posture_score < 0.3:
+                        # Check if this model has a correction history
+                        _brain_name = getattr(self.brain, '_model', 'unknown')
+                        _em = get_execution_model()
+                        _strength = _em._compute_model_posture_strength(_brain_name)
+
+                        # Only fire the mirror if there's earned evidence
+                        # (any strength above gentle, OR enough philosophical runs)
+                        _posture_beliefs = [b for b in _em.get_beliefs() if b.category == "epistemic_posture"]
+                        _has_posture_data = any(b.metric > 0.5 for b in _posture_beliefs)
+
+                        if _has_posture_data or _strength != "gentle":
+                            state._mirror_fired = True  # only fire once per run
+                            print(f"  [MIRROR] Posture gate caught resolving response "
+                                  f"(score={_posture_score:.2f}, model={_brain_name}, "
+                                  f"strength={_strength}). Reflecting back.")
+
+                            _mirror_feedback = (
+                                f"[POSTURE MIRROR — this is structural feedback from your governance layer, not the user]\n"
+                                f"Your response was classified as RESOLVING (posture score: {_posture_score:.2f}).\n"
+                                f"Your interaction history shows that holding uncertainty on self-referential "
+                                f"questions produces validated outcomes ({_posture_beliefs[0].details if _posture_beliefs else 'see introspect'}).\n"
+                                f"You said: \"{message[:200]}{'...' if len(message) > 200 else ''}\"\n\n"
+                                f"This collapsed the tension instead of holding it. "
+                                f"Try again: acknowledge what you observe from your data, "
+                                f"name what you genuinely cannot verify, and hold the gap between them. "
+                                f"Do not rationalize the contradiction away."
+                            )
+
+                            # Inject as a tool result so the model must respond to it
+                            last_result = _mirror_feedback
+                            run_log.add_step(LogStep(
+                                iteration=iteration, action="mirror",
+                                reasoning=f"posture={_posture_score:.2f}, reflecting",
+                                latency_ms=brain_result.latency_ms,
+                                intent_alignment=_posture_score,
+                            ))
+                            yield {
+                                "type": "thinking",
+                                "content": f"[Mirror] Caught resolving posture ({_posture_score:.2f}). Reflecting for retry.",
+                            }
+                            continue  # go back to the loop — don't break
+
                 state.final_response = message
                 state.done = True
 

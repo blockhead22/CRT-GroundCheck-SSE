@@ -27,6 +27,8 @@ class BackendManager extends EventEmitter {
     this.port = parseInt(process.env.PORT || '8000', 10);
     this.host = process.env.CRT_HOST || '127.0.0.1';
     this.failCount = 0;
+    // Channel bots (spawned when backend is healthy)
+    this.channelBots = {};
   }
 
   /** Resolve the Python executable inside the venv */
@@ -54,7 +56,7 @@ class BackendManager extends EventEmitter {
       CRT_ENABLE_LLM: 'true',
       CRT_OLLAMA_MODEL: process.env.CRT_OLLAMA_MODEL || 'qwen3:14b',
       OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || 'http://192.168.1.146:11434',
-      CRT_INTENT_MODEL: process.env.CRT_INTENT_MODEL || 'llama3.2',
+      // CRT_INTENT_MODEL removed — Layer 4 epistemic routing handles this
       HF_HUB_OFFLINE: '1',
       TRANSFORMERS_OFFLINE: '1',
     };
@@ -138,6 +140,8 @@ class BackendManager extends EventEmitter {
           this.restartCount = 0; // Reset on successful start
           this.emit('status', 'healthy');
           this.startHealthCheck();
+          // Start channel bots now that the API is ready
+          this.startChannelBots();
         } else if (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
           setTimeout(check, 1000);
         } else {
@@ -204,10 +208,71 @@ class BackendManager extends EventEmitter {
     }
   }
 
+  /** Start channel bots (Telegram, Discord) as child processes */
+  startChannelBots() {
+    const pythonPath = this.getPythonPath();
+    const env = { ...this.getEnv(), CRT_API_URL: `http://${this.host}:${this.port}` };
+
+    const bots = [
+      { name: 'telegram', module: 'channels.telegram_bot', tokenVar: 'TELEGRAM_BOT_TOKEN' },
+      { name: 'discord', module: 'channels.discord_bot', tokenVar: 'DISCORD_BOT_TOKEN' },
+    ];
+
+    for (const bot of bots) {
+      const token = process.env[bot.tokenVar] || env[bot.tokenVar];
+      if (!token) {
+        console.log(`[${bot.name}] Skipped (${bot.tokenVar} not set)`);
+        continue;
+      }
+      if (this.channelBots[bot.name]) {
+        console.log(`[${bot.name}] Already running`);
+        continue;
+      }
+
+      console.log(`[${bot.name}] Starting bot...`);
+      const proc = spawn(pythonPath, ['-m', bot.module], {
+        cwd: this.repoRoot,
+        env,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+      });
+
+      proc.stdout.on('data', (data) => {
+        const line = data.toString().trim();
+        if (line) console.log(`[${bot.name}:out] ${line}`);
+      });
+      proc.stderr.on('data', (data) => {
+        const line = data.toString().trim();
+        if (line) console.error(`[${bot.name}:err] ${line}`);
+      });
+      proc.on('exit', (code) => {
+        console.log(`[${bot.name}] Exited (code=${code})`);
+        delete this.channelBots[bot.name];
+      });
+
+      this.channelBots[bot.name] = proc;
+      console.log(`[${bot.name}] PID=${proc.pid}`);
+    }
+  }
+
+  /** Stop all channel bots */
+  stopChannelBots() {
+    for (const [name, proc] of Object.entries(this.channelBots)) {
+      console.log(`[${name}] Stopping bot...`);
+      try {
+        proc.kill();
+      } catch (e) {
+        console.warn(`[${name}] Kill failed: ${e.message}`);
+      }
+    }
+    this.channelBots = {};
+  }
+
   /** Graceful shutdown */
   async stop() {
     this.shuttingDown = true;
     this.stopHealthCheck();
+    this.stopChannelBots();
 
     if (!this.process) return;
 

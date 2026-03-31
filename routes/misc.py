@@ -2006,3 +2006,52 @@ def cloud_usage_recent(
         logger.warning("[CLOUD-USAGE] Recent endpoint error: %s", exc)
         return []
 
+
+# ---------------------------------------------------------------------------
+# Image upload for vision pipeline
+# ---------------------------------------------------------------------------
+
+from fastapi import UploadFile, File
+
+_UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "workspace", "uploads")
+_ALLOWED_IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
+_MAX_IMAGE_SIZE = 20 * 1024 * 1024  # 20MB
+
+
+@router.post("/api/upload/image")
+async def upload_image(file: UploadFile = File(...)):
+    """Upload an image for vision analysis. Saves to workspace/uploads/, returns the path."""
+    if not file.filename:
+        raise HTTPException(400, "No filename provided")
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in _ALLOWED_IMAGE_EXTS:
+        raise HTTPException(400, f"Unsupported image type: {ext}. Allowed: {_ALLOWED_IMAGE_EXTS}")
+
+    os.makedirs(_UPLOAD_DIR, exist_ok=True)
+
+    # Generate unique filename
+    import uuid
+    safe_name = f"{uuid.uuid4().hex[:12]}{ext}"
+    save_path = os.path.join(_UPLOAD_DIR, safe_name)
+
+    # Read and validate size
+    content = await file.read()
+    if len(content) > _MAX_IMAGE_SIZE:
+        raise HTTPException(413, f"Image too large: {len(content)} bytes (max {_MAX_IMAGE_SIZE})")
+
+    with open(save_path, "wb") as f:
+        f.write(content)
+
+    # Return relative path (from project root)
+    rel_path = f"workspace/uploads/{safe_name}"
+    logger.info("[UPLOAD] Image saved: %s (%d bytes)", rel_path, len(content))
+
+    return {
+        "success": True,
+        "path": rel_path,
+        "filename": safe_name,
+        "original_name": file.filename,
+        "size": len(content),
+    }
+

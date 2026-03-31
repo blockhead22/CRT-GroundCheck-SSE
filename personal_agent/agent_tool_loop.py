@@ -785,14 +785,18 @@ class AgentToolLoop:
                         step.status = "denied"
                         step.result_content = "User denied this action."
 
+                        _deny_tc_id = f"call_{iteration}_{tool_name}_denied"
                         messages.append({
                             "role": "assistant",
                             "content": "",
-                            "tool_calls": [{"function": {"name": tool_name,
+                            "tool_calls": [{"id": _deny_tc_id, "type": "function",
+                                            "function": {"name": tool_name,
                                                         "arguments": tool_args}}],
                         })
                         messages.append({
                             "role": "tool",
+                            "tool_call_id": _deny_tc_id,
+                            "name": tool_name,
                             "content": "User denied this action. Adapt your approach or ask the user what they'd like instead.",
                         })
 
@@ -837,15 +841,18 @@ class AgentToolLoop:
                 }
 
                 # ── 3d. Append tool call + result to messages ──────────
-                # Use Ollama's expected format (no id/type, arguments as dict, content as string)
+                # Include synthetic tool_call_id so OpenAI message history stays consistent.
+                _tc_id = f"call_{iteration}_{tool_name}"
                 messages.append({
                     "role": "assistant",
                     "content": "",
-                    "tool_calls": [{"function": {"name": tool_name,
+                    "tool_calls": [{"id": _tc_id, "type": "function",
+                                    "function": {"name": tool_name,
                                                 "arguments": tool_args}}],
                 })
                 messages.append({
                     "role": "tool",
+                    "tool_call_id": _tc_id,
                     "name": tool_name,
                     "content": result["content"][:4000],  # Keep context manageable
                 })

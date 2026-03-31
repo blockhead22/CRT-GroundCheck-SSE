@@ -2304,3 +2304,32 @@ export async function getThreadPlan(threadId: string): Promise<Plan | null> {
   const data = await res.json()
   return data || null
 }
+
+// ---------------------------------------------------------------------------
+// Image upload for vision pipeline
+// ---------------------------------------------------------------------------
+
+export interface ImageUploadResult {
+  success: boolean
+  path: string
+  filename: string
+  original_name: string
+  size: number
+}
+
+export async function uploadImage(file: File): Promise<ImageUploadResult> {
+  const base = getApiBaseUrlInternal()
+  const token = getAuthToken()
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch(`${base}/api/upload/image`, {
+    method: 'POST',
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    body: formData,
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Upload failed: ${text}`)
+  }
+  return res.json()
+}

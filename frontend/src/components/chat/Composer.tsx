@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getCloudSettings, updateCloudSettings, getAvailableModels, type AvailableModels } from '../../lib/api'
+import { getCloudSettings, updateCloudSettings, getAvailableModels, uploadImage, type AvailableModels } from '../../lib/api'
 import { ClaudeLogo } from '../icons/ClaudeLogo'
 import { OpenAILogo } from '../icons/OpenAILogo'
 
@@ -55,10 +55,12 @@ export function Composer(props: {
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null)
   const [selectedModelName, setSelectedModelName] = useState<string>('')
   const [attachMenuOpen, setAttachMenuOpen] = useState(false)
-  const [attachedPaths, setAttachedPaths] = useState<{ path: string; type: 'file' | 'dir' }[]>([])
+  const [attachedPaths, setAttachedPaths] = useState<{ path: string; type: 'file' | 'dir' | 'image' }[]>([])
+  const [imageUploading, setImageUploading] = useState(false)
   const selectorRef = useRef<HTMLDivElement>(null)
   const attachRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const canSend = text.trim().length > 0
 
@@ -75,8 +77,8 @@ export function Composer(props: {
         // Track the specific model name for display
         if (mode === 'cloud_openai') setSelectedModelName(settings.cloud_model_openai || 'gpt-4o-mini')
         else if (mode === 'cloud_claude') setSelectedModelName(settings.cloud_model_claude || 'claude-sonnet-4-20250514')
-        else if (mode === 'local_network') setSelectedModelName(settings.network_ollama_model || settings.routing_llm_model || '')
-        else setSelectedModelName(settings.routing_llm_model || '')
+        else if (mode === 'local_network') setSelectedModelName(settings.network_ollama_model || '')
+        else setSelectedModelName('')
         setSettingsLoaded(true)
       })
       .catch(() => {
@@ -158,6 +160,60 @@ export function Composer(props: {
     textareaRef.current?.focus()
   }
 
+  /** Upload an image file to the backend and attach the returned path */
+  async function handleImageUpload(file: File) {
+    if (!file.type.startsWith('image/')) return
+    setImageUploading(true)
+    try {
+      const result = await uploadImage(file)
+      if (result.success) {
+        setAttachedPaths((prev) =>
+          prev.some((p) => p.path === result.path) ? prev : [...prev, { path: result.path, type: 'image' as const }]
+        )
+      }
+    } catch (err) {
+      console.warn('[Composer] Image upload failed:', err)
+    } finally {
+      setImageUploading(false)
+    }
+  }
+
+  /** Handle image file selection from picker */
+  function handleImageSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files) return
+    for (let i = 0; i < files.length; i++) {
+      handleImageUpload(files[i])
+    }
+    e.target.value = ''
+  }
+
+  /** Handle paste — intercept images from clipboard */
+  function handlePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        e.preventDefault()
+        const file = items[i].getAsFile()
+        if (file) handleImageUpload(file)
+        return
+      }
+    }
+  }
+
+  /** Handle drop — intercept image files */
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    const files = e.dataTransfer?.files
+    if (!files) return
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith('image/')) {
+        handleImageUpload(files[i])
+      }
+    }
+  }
+
   // Auto-grow textarea
   useEffect(() => {
     const el = textareaRef.current
@@ -228,7 +284,7 @@ export function Composer(props: {
     setModelsOpen(false)
     try {
       const updates: Record<string, string> = { generation_mode: mode }
-      if (mode === 'local') updates.routing_llm_model = modelName
+      if (mode === 'local') { /* routing_llm_model removed — Layer 4 handles routing */ }
       else if (mode === 'local_network') updates.network_ollama_model = modelName
       else if (mode === 'cloud_openai') updates.cloud_model_openai = modelName
       else if (mode === 'cloud_claude') updates.cloud_model_claude = modelName
@@ -546,6 +602,12 @@ export function Composer(props: {
                 >
                   {ap.type === 'dir' ? (
                     <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+                  ) : ap.type === 'image' ? (
+                    <>
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </>
                   ) : (
                     <>
                       <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -578,6 +640,13 @@ export function Composer(props: {
           type="file"
           className="hidden"
           onChange={(e) => handleFileSelected(e)}
+        />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleImageSelected(e)}
         />
 
         {/* Main input container */}
@@ -613,6 +682,9 @@ export function Composer(props: {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             disabled={isDisabled}
@@ -692,6 +764,19 @@ export function Composer(props: {
                           <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
                         </svg>
                         <span>Add folder path</span>
+                      </button>
+
+                      <button
+                        onClick={() => { setAttachMenuOpen(false); imageInputRef.current?.click() }}
+                        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/[0.06]"
+                        style={{ color: 'rgba(240,235,225,0.7)' }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <span>{imageUploading ? 'Uploading...' : 'Upload image'}</span>
                       </button>
 
                       <div style={{ borderTop: '1px solid rgba(240,235,225,0.06)' }}>

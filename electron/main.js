@@ -880,7 +880,14 @@ app.whenReady().then(async () => {
   registerHotkey();
 
   // 8. Start SSE listener for native OS notifications (contradictions, etc.)
-  startSSEListener();
+  // Defer until backend is confirmed healthy to avoid triple-connect on startup
+  if (backendManager.healthy) {
+    startSSEListener();
+  } else {
+    backendManager.once('status', (status) => {
+      if (status === 'healthy') startSSEListener();
+    });
+  }
 });
 
 app.on('will-quit', async () => {

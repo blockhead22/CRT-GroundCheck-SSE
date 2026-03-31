@@ -627,10 +627,22 @@ class UnifiedLLMClient:
                 if msg.get("content") is None:
                     msg["content"] = ""
 
-            # Fix tool result messages — must have a tool_call_id
+            # Fix tool result messages — must have a tool_call_id that matches
+            # the 'id' in the preceding assistant message's tool_calls array.
             if msg.get("role") == "tool" and not msg.get("tool_call_id"):
-                # Try to match by name to a preceding call, else use synthetic
-                msg["tool_call_id"] = msg.get("name") or f"call_{call_counter}"
+                tool_name = msg.get("name", "")
+                matched_id = None
+                # Walk backwards through fixed messages to find the matching assistant tool_call
+                for prev in reversed(fixed):
+                    if prev.get("role") == "assistant" and prev.get("tool_calls"):
+                        for tc in prev["tool_calls"]:
+                            fn = tc.get("function", {}) if isinstance(tc, dict) else {}
+                            if fn.get("name") == tool_name and "id" in tc:
+                                matched_id = tc["id"]
+                                break
+                        if matched_id:
+                            break
+                msg["tool_call_id"] = matched_id or f"call_{call_counter}"
 
             fixed.append(msg)
         return fixed

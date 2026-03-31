@@ -67,9 +67,12 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
   // Tooling tab state
   const [availableModels, setAvailableModels] = useState<AvailableModels | null>(null)
 
-  // Load profile on mount
+  // Load profile on mount (authUser display name synced separately to avoid re-fetching everything)
   useEffect(() => {
     setDisplayName(authUser?.display_name || '')
+  }, [authUser])
+
+  useEffect(() => {
     setSaved(false)
 
     getProfile(threadId).then((p) => {
@@ -84,7 +87,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
     }).catch(() => {})
     getCloudUsage().then(setCloudUsage).catch(() => {})
     getAvailableModels().then(setAvailableModels).catch(() => {})
-  }, [threadId, authUser])
+  }, [threadId])
 
   // POLLING FIX: cloud-usage interval raised from 10s to 30s; pauses when tab is hidden
   useEffect(() => {
@@ -699,59 +702,14 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       <p className="mt-1 text-xs text-white/40">Model ID for Claude API calls</p>
                     </div>
 
-                    <div>
-                      <label className="mb-1.5 block text-sm text-white/70">Routing LLM Model Override</label>
-                      <input
-                        type="text"
-                        defaultValue={cloudSettings.routing_llm_model || ''}
-                        onBlur={(e) => handleCloudSelect('routing_llm_model', e.target.value)}
-                        placeholder="Leave blank for default"
-                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
-                      />
-                      <p className="mt-1 text-xs text-white/40">Override the model used for intent routing. Leave blank to use the default.</p>
-                    </div>
+                    {/* Routing LLM Model Override removed — Layer 4 epistemic routing handles this now */}
                   </div>
                 ) : (
                   <p className="text-sm text-white/40">Loading model settings...</p>
                 )}
               </SectionCard>
 
-              {/* ── Intent Routing (merged from Advanced) ── */}
-              <SectionCard title="Intent Routing" description="Controls how user messages are classified and routed to tools. Regex patterns are always tried first (instant, free). The LLM router handles novel phrasings that regex misses.">
-                {cloudSettings ? (
-                  <div className="space-y-2">
-                    {[
-                      { value: 'hybrid', label: 'Hybrid (Recommended)', desc: 'Regex -> local LLM -> cloud escalation. Best balance of speed, cost, and accuracy.' },
-                      { value: 'local_only', label: 'Local Only', desc: 'Regex + local LLM. No cloud calls for routing. Free but less accurate on novel requests.' },
-                      { value: 'cloud_only', label: 'Cloud Only', desc: 'Regex + cloud LLM. Most accurate, uses API tokens for classification.' },
-                    ].map((opt) => (
-                      <label
-                        key={opt.value}
-                        className={`flex items-start gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
-                          (cloudSettings.routing_mode || 'hybrid') === opt.value
-                            ? 'bg-[var(--accent)]/15 ring-1 ring-[var(--accent)]/30'
-                            : 'bg-white/5 hover:bg-white/[0.08]'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="routing_mode"
-                          value={opt.value}
-                          checked={(cloudSettings.routing_mode || 'hybrid') === opt.value}
-                          onChange={() => handleCloudSelect('routing_mode', opt.value)}
-                          className="mt-0.5 accent-[var(--accent)]"
-                        />
-                        <div>
-                          <div className="text-sm font-medium text-white/90">{opt.label}</div>
-                          <div className="text-xs text-white/40 mt-0.5">{opt.desc}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-white/40">Loading routing settings...</p>
-                )}
-              </SectionCard>
+              {/* Intent Routing section removed — Layer 4 epistemic routing handles this automatically */}
             </>
           )}
 

@@ -31,7 +31,10 @@
       "WebFetch(domain:www.oliviaweng.com)",
       "WebFetch(domain:www.keysight.com)",
       "WebFetch(domain:cloud.vast.ai)",
-      "WebFetch(domain:computeprices.com)"
+      "WebFetch(domain:computeprices.com)",
+      "WebFetch(domain:hexdocs.pm)",
+      "WebFetch(domain:www.alif.web.id)",
+      "WebFetch(domain:claude.ai)"
     ]
   }
 }

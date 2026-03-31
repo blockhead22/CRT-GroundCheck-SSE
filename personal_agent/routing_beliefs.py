@@ -49,6 +49,10 @@ _STATE_CHANGE_VERBS = frozenset({
     "restart", "stop", "start", "run", "execute", "send", "upload",
     "search", "find", "grep", "list", "check", "look", "read", "open",
     "scan", "trace", "debug", "test", "verify", "inspect", "audit",
+    "map", "analyze", "fetch", "browse", "navigate", "crawl", "parse",
+    "detect", "diagnose", "profile", "benchmark", "measure",
+    "remember", "forget", "note", "record", "log", "track",
+    "assess", "evaluate", "review", "examine", "describe", "identify",
 })
 
 _INFORMATION_VERBS = frozenset({
@@ -254,6 +258,56 @@ def _feat_prior_context(msg: str) -> float:
     return min(1.0, hits * 0.4)
 
 
+def _feat_has_attachment(msg: str) -> float:
+    """Does the message contain an attached resource (image, file reference)?"""
+    if "[image:" in msg:
+        return 1.0
+    if "[file:" in msg and any(ext in msg.lower() for ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".pdf")):
+        return 0.8
+    return 0.0
+
+
+# Patterns that signal identity/philosophical/self-reflective questions
+_IDENTITY_PATTERNS = [
+    # Direct identity questions
+    r"\bdo you (have|feel|experience|believe|want|need|fear|value|care|think)\b",
+    r"\bare you (alive|conscious|sentient|real|aware|intelligent|creative|honest)\b",
+    r"\bwhat (are|is) your (values?|beliefs?|goals?|purpose|identity|personality|nature|essence)\b",
+    r"\bwho are you\b",
+    r"\bwhat are you\b",
+    # Philosophical about self
+    r"\byour (consciousness|awareness|experience|feelings?|emotions?|soul|mind|self)\b",
+    r"\bdo you (understand|know) yourself\b",
+    r"\bwhat do you think about yourself\b",
+    r"\bwhat makes you (different|unique|you)\b",
+    # Existential / philosophical framing
+    r"\bdo (ai|you|machines|models) (have|possess|develop|experience) (values?|morals?|ethics|consciousness|feelings?|beliefs?|opinions?|preferences?)\b",
+    r"\b(meaning|purpose|reason) (of|for|behind) (your|ai|artificial)\b",
+    r"\byour (philosophy|worldview|perspective|stance|position) on\b",
+    # Addressed to Aether identity
+    r"\baether.{0,20}(think|feel|believe|value|want|care|experience)\b",
+    r"\b(think|feel|believe|value|want|care|experience).{0,20}aether\b",
+]
+_IDENTITY_RE = [re.compile(p, re.IGNORECASE) for p in _IDENTITY_PATTERNS]
+
+
+def _feat_identity_philosophical(msg: str) -> float:
+    """Does the message ask about identity, values, consciousness, or philosophy of self?"""
+    hits = sum(1 for pat in _IDENTITY_RE if pat.search(msg))
+    if hits >= 2:
+        return 1.0
+    if hits == 1:
+        return 0.8
+    # Softer signal: abstract + question + second-person
+    msg_lower = msg.lower()
+    has_you = " you " in msg_lower or msg_lower.startswith("you ") or "your " in msg_lower
+    has_abstract = any(w in msg_lower for w in ("values", "beliefs", "purpose", "meaning", "conscious", "alive", "real", "feel", "soul", "ethics", "morals"))
+    has_question = "?" in msg
+    if has_you and has_abstract and has_question:
+        return 0.6
+    return 0.0
+
+
 # ---------------------------------------------------------------------------
 # Feature registry — maps names to (extractor, prior_weight)
 # ---------------------------------------------------------------------------
@@ -263,18 +317,24 @@ def _extract_all_features(message: str) -> Dict[str, float]:
     tokens = _tokenize(message)
     lemmas = [_lemmatize(t) for t in tokens]
 
+    identity_score = _feat_identity_philosophical(message)
+
     return {
         "state_change_verb":   _feat_state_change_verb(tokens, lemmas),
         "information_verb":    _feat_information_verb(tokens, lemmas),
         "transformation_verb": _feat_transformation_verb(tokens, lemmas),
         "system_resource":     _feat_system_resource(tokens, message),
-        "abstract_target":     _feat_abstract_target(tokens),
+        # Suppress abstract_target when identity fires — they're correlated
+        # and the abstract penalty shouldn't cancel the identity signal.
+        "abstract_target":     _feat_abstract_target(tokens) if identity_score < 0.5 else 0.0,
         "imperative_form":     _feat_imperative_form(tokens, lemmas),
         "question_form":       _feat_question_form(tokens, message),
         "compound_intent":     _feat_compound_intent(message),
         "message_complexity":  _feat_message_complexity(message),
         "code_artifact":       _feat_code_artifact(message),
         "prior_context":       _feat_prior_context(message),
+        "has_attachment":      _feat_has_attachment(message),
+        "identity_philosophical": identity_score,
     }
 
 
@@ -292,11 +352,12 @@ _SEEDED_PRIORS: Dict[str, float] = {
     "message_complexity":   0.3,
     "code_artifact":        0.5,
     "prior_context":        0.2,
+    "has_attachment":       1.0,
+    "identity_philosophical": 1.0,
 }
 
-# Intent classifier boost (when it agrees with orchestrator routing)
-_CLASSIFIER_BOOST = 0.4
-_ORCHESTRATOR_INTENTS = frozenset({"multi_step", "multi_intent", "imperative_task"})
+# Intent classifier boost removed — Layer 4 feature extractors are fully independent.
+# The llama3.2 intent router is no longer used for routing decisions.
 
 
 # ---------------------------------------------------------------------------
@@ -318,7 +379,7 @@ class RoutingBeliefDB:
 
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
-            self._conn = sqlite3.connect(self._db_path, timeout=5)
+            self._conn = sqlite3.connect(self._db_path, timeout=5, check_same_thread=False)
             self._conn.row_factory = sqlite3.Row
         return self._conn
 
@@ -448,15 +509,6 @@ def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
         if abs(contribution) > 0.1:
             direction = "+" if contribution > 0 else "-"
             reasons.append(f"{feat}({direction}{abs(contribution):.2f})")
-
-    # Intent classifier boost
-    if intent is not None:
-        try:
-            if intent.route == "task" and intent.intent_type in _ORCHESTRATOR_INTENTS:
-                raw_score += _CLASSIFIER_BOOST
-                reasons.append(f"classifier_boost(+{_CLASSIFIER_BOOST:.2f})")
-        except AttributeError:
-            pass  # intent doesn't have expected fields
 
     # Sigmoid → probability
     probability = 1.0 / (1.0 + math.exp(-raw_score))

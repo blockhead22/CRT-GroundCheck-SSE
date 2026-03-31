@@ -37,6 +37,7 @@ param(
     [switch]$NoClean,
     [switch]$SkipTelegram,  # kept for compat; Telegram is disabled by default (OpenClaw owns it)
     [switch]$Telegram,      # opt-in: explicitly start CRT's Telegram bot alongside OpenClaw
+    [switch]$SkipDiscord,   # skip Discord bot
     [switch]$NoMonitor,
     [switch]$NoPortal,
     [switch]$PortalManagesApi
@@ -162,6 +163,16 @@ else:
         }
     }
 
+    # Discord token
+    if (-not $SkipDiscord) {
+        if ($env:DISCORD_BOT_TOKEN) {
+            Write-Ok "Discord token: set"
+        } else {
+            Write-Warn "DISCORD_BOT_TOKEN not set -- Discord bot will not start"
+            $script:SkipDiscord = $true
+        }
+    }
+
     return $ok
 }
 
@@ -253,6 +264,27 @@ function Start-Service-Telegram {
     return $proc
 }
 
+function Start-Service-Discord {
+    if ($SkipDiscord) { return $null }
+    Write-Info "Starting Discord bot..."
+    $dcLogFile = Join-Path $logDir "discord_stdout.log"
+    $dcErrFile = Join-Path $logDir "discord_stderr.log"
+    $proc = Start-Process -FilePath $python -ArgumentList "-m", "channels.discord_bot" `
+        -WorkingDirectory $root -PassThru `
+        -RedirectStandardOutput $dcLogFile `
+        -RedirectStandardError $dcErrFile
+    $services["discord"] = @{
+        Process = $proc
+        Name = "Discord"
+        StartTime = Get-Date
+        Restarts = 0
+        LogFile = $dcLogFile
+        ErrFile = $dcErrFile
+    }
+    Write-Info "Discord PID=$($proc.Id)"
+    return $proc
+}
+
 function Wait-ForHealth {
     param([string]$Url, [int]$TimeoutSeconds = 120)
     $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -287,12 +319,17 @@ if (-not $PortalManagesApi) {
     }
 }
 
-# Start Telegram only in standalone monitor mode.
+# Start channel bots in standalone monitor mode.
 # In portal mode, let tools/runtime_portal.py own the Telegram lifecycle.
 if ($NoPortal) {
     Start-Service-Telegram
+    Start-Service-Discord
 } elseif (-not $SkipTelegram) {
     Write-Info "Portal mode: runtime portal will start/manage Telegram bot."
+}
+# Discord always starts directly (no portal management yet)
+if (-not $NoPortal -and -not $SkipDiscord) {
+    Start-Service-Discord
 }
 
 Write-Ok "All services started"
@@ -417,6 +454,30 @@ try {
                     Write-Ok "Telegram bot restarted"
                 } else {
                     Write-Err "Telegram bot exceeded max restarts ($maxRestarts). Giving up."
+                }
+            }
+        }
+
+        # Check Discord
+        if ($services.ContainsKey("discord")) {
+            $dcSvc = $services["discord"]
+            $dcProc = $dcSvc.Process
+
+            if ($dcProc.HasExited) {
+                Write-Err "Discord bot crashed (exit code: $($dcProc.ExitCode))"
+                $errFile = $dcSvc.ErrFile
+                if (Test-Path $errFile) {
+                    $crashLines = Get-Content $errFile -Tail 15
+                    $crashLines | ForEach-Object { Write-Err "  $_" }
+                }
+
+                if ($dcSvc.Restarts -lt $maxRestarts) {
+                    $dcSvc.Restarts++
+                    Write-Warn "Restarting Discord bot (attempt $($dcSvc.Restarts)/$maxRestarts)..."
+                    Start-Service-Discord
+                    Write-Ok "Discord bot restarted"
+                } else {
+                    Write-Err "Discord bot exceeded max restarts ($maxRestarts). Giving up."
                 }
             }
         }

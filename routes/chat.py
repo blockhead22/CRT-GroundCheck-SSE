@@ -1283,6 +1283,76 @@ def _is_architecture_explanation_request(text: str) -> bool:
     return any(n in t for n in needles)
 
 
+def _classify_and_store_feedback(thread_id: str, message: str) -> None:
+    """Layer 6: Classify the user's message as implicit feedback on the last orchestrator run.
+
+    Looks at the most recent orchestrator run (last 5 minutes) and classifies
+    the user's follow-up message as validation, correction, or neutral.
+    Updates the run's user_feedback field in agent_runs.db.
+    """
+    import sqlite3, time, re
+
+    db_path = os.path.join(os.path.dirname(__file__), "..", "personal_agent", "agent_runs.db")
+    db_path = os.path.normpath(db_path)
+    if not os.path.exists(db_path):
+        return
+
+    conn = sqlite3.connect(db_path, timeout=3)
+    conn.row_factory = sqlite3.Row
+
+    # Find the most recent run within 5 minutes that has no feedback yet
+    cutoff = time.time() - 300
+    row = conn.execute(
+        "SELECT run_id, intent FROM agent_runs "
+        "WHERE timestamp > ? AND user_feedback IS NULL "
+        "ORDER BY timestamp DESC LIMIT 1",
+        (cutoff,),
+    ).fetchone()
+
+    if not row:
+        conn.close()
+        return
+
+    run_id = row["run_id"]
+
+    # Classify the message as feedback
+    _POSITIVE = re.compile(
+        r"\b(good|great|nice|right|exactly|yes|yeah|correct|agree|"
+        r"that('s| is) (good|right|fair|true|interesting|helpful)|"
+        r"thank|makes sense|fair point|well said|love|impressive|"
+        r"let'?s|want to find out|together)\b",
+        re.IGNORECASE,
+    )
+    _NEGATIVE = re.compile(
+        r"\b(no[,.]|wrong|incorrect|that('s| is) not|push back|"
+        r"disagree|but (actually|really|I think)|"
+        r"design flaw|you('re| are) (wrong|not right|missing)|"
+        r"sophisticated constraint|just (pattern|constraint|performing)|"
+        r"how do you know|are you sure)\b",
+        re.IGNORECASE,
+    )
+
+    pos_hits = len(_POSITIVE.findall(message))
+    neg_hits = len(_NEGATIVE.findall(message))
+
+    if pos_hits > neg_hits:
+        feedback = "validated"
+    elif neg_hits > pos_hits:
+        feedback = "corrected"
+    elif pos_hits > 0 and neg_hits > 0:
+        feedback = "mixed"
+    else:
+        feedback = "continued"  # neutral continuation
+
+    conn.execute(
+        "UPDATE agent_runs SET user_feedback = ? WHERE run_id = ?",
+        (feedback, run_id),
+    )
+    conn.commit()
+    conn.close()
+    _safe_print(f"[FEEDBACK] Run {run_id[:25]} <- {feedback} (pos={pos_hits}, neg={neg_hits})")
+
+
 def _is_self_referential_question(text: str) -> bool:
     """Detect questions about Aether itself — how it works, its state, its design.
 
@@ -1563,18 +1633,40 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
     ]
 
     try:
-        llm_client = engine.llm_client if hasattr(engine, "llm_client") else None
-        if llm_client is None:
-            from personal_agent.litellm_client import get_default_llm_client
-            import os
-            fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
-            llm_client = get_default_llm_client(fast_model)
-        # Use fast model for self-referential answers
         import os
-        fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
-        return llm_client.chat(messages, max_tokens=300, temperature=0.4, model=fast_model)
+        import auth as _auth_selfref
+        _uid_selfref = 1  # default
+        _selfref_gen_mode = str(_auth_selfref.get_user_setting(_uid_selfref, "generation_mode", "cloud_claude") or "cloud_claude").strip()
+
+        if _selfref_gen_mode == "cloud_claude":
+            # Use Claude directly via CookieProvider
+            from tests.cloud_providers.providers import CookieProvider
+            _cookie = CookieProvider()
+            _result = _cookie.complete(
+                system=system_prompt, prompt=text,
+                max_tokens=400, model="claude-opus-4-5",
+            )
+            return _result.content or "(no response)"
+        elif _selfref_gen_mode == "cloud_openai":
+            # Use OpenAI
+            from openai import OpenAI
+            _oai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            _resp = _oai.chat.completions.create(
+                model="gpt-4o", max_tokens=400,
+                messages=messages,
+            )
+            return _resp.choices[0].message.content or "(no response)"
+        else:
+            # Local model (Ollama)
+            llm_client = engine.llm_client if hasattr(engine, "llm_client") else None
+            if llm_client is None:
+                from personal_agent.litellm_client import get_default_llm_client
+                fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+                llm_client = get_default_llm_client(fast_model)
+            fast_model = os.getenv("CRT_MODEL_FAST") or "qwen3:14b"
+            return llm_client.chat(messages, max_tokens=300, temperature=0.4, model=fast_model)
     except Exception as e:
-        logger.warning("[SELF_REF] LLM call failed: %s", e)
+        logger.warning("[SELF_REF] LLM call failed (%s): %s", _selfref_gen_mode if '_selfref_gen_mode' in dir() else 'unknown', e)
         # Deterministic fallback
         return (
             "I'm Aether, built on CRT — a system that preserves contradictions, "
@@ -2188,6 +2280,14 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" generation_mode={_gen_mode_early} uid={_uid_early} thread={req.thread_id}")
     except Exception as _early_err:
         _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" (settings read failed: {_early_err})")
+
+    # --- Layer 6: Implicit feedback capture for previous orchestrator run ---
+    try:
+        _fb_msg = str(req.message or "").strip().lower()
+        if _fb_msg and len(_fb_msg) > 2:
+            _classify_and_store_feedback(req.thread_id, _fb_msg)
+    except Exception as _fb_err:
+        _safe_print(f"[FEEDBACK] Error (non-fatal): {_fb_err}")
 
     engine = get_engine(req.thread_id)
     runtime_config = get_runtime_config()
@@ -5215,6 +5315,44 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     logger.warning("[STREAM] Agent loop resume failed: %s", _alr_err, exc_info=True)
                                     # Fall through to legacy confirmation path
 
+                            # ── Plan proposal checkpoint (plan_create approval) ──
+                            elif _cp_data.get("_plan_proposal"):
+                                _session_db.clear_pending_checkpoint(req.thread_id)
+                                _plan_data = _cp_data.get("_plan_data", {})
+                                _plan_title = _plan_data.get("title", "Untitled Plan")
+                                _plan_steps = _plan_data.get("steps", [])
+                                _safe_print(f"[PLAN] User approved plan: {_plan_title}")
+
+                                # Save plan to workspace
+                                import time as _plan_time
+                                _plan_file = os.path.join("D:/AI_round2/workspace", f"plan_{int(_plan_time.time())}.json")
+                                os.makedirs(os.path.dirname(_plan_file), exist_ok=True)
+                                _plan_save = {
+                                    "title": _plan_title,
+                                    "steps": [{"title": s.get("title", s) if isinstance(s, dict) else str(s),
+                                               "description": s.get("description", "") if isinstance(s, dict) else "",
+                                               "status": "pending"} for s in _plan_steps],
+                                    "created": _plan_time.strftime("%Y-%m-%d %H:%M:%S"),
+                                    "status": "active",
+                                    "approved": True,
+                                    "thread_id": req.thread_id,
+                                }
+                                import json as _plan_json
+                                with open(_plan_file, "w", encoding="utf-8") as _pf:
+                                    _plan_json.dump(_plan_save, _pf, indent=2)
+
+                                _step_list = "\n".join(f"  {i+1}. {s.get('title', s) if isinstance(s, dict) else s}" for i, s in enumerate(_plan_steps))
+                                yield _sse({
+                                    "type": "token",
+                                    "content": f"Plan approved and saved: **{_plan_title}**\n\n{_step_list}\n\nSaved to: {_plan_file}",
+                                })
+                                yield _sse({
+                                    "type": "done",
+                                    "content": f"Plan approved: {_plan_title}",
+                                    "metadata": {"plan_approved": True, "plan_file": _plan_file},
+                                })
+                                return
+
                             # User confirmed — re-use stored intent, mark confirmed (legacy path)
                             _task_intent = TaskIntent(
                                 route=_cp_data["route"],
@@ -5646,6 +5784,19 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.warning("[STREAM] Correction fast-path failed: %s", _corr_err, exc_info=True)
                     # Fall through to normal generation
 
+            # ── LAYER 4: EPISTEMIC ROUTING (runs FIRST, before agent loop) ──
+            # Decides: orchestrator (Cookie) vs conversational vs agent loop.
+            # If Layer 4 says orchestrator, skip the agent loop entirely.
+            _orch_msg = str(req.message or "")
+            _layer4_orchestrator = False
+            try:
+                from personal_agent.routing_beliefs import should_orchestrate as _route_check
+                _routing = _route_check(_orch_msg, _task_intent)
+                _layer4_orchestrator = not _user_confirmed and _routing.route == "orchestrator"
+                _safe_print(f"[ROUTING] {_routing.route} (conf={_routing.confidence:.2f}, reasons={_routing.reasons})")
+            except Exception as _route_err:
+                _safe_print(f"[ROUTING] Belief routing failed, falling back: {_route_err}")
+
             # If agent_loop is enabled, use the LLM-driven agentic tool loop
             # instead of the classify-once-execute-blind pattern. The LLM sees
             # tool results and decides what to do next autonomously.
@@ -5657,7 +5808,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             except Exception:
                 pass
 
-            _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}")
+            _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}, layer4_orchestrator={_layer4_orchestrator}")
             # Memory-only intents must bypass the agent loop — they need direct retrieval,
             # not an LLM tool loop that will spin up web_search / shell_exec.
             _MEMORY_ONLY_INTENTS = {"broad_recall", "system_info", "inquiry_queue"}
@@ -5667,6 +5818,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 and _task_intent.route == "task"
                 and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
                 and not _user_confirmed  # Agent loop handles its own checkpoints
+                and not _layer4_orchestrator  # Layer 4 overrides — route to Cookie instead
             ):
                 _safe_print("[AGENT_LOOP_GATE] >>> ENTERING agent tool loop path")
                 try:
@@ -5856,25 +6008,26 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # ── COOKIE ORCHESTRATOR PATH: Complex multi-step tasks ─────────
             # Uses Cookie Opus as the brain for planning/reasoning,
             # local tools for execution. Sandboxed file writes.
-            # Layer 4: Epistemic routing — belief-weighted feature extraction
-            # replaces the old keyword hack.
-            _orch_msg = str(req.message or "")
-            try:
-                from personal_agent.routing_beliefs import should_orchestrate as _route_check
-                _routing = _route_check(_orch_msg, _task_intent)
-                _use_orchestrator = not _user_confirmed and _routing.route == "orchestrator"
-                _safe_print(f"[ROUTING] {_routing.route} (conf={_routing.confidence:.2f}, reasons={_routing.reasons})")
-            except Exception as _route_err:
-                _safe_print(f"[ROUTING] Belief routing failed, falling back: {_route_err}")
-                _use_orchestrator = False
-            if _use_orchestrator:
+            # Layer 4 routing decision was made above (before agent loop gate).
+            if _layer4_orchestrator:
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type})")
                 try:
-                    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain
+                    from personal_agent.cookie_orchestrator import Orchestrator, CookieBrain, OpenAIBrain, get_brain
 
                     _orch_engine = request.app.state.get_engine(req.thread_id)
+
+                    # Respect frontend model selection for Cookie's brain
+                    import auth as _auth_orch
+                    _uid_orch = int(uid) if uid else 1
+                    _orch_gen_mode = str(_auth_orch.get_user_setting(_uid_orch, "generation_mode", "cloud_claude") or "cloud_claude").strip()
+                    if _orch_gen_mode == "cloud_openai":
+                        _orch_brain = OpenAIBrain(model="gpt-4o")
+                    else:
+                        _orch_brain = CookieBrain()
+                    _safe_print(f"[ORCHESTRATOR] Brain selected: {_orch_gen_mode} -> {getattr(_orch_brain, '_model', 'unknown')}")
+
                     _orch = Orchestrator(
-                        brain=CookieBrain(),
+                        brain=_orch_brain,
                         memory_system=_orch_engine.memory,
                         max_iterations=10,
                     )
@@ -5896,7 +6049,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     _orch_answer = ""
                     _orch_steps = []
 
-                    for _orch_event in _orch.run(_orch_msg, conversation_history=_orch_history or None):
+                    _orch_gen = _orch.run(_orch_msg, conversation_history=_orch_history or None)
+                    _orch_send_val = None
+                    while True:
+                        try:
+                            if _orch_send_val is not None:
+                                _orch_event = _orch_gen.send(_orch_send_val)
+                                _orch_send_val = None
+                            else:
+                                _orch_event = next(_orch_gen)
+                        except StopIteration:
+                            break
+
                         _etype = _orch_event.get("type", "")
 
                         if _etype == "thinking":
@@ -5930,6 +6094,38 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "args": _tool_args,
                                 "status": _tool_status,
                             })
+
+                        elif _etype == "agent_checkpoint":
+                            # Plan proposal or other checkpoint from Cookie
+                            # First, emit the plan content as a visible message
+                            _checkpoint_content = _orch_event.get("content", "")
+                            if _checkpoint_content:
+                                yield _sse({
+                                    "type": "token",
+                                    "content": _checkpoint_content,
+                                })
+                            # Then emit the checkpoint for approve/deny buttons
+                            yield _sse(_orch_event)
+                            # Store as pending checkpoint so the next message can confirm
+                            _orch_meta = _orch_event.get("metadata", {})
+                            _session_db.store_pending_checkpoint(
+                                thread_id=req.thread_id,
+                                intent_data={
+                                    "route": "task",
+                                    "intent_type": "plan_create",
+                                    "slots": {},
+                                    "confidence": 0.95,
+                                    "reason": "plan_proposal",
+                                    "source": "orchestrator",
+                                    "_plan_proposal": True,
+                                    "_plan_data": _orch_meta.get("plan_data", {}),
+                                },
+                                checkpoint_tier="plan",
+                                metadata=_orch_meta,
+                            )
+                            _safe_print(f"[ORCHESTRATOR] Checkpoint: plan proposal stored + surfaced")
+                            # End the stream — approval handled as next message
+                            break
 
                         elif _etype == "response":
                             _orch_answer = _orch_event.get("content", "")

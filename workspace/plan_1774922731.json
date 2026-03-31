@@ -1,0 +1,27 @@
+{
+  "title": "Ship Discord integration",
+  "steps": [
+    {
+      "title": "Get correct bot token from Developer Portal",
+      "description": "",
+      "status": "pending"
+    },
+    {
+      "title": "Set DISCORD_BOT_TOKEN env var",
+      "description": "",
+      "status": "pending"
+    },
+    {
+      "title": "Restart Electron app",
+      "description": "",
+      "status": "pending"
+    },
+    {
+      "title": "Test with a message in Discord",
+      "description": "",
+      "status": "pending"
+    }
+  ],
+  "created": "2026-03-30 21:05:31",
+  "status": "active"
+}
