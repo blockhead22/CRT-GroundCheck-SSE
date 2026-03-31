@@ -26,12 +26,14 @@ from .tooling import router as tooling_router
 from .analysis import router as analysis_router
 from .ingest import router as ingest_router
 from .ambient import router as ambient_router
+from .compaction import router as compaction_router
 
 
 def register_routes(app: FastAPI) -> None:
     """Register modular routers on the app."""
     install_log_handler()
     app.include_router(ambient_router)
+    app.include_router(compaction_router)
     app.include_router(ingest_router)
     app.include_router(analysis_router)
     app.include_router(plans_router)

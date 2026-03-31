@@ -164,6 +164,94 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
     return block
 
 
+def build_compacted_context(
+    thread_id: str,
+    memory_db_path: str,
+    token_budget: int = 4000,
+    trigger: str = "manual",
+) -> str:
+    """Build a belief-aware compacted context block.
+
+    Uses trust-tiered compaction instead of simple top-N retrieval.
+    Higher-trust memories get more faithful representation.
+    Active contradictions preserved as pairs.
+
+    Args:
+        thread_id: Thread identifier for caching
+        memory_db_path: Path to CRT memory database
+        token_budget: Maximum tokens for the context block
+        trigger: What triggered compaction ("token_overflow"|"scheduled"|"manual")
+
+    Returns:
+        Formatted belief snapshot string for system prompt injection.
+        Falls back to build_context_summary() on error.
+    """
+    cache_key = f"{thread_id}:compacted:{token_budget}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        from personal_agent.crt_memory import CRTMemorySystem
+        from personal_agent.belief_compaction import (
+            compact_context, render_belief_snapshot, record_compaction_event,
+        )
+        from personal_agent.compaction_decay import apply_compaction_decay
+
+        mem = CRTMemorySystem(db_path=memory_db_path)
+        all_memories = mem._load_all_memories()
+
+        # Filter deprecated
+        memories = [m for m in all_memories if not getattr(m, "deprecated", False)]
+        if not memories:
+            return ""
+
+        # Load active contradictions from ledger
+        active_contradictions = []
+        try:
+            ledger_path = memory_db_path.replace("crt_memory", "crt_ledger")
+            from personal_agent.crt_ledger import ContradictionLedger
+            ledger = ContradictionLedger(db_path=ledger_path)
+            active_contradictions = ledger.get_open_contradictions(limit=100)
+        except Exception:
+            pass
+
+        # Run compaction
+        snapshot = compact_context(
+            memories=memories,
+            active_contradictions=active_contradictions,
+            token_budget=token_budget,
+            trigger=trigger,
+        )
+
+        # Record event to database
+        try:
+            conn = mem._get_connection()
+            record_compaction_event(conn, snapshot)
+            conn.close()
+        except Exception as exc:
+            logger.debug(f"[CONTEXT_FEED] Failed to record compaction event: {exc}")
+
+        # Apply trust decay
+        try:
+            decay_result = apply_compaction_decay(snapshot, mem)
+            logger.debug(
+                f"[CONTEXT_FEED] Compaction decay: {decay_result.memories_decayed} decayed, "
+                f"{decay_result.memories_flagged_reverification} flagged"
+            )
+        except Exception as exc:
+            logger.debug(f"[CONTEXT_FEED] Compaction decay failed: {exc}")
+
+        # Render
+        result = render_belief_snapshot(snapshot)
+        _cache_set(cache_key, result)
+        return result
+
+    except Exception as exc:
+        logger.warning(f"[CONTEXT_FEED] Compacted context failed, falling back: {exc}")
+        return build_context_summary(thread_id, memory_db_path)
+
+
 def _build_narrative_section(all_memories: list) -> str:
     """Build a section from narrative_note belief memories.
 

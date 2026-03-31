@@ -501,6 +501,49 @@ class CRTMemorySystem:
                 details_json TEXT
             )
         """)
+        # Belief-aware compaction audit trail
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS compaction_events (
+                event_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                snapshot_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                generation INTEGER NOT NULL,
+                total_beliefs INTEGER NOT NULL,
+                verbatim_count INTEGER NOT NULL,
+                summary_count INTEGER NOT NULL,
+                slot_only_count INTEGER NOT NULL,
+                dropped_count INTEGER NOT NULL,
+                token_budget INTEGER,
+                tokens_used INTEGER,
+                trigger TEXT NOT NULL,
+                metadata_json TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_compaction_events_ts
+            ON compaction_events(timestamp DESC)
+        """)
+
+        # Per-memory compaction provenance
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS compaction_provenance (
+                provenance_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                memory_id TEXT NOT NULL,
+                snapshot_id TEXT NOT NULL,
+                timestamp REAL NOT NULL,
+                representation TEXT NOT NULL,
+                generation INTEGER NOT NULL,
+                trust_before REAL,
+                trust_after REAL,
+                flagged_reverification INTEGER DEFAULT 0,
+                FOREIGN KEY (memory_id) REFERENCES memories(memory_id)
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_compaction_prov_memory
+            ON compaction_provenance(memory_id, timestamp DESC)
+        """)
+
         # Note: belief_speech indexes are created in _migrate_schema() to handle
         # existing DBs where topic_id column doesn't exist yet.
 
@@ -805,6 +848,13 @@ class CRTMemorySystem:
             logger.info(f"[MIGRATION] Adding last_accessed/last_updated to {self.db_path}")
             cursor.execute("ALTER TABLE memories ADD COLUMN last_accessed REAL")
             cursor.execute("ALTER TABLE memories ADD COLUMN last_updated REAL")
+
+        # Belief-aware compaction (Phase A): provenance tracking through compaction
+        if "last_compacted" not in columns:
+            logger.info(f"[MIGRATION] Adding compaction provenance columns to {self.db_path}")
+            cursor.execute("ALTER TABLE memories ADD COLUMN last_compacted REAL")
+            cursor.execute("ALTER TABLE memories ADD COLUMN compaction_count INTEGER DEFAULT 0")
+            cursor.execute("ALTER TABLE memories ADD COLUMN observation_type TEXT DEFAULT 'direct'")
 
         # --- belief_speech table migrations ---
         cursor.execute("PRAGMA table_info(belief_speech)")

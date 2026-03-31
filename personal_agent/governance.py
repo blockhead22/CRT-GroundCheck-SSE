@@ -455,6 +455,72 @@ class GovernanceLayer:
         )
 
 
+    # -------------------------------------------------------------------
+    # Compaction governance
+    # -------------------------------------------------------------------
+
+    def govern_compaction(self, snapshot: Any) -> GovernedResponse:
+        """Verify compaction integrity: locked memories verbatim, contradictions preserved.
+
+        Checks:
+        1. No locked-authority memory was summarized or dropped
+        2. Active contradiction pairs are both present in the snapshot
+        """
+        annotations: list[GovernanceAnnotation] = []
+        audit_log: list[dict] = []
+        tier = GovernanceTier.SAFE
+
+        beliefs = getattr(snapshot, "beliefs", [])
+        active_contras = getattr(snapshot, "active_contradictions", [])
+
+        # Check 1: Locked memories must be verbatim
+        for belief in beliefs:
+            if getattr(belief, "authority", "") == "locked":
+                rep = getattr(belief, "representation", "")
+                if rep != "verbatim":
+                    tier = GovernanceTier.ESCALATE
+                    annotations.append(GovernanceAnnotation(
+                        agent="compaction_governance",
+                        law="locked_memory_integrity",
+                        finding=f"Locked memory {getattr(belief, 'memory_id', '?')} "
+                                f"was {rep}, must be verbatim",
+                        severity="escalate",
+                        details={"memory_id": getattr(belief, "memory_id", "?"),
+                                 "representation": rep},
+                    ))
+
+        # Check 2: Both sides of active contradictions present
+        belief_ids = {getattr(b, "memory_id", "") for b in beliefs
+                      if getattr(b, "representation", "") != "dropped"}
+        for old_id, new_id in active_contras:
+            if old_id not in belief_ids or new_id not in belief_ids:
+                if tier.value < GovernanceTier.FLAG.value:
+                    tier = GovernanceTier.FLAG
+                missing = old_id if old_id not in belief_ids else new_id
+                annotations.append(GovernanceAnnotation(
+                    agent="compaction_governance",
+                    law="contradiction_topology",
+                    finding=f"Contradiction pair member {missing} was dropped from snapshot",
+                    severity="flag",
+                    details={"old_id": old_id, "new_id": new_id, "missing": missing},
+                ))
+
+        audit_log.append({
+            "agent": "compaction_governance",
+            "beliefs_checked": len(beliefs),
+            "contradictions_checked": len(active_contras),
+            "tier": tier.value,
+        })
+
+        return GovernedResponse(
+            original_text=f"Compaction snapshot {getattr(snapshot, 'snapshot_id', '?')}",
+            tier=tier,
+            annotations=annotations,
+            should_block=(tier == GovernanceTier.ESCALATE),
+            audit_log=audit_log,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Tier resolution helpers
 # ---------------------------------------------------------------------------

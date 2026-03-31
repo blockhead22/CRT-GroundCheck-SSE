@@ -94,6 +94,7 @@ class CRTIdleScheduler:
         auto_resolve_contradictions_enabled: bool = False,
         auto_web_research_enabled: bool = False,
         auto_learning_enabled: bool = True,
+        auto_consolidation_enabled: bool = True,
     ):
         self.repo_root = Path(repo_root)
         self.jobs_db_path = str(jobs_db_path)
@@ -103,10 +104,13 @@ class CRTIdleScheduler:
         self.auto_resolve_contradictions_enabled = bool(auto_resolve_contradictions_enabled)
         self.auto_web_research_enabled = bool(auto_web_research_enabled)
         self.auto_learning_enabled = bool(auto_learning_enabled) and ACTIVE_LEARNING_AVAILABLE
+        self.auto_consolidation_enabled = bool(auto_consolidation_enabled)
 
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._last_enqueued_by_thread: Dict[str, float] = {}
+        self._last_consolidation_ts: float = 0.0
+        self._CONSOLIDATION_MIN_INTERVAL = 21600  # 6 hours between passes
 
         init_jobs_db(self.jobs_db_path)
 
@@ -251,3 +255,40 @@ class CRTIdleScheduler:
                 run_trust_decay_pass()
             except Exception:
                 pass  # Graceful degradation
+
+        # Memory consolidation: batch NLI contradiction sweep
+        if self.auto_consolidation_enabled:
+            now_ts = time.time()
+            if (now_ts - self._last_consolidation_ts) >= self._CONSOLIDATION_MIN_INTERVAL:
+                try:
+                    from personal_agent.memory_consolidation import run_consolidation_pass
+                    from personal_agent.crt_memory import CRTMemorySystem
+                    from personal_agent.crt_ledger import ContradictionLedger
+
+                    pa_dir = (self.repo_root / "personal_agent").resolve()
+                    for mem_db in pa_dir.glob("crt_memory_*.db"):
+                        thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
+                        led_db = pa_dir / f"crt_ledger_{thread_id}.db"
+                        if not led_db.exists():
+                            continue
+
+                        mem_sys = CRTMemorySystem(db_path=str(mem_db))
+                        ledger = ContradictionLedger(db_path=str(led_db))
+                        result = run_consolidation_pass(
+                            memory_system=mem_sys,
+                            ledger=ledger,
+                            max_pairs=30,
+                        )
+                        if result.new_contradictions_found > 0:
+                            import logging as _log
+                            _log.getLogger(__name__).info(
+                                f"[IDLE] Consolidation for {thread_id}: "
+                                f"found={result.new_contradictions_found} "
+                                f"resolved={result.auto_resolved}"
+                            )
+
+                    self._last_consolidation_ts = now_ts
+                except ImportError:
+                    pass  # Module not available
+                except Exception:
+                    pass  # Graceful degradation
