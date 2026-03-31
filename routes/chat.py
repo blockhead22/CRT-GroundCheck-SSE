@@ -3241,12 +3241,27 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _bp_system = "You are Aether, a personal AI assistant built by Nick Block. Respond naturally and helpfully."
 
             # Inject context-aware summary even in bypass mode
+            # Use compacted context when conversation history is long
             try:
-                from personal_agent.context_feed import build_context_summary
-                _bp_ctx = build_context_summary(
-                    thread_id=req.thread_id,
-                    memory_db_path=engine.memory.db_path,
-                )
+                _bp_token_est = len(effective_message) // 4
+                if _bp_history:
+                    for _bh in _bp_history[-6:]:
+                        _bp_token_est += len(str(_bh.get("content", ""))) // 4
+
+                if _bp_token_est > 2000:
+                    from personal_agent.context_feed import build_compacted_context
+                    _bp_ctx = build_compacted_context(
+                        thread_id=req.thread_id,
+                        memory_db_path=engine.memory.db_path,
+                        token_budget=max(2000, 4000 - _bp_token_est),
+                        trigger="token_overflow",
+                    )
+                else:
+                    from personal_agent.context_feed import build_context_summary
+                    _bp_ctx = build_context_summary(
+                        thread_id=req.thread_id,
+                        memory_db_path=engine.memory.db_path,
+                    )
                 if _bp_ctx:
                     _bp_system += _bp_ctx
             except Exception:
@@ -3487,12 +3502,23 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _pc_system = "\n".join(_pc_sys_parts)
 
                 # Inject context-aware summary from CRT memories
+                # Use belief-aware compaction when context is heavy
                 try:
-                    from personal_agent.context_feed import build_context_summary
-                    _ctx_summary = build_context_summary(
-                        thread_id=req.thread_id,
-                        memory_db_path=engine.memory.db_path,
-                    )
+                    if _token_est > 2000:
+                        from personal_agent.context_feed import build_compacted_context
+                        _ctx_summary = build_compacted_context(
+                            thread_id=req.thread_id,
+                            memory_db_path=engine.memory.db_path,
+                            token_budget=max(2000, 4000 - _token_est),
+                            trigger="token_overflow",
+                        )
+                        _safe_print(f"[CONTEXT_FEED] compacted context injected ({len(_ctx_summary)} chars)")
+                    else:
+                        from personal_agent.context_feed import build_context_summary
+                        _ctx_summary = build_context_summary(
+                            thread_id=req.thread_id,
+                            memory_db_path=engine.memory.db_path,
+                        )
                     if _ctx_summary:
                         _pc_system += _ctx_summary
                 except Exception as _ctx_err:
@@ -4935,6 +4961,24 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             )
         except Exception as _e:
             logger.debug(f"[TRAINING_LOG_BG] Error logging chat turn: {_e}")
+
+        # CRT Session State — track per-turn epistemic signals
+        try:
+            from personal_agent.session_state import get_or_create_session, record_turn
+            _crt_session = get_or_create_session(_thread_id)
+            _crt_turn = record_turn(
+                _crt_session,
+                result=_result,
+                prompt_mems=_prompt_mems,
+                message=_message,
+                engine_memory=_engine_memory,
+            )
+            print(f"[SESSION_STATE] turn={_crt_turn.turn_number} density={_crt_turn.density_score:.4f} "
+                  f"cited={len(_crt_turn.memories_cited_ids)} slots={len(_crt_turn.slots_classified)} "
+                  f"trust_shifts={len(_crt_turn.trust_shifts)}")
+        except Exception as _e:
+            print(f"[SESSION_STATE_BG] Error: {_e}")
+            import traceback; traceback.print_exc()
 
     try:
         _training_gen_info = {

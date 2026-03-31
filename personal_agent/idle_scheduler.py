@@ -292,3 +292,43 @@ class CRTIdleScheduler:
                     pass  # Module not available
                 except Exception:
                     pass  # Graceful degradation
+
+        # Density-triggered memory extraction
+        try:
+            from personal_agent.session_state import get_or_create_session, should_extract
+            pa_dir = (self.repo_root / "personal_agent").resolve()
+            for mem_db in pa_dir.glob("crt_memory_*.db"):
+                thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
+                try:
+                    session = get_or_create_session(thread_id)
+                    if should_extract(session):
+                        jid = f"density_extract_{thread_id}_{int(time.time())}"
+                        enqueue_job(
+                            db_path=self.jobs_db_path,
+                            job_id=jid,
+                            job_type="heartbeat_learning",
+                            created_at=now_iso_utc(),
+                            payload={
+                                "thread_id": thread_id,
+                                "memory_db": str(mem_db),
+                                "trigger": "density",
+                                "density": round(session.cumulative_density, 4),
+                                "tokens": session.cumulative_tokens,
+                            },
+                            priority=1,
+                        )
+                        session.turns_since_last_extraction = 0
+                        session.last_extraction_ts = time.time()
+                        session.cumulative_tokens = 0
+                        session.cumulative_numerator = 0
+                        import logging as _log
+                        _log.getLogger(__name__).info(
+                            f"[IDLE] Density extraction triggered for {thread_id[:12]} "
+                            f"(density={session.cumulative_density:.4f})"
+                        )
+                except Exception:
+                    pass
+        except ImportError:
+            pass
+        except Exception:
+            pass

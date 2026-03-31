@@ -914,13 +914,24 @@ class AgentToolLoop:
         system_content = _AGENT_SYSTEM_PROMPT
 
         # Inject context-aware summary from CRT memories
+        # Use belief-aware compaction when history is long
         if thread_id and self.engine:
             try:
-                from personal_agent.context_feed import build_context_summary
                 _mem_db = getattr(self.engine, "memory", None)
                 _db_path = getattr(_mem_db, "db_path", None) if _mem_db else None
                 if _db_path:
-                    _ctx = build_context_summary(thread_id=thread_id, memory_db_path=_db_path)
+                    _hist_tokens = sum(len(str(t.get("content", ""))) // 4 for t in (history or [])[-4:])
+                    if _hist_tokens > 1500:
+                        from personal_agent.context_feed import build_compacted_context
+                        _ctx = build_compacted_context(
+                            thread_id=thread_id,
+                            memory_db_path=_db_path,
+                            token_budget=max(1500, 3000 - _hist_tokens),
+                            trigger="token_overflow",
+                        )
+                    else:
+                        from personal_agent.context_feed import build_context_summary
+                        _ctx = build_context_summary(thread_id=thread_id, memory_db_path=_db_path)
                     if _ctx:
                         system_content += _ctx
             except Exception:

@@ -391,4 +391,63 @@ def run_job(*, job_type: str, payload: Dict[str, Any], artifacts_dir: Path, job_
         summary = "(no text provided)" if not txt else (txt[:280].strip() + ("…" if len(txt) > 280 else ""))
         return {"summary": summary, "chars": len(txt)}, []
 
+    if job_type == "heartbeat_learning":
+        return _run_heartbeat_learning(payload=payload, artifacts_dir=artifacts_dir, job_id=job_id)
+
     raise NotImplementedError(f"Unsupported job type: {job_type}")
+
+
+def _run_heartbeat_learning(
+    *, payload: Dict[str, Any], artifacts_dir: Path, job_id: str,
+) -> Tuple[Dict[str, Any], List[ProducedArtifact]]:
+    """Run density-triggered memory extraction via heartbeat learning."""
+    thread_id = payload.get("thread_id", "default")
+    trigger = payload.get("trigger", "density")
+
+    try:
+        from personal_agent.heartbeat_learning import run_learning_digest
+        from personal_agent.crt_memory import CRTMemorySystem
+        from personal_agent.db_utils import ThreadSessionDB
+
+        # Resolve paths
+        pa_dir = Path(__file__).parent
+        mem_db = payload.get("memory_db") or str(pa_dir / f"crt_memory_{thread_id}.db")
+        session_db_path = str(pa_dir / "crt_thread_sessions.db")
+
+        if not Path(mem_db).exists():
+            return {"status": "skipped", "reason": "memory DB not found"}, []
+
+        memory_system = CRTMemorySystem(db_path=mem_db)
+        session_db = ThreadSessionDB(db_path=session_db_path)
+
+        # Get watermark
+        last_id = session_db.get_learning_watermark(thread_id)
+
+        result = run_learning_digest(
+            thread_id=thread_id,
+            session_db_path=session_db_path,
+            memory_system=memory_system,
+            llm_client=None,  # will use default
+            get_watermark=lambda: last_id,
+            set_watermark=lambda wm: session_db.set_learning_watermark(thread_id, wm),
+        )
+
+        import logging
+        logging.getLogger(__name__).info(
+            f"[HEARTBEAT_LEARNING] {trigger} extraction for {thread_id[:12]}: "
+            f"extracted={result.get('extracted', 0)} stored={result.get('stored', 0)}"
+        )
+
+        return {
+            "status": "ok",
+            "trigger": trigger,
+            "thread_id": thread_id,
+            "extracted": result.get("extracted", 0),
+            "stored": result.get("stored", 0),
+            "novel": result.get("novel", 0),
+        }, []
+
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning(f"[HEARTBEAT_LEARNING] Failed: {e}")
+        return {"status": "error", "error": str(e)}, []

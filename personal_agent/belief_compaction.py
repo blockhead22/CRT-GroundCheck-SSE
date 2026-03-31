@@ -49,6 +49,7 @@ PRIORITY_HIGH_TRUST = 80
 PRIORITY_CONTRADICTION = 70  # both sides of active contradictions
 PRIORITY_MEDIUM_TRUST = 40
 PRIORITY_LOW_TRUST = 10
+PRIORITY_SESSION_HOT = 15    # boost for memories active in current session
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +177,7 @@ def compact_context(
     token_budget: int = DEFAULT_TOKEN_BUDGET,
     previous_snapshot: Optional[BeliefSnapshot] = None,
     trigger: str = "manual",
+    session_hot_ids: Optional[Set[str]] = None,
 ) -> BeliefSnapshot:
     """Produce a belief snapshot from memories under a token budget.
 
@@ -219,18 +221,20 @@ def compact_context(
         authority = getattr(mem, "authority", "confirmed")
         in_contradiction = mem_id in contradiction_memory_ids
 
+        # Session hot boost — memories active in current session get priority
+        hot_boost = PRIORITY_SESSION_HOT if (session_hot_ids and mem_id in session_hot_ids) else 0
+
         if authority == "locked":
-            classified.append((PRIORITY_LOCKED, "verbatim", mem))
+            classified.append((PRIORITY_LOCKED + hot_boost, "verbatim", mem))
         elif in_contradiction:
-            # Contradiction pairs always at least summary, prefer verbatim
             rep = "verbatim" if trust >= SUMMARY_TRUST_THRESHOLD else "summary"
-            classified.append((PRIORITY_CONTRADICTION, rep, mem))
+            classified.append((PRIORITY_CONTRADICTION + hot_boost, rep, mem))
         elif trust >= VERBATIM_TRUST_THRESHOLD:
-            classified.append((PRIORITY_HIGH_TRUST, "verbatim", mem))
+            classified.append((PRIORITY_HIGH_TRUST + hot_boost, "verbatim", mem))
         elif trust >= SUMMARY_TRUST_THRESHOLD:
-            classified.append((PRIORITY_MEDIUM_TRUST, "summary", mem))
+            classified.append((PRIORITY_MEDIUM_TRUST + hot_boost, "summary", mem))
         else:
-            classified.append((PRIORITY_LOW_TRUST, "slot_only", mem))
+            classified.append((PRIORITY_LOW_TRUST + hot_boost, "slot_only", mem))
 
     # Sort by priority descending (highest priority = first to get budget)
     classified.sort(key=lambda x: -x[0])

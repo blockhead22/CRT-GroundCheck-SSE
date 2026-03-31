@@ -77,6 +77,19 @@ def build_context_summary(
     return result
 
 
+def _get_away_resume_block(thread_id: str) -> str:
+    """Check if user has been away and render belief state diff."""
+    try:
+        from personal_agent.session_state import get_or_create_session, render_away_resume_diff
+        session = get_or_create_session(thread_id)
+        diff = render_away_resume_diff(session)
+        if diff:
+            logger.debug(f"[CONTEXT_FEED] Away/resume diff for {thread_id[:12]}")
+        return diff
+    except Exception:
+        return ""
+
+
 def _build_fresh(thread_id: str, memory_db_path: str) -> str:
     """Fetch memories and format the context block."""
     from personal_agent.crt_memory import CRTMemorySystem
@@ -156,6 +169,11 @@ def _build_fresh(thread_id: str, memory_db_path: str) -> str:
         lines.append("")
         lines.append(recent_interaction)
 
+    # 8. Away/resume belief diff (if user returning after gap)
+    away_block = _get_away_resume_block(thread_id)
+    if away_block:
+        lines.insert(0, away_block)
+
     block = "\n".join(lines)
     logger.debug(
         f"[CONTEXT_FEED] built {len(top_memories)}+{len(provisional)} items "
@@ -216,12 +234,22 @@ def build_compacted_context(
         except Exception:
             pass
 
+        # Get session hot memory IDs for compaction prioritization
+        session_hot_ids = None
+        try:
+            from personal_agent.session_state import get_or_create_session, get_hot_memory_ids
+            _sess = get_or_create_session(thread_id)
+            session_hot_ids = get_hot_memory_ids(_sess)
+        except Exception:
+            pass
+
         # Run compaction
         snapshot = compact_context(
             memories=memories,
             active_contradictions=active_contradictions,
             token_budget=token_budget,
             trigger=trigger,
+            session_hot_ids=session_hot_ids,
         )
 
         # Record event to database
@@ -244,6 +272,12 @@ def build_compacted_context(
 
         # Render
         result = render_belief_snapshot(snapshot)
+
+        # Prepend away/resume diff if returning after gap
+        away_block = _get_away_resume_block(thread_id)
+        if away_block:
+            result = away_block + "\n\n" + result
+
         _cache_set(cache_key, result)
         return result
 
