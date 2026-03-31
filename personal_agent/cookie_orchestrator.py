@@ -242,6 +242,8 @@ class ClaudeCliBrain(BrainProvider):
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=self._timeout,
             )
             elapsed = (time.perf_counter() - t0) * 1000

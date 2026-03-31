@@ -204,19 +204,38 @@ class ResponseSynthesizer:
         return None
 
     def _call_llm(self, messages: List[Dict[str, str]], max_tokens: int = 600) -> str:
-        """Call the LLM client. Supports OllamaClient and HybridLLMClient."""
+        """Call the LLM client. Supports OllamaClient, HybridLLMClient, and
+        falls back to ClaudeCliBrain when the primary client is unavailable."""
         client = self.llm_client
 
         # Determine which model/client to use based on mode
         fast_model = os.getenv("CRT_MODEL_FAST") or "role:fast"
 
         if hasattr(client, "chat"):
-            return client.chat(
-                messages=messages,
-                max_tokens=max_tokens,
-                temperature=0.3,
-                model=fast_model if hasattr(client, "local_client") else None,
-            )
+            try:
+                result = client.chat(
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=0.3,
+                    model=fast_model if hasattr(client, "local_client") else None,
+                )
+                if result:
+                    return result
+            except Exception as e:
+                logger.warning("[SYNTHESIS] Primary LLM failed: %s, trying ClaudeCliBrain", e)
+
+        # Fallback: Claude CLI
+        try:
+            from personal_agent.cookie_orchestrator import ClaudeCliBrain
+            _cli = ClaudeCliBrain()
+            system = next((m["content"] for m in messages if m["role"] == "system"), "")
+            prompt = next((m["content"] for m in messages if m["role"] == "user"), "")
+            result = _cli.complete(system=system, prompt=prompt, max_tokens=max_tokens)
+            if result.content and not result.error:
+                logger.info("[SYNTHESIS] ClaudeCliBrain fallback succeeded")
+                return result.content
+        except Exception as e:
+            logger.warning("[SYNTHESIS] ClaudeCliBrain fallback also failed: %s", e)
 
         return ""
 
