@@ -1383,10 +1383,16 @@ class Orchestrator:
         except Exception as _sm_err:
             print(f"[SELF_MODEL] Failed (non-fatal): {_sm_err}")
 
-        # Inject conversation history into context if provided
+        # Inject conversation history into context if provided.
+        # Labelled as PRIOR CONTEXT (not current task) to prevent Cookie from
+        # conflating previous tasks with the current objective.
         if conversation_history:
             history_text = "\n".join(conversation_history)
-            state.objective = f"{objective}\n\nCONVERSATION HISTORY:\n{history_text}"
+            state.objective = (
+                f"{objective}\n\n"
+                f"PRIOR CONTEXT (previous exchange — for continuity only, "
+                f"NOT the current task):\n{history_text}"
+            )
 
         print(f"\n{'='*60}")
         print(f"ORCHESTRATOR: {objective[:80]}")

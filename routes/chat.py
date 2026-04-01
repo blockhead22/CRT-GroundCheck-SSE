@@ -6438,13 +6438,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         max_iterations=10,
                     )
 
-                    # Load conversation history for multi-turn context
+                    # Load conversation history for multi-turn context.
+                    # window=2: only the immediately prior exchange — larger windows
+                    # cause Cookie to conflate previous tasks with the current one.
                     _orch_history = []
                     try:
                         _orch_recent = _load_recent_history_messages(
-                            _session_db, req.thread_id, window=6)
+                            _session_db, req.thread_id, window=2)
                         _orch_history = [
-                            f"{'User' if m['role'] == 'user' else 'Aether'}: {m['content'][:300]}"
+                            f"{'User' if m['role'] == 'user' else 'Aether'}: {m['content'][:150]}"
                             for m in _orch_recent
                         ]
                         if _orch_history:
