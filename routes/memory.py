@@ -1637,3 +1637,125 @@ def _format_index_line(entry: dict) -> str:
         parts.append("UNCERTAIN")
 
     return f"- {text} ({', '.join(parts)})"
+
+
+# ---------------------------------------------------------------------------
+# User Beliefs endpoint — the epistemic mirror
+# ---------------------------------------------------------------------------
+
+@router.get("/api/beliefs")
+def list_user_beliefs(
+    request: Request,
+    thread_id: str = Query(default="default"),
+    min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
+    limit: int = Query(default=50, ge=1, le=200),
+    authorization: Optional[str] = Header(None),
+):
+    """List the user's tracked beliefs/positions with trust scores and contradiction status.
+
+    Returns user_belief memories: positions, stances, opinions — not flat facts.
+    Each belief includes trust score, temporal trajectory, and active contradictions.
+    This is the epistemic mirror — showing the user the shape of their own convictions.
+    """
+    import time as _time
+
+    tid = sanitize_thread_id(thread_id)
+    engine = _get_engine(request, tid)
+    uid = resolve_user_id(authorization)
+
+    # Load all active user_belief memories
+    items = _recent_scope_items(engine, tid, user_id=uid)
+    beliefs = [
+        m for m in items
+        if getattr(m, "kind", "") == "user_belief"
+        and not getattr(m, "deprecated", False)
+        and float(getattr(m, "trust", 0)) >= min_trust
+    ]
+
+    # Sort by trust descending (strongest convictions first)
+    beliefs.sort(key=lambda m: float(getattr(m, "trust", 0)), reverse=True)
+    beliefs = beliefs[:limit]
+
+    # Load contradiction map
+    contradiction_map: Dict[str, list] = {}
+    try:
+        led_path = engine.memory.db_path.replace("crt_memory", "crt_ledger")
+        if Path(led_path).exists():
+            with get_db_connection(led_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT ledger_id, old_memory_id, new_memory_id, status,
+                           disposition, drift_mean
+                    FROM contradictions
+                    WHERE status IN ('open', 'reflecting')
+                """)
+                for row in cursor.fetchall():
+                    for mid in (row[1], row[2]):
+                        if mid:
+                            contradiction_map.setdefault(mid, []).append({
+                                "ledger_id": row[0],
+                                "other_memory_id": row[2] if mid == row[1] else row[1],
+                                "status": row[3],
+                                "disposition": row[4],
+                                "drift": round(row[5], 3) if row[5] else None,
+                            })
+    except Exception:
+        pass
+
+    # Build response
+    entries = []
+    for mem in beliefs:
+        mid = getattr(mem, "memory_id", "")
+        contras = contradiction_map.get(mid, [])
+
+        # Load trust trajectory (last 5 changes)
+        trust_history = []
+        try:
+            conn = engine.memory._get_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT old_trust, new_trust, reason, timestamp FROM trust_log "
+                "WHERE memory_id = ? ORDER BY timestamp DESC LIMIT 5",
+                (mid,),
+            )
+            for row in cursor.fetchall():
+                trust_history.append({
+                    "from": round(row[0], 3),
+                    "to": round(row[1], 3),
+                    "reason": row[2],
+                    "timestamp": row[3],
+                })
+            conn.close()
+        except Exception:
+            pass
+
+        entries.append({
+            "memory_id": mid,
+            "text": getattr(mem, "text", ""),
+            "trust": round(float(getattr(mem, "trust", 0)), 3),
+            "confidence": round(float(getattr(mem, "confidence", 0)), 3),
+            "authority": getattr(mem, "authority", "confirmed"),
+            "belnap_state": getattr(mem, "belnap_state", "true"),
+            "temporal_status": getattr(mem, "temporal_status", "active"),
+            "created_at": getattr(mem, "timestamp", 0),
+            "domain_tags": getattr(mem, "domain_tags", None),
+            "contradictions": contras,
+            "contradiction_count": len(contras),
+            "trust_trajectory": trust_history,
+        })
+
+    # Summary stats
+    total = len(entries)
+    avg_trust = round(sum(e["trust"] for e in entries) / total, 3) if total else 0
+    contested = sum(1 for e in entries if e["contradiction_count"] > 0)
+    held = sum(1 for e in entries if e["belnap_state"] == "both")
+
+    return {
+        "thread_id": tid,
+        "total_beliefs": total,
+        "average_trust": avg_trust,
+        "contested": contested,
+        "held_contradictions": held,
+        "generated_at": _time.time(),
+        "beliefs": entries,
+    }

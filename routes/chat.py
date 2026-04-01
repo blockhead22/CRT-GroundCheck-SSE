@@ -5905,7 +5905,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         k=10,
                         min_trust=0.05,
                         exclude_deprecated=True,
-                        kinds={"user_fact", "preference", "observation"},
+                        kinds={"user_fact", "user_belief", "preference", "observation"},
                         user_id=uid,
                     )
                     # Second search with raw message for broader matching
@@ -5915,7 +5915,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             k=10,
                             min_trust=0.05,
                             exclude_deprecated=True,
-                            kinds={"user_fact", "preference", "observation"},
+                            kinds={"user_fact", "user_belief", "preference", "observation"},
                             user_id=uid,
                         )
                         # Merge, dedup by memory_id
@@ -6397,6 +6397,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             # before any tools fire.
                             _plan_content = _orch_event.get("content", "")
                             _plan_steps = _orch_event.get("steps", [])
+                            # Phase 4: adaptive depth — Cookie declares estimated_depth
+                            # in its plan. If provided, clamp max_iterations to that
+                            # value (floor 3, ceiling 10) so simple tasks don't burn
+                            # unnecessary iterations.
+                            _est_depth = _orch_event.get("estimated_depth")
+                            if _est_depth is not None:
+                                try:
+                                    _clamped = max(3, min(10, int(_est_depth)))
+                                    _orch.max_iterations = _clamped
+                                    _safe_print(f"[ORCHESTRATOR] Adaptive depth: plan declared estimated_depth={_est_depth} → max_iterations={_clamped}")
+                                except (TypeError, ValueError):
+                                    pass
                             if _plan_content:
                                 _plan_display = _plan_content
                                 if _plan_steps:
@@ -6447,6 +6459,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _tool_status = _orch_event.get("status", "ok")
                             _tool_align = _orch_event.get("alignment")
                             _tool_ms = _orch_event.get("latency_ms")
+                            _tool_reasoning = _orch_event.get("reasoning", "")
+                            if _tool_reasoning:
+                                # Phase 3: mid-update — surface Cookie's reasoning
+                                # as a thinking stub before the tool row fires.
+                                yield _sse({
+                                    "type": "agent_thinking_token",
+                                    "content": _tool_reasoning[:200],
+                                    "metadata": {
+                                        "step": "tool_loop",
+                                        "alignment": _tool_align,
+                                    },
+                                })
                             yield _sse({
                                 "type": "tool_start",
                                 "content": f"Running {_tool_name}...",
@@ -6454,6 +6478,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     "tool_name": _tool_name,
                                     "input": _tool_args,
                                     "alignment": _tool_align,
+                                    "reasoning": _tool_reasoning,
                                 },
                             })
                             yield _sse({

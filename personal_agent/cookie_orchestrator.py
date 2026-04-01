@@ -412,7 +412,7 @@ A separate system will execute your decisions and return results.
 You communicate ONLY in JSON. Every response must be a single JSON object.
 
 Available actions:
-- {"action": "plan", "message": "One sentence describing what you will do and why.", "steps": ["step 1", "step 2"]}
+- {"action": "plan", "message": "One sentence describing what you will do and why.", "steps": ["step 1", "step 2"], "estimated_depth": 3}
 - {"action": "tool_call", "tool": "file_read", "args": {"path": "relative/path.py"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "dir_list", "args": {"path": "."}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "search_code", "args": {"query": "class Foo", "path": "."}, "reasoning": "why"}
@@ -434,10 +434,12 @@ Available actions:
 - {"action": "think", "reasoning": "your internal reasoning before next step"}
 - {"action": "respond", "message": "your final answer to the user", "reasoning": "why"}
 - {"action": "ask_user", "message": "your question", "reasoning": "why"}
+# PHASE 5 (not yet active — uncomment to enable spawn_agent):
+# - {"action": "spawn_agent", "task": "focused subtask description", "context": {"key": "value"}, "estimated_depth": 3, "reasoning": "why spawn instead of doing it directly"}
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
-2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. A brief human-readable sentence telling the user what you are about to do and why. Be specific: name the files, queries, or steps you intend to take. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
+2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. Include: "message" (what you'll do), "steps" (list of planned actions), and "estimated_depth" (integer: how many tool calls you expect to need, 1–10). Be specific. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
 3. When you need information from a file, use tool_call with file_read.
 4. When you need user memories, use tool_call with memory_recall.
 5. Use "think" to reason about results before your next action.
@@ -1389,8 +1391,14 @@ class Orchestrator:
                 # sees "Plan acknowledged" on the next iteration and doesn't re-plan.
                 _plan_msg = decision.get("message", "")
                 _plan_steps = decision.get("steps", [])
+                _plan_depth = decision.get("estimated_depth")
                 if _plan_msg:
-                    yield {"type": "plan", "content": _plan_msg, "steps": _plan_steps}
+                    yield {
+                        "type": "plan",
+                        "content": _plan_msg,
+                        "steps": _plan_steps,
+                        "estimated_depth": _plan_depth,
+                    }
                 state.thinking.append(f"[plan] {_plan_msg}")
                 last_result = "Plan declared. Now execute using tool_call actions. Do NOT plan again."
                 continue
@@ -1667,6 +1675,34 @@ class Orchestrator:
                     reasoning=reasoning[:300], latency_ms=brain_result.latency_ms,
                 ))
                 break
+
+            # ── PHASE 5: spawn_agent ──────────────────────────────────────
+            # NOT YET ACTIVE. To enable:
+            #   1. Uncomment the spawn_agent action in ORCHESTRATOR_SYSTEM above
+            #   2. Remove the `False and` guard below
+            #   3. Add spawn_tool/spawn_thinking/spawn_complete handlers in chat.py
+            elif False and action == "spawn_agent":
+                from personal_agent.spawn_agent import handle_spawn_agent
+                _spawn_result = yield from handle_spawn_agent(
+                    decision,
+                    brain=self.brain,
+                    memory_system=self.memory_system,
+                    parent_remaining_iterations=self.max_iterations - iteration,
+                )
+                last_result = _spawn_result.summary()
+                state.add_step(StepRecord(
+                    iteration=iteration, action="spawn_agent",
+                    reasoning=reasoning,
+                    result=last_result[:500],
+                    latency_ms=_spawn_result.elapsed_ms,
+                ))
+                run_log.add_step(LogStep(
+                    iteration=iteration, action="spawn_agent",
+                    reasoning=reasoning[:300],
+                    result=last_result[:300],
+                    latency_ms=_spawn_result.elapsed_ms,
+                ))
+                continue
 
             else:
                 state.final_response = raw

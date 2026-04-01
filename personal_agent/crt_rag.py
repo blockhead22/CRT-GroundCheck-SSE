@@ -4580,7 +4580,21 @@ class CRTEnhancedRAG:
             # contradiction detection passes. This prevents same-turn
             # self-citation where the new claim retrieves itself as evidence.
             _assertion_authority = authority or "provisional"
-            print(f"[PROVISIONAL] Storing assertion as authority={_assertion_authority}: \"{user_text[:60]}\"")
+
+            # Sub-classify: is this a flat fact or a belief/position?
+            _resolved_kind = kind
+            _belief_reason = None
+            if not _resolved_kind:
+                try:
+                    from personal_agent.belief_classifier import classify_assertion_kind
+                    _resolved_kind, _belief_reason = classify_assertion_kind(user_text)
+                    if _belief_reason:
+                        logger.info("[BELIEF_CLASSIFY] %s → %s (%s)", user_text[:60], _resolved_kind, _belief_reason)
+                except Exception as _bc_err:
+                    logger.debug("[BELIEF_CLASSIFY] fallback to user_fact: %s", _bc_err)
+                    _resolved_kind = "user_fact"
+
+            print(f"[PROVISIONAL] Storing assertion as authority={_assertion_authority} kind={_resolved_kind}: \"{user_text[:60]}\"")
             ingest_result = self.ingest_memory_write(
                 text=user_text,
                 confidence=_assertion_confidence,
@@ -4591,7 +4605,7 @@ class CRTEnhancedRAG:
                 channel=channel,
                 origin=origin,
                 authority=_assertion_authority,
-                kind=(kind or "user_fact"),
+                kind=_resolved_kind,
             )
             user_memory = ingest_result["memory"]
             can_update_profile = self.memory.can_update_user_profile(user_memory)
@@ -8265,6 +8279,20 @@ class CRTEnhancedRAG:
             return "instruction"
 
         # Only treat as assertion if the text actually declares a personal fact.
+        # Belief/stance expressions are assertions (stored as user_belief kind).
+        # These were previously discarded as "other" but carry epistemic signal.
+        belief_starters = (
+            "i think", "i believe", "i feel like", "i feel that",
+            "i agree", "i disagree", "i suspect",
+            "i'm convinced", "im convinced",
+            "i'm skeptical", "im skeptical",
+            "i'm confident", "im confident",
+            "in my opinion", "in my view", "in my experience",
+            "my take is", "my view is", "my position is",
+        )
+        if lower.startswith(belief_starters):
+            return "assertion"
+
         # Reactions, sentiments, and activity comments should NOT be stored even if they
         # have first-person pronouns (e.g. "I'm happy that X", "I'm working on this").
         sentiment_starters = (
@@ -8274,8 +8302,8 @@ class CRTEnhancedRAG:
             "i'm working on", "im working on", "i'm doing", "im doing",
             "i'm just", "im just", "i'm only", "im only",
             "i'm going", "im going", "i'm trying", "im trying",
-            "i think", "i believe", "i guess", "i hope", "i wish", "i feel",
-            "i know", "i understand", "i see", "i agree", "i disagree",
+            "i guess", "i hope", "i wish", "i feel",
+            "i know", "i understand", "i see",
             "i can", "i can't", "i cannot", "i won't", "i don't",
             "i had", "i have", "i want", "i need", "i like", "i love",
         )

@@ -238,6 +238,105 @@ class BeliefClassifier:
 
 
 # ---------------------------------------------------------------------------
+# Fact vs Belief assertion classifier (regex-based, no ML)
+# ---------------------------------------------------------------------------
+# Runs after _classify_user_input confirms an assertion.
+# Sub-classifies: is this a flat fact ("I live in Denver") or a
+# position/stance ("I think open source is the right strategy")?
+
+import re as _re
+
+_STRONG_BELIEF_MARKERS = [
+    _re.compile(r"\b(?:i\s+(?:think|believe|feel\s+(?:like|that)|suspect|reckon|bet))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:i'm\s+(?:convinced|skeptical|doubtful|confident|certain|sure|unsure|worried|optimistic|pessimistic))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:i\s+(?:strongly\s+)?(?:disagree|agree|support|oppose|prefer|favor|doubt))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:in\s+my\s+(?:opinion|view|experience|estimation))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:my\s+(?:take|stance|position|view|read)\s+(?:is|on))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:i(?:'m|\s+am)\s+(?:leaning\s+toward|torn\s+(?:between|on)|on\s+the\s+fence))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:it\s+seems?\s+(?:like|to\s+me))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:i\s+(?:don't|do\s+not)\s+(?:think|believe|buy|trust))\b", _re.IGNORECASE),
+]
+
+_EVALUATIVE_PATTERNS = [
+    _re.compile(r"\b(?:should|ought\s+to|need\s+to)\b.*\b(?:be|do|get|have|make|stop|start)\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:is|are|was)\s+(?:better|worse|overrated|underrated|overhyped|important|dangerous|risky|promising|broken|flawed|superior|inferior)\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:will\s+(?:never|always|eventually|probably|likely|definitely))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:the\s+(?:best|worst|right|wrong|real|true)\s+(?:way|approach|strategy|move|answer|solution))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:i(?:'d|\s+would)\s+rather)\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:the\s+problem\s+(?:is|with))\b", _re.IGNORECASE),
+    _re.compile(r"\b(?:what\s+matters\s+(?:is|most))\b", _re.IGNORECASE),
+]
+
+# Hard fact slots — if fact_slots extracts one of these, it's a user_fact
+_HARD_FACT_SLOTS = {
+    "name", "first_name", "last_name", "full_name",
+    "age", "birthday", "birth_year",
+    "email", "phone",
+    "location", "city", "state", "country",
+    "employer", "company", "occupation", "job_title",
+    "pet", "pet_name",
+    "spouse", "partner",
+    "programming_language", "framework",
+    "education", "degree", "university",
+}
+
+
+def classify_assertion_kind(text: str) -> tuple:
+    """Classify an assertion as user_fact or user_belief.
+
+    Args:
+        text: User message already classified as an assertion.
+
+    Returns:
+        Tuple of (kind, reason):
+        - kind: "user_fact" or "user_belief"
+        - reason: short explanation for audit trail (or None)
+    """
+    if not text or not text.strip():
+        return "user_fact", None
+
+    lower = text.lower().strip()
+
+    # 1. Strong belief markers → user_belief (high confidence)
+    for pattern in _STRONG_BELIEF_MARKERS:
+        if pattern.search(lower):
+            return "user_belief", f"belief_marker: {pattern.pattern[:40]}"
+
+    # 2. Hard fact slot extraction → user_fact
+    try:
+        from .fact_slots import extract_fact_slots
+        extracted = extract_fact_slots(text)
+        if extracted:
+            hard_slots = set(extracted.keys()) & _HARD_FACT_SLOTS
+            if hard_slots:
+                return "user_fact", f"hard_slot: {','.join(sorted(hard_slots))}"
+    except Exception:
+        pass
+
+    # 3. Evaluative/stance language without hard slots → user_belief
+    for pattern in _EVALUATIVE_PATTERNS:
+        if pattern.search(lower):
+            return "user_belief", f"evaluative: {pattern.pattern[:40]}"
+
+    # 4. Predictive claims → user_belief
+    if _re.search(r"\b(?:will|going\s+to|gonna)\s+(?:replace|kill|change|transform|disrupt|dominate|fail|succeed|win|lose)\b", lower):
+        return "user_belief", "predictive_claim"
+
+    # 5. Comparative value judgments → user_belief
+    if _re.search(r"\b(?:better|worse|more\s+important|less\s+important)\s+than\b", lower):
+        return "user_belief", "comparative_judgment"
+
+    # 6. Default: user_fact (conservative — preserves existing behavior)
+    return "user_fact", None
+
+
+def is_user_belief(text: str) -> bool:
+    """Quick check: does this text express a user belief/position?"""
+    kind, _ = classify_assertion_kind(text)
+    return kind == "user_belief"
+
+
+# ---------------------------------------------------------------------------
 # Global singleton
 # ---------------------------------------------------------------------------
 

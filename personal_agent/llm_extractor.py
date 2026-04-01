@@ -89,6 +89,56 @@ Examples:
 Now extract ONLY PERMANENT IDENTITY FACTS from the input text. Return ONLY valid JSON with a "facts" array."""
 
 
+# Belief extraction prompt — captures positions, stances, and opinions
+BELIEF_EXTRACTION_PROMPT = """Extract the user's beliefs, opinions, and positions from this text as JSON tuples.
+
+Text: "{text}"
+
+Extract:
+- Opinions and stances: what they think about topics, technologies, strategies, people
+- Predictions: what they think will happen
+- Values: what they think is important, right, wrong, overrated, underrated
+- Evaluations: comparative judgments, quality assessments
+- Convictions: things they are confident or uncertain about
+
+DO NOT extract:
+- Identity facts (name, age, location, employer) — those are handled separately
+- Transient emotions ("I'm tired", "I'm happy")
+- Questions or requests
+- Generic statements not expressing a personal position
+
+Return a JSON object with a "beliefs" array. Each belief should have:
+- topic: what the belief is about (concise, e.g., "open source strategy", "small model reasoning")
+- position: the stance (e.g., "favors open source", "skeptical of fine-tuning")
+- strength: "strong", "moderate", or "tentative"
+- evidence_span: exact quote from text supporting this belief
+- confidence: 0.0-1.0
+
+Examples:
+
+"I think open source is the right move, but I'm not sure about the timing."
+{{
+  "beliefs": [
+    {{"topic": "open source strategy", "position": "favors open source", "strength": "moderate", "evidence_span": "I think open source is the right move", "confidence": 0.70}},
+    {{"topic": "open source timing", "position": "uncertain about timing", "strength": "tentative", "evidence_span": "not sure about the timing", "confidence": 0.40}}
+  ]
+}}
+
+"AI will definitely replace most coding jobs within 5 years."
+{{
+  "beliefs": [
+    {{"topic": "AI impact on coding jobs", "position": "AI will replace most coding jobs soon", "strength": "strong", "evidence_span": "AI will definitely replace most coding jobs within 5 years", "confidence": 0.85}}
+  ]
+}}
+
+"What's the weather like?" or "I'm feeling tired today"
+{{
+  "beliefs": []
+}}
+
+Now extract beliefs from the input text. Return ONLY valid JSON with a "beliefs" array."""
+
+
 @dataclass
 class LLMConfig:
     """Configuration for LLM-based extraction."""
@@ -330,6 +380,48 @@ class LLMFactExtractor:
             extraction_timestamp=time.time(),
             extraction_method="llm",
         )
+
+
+    def extract_beliefs(self, text: str) -> List[Dict[str, Any]]:
+        """Extract user beliefs/positions from text using LLM.
+
+        Returns list of dicts with: topic, position, strength, evidence_span, confidence.
+        Falls back to empty list on failure (non-blocking).
+        """
+        if not text or not text.strip():
+            return []
+        if self._auth_failed or self.llm_client is None:
+            return []
+
+        prompt = BELIEF_EXTRACTION_PROMPT.format(text=text)
+        try:
+            response = self.llm_client.chat.completions.create(
+                model=self.config.model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
+            content = response.choices[0].message.content
+            data = json.loads(content)
+            beliefs = data.get("beliefs", [])
+            if not isinstance(beliefs, list):
+                return []
+            # Validate each belief has required fields
+            valid = []
+            for b in beliefs:
+                if isinstance(b, dict) and b.get("topic") and b.get("position"):
+                    valid.append({
+                        "topic": str(b["topic"]),
+                        "position": str(b["position"]),
+                        "strength": str(b.get("strength", "moderate")),
+                        "evidence_span": str(b.get("evidence_span", "")),
+                        "confidence": float(b.get("confidence", 0.5)),
+                    })
+            return valid
+        except Exception as e:
+            logger.debug(f"Belief extraction failed: {e}")
+            return []
 
 
 class LocalLLMFactExtractor(LLMFactExtractor):

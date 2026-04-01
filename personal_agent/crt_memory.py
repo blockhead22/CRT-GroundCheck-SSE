@@ -95,6 +95,7 @@ _NON_USER_FACT_KINDS = {
 
 _ALLOWED_MEMORY_KINDS = {
     "user_fact",
+    "user_belief",
     "ops",
     "preference",
     "identity_constant",
@@ -113,6 +114,7 @@ _VALID_SOURCE_KINDS = {"principal", "tool_receipt", "model_output", "social", "e
 _REVIEW_AFTER_DEFAULTS: Dict[str, Optional[float]] = {
     "identity_constant":    None,
     "user_fact":            None,
+    "user_belief":          None,           # beliefs are durable — tracked until contradicted
     "preference":           90  * 86_400,   # 90 days
     "permission":           14  * 86_400,   # 14 days
     "ops":                  30  * 86_400,   # 30 days
@@ -300,6 +302,7 @@ class MemoryItem:
 
 _KIND_TO_MEMORY_TYPE = {
     "user_fact": "fact",
+    "user_belief": "belief",
     "ops": "fact",
     "preference": "preference",
     "identity_constant": "identity",
