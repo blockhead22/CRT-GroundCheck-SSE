@@ -438,7 +438,7 @@ Available actions:
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
-2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. Include: "message" (what you'll do), "steps" (list of planned actions), and "estimated_depth" (integer: how many tool calls you expect to need, 1–10). Be specific. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
+2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. Include: "message" (what you'll do), "steps" (list of planned actions), and "estimated_depth" (integer: how many tool calls you expect to need, NOT counting the plan itself — e.g. read+write = 2). Be specific. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
 3. When you need information from a file, use tool_call with file_read.
 4. When you need user memories, use tool_call with memory_recall.
 5. Use "think" to reason about results before your next action.
@@ -1179,7 +1179,7 @@ class Orchestrator:
 
         # Time pressure hint near end of iterations
         remaining = getattr(state, '_remaining_iterations', None)
-        if remaining is not None and remaining <= 2:
+        if remaining is not None and remaining <= 1:
             parts.append(f"\nWARNING: Only {remaining} iteration(s) remaining. You MUST respond now with action=respond. Summarize what you know.")
         else:
             parts.append("\nWhat is your next action? Return ONLY a JSON object.")

@@ -6336,6 +6336,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # Generic convos, memory queries, and greetings fall through to legacy.
             _TOOL_REQUIRING_INTENTS = {
                 "file_op", "code_task", "code_read", "code_write",
+                "file_read", "file_write",  # explicit file intents always need tools
                 "web_search", "web_fetch", "research",
                 "shell_exec", "run_python",
                 "memory_write",
@@ -6361,11 +6362,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 )
                 and len(str(req.message or "").split()) >= 4
             )
-            if not _needs_cookie and (_layer4_orchestrator or _agent_loop_skipped_for_model):
+            # When Layer 4 explicitly routed to orchestrator, trust it — don't let the
+            # intent-based gate override an explicit orchestrator decision.
+            # _needs_cookie only gates the agent_loop_skipped redirect path.
+            _cookie_entry = _layer4_orchestrator or (_agent_loop_skipped_for_model and _needs_cookie)
+            if not _cookie_entry and (_layer4_orchestrator or _agent_loop_skipped_for_model):
                 _safe_print(f"[ROUTING_GATE] Blocked Cookie entry: intent={_intent_type_str!r}, conf={_routing_conf:.2f}, words={len(str(req.message or '').split())} — falling through to legacy")
-            if (_layer4_orchestrator or _agent_loop_skipped_for_model) and _needs_cookie:
+            if _cookie_entry:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
-                _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type}, reason={_orch_reason})")
+                _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_intent_type_str!r}, reason={_orch_reason})")
 
                 # ── Immediate acknowledgment before Cookie initializes ──────
                 # Without this, the user sees silence for several seconds.
@@ -6455,7 +6460,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _est_depth = _orch_event.get("estimated_depth")
                             if _est_depth is not None:
                                 try:
-                                    _clamped = max(3, min(10, int(_est_depth)))
+                                    # Floor is 5: plan burns slot 0, so need at least 4 working slots
+                                    _clamped = max(5, min(10, int(_est_depth) + 1))
                                     _orch.max_iterations = _clamped
                                     _safe_print(f"[ORCHESTRATOR] Adaptive depth: plan declared estimated_depth={_est_depth} → max_iterations={_clamped}")
                                 except (TypeError, ValueError):
