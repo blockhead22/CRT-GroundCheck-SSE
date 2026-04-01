@@ -32,6 +32,7 @@ function groupSteps(steps: PipelineStep[]) {
   const memories: RetrievalMemory[] = []
   const agentLoop: AgentLoopItem[] = []
   const trustShifts: TrustShift[] = []
+  const sessionNotes: string[] = []
   let verification: { verdict: string; confidence?: number } | null = null
 
   let agentIdx = 0
@@ -49,6 +50,9 @@ function groupSteps(steps: PipelineStep[]) {
               : 'checking',
             confidence: undefined,
           }
+        } else if (v.startsWith('density') || v.includes('open conflict')) {
+          // Session state snapshot — show as a muted footer note
+          sessionNotes.push(v)
         }
         break
       }
@@ -67,7 +71,7 @@ function groupSteps(steps: PipelineStep[]) {
     }
   }
 
-  return { memories, agentLoop, trustShifts, verification }
+  return { memories, agentLoop, trustShifts, verification, sessionNotes }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -124,7 +128,7 @@ export function PipelineCollapse({
 
   if (steps.length === 0) return null
 
-  const { memories, agentLoop, trustShifts, verification } = groupSteps(steps)
+  const { memories, agentLoop, trustShifts, verification, sessionNotes } = groupSteps(steps)
 
   // Merge trust shifts into memory bars by id
   const shiftById: Record<string, TrustShift> = {}
@@ -135,16 +139,23 @@ export function PipelineCollapse({
   const hasRetrieval = memories.length > 0
   const hasAgentLoop = agentLoop.length > 0
   const toolCount = agentLoop.filter(i => i.kind === 'tool').length
+  const thoughtCount = agentLoop.filter(i => i.kind === 'thinking').length
+  const shiftCount = trustShifts.length
+  // Count drift epistemic events for the summary (post-turn summary, not inline warnings)
+  const driftEvents = agentLoop.filter(i => i.kind === 'epistemic' && (i as any).eventType === 'drift').length
   const latencyStr = elapsedMs != null
     ? elapsedMs >= 1000 ? `${(elapsedMs / 1000).toFixed(1)}s` : `${elapsedMs}ms`
     : null
 
-  // Summary line parts
+  // Summary line parts — "2 thoughts · 1 tool · 3 mem · 2 shifts · 1.2s"
   const summaryParts: string[] = []
+  if (thoughtCount > 0) summaryParts.push(`${thoughtCount} thought${thoughtCount !== 1 ? 's' : ''}`)
+  if (toolCount > 0) summaryParts.push(`${toolCount} tool${toolCount !== 1 ? 's' : ''}`)
   if (memories.length > 0) summaryParts.push(`${memories.length} mem`)
+  if (shiftCount > 0) summaryParts.push(`${shiftCount} shift${shiftCount !== 1 ? 's' : ''}`)
+  else if (driftEvents > 0) summaryParts.push(`${driftEvents} drift`)
   if (verification?.verdict === 'pass') summaryParts.push('✓')
   if (verification?.verdict === 'fail') summaryParts.push('✗')
-  if (toolCount > 0) summaryParts.push(`${toolCount} tool${toolCount !== 1 ? 's' : ''}`)
   if (latencyStr) summaryParts.push(latencyStr)
 
   return (
@@ -207,6 +218,14 @@ export function PipelineCollapse({
                     style={{ background: '#E0A080' }}
                   />
                   <span>generating…</span>
+                </div>
+              )}
+
+              {/* ── SECTION 5: Session state footer (density / open conflicts) ── */}
+              {!streaming && sessionNotes.length > 0 && (
+                <div className="flex items-center gap-2 text-[10px] font-mono pl-1 pt-0.5" style={{ color: 'rgba(240,235,225,0.18)' }}>
+                  <span className="opacity-50">◇</span>
+                  <span>{sessionNotes[sessionNotes.length - 1]}</span>
                 </div>
               )}
 

@@ -305,6 +305,20 @@ export class AetherSocket {
         cb.onEpistemicEvent?.(evtType, event.content ?? '', meta ?? {})
         break
       }
+      case 'drift': {
+        const dc = (meta?.drift_count as number) ?? 0
+        const td = (meta?.total_trust_delta as number) ?? 0
+        const ia = (meta?.intent_alignment as number) ?? 1
+        cb.onDrift?.(dc, td, ia)
+        break
+      }
+      case 'session_state': {
+        const dens = (meta?.cumulative_density as number) ?? 0
+        const contra = (meta?.open_contradiction_count as number) ?? 0
+        const turns = (meta?.turn_count as number) ?? 0
+        cb.onSessionState?.(dens, contra, turns)
+        break
+      }
       case 'phase_start':
         cb.onPhaseStart?.(event.phase ?? '', event.content)
         break

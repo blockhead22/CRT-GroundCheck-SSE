@@ -45,6 +45,9 @@ def _get_encoder():
     return _encoder if _encoder is not False else None
 
 
+_MAX_ALIGN_CHARS = 400  # ~250 tokens — semantic similarity stabilises in first few sentences
+
+
 def score_alignment(intent: str, reasoning: str) -> Optional[float]:
     """Score how aligned a step's reasoning is with the original intent.
 
@@ -55,10 +58,16 @@ def score_alignment(intent: str, reasoning: str) -> Optional[float]:
     if encoder is None or not intent.strip() or not reasoning.strip():
         return None
 
+    # Truncate before encoding to stay within model_max_length (512 tokens).
+    # all-MiniLM-L6-v2 saturates well before 400 chars; avoids the
+    # "Token indices sequence length > 512" HuggingFace warning.
+    intent_t = intent[:_MAX_ALIGN_CHARS]
+    reasoning_t = reasoning[:_MAX_ALIGN_CHARS]
+
     try:
         import numpy as np
-        intent_vec = np.array(encoder(intent), dtype=np.float32)
-        reason_vec = np.array(encoder(reasoning), dtype=np.float32)
+        intent_vec = np.array(encoder(intent_t), dtype=np.float32)
+        reason_vec = np.array(encoder(reasoning_t), dtype=np.float32)
 
         norm_i = np.linalg.norm(intent_vec)
         norm_r = np.linalg.norm(reason_vec)
@@ -111,8 +120,8 @@ def detect_step_contradictions(steps: List['RunStep'],
                     continue
                 try:
                     import numpy as np
-                    vec_a = np.array(encoder(reason_a), dtype=np.float32)
-                    vec_b = np.array(encoder(reason_b), dtype=np.float32)
+                    vec_a = np.array(encoder(reason_a[:_MAX_ALIGN_CHARS]), dtype=np.float32)
+                    vec_b = np.array(encoder(reason_b[:_MAX_ALIGN_CHARS]), dtype=np.float32)
                     norm_a = np.linalg.norm(vec_a)
                     norm_b = np.linalg.norm(vec_b)
                     if norm_a < 1e-8 or norm_b < 1e-8:

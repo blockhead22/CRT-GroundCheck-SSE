@@ -6494,13 +6494,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 except (TypeError, ValueError):
                                     pass
                             if _plan_content:
+                                # Route plan to pipeline panel as a thinking step,
+                                # NOT as a visible response token (avoids scripted preamble).
                                 _plan_display = _plan_content
                                 if _plan_steps:
-                                    _plan_display += "\n" + "\n".join(
-                                        f"{i+1}. {s}" for i, s in enumerate(_plan_steps)
-                                    )
-                                _orch_answer = _plan_display + "\n\n"
-                                yield _sse({"type": "token", "content": _orch_answer})
+                                    _plan_display += " → " + " · ".join(_plan_steps)
+                                yield _sse({
+                                    "type": "thinking",
+                                    "content": _plan_display,
+                                })
 
                         elif _etype == "thinking":
                             yield _sse({

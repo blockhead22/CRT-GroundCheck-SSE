@@ -763,7 +763,7 @@ export default function App() {
             },
             onToolResult: (step) => {
               playMascotAnim(step.status === 'error' ? 'alert' : 'nod', step.status === 'error' ? 1500 : 600, 'thinking')
-              // Update last tool step in pipeline with result
+              // Update last tool step in pipeline with result — also sync ref so persisted view shows final status
               setPipelineSteps(prev => {
                 const last = [...prev]
                 for (let i = last.length - 1; i >= 0; i--) {
@@ -780,6 +780,7 @@ export default function App() {
                     break
                   }
                 }
+                pipelineStepsRef.current = last
                 return last
               })
               setAgentThinkingState((prev) => {
@@ -959,6 +960,31 @@ export default function App() {
                 stepB: data.step_b as number | undefined,
               }])
             },
+            onDrift: (driftCount, totalTrustDelta, intentAlignment) => {
+              if (driftCount === 0 && Math.abs(totalTrustDelta) < 0.01) return
+              const sign = totalTrustDelta >= 0 ? '+' : ''
+              const content = `${driftCount} trust shift${driftCount !== 1 ? 's' : ''} · Δ${sign}${totalTrustDelta.toFixed(3)}`
+              setPipelineSteps(prev => {
+                const next = [...prev, {
+                  kind: 'epistemic' as const,
+                  eventType: 'drift' as const,
+                  content,
+                  alignment: intentAlignment,
+                }]
+                pipelineStepsRef.current = next
+                return next
+              })
+            },
+            onSessionState: (density, contradictions, _turnCount) => {
+              // Only show session state in the panel if there's something notable
+              if (contradictions === 0 && density < 0.01) return
+              const content = `density ${density.toFixed(3)}${contradictions > 0 ? ` · ${contradictions} open conflict${contradictions !== 1 ? 's' : ''}` : ''}`
+              setPipelineSteps(prev => {
+                const next = [...prev, { kind: 'status' as const, content }]
+                pipelineStepsRef.current = next
+                return next
+              })
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {
@@ -968,6 +994,17 @@ export default function App() {
                 streamStatusRef.current = trimmed
                 return trimmed
               })
+            },
+            onThinking: (content) => {
+              // Plan declarations from orchestrator arrive as type:"thinking" events
+              // Route them to the pipeline panel as thinking steps (not response tokens)
+              if (content) {
+                setPipelineSteps(prev => {
+                  const next = [...prev, { kind: 'thinking' as const, content }]
+                  pipelineStepsRef.current = next
+                  return next
+                })
+              }
             },
             onThinkingStart: () => {
               setIsThinking(true)

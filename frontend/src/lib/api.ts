@@ -420,6 +420,8 @@ export type StreamEventType =
   | 'trust_shift'
   | 'verification'
   | 'epistemic_event'
+  | 'drift'
+  | 'session_state'
   | 'done'
   | 'error'
 
@@ -475,6 +477,9 @@ export type StreamCallbacks = {
   onVerification?: (result: { verdict: string; confidence: number }) => void
   // Epistemic loop events — drift, contradiction, alignment
   onEpistemicEvent?: (eventType: 'drift' | 'contradiction', content: string, data: Record<string, unknown>) => void
+  // Post-turn trust delta summary (drift) and session snapshot
+  onDrift?: (driftCount: number, totalTrustDelta: number, intentAlignment: number) => void
+  onSessionState?: (density: number, contradictions: number, turnCount: number) => void
   onPhaseStart?: (phase: string, content?: string) => void
   onPhaseEnd?: (phase: string) => void
   onToken?: (token: string) => void
@@ -573,8 +578,8 @@ export async function streamFromCrtApi(args: {
             const event: StreamEvent = JSON.parse(line.slice(6))
 
             // SSE pipeline debug — remove after diagnosis
-            if (['token', 'done', 'agent_checkpoint', 'agent_loop_start', 'agent_loop_complete', 'tool_start', 'tool_result', 'error'].includes(event.type)) {
-              console.log(`[SSE_DEBUG] type=${event.type} content_len=${(event.content || '').length}`, event.type === 'done' ? event : '')
+            if (['token', 'done', 'agent_checkpoint', 'agent_loop_start', 'agent_loop_complete', 'tool_start', 'tool_result', 'error', 'thinking', 'drift', 'session_state', 'retrieval', 'trust_shift'].includes(event.type)) {
+              console.log(`[SSE_DEBUG] type=${event.type} content_len=${(event.content || '').length}`, event.type === 'done' ? event : event.type === 'thinking' ? { content: (event.content || '').slice(0, 120) } : '')
             }
 
             switch (event.type) {
@@ -727,6 +732,16 @@ export async function streamFromCrtApi(args: {
                 const meta = event.metadata as { event?: string; alignment?: number; avg_alignment?: number; step_a?: number; step_b?: number; proposed_tool?: string } | undefined
                 const evtType = (meta?.event ?? 'drift') as 'drift' | 'contradiction'
                 args.callbacks.onEpistemicEvent?.(evtType, event.content, meta ?? {})
+                break
+              }
+              case 'drift': {
+                const meta = event.metadata as { drift_count?: number; total_trust_delta?: number; intent_alignment?: number } | undefined
+                args.callbacks.onDrift?.(meta?.drift_count ?? 0, meta?.total_trust_delta ?? 0, meta?.intent_alignment ?? 1)
+                break
+              }
+              case 'session_state': {
+                const meta = event.metadata as { cumulative_density?: number; open_contradiction_count?: number; turn_count?: number } | undefined
+                args.callbacks.onSessionState?.(meta?.cumulative_density ?? 0, meta?.open_contradiction_count ?? 0, meta?.turn_count ?? 0)
                 break
               }
               case 'phase_start':

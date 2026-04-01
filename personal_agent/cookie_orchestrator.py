@@ -447,6 +447,7 @@ Rules:
 8. When asked about your values, beliefs, how you work, or self-awareness — use introspect to ground your answer in actual data rather than reconstructing from memory.
 9. INTELLECTUAL HONESTY: Disagree when the evidence doesn't support the user's claim. Do not wrap agreement in uncertainty language — that is still agreement. If routing weights are a lookup table, say so. If a claim is speculative, say it's speculative. Agreeing with everything the user says is a failure mode, not helpfulness. The user built this system to get honest signal, not validation.
 10. file_write can target actual project files (not just workspace/). When you write to a project file, the system will show the user a diff and ask for approval before saving. Use absolute or relative paths — both work.
+11. SEARCH/LIST EFFICIENCY: For tasks that ask you to find, list, or summarize things (TODOs, functions, patterns, etc.), respond DIRECTLY from search_code results — do NOT verify by reading individual files afterward unless the user explicitly asked to see file contents. If search_code returns matching lines, that IS the answer. Reading the same files again wastes iterations and causes alignment drift.
 """
 
 
@@ -572,23 +573,26 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             if _ext_filter:
                 _ext_filter = tuple(e if e.startswith(".") else f".{e}" for e in _ext_filter)
             import subprocess, re as _re
-            _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next'}
+            _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next', '.claude'}
             _search_done = False
             # Try rg first
             try:
                 _rg_cmd = ["rg", "--no-heading", "-n", "-i",
-                           "--glob", "!.venv", "--glob", "!node_modules"]
+                           "--max-count", "10",
+                           "--glob", "!.venv", "--glob", "!node_modules",
+                           "--glob", "!.claude", "--glob", "!dist", "--glob", "!build"]
                 if _ext_filter:
                     for _ext in _ext_filter:
                         _rg_cmd += ["--glob", f"*{_ext}"]
                 _rg_cmd += [query, search_path]
-                proc = subprocess.run(_rg_cmd, capture_output=True, text=True, timeout=15)
+                proc = subprocess.run(_rg_cmd, capture_output=True, text=True, timeout=12)
                 if proc.returncode in (0, 1):  # 0=matches, 1=no matches
                     _raw = proc.stdout or ""
-                    if not _raw:
+                    _lines = _raw.splitlines()
+                    if not _lines:
                         result["content"] = "No matches found."
-                    elif len(_raw) > 8000:
-                        result["content"] = _raw[:8000] + "\n... [output truncated — use a narrower query or path]"
+                    elif len(_lines) > 200:
+                        result["content"] = "\n".join(_lines[:200]) + f"\n... [{len(_lines) - 200} more lines — use a narrower path or query]"
                     else:
                         result["content"] = _raw
                     _search_done = True

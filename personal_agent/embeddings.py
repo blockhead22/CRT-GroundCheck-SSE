@@ -33,17 +33,26 @@ class EmbeddingEngine:
             self.model = SentenceTransformer(self.model_name)
             print(f"Model loaded ({self.model.get_sentence_embedding_dimension()} dimensions)")
     
+    # all-MiniLM-L6-v2 has model_max_length=512 tokens in its HuggingFace tokenizer
+    # config; the underlying model caps at 256. Truncating to ~1600 chars keeps us
+    # well under 512 tokens for any language and prevents the "Token indices sequence
+    # length > 512" warning from the HuggingFace tokenizer.
+    _MAX_INPUT_CHARS = 1600
+
     def encode(self, text: str) -> np.ndarray:
         """
         Encode text to semantic vector.
-        
+
         Returns:
             Normalized numpy array of embeddings
         """
         if not text or not text.strip():
             # Return zero vector for empty text
             return np.zeros(self.model.get_sentence_embedding_dimension())
-        
+
+        # Truncate to stay within model token limit (avoids HuggingFace tokenizer warning)
+        text = text[:self._MAX_INPUT_CHARS]
+
         # Get embedding
         embedding = self.model.encode(text, convert_to_numpy=True)
         
@@ -58,7 +67,10 @@ class EmbeddingEngine:
         """Encode multiple texts efficiently."""
         if not texts:
             return np.array([])
-        
+
+        # Truncate each text to stay within token limit
+        texts = [t[:self._MAX_INPUT_CHARS] for t in texts]
+
         embeddings = self.model.encode(texts, convert_to_numpy=True)
         
         # Normalize each
