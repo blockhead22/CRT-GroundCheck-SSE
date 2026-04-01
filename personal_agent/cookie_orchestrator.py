@@ -1166,7 +1166,7 @@ class Orchestrator:
         try:
             result = json.loads(text)
             if isinstance(result, dict):
-                return result
+                return self._normalize_action(result)
         except json.JSONDecodeError:
             pass
 
@@ -1178,7 +1178,7 @@ class Orchestrator:
                     try:
                         result = json.loads(text[start:end + 1])
                         if isinstance(result, dict) and "action" in result:
-                            return result
+                            return self._normalize_action(result)
                     except json.JSONDecodeError:
                         continue
 
@@ -1193,7 +1193,7 @@ class Orchestrator:
             try:
                 result = json.loads(text_fixed)
                 if isinstance(result, dict):
-                    return result
+                    return self._normalize_action(result)
             except json.JSONDecodeError:
                 pass
 
@@ -1206,17 +1206,36 @@ class Orchestrator:
                     try:
                         result = json.loads(text_flat[start:end + 1])
                         if isinstance(result, dict) and "action" in result:
-                            return result
+                            return self._normalize_action(result)
                     except json.JSONDecodeError:
                         continue
 
         # Fallback: treat as a direct response
         print(f"  [PARSE] Failed to extract JSON ({len(raw)} chars), first 100: {repr(raw[:100])}")
-        return {
+        return self._normalize_action({
             "action": "respond",
             "message": raw,
             "reasoning": "Failed to parse JSON, treating as direct response",
-        }
+        })
+
+    # Known tool names — if the brain puts one as the action directly,
+    # normalize to {"action": "tool_call", "tool": "<name>"}
+    _KNOWN_TOOLS = {
+        "file_read", "file_write", "dir_list", "search_code",
+        "memory_recall", "memory_store", "web_search", "shell_exec",
+        "code_intel", "fetch_url", "run_python", "diff_file",
+        "image_read", "plan_create", "introspect",
+        "gpt_log_search", "gpt_log_context",
+    }
+
+    def _normalize_action(self, decision: Dict[str, Any]) -> Dict[str, Any]:
+        """Fix common brain format errors — e.g. action='gpt_log_search' instead of action='tool_call'."""
+        action = decision.get("action", "")
+        if action in self._KNOWN_TOOLS:
+            print(f"  [PARSE] Normalized action={action!r} -> tool_call")
+            decision["tool"] = action
+            decision["action"] = "tool_call"
+        return decision
 
     def run(self, objective: str,
             conversation_history: Optional[List[str]] = None,

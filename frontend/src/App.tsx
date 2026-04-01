@@ -696,8 +696,7 @@ export default function App() {
                       kind: 'tool',
                       result: {
                         ...(last[i] as any).result,
-                        result: step.output_preview ?? step.result ?? '',
-                        hits: step.result_count,
+                        result: step.output_preview ?? '',
                         durationMs: step.duration_ms,
                         status: step.status,
                       },
@@ -1366,6 +1365,9 @@ export default function App() {
                       intentPreview={intentPreview}
                       agentThinkingState={agentThinkingState}
                       taskWorking={taskWorking}
+                      pipelineSteps={pipelineSteps}
+                      retrievedMemories={retrievedMemories}
+                      trustShifts={trustShifts}
                       diagnosticsOpen={diagnosticsOpen}
                       onToggleDiagnostics={() => setDiagnosticsOpen((v) => !v)}
                       pendingCheckpoint={pendingCheckpoint}
