@@ -17,8 +17,15 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 - **Session notes section in PipelineCollapse expanded view**: `density`/`open conflict` status strings collected into a footer section separate from agent loop items.
 - **SSE debug logger extended**: `thinking`, `drift`, `session_state`, `retrieval`, `trust_shift` event types now included in dev-mode logger.
 - **Electron DevTools**: Added `--devtools` CLI flag (auto-enable in dev) to open Chrome DevTools in the Electron shell.
+- **Claude Code source analysis** (`src/src/`): 5-layer architecture mapped (QueryEngine, Coordinator/Worker, Tool System, Task/Daemon, Memory/Context). 9 absorbable patterns identified: concurrent tool executor, task taxonomy, coordinator/swarm, deferred tool loading, selective reinjection, lifecycle hooks, permission classifier, bridge, speculation. Pattern mapping table added to strategy_repo_split.md (interfaces→crt-core, wiring→AI_round2).
+- **Suspend/resume remaining budget**: Both `ask_user` and `diff_write` suspend paths now store `remaining_iterations`. Resume uses `max(3, stored_remaining)` instead of hardcoded 8. Nested ask_user re-suspend also carries budget.
 
 ### Fixed
+- **Cookie iteration budget fundamentally fixed**: `for` loop → `while` loop with explicit counter. `plan` no longer consumes an iteration slot (it's a declaration, not work). `think`, `tool_call`, `spawn_agent` increment explicitly. Safety cap `_total_turns = max_iterations + 5` prevents infinite plan loops. Net effect: plan+read+write = plan (free) + 10 working slots.
+- **Cookie warning threshold**: Changed from `remaining <= 1` + "You MUST respond now" to `remaining == 0` + "Last action slot". Stops Claude from panic-responding one slot early.
+- **Routing gate**: Layer 4 `_layer4_orchestrator` now bypasses `_needs_cookie`. `_cookie_entry = _layer4_orchestrator OR (agent_loop_skipped AND _needs_cookie)`. Layer 4 decisions go straight through; `_needs_cookie` only gates the redirect path.
+- **file_read/file_write** added to `_TOOL_REQUIRING_INTENTS` — covers redirect path even if Layer 4 doesn't fire.
+- **llm_local redirect**: `llm_local` mode redirected to Cookie instead of falling through to broken agent loop (LiteLLM/Ollama not running).
 - **Context bleed (Cookie conflating tasks)**: Orchestrator history window reduced `window=6, 300 chars` → `window=2, 150 chars`. History label changed to `"PRIOR CONTEXT (previous exchange — for continuity only, NOT the current task)"`.
 - **Token indices sequence length > 512 warning**: Root cause — unbounded text passed to `sentence-transformers`. Fixed at `EmbeddingEngine.encode()` / `encode_batch()` with `_MAX_INPUT_CHARS = 1600`. All callers benefit automatically.
 - **`_MAX_ALIGN_CHARS = 400`**: Added truncation in `agent_run_log.py` `score_alignment()` and `detect_step_contradictions()`.
@@ -29,6 +36,12 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 - **`onThinking` not wired in App.tsx**: Added handler to push `{ kind: 'thinking', content }` into pipelineSteps.
 - **`status` steps silently dropped in groupSteps**: `sessionNotes` added to `groupSteps` return; density/conflict strings now collected into expanded footer section.
 - **Pipeline history showing "1 step"**: `pipelineStepsRef` now captures live step list at `done` time for full persistence.
+
+### Docs
+- **ROADMAP.md** — updated through v3.7 with full March 25–April 1 history, new IN PROGRESS / NEXT UP sections
+- **CHANGELOG.md** — Claude Code analysis + Cookie loop fixes added to Unreleased
+- **docs/INDEX.md** — version bumped to v3.7
+- **Memory**: session_2026_04_01_claude_code_analysis.md, strategy_repo_split.md updated with pattern mapping
 
 ---
 
