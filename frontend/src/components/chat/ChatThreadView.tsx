@@ -111,8 +111,9 @@ function StreamingMessage({
         !hideTrace && <PipelineTrace statuses={statusLog} streaming={!hasContent} />
       )}
 
-      {/* Retrieved memories with live trust bars */}
-      {(retrievedMemories ?? []).length > 0 && (
+      {/* Retrieved memories — only show legacy RetrievalPanel when no pipeline steps
+          (pipeline steps include retrieval section; showing both causes duplicates) */}
+      {!hasPipelineSteps && (retrievedMemories ?? []).length > 0 && (
         <RetrievalPanel
           memories={retrievedMemories!}
           trustShifts={trustShifts ?? []}

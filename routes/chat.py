@@ -87,6 +87,20 @@ def _emit_pipeline_status(status: str) -> None:
     if q is not None:
         q.put_nowait(status)
 
+# ---------------------------------------------------------------------------
+# Structured event queue — lets chat_send() push retrieval/trust_shift/
+# verification dicts without yielding (which would turn it into a generator).
+# ---------------------------------------------------------------------------
+_pipeline_event_queue: contextvars.ContextVar[Optional[_queue_mod.Queue]] = contextvars.ContextVar(
+    "_pipeline_event_queue", default=None
+)
+
+def _emit_pipeline_event(event: dict) -> None:
+    """Push a structured SSE event dict to the stream queue (if one is active)."""
+    q = _pipeline_event_queue.get(None)
+    if q is not None:
+        q.put_nowait(event)
+
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
 # ---------------------------------------------------------------------------
@@ -3375,7 +3389,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _emit_pipeline_status(f"{_mem_retrieved_count} memories retrieved")
         # Emit structured retrieval event for live trust bar display
         _retrieval_mems = result.get("retrieved_memories") or result.get("prompt_memories") or []
-        yield _sse({
+        _emit_pipeline_event({
             "type": "retrieval",
             "content": f"{_mem_retrieved_count} memories",
             "metadata": {
@@ -4130,7 +4144,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _safe_print(f"[GOVERNANCE] nli: critic verdict={_critic_verdict_str}, confidence={_critic_confidence}")
         _emit_pipeline_status("checking contradictions")
         # Emit verification event for frontend
-        yield _sse({
+        _emit_pipeline_event({
             "type": "verification",
             "content": f"{'passed' if _critic_verdict_str == 'pass' else 'checking'}" if _critic_verdict_str else "skipped",
             "metadata": {
@@ -5012,7 +5026,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _ts_mid = str(_ts.get("memory_id", ""))
                 _ts_reason_raw = str(_ts.get("reason", ""))
                 _ts_reason = _TRUST_REASON_MAP.get(_ts_reason_raw.lower().strip(), _ts_reason_raw)
-                yield _sse({
+                _emit_pipeline_event({
                     "type": "trust_shift",
                     "metadata": {
                         "memoryId": _ts_mid,
@@ -6705,10 +6719,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             result_q: _queue.Queue = _queue.Queue()
             err_q: _queue.Queue = _queue.Queue()
             status_q: _queue.Queue = _queue.Queue()
+            event_q: _queue.Queue = _queue.Queue()
 
             def _run():
                 # Set the pipeline status queue so _emit_pipeline_status works
                 _pipeline_status_queue.set(status_q)
+                # Set the structured event queue so _emit_pipeline_event works
+                _pipeline_event_queue.set(event_q)
                 try:
                     result_q.put(_run_shared_chat_pipeline(req, request))
                 except Exception as exc:
@@ -6731,6 +6748,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _got_real = True
                 except _queue_mod.Empty:
                     pass
+                # Drain structured pipeline events (retrieval, trust_shift, verification)
+                try:
+                    while True:
+                        _pe = event_q.get_nowait()
+                        yield _sse(_pe)
+                except _queue_mod.Empty:
+                    pass
                 # If no real status in 2.5s, emit a fallback heartbeat
                 if not _got_real and _time.monotonic() - _last_status_t > 2.5:
                     if _fallback_idx < len(_fallback_statuses):
@@ -6743,6 +6767,12 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             try:
                 while True:
                     yield _status(status_q.get_nowait())
+            except _queue_mod.Empty:
+                pass
+            # Drain any remaining structured events (trust_shifts arrive after pipeline completes)
+            try:
+                while True:
+                    yield _sse(event_q.get_nowait())
             except _queue_mod.Empty:
                 pass
 

@@ -1,8 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ThinkingStub } from './ThinkingStub'
-import { ToolResultCard, type ToolResult } from './ToolResultCard'
+import { ChevronRight, ChevronDown } from 'lucide-react'
 import { TrustBar, type TrustShift } from './TrustBar'
+import { ToolRow } from './ToolRow'
+import type { ToolResult } from './ToolResultCard'
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 
 export type PipelineStep =
   | { kind: 'thinking'; content: string }
@@ -11,14 +16,59 @@ export type PipelineStep =
   | { kind: 'retrieval'; memories: Array<{ id: string; text: string; trust: number }> }
   | { kind: 'status'; content: string }
 
-/**
- * PipelineCollapse — shows pipeline steps live during streaming,
- * auto-collapses to a summary line when done, expands on tap.
- *
- * Lifecycle:
- *   streaming=true  → all steps visible, live
- *   streaming=false → auto-collapse to summary, tap to expand
- */
+type RetrievalMemory = { id: string; text: string; trust: number }
+
+type AgentLoopItem =
+  | { kind: 'thinking'; content: string; index: number }
+  | { kind: 'tool'; result: ToolResult; index: number }
+
+// ─────────────────────────────────────────────────────────────
+// Helpers — group flat steps into sections
+// ─────────────────────────────────────────────────────────────
+
+function groupSteps(steps: PipelineStep[]) {
+  const memories: RetrievalMemory[] = []
+  const agentLoop: AgentLoopItem[] = []
+  const trustShifts: TrustShift[] = []
+  let verification: { verdict: string; confidence?: number } | null = null
+
+  let agentIdx = 0
+  for (const step of steps) {
+    switch (step.kind) {
+      case 'retrieval':
+        memories.push(...step.memories)
+        break
+      case 'status': {
+        const v = step.content
+        if (v.includes('verified') || v.includes('passed') || v.includes('checking') || v.includes('contradiction')) {
+          verification = {
+            verdict: v.includes('✓') || v.includes('verified') || v.includes('passed') ? 'pass'
+              : v.includes('✗') || v.includes('contradiction') ? 'fail'
+              : 'checking',
+            confidence: undefined,
+          }
+        }
+        break
+      }
+      case 'thinking':
+        agentLoop.push({ kind: 'thinking', content: step.content, index: agentIdx++ })
+        break
+      case 'tool':
+        agentLoop.push({ kind: 'tool', result: step.result, index: agentIdx++ })
+        break
+      case 'trust_shift':
+        trustShifts.push(step.shift)
+        break
+    }
+  }
+
+  return { memories, agentLoop, trustShifts, verification }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────
+
 export function PipelineCollapse({
   steps,
   streaming,
@@ -27,126 +77,271 @@ export function PipelineCollapse({
   streaming: boolean
 }) {
   const [expanded, setExpanded] = useState(true)
+  const startRef = useRef<number>(Date.now())
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null)
 
-  // Auto-collapse when streaming ends
+  // Track latency
   useEffect(() => {
-    if (!streaming && steps.length > 0) {
-      const timer = setTimeout(() => setExpanded(false), 600)
-      return () => clearTimeout(timer)
+    if (streaming) {
+      startRef.current = Date.now()
+      setElapsedMs(null)
+    } else if (steps.length > 0) {
+      setElapsedMs(Date.now() - startRef.current)
     }
   }, [streaming])
 
-  // Auto-expand when streaming starts
+  // Auto-collapse 700ms after done
+  useEffect(() => {
+    if (!streaming && steps.length > 0) {
+      const t = setTimeout(() => setExpanded(false), 700)
+      return () => clearTimeout(t)
+    }
+  }, [streaming, steps.length])
+
+  // Re-expand when new stream starts
   useEffect(() => {
     if (streaming) setExpanded(true)
   }, [streaming])
 
   if (steps.length === 0) return null
 
-  // Compute summary stats
-  const thinkingCount = steps.filter(s => s.kind === 'thinking').length
-  const toolCount = steps.filter(s => s.kind === 'tool').length
-  const trustShiftCount = steps.filter(s => s.kind === 'trust_shift').length
-  const retrievalCount = steps.filter(s => s.kind === 'retrieval').length
-  const memoryCount = steps
-    .filter((s): s is Extract<PipelineStep, { kind: 'retrieval' }> => s.kind === 'retrieval')
-    .reduce((sum, s) => sum + s.memories.length, 0)
-  const toolNames = steps
-    .filter((s): s is Extract<PipelineStep, { kind: 'tool' }> => s.kind === 'tool')
-    .map(s => s.result.tool)
-  const uniqueTools = [...new Set(toolNames)]
+  const { memories, agentLoop, trustShifts, verification } = groupSteps(steps)
 
+  // Merge trust shifts into memory bars by id
+  const shiftById: Record<string, TrustShift> = {}
+  for (const ts of trustShifts) {
+    if (ts.memoryId) shiftById[ts.memoryId] = ts
+  }
+
+  const hasRetrieval = memories.length > 0
+  const hasAgentLoop = agentLoop.length > 0
+  const toolCount = agentLoop.filter(i => i.kind === 'tool').length
+  const latencyStr = elapsedMs != null
+    ? elapsedMs >= 1000 ? `${(elapsedMs / 1000).toFixed(1)}s` : `${elapsedMs}ms`
+    : null
+
+  // Summary line parts
   const summaryParts: string[] = []
-  if (toolCount > 0) summaryParts.push(`${toolCount} tool call${toolCount !== 1 ? 's' : ''}`)
-  if (uniqueTools.length > 0 && uniqueTools.length <= 3) summaryParts.push(uniqueTools.join(', '))
-  if (memoryCount > 0) summaryParts.push(`${memoryCount} memories`)
-  if (trustShiftCount > 0) summaryParts.push(`${trustShiftCount} trust shift${trustShiftCount !== 1 ? 's' : ''}`)
-  if (thinkingCount > 0) summaryParts.push(`${thinkingCount} reasoning step${thinkingCount !== 1 ? 's' : ''}`)
+  if (memories.length > 0) summaryParts.push(`${memories.length} mem`)
+  if (verification?.verdict === 'pass') summaryParts.push('✓')
+  if (verification?.verdict === 'fail') summaryParts.push('✗')
+  if (toolCount > 0) summaryParts.push(`${toolCount} tool${toolCount !== 1 ? 's' : ''}`)
+  if (latencyStr) summaryParts.push(latencyStr)
 
   return (
-    <div className="my-2">
-      {/* Summary / toggle bar */}
+    <div className="my-2 select-none">
+
+      {/* ── Collapsed summary line ── */}
       {!streaming && (
         <button
           onClick={() => setExpanded(v => !v)}
-          className="flex items-center gap-2 text-[11px] font-mono w-full text-left py-1 transition-colors hover:opacity-80"
-          style={{ color: 'rgba(240,235,225,0.35)' }}
+          className="flex items-center gap-1.5 text-[11px] font-mono w-full text-left py-0.5 transition-opacity hover:opacity-80"
+          style={{ color: 'rgba(240,235,225,0.3)' }}
         >
-          <span style={{ color: '#E0A080' }}>
-            {expanded ? '\u25BE' : '\u25B8'}
-          </span>
-          <span>{summaryParts.join(' \u00B7 ')}</span>
+          {expanded
+            ? <ChevronDown size={11} style={{ color: '#E0A080', flexShrink: 0 }} />
+            : <ChevronRight size={11} style={{ color: '#E0A080', flexShrink: 0 }} />
+          }
+          <span>{summaryParts.join(' · ')}</span>
           {!expanded && (
-            <span
-              className="flex-1 border-b ml-2"
-              style={{ borderColor: 'rgba(240,235,225,0.06)' }}
-            />
+            <span className="flex-1 border-b ml-1" style={{ borderColor: 'rgba(240,235,225,0.05)' }} />
           )}
         </button>
       )}
 
-      {/* Expanded content */}
+      {/* ── Expanded content ── */}
       <AnimatePresence>
         {expanded && (
           <motion.div
             initial={streaming ? false : { opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
-            <div
-              className={streaming ? '' : 'ml-2 pl-3'}
-              style={streaming ? {} : { borderLeft: '1px solid rgba(224,160,128,0.1)' }}
-            >
-              {steps.map((step, i) => {
-                switch (step.kind) {
-                  case 'thinking':
-                    return <ThinkingStub key={`t-${i}`} content={step.content} />
-                  case 'tool':
-                    return <ToolResultCard key={`tool-${i}`} result={step.result} />
-                  case 'trust_shift':
-                    return (
-                      <div key={`ts-${i}`} className="my-1">
-                        <TrustBar
-                          trust={step.shift.to}
-                          prevTrust={step.shift.from}
-                          text={step.shift.text}
-                          reason={step.shift.reason}
-                          compact
-                        />
-                      </div>
-                    )
-                  case 'retrieval':
-                    return (
-                      <div key={`ret-${i}`} className="my-1.5">
-                        <div className="text-[11px] font-mono mb-1" style={{ color: '#E0A080' }}>
-                          {'\u25C8'} RETRIEVING {step.memories.length} memories
-                        </div>
-                        <div className="space-y-0.5 ml-2">
-                          {step.memories.map((m, mi) => (
-                            <TrustBar
-                              key={m.id || `rm-${mi}`}
-                              trust={m.trust}
-                              text={m.text}
-                              compact
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  case 'status':
-                    return (
-                      <div key={`s-${i}`} className="my-0.5 text-[11px] font-mono" style={{ color: 'rgba(240,235,225,0.25)' }}>
-                        <span style={{ color: '#E0A080' }}>{'\u25CB'}</span> {step.content}
-                      </div>
-                    )
-                }
-              })}
+            <div className="space-y-2 pt-0.5">
+
+              {/* ── SECTION 1: Retrieval ── */}
+              {hasRetrieval && (
+                <RetrievalSection
+                  memories={memories}
+                  shiftById={shiftById}
+                  hasTrustShifts={trustShifts.length > 0}
+                />
+              )}
+
+              {/* ── SECTION 2: Verification badge ── */}
+              {verification && (
+                <VerificationRow verdict={verification.verdict} />
+              )}
+
+              {/* ── SECTION 3: Agent loop ── */}
+              {hasAgentLoop && (
+                <AgentLoopSection items={agentLoop} streaming={streaming} />
+              )}
+
+              {/* ── SECTION 4: Generating pulse (live only) ── */}
+              {streaming && (
+                <div className="flex items-center gap-2 text-[11px] font-mono pl-1" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                  <span
+                    className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
+                    style={{ background: '#E0A080' }}
+                  />
+                  <span>generating…</span>
+                </div>
+              )}
+
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Section: Retrieval
+// ─────────────────────────────────────────────────────────────
+
+function RetrievalSection({
+  memories,
+  shiftById,
+  hasTrustShifts,
+}: {
+  memories: RetrievalMemory[]
+  shiftById: Record<string, TrustShift>
+  hasTrustShifts: boolean
+}) {
+  return (
+    <div>
+      {/* Section header */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15 }}
+        className="flex items-center gap-2 text-[11px] font-mono mb-1"
+        style={{ color: '#E0A080' }}
+      >
+        <span className="opacity-60">◆</span>
+        <span className="tracking-widest uppercase text-[10px]">
+          Retrieving {memories.length} {memories.length === 1 ? 'memory' : 'memories'}
+        </span>
+      </motion.div>
+
+      {/* Staggered bars */}
+      <div className="ml-3 space-y-0.5">
+        {memories.map((mem, i) => {
+          const shift = shiftById[mem.id]
+          const displayTrust = shift ? shift.to : mem.trust
+          const prevTrust = shift ? mem.trust : undefined
+          const reason = shift?.reason
+
+          return (
+            <motion.div
+              key={mem.id || i}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <TrustBar
+                trust={displayTrust}
+                prevTrust={hasTrustShifts ? prevTrust : undefined}
+                text={mem.text}
+                reason={reason}
+                compact
+              />
+            </motion.div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Section: Verification
+// ─────────────────────────────────────────────────────────────
+
+function VerificationRow({ verdict }: { verdict: string }) {
+  const isPass = verdict === 'pass'
+  const isFail = verdict === 'fail'
+  const color = isPass ? '#34d399' : isFail ? '#D47058' : 'rgba(240,235,225,0.3)'
+  const label = isPass ? '✓ verified' : isFail ? '✗ contradiction' : '◇ checking…'
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
+      className="flex items-center gap-2 text-[11px] font-mono pl-1"
+      style={{ color }}
+    >
+      {label}
+    </motion.div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// Section: Agent Loop
+// ─────────────────────────────────────────────────────────────
+
+function AgentLoopSection({
+  items,
+  streaming,
+}: {
+  items: AgentLoopItem[]
+  streaming: boolean
+}) {
+  return (
+    <div>
+      {/* Section header */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15 }}
+        className="flex items-center gap-2 text-[11px] font-mono mb-1.5"
+        style={{ color: '#E0A080' }}
+      >
+        <span className="opacity-60">◆</span>
+        <span className="tracking-widest uppercase text-[10px]">Agent Loop</span>
+      </motion.div>
+
+      <div className="ml-3 space-y-0">
+        {items.map((item, i) =>
+          item.kind === 'thinking' ? (
+            <motion.div
+              key={`think-${i}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-start gap-2 py-1 text-[11px] font-mono"
+              style={{ color: 'rgba(240,235,225,0.35)' }}
+            >
+              <span className="flex-shrink-0 mt-px" style={{ color: 'rgba(224,160,128,0.4)' }}>┊</span>
+              <span className="italic leading-snug">
+                {item.content.length > 80
+                  ? item.content.slice(0, 80).trimEnd() + '…'
+                  : item.content}
+                {streaming && i === items.length - 1 && (
+                  <span
+                    className="inline-block w-[2px] h-[0.85em] align-middle ml-0.5 animate-[blink_1s_step-end_infinite]"
+                    style={{ background: 'rgba(224,160,128,0.35)' }}
+                  />
+                )}
+              </span>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={`tool-${i}`}
+              initial={{ opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ToolRow result={item.result} />
+            </motion.div>
+          )
+        )}
+      </div>
     </div>
   )
 }
