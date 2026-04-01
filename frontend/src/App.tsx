@@ -926,8 +926,76 @@ export default function App() {
               setStreamingResponse(finalBufferRef.current)
             },
             onDone: (content, metadata) => {
-              console.log(`[APP_DEBUG] onDone content_len=${content.length} checkpoint_pending=${(metadata as any)?.checkpoint_pending} agent_loop=${(metadata as any)?.agent_loop}`, content.slice(0, 200))
+              console.log(`[APP_DEBUG] onDone content_len=${content.length} checkpoint_pending=${(metadata as any)?.checkpoint_pending} agent_loop=${(metadata as any)?.agent_loop} loop_suspended=${(metadata as any)?.loop_suspended}`, content.slice(0, 200))
               const at = Date.now()
+
+              // ── Cookie loop suspended (ask_user pause) ─────────────────
+              // Cookie asked a clarifying question and paused. Surface the
+              // question in the ActionCard so the user can reply directly.
+              if ((metadata as any)?.loop_suspended === true) {
+                const question = (metadata as any)?.loop_question as string ?? content
+                setPendingCheckpoint({
+                  message: question,
+                  metadata: {
+                    loop_suspended: true,
+                    checkpoint_tier: 'ask_user',
+                    requires_confirmation: false,  // text reply, not yes/no
+                  },
+                })
+                // Still add the assistant message showing the question
+                const suspendMsg = {
+                  id: newId('m'),
+                  role: 'assistant' as const,
+                  text: content || question,
+                  createdAt: at,
+                  agentThinking: null,
+                  crt: {
+                    response_type: 'ask_user' as string,
+                    gates_passed: true,
+                    gate_reason: null,
+                    session_id: (metadata?.session_id as string) || null,
+                    interaction_id: null,
+                    confidence: null,
+                    intent_alignment: null,
+                    memory_alignment: null,
+                    contradiction_detected: null,
+                    unresolved_contradictions_total: null,
+                    unresolved_hard_conflicts: null,
+                    retrieved_memories: [],
+                    prompt_memories: [],
+                    learned_suggestions: [],
+                    heuristic_suggestions: [],
+                    profile_updates: [],
+                    pipeline_statuses: [],
+                    draft_response: null,
+                    tasking: null,
+                    tool_calls: null,
+                    agent_activated: null,
+                    agent_answer: null,
+                    agent_trace: null,
+                    xray: null,
+                    thinking: undefined,
+                    thinking_trace_id: null,
+                    reflection_trace_id: null,
+                    reflection_confidence: null,
+                    reflection_label: null,
+                    personality_profile: null,
+                    reflection_scorecard: null,
+                    correction_applied: false,
+                    correction_text: null,
+                    generation_source: 'cookie_orchestrator',
+                    escalation: null,
+                    cloud_governance_used: false,
+                    tools_executed: null,
+                    agent_loop: false,
+                  },
+                }
+                upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, suspendMsg] })
+                setStreamingResponse('')
+                setIsThinking(false)
+                setTaskWorking(false)
+                return  // skip normal done processing
+              }
               // Prefer thinking from metadata (server-side) if available, fallback to streamed content
               const finalThinking = (metadata?.thinking as string) || thinkingContent || undefined
               const draft = (finalBufferRef.current || '').trim()

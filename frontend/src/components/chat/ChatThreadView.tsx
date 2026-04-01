@@ -83,6 +83,7 @@ function StreamingMessage({
   pipelineSteps,
   retrievedMemories,
   trustShifts,
+  isActiveStream,
 }: {
   content: string
   isThinking: boolean
@@ -93,9 +94,14 @@ function StreamingMessage({
   pipelineSteps?: PipelineStep[]
   retrievedMemories?: RetrievedMemory[]
   trustShifts?: TrustShift[]
+  isActiveStream?: boolean
 }) {
   const hasContent = Boolean(content)
   const hasPipelineSteps = (pipelineSteps ?? []).length > 0
+  // Use actual SSE stream state for pipeline collapse/expand timing.
+  // !hasContent would collapse the pipeline as soon as the first token arrives,
+  // which is wrong for orchestrator turns where tools fire long after the plan text.
+  const pipelineStreaming = isActiveStream ?? !hasContent
 
   return (
     <motion.div
@@ -105,10 +111,10 @@ function StreamingMessage({
     >
       {/* Pipeline collapse — structured thinking/tool/trust steps */}
       {hasPipelineSteps ? (
-        <PipelineCollapse steps={pipelineSteps!} streaming={!hasContent} />
+        <PipelineCollapse steps={pipelineSteps!} streaming={pipelineStreaming} />
       ) : (
         /* Legacy pipeline trace — flat status strings */
-        !hideTrace && <PipelineTrace statuses={statusLog} streaming={!hasContent} />
+        !hideTrace && <PipelineTrace statuses={statusLog} streaming={pipelineStreaming} />
       )}
 
       {/* Retrieved memories — only show legacy RetrievalPanel when no pipeline steps
@@ -689,6 +695,7 @@ export function ChatThreadView(props: {
                           pipelineSteps={props.pipelineSteps}
                           retrievedMemories={props.retrievedMemories}
                           trustShifts={props.trustShifts}
+                          isActiveStream={isStreaming}
                         />
                       </motion.div>
                     )}

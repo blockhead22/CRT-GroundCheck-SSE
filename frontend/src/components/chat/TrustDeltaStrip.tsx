@@ -18,7 +18,7 @@ function TrustPill({ item }: { item: TrustDeltaItem }) {
       title={item.reason || undefined}
     >
       <span className="font-mono text-[10px] flex-shrink-0" style={{ color }}>
-        {sign}{(item.delta * 100).toFixed(0)}%
+        {sign}{(item.delta * 100).toFixed(1)}%
       </span>
       <span className="line-clamp-1 max-w-[140px] text-[10px]" style={{ color: 'rgba(240,235,225,0.4)' }}>
         {item.text_preview || item.memory_id.slice(0, 12) + '…'}

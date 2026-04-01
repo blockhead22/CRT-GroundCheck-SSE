@@ -2375,6 +2375,29 @@ class ThreadSessionDB:
         """Remove pending checkpoint for thread."""
         self._pending_checkpoints.pop(thread_id, None)
 
+    # ── Cookie suspended loop state ───────────────────────────────────
+    # Stores serialized loop state when Cookie yields ask_user.
+    # The next message from the user resumes the loop from this checkpoint.
+
+    def store_suspended_loop(self, thread_id: str, state: dict) -> None:
+        """Persist Cookie loop state after ask_user pause.
+        state keys: objective, steps_done, iteration, question, orch_answer_so_far
+        """
+        if not hasattr(self, '_suspended_loops'):
+            self._suspended_loops: dict = {}
+        self._suspended_loops[thread_id] = state
+
+    def get_suspended_loop(self, thread_id: str) -> Optional[dict]:
+        """Return suspended loop state for thread, or None."""
+        if not hasattr(self, '_suspended_loops'):
+            return None
+        return self._suspended_loops.get(thread_id)
+
+    def clear_suspended_loop(self, thread_id: str) -> None:
+        """Remove suspended loop state for thread."""
+        if hasattr(self, '_suspended_loops'):
+            self._suspended_loops.pop(thread_id, None)
+
     # ── Plans CRUD (v2.9.2) ───────────────────────────────────────────
 
     def create_plan(

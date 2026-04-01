@@ -5178,6 +5178,121 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 )
                 _session_db = get_thread_session_db()
 
+                # ── COOKIE LOOP RESUME (must be before intent classify) ────
+                # If there's a suspended Cookie loop for this thread, the user's
+                # current message is their answer to Cookie's ask_user question.
+                # Reconstruct the loop from the checkpoint and continue.
+                try:
+                    _suspended = _session_db.get_suspended_loop(req.thread_id)
+                    if _suspended:
+                        _session_db.clear_suspended_loop(req.thread_id)
+                        _safe_print(f"[ORCHESTRATOR] Resuming suspended loop — user answered: {req.message[:80]!r}")
+
+                        # Build resume context injecting the user's answer
+                        _resume_objective = _suspended.get("objective", req.message)
+                        _resume_steps = _suspended.get("steps_done", [])
+                        _resume_question = _suspended.get("question", "")
+                        _resume_answer_so_far = _suspended.get("orch_answer_so_far", "")
+
+                        # Format previous steps summary for Cookie's context
+                        _resume_steps_text = ""
+                        if _resume_steps:
+                            _resume_steps_text = "\n".join(
+                                f"  - {s.get('tool', '?')}: {str(s.get('status',''))}"
+                                for s in _resume_steps
+                            )
+
+                        # The resume message: re-state the objective with answer injected
+                        _resume_msg = (
+                            f"{_resume_objective}\n\n"
+                            f"[CONTEXT: You were executing this task and paused to ask: "
+                            f"{_resume_question!r}\n"
+                            f"The user replied: {req.message!r}\n"
+                            + (f"Previous steps completed:\n{_resume_steps_text}\n" if _resume_steps_text else "")
+                            + f"Continue the task with this answer. Do not re-plan.]"
+                        )
+
+                        # Re-use the Cookie orchestrator path directly
+                        yield _status("Resuming...")
+                        try:
+                            from personal_agent.cookie_orchestrator import Orchestrator, get_brain
+                            _r_brain_mode = getattr(req, "generation_mode", "cloud_claude") or "cloud_claude"
+                            _r_brain = get_brain("claude-cli" if _r_brain_mode == "cloud_claude" else "claude-cli")
+                            _safe_print(f"[ORCHESTRATOR] Resume brain: {_r_brain_mode}")
+                            _r_orch = Orchestrator(brain=_r_brain, max_iterations=8)
+                            _r_gen = _r_orch.run(_resume_msg, context={})
+                            _r_orch_answer = _resume_answer_so_far
+                            _r_steps: list = list(_resume_steps)
+
+                            _r_send_val = None
+                            while True:
+                                try:
+                                    _r_event = _r_gen.send(_r_send_val) if _r_send_val is not None else next(_r_gen)
+                                    _r_send_val = None
+                                except StopIteration:
+                                    break
+                                _r_etype = _r_event.get("type", "")
+
+                                if _r_etype == "plan":
+                                    _plan_txt = _r_event.get("content", "")
+                                    if _plan_txt:
+                                        yield _sse({"type": "token", "content": _plan_txt + "\n\n"})
+                                        _r_orch_answer += _plan_txt + "\n\n"
+
+                                elif _r_etype in ("thinking", "think"):
+                                    yield _sse({
+                                        "type": "agent_thinking_token",
+                                        "content": _r_event.get("content", ""),
+                                        "metadata": {"step": "tool_loop"},
+                                    })
+
+                                elif _r_etype == "tool_call":
+                                    _rt_name = _r_event.get("tool", "")
+                                    _rt_args = _r_event.get("args", {})
+                                    _rt_result = _r_event.get("result", "")
+                                    _rt_status = _r_event.get("status", "ok")
+                                    _rt_ms = _r_event.get("latency_ms")
+                                    yield _sse({"type": "tool_start", "content": f"Running {_rt_name}...", "metadata": {"tool_name": _rt_name, "input": _rt_args}})
+                                    yield _sse({"type": "tool_result", "content": _rt_result[:500], "metadata": {"tool_name": _rt_name, "status": _rt_status, "step_index": len(_r_steps), "duration_ms": _rt_ms}})
+                                    _r_steps.append({"tool": _rt_name, "args": _rt_args, "status": _rt_status})
+
+                                elif _r_etype == "ask_user":
+                                    # Nested ask_user — suspend again
+                                    _r_question = _r_event.get("content", "")
+                                    yield _sse({"type": "token", "content": _r_question})
+                                    _session_db.store_suspended_loop(req.thread_id, {
+                                        "objective": _resume_objective,
+                                        "steps_done": _r_steps,
+                                        "iteration": 0,
+                                        "question": _r_question,
+                                        "orch_answer_so_far": _r_orch_answer,
+                                    })
+                                    yield _sse({"type": "done", "content": _r_orch_answer, "metadata": {"loop_suspended": True, "loop_question": _r_question, "response_type": "ask_user"}})
+                                    return
+
+                                elif _r_etype == "response":
+                                    _r_resp = _r_event.get("content", "")
+                                    if _r_resp:
+                                        yield _sse({"type": "token", "content": _r_resp})
+                                        _r_orch_answer += _r_resp
+
+                            # Done — yield final done event
+                            yield _sse({"type": "done", "content": _r_orch_answer, "metadata": {
+                                "response_type": "speech",
+                                "tool_calls": _r_steps,
+                                "orchestrator": "cookie_resume",
+                            }})
+                            return
+
+                        except Exception as _resume_err:
+                            _safe_print(f"[ORCHESTRATOR] Resume failed: {_resume_err}")
+                            yield _sse({"type": "token", "content": f"I ran into an issue resuming our conversation: {_resume_err}"})
+                            yield _sse({"type": "done", "content": "", "metadata": {"response_type": "error"}})
+                            return
+
+                except Exception as _suspend_check_err:
+                    _safe_print(f"[ORCHESTRATOR] Suspend check failed (non-fatal): {_suspend_check_err}")
+
                 # ── REMINDER CONFIRMATION (must be FIRST, before any LLM) ──
                 try:
                     _pend_rem_early = _session_db.get_pending_reminder(req.thread_id)
@@ -6398,15 +6513,35 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             })
 
                         elif _etype == "ask_user":
+                            _ask_question = _orch_event.get("content", "")
+                            # 1. Yield the question as a visible token
+                            yield _sse({"type": "token", "content": _ask_question})
+                            # 2. Serialize loop state to session DB
+                            #    We store enough to reconstruct: objective, tool results
+                            #    so far, iteration count, and the question asked.
+                            #    The generator itself can't be pickled — we reconstruct
+                            #    from this checkpoint on resume.
+                            _suspended_state = {
+                                "objective": _orch_msg,
+                                "steps_done": list(_orch_steps),
+                                "iteration": _orch_iteration if "_orch_iteration" in dir() else 0,
+                                "question": _ask_question,
+                                "orch_answer_so_far": _orch_answer,
+                            }
+                            _session_db.store_suspended_loop(req.thread_id, _suspended_state)
+                            _safe_print(f"[ORCHESTRATOR] Loop suspended — ask_user: {_ask_question[:80]!r}")
+                            # 3. Yield done with loop_suspended=True so frontend shows reply UI
                             yield _sse({
-                                "type": "agent_checkpoint",
-                                "content": _orch_event.get("content", ""),
+                                "type": "done",
+                                "content": _orch_answer,
                                 "metadata": {
-                                    "requires_confirmation": True,
-                                    "checkpoint_tier": "medium",
+                                    "loop_suspended": True,
+                                    "loop_question": _ask_question,
+                                    "response_type": "ask_user",
+                                    "session_id": getattr(_session_db, "session_id", None),
                                 },
                             })
-                            break
+                            return  # end this request; loop resumes on next user message
 
                         elif _etype == "done":
                             pass  # handled below

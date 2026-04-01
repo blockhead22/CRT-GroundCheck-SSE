@@ -60,9 +60,11 @@ export function ActionCard(props: {
   onRespond: (text: string) => void
   onDismiss?: () => void
 }) {
-  const [customMode, setCustomMode] = useState(false)
+  // ask_user checkpoints need a typed reply, not yes/no buttons — open text mode immediately
+  const isAskUser = props.checkpointMeta?.checkpoint_tier === 'ask_user' || props.checkpointMeta?.loop_suspended === true
+  const [customMode, setCustomMode] = useState(isAskUser)
   const [customText, setCustomText] = useState('')
-  const options = deriveOptions(props.checkpointMessage, props.checkpointMeta)
+  const options = isAskUser ? [] : deriveOptions(props.checkpointMessage, props.checkpointMeta)
 
   const meta = props.checkpointMeta
   const diffPreview = (meta?.diff_preview as string) || ''
@@ -108,6 +110,14 @@ export function ActionCard(props: {
             </svg>
           </button>
         )}
+        {/* ask_user label — shown when Cookie paused with a question */}
+        {isAskUser && (
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-mono" style={{ color: 'rgba(212,132,92,0.6)' }}>
+            <span>◆</span>
+            <span className="tracking-widest uppercase text-[10px]">waiting for your reply</span>
+          </div>
+        )}
+
         {/* Screenshot preview for desktop actions */}
         {(meta?.screenshot_b64 as string) && (
           <div className="mb-3">

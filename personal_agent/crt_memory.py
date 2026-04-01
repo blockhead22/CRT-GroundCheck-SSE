@@ -1543,7 +1543,13 @@ class CRTMemorySystem:
                         # Exclusive/unknown: stronger demotion
                         _demoted_trust = float(_ex_trust) * 0.4
 
-                    self._update_memory_trust(_ex_mem_id, _demoted_trust)
+                    # Use public update_trust (not private _update_memory_trust) so the
+                    # demotion is written to trust_log and visible in the trust-delta UI.
+                    self.update_trust(
+                        _ex_mem_id,
+                        _demoted_trust,
+                        reason=f"slot_demotion:{_slot_name}={_new_val_norm} superseded {_ex_norm}",
+                    )
                     self.record_memory_event(
                         memory_id=_ex_mem_id,
                         event_type="slot_exclusivity_demoted",
