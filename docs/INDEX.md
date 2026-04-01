@@ -1,6 +1,6 @@
 # CRT/Aether Documentation
 
-**Current version:** v2.9.3 (March 24, 2026)
+**Current version:** v3.7 (April 1, 2026)
 
 Aether is a personal AI assistant built on CRT (Contradiction-aware Reconciliation and Trust) — a memory governance engine that preserves contradictions, tracks belief evolution, and maintains trust scores across every fact it learns. Unlike conventional AI memory (which silently overwrites), CRT treats disagreement as signal.
 

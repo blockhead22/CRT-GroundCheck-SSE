@@ -1,5 +1,5 @@
 # CRT/Aether Roadmap
-Last updated: March 24, 2026 (v3.0)
+Last updated: April 1, 2026 (v3.7)
 
 ---
 
@@ -315,40 +315,121 @@ Last updated: March 24, 2026 (v3.0)
 - [x] Context compression — stable high-trust facts compressed, volatile low-trust facts preserved in full
 - [x] Budget-aware retrieval — total context window managed as a resource, not unlimited
 
+### v3.1 (March 25-26) — Research Modules + Deep Research
+- [x] Dynamic slot discovery v2.1 shipped — learned slot types replace hardcoded EXCLUSIVE_SLOTS
+- [x] Alias protection — 36 aliases with canonical collapse live
+- [x] Retrieval logging + belief score fix (was 0.15 hardcoded)
+- [x] Mac M2 offload — Ollama over LAN (OLLAMA_BASE_URL=Mac)
+- [x] GPT variance baseline — 0.223 scatter vs CRT 0.345
+- [x] Boilerplate purge — 21 entries removed
+- [x] Intent model split — llama3.2 for routing (CRT_INTENT_MODEL=llama3.2)
+- [x] 8 research modules built and tested (belief geometry, topology, Fisher metric, splat overlap, predictive contradiction, belief/speech gap audit, active inference)
+- [x] Key finding: two-mode geometry (static=cosine, dynamic=overlap trend)
+- [x] Deep research: 10 publishable contributions validated, paper sequence planned
+
+### v3.2 (March 27) — Variance Experiments + Electron Shell
+- [x] Three-model experiment (Qwen3/Mistral/DeepSeek) — domain inversion proven
+- [x] Guardrails-as-lobotomy finding, adaptive temp governance
+- [x] Hallucination reframing, motive theory
+- [x] Electron shell built — frameless, tray, hotkey, auto-detect backend
+- [x] Self-ref verbosity fix, health flapping fix
+
+### v3.3 (March 28) — Robustness Sweep + Immune Agents + Electron Features
+- [x] THREE REGIMES CONFIRMED (16/16 robust): Qwen3=fracture, Mistral=gradient, DeepSeek=fog
+- [x] ALL 5 immune agents built (31/31 tests), GovernanceLayer shipped
+- [x] Density analysis: three-metric table, only Qwen3 mode-splits
+- [x] Governance validation 5/6 checks (blind spot: assertive template collapse)
+- [x] Whitepaper + docs built
+- [x] Persistence layer thesis: "model is the mouth, persistence is the self"
+- [x] 20+ Electron features: heartbeat learning, ambient mode, MCP server (12 tools), clipboard, file drop, model selector, identity fix, reminder fast-path, correction handler, training logs, context feed
+- [x] First recursive epistemic self-audit (Gap auditor flagged its own description — belief=0.15, speech=0.50, gap=0.35)
+
+### v3.4 (March 29) — Alias Protection + Debug
+- [x] Alias protection shipped (36 aliases, canonical collapse live)
+- [x] Mac M2 offload (Ollama over LAN)
+- [x] qwen3→llama3.2 revert, num_ctx 8192→4096
+- [x] Pre-filter expansions (btw/fyi/i sold/who am i)
+- [x] Desktop_action cache purged
+
+### v3.5 (March 30) — Cascade Paper + Cookie Orchestrator + Governance Layers
+- [x] Cascade paper: all 6 theorems patched, real BDG validation (599 nodes)
+- [x] BeliefDependencyGraph class built, LiveBDG cascade wiring (12 call sites)
+- [x] Provisional authority gate, slot demotion block
+- [x] 6 integrity fixes (time awareness, last_accessed, profile trust gate, auto-resolve removal, real memory IDs, prefix stripping)
+- [x] NLI critic fix
+- [x] Cookie-Opus orchestrator built + tested + wired into pipeline (brain/hands architecture, provider abstraction, sandbox, multi-turn continuity)
+- [x] Code intelligence agent (file_map/trace/detect)
+- [x] JSON parser fixes (code fence + literal newline)
+- [x] Agent run log Layer 1 (measurement captures every orchestrator run to SQLite)
+- [x] Governance L4 (epistemic routing) + L5 (execution beliefs) shipped
+- [x] 14 Cookie tools registered
+- [x] Telegram bot live
+- [x] Discord bot built (needs token)
+- [x] Image upload pipeline
+- [x] Introspect tool (Aether reads own weights)
+- [x] Vocal cords experiment (Opus holds, 4o resolves, same data)
+- [x] Layer 6 interpretation beliefs (posture classifier, feedback capture, per-model strength)
+- [x] The Mirror (structural posture gate — advisory governance < structural governance)
+
+### v3.6 (March 31) — All 10 CRT Transformations + Compaction + Prompt Boundary
+- [x] ALL 10 CRT TRANSFORMATIONS SHIPPED: compaction, density extraction, prompt boundary, inspectable index, context decay, restricted authority, execution belief verification, away/resume diff, consolidation, intent-gated tools
+- [x] Prompt cache boundary — static epistemology prefix (5 axioms), dynamic evidence below, Anthropic cache_control, unified across all 3 prompt paths
+- [x] CRT Session State — running belief state, density-weighted extraction, away/resume diff, session-aware compaction
+- [x] Belief-aware compaction — trust-tiered compression, compaction decay, memory consolidation pass, governance hooks, 3 API endpoints
+- [x] Claude Code leak analysis — ClaudeCliBrain shipped, architectural comparison, 10 borrowed concepts with CRT transformations
+
+### v3.7 (April 1) — Strategy + Agentic Pipeline + Cookie Loop Fixes
+- [x] Full system audit, business strategy decided (governance-as-a-service, 4 phases)
+- [x] Reversed CRT concept (apply CRT to user beliefs, not just agent beliefs)
+- [x] user_belief system shipped (belief classifier + storage routing + /api/beliefs endpoint)
+- [x] Open/closed split finalized, LLM escape risks documented
+- [x] Agentic pipeline: generator bug fix, PipelineCollapse v2, duplicate memory fix, green bar fix, anti-sycophancy, Cookie plan action
+- [x] Epistemic events (drift/contradiction/alignment) wired end-to-end through orchestrator→SSE+WS→frontend pipeline panel
+- [x] Cookie loop iteration fix — plan no longer consumes iteration slot (for→while), warning threshold softened (<=1 → ==0)
+- [x] Suspend/resume carries remaining iteration budget instead of hardcoded 8
+- [x] Routing gate fix — Layer 4 orchestrator decisions bypass _needs_cookie
+- [x] file_read/file_write added to _TOOL_REQUIRING_INTENTS
+- [x] llm_local mode redirected to Cookie instead of broken agent loop path
+- [x] Claude Code source analysis — 5-layer architecture mapped, 9 absorbable patterns identified, clear crt-core vs AI_round2 split documented
+
 ---
 
 ## IN PROGRESS
 
-### Stabilization (v3.0.x)
-Battle-test the new systems (routing, synthesis, plans, browser) with real usage. Fix edge cases, tune synthesis prompts, verify the learning loop generates patterns.
-- [ ] Routing edge cases — verify file_read, project_scan, web_browse all classify correctly from natural language
-- [ ] Synthesis prompt tuning — adjust depth/verbosity based on real usage feedback
-- [ ] Plan system validation — test plan creation, advancement, thread linking end-to-end
-- [ ] Browser agent validation — test navigation, form filling, search, safety gates on real sites
-- [ ] Local vision processing — replace Claude API dependency in desktop agent with local vision model (moondream2/Qwen2-VL via Ollama)
+### Cookie Orchestrator Stabilization (v3.7.x)
+- [ ] Confirm routing fix end-to-end (outbox.py add-comment test)
+- [ ] Confirm diff_write checkpoint → approve → write → continue works
+- [ ] ask_user live test end-to-end
+- [ ] Layer 2 alignment check (per-run alignment score to SQLite run log)
+- [ ] Frontend rebuild (toFixed(1) trust delta, isActiveStream pipeline collapse timing)
+- [ ] 50+ orchestrator runs needed for route learning data
 
-### External Integrations (ad hoc, no dedicated sprint)
-Skill.md files + credentials through existing pipeline. Add as needed:
+### External Integrations (ad hoc)
 - [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
+- [ ] Discord token needed for bot activation
 
 ---
 
 ## NEXT UP
 
-### v3.1 — Deeper Project/Code Intelligence
-Not an IDE extension — deeper file awareness using existing tools and embeddings.
-- [ ] Full repo indexing with local embeddings (all-MiniLM-L6-v2 already available)
-- [ ] Multi-file awareness — "find where this function is used"
-- [ ] Semantic code search — "show me the authentication logic"
-- [ ] Basic refactoring support — rename across files, extract function
-- [ ] Test generation — read a function, write a test for it
+### v3.8 — Concurrent Tool Execution + Deferred Loading
+Patterns from Claude Code source analysis, governed by CRT:
+- [ ] `is_concurrent_safe` per tool definition — reads parallel via asyncio.gather, writes serial
+- [ ] GovernedTask primitive — task type + belief context + authority ceiling + TTL + checkpoint policy
+- [ ] Deferred tool loading — tag rare tools as `defer_safe=True`, ToolSearch round-trip before loading
+- [ ] Lifecycle hooks at compaction boundaries — governance agents fire pre/post compact
+- [ ] Epistemic worker packets (BeliefPacket) — trusted evidence, authority ceiling, open contradictions, permissions
 
-### v3.2 — Persistence Hardening
-Make the agent survive restarts and pick up where it left off.
+### v3.9 — Multi-Agent CRT
+- [ ] Coordinator mode — dedicated coordinator prompt, worker restrictions, shared scratchpad
+- [ ] Worker belief handoffs — BeliefPacket carries epistemic state through delegation
+- [ ] Selective file reinjection post-compact — top N by trust-weighted relevance
+
+### v4.0 — Persistence Hardening
 - [ ] Plans survive server restart — reload active plans on boot
 - [ ] Active tasks resume — heartbeat picks up interrupted work
-- [ ] Cross-session context — "what was I working on yesterday?" with full reconstruction
-- [ ] Multi-day planning — goal decomposition across days via heartbeat planning pass
+- [ ] Cross-session context — full epistemic state reconstruction
+- [ ] Multi-day planning — goal decomposition across days
 
 ---
 
@@ -361,6 +442,11 @@ Make the agent survive restarts and pick up where it left off.
 - [ ] Multi-user scaffolding (user_id scoping, separate memory spaces)
 
 ### Training & Classification
+- [ ] Train routing classifier from agent_runs.db (orchestrator-fire vs conversational)
+- [ ] Train execution-belief models (predict tool sequence, verification need, contradiction risk)
+- [ ] Train compaction/consolidation policies from labeled old sessions
+- [ ] Train template-collapse / hedge detectors (false certainty, style-only diversity)
+- [ ] Train user-belief mirror models (belief extraction, calcification detection, drift alerts)
 - [ ] Belief classifier on real ledger data
 - [ ] ViLT live pipeline — heartbeat triggers weight-level correction on persistent blindspots
 
@@ -368,11 +454,19 @@ Make the agent survive restarts and pick up where it left off.
 - [ ] Copilot page visual hierarchy + API dedup
 - [ ] Code page (dedicated project/file interface with syntax highlighting)
 
+### Research Papers
+- [ ] Cascade complexity paper (draft at papers/cascade_complexity/cascade_paper.md)
+- [ ] Contradiction-density paper
+- [ ] Memory splats / belief geometry paper
+- [ ] Variance probe / robustness regime paper
+
 ### Future (v4.0+)
 - [ ] Voice input/output (Whisper + local TTS)
 - [ ] Multi-channel expansion (beyond Telegram)
 - [ ] Skill marketplace — one-click install from GitHub
 - [ ] Multi-device sync
+- [ ] Expo mobile app + Cloudflare Tunnel
+- [ ] AI-powered permission classifier with epistemic state
 
 ---
 

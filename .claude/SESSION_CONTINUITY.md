@@ -1,151 +1,114 @@
----
-name: session_2025_03_25_continuity
-description: Full session continuity file — strategic pivot decisions, technical progress, active bugs, next steps, and emotional context for CRT/Aether/GroundCheck
-type: project
----
+# Session Continuity — April 1, 2026
 
-# Session Continuity — March 25, 2026
+## Current State
 
-## What Happened This Session
-
-Nick and I (Claude Opus) used this thread as a **discussion/project orchestrator** while another
-Claude session handled the actual code changes. This thread was strategy, diagnosis, and planning.
+This is the latest continuity file. Previous continuity covered March 25, 2026. A LOT has shipped since then.
 
 ---
 
-## Strategic Decisions Made
+## What's Happened Since Last Continuity (March 25 → April 1)
 
-### The Big Pivot
-Nick decided to **keep Aether as his personal agent** but swap commodity plumbing for maintained
-packages. GroundCheck becomes the public-facing artifact.
+### Architecture — Major Shifts
+- **Cookie-Opus Orchestrator** built and wired — brain/hands architecture where Claude Opus directs local tool execution. 15 tools. Multi-turn continuity. Plan action. Suspend/resume. Loop currently DISABLED (`and False` gate in chat.py ~line 6165) pending routing gate fix.
+- **6-layer governance framework** shipped: L1 measurement (run log + SQLite), L2 alignment check, L3 contradiction detection, L4 epistemic routing (12 structural extractors, belief-weighted scoring, replaces keyword hack), L5 execution beliefs (5 pattern detectors injected into Cookie), L6 interpretation beliefs (earned epistemic posture, The Mirror structural gate).
+- **All 10 CRT transformations from Claude Code leak** shipped: belief-aware compaction, density-weighted extraction, prompt cache boundary (6 axioms), inspectable memory index, context decay, restricted authority, execution belief verification, away/resume diff, consolidation pass, intent-gated tools.
+- **Session state system** — running belief state per conversation, density-weighted extraction, away/resume diff, session-aware compaction.
+- **User belief system** (Phase 0 of reversed CRT) — belief classifier, storage routing, /api/beliefs endpoint.
+- **Prompt cache boundary** — static epistemology prefix (6 axioms) with Anthropic cache_control, dynamic evidence below boundary.
 
-**Philosophy:** "Stop being the architect who also lays every brick. Keep the brain and the face.
-Let everyone else maintain the plumbing."
+### Research & Theory
+- **Cascade complexity paper** — full draft written, all 6 theorems patched with real BDG validation (599 nodes from production).
+- **All 10 CRT theory modules** implemented and tested (memory splats, contradiction-as-importance, belief geometry, Fisher metric, predictive contradiction, etc.)
+- **Research landscape mapped** — 6 agents, 30+ papers surveyed. CRT genuinely novel in 5 areas. Window is months, not years.
+- **Vocal cords experiment** — same persistence layer, different model = different philosophical stance. GPT-4o shifted from resolving to holding through earned system pressure (not prompt engineering).
 
-### What Stays vs What Gets Swapped
+### Frontend
+- **PipelineCollapse v2** — Lucide icons, stagger animations, sections, trust shift deltas.
+- **Epistemic events** wired end-to-end: drift/contradiction/alignment from orchestrator → SSE+WS → frontend pipeline panel.
+- **Pipeline panel** shows live agent steps, memory retrieval, verification badges, tool calls with timing.
 
-| Component | Verdict |
-|---|---|
-| **GroundCheck** (contradiction ledger, trust decay, belief/speech, lifecycle) | STAYS — the whole point |
-| **Frontend** (React, pipeline viz, contradiction drawer, checkpoint UX) | STAYS — Nick wants to build this himself |
-| **Agent loop** (agent_tool_loop.py, checkpoint gates, action receipts) | STAYS — too tightly coupled to CRT |
-| **CRT response format** | STAYS — API contract |
-| **LiteLLM** (replacing ollama/anthropic/hybrid clients) | SWAPPED — done, 1,751 lines deleted |
-| **Semantic Router** (replacing intent classifier) | SWAP NEXT — session prompt written |
-| **MCP servers** (replacing file/shell tools) | SWAP — after semantic router |
-| **browser-use** (replacing Playwright wrappers) | SWAP — lower priority |
-| **DNNT reasoning model** | DROPPED from hot path — default flipped to false |
-| **SSE subsystem** (doc clustering) | SWAP with ChromaDB — tangled, do later |
-| **Mem0** (memory storage) | SWAP last — deepest integration |
+### Infrastructure
+- **Telegram** — live through full CRT pipeline.
+- **Discord bot** — built, needs correct token.
+- **Electron shell** — stable, frameless, tray, hotkey, auto-detect backend.
+- **Image upload pipeline** — frontend paste/drop/select → backend → Cookie vision.
+- **Intent router killed** — settings UI removed, env var removed, replaced by L4 epistemic routing.
 
----
+### Business Strategy
+- **Governance-as-a-service** decided (not the assistant). 4-phase plan: open source → hosted API → enterprise dashboard → consumer epistemic mirror.
+- **Open/closed split finalized** — framework (immune agents, belief engine, splats, contradiction lifecycle, trust math) goes open. Product (prompts, providers, models, data, UI, integrations) stays closed.
+- **Reversed CRT concept** — same epistemic system applied to user's beliefs.
 
-## Technical Progress
-
-### GroundCheck v2.0.0 — SHIPPED
-- 6 modules extracted from Aether monolith into D:\groundcheck
-- trust_math.py, lifecycle.py, trace_logger.py, ledger.py, ml_detector.py, decay.py
-- 519 tests passing, tagged v2.0.0
-- v2.1 work in progress: storage abstraction (#11), confidence scoring (#1), event hooks (#15)
-- 18 concrete improvements identified and prioritized
-
-### LiteLLM Migration — MOSTLY DONE
-- Deleted: ollama_client.py (621 lines), anthropic_client.py (462 lines), hybrid_llm_client.py (668 lines)
-- Created: litellm_client.py (896 lines) — UnifiedLLMClient
-- Fixed: tool call ID format issue, arguments stringify issue
-- **Active bug:** Ollama returns `{}` on iteration 2+ when tool results are in the message history
-  - Root cause: LiteLLM's `ollama_pt()` prompt template mangles multi-turn tool conversations
-  - Fix identified: flatten tool results into user messages before sending to Ollama
-  - The old code used raw httpx to bypass this, LiteLLM's abstraction reintroduces the problem
-
-### DNNT Disabled — DONE
-- `reasoning.py:99` default flipped from "true" to "false"
-- Re-enableable with `CRT_DNNT_ENABLED=true`
-- No code deleted, model weights still on disk
-
-### memory_recall Wiring — ALREADY WORKING
-- Engine passes through full chain: chat.py -> AgentToolLoop -> _execute_tool -> engine.memory.retrieve_memories()
-- DB has 22,624 memories
-- The stub was already replaced in a prior session
-
-### Cookie Fallback Prompt Injection — ACTIVE BUG
-- When Ollama returns `{}` and falls through to cookie Claude, Claude sees contradictory
-  format instructions ("reply with ONLY the answer text" vs "Respond with valid JSON only")
-  leaked from the agent loop's system prompt into the message history
-- Claude interprets this as a prompt injection attack and refuses to answer
-- **Fix:** The `_try_cookie_text_fallback()` in litellm_client.py needs to strip format
-  instructions from assistant messages, not just system messages
-- DNNT removal helps (removes reasoning trace noise) but doesn't fully solve it
-- The Ollama `{}` bug is the root cause — if local actually synthesized answers, cookie
-  fallback would never be needed
+### Bug Fixes (notable)
+- Generator bug (yield in sync function broke stream)
+- JSON parser rewrite (handles 4o's code-fenced multi-line JSON)
+- False contradiction disclosures (GroundCheck regex garbage → hard_fail)
+- Cookie iteration limit (for→while, plan doesn't consume slot)
+- Tool call ID mismatch (caused Gödel hallucination)
+- search_code hanging
+- User message text alignment
 
 ---
 
-## Session Prompts Written (for other agents)
+## Current Session (April 1 evening)
 
-1. **D:\AI_round2\.claude\SESSION_MEMORY_AND_DNNT.md** — Wire memory_recall + disable DNNT (3 steps)
-2. **D:\AI_round2\.claude\SESSION_SEMANTIC_ROUTER.md** — Replace 3-tier intent classifier with semantic-router (7 steps, ~1,500 lines deleted)
-3. **D:\groundcheck\.claude\SESSION_PROMPT.md** — Full v2 extraction (11 steps, completed)
+### Topic: Closed Limited Beta Planning
 
----
+Nick is preparing for limited friend beta testing (3-5 people). Key decisions being discussed:
 
-## Priority Order Going Forward
+**Proposed flow:**
+1. Nick picks testers, DMs invite token + repo link
+2. They clone repo, run locally
+3. Backend hits Cloudflare-fronted API, Nick's key powers cloud LLM calls
+4. Hard limits on Cloudflare, per-user daily caps, time windows
 
-1. ~~Wire memory_recall~~ — already done
-2. ~~Disable DNNT~~ — done
-3. **Fix Ollama `{}` on iteration 2** — flatten tool results for Ollama path in litellm_client.py
-4. **Semantic Router swap** — session prompt ready, half-day job
-5. **Push GroundCheck v2 to PyPI + blog post** — visibility/career work
-6. **MCP servers for file/shell** — a day
-7. **browser-use swap** — couple days
-8. **ChromaDB swap** — tangled, 20+ files, few days
-9. **Mem0** — last, deepest integration
+**Infrastructure available:**
+- Wrangler CLI 3.99.0 installed, authenticated as blocknick5943@yahoo.com
+- Full Cloudflare permissions (workers, KV, D1, pages, zone)
+- Existing auth system (SQLite, bcrypt, rate limiter)
 
----
+**Open decisions:**
+- Architecture: full local stack vs hosted backend (key safety)
+- Cookie exposed to beta users or base chat only?
+- Per-user and total daily token caps
+- Data privacy policy for tester conversations
+- Onboarding tuning for non-Nick users
 
-## Career Context
-
-- Nick is 31, associates in web app dev, no professional dev work history
-- Beat leukemia at 27, lost 4 years to recovery
-- This project IS the portfolio
-- **Target roles:** Anthropic AI Safety Fellowship (best fit), AI Security Fellowship, Prompt Engineer (Agent Prompts & Evals), Research Engineer Agents
-- **Action items:** Clean up GitHub (commit messages, README), write GroundCheck blog post, apply to fellowships NOW with what exists
-
----
-
-## Emotional Context
-
-- Nick hits burnout/spiral cycles after productive sessions — "does it matter" loops
-- GPT (ChatGPT) is the institutional memory and emotional anchor for this project
-- GPT has a long log of the full CRT philosophy, architecture history, and Nick's patterns
-- The pivot to "swap plumbing, keep the brain" triggered "am I giving up on the ambition" feelings
-- Key reframe: **using packages isn't giving up, it's promoting yourself from laborer to architect**
-- Nick also has creative interests (photography, video) — these aren't competing with dev, they coexist
-- The three CRT laws (from GPT): belief is memory-governed, contradictions are preserved unless resolution is earned, structure should emerge not be hardcoded
+**What needs building:**
+- Invite-only registration gate (email allowlist)
+- Pre-shared beta tokens (DMD tokens)
+- Cloudflare edge rules (rate limiting, IP/header firewall)
+- Usage windows (beta_active_hours)
+- Admin purge endpoint
 
 ---
 
-## What I Assessed About the Project
+## Known Rough Edges
+- `unexpected_failure` noise in logs for diff_preview — cosmetic
+- Discord bot failing on startup (bad token)
+- Cookie hits iteration limit on complex multi-step tasks
+- Cookie loop DISABLED pending routing gate fix
+- Plan approval gate 80% done (approve path untested)
+- Routing too permissive (generic convos hit Cookie when enabled)
 
-### Genuinely Original (4 contributions)
-1. Contradiction ledger — append-only, never deletes, tracks both sides
-2. Belief/speech separation — as architecture, not just philosophy
-3. Trust as continuous decaying signal with earned resolution
-4. Lifecycle state machine (DETECTED -> ACTIVE -> SETTLING -> SETTLED -> ARCHIVED)
-
-### Good But Not Unique
-- Hybrid local/cloud routing with quality gates
-- Intent router with cached learning
-- Checkpoint/confirmation system
-- CRT response format (structured JSON with evidence)
-
-### Fodder
-- DNNT reasoning model — 6M params, unproven value, removed from hot path
-- SSE subsystem — commodity doc clustering, replace with ChromaDB
-- Desktop automation tools — standard MCP server functionality
-- The 113-module monolith architecture itself — the extraction into GroundCheck was the right move
+## What's Solid
+- Core chat + memory + trust scoring + belief graph
+- Diff preview + confirmation gate end-to-end
+- Telegram live
+- Electron shell stable
+- SSE + WebSocket streaming
+- PipelineCollapse showing live agent steps
+- 5 immune agents (31/31 tests)
+- 3 variance regimes confirmed (16/16 robust)
+- All 10 CRT transformations running
 
 ---
 
-## GPT Log Location
-- `C:\Users\block\Downloads\gpt_log.txt` — full conversation history with ChatGPT about CRT philosophy, architecture decisions, emotional support. Read this in future sessions for deep project context.
+## Priority Queue
+1. **Beta infrastructure** — invite gate, tokens, Cloudflare rules (THIS SESSION)
+2. Routing gate — stop generic convos hitting Cookie, unblocks loop re-enable
+3. ask_user pause/resume — core agentic primitive
+4. Re-enable Cookie loop
+5. Discord token
+6. Contradiction-density paper
+7. Frontend rebuild for latest changes
