@@ -5944,10 +5944,24 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         intent_hint=_al_intent_hint,
                     )
 
+                    # Intent-gated tool access (Layer 10)
+                    _al_tool_filter = None
+                    try:
+                        from personal_agent.tool_gate import get_agent_loop_filter
+                        _al_tool_filter = get_agent_loop_filter(
+                            intent_type=getattr(_task_intent, 'intent_type', 'task'),
+                            route=getattr(_task_intent, 'route', None),
+                        )
+                        if _al_tool_filter:
+                            _safe_print(f"[TOOL_GATE] Agent loop: {len(_al_tool_filter)} tools for intent={getattr(_task_intent, 'intent_type', '?')}")
+                    except Exception:
+                        pass
+
                     _loop_gen = _loop.run(
                         req.message,
                         req.thread_id,
                         conversation_history=recent_history if 'recent_history' in dir() else None,
+                        tool_filter=_al_tool_filter,
                     )
 
                     _al_checkpoint_hit = False
@@ -6081,7 +6095,12 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     _orch_answer = ""
                     _orch_steps = []
 
-                    _orch_gen = _orch.run(_orch_msg, conversation_history=_orch_history or None)
+                    _orch_gen = _orch.run(
+                        _orch_msg,
+                        conversation_history=_orch_history or None,
+                        intent_type=getattr(_task_intent, 'intent_type', None),
+                        route=getattr(_task_intent, 'route', None),
+                    )
                     _orch_send_val = None
                     while True:
                         try:

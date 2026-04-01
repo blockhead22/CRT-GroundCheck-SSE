@@ -1461,8 +1461,8 @@ def memory_index(
     thread_id: str = Query(default="default"),
     limit: int = Query(default=100, ge=1, le=500),
     min_trust: float = Query(default=0.0, ge=0.0, le=1.0),
-    sort_by: str = Query(default="trust", regex="^(trust|timestamp|compaction_count)$"),
-    format: str = Query(default="json", regex="^(json|text)$"),
+    sort_by: str = Query(default="trust", pattern="^(trust|timestamp|compaction_count)$"),
+    format: str = Query(default="json", pattern="^(json|text)$"),
     authorization: Optional[str] = Header(None),
 ):
     """Inspectable memory index with full belief state per memory.

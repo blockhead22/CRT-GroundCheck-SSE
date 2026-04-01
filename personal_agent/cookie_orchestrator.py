@@ -1142,7 +1142,9 @@ class Orchestrator:
         }
 
     def run(self, objective: str,
-            conversation_history: Optional[List[str]] = None
+            conversation_history: Optional[List[str]] = None,
+            intent_type: Optional[str] = None,
+            route: Optional[str] = None,
             ) -> Generator[Dict[str, Any], Optional[str], None]:
         """Run the orchestrator loop.
 
@@ -1154,6 +1156,10 @@ class Orchestrator:
             {"type": "done", "state": OrchestratorState}
 
         Can receive user input via .send() for ask_user responses.
+
+        Args:
+            intent_type: Classified intent for tool gating (e.g., "conversational", "code_task")
+            route: Optional routing label for more specific tool filtering
         """
         state = OrchestratorState(objective=objective)
         last_result = None
@@ -1166,14 +1172,26 @@ class Orchestrator:
             brain_provider=getattr(self.brain, '_model', 'unknown'),
         )
 
+        # Layer 10: Intent-gated tool access — filter tools by classified intent
+        _base_system = ORCHESTRATOR_SYSTEM
+        try:
+            from personal_agent.tool_gate import get_tools_for_intent, filter_orchestrator_tools
+            _allowed_tools = get_tools_for_intent(intent_type or "task", route)
+            _base_system = filter_orchestrator_tools(ORCHESTRATOR_SYSTEM, _allowed_tools)
+            _filtered_count = len(ALL_TOOLS if not hasattr(self, '_all_tools') else set()) - len(_allowed_tools)
+            print(f"[TOOL_GATE] intent={intent_type} → {len(_allowed_tools)} tools visible")
+        except Exception as _tg_err:
+            print(f"[TOOL_GATE] Failed (non-fatal): {_tg_err}")
+            _base_system = ORCHESTRATOR_SYSTEM
+
         # Layer 5: Execution beliefs — inject self-awareness into system prompt
-        _system_prompt = ORCHESTRATOR_SYSTEM
+        _system_prompt = _base_system
         try:
             from personal_agent.execution_beliefs import get_execution_model
             _brain_name = getattr(self.brain, '_model', 'unknown')
             _self_injection = get_execution_model().get_prompt_injection(brain_provider=_brain_name)
             if _self_injection:
-                _system_prompt = ORCHESTRATOR_SYSTEM + "\n\n" + _self_injection
+                _system_prompt = _base_system + "\n\n" + _self_injection
                 print(f"[SELF_MODEL] Injected {len(_self_injection)} chars of self-awareness")
         except Exception as _sm_err:
             print(f"[SELF_MODEL] Failed (non-fatal): {_sm_err}")
