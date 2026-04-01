@@ -5267,9 +5267,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             from personal_agent.cookie_orchestrator import Orchestrator, get_brain
                             _r_brain_mode = getattr(req, "generation_mode", "cloud_claude") or "cloud_claude"
                             _r_brain = get_brain("claude-cli" if _r_brain_mode == "cloud_claude" else "claude-cli")
-                            _safe_print(f"[ORCHESTRATOR] Resume brain: {_r_brain_mode}")
-                            _r_orch = Orchestrator(brain=_r_brain, max_iterations=8)
-                            _r_gen = _r_orch.run(_resume_msg, context={})
+                            _r_remaining = _suspended.get("remaining_iterations", 8)
+                            _safe_print(f"[ORCHESTRATOR] Resume brain: {_r_brain_mode}, remaining_iterations: {_r_remaining}")
+                            _r_orch = Orchestrator(brain=_r_brain, max_iterations=max(3, _r_remaining))
+                            _r_gen = _r_orch.run(_resume_msg)
                             _r_orch_answer = _resume_answer_so_far
                             _r_steps: list = list(_resume_steps)
 
@@ -5315,6 +5316,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                         "iteration": 0,
                                         "question": _r_question,
                                         "orch_answer_so_far": _r_orch_answer,
+                                        "remaining_iterations": getattr(_r_orch, 'max_iterations', 8) - len(_r_steps),
                                     })
                                     yield _sse({"type": "done", "content": _r_orch_answer, "metadata": {"loop_suspended": True, "loop_question": _r_question, "response_type": "ask_user"}})
                                     return
@@ -6626,6 +6628,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     "objective": _orch_msg,
                                     "steps_done": list(_orch_steps),
                                     "orch_answer_so_far": _orch_answer,
+                                    "remaining_iterations": getattr(_orch, 'max_iterations', 10) - len(_orch_steps),
                                     "diff_data": {
                                         "path": _orch_meta.get("diff_preview", ""),  # stored inline
                                         "target_path": _orch_meta.get("target_path", ""),
@@ -6689,6 +6692,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "iteration": _orch_iteration if "_orch_iteration" in dir() else 0,
                                 "question": _ask_question,
                                 "orch_answer_so_far": _orch_answer,
+                                "remaining_iterations": getattr(_orch, 'max_iterations', 10) - len(_orch_steps),
                             }
                             _session_db.store_suspended_loop(req.thread_id, _suspended_state)
                             _safe_print(f"[ORCHESTRATOR] Loop suspended — ask_user: {_ask_question[:80]!r}")

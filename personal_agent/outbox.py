@@ -1,3 +1,4 @@
+# OutboxQueue module
 """Outbox — proactive message queue for Phase 6.
 
 Any part of the system can push a proactive message here.
@@ -63,26 +64,44 @@ class OutboxQueue:
         return pending
 
     def drain_all(self) -> List[OutboxMessage]:
-        """Remove and return all pending messages (for broadcast scenarios)."""
+        """Remove and return ALL pending messages (for debugging)."""
         with self._lock:
-            all_msgs = list(self._queue)
-            self._queue = []
-        return all_msgs
+            pending = self._queue.copy()
+            self._queue.clear()
+        return pending
 
-    def pending_count(self, thread_id: Optional[str] = None) -> int:
+    def peek(self, thread_id: Optional[str] = None) -> List[OutboxMessage]:
+        """View pending messages without removing them."""
         with self._lock:
-            if thread_id:
-                return sum(1 for m in self._queue if m.thread_id == thread_id)
-            return len(self._queue)
+            if thread_id is None:
+                return self._queue.copy()
+            return [m for m in self._queue if m.thread_id == thread_id]
+
+    def size(self, thread_id: Optional[str] = None) -> int:
+        """Count pending messages."""
+        with self._lock:
+            if thread_id is None:
+                return len(self._queue)
+            return sum(1 for m in self._queue if m.thread_id == thread_id)
 
 
-# ── Singleton ─────────────────────────────────────────────────────────────────
-
+# Global singleton
 _outbox: Optional[OutboxQueue] = None
+_outbox_lock = threading.Lock()
 
 
 def get_outbox() -> OutboxQueue:
+    """Get the global outbox singleton."""
     global _outbox
     if _outbox is None:
-        _outbox = OutboxQueue()
+        with _outbox_lock:
+            if _outbox is None:
+                _outbox = OutboxQueue()
     return _outbox
+
+
+def reset_outbox() -> None:
+    """Reset the global outbox (for testing)."""
+    global _outbox
+    with _outbox_lock:
+        _outbox = None

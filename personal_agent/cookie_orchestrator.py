@@ -1179,8 +1179,8 @@ class Orchestrator:
 
         # Time pressure hint near end of iterations
         remaining = getattr(state, '_remaining_iterations', None)
-        if remaining is not None and remaining <= 1:
-            parts.append(f"\nWARNING: Only {remaining} iteration(s) remaining. You MUST respond now with action=respond. Summarize what you know.")
+        if remaining is not None and remaining == 0:
+            parts.append(f"\nLast action slot. Either execute your final step OR respond with results. Return ONLY a JSON object.")
         else:
             parts.append("\nWhat is your next action? Return ONLY a JSON object.")
         return "\n".join(parts)
@@ -1335,9 +1335,13 @@ class Orchestrator:
         print(f"ORCHESTRATOR: {objective[:80]}")
         print(f"{'='*60}")
 
-        for iteration in range(self.max_iterations):
+        iteration = 0          # only incremented on work (think/tool_call/respond)
+        _total_turns = 0       # safety cap: all turns including plan
+        _MAX_TOTAL_TURNS = self.max_iterations + 5  # hard ceiling incl. plans
+        while iteration < self.max_iterations and _total_turns < _MAX_TOTAL_TURNS:
+            _total_turns += 1
             state._remaining_iterations = self.max_iterations - iteration - 1
-            print(f"\n--- Iteration {iteration + 1}/{self.max_iterations} ---")
+            print(f"\n--- Iteration {iteration + 1}/{self.max_iterations} (turn {_total_turns}) ---")
 
             # Build context and call brain (with retry on empty response)
             context = self._build_context(state, last_result)
@@ -1416,6 +1420,7 @@ class Orchestrator:
 
             if action == "plan":
                 # First-move declaration — surface to user immediately before any tool runs.
+                # Plan does NOT consume an iteration slot — it's a declaration, not work.
                 # After yielding the plan, set last_result to an acknowledgment so Cookie
                 # sees "Plan acknowledged" on the next iteration and doesn't re-plan.
                 _plan_msg = decision.get("message", "")
@@ -1430,6 +1435,7 @@ class Orchestrator:
                     }
                 state.thinking.append(f"[plan] {_plan_msg}")
                 last_result = "Plan declared. Now execute using tool_call actions. Do NOT plan again."
+                # no iteration += 1 here — plan is free
                 continue
 
             if action == "think":
@@ -1448,6 +1454,7 @@ class Orchestrator:
                     print(f"  [ALIGNMENT] think: {_align:.3f}")
                 yield {"type": "thinking", "content": reasoning, "alignment": _align}
                 last_result = None
+                iteration += 1
 
             elif action == "tool_call":
                 tool = decision.get("tool", "")
@@ -1655,6 +1662,7 @@ class Orchestrator:
                     "alignment": _align,
                     "latency_ms": int(tool_ms),
                 }
+                iteration += 1
 
             elif action == "respond":
                 message = decision.get("message", raw)
@@ -1764,6 +1772,7 @@ class Orchestrator:
                     result=last_result[:300],
                     latency_ms=_spawn_result.elapsed_ms,
                 ))
+                iteration += 1
                 continue
 
             else:
