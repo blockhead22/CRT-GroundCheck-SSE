@@ -18,8 +18,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from starlette.websockets import WebSocketState
 
 from personal_agent.event_bus import get_event_bus
+from personal_agent.outbox import get_outbox
 
 logger = logging.getLogger(__name__)
+
+OUTBOX_DRAIN_INTERVAL = 2.0   # seconds between drain checks
 
 router = APIRouter()
 
@@ -170,6 +173,41 @@ async def _ping_loop(ws: WebSocket) -> None:
         pass  # connection closed
 
 
+async def _outbox_drain_loop(ws: WebSocket, thread_ids: "list[str]") -> None:
+    """Drain the OutboxQueue for subscribed threads and push proactive_turn events.
+
+    Runs as a background task alongside the WS connection.
+    `thread_ids` is a mutable list — updated as the client subscribes to threads.
+    Exits when the socket closes.
+    """
+    outbox = get_outbox()
+    try:
+        while True:
+            await asyncio.sleep(OUTBOX_DRAIN_INTERVAL)
+            if ws.client_state != WebSocketState.CONNECTED:
+                break
+            for tid in list(thread_ids):
+                msgs = outbox.drain(tid)
+                for msg in msgs:
+                    try:
+                        await ws.send_json({
+                            "type": "proactive_turn",
+                            "content": msg.content,
+                            "trigger": msg.trigger,
+                            "thread_id": msg.thread_id,
+                            "metadata": msg.metadata,
+                            "ts": msg.created_at,
+                        })
+                        logger.info(
+                            "[WS] Proactive turn sent to thread %s (trigger=%s)",
+                            tid, msg.trigger,
+                        )
+                    except Exception as _send_err:
+                        logger.warning("[WS] Failed to send proactive turn: %s", _send_err)
+    except Exception:
+        pass  # connection closed
+
+
 # ── WebSocket Endpoint ────────────────────────────────────────────────
 
 @router.websocket("/ws")
@@ -191,6 +229,10 @@ async def websocket_endpoint(
 
     # Start keepalive
     ping_task = asyncio.create_task(_ping_loop(ws))
+
+    # Start outbox drain loop — tracks which thread_ids this client subscribes to
+    _subscribed_thread_ids: list[str] = []
+    drain_task = asyncio.create_task(_outbox_drain_loop(ws, _subscribed_thread_ids))
 
     # Send welcome
     await ws.send_json({
@@ -216,6 +258,12 @@ async def websocket_endpoint(
             elif msg_type == "subscribe":
                 channels = msg.get("channels", [])
                 mgr.subscribe_to(ws, channels)
+                # Track thread subscriptions for the outbox drain loop
+                for ch in channels:
+                    if ch.startswith("thread:"):
+                        tid = ch[len("thread:"):]
+                        if tid not in _subscribed_thread_ids:
+                            _subscribed_thread_ids.append(tid)
                 await ws.send_json({
                     "type": "subscribed",
                     "channels": list(mgr._connections[ws]["subscriptions"]),
@@ -245,4 +293,5 @@ async def websocket_endpoint(
         logger.exception("[WS] Unexpected error")
     finally:
         ping_task.cancel()
+        drain_task.cancel()
         mgr.disconnect(ws)

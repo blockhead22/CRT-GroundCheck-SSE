@@ -5188,29 +5188,78 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _session_db.clear_suspended_loop(req.thread_id)
                         _safe_print(f"[ORCHESTRATOR] Resuming suspended loop — user answered: {req.message[:80]!r}")
 
-                        # Build resume context injecting the user's answer
-                        _resume_objective = _suspended.get("objective", req.message)
-                        _resume_steps = _suspended.get("steps_done", [])
-                        _resume_question = _suspended.get("question", "")
-                        _resume_answer_so_far = _suspended.get("orch_answer_so_far", "")
+                        _suspended_type = _suspended.get("type", "ask_user")
 
-                        # Format previous steps summary for Cookie's context
-                        _resume_steps_text = ""
-                        if _resume_steps:
+                        if _suspended_type == "diff_write":
+                            # ── Diff preview resume ─────────────────────────
+                            # User either approved or rejected a file write.
+                            # Detect approval: any affirmative in the message.
+                            _dw_raw_meta = _suspended.get("diff_data", {}).get("_raw_meta", {})
+                            _dw_write_path = _dw_raw_meta.get("_write_path", "")
+                            _dw_write_content = _dw_raw_meta.get("_write_content", "")
+                            _dw_target_path = _dw_raw_meta.get("target_path", "?")
+                            _dw_msg_lower = req.message.lower().strip()
+                            _dw_approved = any(w in _dw_msg_lower for w in (
+                                "yes", "approve", "ok", "sure", "do it", "go ahead", "confirm", "write it"
+                            )) and not any(w in _dw_msg_lower for w in ("no", "reject", "cancel", "don't", "skip"))
+                            if _dw_approved and _dw_write_path and _dw_write_content:
+                                try:
+                                    import os as _os_dw
+                                    _os_dw.makedirs(_os_dw.path.dirname(_dw_write_path) or ".", exist_ok=True)
+                                    with open(_dw_write_path, "w", encoding="utf-8") as _dw_f:
+                                        _dw_f.write(_dw_write_content)
+                                    _dw_result_msg = f"Written {len(_dw_write_content)} chars to {_dw_target_path}"
+                                    _safe_print(f"[ORCHESTRATOR] Diff approved + written: {_dw_target_path}")
+                                except Exception as _dw_err:
+                                    _dw_result_msg = f"Write failed: {_dw_err}"
+                                    _safe_print(f"[ORCHESTRATOR] Diff write error: {_dw_err}")
+                            else:
+                                _dw_result_msg = f"User rejected write to {_dw_target_path}."
+                                _safe_print(f"[ORCHESTRATOR] Diff rejected: {_dw_target_path}")
+
+                            yield _sse({"type": "token", "content": _dw_result_msg + "\n\n"})
+
+                            # Build resume prompt: original task + steps done + write result
+                            _resume_objective = _suspended.get("objective", req.message)
+                            _resume_steps = _suspended.get("steps_done", [])
+                            _resume_answer_so_far = _suspended.get("orch_answer_so_far", "") + _dw_result_msg + "\n\n"
                             _resume_steps_text = "\n".join(
                                 f"  - {s.get('tool', '?')}: {str(s.get('status',''))}"
                                 for s in _resume_steps
+                            ) if _resume_steps else ""
+                            _resume_msg = (
+                                f"{_resume_objective}\n\n"
+                                f"[CONTEXT: You paused to show a diff preview for {_dw_target_path!r}. "
+                                f"Result: {_dw_result_msg}\n"
+                                + (f"Previous steps completed:\n{_resume_steps_text}\n" if _resume_steps_text else "")
+                                + f"Continue and complete the task.]"
                             )
 
-                        # The resume message: re-state the objective with answer injected
-                        _resume_msg = (
-                            f"{_resume_objective}\n\n"
-                            f"[CONTEXT: You were executing this task and paused to ask: "
-                            f"{_resume_question!r}\n"
-                            f"The user replied: {req.message!r}\n"
-                            + (f"Previous steps completed:\n{_resume_steps_text}\n" if _resume_steps_text else "")
-                            + f"Continue the task with this answer. Do not re-plan.]"
-                        )
+                        else:
+                            # ── ask_user resume (default) ───────────────────
+                            # Build resume context injecting the user's answer
+                            _resume_objective = _suspended.get("objective", req.message)
+                            _resume_steps = _suspended.get("steps_done", [])
+                            _resume_question = _suspended.get("question", "")
+                            _resume_answer_so_far = _suspended.get("orch_answer_so_far", "")
+
+                            # Format previous steps summary for Cookie's context
+                            _resume_steps_text = ""
+                            if _resume_steps:
+                                _resume_steps_text = "\n".join(
+                                    f"  - {s.get('tool', '?')}: {str(s.get('status',''))}"
+                                    for s in _resume_steps
+                                )
+
+                            # The resume message: re-state the objective with answer injected
+                            _resume_msg = (
+                                f"{_resume_objective}\n\n"
+                                f"[CONTEXT: You were executing this task and paused to ask: "
+                                f"{_resume_question!r}\n"
+                                f"The user replied: {req.message!r}\n"
+                                + (f"Previous steps completed:\n{_resume_steps_text}\n" if _resume_steps_text else "")
+                                + f"Continue the task with this answer. Do not re-plan.]"
+                            )
 
                         # Re-use the Cookie orchestrator path directly
                         yield _status("Resuming...")
@@ -6047,8 +6096,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 import auth as _auth_al_check
                 _uid_al_check = int(uid) if uid else 1
                 _al_gen_mode = str(_auth_al_check.get_user_setting(_uid_al_check, "generation_mode", "cloud_claude") or "cloud_claude").strip()
-                if _al_gen_mode == "cloud_claude":
-                    _agent_loop_model_ok = False  # Agent loop can't use Claude CLI
+                if _al_gen_mode in ("cloud_claude", "llm_local"):
+                    # cloud_claude: agent loop can't use Claude CLI
+                    # llm_local: Ollama may not be running; Cookie (ClaudeCliBrain) is more reliable
+                    _agent_loop_model_ok = False
             except Exception:
                 pass
 
@@ -6498,37 +6549,117 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "status": _tool_status,
                             })
 
-                        elif _etype == "agent_checkpoint":
-                            # Plan proposal or other checkpoint from Cookie
-                            # First, emit the plan content as a visible message
-                            _checkpoint_content = _orch_event.get("content", "")
-                            if _checkpoint_content:
-                                yield _sse({
-                                    "type": "token",
-                                    "content": _checkpoint_content,
-                                })
-                            # Then emit the checkpoint for approve/deny buttons
-                            yield _sse(_orch_event)
-                            # Store as pending checkpoint so the next message can confirm
-                            _orch_meta = _orch_event.get("metadata", {})
-                            _session_db.store_pending_checkpoint(
-                                thread_id=req.thread_id,
-                                intent_data={
-                                    "route": "task",
-                                    "intent_type": "plan_create",
-                                    "slots": {},
-                                    "confidence": 0.95,
-                                    "reason": "plan_proposal",
-                                    "source": "orchestrator",
-                                    "_plan_proposal": True,
-                                    "_plan_data": _orch_meta.get("plan_data", {}),
+                        # ── Spawn agent events (Phase 5) ──────────────────
+                        elif _etype == "spawn_thinking":
+                            yield _sse({
+                                "type": "agent_thinking_token",
+                                "content": _orch_event.get("content", ""),
+                                "metadata": {
+                                    "step": "spawn_agent",
+                                    "subagent_task": _orch_event.get("subagent_task", ""),
                                 },
-                                checkpoint_tier="plan",
-                                metadata=_orch_meta,
-                            )
-                            _safe_print(f"[ORCHESTRATOR] Checkpoint: plan proposal stored + surfaced")
-                            # End the stream — approval handled as next message
-                            break
+                            })
+
+                        elif _etype == "spawn_tool":
+                            _st_name = _orch_event.get("tool", "")
+                            _st_status = _orch_event.get("status", "ok")
+                            _st_ms = _orch_event.get("latency_ms")
+                            yield _sse({
+                                "type": "tool_start",
+                                "content": f"[subagent] {_st_name}",
+                                "metadata": {
+                                    "tool_name": _st_name,
+                                    "input": _orch_event.get("args", {}),
+                                    "is_subagent": True,
+                                    "subagent_task": _orch_event.get("subagent_task", ""),
+                                },
+                            })
+                            yield _sse({
+                                "type": "tool_result",
+                                "content": _orch_event.get("result", "")[:300],
+                                "metadata": {
+                                    "tool_name": _st_name,
+                                    "status": _st_status,
+                                    "step_index": len(_orch_steps),
+                                    "duration_ms": _st_ms,
+                                    "is_subagent": True,
+                                },
+                            })
+                            _orch_steps.append({
+                                "tool": f"[subagent] {_st_name}",
+                                "args": _orch_event.get("args", {}),
+                                "status": _st_status,
+                            })
+
+                        elif _etype == "spawn_complete":
+                            _spawn_res = _orch_event.get("result")
+                            _spawn_success = _orch_event.get("success", False)
+                            _spawn_ms = _orch_event.get("elapsed_ms", 0)
+                            _safe_print(f"[ORCHESTRATOR] Subagent complete: success={_spawn_success}, {_spawn_ms:.0f}ms")
+                            yield _sse({
+                                "type": "status",
+                                "content": f"Subagent {'done' if _spawn_success else 'failed'} ({_spawn_ms:.0f}ms)",
+                                "metadata": {"is_subagent": True},
+                            })
+
+                        elif _etype == "agent_checkpoint":
+                            _checkpoint_content = _orch_event.get("content", "")
+                            _orch_meta = _orch_event.get("metadata", {})
+                            _checkpoint_tier = _orch_meta.get("checkpoint_tier", "plan")
+
+                            # Emit the question/content as a visible token
+                            if _checkpoint_content:
+                                yield _sse({"type": "token", "content": _checkpoint_content})
+                            # Emit the checkpoint event itself (ActionCard renders it)
+                            yield _sse(_orch_event)
+
+                            if _checkpoint_tier == "file_write":
+                                # Diff preview — suspend loop, write on user approval next turn
+                                _diff_suspended = {
+                                    "type": "diff_write",
+                                    "objective": _orch_msg,
+                                    "steps_done": list(_orch_steps),
+                                    "orch_answer_so_far": _orch_answer,
+                                    "diff_data": {
+                                        "path": _orch_meta.get("diff_preview", ""),  # stored inline
+                                        "target_path": _orch_meta.get("target_path", ""),
+                                        "diff_preview": _orch_meta.get("diff_preview", ""),
+                                        # actual path/content captured from the orchestrator event
+                                        "_raw_meta": _orch_meta,
+                                    },
+                                }
+                                _session_db.store_suspended_loop(req.thread_id, _diff_suspended)
+                                _safe_print(f"[ORCHESTRATOR] Diff checkpoint suspended: {_orch_meta.get('target_path')}")
+                                yield _sse({
+                                    "type": "done",
+                                    "content": _orch_answer,
+                                    "metadata": {
+                                        "loop_suspended": True,
+                                        "loop_question": _checkpoint_content,
+                                        "response_type": "diff_preview",
+                                        "checkpoint_tier": "file_write",
+                                    },
+                                })
+                                return
+                            else:
+                                # Plan proposal (and any other tier) — break and let next message confirm
+                                _session_db.store_pending_checkpoint(
+                                    thread_id=req.thread_id,
+                                    intent_data={
+                                        "route": "task",
+                                        "intent_type": "plan_create",
+                                        "slots": {},
+                                        "confidence": 0.95,
+                                        "reason": "plan_proposal",
+                                        "source": "orchestrator",
+                                        "_plan_proposal": True,
+                                        "_plan_data": _orch_meta.get("plan_data", {}),
+                                    },
+                                    checkpoint_tier="plan",
+                                    metadata=_orch_meta,
+                                )
+                                _safe_print(f"[ORCHESTRATOR] Checkpoint: plan proposal stored + surfaced")
+                                break
 
                         elif _etype == "response":
                             _orch_answer = _orch_event.get("content", "")
@@ -6619,6 +6750,29 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 _orch_conn.close()
                     except Exception as _orch_ts_err:
                         _safe_print(f"[ORCHESTRATOR] trust_shift emission failed (non-fatal): {_orch_ts_err}")
+
+                    # Phase 6: push proactive suggestion to outbox if present
+                    # Any part of the run that set a proactive_suggestion in
+                    # the answer metadata (e.g. a subagent noticing something)
+                    # gets queued for the WS drain loop to deliver unprompted.
+                    try:
+                        from personal_agent.outbox import get_outbox as _get_outbox
+                        _outbox = _get_outbox()
+                        # Check if orchestrator flagged a follow-up worth surfacing
+                        if _orch_steps and len(_orch_steps) >= 3:
+                            # Heuristic: multi-step runs often have follow-on questions.
+                            # Cookie can explicitly push to outbox via a special tool in future.
+                            # For now, check if the answer ends with a question.
+                            _ans_stripped = _orch_answer.strip()
+                            if _ans_stripped.endswith("?") and len(_ans_stripped) > 50:
+                                _outbox.push(
+                                    thread_id=req.thread_id,
+                                    content=_ans_stripped.split("\n")[-1].strip(),
+                                    trigger="cookie_followup",
+                                    metadata={"steps": len(_orch_steps), "source": "cookie_orchestrator"},
+                                )
+                    except Exception as _outbox_err:
+                        _safe_print(f"[ORCHESTRATOR] Outbox push failed (non-fatal): {_outbox_err}")
 
                     # Emit final done event
                     _safe_print(f"[ORCHESTRATOR] Complete: {len(_orch_steps)} steps, answer_len={len(_orch_answer)}")

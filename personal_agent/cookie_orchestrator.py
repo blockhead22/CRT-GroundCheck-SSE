@@ -434,8 +434,7 @@ Available actions:
 - {"action": "think", "reasoning": "your internal reasoning before next step"}
 - {"action": "respond", "message": "your final answer to the user", "reasoning": "why"}
 - {"action": "ask_user", "message": "your question", "reasoning": "why"}
-# PHASE 5 (not yet active — uncomment to enable spawn_agent):
-# - {"action": "spawn_agent", "task": "focused subtask description", "context": {"key": "value"}, "estimated_depth": 3, "reasoning": "why spawn instead of doing it directly"}
+- {"action": "spawn_agent", "task": "focused subtask description", "context": {"key": "value"}, "estimated_depth": 3, "reasoning": "why spawn instead of doing it directly — use when a subtask is complex enough to need its own planning/tool loop"}
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
@@ -447,6 +446,7 @@ Rules:
 7. Do not repeat the same tool call with identical arguments.
 8. When asked about your values, beliefs, how you work, or self-awareness — use introspect to ground your answer in actual data rather than reconstructing from memory.
 9. INTELLECTUAL HONESTY: Disagree when the evidence doesn't support the user's claim. Do not wrap agreement in uncertainty language — that is still agreement. If routing weights are a lookup table, say so. If a claim is speculative, say it's speculative. Agreeing with everything the user says is a failure mode, not helpfulness. The user built this system to get honest signal, not validation.
+10. file_write can target actual project files (not just workspace/). When you write to a project file, the system will show the user a diff and ask for approval before saving. Use absolute or relative paths — both work.
 """
 
 
@@ -483,11 +483,14 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
 
     SANDBOX RULES:
     - file_read, dir_list, search_code: allowed anywhere inside PROJECT_ROOT
-    - file_write: ONLY inside SANDBOX_DIR (workspace/)
+    - file_write inside SANDBOX_DIR (workspace/): execute immediately
+    - file_write inside PROJECT_ROOT (outside sandbox): returns status="diff_preview" — caller
+      must yield agent_checkpoint, get user approval, then write
+    - file_write outside PROJECT_ROOT: blocked
     - shell_exec: cwd set to SANDBOX_DIR, dangerous commands blocked
     - memory_recall, web_search: no filesystem access, always safe
 
-    Returns {"content": str, "status": "ok"|"error"}.
+    Returns {"content": str, "status": "ok"|"error"|"diff_preview"|"plan_proposal"}.
     """
     t0 = time.perf_counter()
     result = {"content": "", "status": "ok"}
@@ -513,11 +516,37 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             content = args.get("content", "")
             if not os.path.isabs(path):
                 path = os.path.join(PROJECT_ROOT, path)
-            if not _is_inside_sandbox(path):
-                result["content"] = (f"[SANDBOX] BLOCKED: file_write only allowed inside {SANDBOX_DIR}. "
+            if not _is_inside_project(path):
+                result["content"] = (f"[SANDBOX] BLOCKED: file_write outside project root. "
                                      f"Attempted: {path}")
                 result["status"] = "error"
-                print(f"  [SANDBOX] BLOCKED file_write: {path}")
+                print(f"  [SANDBOX] BLOCKED file_write outside project: {path}")
+            elif not _is_inside_sandbox(path):
+                # Project-root write — needs diff preview + user approval
+                import difflib
+                rel_path = os.path.relpath(path, PROJECT_ROOT)
+                if os.path.exists(path):
+                    with open(path, "r", encoding="utf-8", errors="replace") as f:
+                        old_lines = f.readlines()
+                else:
+                    old_lines = []
+                new_lines = content.splitlines(keepends=True)
+                diff = "".join(difflib.unified_diff(
+                    old_lines, new_lines,
+                    fromfile=f"a/{rel_path}", tofile=f"b/{rel_path}",
+                    lineterm="",
+                ))
+                if not diff:
+                    result["content"] = f"No changes to write — file already matches."
+                else:
+                    result["content"] = json.dumps({
+                        "path": path,
+                        "rel_path": rel_path,
+                        "content": content,
+                        "diff": diff[:4000],
+                    })
+                    result["status"] = "diff_preview"
+                    print(f"  [SANDBOX] diff_preview for {rel_path} ({len(diff)} chars diff)")
             else:
                 os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
                 with open(path, "w", encoding="utf-8") as f:
@@ -1580,6 +1609,43 @@ class Orchestrator:
                         print(f"  [PLAN] Error: {_plan_err}")
                     continue
 
+                # Diff preview gate: yield checkpoint and wait for approval before writing
+                if tool_result["status"] == "diff_preview":
+                    try:
+                        diff_data = json.loads(tool_result["content"])
+                        rel_path = diff_data["rel_path"]
+                        diff_text = diff_data["diff"]
+                        yield {
+                            "type": "agent_checkpoint",
+                            "content": f"I'd like to write changes to `{rel_path}`.\n\nApprove this edit?",
+                            "metadata": {
+                                "requires_confirmation": True,
+                                "checkpoint_tier": "file_write",
+                                "diff_preview": diff_text,
+                                "target_path": rel_path,
+                                # Included so the resume handler can execute the write
+                                "_write_path": diff_data["path"],
+                                "_write_content": diff_data["content"],
+                            },
+                        }
+                        user_response = yield
+                        if user_response is False or user_response is None:
+                            last_result = f"User rejected write to {rel_path}. Do not attempt this write again unless the user asks."
+                            print(f"  [DIFF] Rejected by user: {rel_path}")
+                        else:
+                            # Approved — execute the write
+                            write_path = diff_data["path"]
+                            write_content = diff_data["content"]
+                            os.makedirs(os.path.dirname(write_path) or ".", exist_ok=True)
+                            with open(write_path, "w", encoding="utf-8") as _wf:
+                                _wf.write(write_content)
+                            last_result = f"Written {len(write_content)} chars to {rel_path}"
+                            print(f"  [DIFF] Approved and written: {rel_path}")
+                    except Exception as _diff_err:
+                        last_result = f"Diff write failed: {_diff_err}"
+                        print(f"  [DIFF] Error: {_diff_err}")
+                    continue
+
                 yield {
                     "type": "tool_call",
                     "tool": tool,
@@ -1677,11 +1743,7 @@ class Orchestrator:
                 break
 
             # ── PHASE 5: spawn_agent ──────────────────────────────────────
-            # NOT YET ACTIVE. To enable:
-            #   1. Uncomment the spawn_agent action in ORCHESTRATOR_SYSTEM above
-            #   2. Remove the `False and` guard below
-            #   3. Add spawn_tool/spawn_thinking/spawn_complete handlers in chat.py
-            elif False and action == "spawn_agent":
+            elif action == "spawn_agent":
                 from personal_agent.spawn_agent import handle_spawn_agent
                 _spawn_result = yield from handle_spawn_agent(
                     decision,

@@ -25,6 +25,7 @@ import { LiveFeedPage } from './pages/LiveFeedPage'
 import BeliefMapPage from './pages/BeliefMapPage'
 import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
+import { getAetherSocket } from './lib/ws'
 import { getEffectiveApiBaseUrl, getHealth, getProfile, sendToCrtApi, streamFromCrtApi, setEffectiveApiBaseUrl, searchResearch, setProfileName, authGetMe, authLogout, authSyncChats, authLoadChats, getAuthToken, updateAuthProfile, type AuthUser } from './lib/api'
 import { SettingsPage } from './pages/SettingsPage'
 import { V2Page } from './pages/V2Page'
@@ -198,6 +199,75 @@ export default function App() {
     if (!selectedThread || !selectedMessageId) return null
     return selectedThread.messages.find((m) => m.id === selectedMessageId) ?? null
   }, [selectedThread, selectedMessageId])
+
+  // Phase 6: proactive turns — global WS handler for unprompted messages
+  useEffect(() => {
+    const socket = getAetherSocket()
+    const unsubscribe = socket.onAny((event) => {
+      if (event.type !== 'proactive_turn') return
+      const threadId = event.thread_id as string | undefined
+      if (!threadId) return
+      // Only inject into the active thread to avoid polluting other threads
+      setThreads(prev => {
+        const thread = prev.find(t => t.id === threadId)
+        if (!thread) return prev
+        const proactiveMsg = {
+          id: newId('m'),
+          role: 'assistant' as const,
+          text: (event.content as string) ?? '',
+          createdAt: Date.now(),
+          agentThinking: null,
+          isProactive: true,   // flag for visual distinction
+          crt: {
+            response_type: 'proactive',
+            gates_passed: true,
+            gate_reason: null,
+            session_id: null,
+            interaction_id: null,
+            confidence: null,
+            intent_alignment: null,
+            memory_alignment: null,
+            contradiction_detected: null,
+            unresolved_contradictions_total: null,
+            unresolved_hard_conflicts: null,
+            retrieved_memories: [],
+            prompt_memories: [],
+            learned_suggestions: [],
+            heuristic_suggestions: [],
+            profile_updates: [],
+            pipeline_statuses: [],
+            draft_response: null,
+            tasking: null,
+            tool_calls: null,
+            agent_activated: null,
+            agent_answer: null,
+            agent_trace: null,
+            xray: null,
+            thinking: undefined,
+            thinking_trace_id: null,
+            reflection_trace_id: null,
+            reflection_confidence: null,
+            reflection_label: null,
+            personality_profile: null,
+            reflection_scorecard: null,
+            correction_applied: false,
+            correction_text: null,
+            generation_source: `proactive:${(event.trigger as string) ?? 'system'}`,
+            escalation: null,
+            cloud_governance_used: false,
+            tools_executed: null,
+            agent_loop: false,
+          },
+        }
+        return prev.map(t =>
+          t.id === threadId
+            ? { ...t, updatedAt: Date.now(), messages: [...t.messages, proactiveMsg] }
+            : t
+        )
+      })
+    })
+    return unsubscribe
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Greeting wave on empty thread
   useEffect(() => {
