@@ -276,6 +276,26 @@ export class AetherSocket {
       case 'thinking_end':
         cb.onThinkingEnd?.()
         break
+      case 'retrieval':
+        cb.onRetrieval?.((meta?.memories as Array<{ id: string; text: string; trust: number }>) ?? [])
+        break
+      case 'trust_shift':
+        if (meta?.memoryId) {
+          cb.onTrustShift?.({
+            memoryId: meta.memoryId as string,
+            from: (meta.from as number) ?? 0,
+            to: (meta.to as number) ?? 0,
+            reason: (meta.reason as string) ?? '',
+            text: (meta.text as string) ?? '',
+          })
+        }
+        break
+      case 'verification':
+        cb.onVerification?.({
+          verdict: (meta?.verdict as string) ?? 'none',
+          confidence: (meta?.confidence as number) ?? 0,
+        })
+        break
       case 'phase_start':
         cb.onPhaseStart?.(event.phase ?? '', event.content)
         break

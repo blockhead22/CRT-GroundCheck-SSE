@@ -3373,6 +3373,22 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     _mem_retrieved_count = len(result.get("retrieved_memories") or []) + len(result.get("prompt_memories") or [])
     if _mem_retrieved_count > 0:
         _emit_pipeline_status(f"{_mem_retrieved_count} memories retrieved")
+        # Emit structured retrieval event for live trust bar display
+        _retrieval_mems = result.get("retrieved_memories") or result.get("prompt_memories") or []
+        yield _sse({
+            "type": "retrieval",
+            "content": f"{_mem_retrieved_count} memories",
+            "metadata": {
+                "memories": [
+                    {
+                        "id": str(m.get("memory_id") or m.get("id") or ""),
+                        "text": (str(m.get("text") or ""))[:120],
+                        "trust": round(float(m.get("trust") or 0.5), 3),
+                    }
+                    for m in _retrieval_mems[:8]
+                ]
+            },
+        })
 
     # ====== PRIMARY CLOUD GENERATION MODE ======
     # If the user has selected cloud as their PRIMARY generator, replace the
@@ -4113,6 +4129,15 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _critic_verdict_str = str((critic_meta or {}).get("verdict") or "")
         _safe_print(f"[GOVERNANCE] nli: critic verdict={_critic_verdict_str}, confidence={_critic_confidence}")
         _emit_pipeline_status("checking contradictions")
+        # Emit verification event for frontend
+        yield _sse({
+            "type": "verification",
+            "content": f"{'passed' if _critic_verdict_str == 'pass' else 'checking'}" if _critic_verdict_str else "skipped",
+            "metadata": {
+                "verdict": _critic_verdict_str or "none",
+                "confidence": _critic_confidence,
+            },
+        })
         if _critic_verdict_str == "soft_fail" and 0.4 <= _critic_confidence <= 0.7:
             import auth as _auth_mod_nli
             _uid_int_nli = int(uid) if uid else 1
@@ -4971,6 +4996,32 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             print(f"[SESSION_STATE] turn={_crt_turn.turn_number} density={_crt_turn.density_score:.4f} "
                   f"cited={len(_crt_turn.memories_cited_ids)} slots={len(_crt_turn.slots_classified)} "
                   f"trust_shifts={len(_crt_turn.trust_shifts)}")
+            # Emit trust_shift SSE events for live frontend visualization
+            _TRUST_REASON_MAP = {
+                "cited": "cited", "citation_bump": "cited", "citation": "cited",
+                "corroborate": "corroborated", "nli_support": "corroborated", "support": "corroborated",
+                "contradiction": "contradicted", "nli_contra": "contradicted", "contra": "contradicted",
+                "decay": "decayed", "time_decay": "decayed",
+                "reinforced": "reinforced", "reinforce": "reinforced",
+            }
+            _retrieval_by_id = {
+                str(m.get("memory_id") or m.get("id") or ""): (str(m.get("text") or ""))[:80]
+                for m in (result.get("retrieved_memories") or [])
+            }
+            for _ts in _crt_turn.trust_shifts:
+                _ts_mid = str(_ts.get("memory_id", ""))
+                _ts_reason_raw = str(_ts.get("reason", ""))
+                _ts_reason = _TRUST_REASON_MAP.get(_ts_reason_raw.lower().strip(), _ts_reason_raw)
+                yield _sse({
+                    "type": "trust_shift",
+                    "metadata": {
+                        "memoryId": _ts_mid,
+                        "from": round(float(_ts.get("old_trust", 0)), 3),
+                        "to": round(float(_ts.get("new_trust", 0)), 3),
+                        "reason": _ts_reason,
+                        "text": _retrieval_by_id.get(_ts_mid, ""),
+                    },
+                })
         except Exception as _e:
             print(f"[SESSION_STATE_BG] Error: {_e}")
             import traceback; traceback.print_exc()
@@ -5858,12 +5909,27 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             except Exception:
                 pass
 
-            _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}, layer4_orchestrator={_layer4_orchestrator}")
+            # ── Check if agent loop can actually use the user's preferred model ──
+            # When generation_mode=cloud_claude, the agent loop's LiteLLM fallback
+            # chain (Anthropic API → OpenAI API → local) can't reach Claude CLI.
+            # In that case, force the orchestrator path which has ClaudeCliBrain.
+            _agent_loop_model_ok = True
+            try:
+                import auth as _auth_al_check
+                _uid_al_check = int(uid) if uid else 1
+                _al_gen_mode = str(_auth_al_check.get_user_setting(_uid_al_check, "generation_mode", "cloud_claude") or "cloud_claude").strip()
+                if _al_gen_mode == "cloud_claude":
+                    _agent_loop_model_ok = False  # Agent loop can't use Claude CLI
+            except Exception:
+                pass
+
+            _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}, layer4_orchestrator={_layer4_orchestrator}, model_ok={_agent_loop_model_ok}")
             # Memory-only intents must bypass the agent loop — they need direct retrieval,
             # not an LLM tool loop that will spin up web_search / shell_exec.
             _MEMORY_ONLY_INTENTS = {"broad_recall", "system_info", "inquiry_queue"}
             if (
                 _agent_loop_enabled
+                and _agent_loop_model_ok  # Agent loop must be able to use the user's preferred model
                 and _task_intent is not None
                 and _task_intent.route == "task"
                 and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
@@ -6073,8 +6139,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # Uses Cookie Opus as the brain for planning/reasoning,
             # local tools for execution. Sandboxed file writes.
             # Layer 4 routing decision was made above (before agent loop gate).
-            if _layer4_orchestrator:
-                _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type})")
+            # Also enters orchestrator when agent loop was skipped due to model
+            # mismatch (user wants Claude CLI but agent loop can only do API).
+            _agent_loop_skipped_for_model = (
+                _agent_loop_enabled
+                and not _agent_loop_model_ok
+                and _task_intent is not None
+                and _task_intent.route == "task"
+                and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
+            )
+            if _layer4_orchestrator or _agent_loop_skipped_for_model:
+                _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
+                _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type}, reason={_orch_reason})")
                 try:
                     from personal_agent.cookie_orchestrator import Orchestrator, ClaudeCliBrain, OpenAIBrain, get_brain
 
@@ -6227,6 +6303,44 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _safe_print(f"[ORCHESTRATOR] Stored in conversation history")
                     except Exception as _store_err:
                         _safe_print(f"[ORCHESTRATOR] Failed to store history (non-fatal): {_store_err}")
+
+                    # Emit trust_shift events from orchestrator run
+                    try:
+                        _orch_db_path = getattr(_orch_engine.memory, "db_path", None)
+                        if _orch_db_path:
+                            import sqlite3 as _sq3_orch
+                            from pathlib import Path as _Path_orch
+                            if _Path_orch(_orch_db_path).exists():
+                                _orch_conn = _sq3_orch.connect(_orch_db_path, timeout=5)
+                                _orch_conn.execute("PRAGMA journal_mode=WAL")
+                                _orch_cursor = _orch_conn.cursor()
+                                # Get trust shifts from last 60 seconds (covers this orchestrator run)
+                                _orch_cursor.execute(
+                                    "SELECT memory_id, old_trust, new_trust, reason FROM trust_log "
+                                    "WHERE timestamp > ? ORDER BY timestamp",
+                                    (time.time() - 60,)
+                                )
+                                _TRUST_REASON_MAP_ORCH = {
+                                    "cited": "cited", "citation_bump": "cited", "citation": "cited",
+                                    "corroborate": "corroborated", "nli_support": "corroborated",
+                                    "contradiction": "contradicted", "nli_contra": "contradicted",
+                                    "decay": "decayed", "reinforced": "reinforced",
+                                }
+                                for _trow in _orch_cursor.fetchall():
+                                    _tr_raw = str(_trow[3] or "")
+                                    yield _sse({
+                                        "type": "trust_shift",
+                                        "metadata": {
+                                            "memoryId": str(_trow[0]),
+                                            "from": round(float(_trow[1] or 0), 3),
+                                            "to": round(float(_trow[2] or 0), 3),
+                                            "reason": _TRUST_REASON_MAP_ORCH.get(_tr_raw.lower().strip(), _tr_raw),
+                                            "text": "",
+                                        },
+                                    })
+                                _orch_conn.close()
+                    except Exception as _orch_ts_err:
+                        _safe_print(f"[ORCHESTRATOR] trust_shift emission failed (non-fatal): {_orch_ts_err}")
 
                     # Emit final done event
                     _safe_print(f"[ORCHESTRATOR] Complete: {len(_orch_steps)} steps, answer_len={len(_orch_answer)}")

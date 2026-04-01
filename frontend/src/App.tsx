@@ -835,6 +835,43 @@ export default function App() {
                 return next
               })
             },
+            // Live belief state events
+            onRetrieval: (memories) => {
+              setRetrievedMemories(memories.map(m => ({
+                id: m.id,
+                text: m.text,
+                trust: m.trust,
+              })))
+              // Also push into pipeline steps as a retrieval event
+              setPipelineSteps(prev => [...prev, {
+                kind: 'retrieval' as const,
+                memories,
+              }])
+            },
+            onTrustShift: (shift) => {
+              setTrustShifts(prev => [...prev, {
+                memoryId: shift.memoryId,
+                from: shift.from,
+                to: shift.to,
+                reason: shift.reason,
+                text: shift.text,
+              }])
+              // Also push into pipeline steps for collapsed summary
+              setPipelineSteps(prev => [...prev, {
+                kind: 'trust_shift' as const,
+                shift: {
+                  memoryId: shift.memoryId,
+                  from: shift.from,
+                  to: shift.to,
+                  reason: shift.reason,
+                  text: shift.text,
+                },
+              }])
+            },
+            onVerification: (result) => {
+              const label = result.verdict === 'pass' ? '✓ verified' : result.verdict === 'hard_fail' ? '✗ contradiction' : `◇ ${result.verdict}`
+              setPipelineSteps(prev => [...prev, { kind: 'status' as const, content: label }])
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {

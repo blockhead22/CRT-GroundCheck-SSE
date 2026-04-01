@@ -416,6 +416,9 @@ export type StreamEventType =
   | 'plan_complete'
   | 'agent_loop_start'
   | 'agent_loop_complete'
+  | 'retrieval'
+  | 'trust_shift'
+  | 'verification'
   | 'done'
   | 'error'
 
@@ -465,6 +468,10 @@ export type StreamCallbacks = {
   onThinkingToken?: (token: string) => void
   onThinking?: (fullThinking: string) => void
   onThinkingEnd?: () => void
+  // Live belief state events
+  onRetrieval?: (memories: Array<{ id: string; text: string; trust: number }>) => void
+  onTrustShift?: (shift: { memoryId: string; from: number; to: number; reason: string; text: string }) => void
+  onVerification?: (result: { verdict: string; confidence: number }) => void
   onPhaseStart?: (phase: string, content?: string) => void
   onPhaseEnd?: (phase: string) => void
   onToken?: (token: string) => void
@@ -683,6 +690,32 @@ export async function streamFromCrtApi(args: {
               case 'thinking_end':
                 args.callbacks.onThinkingEnd?.()
                 break
+              case 'retrieval': {
+                const meta = event.metadata as { memories?: Array<{ id: string; text: string; trust: number }> } | undefined
+                args.callbacks.onRetrieval?.(meta?.memories ?? [])
+                break
+              }
+              case 'trust_shift': {
+                const meta = event.metadata as { memoryId?: string; from?: number; to?: number; reason?: string; text?: string } | undefined
+                if (meta?.memoryId) {
+                  args.callbacks.onTrustShift?.({
+                    memoryId: meta.memoryId,
+                    from: meta.from ?? 0,
+                    to: meta.to ?? 0,
+                    reason: meta.reason ?? '',
+                    text: meta.text ?? '',
+                  })
+                }
+                break
+              }
+              case 'verification': {
+                const meta = event.metadata as { verdict?: string; confidence?: number } | undefined
+                args.callbacks.onVerification?.({
+                  verdict: meta?.verdict ?? 'none',
+                  confidence: meta?.confidence ?? 0,
+                })
+                break
+              }
               case 'phase_start':
                 args.callbacks.onPhaseStart?.(event.phase || '', event.content)
                 break

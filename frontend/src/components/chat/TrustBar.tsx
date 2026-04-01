@@ -83,7 +83,7 @@ export function TrustBar({
       {/* Reason tag */}
       {reason && shifted && (
         <span className="flex-shrink-0" style={{ color: 'rgba(240,235,225,0.2)' }}>
-          {reason}
+          {'\u2190'} {reason}
         </span>
       )}
     </div>

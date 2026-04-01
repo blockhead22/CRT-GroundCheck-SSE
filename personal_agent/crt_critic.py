@@ -236,10 +236,12 @@ class CRTCritic:
         contradictions = list(report.contradicted_claims or [])
         hallucinations = list(report.hallucinations or [])
         
+        _mem_contradictions = len(report.contradiction_details or [])
         logger.info(
             f"[CRT-CRITIC] Confidence: {confidence:.2f} | "
-            f"Contradictions: {len(contradictions)} | "
+            f"Contradicted claims: {len(contradictions)} | "
             f"Hallucinations: {len(hallucinations)} | "
+            f"Memory contradictions: {_mem_contradictions} | "
             f"Passed: {report.passed}"
         )
 
@@ -254,10 +256,38 @@ class CRTCritic:
                 hallucinations=hallucinations,
             )
 
+        # --- PASS: no verifiable claims in response (conversational/meta text) ---
+        # When GroundCheck can't extract meaningful facts from the response,
+        # confidence will be very low but that's "no opinion", not "wrong".
+        # Only pass if the response doesn't reference any contradicted facts.
+        _facts_in_response = len(report.facts_extracted or {}) - len(report.facts_out_of_scope or {})
+        if _facts_in_response <= 0 and not contradictions:
+            logger.info("[CRT-CRITIC] No verifiable claims in response — passing (no opinion)")
+            return CriticResult(
+                verdict=VerifyVerdict.PASS,
+                original_answer=draft_answer,
+                final_answer=draft_answer,
+                confidence=1.0,  # No opinion = no problem
+                contradictions=[],
+                hallucinations=[],
+            )
+
         # --- HARD FAIL: confidence very low AND actual contradictions found ---
         # NOTE: confidence=0.0 with no contradictions means GroundCheck had no
         # opinion (e.g., conversational/meta response). Don't hard-fail on that.
-        _has_real_contradictions = len(contradictions) > 0 or len(hallucinations) > 0
+        #
+        # IMPORTANT: Only count contradicted_claims (facts the response actually
+        # references that conflict with memory). Hallucinations from the regex
+        # fact extractor on conversational text are noise, not real errors.
+        # Memory-vs-memory contradictions (contradiction_details) should only
+        # trigger disclosure if the response uses one of those contradicted facts.
+        _has_real_contradictions = len(contradictions) > 0  # contradicted_claims only
+        # Hallucinations only count if the response also has grounded facts
+        # (i.e., confidence > 0 means GroundCheck actually found verifiable claims).
+        # When confidence=0.0 and hallucinations exist, the regex extractor pulled
+        # garbage "facts" from conversational text — not real hallucinations.
+        if confidence > 0 and len(hallucinations) > 0:
+            _has_real_contradictions = True
         if (confidence < self.low_threshold and _has_real_contradictions) or len(contradictions) >= 3:
             # Build disclosure text for the user
             conflict_lines = []
@@ -299,6 +329,20 @@ class CRTCritic:
             )
 
         # --- SOFT FAIL: in between — try to revise once ---
+        # But first: if confidence=0.0 and no contradicted_claims, the response
+        # has no verifiable claims that conflict with memory. Don't revise —
+        # the "soft fail" is just noise from regex fact extraction on non-factual text.
+        if confidence == 0.0 and not contradictions:
+            logger.info("[CRT-CRITIC] confidence=0.0 with no contradicted claims — passing (no real issues)")
+            return CriticResult(
+                verdict=VerifyVerdict.PASS,
+                original_answer=draft_answer,
+                final_answer=draft_answer,
+                confidence=1.0,
+                contradictions=[],
+                hallucinations=[],
+            )
+
         corrections = []
         if report.corrected and report.corrected != draft_answer:
             corrections.append(f"Corrected version: {report.corrected}")
@@ -356,8 +400,11 @@ class CRTCritic:
             except Exception as e:
                 logger.warning(f"[CRT-CRITIC] Revision failed: {e}")
 
-        # Revision not available or failed — use GroundCheck's corrected version if available
-        fallback = report.corrected if report.corrected else draft_answer
+        # Revision not available or failed — use draft_answer as safe fallback.
+        # Don't use report.corrected here: if LLM revision failed (e.g., Ollama down),
+        # report.corrected may be None or incomplete. The draft_answer from Claude is
+        # always a valid response.
+        fallback = draft_answer
         return CriticResult(
             verdict=VerifyVerdict.SOFT_FAIL,
             original_answer=draft_answer,

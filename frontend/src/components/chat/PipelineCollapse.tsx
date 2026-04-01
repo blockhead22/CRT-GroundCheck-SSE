@@ -8,6 +8,7 @@ export type PipelineStep =
   | { kind: 'thinking'; content: string }
   | { kind: 'tool'; result: ToolResult }
   | { kind: 'trust_shift'; shift: TrustShift }
+  | { kind: 'retrieval'; memories: Array<{ id: string; text: string; trust: number }> }
   | { kind: 'status'; content: string }
 
 /**
@@ -46,6 +47,10 @@ export function PipelineCollapse({
   const thinkingCount = steps.filter(s => s.kind === 'thinking').length
   const toolCount = steps.filter(s => s.kind === 'tool').length
   const trustShiftCount = steps.filter(s => s.kind === 'trust_shift').length
+  const retrievalCount = steps.filter(s => s.kind === 'retrieval').length
+  const memoryCount = steps
+    .filter((s): s is Extract<PipelineStep, { kind: 'retrieval' }> => s.kind === 'retrieval')
+    .reduce((sum, s) => sum + s.memories.length, 0)
   const toolNames = steps
     .filter((s): s is Extract<PipelineStep, { kind: 'tool' }> => s.kind === 'tool')
     .map(s => s.result.tool)
@@ -54,6 +59,7 @@ export function PipelineCollapse({
   const summaryParts: string[] = []
   if (toolCount > 0) summaryParts.push(`${toolCount} tool call${toolCount !== 1 ? 's' : ''}`)
   if (uniqueTools.length > 0 && uniqueTools.length <= 3) summaryParts.push(uniqueTools.join(', '))
+  if (memoryCount > 0) summaryParts.push(`${memoryCount} memories`)
   if (trustShiftCount > 0) summaryParts.push(`${trustShiftCount} trust shift${trustShiftCount !== 1 ? 's' : ''}`)
   if (thinkingCount > 0) summaryParts.push(`${thinkingCount} reasoning step${thinkingCount !== 1 ? 's' : ''}`)
 
@@ -109,6 +115,24 @@ export function PipelineCollapse({
                           reason={step.shift.reason}
                           compact
                         />
+                      </div>
+                    )
+                  case 'retrieval':
+                    return (
+                      <div key={`ret-${i}`} className="my-1.5">
+                        <div className="text-[11px] font-mono mb-1" style={{ color: '#E0A080' }}>
+                          {'\u25C8'} RETRIEVING {step.memories.length} memories
+                        </div>
+                        <div className="space-y-0.5 ml-2">
+                          {step.memories.map((m, mi) => (
+                            <TrustBar
+                              key={m.id || `rm-${mi}`}
+                              trust={m.trust}
+                              text={m.text}
+                              compact
+                            />
+                          ))}
+                        </div>
                       </div>
                     )
                   case 'status':
