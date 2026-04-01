@@ -563,20 +563,58 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
         elif tool_name == "search_code":
             query = args.get("query", "")
             search_path = args.get("path", "D:/AI_round2")
-            import subprocess
+            if not os.path.isabs(search_path):
+                search_path = os.path.join(PROJECT_ROOT, search_path)
+            import subprocess, re as _re
+            _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next'}
+            _search_done = False
+            # Try rg first
             try:
                 proc = subprocess.run(
-                    ["rg", "--no-heading", "-n", "-i", "--max-count", "20", query, search_path],
-                    capture_output=True, text=True, timeout=10,
+                    ["rg", "--no-heading", "-n", "-i", "--max-count", "5",
+                     "--glob", "!.venv", "--glob", "!node_modules",
+                     query, search_path],
+                    capture_output=True, text=True, timeout=15,
                 )
-                result["content"] = proc.stdout[:5000] if proc.stdout else "No matches found."
-            except FileNotFoundError:
-                # Fallback to grep
-                proc = subprocess.run(
-                    ["grep", "-rn", "-i", "--max-count=20", query, search_path],
-                    capture_output=True, text=True, timeout=10,
-                )
-                result["content"] = proc.stdout[:5000] if proc.stdout else "No matches found."
+                if proc.returncode in (0, 1):  # 0=matches, 1=no matches
+                    result["content"] = proc.stdout[:5000] if proc.stdout else "No matches found."
+                    _search_done = True
+            except (FileNotFoundError, subprocess.TimeoutExpired):
+                pass
+            # Python fallback (always available, skips heavy dirs)
+            if not _search_done:
+                try:
+                    import time as _time
+                    _pattern = _re.compile(query, _re.IGNORECASE)
+                    _hits = []
+                    _t_start = _time.time()
+                    _timed_out = False
+                    for _root, _dirs, _files in os.walk(search_path):
+                        if _time.time() - _t_start > 8.0:
+                            _timed_out = True
+                            break
+                        _dirs[:] = [d for d in _dirs if d not in _SKIP_DIRS]
+                        for _fname in _files:
+                            if not _fname.endswith(('.py', '.ts', '.tsx', '.js', '.jsx', '.md', '.txt', '.json')):
+                                continue
+                            _fpath = os.path.join(_root, _fname)
+                            try:
+                                with open(_fpath, 'r', encoding='utf-8', errors='replace') as _f:
+                                    for _lno, _line in enumerate(_f, 1):
+                                        if _pattern.search(_line):
+                                            _rel = os.path.relpath(_fpath, PROJECT_ROOT)
+                                            _hits.append(f"{_rel}:{_lno}:{_line.rstrip()}")
+                                            if len(_hits) >= 100:
+                                                break
+                            except OSError:
+                                pass
+                            if len(_hits) >= 100:
+                                break
+                    _suffix = "\n... [search timeout after 8s, partial results]" if _timed_out else ""
+                    result["content"] = ("\n".join(_hits[:100]) + _suffix) if _hits else ("No matches found." + _suffix)
+                except Exception as _se:
+                    result["content"] = f"Search error: {_se}"
+                    result["status"] = "error"
 
         elif tool_name == "memory_recall":
             query = args.get("query", "")

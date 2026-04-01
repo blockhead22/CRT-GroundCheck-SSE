@@ -225,7 +225,7 @@ export function MessageBubble(props: {
         transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
         className="flex justify-end group"
       >
-        <div className="max-w-[80%] text-right">
+        <div className="max-w-[80%] text-left">
           <div
             className="text-[14.5px] leading-relaxed"
             style={{ color: 'rgba(240,235,225,0.55)' }}
