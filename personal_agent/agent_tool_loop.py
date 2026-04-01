@@ -360,6 +360,78 @@ def _execute_tool(tool_name: str, tool_args: Dict[str, Any], thread_id: str,
             return {"content": "(memory system not available)", "status": "error",
                     "metadata": {"tool_name": tool_name}}
 
+        elif tool_name == "gpt_log_search":
+            query = tool_args.get("query", "").strip()
+            if not query:
+                return {"content": "(no query provided)", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+            try:
+                from personal_agent.gpt_log_store import get_gpt_log_store
+                store = get_gpt_log_store()
+                top_k = tool_args.get("top_k", 10)
+                role = tool_args.get("role")
+                results = store.search(query, top_k=top_k, role_filter=role)
+                if results:
+                    import datetime
+                    lines = []
+                    for r in results:
+                        dt = datetime.datetime.fromtimestamp(r.timestamp) if r.timestamp else None
+                        date_str = dt.strftime("%Y-%m-%d") if dt else "?"
+                        lines.append(
+                            f"- [{r.role}] (score={r.score:.3f}, {date_str}, conv=\"{r.conv_title}\", msg_id={r.msg_id})\n  {r.text[:400]}"
+                        )
+                    return {"content": "\n".join(lines), "status": "ok",
+                            "metadata": {"tool_name": tool_name, "result_count": len(results)}}
+                return {"content": "(no matching GPT log messages found)", "status": "ok",
+                        "metadata": {"tool_name": tool_name, "result_count": 0}}
+            except Exception as e:
+                return {"content": f"(GPT log search failed: {e})", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+
+        elif tool_name == "gpt_log_context":
+            msg_id = tool_args.get("msg_id", "").strip()
+            if not msg_id:
+                return {"content": "(no msg_id provided)", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+            try:
+                from personal_agent.gpt_log_store import get_gpt_log_store
+                import datetime
+                store = get_gpt_log_store()
+                window = tool_args.get("window", 5)
+                messages = store.get_message_context(msg_id, window=window)
+                if messages:
+                    lines = []
+                    for m in messages:
+                        dt = datetime.datetime.fromtimestamp(m.timestamp) if m.timestamp else None
+                        ts = dt.strftime("%H:%M:%S") if dt else "?"
+                        marker = " <<<" if m.msg_id == msg_id else ""
+                        lines.append(f"[{m.role} {ts}]{marker}\n{m.text[:600]}")
+                    return {"content": "\n\n".join(lines), "status": "ok",
+                            "metadata": {"tool_name": tool_name, "message_count": len(messages)}}
+                return {"content": "(message not found)", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+            except Exception as e:
+                return {"content": f"(GPT log context failed: {e})", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+
+        elif tool_name == "gpt_log_promote":
+            msg_id = tool_args.get("msg_id", "").strip()
+            if not msg_id:
+                return {"content": "(no msg_id provided)", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+            try:
+                from personal_agent.gpt_log_store import get_gpt_log_store
+                store = get_gpt_log_store()
+                memory_id = store.promote_to_crt(msg_id, engine)
+                if memory_id:
+                    return {"content": f"Promoted to CRT memory: {memory_id}", "status": "ok",
+                            "metadata": {"tool_name": tool_name, "memory_id": memory_id}}
+                return {"content": "(message not found in GPT logs)", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+            except Exception as e:
+                return {"content": f"(GPT log promote failed: {e})", "status": "error",
+                        "metadata": {"tool_name": tool_name}}
+
         elif tool_name == "inquiry_queue":
             # Phase G4: Active inference — show what the agent is uncertain about
             try:

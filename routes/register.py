@@ -27,6 +27,8 @@ from .analysis import router as analysis_router
 from .ingest import router as ingest_router
 from .ambient import router as ambient_router
 from .compaction import router as compaction_router
+from .gpt_logs import router as gpt_logs_router
+from .ws import router as ws_router
 
 
 def register_routes(app: FastAPI) -> None:
@@ -34,6 +36,7 @@ def register_routes(app: FastAPI) -> None:
     install_log_handler()
     app.include_router(ambient_router)
     app.include_router(compaction_router)
+    app.include_router(gpt_logs_router)
     app.include_router(ingest_router)
     app.include_router(analysis_router)
     app.include_router(plans_router)
@@ -57,3 +60,4 @@ def register_routes(app: FastAPI) -> None:
     app.include_router(agent_router)
     app.include_router(misc_router)
     app.include_router(logs_router)
+    app.include_router(ws_router)

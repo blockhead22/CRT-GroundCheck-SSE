@@ -38,6 +38,8 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
     "conversational": {
         "memory_recall",
         "introspect",
+        "gpt_log_search",
+        "gpt_log_context",
     },
     "identity": {
         "memory_recall",
@@ -52,6 +54,8 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "web_search",
         "fetch_url",
         "introspect",
+        "gpt_log_search",
+        "gpt_log_context",
     },
     "code_task": {
         "memory_recall",
@@ -84,6 +88,31 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "memory_recall",
         "memory_store",
         "introspect",
+        "gpt_log_search",
+        "gpt_log_context",
+        "gpt_log_promote",
+    },
+    "gpt_log_search": {
+        "gpt_log_search",
+        "gpt_log_context",
+        "gpt_log_promote",
+        "memory_recall",
+        "introspect",
+    },
+    "gpt_log_context": {
+        "gpt_log_search",
+        "gpt_log_context",
+        "gpt_log_promote",
+        "memory_recall",
+        "introspect",
+    },
+    "gpt_log_promote": {
+        "gpt_log_search",
+        "gpt_log_context",
+        "gpt_log_promote",
+        "memory_recall",
+        "memory_store",
+        "introspect",
     },
     "task": {
         # Generic task — broad access
@@ -100,6 +129,9 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "plan_create",
         "memory_store",
         "introspect",
+        "gpt_log_search",
+        "gpt_log_context",
+        "gpt_log_promote",
     },
 }
 
@@ -108,6 +140,8 @@ DEFAULT_TOOLSET: Set[str] = {
     "memory_recall",
     "web_search",
     "introspect",
+    "gpt_log_search",
+    "gpt_log_context",
 }
 
 # Full toolset (for reference / override)
@@ -117,6 +151,7 @@ ALL_TOOLS: Set[str] = {
     "shell_exec", "git_exec", "diff_file", "code_intel",
     "run_python", "plan_create", "memory_store",
     "image_read", "introspect",
+    "gpt_log_search", "gpt_log_context", "gpt_log_promote",
 }
 
 

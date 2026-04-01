@@ -427,6 +427,9 @@ Available actions:
 - {"action": "tool_call", "tool": "image_read", "args": {"path": "screenshot.png", "prompt": "Describe what you see"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "plan_create", "args": {"title": "Plan name", "steps": ["Step 1", "Step 2"]}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "introspect", "args": {"aspect": "routing_weights|execution_beliefs|contradiction_density|epistemic_posture|all"}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "gpt_log_search", "args": {"query": "search terms", "top_k": 10, "role": "user|assistant"}, "reasoning": "why"} — Search Nick's full ChatGPT history (57K+ messages). Semantic search. Use when user references past GPT conversations or wants to find something discussed before.
+- {"action": "tool_call", "tool": "gpt_log_context", "args": {"msg_id": "id_from_search", "window": 5}, "reasoning": "why"} — Get full conversation thread around a GPT log search result.
+- {"action": "tool_call", "tool": "gpt_log_promote", "args": {"msg_id": "id_to_promote"}, "reasoning": "why"} — Promote a GPT log message into CRT memory (low trust, external source).
 - {"action": "think", "reasoning": "your internal reasoning before next step"}
 - {"action": "respond", "message": "your final answer to the user", "reasoning": "why"}
 - {"action": "ask_user", "message": "your question", "reasoning": "why"}
@@ -1016,6 +1019,80 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                     sections.append(f"[epistemic_posture error: {e}]")
 
             result["content"] = "\n\n".join(sections) if sections else "No data available"
+
+        elif tool_name == "gpt_log_search":
+            query = args.get("query", "").strip()
+            top_k = args.get("top_k", 10)
+            role = args.get("role")
+            if not query:
+                result["content"] = "No query provided."
+                result["status"] = "error"
+            else:
+                try:
+                    from personal_agent.gpt_log_store import get_gpt_log_store
+                    import datetime as _dt
+                    store = get_gpt_log_store()
+                    hits = store.search(query, top_k=top_k, role_filter=role)
+                    if hits:
+                        lines = []
+                        for r in hits:
+                            dt = _dt.datetime.fromtimestamp(r.timestamp) if r.timestamp else None
+                            ds = dt.strftime("%Y-%m-%d") if dt else "?"
+                            lines.append(
+                                f"[{r.role}] score={r.score:.3f} | {ds} | conv=\"{r.conv_title}\" | msg_id={r.msg_id}\n  {r.text[:400]}"
+                            )
+                        result["content"] = "\n\n".join(lines)
+                    else:
+                        result["content"] = "No matching GPT log messages found."
+                except Exception as _gls_err:
+                    result["content"] = f"GPT log search failed: {_gls_err}"
+                    result["status"] = "error"
+
+        elif tool_name == "gpt_log_context":
+            msg_id = args.get("msg_id", "").strip()
+            window = args.get("window", 5)
+            if not msg_id:
+                result["content"] = "No msg_id provided."
+                result["status"] = "error"
+            else:
+                try:
+                    from personal_agent.gpt_log_store import get_gpt_log_store
+                    import datetime as _dt2
+                    store = get_gpt_log_store()
+                    messages = store.get_message_context(msg_id, window=window)
+                    if messages:
+                        lines = []
+                        for m in messages:
+                            dt = _dt2.datetime.fromtimestamp(m.timestamp) if m.timestamp else None
+                            ts = dt.strftime("%H:%M:%S") if dt else "?"
+                            marker = " <<<" if m.msg_id == msg_id else ""
+                            lines.append(f"[{m.role} {ts}]{marker}\n{m.text[:600]}")
+                        result["content"] = "\n\n".join(lines)
+                    else:
+                        result["content"] = "Message not found."
+                        result["status"] = "error"
+                except Exception as _glc_err:
+                    result["content"] = f"GPT log context failed: {_glc_err}"
+                    result["status"] = "error"
+
+        elif tool_name == "gpt_log_promote":
+            msg_id = args.get("msg_id", "").strip()
+            if not msg_id:
+                result["content"] = "No msg_id provided."
+                result["status"] = "error"
+            else:
+                try:
+                    from personal_agent.gpt_log_store import get_gpt_log_store
+                    store = get_gpt_log_store()
+                    mem_id = store.promote_to_crt(msg_id, memory_system)
+                    if mem_id:
+                        result["content"] = f"Promoted to CRT memory: {mem_id}"
+                    else:
+                        result["content"] = "Message not found in GPT logs."
+                        result["status"] = "error"
+                except Exception as _glp_err:
+                    result["content"] = f"GPT log promote failed: {_glp_err}"
+                    result["status"] = "error"
 
         else:
             result["content"] = f"Unknown tool: {tool_name}"

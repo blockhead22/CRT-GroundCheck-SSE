@@ -871,6 +871,13 @@ _COMPOUND_INTENT_PATTERNS = [
     (_re_mod.compile(r"\b(?:can you|please)?\s*(?:check|search|look\s*up|find)\s+(?:the\s+)?(?:latest|recent|current)\b", _re_mod.IGNORECASE), "web_search"),
     # ── Project scaffold ──
     (_re_mod.compile(r"\b(?:set\s*up|scaffold|initialize|init|bootstrap)\s+(?:a\s+)?(?:new\s+)?project\b", _re_mod.IGNORECASE), "shell_exec"),
+    # ── GPT log search ──
+    (_re_mod.compile(r"\b(?:gpt|chatgpt)\s+(?:logs?|history|conversations?|export)\b", _re_mod.IGNORECASE), "gpt_log_search"),
+    (_re_mod.compile(r"\b(?:search|check|find|look\s*(?:up|through)|dig\s+into|query)\s+(?:my\s+|the\s+)?(?:gpt|chatgpt)\b", _re_mod.IGNORECASE), "gpt_log_search"),
+    (_re_mod.compile(r"\bwhat\s+(?:did\s+)?(?:I|we|nick)\s+(?:ask|discuss|talk|say|said)\s+(?:with\s+|to\s+)?(?:gpt|chatgpt)\b", _re_mod.IGNORECASE), "gpt_log_search"),
+    (_re_mod.compile(r"\bwhat\s+(?:did\s+|has\s+)?(?:gpt|chatgpt)\s+(?:say|said|respond|think|suggest)\b", _re_mod.IGNORECASE), "gpt_log_search"),
+    (_re_mod.compile(r"\b(?:trace|find|search)\s+(?:how\s+)?(?:ideas?|concepts?|things?)\s+(?:evolved|changed|developed)\b", _re_mod.IGNORECASE), "gpt_log_search"),
+    (_re_mod.compile(r"\b(?:old|past|previous|prior|earlier)\s+(?:gpt\s+)?(?:conversations?|discussions?|chats?)\b", _re_mod.IGNORECASE), "gpt_log_search"),
 ]
 
 # Extract git subcommand from message for compound detection
@@ -5067,15 +5074,26 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
     def generate_stream():
         import threading, queue as _queue, time as _time
+        from personal_agent.event_bus import get_event_bus
+        _event_bus = get_event_bus()
+        _ws_thread_id = getattr(req, 'thread_id', None)
+
+        def _bus_emit(event: dict) -> None:
+            """Fire-and-forget emit to EventBus for WS clients."""
+            _event_bus.emit_sync(event.get("type", "unknown"), event, thread_id=_ws_thread_id)
 
         def _status(s: str) -> str:
+            _bus_emit({"type": "status", "content": s})
             return f"data: {json.dumps({'type': 'status', 'content': s})}\n\n"
 
         def _phase(phase: str, content: str = '', end: bool = False) -> str:
             t = 'phase_end' if end else 'phase_start'
-            return f"data: {json.dumps({'type': t, 'phase': phase, 'content': content})}\n\n"
+            evt = {"type": t, "phase": phase, "content": content}
+            _bus_emit(evt)
+            return f"data: {json.dumps(evt)}\n\n"
 
         def _sse(event: dict) -> str:
+            _bus_emit(event)
             return f"data: {json.dumps(event)}\n\n"
 
         try:

@@ -482,6 +482,68 @@ _register(ToolDefinition(
 # Helper functions
 # ---------------------------------------------------------------------------
 
+# ---- gpt_log_search ----
+_register(ToolDefinition(
+    name="gpt_log_search",
+    description="Search the full ChatGPT conversation history (57K+ messages). Semantic search over everything Nick asked GPT and everything GPT responded with. Use when the user references past GPT conversations, wants to find something they discussed before, or needs context from prior work.",
+    parameters=[
+        ToolParam("query", "string", "Semantic search query", required=True),
+        ToolParam("top_k", "integer", "Number of results to return (default 10)", required=False, default=10),
+        ToolParam("role", "string", "Filter by role: 'user' (what Nick said), 'assistant' (what GPT said), or omit for both", required=False),
+    ],
+    access_layer=1,
+    checkpoint_tier="none",
+    intent_type="gpt_log_search",
+    synthesis_mode="always",
+    examples=[
+        "what did I ask GPT about compression",
+        "find my GPT conversations about CRT",
+        "search my GPT history for memory governance",
+        "what has GPT said about belief systems",
+        "find where I discussed quantization with GPT",
+        "what did GPT say about trust evolution",
+        "search my old conversations for neural architecture",
+    ],
+))
+
+# ---- gpt_log_context ----
+_register(ToolDefinition(
+    name="gpt_log_context",
+    description="Get the full conversation thread around a specific GPT log message. Use after gpt_log_search to read the surrounding context of a result.",
+    parameters=[
+        ToolParam("msg_id", "string", "Message ID from a gpt_log_search result", required=True),
+        ToolParam("window", "integer", "Number of messages before/after to include (default 5)", required=False, default=5),
+    ],
+    access_layer=1,
+    checkpoint_tier="none",
+    intent_type="gpt_log_context",
+    synthesis_mode="always",
+    examples=[
+        "show me the full conversation around that GPT message",
+        "get more context from that GPT log",
+        "expand that GPT search result",
+    ],
+))
+
+# ---- gpt_log_promote ----
+_register(ToolDefinition(
+    name="gpt_log_promote",
+    description="Promote a GPT log message into CRT memory so it becomes part of the active belief system. Creates a low-trust EXTERNAL memory with full provenance.",
+    parameters=[
+        ToolParam("msg_id", "string", "Message ID to promote from GPT logs to CRT memory", required=True),
+    ],
+    access_layer=2,
+    checkpoint_tier="medium",
+    intent_type="gpt_log_promote",
+    synthesis_mode="never",
+    examples=[
+        "save that GPT log to memory",
+        "promote that GPT message to CRT",
+        "remember that from my GPT history",
+    ],
+))
+
+
 def get_tool(name: str) -> Optional[ToolDefinition]:
     """Look up a tool definition by name."""
     return TOOL_REGISTRY.get(name)

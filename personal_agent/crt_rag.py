@@ -3045,8 +3045,15 @@ class CRTEnhancedRAG:
             # Fallback to basic extraction
             new_facts = extract_fact_slots(user_query) or {}
         if not new_facts:
-            return False, None
-        
+            # ── SEMANTIC CONTRADICTION PATH ──────────────────────────────
+            # No structured facts extracted — but the message may still
+            # semantically contradict an existing memory. Compare the new
+            # memory's embedding against recent USER memories and check
+            # for negation/opposition patterns in the text.
+            return self._check_semantic_contradiction(
+                new_memory, user_query, thread_id=thread_id
+            )
+
         previous_user_memories = self._load_thread_user_memories(
             thread_id=thread_id,
             exclude_memory_id=new_memory.memory_id,
@@ -3482,6 +3489,139 @@ class CRTEnhancedRAG:
                     return True, contradiction_entry
         
         return False, None
+
+    def _check_semantic_contradiction(
+        self,
+        new_memory: MemoryItem,
+        user_query: str,
+        thread_id: Optional[str] = None,
+    ) -> Tuple[bool, Optional[ContradictionEntry]]:
+        """Semantic contradiction detection — catches opinion-level contradictions
+        that don't extract structured fact slots.
+
+        Compares the new memory's embedding against existing USER memories.
+        High cosine similarity + opposing sentiment/negation = contradiction.
+
+        This is the path that catches:
+        - "CRT should use multiple models" vs "CRT works best with a single model"
+        - "I love working on compression" vs "Compression is a waste of time"
+        - "The belief system is the most important part" vs "The belief system is overengineered"
+
+        These never extract fact slots, so the slot-based detector misses them entirely.
+        """
+        if new_memory is None or new_memory.vector is None:
+            return False, None
+
+        # Skip very short messages (greetings, acknowledgments)
+        if len(user_query.strip()) < 15:
+            return False, None
+
+        # Skip questions — they aren't assertions
+        q_stripped = user_query.strip()
+        if q_stripped.endswith("?") or q_stripped.lower().startswith(("what ", "how ", "why ", "when ", "where ", "who ", "do ", "does ", "is ", "are ", "can ", "could ")):
+            return False, None
+
+        try:
+            # Retrieve similar user memories by embedding
+            previous_memories = self._load_thread_user_memories(
+                thread_id=thread_id,
+                exclude_memory_id=new_memory.memory_id,
+            )
+
+            # Fallback: if thread-scoped search found nothing, try unscoped
+            if not previous_memories:
+                previous_memories = self._load_thread_user_memories(
+                    thread_id=None,
+                    exclude_memory_id=new_memory.memory_id,
+                )
+
+            if not previous_memories:
+                return False, None
+
+            import numpy as np
+            new_vec = np.array(new_memory.vector, dtype=np.float32)
+            new_norm = np.linalg.norm(new_vec)
+            if new_norm == 0:
+                return False, None
+            new_vec_normed = new_vec / new_norm
+
+            # Score all previous memories by cosine similarity
+            candidates = []
+            for prev_mem in previous_memories:
+                if prev_mem.vector is None:
+                    continue
+                # Skip very old low-trust memories
+                if prev_mem.trust < 0.1:
+                    continue
+                prev_vec = np.array(prev_mem.vector, dtype=np.float32)
+                prev_norm = np.linalg.norm(prev_vec)
+                if prev_norm == 0:
+                    continue
+                sim = float(np.dot(new_vec_normed, prev_vec / prev_norm))
+                if sim >= 0.50:  # Same topic threshold
+                    candidates.append((prev_mem, sim))
+
+            # Sort by similarity descending, check top candidates
+            candidates.sort(key=lambda x: x[1], reverse=True)
+
+            from sse.contradictions import heuristic_contradiction
+
+            for prev_mem, sim in candidates[:10]:
+                # Run heuristic contradiction check on the text pair
+                heuristic_result = heuristic_contradiction(user_query, prev_mem.text)
+
+                if heuristic_result == "contradiction":
+                    drift = self.crt_math.drift_meaning(new_memory.vector, prev_mem.vector)
+
+                    logger.info(
+                        "[SEMANTIC_CONTRADICTION] Detected: '%s' vs '%s' "
+                        "(sim=%.3f, drift=%.3f, heuristic=%s)",
+                        user_query[:60], prev_mem.text[:60],
+                        sim, drift, heuristic_result,
+                    )
+
+                    # Record as CONFLICT with held disposition — don't auto-resolve
+                    contradiction_entry = self._record_and_cascade(
+                        old_memory_id=prev_mem.memory_id,
+                        new_memory_id=new_memory.memory_id,
+                        drift_mean=drift,
+                        confidence_delta=abs(new_memory.confidence - prev_mem.confidence),
+                        query=user_query,
+                        summary=f"Semantic contradiction: '{user_query[:80]}' vs '{prev_mem.text[:80]}'",
+                        old_text=prev_mem.text,
+                        new_text=user_query,
+                        old_vector=np.array(prev_mem.vector, dtype=np.float32),
+                        new_vector=new_vec,
+                        contradiction_type="conflict",
+                        suggested_policy="ASK_USER",
+                        thread_id=thread_id,
+                    )
+
+                    # Set disposition to 'held' so it doesn't auto-resolve
+                    if contradiction_entry is not None:
+                        try:
+                            conn = self.ledger._get_connection()
+                            conn.execute(
+                                "UPDATE contradictions SET disposition = 'held', "
+                                "disposition_confidence = 0.80 WHERE ledger_id = ?",
+                                (contradiction_entry.ledger_id,),
+                            )
+                            conn.commit()
+                            conn.close()
+                            logger.info(
+                                "[SEMANTIC_CONTRADICTION] Recorded as held: %s",
+                                contradiction_entry.ledger_id,
+                            )
+                        except Exception as _disp_err:
+                            logger.warning("[SEMANTIC_CONTRADICTION] Failed to set disposition: %s", _disp_err)
+
+                    return True, contradiction_entry
+
+            return False, None
+
+        except Exception as e:
+            logger.warning("[SEMANTIC_CONTRADICTION] Failed: %s", e, exc_info=True)
+            return False, None
 
     def _track_implicit_confirmations(self, user_text: str) -> int:
         """Track implicit confirmations when user repeats facts from open contradictions.

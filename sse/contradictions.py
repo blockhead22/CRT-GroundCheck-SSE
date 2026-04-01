@@ -16,21 +16,22 @@ def _cache_key(text_a: str, text_b: str) -> str:
 def heuristic_contradiction(a: str, b: str) -> str:
     """
     Heuristic pre-filter for contradictions.
-    Looks for negation patterns and opposing concepts.
-    Returns 'contradiction' only if negation mismatch or explicit opposition words detected.
+    Looks for negation patterns, opposing concepts, and sentiment inversion.
+    Returns 'contradiction' only if negation mismatch, explicit opposition,
+    or sentiment polarity flip detected.
     """
     a_lower = a.lower()
     b_lower = b.lower()
-    
+
     # Check for negation mismatch
-    neg_words = {'not ', "n't ", 'no ', 'never ', 'cannot ', "can't "}
-    a_has_neg = any(w in a_lower for w in neg_words)
-    b_has_neg = any(w in b_lower for w in neg_words)
-    
+    neg_words = {'not ', "n't ", 'no ', 'never ', 'cannot ', "can't ", "don't ", "doesn't ", "won't ", "shouldn't "}
+    a_has_neg = any(w in f" {a_lower} " or a_lower.startswith(w) for w in neg_words)
+    b_has_neg = any(w in f" {b_lower} " or b_lower.startswith(w) for w in neg_words)
+
     # Negation mismatch is a strong signal
     if a_has_neg != b_has_neg:
         return 'contradiction'
-    
+
     # Check for explicit opposition words
     opposition_pairs = [
         ('round', 'flat'),
@@ -44,13 +45,59 @@ def heuristic_contradiction(a: str, b: str) -> str:
         ('improves', 'damages'),
         ('helps', 'hurts'),
         ('agree', 'disagree'),
+        ('love', 'hate'),
+        ('best', 'worst'),
+        ('important', 'unimportant'),
+        ('important', 'overengineered'),
+        ('important', 'unnecessary'),
+        ('useful', 'useless'),
+        ('useful', 'waste'),
+        ('worth', 'waste'),
+        ('good', 'bad'),
+        ('great', 'terrible'),
+        ('simple', 'complex'),
+        ('single', 'multiple'),
+        ('fast', 'slow'),
+        ('easy', 'hard'),
+        ('strong', 'weak'),
+        ('more', 'less'),
+        ('better', 'worse'),
+        ('increase', 'decrease'),
+        ('keep', 'remove'),
+        ('add', 'remove'),
+        ('start', 'stop'),
+        ('enable', 'disable'),
+        ('include', 'exclude'),
+        ('support', 'oppose'),
+        ('accept', 'reject'),
+        ('open', 'closed'),
     ]
-    
+
     for word_a, word_b in opposition_pairs:
         if (word_a in a_lower and word_b in b_lower) or \
            (word_b in a_lower and word_a in b_lower):
             return 'contradiction'
-    
+
+    # Sentiment polarity check — positive vs negative framing
+    positive_markers = {'love', 'great', 'best', 'important', 'excited', 'amazing',
+                        'perfect', 'excellent', 'favorite', 'enjoy', 'wonderful',
+                        'should', 'need', 'want', 'prefer', 'like'}
+    negative_markers = {'hate', 'worst', 'terrible', 'waste', 'overengineered',
+                        'unnecessary', 'pointless', 'useless', 'broken', 'awful',
+                        'bloated', 'overkill', 'annoying', 'stupid', 'dumb'}
+
+    a_words = set(a_lower.split())
+    b_words = set(b_lower.split())
+
+    a_pos = bool(a_words & positive_markers)
+    a_neg = bool(a_words & negative_markers)
+    b_pos = bool(b_words & positive_markers)
+    b_neg = bool(b_words & negative_markers)
+
+    # One positive, other negative about the same topic = contradiction
+    if (a_pos and b_neg and not a_neg) or (a_neg and b_pos and not b_neg):
+        return 'contradiction'
+
     return 'unrelated'
 
 

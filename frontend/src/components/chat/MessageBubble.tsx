@@ -216,70 +216,51 @@ export function MessageBubble(props: {
     return { id, text }
   })()
 
-  // User message — compact right-aligned pill with depth
+  // User message — right-aligned, borderless text
   if (isUser) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="flex justify-end"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+        className="flex justify-end group"
       >
-        <div className="group max-w-[72%]">
+        <div className="max-w-[80%] text-right">
           <div
-            className="rounded px-5 py-3.5 text-[14.5px] leading-relaxed"
-            style={{
-              background: 'linear-gradient(135deg, #D4845C 0%, #B87050 100%)',
-              color: 'var(--user-bubble-fg)',
-              boxShadow: '0 2px 8px rgba(212,132,92,0.3), 0 8px 24px rgba(212,132,92,0.15), inset 0 1px 0 rgba(255,255,255,0.1)',
-            }}
+            className="text-[14.5px] leading-relaxed"
+            style={{ color: 'rgba(240,235,225,0.55)' }}
           >
             {props.msg.text}
           </div>
-          <div className="mt-1.5 flex justify-end pr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <span className="text-[10px] text-white/25 font-mono">{formatTime(props.msg.createdAt)}</span>
+          <div className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <span className="text-[10px] font-mono" style={{ color: 'rgba(240,235,225,0.2)' }}>{formatTime(props.msg.createdAt)}</span>
           </div>
         </div>
       </motion.div>
     )
   }
 
-  // Assistant message — card-style with subtle depth
+  // Assistant message — borderless, left-aligned text
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -1 }}
       transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
       className="group"
     >
       <div
         className={[
-          'rounded px-5 py-4 transition-all duration-200',
-          props.selected ? '' : '',
-          localRating === 'down' ? 'border-l-2' : '',
-          localRating === 'up' ? 'border-l-2' : '',
-          gatesFailed && !localRating ? 'border-l-2' : '',
-          isNotification ? 'border-l-[3px]' : '',
+          'py-2 transition-all duration-200',
+          isNotification ? 'border-l-[3px] pl-4' : '',
+          gatesFailed && !localRating ? 'border-l-2 pl-4' : '',
+          localRating === 'down' ? 'border-l-2 pl-4' : '',
+          localRating === 'up' ? 'border-l-2 pl-4' : '',
         ].join(' ')}
         style={{
-          background: isNotification
-            ? 'rgba(212,132,92,0.05)'
-            : props.selected
-              ? 'rgba(212,132,92,0.06)'
-              : 'rgba(29,27,22,0.4)',
-          border: isNotification
-            ? '1px solid rgba(212,132,92,0.15)'
-            : props.selected
-              ? '1px solid rgba(212,132,92,0.2)'
-              : '1px solid rgba(240,235,225,0.05)',
-          boxShadow: props.selected
-            ? '0 0 24px rgba(212,132,92,0.1), 0 2px 8px rgba(0,0,0,0.15)'
-            : '0 1px 3px rgba(0,0,0,0.08)',
           ...(isNotification ? { borderLeftColor: 'rgba(212,132,92,0.6)' } : {}),
           ...(localRating === 'down' ? { borderLeftColor: 'rgba(251,113,133,0.4)' } : {}),
           ...(localRating === 'up' ? { borderLeftColor: 'rgba(52,211,153,0.25)' } : {}),
-          ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)', background: 'rgba(251,146,60,0.04)' } : {}),
+          ...(gatesFailed && !localRating ? { borderLeftColor: 'rgba(251,146,60,0.35)' } : {}),
         }}
       >
         {/* Notification header (Sprint 4) */}
@@ -524,8 +505,8 @@ export function MessageBubble(props: {
           />
         )}
 
-        {/* Footer row — always visible timestamp + optional meta */}
-        <div className="mt-4 flex items-center gap-3 pt-3" style={{ borderTop: '1px solid rgba(240,235,225,0.04)' }}>
+        {/* Footer row — compact metadata line */}
+        <div className="mt-3 flex items-center gap-3">
           <span className="text-[10px] text-white/20 tabular-nums font-mono">{formatTime(props.msg.createdAt)}</span>
 
           {/* Generation source pill */}

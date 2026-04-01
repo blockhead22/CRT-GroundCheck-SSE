@@ -792,21 +792,101 @@ if (!gotLock) {
   });
 }
 
-// ── SSE Notification Listener ─────────────────────────────────────────
+// ── WebSocket Notification Listener ──────────────────────────────────
+
+const WebSocket = require('ws');
+let notifWs = null;
+let wsReconnectTimer = null;
+let wsReconnectAttempts = 0;
+const WS_MAX_RECONNECT = 20;
+
+function startWSListener() {
+  if (notifWs) return;
+
+  function connect() {
+    const url = `ws://${BACKEND_HOST}:${BACKEND_PORT}/ws`;
+    console.log(`[main] Connecting to WebSocket at ${url}...`);
+
+    try {
+      notifWs = new WebSocket(url);
+    } catch (e) {
+      console.warn('[main] WS connection failed:', e.message);
+      scheduleWSReconnect();
+      return;
+    }
+
+    notifWs.on('open', () => {
+      console.log('[main] WebSocket connected');
+      wsReconnectAttempts = 0;
+      // Subscribe to notifications channel
+      notifWs.send(JSON.stringify({ type: 'subscribe', channels: ['notifications'] }));
+    });
+
+    notifWs.on('message', (raw) => {
+      try {
+        const data = JSON.parse(raw.toString());
+
+        // Handle notifications (same events as SSE)
+        if (data.type === 'notification' && data.subtype === 'commitment') {
+          // Commitment notification — show native OS notification
+          if (Notification.isSupported()) {
+            const notif = new Notification({
+              title: 'Aether Reminder',
+              body: (data.content || '').slice(0, 200),
+            });
+            notif.show();
+          }
+        } else if (data.type === 'heartbeat_contradiction' ||
+                   (data.type === 'notification' && data.subtype === 'heartbeat_contradiction')) {
+          showContradictionNotification(data);
+        }
+      } catch { /* ignore parse errors */ }
+    });
+
+    notifWs.on('close', () => {
+      console.log('[main] WebSocket closed');
+      notifWs = null;
+      scheduleWSReconnect();
+    });
+
+    notifWs.on('error', (err) => {
+      console.warn('[main] WebSocket error:', err.message);
+      if (notifWs) {
+        notifWs.close();
+        notifWs = null;
+      }
+    });
+  }
+
+  function scheduleWSReconnect() {
+    if (wsReconnectAttempts >= WS_MAX_RECONNECT) {
+      console.warn('[main] Max WS reconnect attempts reached, falling back to SSE');
+      startSSEListener();
+      return;
+    }
+    const delay = Math.min(1000 * Math.pow(2, wsReconnectAttempts), 30000);
+    wsReconnectAttempts++;
+    wsReconnectTimer = setTimeout(connect, delay);
+  }
+
+  connect();
+}
+
+// ── SSE Notification Listener (fallback) ─────────────────────────────
 
 let sseReq = null;
 
 function startSSEListener() {
-  if (sseReq) return; // already connected
+  if (sseReq) return;
 
   function connect() {
-    console.log('[main] Connecting to notification SSE stream...');
+    console.log('[main] Connecting to notification SSE stream (fallback)...');
     sseReq = http.get(
       {
         hostname: BACKEND_HOST,
         port: BACKEND_PORT,
         path: '/api/notifications/stream',
-        timeout: 0, // SSE is long-lived
+        timeout: 0,
       },
       (res) => {
         if (res.statusCode !== 200) {
@@ -819,7 +899,6 @@ function startSSEListener() {
         let buffer = '';
         res.on('data', (chunk) => {
           buffer += chunk.toString();
-          // SSE events are delimited by double newlines
           const parts = buffer.split('\n\n');
           buffer = parts.pop() || '';
           for (const part of parts) {
@@ -938,19 +1017,28 @@ app.whenReady().then(async () => {
   // 7. Register global hotkey
   registerHotkey();
 
-  // 8. Start SSE listener for native OS notifications (contradictions, etc.)
-  // Defer until backend is confirmed healthy to avoid triple-connect on startup
+  // 8. Start WebSocket listener for native OS notifications (contradictions, etc.)
+  // Falls back to SSE if WS connection fails after max retries.
+  // Defer until backend is confirmed healthy to avoid triple-connect on startup.
   if (backendManager.healthy) {
-    startSSEListener();
+    startWSListener();
   } else {
     backendManager.once('status', (status) => {
-      if (status === 'healthy') startSSEListener();
+      if (status === 'healthy') startWSListener();
     });
   }
 });
 
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll();
+  if (notifWs) {
+    notifWs.close();
+    notifWs = null;
+  }
+  if (wsReconnectTimer) {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+  }
   if (sseReq) {
     sseReq.destroy();
     sseReq = null;

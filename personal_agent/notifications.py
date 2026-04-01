@@ -83,6 +83,17 @@ async def emit_commitment_notification(commitment: Any, user_id: str = "default"
         },
     }
 
+    # Also emit to EventBus for WebSocket clients
+    try:
+        from personal_agent.event_bus import get_event_bus
+        await get_event_bus().emit("notification", {
+            "subtype": "commitment",
+            "content": commitment.description,
+            "metadata": event["metadata"],
+        })
+    except Exception:
+        logger.debug("[NOTIFICATIONS] EventBus emit failed (bus may not be initialized)")
+
     connections = _active_sse_connections.get(user_id, [])
     pushed = 0
     dead_queues: List[asyncio.Queue] = []
@@ -153,6 +164,17 @@ async def emit_generic_notification(
         "content": content,
         "metadata": metadata or {},
     }
+
+    # Also emit to EventBus for WebSocket clients
+    try:
+        from personal_agent.event_bus import get_event_bus
+        await get_event_bus().emit("notification", {
+            "subtype": event_type,
+            "content": content,
+            "metadata": metadata or {},
+        })
+    except Exception:
+        logger.debug("[NOTIFICATIONS] EventBus emit failed (bus may not be initialized)")
 
     connections = _active_sse_connections.get(user_id, [])
     pushed = 0

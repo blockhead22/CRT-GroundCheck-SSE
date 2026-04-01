@@ -494,6 +494,21 @@ def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
     Returns:
         RoutingDecision with route, confidence, and reasons.
     """
+    # Hard overrides: certain intent types ALWAYS need the orchestrator
+    # because they require tool execution that only the orchestrator can do.
+    _FORCE_ORCHESTRATOR_INTENTS = {
+        "gpt_log_search", "gpt_log_context", "gpt_log_promote",
+    }
+    if intent is not None:
+        _intent_type = getattr(intent, "intent_type", None)
+        if _intent_type in _FORCE_ORCHESTRATOR_INTENTS:
+            return RoutingDecision(
+                route="orchestrator",
+                confidence=0.95,
+                reasons=[f"forced_by_intent({_intent_type})"],
+                features={},
+            )
+
     features = _extract_all_features(message)
     weights = _get_db().get_weights()
 
