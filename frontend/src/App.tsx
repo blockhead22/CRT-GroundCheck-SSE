@@ -133,6 +133,11 @@ export default function App() {
   const streamAbortRef = useRef<AbortController | null>(null)
   const [taskWorking, setTaskWorking] = useState(false)
   const inflightThreadRef = useRef<ChatThread | null>(null)
+
+  // WS pipeline state — structured steps for PipelineCollapse
+  const [pipelineSteps, setPipelineSteps] = useState<import('./components/chat/PipelineCollapse').PipelineStep[]>([])
+  const [retrievedMemories, setRetrievedMemories] = useState<import('./components/chat/RetrievalPanel').RetrievedMemory[]>([])
+  const [trustShifts, setTrustShifts] = useState<import('./components/chat/TrustBar').TrustShift[]>([])
   
   // Mood background state
   const [currentMood, setCurrentMood] = useState<MoodData | null>(null)
@@ -619,6 +624,9 @@ export default function App() {
     streamStatusRef.current = []
     finalBufferRef.current = ''
     setIntentPreview(null)
+    setPipelineSteps([])
+    setRetrievedMemories([])
+    setTrustShifts([])
     setAgentThinkingState(null)
     agentThinkingRef.current = null
     setPendingCheckpoint(null)
@@ -658,6 +666,11 @@ export default function App() {
             },
             onToolStart: (toolName, input, stepIndex) => {
               playMascotAnim('working')
+              // Accumulate into pipeline steps for PipelineCollapse
+              setPipelineSteps(prev => [...prev, {
+                kind: 'tool' as const,
+                result: { tool: toolName, args: input as Record<string, unknown>, status: 'running' },
+              }])
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 // Freeze any pending reasoning into the new tool step
@@ -674,6 +687,26 @@ export default function App() {
             },
             onToolResult: (step) => {
               playMascotAnim(step.status === 'error' ? 'alert' : 'nod', step.status === 'error' ? 1500 : 600, 'thinking')
+              // Update last tool step in pipeline with result
+              setPipelineSteps(prev => {
+                const last = [...prev]
+                for (let i = last.length - 1; i >= 0; i--) {
+                  if (last[i].kind === 'tool') {
+                    last[i] = {
+                      kind: 'tool',
+                      result: {
+                        ...(last[i] as any).result,
+                        result: step.output_preview ?? step.result ?? '',
+                        hits: step.result_count,
+                        durationMs: step.duration_ms,
+                        status: step.status,
+                      },
+                    }
+                    break
+                  }
+                }
+                return last
+              })
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 const exists = prev.toolSteps.find(s => s.step_index === step.step_index)
@@ -783,9 +816,19 @@ export default function App() {
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 if (step === 'tool_loop') {
-                  // Accumulate reasoning — will be attached to the next tool_start
                   const next = { ...prev, pendingReasoning: (prev.pendingReasoning ?? '') + token }
                   agentThinkingRef.current = next
+                  // Also accumulate into pipeline steps as thinking stubs
+                  // We merge consecutive thinking tokens into the last thinking step
+                  setPipelineSteps(prevSteps => {
+                    const last = prevSteps[prevSteps.length - 1]
+                    if (last && last.kind === 'thinking') {
+                      const updated = [...prevSteps]
+                      updated[updated.length - 1] = { kind: 'thinking', content: last.content + token }
+                      return updated
+                    }
+                    return [...prevSteps, { kind: 'thinking' as const, content: token }]
+                  })
                   return next
                 }
                 const next = { ...prev, draftingThinking: (prev.draftingThinking ?? '') + token }
@@ -929,6 +972,8 @@ export default function App() {
               finalBufferRef.current = ''
               setIntentPreview(null)
               setAgentThinkingState(null)
+              // Note: pipelineSteps/retrievedMemories/trustShifts NOT cleared here
+              // — they persist in the collapsed view until next message send
               setTaskWorking(false)
 
               // Sprint 4 — capture proactive suggestion from done metadata

@@ -10,6 +10,9 @@ import { PipelineTrace } from './PipelineTrace'
 import { AgentThinkingStrip, type AgentThinkingState } from './AgentThinkingStrip'
 import { ActionCard } from './ActionCard'
 import { AetherMascot, type MascotAnimation } from '../AetherMascot'
+import { PipelineCollapse, type PipelineStep } from './PipelineCollapse'
+import { RetrievalPanel, type RetrievedMemory } from './RetrievalPanel'
+import type { TrustShift } from './TrustBar'
 
 // Adaptive font size for theater mode — shrinks as text grows
 function theaterFontSize(charCount: number): string {
@@ -77,6 +80,9 @@ function StreamingMessage({
   statusLog,
   thinkingContent,
   hideTrace,
+  pipelineSteps,
+  retrievedMemories,
+  trustShifts,
 }: {
   content: string
   isThinking: boolean
@@ -84,8 +90,12 @@ function StreamingMessage({
   statusLog: string[]
   thinkingContent: string
   hideTrace?: boolean
+  pipelineSteps?: PipelineStep[]
+  retrievedMemories?: RetrievedMemory[]
+  trustShifts?: TrustShift[]
 }) {
   const hasContent = Boolean(content)
+  const hasPipelineSteps = (pipelineSteps ?? []).length > 0
 
   return (
     <motion.div
@@ -93,11 +103,25 @@ function StreamingMessage({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Pipeline trace — hidden when AgentThinkingStrip is active (task routes) */}
-      {!hideTrace && <PipelineTrace statuses={statusLog} streaming={!hasContent} />}
+      {/* Pipeline collapse — structured thinking/tool/trust steps */}
+      {hasPipelineSteps ? (
+        <PipelineCollapse steps={pipelineSteps!} streaming={!hasContent} />
+      ) : (
+        /* Legacy pipeline trace — flat status strings */
+        !hideTrace && <PipelineTrace statuses={statusLog} streaming={!hasContent} />
+      )}
 
-      {/* Thinking trace — expandable live reasoning */}
-      {isThinking && thinkingContent && (
+      {/* Retrieved memories with live trust bars */}
+      {(retrievedMemories ?? []).length > 0 && (
+        <RetrievalPanel
+          memories={retrievedMemories!}
+          trustShifts={trustShifts ?? []}
+          streaming={!hasContent}
+        />
+      )}
+
+      {/* Thinking trace — expandable live reasoning (legacy, for non-WS path) */}
+      {isThinking && thinkingContent && !hasPipelineSteps && (
         <ThinkingPreview content={thinkingContent} />
       )}
 
@@ -165,6 +189,12 @@ export function ChatThreadView(props: {
   proactiveSuggestion?: { trigger: string; suggestion: string; action: string } | null
   onProactiveSuggestionClick?: (action: string) => void
   onDismissProactiveSuggestion?: () => void
+  /** Structured pipeline steps from WS events (thinking, tool, trust_shift) */
+  pipelineSteps?: PipelineStep[]
+  /** Retrieved memories with trust scores (from WS retrieval event) */
+  retrievedMemories?: RetrievedMemory[]
+  /** Live trust shifts (from WS trust_shift events) */
+  trustShifts?: TrustShift[]
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -655,6 +685,9 @@ export function ChatThreadView(props: {
                           statusLog={props.streamStatusLog ?? []}
                           thinkingContent={props.streamingThinking ?? ''}
                           hideTrace={Boolean(props.agentThinkingState)}
+                          pipelineSteps={props.pipelineSteps}
+                          retrievedMemories={props.retrievedMemories}
+                          trustShifts={props.trustShifts}
                         />
                       </motion.div>
                     )}
