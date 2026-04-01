@@ -21,6 +21,8 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 - **Suspend/resume remaining budget**: Both `ask_user` and `diff_write` suspend paths now store `remaining_iterations`. Resume uses `max(3, stored_remaining)` instead of hardcoded 8. Nested ask_user re-suspend also carries budget.
 
 ### Fixed
+- **search_code timeout + large file guard**: Added `--max-filesize 256K` to rg, excluded `*.min.js`, `*.min.css`, `*.lock`, `*.map`, `_write_copilot_page.py`. Python fallback also skips files >256KB. Prevents 159s+ hangs on generated/bundled code.
+- **`file_pattern` arg support**: Cookie was passing `file_pattern: "frontend/**/*.{tsx,ts}"` which search_code silently ignored, causing full-tree scans. Now parsed into path + extensions automatically.
 - **Cookie iteration budget fundamentally fixed**: `for` loop → `while` loop with explicit counter. `plan` no longer consumes an iteration slot (it's a declaration, not work). `think`, `tool_call`, `spawn_agent` increment explicitly. Safety cap `_total_turns = max_iterations + 5` prevents infinite plan loops. Net effect: plan+read+write = plan (free) + 10 working slots.
 - **Cookie warning threshold**: Changed from `remaining <= 1` + "You MUST respond now" to `remaining == 0` + "Last action slot". Stops Claude from panic-responding one slot early.
 - **Routing gate**: Layer 4 `_layer4_orchestrator` now bypasses `_needs_cookie`. `_cookie_entry = _layer4_orchestrator OR (agent_loop_skipped AND _needs_cookie)`. Layer 4 decisions go straight through; `_needs_cookie` only gates the redirect path.

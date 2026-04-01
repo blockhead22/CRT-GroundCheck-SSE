@@ -566,6 +566,25 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             search_path = args.get("path", "D:/AI_round2")
             if not os.path.isabs(search_path):
                 search_path = os.path.join(PROJECT_ROOT, search_path)
+            # Normalize file_pattern arg (e.g. "frontend/**/*.{tsx,ts}") into path + extensions
+            _file_pattern = args.get("file_pattern") or args.get("file_glob")
+            if _file_pattern and isinstance(_file_pattern, str):
+                import re as _fp_re
+                # Extract directory prefix if present (before **)
+                _dir_match = _fp_re.match(r'^([a-zA-Z0-9_/\\.-]+?)(?:/?\*\*)', _file_pattern)
+                if _dir_match and not args.get("path"):
+                    _pattern_dir = _dir_match.group(1)
+                    _candidate = os.path.join(PROJECT_ROOT, _pattern_dir)
+                    if os.path.isdir(_candidate):
+                        search_path = _candidate
+                # Extract extensions from pattern
+                _ext_match = _fp_re.search(r'\*\.(\{[^}]+\}|[a-zA-Z0-9]+)$', _file_pattern)
+                if _ext_match and not (args.get("file_extensions") or args.get("extensions")):
+                    _ext_str = _ext_match.group(1)
+                    if _ext_str.startswith('{') and _ext_str.endswith('}'):
+                        args["file_extensions"] = [f".{e.strip()}" for e in _ext_str[1:-1].split(',')]
+                    else:
+                        args["file_extensions"] = [f".{_ext_str}"]
             # Optional file_extensions filter e.g. [".py"] or ".py"
             _ext_filter = args.get("file_extensions") or args.get("extensions")
             if isinstance(_ext_filter, str):
@@ -579,13 +598,17 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             try:
                 _rg_cmd = ["rg", "--no-heading", "-n", "-i",
                            "--max-count", "10",
+                           "--max-filesize", "256K",
                            "--glob", "!.venv", "--glob", "!node_modules",
-                           "--glob", "!.claude", "--glob", "!dist", "--glob", "!build"]
+                           "--glob", "!.claude", "--glob", "!dist", "--glob", "!build",
+                           "--glob", "!*.min.js", "--glob", "!*.min.css",
+                           "--glob", "!*.lock", "--glob", "!*.map",
+                           "--glob", "!_write_copilot_page.py"]
                 if _ext_filter:
                     for _ext in _ext_filter:
                         _rg_cmd += ["--glob", f"*{_ext}"]
                 _rg_cmd += [query, search_path]
-                proc = subprocess.run(_rg_cmd, capture_output=True, text=True, timeout=12)
+                proc = subprocess.run(_rg_cmd, capture_output=True, text=True, timeout=15)
                 if proc.returncode in (0, 1):  # 0=matches, 1=no matches
                     _raw = proc.stdout or ""
                     _lines = _raw.splitlines()
@@ -619,6 +642,9 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                                 continue
                             _fpath = os.path.join(_root, _fname)
                             try:
+                                # Skip files > 256KB to avoid hanging on generated code
+                                if os.path.getsize(_fpath) > 256 * 1024:
+                                    continue
                                 with open(_fpath, 'r', encoding='utf-8', errors='replace') as _f:
                                     for _lno, _line in enumerate(_f, 1):
                                         if _pattern.search(_line):

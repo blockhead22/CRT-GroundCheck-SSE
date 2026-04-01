@@ -12,6 +12,7 @@ import { SourceInspector } from './components/SourceInspector'
 import { AgentPanel } from './components/AgentPanel'
 import { DemoModeLightbox } from './components/DemoModeLightbox'
 import { WelcomeTutorial } from './components/onboarding/WelcomeTutorial'
+import { OnboardingFlow, type OnboardingData } from './components/onboarding/OnboardingFlow'
 import { LoginScreen } from './components/LoginScreen'
 import { MoodBackground, MoodIndicator, type MoodData } from './components/MoodBackground'
 import type { MascotAnimation } from './components/AetherMascot'
@@ -38,6 +39,7 @@ export default function App() {
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [showLogin, setShowLogin] = useState(false)
+  const [onboardingComplete, setOnboardingComplete] = useState(() => localStorage.getItem('crt-onboarding-complete') === 'true')
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
   
   // URL-synced navigation
@@ -1490,6 +1492,17 @@ export default function App() {
   const handleSkipLogin = () => {
     setShowLogin(false)
     localStorage.setItem('crt-seen-login', 'true')
+  }
+
+  const handleOnboardingComplete = (_data: OnboardingData) => {
+    setOnboardingComplete(true)
+    // Show login after onboarding
+    setShowLogin(true)
+  }
+
+  // Show onboarding for first-time users (before login)
+  if (!onboardingComplete && !authUser) {
+    return <OnboardingFlow onComplete={handleOnboardingComplete} />
   }
 
   // Show login screen
