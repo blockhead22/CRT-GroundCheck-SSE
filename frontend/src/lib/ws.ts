@@ -257,6 +257,10 @@ export class AetherSocket {
         break
       case 'agent_thinking_token':
         cb.onAgentThinkingToken?.(event.content ?? '', meta.step ?? 'generate_answer')
+        // Low alignment on thinking → fire epistemic drift
+        if (meta.alignment != null && (meta.alignment as number) < 0.3) {
+          cb.onEpistemicEvent?.('drift', (event.content ?? '').slice(0, 80), meta)
+        }
         break
       case 'agent_loop_start':
         cb.onAgentLoopStart?.(meta.tools_available ?? [], meta.max_iterations ?? 10)
@@ -296,6 +300,11 @@ export class AetherSocket {
           confidence: (meta?.confidence as number) ?? 0,
         })
         break
+      case 'epistemic_event': {
+        const evtType = ((meta?.event as string) ?? 'drift') as 'drift' | 'contradiction'
+        cb.onEpistemicEvent?.(evtType, event.content ?? '', meta ?? {})
+        break
+      }
       case 'phase_start':
         cb.onPhaseStart?.(event.phase ?? '', event.content)
         break

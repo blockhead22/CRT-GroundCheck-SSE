@@ -437,7 +437,7 @@ Available actions:
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
-2. Your FIRST action must always be "plan" — a brief human-readable sentence telling the user what you are about to do and why. Be specific: name the files, queries, or steps you intend to take. This is shown to the user immediately so they know what is happening.
+2. Your FIRST action must always be "plan" — do this EXACTLY ONCE at the start. A brief human-readable sentence telling the user what you are about to do and why. Be specific: name the files, queries, or steps you intend to take. After the plan, immediately proceed to tool_call actions. Never plan again after the first iteration.
 3. When you need information from a file, use tool_call with file_read.
 4. When you need user memories, use tool_call with memory_recall.
 5. Use "think" to reason about results before your next action.
@@ -1385,11 +1385,14 @@ class Orchestrator:
 
             if action == "plan":
                 # First-move declaration — surface to user immediately before any tool runs.
+                # After yielding the plan, set last_result to an acknowledgment so Cookie
+                # sees "Plan acknowledged" on the next iteration and doesn't re-plan.
                 _plan_msg = decision.get("message", "")
                 _plan_steps = decision.get("steps", [])
                 if _plan_msg:
                     yield {"type": "plan", "content": _plan_msg, "steps": _plan_steps}
                 state.thinking.append(f"[plan] {_plan_msg}")
+                last_result = "Plan declared. Now execute using tool_call actions. Do NOT plan again."
                 continue
 
             if action == "think":

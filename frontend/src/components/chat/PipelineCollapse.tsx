@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, ChevronDown } from 'lucide-react'
+import { ChevronRight, ChevronDown, AlertTriangle, Zap } from 'lucide-react'
 import { TrustBar, type TrustShift } from './TrustBar'
 import { ToolRow } from './ToolRow'
 import type { ToolResult } from './ToolResultCard'
@@ -10,17 +10,19 @@ import type { ToolResult } from './ToolResultCard'
 // ─────────────────────────────────────────────────────────────
 
 export type PipelineStep =
-  | { kind: 'thinking'; content: string }
+  | { kind: 'thinking'; content: string; alignment?: number }
   | { kind: 'tool'; result: ToolResult }
   | { kind: 'trust_shift'; shift: TrustShift }
   | { kind: 'retrieval'; memories: Array<{ id: string; text: string; trust: number }> }
   | { kind: 'status'; content: string }
+  | { kind: 'epistemic'; eventType: 'drift' | 'contradiction'; content: string; alignment?: number; avgAlignment?: number; stepA?: number; stepB?: number }
 
 type RetrievalMemory = { id: string; text: string; trust: number }
 
 type AgentLoopItem =
-  | { kind: 'thinking'; content: string; index: number }
+  | { kind: 'thinking'; content: string; alignment?: number; index: number }
   | { kind: 'tool'; result: ToolResult; index: number }
+  | { kind: 'epistemic'; eventType: 'drift' | 'contradiction'; content: string; alignment?: number; avgAlignment?: number; stepA?: number; stepB?: number; index: number }
 
 // ─────────────────────────────────────────────────────────────
 // Helpers — group flat steps into sections
@@ -51,10 +53,13 @@ function groupSteps(steps: PipelineStep[]) {
         break
       }
       case 'thinking':
-        agentLoop.push({ kind: 'thinking', content: step.content, index: agentIdx++ })
+        agentLoop.push({ kind: 'thinking', content: step.content, alignment: step.alignment, index: agentIdx++ })
         break
       case 'tool':
         agentLoop.push({ kind: 'tool', result: step.result, index: agentIdx++ })
+        break
+      case 'epistemic':
+        agentLoop.push({ kind: 'epistemic', eventType: step.eventType, content: step.content, alignment: step.alignment, avgAlignment: step.avgAlignment, stepA: step.stepA, stepB: step.stepB, index: agentIdx++ })
         break
       case 'trust_shift':
         trustShifts.push(step.shift)
@@ -315,10 +320,17 @@ function AgentLoopSection({
               animate={{ opacity: 1 }}
               transition={{ duration: 0.15 }}
               className="flex items-start gap-2 py-1 text-[11px] font-mono"
-              style={{ color: 'rgba(240,235,225,0.35)' }}
             >
               <span className="flex-shrink-0 mt-px" style={{ color: 'rgba(224,160,128,0.4)' }}>┊</span>
-              <span className="italic leading-snug">
+              <span
+                className="italic leading-snug"
+                style={{
+                  // Color shifts from muted toward warning as alignment drops
+                  color: item.alignment != null && item.alignment < 0.35
+                    ? 'rgba(212,112,88,0.6)'
+                    : 'rgba(240,235,225,0.35)',
+                }}
+              >
                 {item.content.length > 80
                   ? item.content.slice(0, 80).trimEnd() + '…'
                   : item.content}
@@ -329,8 +341,20 @@ function AgentLoopSection({
                   />
                 )}
               </span>
+              {item.alignment != null && (
+                <span
+                  className="flex-shrink-0 text-[10px] ml-auto tabular-nums"
+                  style={{
+                    color: item.alignment < 0.35 ? 'rgba(212,112,88,0.7)'
+                      : item.alignment < 0.6 ? 'rgba(212,180,80,0.5)'
+                      : 'rgba(240,235,225,0.2)',
+                  }}
+                >
+                  {item.alignment.toFixed(2)}
+                </span>
+              )}
             </motion.div>
-          ) : (
+          ) : item.kind === 'tool' ? (
             <motion.div
               key={`tool-${i}`}
               initial={{ opacity: 0, y: 3 }}
@@ -339,9 +363,72 @@ function AgentLoopSection({
             >
               <ToolRow result={item.result} />
             </motion.div>
+          ) : (
+            <motion.div
+              key={`ep-${i}`}
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <EpistemicRow item={item} />
+            </motion.div>
           )
         )}
       </div>
     </div>
   )
 }
+
+// ─────────────────────────────────────────────────────────────
+// Epistemic event row — drift warning or contradiction
+// ─────────────────────────────────────────────────────────────
+
+type EpistemicItem = Extract<AgentLoopItem, { kind: 'epistemic' }>
+
+function EpistemicRow({ item }: { item: EpistemicItem }) {
+  const isDrift = item.eventType === 'drift'
+
+  return (
+    <div
+      className="flex items-start gap-2 py-1.5 px-2 rounded text-[11px] font-mono my-0.5"
+      style={{
+        background: isDrift
+          ? 'rgba(212,112,88,0.07)'
+          : 'rgba(212,180,80,0.07)',
+        border: `1px solid ${isDrift ? 'rgba(212,112,88,0.2)' : 'rgba(212,180,80,0.2)'}`,
+      }}
+    >
+      {/* Icon */}
+      {isDrift
+        ? <AlertTriangle size={11} style={{ color: '#D47058', flexShrink: 0, marginTop: 1 }} />
+        : <Zap size={11} style={{ color: '#d4b44b', flexShrink: 0, marginTop: 1 }} />
+      }
+
+      {/* Label */}
+      <span style={{ color: isDrift ? '#D47058' : '#d4b44b', flexShrink: 0 }}>
+        {isDrift ? 'drift' : 'contradiction'}
+      </span>
+
+      {/* Content */}
+      <span className="truncate" style={{ color: 'rgba(240,235,225,0.4)' }}>
+        {item.content.length > 70 ? item.content.slice(0, 70) + '…' : item.content}
+      </span>
+
+      {/* Alignment scores for drift */}
+      {isDrift && item.alignment != null && (
+        <span className="flex-shrink-0 ml-auto tabular-nums" style={{ color: 'rgba(212,112,88,0.6)' }}>
+          {item.alignment.toFixed(2)}
+          {item.avgAlignment != null && ` ← ${item.avgAlignment.toFixed(2)}`}
+        </span>
+      )}
+
+      {/* Step numbers for contradiction */}
+      {!isDrift && item.stepA != null && item.stepB != null && (
+        <span className="flex-shrink-0 ml-auto" style={{ color: 'rgba(212,180,80,0.5)' }}>
+          step {item.stepA} ↔ {item.stepB}
+        </span>
+      )}
+    </div>
+  )
+}
+

@@ -419,6 +419,7 @@ export type StreamEventType =
   | 'retrieval'
   | 'trust_shift'
   | 'verification'
+  | 'epistemic_event'
   | 'done'
   | 'error'
 
@@ -472,6 +473,8 @@ export type StreamCallbacks = {
   onRetrieval?: (memories: Array<{ id: string; text: string; trust: number }>) => void
   onTrustShift?: (shift: { memoryId: string; from: number; to: number; reason: string; text: string }) => void
   onVerification?: (result: { verdict: string; confidence: number }) => void
+  // Epistemic loop events — drift, contradiction, alignment
+  onEpistemicEvent?: (eventType: 'drift' | 'contradiction', content: string, data: Record<string, unknown>) => void
   onPhaseStart?: (phase: string, content?: string) => void
   onPhaseEnd?: (phase: string) => void
   onToken?: (token: string) => void
@@ -664,8 +667,12 @@ export async function streamFromCrtApi(args: {
                 break
               }
               case 'agent_thinking_token': {
-                const meta = event.metadata as { step?: string } | undefined
+                const meta = event.metadata as { step?: string; alignment?: number } | undefined
                 args.callbacks.onAgentThinkingToken?.(event.content, meta?.step ?? 'generate_answer')
+                // If alignment is critically low, fire as epistemic drift too
+                if (meta?.alignment != null && meta.alignment < 0.3) {
+                  args.callbacks.onEpistemicEvent?.('drift', event.content.slice(0, 80), { alignment: meta.alignment })
+                }
                 break
               }
               case 'agent_loop_start': {
@@ -714,6 +721,12 @@ export async function streamFromCrtApi(args: {
                   verdict: meta?.verdict ?? 'none',
                   confidence: meta?.confidence ?? 0,
                 })
+                break
+              }
+              case 'epistemic_event': {
+                const meta = event.metadata as { event?: string; alignment?: number; avg_alignment?: number; step_a?: number; step_b?: number; proposed_tool?: string } | undefined
+                const evtType = (meta?.event ?? 'drift') as 'drift' | 'contradiction'
+                args.callbacks.onEpistemicEvent?.(evtType, event.content, meta ?? {})
                 break
               }
               case 'phase_start':

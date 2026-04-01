@@ -872,6 +872,17 @@ export default function App() {
               const label = result.verdict === 'pass' ? '✓ verified' : result.verdict === 'hard_fail' ? '✗ contradiction' : `◇ ${result.verdict}`
               setPipelineSteps(prev => [...prev, { kind: 'status' as const, content: label }])
             },
+            onEpistemicEvent: (eventType, content, data) => {
+              setPipelineSteps(prev => [...prev, {
+                kind: 'epistemic' as const,
+                eventType,
+                content,
+                alignment: data.alignment as number | undefined,
+                avgAlignment: data.avg_alignment as number | undefined,
+                stepA: data.step_a as number | undefined,
+                stepB: data.step_b as number | undefined,
+              }])
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {

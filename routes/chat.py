@@ -6162,9 +6162,42 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 and _task_intent.route == "task"
                 and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
             )
-            # TEMP: Cookie orchestrator disabled until routing + tool gaps are resolved.
-            # Re-enable by removing the `and False` guard.
-            if (_layer4_orchestrator or _agent_loop_skipped_for_model) and False:
+            # ── Routing gate: only enter Cookie for genuine tool-requiring tasks ──
+            # Replaces the `and False` kill-switch with a real signal:
+            #   1. intent_type must be in the tool-requiring whitelist
+            #   2. routing confidence must be ≥ 0.75 (prevents borderline misfires)
+            #   3. message must be at least 4 words (not a one-liner like "hello")
+            # Generic convos, memory queries, and greetings fall through to legacy.
+            _TOOL_REQUIRING_INTENTS = {
+                "file_op", "code_task", "code_read", "code_write",
+                "web_search", "web_fetch", "research",
+                "shell_exec", "run_python",
+                "memory_write",
+                "multi_step", "plan_create",
+                # Hard-forced intents (from routing_beliefs) always pass
+                "gpt_log_search", "gpt_log_context", "gpt_log_promote",
+            }
+            _SKIP_COOKIE_INTENTS = {
+                "broad_recall", "inquiry", "question", "conversational",
+                "memory_query", "memory_search",
+                "self_reflection", "greeting", "system_info", "inquiry_queue",
+            }
+            try:
+                _routing_conf = _routing.confidence  # type: ignore[name-defined]
+            except Exception:
+                _routing_conf = 0.0
+            _intent_type_str = getattr(_task_intent, "intent_type", "") if _task_intent else ""
+            _needs_cookie = (
+                _intent_type_str not in _SKIP_COOKIE_INTENTS
+                and (
+                    _intent_type_str in _TOOL_REQUIRING_INTENTS
+                    or (_routing_conf >= 0.75 and _task_intent is not None and _task_intent.route == "task")
+                )
+                and len(str(req.message or "").split()) >= 4
+            )
+            if not _needs_cookie and (_layer4_orchestrator or _agent_loop_skipped_for_model):
+                _safe_print(f"[ROUTING_GATE] Blocked Cookie entry: intent={_intent_type_str!r}, conf={_routing_conf:.2f}, words={len(str(req.message or '').split())} — falling through to legacy")
+            if (_layer4_orchestrator or _agent_loop_skipped_for_model) and _needs_cookie:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type}, reason={_orch_reason})")
 
