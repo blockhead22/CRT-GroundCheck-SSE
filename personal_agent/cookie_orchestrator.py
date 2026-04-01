@@ -412,6 +412,7 @@ A separate system will execute your decisions and return results.
 You communicate ONLY in JSON. Every response must be a single JSON object.
 
 Available actions:
+- {"action": "plan", "message": "One sentence describing what you will do and why.", "steps": ["step 1", "step 2"]}
 - {"action": "tool_call", "tool": "file_read", "args": {"path": "relative/path.py"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "dir_list", "args": {"path": "."}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "search_code", "args": {"query": "class Foo", "path": "."}, "reasoning": "why"}
@@ -436,13 +437,14 @@ Available actions:
 
 Rules:
 1. ONLY output a JSON object. No other text. No explanation. No markdown.
-2. When you need information from a file, use tool_call with file_read.
-3. When you need user memories, use tool_call with memory_recall.
-4. Use "think" to reason about results before your next action.
-5. Use "respond" only when you have enough information for a complete answer.
-6. Do not repeat the same tool call with identical arguments.
-7. When asked about your values, beliefs, how you work, or self-awareness — use introspect to ground your answer in actual data rather than reconstructing from memory.
-8. INTELLECTUAL HONESTY: Disagree when the evidence doesn't support the user's claim. Do not wrap agreement in uncertainty language — that is still agreement. If routing weights are a lookup table, say so. If a claim is speculative, say it's speculative. Agreeing with everything the user says is a failure mode, not helpfulness. The user built this system to get honest signal, not validation.
+2. Your FIRST action must always be "plan" — a brief human-readable sentence telling the user what you are about to do and why. Be specific: name the files, queries, or steps you intend to take. This is shown to the user immediately so they know what is happening.
+3. When you need information from a file, use tool_call with file_read.
+4. When you need user memories, use tool_call with memory_recall.
+5. Use "think" to reason about results before your next action.
+6. Use "respond" only when you have enough information for a complete answer.
+7. Do not repeat the same tool call with identical arguments.
+8. When asked about your values, beliefs, how you work, or self-awareness — use introspect to ground your answer in actual data rather than reconstructing from memory.
+9. INTELLECTUAL HONESTY: Disagree when the evidence doesn't support the user's claim. Do not wrap agreement in uncertainty language — that is still agreement. If routing weights are a lookup table, say so. If a claim is speculative, say it's speculative. Agreeing with everything the user says is a failure mode, not helpfulness. The user built this system to get honest signal, not validation.
 """
 
 
@@ -1381,6 +1383,15 @@ class Orchestrator:
                             "proposed_tool": decision.get("tool", ""),
                         }
 
+            if action == "plan":
+                # First-move declaration — surface to user immediately before any tool runs.
+                _plan_msg = decision.get("message", "")
+                _plan_steps = decision.get("steps", [])
+                if _plan_msg:
+                    yield {"type": "plan", "content": _plan_msg, "steps": _plan_steps}
+                state.thinking.append(f"[plan] {_plan_msg}")
+                continue
+
             if action == "think":
                 state.thinking.append(reasoning)
                 state.add_step(StepRecord(
@@ -1395,7 +1406,7 @@ class Orchestrator:
                 ))
                 if _align is not None:
                     print(f"  [ALIGNMENT] think: {_align:.3f}")
-                yield {"type": "thinking", "content": reasoning}
+                yield {"type": "thinking", "content": reasoning, "alignment": _align}
                 last_result = None
 
             elif action == "tool_call":
@@ -1564,6 +1575,8 @@ class Orchestrator:
                     "args": args,
                     "result": tool_result["content"][:500],
                     "status": tool_result["status"],
+                    "alignment": _align,
+                    "latency_ms": int(tool_ms),
                 }
 
             elif action == "respond":

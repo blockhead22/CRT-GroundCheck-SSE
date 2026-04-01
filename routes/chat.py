@@ -6162,9 +6162,30 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 and _task_intent.route == "task"
                 and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
             )
-            if _layer4_orchestrator or _agent_loop_skipped_for_model:
+            # TEMP: Cookie orchestrator disabled until routing + tool gaps are resolved.
+            # Re-enable by removing the `and False` guard.
+            if (_layer4_orchestrator or _agent_loop_skipped_for_model) and False:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_task_intent.intent_type}, reason={_orch_reason})")
+
+                # ── Immediate acknowledgment before Cookie initializes ──────
+                # Without this, the user sees silence for several seconds.
+                # The ack is the first token of the response; the orchestrator
+                # answer is appended after. Keep it short and contextual.
+                _intent_type_ack = getattr(_task_intent, 'intent_type', '') or ''
+                _msg_lower_ack = req.message.lower().strip()
+                if any(w in _msg_lower_ack for w in ('read', 'open', 'look at', 'check', 'show', 'what', 'find')):
+                    _ack_text = "Looking at that..."
+                elif any(w in _msg_lower_ack for w in ('write', 'edit', 'update', 'change', 'fix', 'patch')):
+                    _ack_text = "On it."
+                elif any(w in _msg_lower_ack for w in ('search', 'research', 'fetch', 'web')):
+                    _ack_text = "On it, looking that up..."
+                elif any(w in _msg_lower_ack for w in ('run', 'execute', 'build', 'test')):
+                    _ack_text = "Running that..."
+                else:
+                    _ack_text = "On it."
+                yield _sse({"type": "token", "content": _ack_text + "\n\n"})
+
                 try:
                     from personal_agent.cookie_orchestrator import Orchestrator, ClaudeCliBrain, OpenAIBrain, get_brain
 
@@ -6200,7 +6221,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     except Exception as _hist_err:
                         _safe_print(f"[ORCHESTRATOR] History load failed (non-fatal): {_hist_err}")
 
-                    _orch_answer = ""
+                    _orch_answer = _ack_text + "\n\n"
                     _orch_steps = []
 
                     _orch_gen = _orch.run(
@@ -6222,11 +6243,53 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                         _etype = _orch_event.get("type", "")
 
-                        if _etype == "thinking":
+                        if _etype == "plan":
+                            # Cookie's first-move declaration — stream it as visible
+                            # response tokens so the user sees what's about to happen
+                            # before any tools fire.
+                            _plan_content = _orch_event.get("content", "")
+                            _plan_steps = _orch_event.get("steps", [])
+                            if _plan_content:
+                                _plan_display = _plan_content
+                                if _plan_steps:
+                                    _plan_display += "\n" + "\n".join(
+                                        f"{i+1}. {s}" for i, s in enumerate(_plan_steps)
+                                    )
+                                _orch_answer = _plan_display + "\n\n"
+                                yield _sse({"type": "token", "content": _orch_answer})
+
+                        elif _etype == "thinking":
                             yield _sse({
                                 "type": "agent_thinking_token",
                                 "content": _orch_event.get("content", ""),
-                                "metadata": {"step": "orchestrator_thinking"},
+                                "metadata": {
+                                    "step": "orchestrator_thinking",
+                                    "alignment": _orch_event.get("alignment"),
+                                },
+                            })
+
+                        elif _etype == "drift_warning":
+                            yield _sse({
+                                "type": "epistemic_event",
+                                "content": _orch_event.get("content", ""),
+                                "metadata": {
+                                    "event": "drift",
+                                    "alignment": _orch_event.get("alignment"),
+                                    "avg_alignment": _orch_event.get("avg_alignment"),
+                                    "proposed_action": _orch_event.get("proposed_action", ""),
+                                    "proposed_tool": _orch_event.get("proposed_tool", ""),
+                                },
+                            })
+
+                        elif _etype == "contradiction_warning":
+                            yield _sse({
+                                "type": "epistemic_event",
+                                "content": _orch_event.get("content", ""),
+                                "metadata": {
+                                    "event": "contradiction",
+                                    "step_a": _orch_event.get("step_a"),
+                                    "step_b": _orch_event.get("step_b"),
+                                },
                             })
 
                         elif _etype == "tool_call":
@@ -6234,10 +6297,16 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _tool_args = _orch_event.get("args", {})
                             _tool_result = _orch_event.get("result", "")
                             _tool_status = _orch_event.get("status", "ok")
+                            _tool_align = _orch_event.get("alignment")
+                            _tool_ms = _orch_event.get("latency_ms")
                             yield _sse({
                                 "type": "tool_start",
                                 "content": f"Running {_tool_name}...",
-                                "metadata": {"tool_name": _tool_name, "input": _tool_args},
+                                "metadata": {
+                                    "tool_name": _tool_name,
+                                    "input": _tool_args,
+                                    "alignment": _tool_align,
+                                },
                             })
                             yield _sse({
                                 "type": "tool_result",
@@ -6246,6 +6315,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     "tool_name": _tool_name,
                                     "status": _tool_status,
                                     "step_index": len(_orch_steps),
+                                    "duration_ms": _tool_ms,
+                                    "alignment": _tool_align,
                                 },
                             })
                             _orch_steps.append({

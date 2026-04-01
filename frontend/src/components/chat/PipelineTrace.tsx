@@ -98,18 +98,16 @@ export function PipelineTrace({
           )}
         </AnimatePresence>
 
-        {/* Progress bar — thin accent line */}
+        {/* Progress bar — only visible while streaming, fades out on done */}
         <div className="h-[2px] rounded-full overflow-hidden" style={{ background: 'rgba(240,235,225,0.04)' }}>
         <motion.div
           className="h-full rounded-full"
           style={{
-            background: streaming
-              ? 'linear-gradient(90deg, #D4845C, #E0A080)'
-              : 'rgba(106,191,123,0.5)',
-            boxShadow: streaming ? '0 0 8px rgba(212,132,92,0.4)' : 'none',
+            background: 'linear-gradient(90deg, #D4845C, #E0A080)',
+            boxShadow: '0 0 8px rgba(212,132,92,0.4)',
           }}
-          initial={{ width: '0%' }}
-          animate={{ width: progressPct }}
+          initial={{ width: '0%', opacity: 1 }}
+          animate={{ width: progressPct, opacity: streaming ? 1 : 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
         />
         </div>
