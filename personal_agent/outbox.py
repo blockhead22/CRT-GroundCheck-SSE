@@ -33,7 +33,31 @@ class OutboxMessage:
 
 
 class OutboxQueue:
-    """Thread-safe queue for proactive messages, keyed by thread_id."""
+    """Thread-safe queue for proactive messages, keyed by thread_id.
+    
+    The OutboxQueue manages a collection of proactive messages that the system
+    can send to users without them explicitly asking for them. This is used for
+    notifications like subagent completion, drift alerts, or other system events
+    that warrant user attention.
+    
+    Key features:
+    - Thread-safe operations using locks
+    - Messages are organized by thread_id for multi-user support
+    - Each message includes trigger type and metadata for context
+    - Automatic timestamp tracking
+    - Bulk drain operations for efficient message retrieval
+    
+    Methods:
+        push(): Add a new proactive message to the queue
+        drain(): Remove and return all messages for a specific thread
+        drain_all(): Remove and return all messages across all threads
+        peek(): View pending messages without removing them
+        clear(): Remove all messages for a thread without returning them
+    
+    The queue is typically consumed by WebSocket handlers that poll for
+    pending messages and deliver them to connected clients as 'proactive_turn'
+    events.
+    """
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -64,21 +88,31 @@ class OutboxQueue:
         return pending
 
     def drain_all(self) -> List[OutboxMessage]:
-        """Remove and return ALL pending messages (for debugging)."""
+        """Remove and return ALL pending messages across all threads."""
         with self._lock:
-            pending = self._queue.copy()
+            pending = list(self._queue)
             self._queue.clear()
         return pending
 
-    def peek(self, thread_id: Optional[str] = None) -> List[OutboxMessage]:
-        """View pending messages without removing them."""
+    def peek(self, thread_id: str) -> List[OutboxMessage]:
+        """View pending messages for a thread without removing them."""
         with self._lock:
-            if thread_id is None:
-                return self._queue.copy()
             return [m for m in self._queue if m.thread_id == thread_id]
 
-    def size(self, thread_id: Optional[str] = None) -> int:
-        """Count pending messages."""
+    def peek_all(self) -> List[OutboxMessage]:
+        """View all pending messages without removing them."""
+        with self._lock:
+            return list(self._queue)
+
+    def clear(self, thread_id: str) -> int:
+        """Remove all pending messages for a thread, return count removed."""
+        with self._lock:
+            count = sum(1 for m in self._queue if m.thread_id == thread_id)
+            self._queue = [m for m in self._queue if m.thread_id != thread_id]
+        return count
+
+    def count(self, thread_id: Optional[str] = None) -> int:
+        """Return count of pending messages (for thread_id if specified, else all)."""
         with self._lock:
             if thread_id is None:
                 return len(self._queue)
@@ -91,7 +125,7 @@ _outbox_lock = threading.Lock()
 
 
 def get_outbox() -> OutboxQueue:
-    """Get the global outbox singleton."""
+    """Get the global outbox singleton (thread-safe initialization)."""
     global _outbox
     if _outbox is None:
         with _outbox_lock:
