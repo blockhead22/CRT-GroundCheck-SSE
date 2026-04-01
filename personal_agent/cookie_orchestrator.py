@@ -415,7 +415,7 @@ Available actions:
 - {"action": "plan", "message": "One sentence describing what you will do and why.", "steps": ["step 1", "step 2"], "estimated_depth": 3}
 - {"action": "tool_call", "tool": "file_read", "args": {"path": "relative/path.py"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "dir_list", "args": {"path": "."}, "reasoning": "why"}
-- {"action": "tool_call", "tool": "search_code", "args": {"query": "class Foo", "path": "."}, "reasoning": "why"}
+- {"action": "tool_call", "tool": "search_code", "args": {"query": "class Foo", "path": ".", "file_extensions": [".py"]}, "reasoning": "why"}  // file_extensions optional, e.g. [".py"] [".ts"] [".tsx",".ts"]
 - {"action": "tool_call", "tool": "memory_recall", "args": {"query": "search terms"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "web_search", "args": {"query": "search terms"}, "reasoning": "why"}
 - {"action": "tool_call", "tool": "shell_exec", "args": {"command": "ls -la"}, "reasoning": "why"}
@@ -565,19 +565,32 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             search_path = args.get("path", "D:/AI_round2")
             if not os.path.isabs(search_path):
                 search_path = os.path.join(PROJECT_ROOT, search_path)
+            # Optional file_extensions filter e.g. [".py"] or ".py"
+            _ext_filter = args.get("file_extensions") or args.get("extensions")
+            if isinstance(_ext_filter, str):
+                _ext_filter = [_ext_filter]
+            if _ext_filter:
+                _ext_filter = tuple(e if e.startswith(".") else f".{e}" for e in _ext_filter)
             import subprocess, re as _re
             _SKIP_DIRS = {'.venv', 'node_modules', '.git', '__pycache__', 'dist', 'build', '.next'}
             _search_done = False
             # Try rg first
             try:
-                proc = subprocess.run(
-                    ["rg", "--no-heading", "-n", "-i", "--max-count", "5",
-                     "--glob", "!.venv", "--glob", "!node_modules",
-                     query, search_path],
-                    capture_output=True, text=True, timeout=15,
-                )
+                _rg_cmd = ["rg", "--no-heading", "-n", "-i",
+                           "--glob", "!.venv", "--glob", "!node_modules"]
+                if _ext_filter:
+                    for _ext in _ext_filter:
+                        _rg_cmd += ["--glob", f"*{_ext}"]
+                _rg_cmd += [query, search_path]
+                proc = subprocess.run(_rg_cmd, capture_output=True, text=True, timeout=15)
                 if proc.returncode in (0, 1):  # 0=matches, 1=no matches
-                    result["content"] = proc.stdout[:5000] if proc.stdout else "No matches found."
+                    _raw = proc.stdout or ""
+                    if not _raw:
+                        result["content"] = "No matches found."
+                    elif len(_raw) > 8000:
+                        result["content"] = _raw[:8000] + "\n... [output truncated — use a narrower query or path]"
+                    else:
+                        result["content"] = _raw
                     _search_done = True
             except (FileNotFoundError, subprocess.TimeoutExpired):
                 pass
@@ -589,13 +602,16 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                     _hits = []
                     _t_start = _time.time()
                     _timed_out = False
+                    # Default extensions when no filter given
+                    _default_exts = ('.py', '.ts', '.tsx', '.js', '.jsx', '.md', '.txt', '.json')
+                    _allowed_exts = _ext_filter if _ext_filter else _default_exts
                     for _root, _dirs, _files in os.walk(search_path):
                         if _time.time() - _t_start > 8.0:
                             _timed_out = True
                             break
                         _dirs[:] = [d for d in _dirs if d not in _SKIP_DIRS]
                         for _fname in _files:
-                            if not _fname.endswith(('.py', '.ts', '.tsx', '.js', '.jsx', '.md', '.txt', '.json')):
+                            if not _fname.endswith(_allowed_exts):
                                 continue
                             _fpath = os.path.join(_root, _fname)
                             try:
@@ -1346,7 +1362,6 @@ class Orchestrator:
             from personal_agent.tool_gate import get_tools_for_intent, filter_orchestrator_tools
             _allowed_tools = get_tools_for_intent(intent_type or "task", route)
             _base_system = filter_orchestrator_tools(ORCHESTRATOR_SYSTEM, _allowed_tools)
-            _filtered_count = len(ALL_TOOLS if not hasattr(self, '_all_tools') else set()) - len(_allowed_tools)
             print(f"[TOOL_GATE] intent={intent_type} → {len(_allowed_tools)} tools visible")
         except Exception as _tg_err:
             print(f"[TOOL_GATE] Failed (non-fatal): {_tg_err}")
@@ -1516,7 +1531,7 @@ class Orchestrator:
 
                 # Verify result against expectation AFTER execution
                 _verification = None
-                if _expectation:
+                if _expectation and tool_result.get("status") not in ("diff_preview", "plan_proposal"):
                     try:
                         _verification = _verify_result(
                             _expectation,

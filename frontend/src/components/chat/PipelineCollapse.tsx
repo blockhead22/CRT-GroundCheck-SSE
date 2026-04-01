@@ -82,16 +82,30 @@ export function PipelineCollapse({
   streaming: boolean
 }) {
   const [expanded, setExpanded] = useState(true)
-  const startRef = useRef<number>(Date.now())
+  const startRef = useRef<number>(0)
   const [elapsedMs, setElapsedMs] = useState<number | null>(null)
 
-  // Track latency
+  // Track latency — start clock on first step, stop when streaming ends
+  const hasSteps = steps.length > 0
   useEffect(() => {
-    if (streaming) {
+    if (streaming && hasSteps && startRef.current === 0) {
       startRef.current = Date.now()
       setElapsedMs(null)
-    } else if (steps.length > 0) {
+    }
+  }, [streaming, hasSteps])
+
+  useEffect(() => {
+    if (!streaming && hasSteps && startRef.current > 0) {
       setElapsedMs(Date.now() - startRef.current)
+      startRef.current = 0
+    }
+  }, [streaming, hasSteps])
+
+  // Reset clock when new stream starts
+  useEffect(() => {
+    if (streaming) {
+      startRef.current = 0
+      setElapsedMs(null)
     }
   }, [streaming])
 

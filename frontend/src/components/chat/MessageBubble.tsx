@@ -9,6 +9,7 @@ import { FilePill } from '../ui/FilePill'
 import { ClaudeLogo } from '../icons/ClaudeLogo'
 import { OpenAILogo } from '../icons/OpenAILogo'
 import { PipelineTrace } from './PipelineTrace'
+import { PipelineCollapse, type PipelineStep } from './PipelineCollapse'
 import { MessageRatingBar } from './MessageRatingBar'
 import { ContradictionResolutionCard } from './ContradictionResolutionCard'
 import { TrustDeltaStrip } from './TrustDeltaStrip'
@@ -402,32 +403,33 @@ export function MessageBubble(props: {
           )}
         </AnimatePresence>
 
-        {/* Pipeline trace — persisted from streaming, enriched with metadata */}
-        {(meta?.pipeline_statuses ?? []).length > 0 && (() => {
+        {/* Pipeline trace — persisted from streaming */}
+        {(meta?.pipeline_steps as PipelineStep[] | undefined)?.length ? (
+          <div className="mt-3">
+            <PipelineCollapse
+              steps={meta!.pipeline_steps as PipelineStep[]}
+              streaming={false}
+            />
+          </div>
+        ) : (meta?.pipeline_statuses ?? []).length > 0 && (() => {
+          // Fallback: legacy flat status strings
           const statuses = [...(meta!.pipeline_statuses ?? [])]
-          // Enrich with metadata-derived steps
           const memCount = (meta?.retrieved_memories?.length ?? 0) + (meta?.prompt_memories?.length ?? 0)
           if (memCount > 0 && !statuses.some(s => s.match(/\d+ mem/))) {
             statuses.push(`${memCount} memories read`)
           }
-          // Show top memory citation if available
           const topMem = (meta?.retrieved_memories as any[])?.[0]
           if (topMem?.text) {
             const memPreview = String(topMem.text).slice(0, 80)
             const trust = typeof topMem.trust === 'number' ? `T:${topMem.trust.toFixed(2)}` : ''
             statuses.push(`${topMem.memory_id ?? ''} ·${trust ? trust + ' ' : ''}${memPreview}`)
           }
-          // Show gate result
           if (gatesFailed && meta?.gate_reason) {
             statuses.push(`gate: ${meta.gate_reason}`)
           }
           return (
             <div className="mt-3">
-              <PipelineTrace
-                statuses={statuses}
-                streaming={false}
-                defaultOpen={false}
-              />
+              <PipelineTrace statuses={statuses} streaming={false} defaultOpen={false} />
             </div>
           )
         })()}

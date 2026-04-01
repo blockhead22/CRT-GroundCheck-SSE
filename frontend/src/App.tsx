@@ -130,6 +130,7 @@ export default function App() {
   const [agentThinkingState, setAgentThinkingState] = useState<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
   // Ref mirrors state so onDone closure can read the latest value without stale capture
   const agentThinkingRef = useRef<import('./components/chat/AgentThinkingStrip').AgentThinkingState | null>(null)
+  const pipelineStepsRef = useRef<import('./components/chat/PipelineCollapse').PipelineStep[]>([])
   const finalBufferRef = useRef('')
   const streamAbortRef = useRef<AbortController | null>(null)
   const [taskWorking, setTaskWorking] = useState(false)
@@ -695,6 +696,7 @@ export default function App() {
     finalBufferRef.current = ''
     setIntentPreview(null)
     setPipelineSteps([])
+    pipelineStepsRef.current = []
     setRetrievedMemories([])
     setTrustShifts([])
     setAgentThinkingState(null)
@@ -737,10 +739,14 @@ export default function App() {
             onToolStart: (toolName, input, stepIndex) => {
               playMascotAnim('working')
               // Accumulate into pipeline steps for PipelineCollapse
-              setPipelineSteps(prev => [...prev, {
-                kind: 'tool' as const,
-                result: { tool: toolName, args: input as Record<string, unknown>, status: 'running' },
-              }])
+              setPipelineSteps(prev => {
+                const next = [...prev, {
+                  kind: 'tool' as const,
+                  result: { tool: toolName, args: input as Record<string, unknown>, status: 'running' },
+                }]
+                pipelineStepsRef.current = next
+                return next
+              })
               setAgentThinkingState((prev) => {
                 if (!prev) return prev
                 // Freeze any pending reasoning into the new tool step
@@ -1096,6 +1102,16 @@ export default function App() {
                 ? { ...agentThinkingRef.current, done: true, drafting: false }
                 : null
 
+              // Reconstruct PipelineStep[] from done metadata tool_calls for persistence
+              // Falls back to live pipelineStepsRef if available (richer — has thinking stubs)
+              const _toolCallsMeta = (metadata as any)?.tool_calls as Array<{ tool: string; args?: Record<string, unknown>; status?: string }> | null
+              const _persistedSteps: unknown[] = pipelineStepsRef.current.length > 0
+                ? pipelineStepsRef.current
+                : (_toolCallsMeta ?? []).map(tc => ({
+                    kind: 'tool',
+                    result: { tool: tc.tool, args: tc.args ?? {}, status: tc.status ?? 'ok' },
+                  }))
+
               const asstMsg = {
                 id: newId('m'),
                 role: 'assistant' as const,
@@ -1120,6 +1136,7 @@ export default function App() {
                   heuristic_suggestions: [],
                   profile_updates: profileUpdates,
                   pipeline_statuses: pipelineStatuses,
+                  pipeline_steps: _persistedSteps.length > 0 ? _persistedSteps : undefined,
                   draft_response: draftResponse,
                   tasking: (metadata as any)?.tasking ?? null,
                   tool_calls: (metadata as any)?.tool_calls ?? null,
@@ -1311,6 +1328,7 @@ export default function App() {
     setIntentPreview(null)
     setAgentThinkingState(null)
     agentThinkingRef.current = null
+    pipelineStepsRef.current = []
     setPendingCheckpoint(null)
     setTyping(false)
     streamAbortRef.current = null

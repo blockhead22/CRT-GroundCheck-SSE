@@ -5036,6 +5036,31 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                         "text": _retrieval_by_id.get(_ts_mid, ""),
                     },
                 })
+            # Emit drift event — intent alignment + trust delta signal
+            _drift_count = len(_crt_turn.trust_shifts)
+            _total_trust_delta = round(_crt_session.total_trust_delta, 3)
+            if _drift_count > 0 or abs(_total_trust_delta) > 0.01:
+                _emit_pipeline_event({
+                    "type": "drift",
+                    "content": f"{_drift_count} trust shift(s) this turn",
+                    "metadata": {
+                        "drift_count": _drift_count,
+                        "total_trust_delta": _total_trust_delta,
+                        "intent_alignment": round(float(result.get("intent_alignment") or 1.0), 3),
+                    },
+                })
+            # Emit session_state snapshot — density + contradiction count
+            _emit_pipeline_event({
+                "type": "session_state",
+                "content": f"density={_crt_session.cumulative_density:.4f}",
+                "metadata": {
+                    "cumulative_density": round(_crt_session.cumulative_density, 4),
+                    "open_contradiction_count": int(_crt_session.open_contradiction_count),
+                    "total_trust_delta": _total_trust_delta,
+                    "turn_count": int(_crt_session.turn_count),
+                    "memories_confirmed": int(_crt_session.memories_confirmed),
+                },
+            })
         except Exception as _e:
             print(f"[SESSION_STATE_BG] Error: {_e}")
             import traceback; traceback.print_exc()
@@ -6783,6 +6808,44 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 )
                     except Exception as _outbox_err:
                         _safe_print(f"[ORCHESTRATOR] Outbox push failed (non-fatal): {_outbox_err}")
+
+                    # Emit drift + session_state from orchestrator run
+                    try:
+                        from personal_agent.agent_run_log import get_run_log_db as _get_rl_db
+                        _rl_db = _get_rl_db()
+                        _rl_recent = _rl_db.get_recent_runs(limit=1)
+                        if _rl_recent:
+                            _rl_row = _rl_recent[0]
+                            _rl_dc = int(_rl_row.get("drift_count") or 0)
+                            _rl_conf = float(_rl_row.get("confidence") or 1.0)
+                            if _rl_dc > 0:
+                                yield _sse({
+                                    "type": "drift",
+                                    "content": f"{_rl_dc} drift event(s)",
+                                    "metadata": {
+                                        "drift_count": _rl_dc,
+                                        "intent_alignment": round(_rl_conf, 3),
+                                        "total_trust_delta": 0.0,
+                                    },
+                                })
+                    except Exception as _rl_err:
+                        _safe_print(f"[ORCHESTRATOR] drift event failed (non-fatal): {_rl_err}")
+                    try:
+                        from personal_agent.session_state import get_or_create_session as _get_orch_sess
+                        _orch_sess = _get_orch_sess(req.thread_id)
+                        yield _sse({
+                            "type": "session_state",
+                            "content": f"density={_orch_sess.cumulative_density:.4f}",
+                            "metadata": {
+                                "cumulative_density": round(_orch_sess.cumulative_density, 4),
+                                "open_contradiction_count": int(_orch_sess.open_contradiction_count),
+                                "total_trust_delta": round(_orch_sess.total_trust_delta, 3),
+                                "turn_count": int(_orch_sess.turn_count),
+                                "memories_confirmed": int(_orch_sess.memories_confirmed),
+                            },
+                        })
+                    except Exception as _sess_err:
+                        _safe_print(f"[ORCHESTRATOR] session_state event failed (non-fatal): {_sess_err}")
 
                     # Emit final done event
                     _safe_print(f"[ORCHESTRATOR] Complete: {len(_orch_steps)} steps, answer_len={len(_orch_answer)}")

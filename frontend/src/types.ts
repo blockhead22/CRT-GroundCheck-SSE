@@ -94,6 +94,7 @@ export type CtrMessageMeta = {
     new: string
   }>
   pipeline_statuses?: string[]
+  pipeline_steps?: unknown[] // PipelineStep[] — stored as unknown to avoid circular import
   draft_response?: string | null
   tasking?: {
     mode?: string

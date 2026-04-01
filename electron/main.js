@@ -604,6 +604,19 @@ function setupIPC() {
 
 // ── Global Hotkey ─────────────────────────────────────────────────────
 
+function registerDevTools() {
+  globalShortcut.register('F12', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
+  globalShortcut.register('CmdOrCtrl+Shift+I', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.toggleDevTools();
+    }
+  });
+}
+
 function registerHotkey() {
   const accelerator = process.platform === 'darwin' ? 'Cmd+Space' : 'Ctrl+Space';
 
@@ -1014,8 +1027,9 @@ app.whenReady().then(async () => {
   tray = new AetherTray(mainWindow, backendManager, clipboardMonitor, ambientMonitor);
   tray.create();
 
-  // 7. Register global hotkey
+  // 7. Register global hotkey + dev tools toggle
   registerHotkey();
+  registerDevTools();
 
   // 8. Start WebSocket listener for native OS notifications (contradictions, etc.)
   // Falls back to SSE if WS connection fails after max retries.
