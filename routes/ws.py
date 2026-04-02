@@ -19,6 +19,7 @@ from starlette.websockets import WebSocketState
 
 from personal_agent.event_bus import get_event_bus
 from personal_agent.outbox import get_outbox
+from personal_agent.stream_events import make_stream_event
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +169,7 @@ async def _ping_loop(ws: WebSocket) -> None:
             await asyncio.sleep(PING_INTERVAL)
             if ws.client_state != WebSocketState.CONNECTED:
                 break
-            await ws.send_json({"type": "pong", "ts": time.time()})
+            await ws.send_json(make_stream_event("pong", allow_ws=True, ts=time.time()))
     except Exception:
         pass  # connection closed
 
@@ -190,14 +191,17 @@ async def _outbox_drain_loop(ws: WebSocket, thread_ids: "list[str]") -> None:
                 msgs = outbox.drain(tid)
                 for msg in msgs:
                     try:
-                        await ws.send_json({
-                            "type": "proactive_turn",
-                            "content": msg.content,
-                            "trigger": msg.trigger,
-                            "thread_id": msg.thread_id,
-                            "metadata": msg.metadata,
-                            "ts": msg.created_at,
-                        })
+                        await ws.send_json(
+                            make_stream_event(
+                                "proactive_turn",
+                                msg.content,
+                                allow_ws=True,
+                                trigger=msg.trigger,
+                                thread_id=msg.thread_id,
+                                metadata=msg.metadata,
+                                ts=msg.created_at,
+                            )
+                        )
                         logger.info(
                             "[WS] Proactive turn sent to thread %s (trigger=%s)",
                             tid, msg.trigger,
@@ -235,11 +239,14 @@ async def websocket_endpoint(
     drain_task = asyncio.create_task(_outbox_drain_loop(ws, _subscribed_thread_ids))
 
     # Send welcome
-    await ws.send_json({
-        "type": "connected",
-        "content": "Aether WebSocket active",
-        "ts": time.time(),
-    })
+    await ws.send_json(
+        make_stream_event(
+            "connected",
+            "Aether WebSocket active",
+            allow_ws=True,
+            ts=time.time(),
+        )
+    )
 
     try:
         while True:
@@ -247,13 +254,13 @@ async def websocket_endpoint(
             try:
                 msg = json.loads(raw)
             except json.JSONDecodeError:
-                await ws.send_json({"type": "error", "content": "Invalid JSON"})
+                await ws.send_json(make_stream_event("error", "Invalid JSON", allow_ws=True))
                 continue
 
             msg_type = msg.get("type", "")
 
             if msg_type == "ping":
-                await ws.send_json({"type": "pong", "ts": time.time()})
+                await ws.send_json(make_stream_event("pong", allow_ws=True, ts=time.time()))
 
             elif msg_type == "subscribe":
                 channels = msg.get("channels", [])
@@ -264,10 +271,13 @@ async def websocket_endpoint(
                         tid = ch[len("thread:"):]
                         if tid not in _subscribed_thread_ids:
                             _subscribed_thread_ids.append(tid)
-                await ws.send_json({
-                    "type": "subscribed",
-                    "channels": list(mgr._connections[ws]["subscriptions"]),
-                })
+                await ws.send_json(
+                    make_stream_event(
+                        "subscribed",
+                        allow_ws=True,
+                        channels=list(mgr._connections[ws]["subscriptions"]),
+                    )
+                )
 
             elif msg_type == "chat":
                 # Chat messages will be handled in Step 2 (pipeline emission)
@@ -275,17 +285,23 @@ async def websocket_endpoint(
                 thread_id = msg.get("thread_id", "")
                 if thread_id:
                     mgr.subscribe_to(ws, [f"thread:{thread_id}"])
-                await ws.send_json({
-                    "type": "status",
-                    "content": "chat handler not yet wired — use /api/chat/stream",
-                    "thread_id": thread_id,
-                })
+                await ws.send_json(
+                    make_stream_event(
+                        "status",
+                        "chat handler not yet wired - use /api/chat/stream",
+                        allow_ws=True,
+                        thread_id=thread_id,
+                    )
+                )
 
             else:
-                await ws.send_json({
-                    "type": "error",
-                    "content": f"Unknown message type: {msg_type}",
-                })
+                await ws.send_json(
+                    make_stream_event(
+                        "error",
+                        f"Unknown message type: {msg_type}",
+                        allow_ws=True,
+                    )
+                )
 
     except WebSocketDisconnect:
         pass

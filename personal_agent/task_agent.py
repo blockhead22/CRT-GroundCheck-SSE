@@ -28,6 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
 
+from personal_agent.runtime_paths import resolve_managed_skills_dir
+
 logger = logging.getLogger(__name__)
 
 
@@ -449,7 +451,7 @@ def _get_known_services() -> Dict[str, Dict[str, str]]:
 # Skill file cache (local storage of fetched SKILL.md files)
 # ---------------------------------------------------------------------------
 
-_SKILL_CACHE_DIR = Path("data/managed_skills")
+_SKILL_CACHE_DIR = resolve_managed_skills_dir()
 
 
 def _load_cached_skill(service: str) -> Optional[str]:
@@ -2321,7 +2323,7 @@ class CRTTaskAgent:
                     _svc_name = _meta.split("name=")[1].split(",")[0].strip()
                 answer = (
                     f"Skill **{_svc_name or 'unknown'}** installed successfully. "
-                    f"Saved to `data/managed_skills/{_svc_name}/SKILL.md` and registered as a known service.\n\n"
+                    f"Saved to `{(_SKILL_CACHE_DIR / _svc_name / 'SKILL.md').as_posix()}` and registered as a known service.\n\n"
                     f"To use it, I'll need an API key. You can provide one by saying:\n"
                     f'*"here is my {_svc_name} API key: your_key_here"*'
                 )
@@ -4356,7 +4358,7 @@ RULES:
 
         return {
             "type": "tool_result",
-            "content": f"✓ Installed skill '{name}' — saved to data/managed_skills/{name}/SKILL.md",
+            "content": f"✓ Installed skill '{name}' — saved to {(_SKILL_CACHE_DIR / name / 'SKILL.md').as_posix()}",
             "metadata": {
                 "tool_name": "install_skill",
                 "service_name": name,

@@ -43,6 +43,7 @@ from personal_agent.runtime_config import get_runtime_config
 from personal_agent.cloud_usage_tracker import log_cloud_call as _track_cloud_call
 from personal_agent.db_utils import get_thread_session_db
 from personal_agent.runtime_paths import resolve_agent_runs_db_path
+from personal_agent.stream_events import encode_sse_event, make_stream_event, normalize_stream_event
 
 try:
     from personal_agent.governance import GovernanceLayer, GovernanceTier
@@ -100,7 +101,7 @@ def _emit_pipeline_event(event: dict) -> None:
     """Push a structured SSE event dict to the stream queue (if one is active)."""
     q = _pipeline_event_queue.get(None)
     if q is not None:
-        q.put_nowait(event)
+        q.put_nowait(normalize_stream_event(event))
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -5163,18 +5164,20 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _event_bus.emit_sync(event.get("type", "unknown"), event, thread_id=_ws_thread_id)
 
         def _status(s: str) -> str:
-            _bus_emit({"type": "status", "content": s})
-            return f"data: {json.dumps({'type': 'status', 'content': s})}\n\n"
+            event = make_stream_event("status", s)
+            _bus_emit(event)
+            return encode_sse_event(event)
 
         def _phase(phase: str, content: str = '', end: bool = False) -> str:
             t = 'phase_end' if end else 'phase_start'
-            evt = {"type": t, "phase": phase, "content": content}
+            evt = make_stream_event(t, content, phase=phase)
             _bus_emit(evt)
-            return f"data: {json.dumps(evt)}\n\n"
+            return encode_sse_event(evt)
 
         def _sse(event: dict) -> str:
-            _bus_emit(event)
-            return f"data: {json.dumps(event)}\n\n"
+            normalized = normalize_stream_event(event)
+            _bus_emit(normalized)
+            return encode_sse_event(normalized)
 
         try:
             # ── Upfront activity signals ──────────────────────────────────

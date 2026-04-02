@@ -11,7 +11,7 @@
  */
 
 import { getEffectiveApiBaseUrl, getAuthToken } from './api'
-import type { StreamCallbacks } from './api'
+import { dispatchStreamEvent, isStreamEventType, type StreamCallbacks, type StreamEvent } from './streamEvents'
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -206,156 +206,13 @@ export class AetherSocket {
   private _dispatchToStreamCallbacks(event: ServerEvent): void {
     const cb = this.streamCallbacks
     if (!cb) return
+    if (!isStreamEventType(String(event.type ?? ''))) return
 
-    const meta = (event.metadata ?? {}) as Record<string, any>
+    dispatchStreamEvent(event as StreamEvent, cb)
 
-    switch (event.type) {
-      case 'status':
-        cb.onStatus?.(event.content ?? '')
-        break
-      case 'intent_preview':
-        cb.onIntentPreview?.(meta.intent ?? '', meta.slots ?? [], event.content ?? '')
-        break
-      case 'intent_classified':
-        cb.onIntentClassified?.(meta.intent ?? '', meta.route ?? 'conversational', meta.slots ?? {}, meta.confidence ?? 0, meta.source)
-        break
-      case 'plan_ready':
-        cb.onPlanReady?.(meta.steps ?? [])
-        break
-      case 'tool_start':
-        cb.onToolStart?.(meta.tool_name ?? '', meta.input ?? {}, meta.step_index ?? 0)
-        break
-      case 'tool_result':
-        if (meta) cb.onToolResult?.(meta as any)
-        break
-      case 'validate_result':
-        cb.onValidateResult?.(meta.conflicts ?? [], meta.gate ?? '')
-        break
-      case 'task_done':
-        cb.onTaskDone?.(event.content ?? '', meta.steps ?? [], meta)
-        break
-      case 'task_acknowledged':
-        cb.onTaskAcknowledged?.(event.content ?? '', meta)
-        break
-      case 'orchestration_start':
-        cb.onOrchestrationStart?.(meta.subtask_count ?? 0, meta.subtasks ?? [])
-        break
-      case 'subtask_start':
-        cb.onSubtaskStart?.(meta.task_id ?? '', meta.agent_name ?? '', meta.intent_type ?? '')
-        break
-      case 'subtask_done':
-        cb.onSubtaskDone?.(meta.task_id ?? '', meta.agent_name ?? '', meta.status ?? 'ok', meta.duration_ms ?? 0, meta.output_preview ?? '')
-        break
-      case 'orchestration_done':
-        cb.onOrchestrationDone?.(meta.merged_trust ?? 0, meta.all_ok ?? false, meta)
-        break
-      case 'agent_checkpoint':
-        cb.onAgentCheckpoint?.(event.content ?? '', meta)
-        break
-      case 'task_cancelled':
-        cb.onTaskCancelled?.(event.content ?? '')
-        break
-      case 'agent_thinking_token':
-        cb.onAgentThinkingToken?.(event.content ?? '', meta.step ?? 'generate_answer')
-        // Low alignment on thinking → fire epistemic drift
-        if (meta.alignment != null && (meta.alignment as number) < 0.3) {
-          cb.onEpistemicEvent?.('drift', (event.content ?? '').slice(0, 80), meta)
-        }
-        break
-      case 'agent_loop_start':
-        cb.onAgentLoopStart?.(meta.tools_available ?? [], meta.max_iterations ?? 10)
-        break
-      case 'agent_loop_complete':
-        cb.onAgentLoopComplete?.(meta.tools_used ?? [], meta.iterations ?? 0, meta.total_duration_ms ?? 0)
-        break
-      case 'thinking_start':
-        cb.onThinkingStart?.()
-        break
-      case 'thinking_token':
-        cb.onThinkingToken?.(event.content ?? '')
-        break
-      case 'thinking':
-        cb.onThinking?.(event.content ?? '')
-        break
-      case 'thinking_end':
-        cb.onThinkingEnd?.()
-        break
-      case 'retrieval':
-        cb.onRetrieval?.((meta?.memories as Array<{ id: string; text: string; trust: number }>) ?? [])
-        break
-      case 'trust_shift':
-        if (meta?.memoryId) {
-          cb.onTrustShift?.({
-            memoryId: meta.memoryId as string,
-            from: (meta.from as number) ?? 0,
-            to: (meta.to as number) ?? 0,
-            reason: (meta.reason as string) ?? '',
-            text: (meta.text as string) ?? '',
-          })
-        }
-        break
-      case 'verification':
-        cb.onVerification?.({
-          verdict: (meta?.verdict as string) ?? 'none',
-          confidence: (meta?.confidence as number) ?? 0,
-        })
-        break
-      case 'epistemic_event': {
-        const evtType = ((meta?.event as string) ?? 'drift') as 'drift' | 'contradiction'
-        cb.onEpistemicEvent?.(evtType, event.content ?? '', meta ?? {})
-        break
-      }
-      case 'drift': {
-        const dc = (meta?.drift_count as number) ?? 0
-        const td = (meta?.total_trust_delta as number) ?? 0
-        const ia = (meta?.intent_alignment as number) ?? 1
-        cb.onDrift?.(dc, td, ia)
-        break
-      }
-      case 'session_state': {
-        const dens = (meta?.cumulative_density as number) ?? 0
-        const contra = (meta?.open_contradiction_count as number) ?? 0
-        const turns = (meta?.turn_count as number) ?? 0
-        cb.onSessionState?.(dens, contra, turns)
-        break
-      }
-      case 'followup_suggest': {
-        const followups = (meta?.followups as string[]) ?? []
-        const complete = (meta?.complete as boolean) ?? true
-        cb.onFollowupSuggest?.(followups, complete)
-        break
-      }
-      case 'phase_start':
-        cb.onPhaseStart?.(event.phase ?? '', event.content)
-        break
-      case 'phase_end':
-        cb.onPhaseEnd?.(event.phase ?? '')
-        break
-      case 'token':
-        cb.onToken?.(event.content ?? '')
-        break
-      case 'correction':
-        cb.onCorrection?.(event.content ?? '')
-        break
-      case 'stream_checkpoint':
-        cb.onStreamCheckpoint?.(event.content ?? '', meta)
-        cb.onStatus?.(`⬡ ${event.content}`)
-        break
-      case 'stream_stopped':
-        cb.onStreamStopped?.(event.content ?? '', meta)
-        cb.onStatus?.(`⚡ ${event.content}`)
-        break
-      case 'done':
-        cb.onDone?.(event.content ?? '', meta)
-        // Clear active stream on done
-        this.streamCallbacks = null
-        this.activeThreadId = null
-        break
-      case 'error':
-        cb.onError?.(event.content ?? '')
-        this.streamCallbacks = null
-        this.activeThreadId = null
-        break
+    if (event.type === 'done' || event.type === 'error') {
+      this.streamCallbacks = null
+      this.activeThreadId = null
     }
   }
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import sqlite3
 import time
 import urllib.request
@@ -14,6 +15,7 @@ from personal_agent.artifact_store import now_iso_utc, sha256_file, write_promot
 from personal_agent.crt_core import MemorySource
 from personal_agent.crt_memory import CRTMemorySystem
 from personal_agent.fact_slots import extract_fact_slots
+from personal_agent.runtime_paths import resolve_memory_db_path, resolve_thread_sessions_db_path
 
 
 @dataclass(frozen=True)
@@ -410,9 +412,9 @@ def _run_heartbeat_learning(
         from personal_agent.db_utils import ThreadSessionDB
 
         # Resolve paths
-        pa_dir = Path(__file__).parent
-        mem_db = payload.get("memory_db") or str(pa_dir / f"crt_memory_{thread_id}.db")
-        session_db_path = str(pa_dir / "crt_thread_sessions.db")
+        shared_memory = str(os.getenv("CRT_SHARED_MEMORY", "false")).strip().lower() == "true"
+        mem_db = payload.get("memory_db") or str(resolve_memory_db_path(thread_id, shared=shared_memory))
+        session_db_path = str(resolve_thread_sessions_db_path())
 
         if not Path(mem_db).exists():
             return {"status": "skipped", "reason": "memory DB not found"}, []

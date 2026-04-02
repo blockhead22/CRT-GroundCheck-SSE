@@ -15,7 +15,7 @@ _DEFAULT_CONFIG: Dict[str, Any] = {
     # This powers async research, promotion proposals, and auto-resolution attempts.
     "background_jobs": {
         "enabled": False,
-        "jobs_db_path": "artifacts/crt_jobs.db",
+        "jobs_db_path": "crt_jobs.db",
         "artifacts_dir": "artifacts",
         "worker_interval_seconds": 2,
         # When enabled, the scheduler can enqueue jobs while chat is idle.
@@ -518,5 +518,4 @@ def clear_runtime_config_cache() -> None:
     """
 
     _get_runtime_config_cached.cache_clear()
-
 

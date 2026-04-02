@@ -1,7 +1,7 @@
 {
     "background_jobs":  {
                             "enabled":  true,
-                            "jobs_db_path":  "artifacts/crt_jobs.db",
+                            "jobs_db_path":  "crt_jobs.db",
                             "artifacts_dir":  "artifacts",
                             "worker_interval_seconds":  2,
                             "idle_scheduler_enabled":  true,

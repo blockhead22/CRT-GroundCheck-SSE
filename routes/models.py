@@ -19,6 +19,13 @@ class HealthResponse(BaseModel):
     status: str
 
 
+class RuntimeStatusResponse(BaseModel):
+    runtime_data_root: str
+    auto_migrate_enabled: bool = False
+    shared_memory: bool = False
+    paths: Dict[str, str] = Field(default_factory=dict)
+
+
 # ---------------------------------------------------------------------------
 # Chat
 # ---------------------------------------------------------------------------

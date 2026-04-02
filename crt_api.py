@@ -80,10 +80,17 @@ from personal_agent.active_learning import get_active_learning_coordinator, Lear
 from personal_agent.db_utils import get_thread_session_db, get_db_connection
 from personal_agent.engine.collapse_trails import get_collapse_trail_logger
 from personal_agent.runtime_paths import (
+    get_runtime_data_root,
     iter_existing_memory_dbs,
     resolve_active_learning_db_path,
     resolve_collapse_trails_db_path,
+    resolve_jobs_artifacts_dir,
+    resolve_jobs_db_path,
+    resolve_runtime_dir,
+    resolve_runtime_path,
     resolve_scheduled_tasks_db_path,
+    resolve_skills_registry_db_path,
+    resolve_managed_skills_dir,
     resolve_ledger_db_path,
     resolve_memory_db_path,
 )
@@ -884,6 +891,7 @@ def create_app() -> FastAPI:
     warnings.filterwarnings("ignore", message=".*on_event is deprecated.*", category=DeprecationWarning)
 
     app = FastAPI(title="CRT API", version="3.0.0")
+    app.state.runtime_data_root = str(get_runtime_data_root(create=True))
 
     runtime_cfg = get_runtime_config()
     reflection_cfg = (runtime_cfg.get("reflection") or {}) if isinstance(runtime_cfg, dict) else {}
@@ -934,8 +942,8 @@ def create_app() -> FastAPI:
     # Optional: background jobs worker + idle scheduler.
     # Stored on app.state so endpoints can report status.
     root = Path(__file__).resolve().parent
-    skills_db_path = str(root / "data" / "skills_registry.db")
-    skills_managed_dir = str(root / "data" / "managed_skills")
+    skills_db_path = str(resolve_runtime_path(str((runtime_cfg.get("skills") or {}).get("db_path") or resolve_skills_registry_db_path())))
+    skills_managed_dir = str(resolve_runtime_dir(str((runtime_cfg.get("skills") or {}).get("managed_dir") or resolve_managed_skills_dir())))
     skill_source_roots = [
         str(root / ".agents" / "skills"),
         str(root / ".github" / "skills"),
@@ -960,12 +968,13 @@ def create_app() -> FastAPI:
         app.state.skill_registry = None
 
     jobs_enabled = bool(jobs_cfg.get("enabled", False))
-    jobs_db_path = str(jobs_cfg.get("jobs_db_path") or "artifacts/crt_jobs.db")
-    jobs_artifacts_dir = str(jobs_cfg.get("artifacts_dir") or "artifacts")
+    jobs_db_path = str(resolve_runtime_path(str(jobs_cfg.get("jobs_db_path") or resolve_jobs_db_path())))
+    jobs_artifacts_dir = str(resolve_runtime_dir(str(jobs_cfg.get("artifacts_dir") or resolve_jobs_artifacts_dir())))
     worker_interval = float(jobs_cfg.get("worker_interval_seconds") or 2)
 
     init_jobs_db(jobs_db_path)
     app.state.jobs_db_path = jobs_db_path
+    app.state.jobs_artifacts_dir = jobs_artifacts_dir
 
     jobs_worker = CRTJobsWorker(
         repo_root=root,

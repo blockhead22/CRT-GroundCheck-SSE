@@ -53,6 +53,23 @@ def get_runtime_data_root(*, create: bool = True) -> Path:
     return root
 
 
+def resolve_runtime_dir(
+    relative_path: str | Path,
+    *,
+    runtime_root: Optional[Path] = None,
+) -> Path:
+    """Resolve a mutable runtime directory under the runtime root."""
+    rel = Path(relative_path)
+    if rel.is_absolute():
+        rel.mkdir(parents=True, exist_ok=True)
+        return rel
+
+    root = Path(runtime_root) if runtime_root is not None else get_runtime_data_root(create=True)
+    target = (root / rel).resolve()
+    target.mkdir(parents=True, exist_ok=True)
+    return target
+
+
 def _legacy_path_for(path: Path, *, legacy_path: Optional[Path] = None) -> Path:
     if legacy_path is not None:
         return Path(legacy_path)
@@ -163,6 +180,10 @@ def resolve_action_receipts_db_path() -> Path:
     return resolve_runtime_path("action_receipts.db")
 
 
+def resolve_jobs_db_path() -> Path:
+    return resolve_runtime_path("crt_jobs.db")
+
+
 def resolve_collapse_trails_db_path() -> Path:
     return resolve_runtime_path("crt_collapse_trails.db")
 
@@ -181,6 +202,18 @@ def resolve_episodic_db_path() -> Path:
 
 def resolve_scheduled_tasks_db_path() -> Path:
     return resolve_runtime_path("scheduled_tasks.db")
+
+
+def resolve_jobs_artifacts_dir() -> Path:
+    return resolve_runtime_dir("artifacts")
+
+
+def resolve_skills_registry_db_path() -> Path:
+    return resolve_runtime_path("skills_registry.db")
+
+
+def resolve_managed_skills_dir() -> Path:
+    return resolve_runtime_dir("managed_skills")
 
 
 def iter_existing_memory_dbs(*, include_shared: bool = True) -> list[Path]:

@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from personal_agent.db_utils import get_db_connection
+from personal_agent.runtime_paths import resolve_jobs_db_path
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -656,7 +657,7 @@ class ScheduledTasksLoop:
                 job_id = f"scheduled_{task.task_id}_{int(time.time())}"
                 
                 enqueue_job(
-                    db_path=task.payload.get("jobs_db_path", self.db_path.replace("scheduled_tasks.db", "jobs.db")),
+                    db_path=task.payload.get("jobs_db_path", str(resolve_jobs_db_path())),
                     job_id=job_id,
                     job_type=job_type,
                     created_at=now_iso_utc(),

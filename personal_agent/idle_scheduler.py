@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from personal_agent.artifact_store import now_iso_utc
 from personal_agent.db_utils import get_db_connection
 from personal_agent.jobs_db import enqueue_job, init_jobs_db
+from personal_agent.runtime_paths import iter_existing_memory_dbs, resolve_ledger_db_path
 
 try:
     from personal_agent.active_learning import get_active_learning_coordinator
@@ -71,6 +72,15 @@ def _last_user_activity_ts(memory_db: Path) -> float:
             return float(v[0])
     except Exception:
         return 0.0
+
+
+def _iter_thread_runtime_pairs() -> list[tuple[str, Path, Path]]:
+    pairs: list[tuple[str, Path, Path]] = []
+    for mem_db in iter_existing_memory_dbs(include_shared=False):
+        thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
+        led_db = resolve_ledger_db_path(thread_id, shared=False)
+        pairs.append((thread_id, mem_db, led_db))
+    return pairs
 
 
 class CRTIdleScheduler:
@@ -144,12 +154,9 @@ class CRTIdleScheduler:
             return
 
         # Scan per-thread DBs and compute priority scores
-        pa_dir = (self.repo_root / "personal_agent").resolve()
         thread_candidates = []
 
-        for mem_db in pa_dir.glob("crt_memory_*.db"):
-            thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
-            led_db = pa_dir / f"crt_ledger_{thread_id}.db"
+        for thread_id, mem_db, led_db in _iter_thread_runtime_pairs():
 
             last_user_ts = _last_user_activity_ts(mem_db)
             if last_user_ts <= 0:
@@ -265,10 +272,7 @@ class CRTIdleScheduler:
                     from personal_agent.crt_memory import CRTMemorySystem
                     from personal_agent.crt_ledger import ContradictionLedger
 
-                    pa_dir = (self.repo_root / "personal_agent").resolve()
-                    for mem_db in pa_dir.glob("crt_memory_*.db"):
-                        thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
-                        led_db = pa_dir / f"crt_ledger_{thread_id}.db"
+                    for thread_id, mem_db, led_db in _iter_thread_runtime_pairs():
                         if not led_db.exists():
                             continue
 
@@ -296,9 +300,7 @@ class CRTIdleScheduler:
         # Density-triggered memory extraction
         try:
             from personal_agent.session_state import get_or_create_session, should_extract
-            pa_dir = (self.repo_root / "personal_agent").resolve()
-            for mem_db in pa_dir.glob("crt_memory_*.db"):
-                thread_id = mem_db.stem.replace("crt_memory_", "") or "default"
+            for thread_id, mem_db, _ in _iter_thread_runtime_pairs():
                 try:
                     session = get_or_create_session(thread_id)
                     if should_extract(session):

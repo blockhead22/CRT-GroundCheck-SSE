@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+from personal_agent.runtime_paths import resolve_managed_skills_dir, resolve_skills_registry_db_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,8 +35,8 @@ class SkillRegistry:
 
     def __init__(
         self,
-        db_path: str = "data/skills_registry.db",
-        managed_dir: str = "data/managed_skills",
+        db_path: str = str(resolve_skills_registry_db_path()),
+        managed_dir: str = str(resolve_managed_skills_dir()),
         source_roots: Optional[Iterable[str]] = None,
     ):
         self.db_path = Path(db_path)

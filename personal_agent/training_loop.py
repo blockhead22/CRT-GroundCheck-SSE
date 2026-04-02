@@ -8,6 +8,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from personal_agent.db_utils import get_db_connection
+from personal_agent.runtime_paths import (
+    resolve_ledger_db_path,
+    resolve_memory_db_path,
+    resolve_runtime_dir,
+    resolve_runtime_path,
+)
 
 
 @dataclass
@@ -130,11 +136,11 @@ class CRTTrainingLoop:
 
             # Configure model path for runtime loading.
             out_model_path = str(self.reflection_cfg.get("out_model_path") or "artifacts/learned_suggestions.latest.joblib")
-            publish_path = (self.repo_root / out_model_path).resolve()
+            publish_path = resolve_runtime_path(out_model_path)
             os.environ["CRT_LEARNED_MODEL_PATH"] = str(publish_path)
 
             artifacts_dir = str(self.reflection_cfg.get("artifacts_dir") or "artifacts")
-            artifacts_path = (self.repo_root / artifacts_dir).resolve()
+            artifacts_path = resolve_runtime_dir(artifacts_dir)
 
             # Input selection
             source_mode = str(self.loop_cfg.get("source") or "thread").strip().lower()
@@ -178,8 +184,8 @@ class CRTTrainingLoop:
                     dry_run=False,
                 )
             else:
-                mem_db = (self.repo_root / "personal_agent" / f"crt_memory_{thread_id}.db").resolve()
-                led_db = (self.repo_root / "personal_agent" / f"crt_ledger_{thread_id}.db").resolve()
+                mem_db = resolve_memory_db_path(thread_id, shared=False)
+                led_db = resolve_ledger_db_path(thread_id, shared=False)
 
                 # Quick precheck: if there are no contradictions at all, training can't proceed.
                 contra_total = 0

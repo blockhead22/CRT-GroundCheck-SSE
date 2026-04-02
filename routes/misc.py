@@ -31,8 +31,24 @@ from .models import (
     ResearchPromoteResponse,
     ResearchSearchRequest,
     ResearchSearchResponse,
+    RuntimeStatusResponse,
 )
 from .meta_awareness import build_meta_awareness_snapshot, render_meta_awareness_response
+from personal_agent.runtime_paths import (
+    get_runtime_data_root,
+    resolve_action_receipts_db_path,
+    resolve_agent_runs_db_path,
+    resolve_facts_db_path,
+    resolve_jobs_artifacts_dir,
+    resolve_jobs_db_path,
+    resolve_ledger_db_path,
+    resolve_memory_db_path,
+    resolve_profile_db_path,
+    resolve_scheduled_tasks_db_path,
+    resolve_skills_registry_db_path,
+    resolve_managed_skills_dir,
+    resolve_thread_sessions_db_path,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +231,39 @@ def _compute_profile_changes(
 @router.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+@router.get("/api/runtime/status", response_model=RuntimeStatusResponse)
+def runtime_status(request: Request) -> RuntimeStatusResponse:
+    shared_memory = str(os.getenv("CRT_SHARED_MEMORY", "false")).strip().lower() == "true"
+    auto_migrate_enabled = str(os.getenv("CRT_RUNTIME_AUTO_MIGRATE", "false")).strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    runtime_root = str(get_runtime_data_root(create=True))
+    paths = {
+        "default_memory_db": str(resolve_memory_db_path("default", shared=shared_memory)),
+        "default_ledger_db": str(resolve_ledger_db_path("default", shared=shared_memory)),
+        "thread_sessions_db": str(resolve_thread_sessions_db_path()),
+        "facts_db": str(resolve_facts_db_path()),
+        "profile_db": str(resolve_profile_db_path()),
+        "agent_runs_db": str(resolve_agent_runs_db_path()),
+        "action_receipts_db": str(resolve_action_receipts_db_path()),
+        "scheduled_tasks_db": str(resolve_scheduled_tasks_db_path()),
+        "jobs_db": str(getattr(request.app.state, "jobs_db_path", "") or resolve_jobs_db_path()),
+        "jobs_artifacts_dir": str(getattr(request.app.state, "jobs_artifacts_dir", "") or resolve_jobs_artifacts_dir()),
+        "skills_registry_db": str(
+            getattr(getattr(request.app.state, "skill_registry", None), "db_path", "") or resolve_skills_registry_db_path()
+        ),
+        "managed_skills_dir": str(
+            getattr(getattr(request.app.state, "skill_registry", None), "managed_dir", "") or resolve_managed_skills_dir()
+        ),
+    }
+    return RuntimeStatusResponse(
+        runtime_data_root=runtime_root,
+        auto_migrate_enabled=auto_migrate_enabled,
+        shared_memory=shared_memory,
+        paths=paths,
+    )
 
 
 # ============================================================================
@@ -2054,4 +2103,3 @@ async def upload_image(file: UploadFile = File(...)):
         "original_name": file.filename,
         "size": len(content),
     }
-

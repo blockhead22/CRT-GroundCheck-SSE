@@ -28,6 +28,7 @@ from personal_agent.jobs_db import (
     init_jobs_db,
     update_job_status,
 )
+from personal_agent.runtime_paths import resolve_jobs_artifacts_dir, resolve_jobs_db_path
 
 
 def _job_artifact_path(base_dir: Path, job_id: str) -> Path:
@@ -36,8 +37,8 @@ def _job_artifact_path(base_dir: Path, job_id: str) -> Path:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="CRT background worker (jobs + artifacts)")
-    ap.add_argument("--db", default="artifacts/crt_jobs.db", help="Path to jobs sqlite db")
-    ap.add_argument("--artifacts-dir", default="artifacts", help="Base dir for artifact outputs")
+    ap.add_argument("--db", default=str(resolve_jobs_db_path()), help="Path to jobs sqlite db")
+    ap.add_argument("--artifacts-dir", default=str(resolve_jobs_artifacts_dir()), help="Base dir for artifact outputs")
     ap.add_argument("--once", action="store_true", help="Process at most one queued job then exit")
     ap.add_argument("--poll-seconds", type=float, default=2.0, help="Poll interval when idle")
 

@@ -1,4 +1,9 @@
 import type { ChatMessage } from '../types'
+import {
+  dispatchStreamEvent,
+  isStreamEventType,
+} from './streamEvents'
+import type { StreamCallbacks, StreamEvent } from './streamEvents'
 
 export type ChatSendRequest = {
   thread_id: string
@@ -383,114 +388,7 @@ export async function postJournalReply(args: {
   return (await res.json()) as JournalReplyResponse
 }
 
-// Streaming event types from /api/chat/stream
-export type StreamEventType =
-  | 'status'
-  | 'intent_preview'
-  | 'intent_classified'
-  | 'plan_ready'
-  | 'tool_start'
-  | 'tool_result'
-  | 'validate_result'
-  | 'task_done'
-  | 'task_acknowledged'
-  | 'orchestration_start'
-  | 'subtask_start'
-  | 'subtask_done'
-  | 'orchestration_done'
-  | 'agent_checkpoint'
-  | 'task_cancelled'
-  | 'agent_thinking_token'
-  | 'thinking_start'
-  | 'thinking_token'
-  | 'thinking'
-  | 'thinking_end'
-  | 'phase_start'
-  | 'phase_end'
-  | 'token'
-  | 'correction'
-  | 'stream_checkpoint'
-  | 'stream_stopped'
-  | 'plan_proposal'
-  | 'plan_update'
-  | 'plan_complete'
-  | 'agent_loop_start'
-  | 'agent_loop_complete'
-  | 'retrieval'
-  | 'trust_shift'
-  | 'verification'
-  | 'epistemic_event'
-  | 'drift'
-  | 'session_state'
-  | 'followup_suggest'
-  | 'done'
-  | 'error'
-
-export type AgentStep = {
-  step_index: number
-  tool_name: string
-  input: Record<string, unknown>
-  output_preview?: string
-  byte_count?: number
-  duration_ms?: number
-  status: 'pending' | 'running' | 'ok' | 'error' | 'queued'
-  error?: string
-  reasoning?: string
-}
-
-export type StreamEvent = {
-  type: StreamEventType
-  content: string
-  phase?: string
-  metadata?: Record<string, unknown>
-}
-
-export type StreamCallbacks = {
-  onStatus?: (content: string) => void
-  onIntentPreview?: (intent: string, slots: string[], label: string) => void
-  // Agentic task route events
-  onIntentClassified?: (intent: string, route: string, slots: Record<string, unknown>, confidence: number, source?: string) => void
-  onPlanReady?: (steps: Array<{ tool: string; input: Record<string, unknown> }>) => void
-  onToolStart?: (toolName: string, input: Record<string, unknown>, stepIndex: number) => void
-  onToolResult?: (step: AgentStep) => void
-  onValidateResult?: (conflicts: unknown[], gate: string) => void
-  onTaskDone?: (answer: string, steps: AgentStep[], metadata: Record<string, unknown>) => void
-  onTaskAcknowledged?: (message: string, metadata: Record<string, unknown>) => void
-  // Orchestration events (Sprint 8)
-  onOrchestrationStart?: (subtaskCount: number, subtasks: Array<{ task_id: string; intent_type: string; agent_name: string; depends_on: string[] }>) => void
-  onSubtaskStart?: (taskId: string, agentName: string, intentType: string) => void
-  onSubtaskDone?: (taskId: string, agentName: string, status: string, durationMs: number, outputPreview: string) => void
-  onOrchestrationDone?: (mergedTrust: number, allOk: boolean, metadata: Record<string, unknown>) => void
-  onAgentCheckpoint?: (message: string, metadata: Record<string, unknown>) => void
-  onTaskCancelled?: (message: string) => void
-  onAgentThinkingToken?: (token: string, step: string) => void
-  // Agent Loop events (Sprint 14)
-  onAgentLoopStart?: (toolsAvailable: string[], maxIterations: number) => void
-  onAgentLoopComplete?: (toolsUsed: string[], iterations: number, totalDurationMs: number) => void
-  // Thinking
-  onThinkingStart?: () => void
-  onThinkingToken?: (token: string) => void
-  onThinking?: (fullThinking: string) => void
-  onThinkingEnd?: () => void
-  // Live belief state events
-  onRetrieval?: (memories: Array<{ id: string; text: string; trust: number }>) => void
-  onTrustShift?: (shift: { memoryId: string; from: number; to: number; reason: string; text: string }) => void
-  onVerification?: (result: { verdict: string; confidence: number }) => void
-  // Epistemic loop events — drift, contradiction, alignment
-  onEpistemicEvent?: (eventType: 'drift' | 'contradiction', content: string, data: Record<string, unknown>) => void
-  // Post-turn trust delta summary (drift) and session snapshot
-  onDrift?: (driftCount: number, totalTrustDelta: number, intentAlignment: number) => void
-  onSessionState?: (density: number, contradictions: number, turnCount: number) => void
-  onFollowupSuggest?: (followups: string[], complete: boolean) => void
-  onPhaseStart?: (phase: string, content?: string) => void
-  onPhaseEnd?: (phase: string) => void
-  onToken?: (token: string) => void
-  onCorrection?: (content: string) => void
-  onStreamCheckpoint?: (content: string, metadata?: Record<string, unknown>) => void
-  onStreamStopped?: (content: string, metadata?: Record<string, unknown>) => void
-  onDone?: (content: string, metadata?: Record<string, unknown>) => void
-  onError?: (error: string) => void
-}
+export type { AgentStep, StreamCallbacks, StreamEvent } from './streamEvents'
 
 /**
  * Stream chat response with real-time thinking/reasoning display.
@@ -577,208 +475,19 @@ export async function streamFromCrtApi(args: {
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           try {
-            const event: StreamEvent = JSON.parse(line.slice(6))
+            const rawEvent = JSON.parse(line.slice(6)) as { type?: string } & Record<string, unknown>
+            if (!isStreamEventType(String(rawEvent.type ?? ''))) {
+              console.warn('Unknown SSE event type:', rawEvent)
+              continue
+            }
+            const event = rawEvent as StreamEvent
 
             // SSE pipeline debug — remove after diagnosis
             if (['token', 'done', 'agent_checkpoint', 'agent_loop_start', 'agent_loop_complete', 'tool_start', 'tool_result', 'error', 'thinking', 'drift', 'session_state', 'retrieval', 'trust_shift'].includes(event.type)) {
               console.log(`[SSE_DEBUG] type=${event.type} content_len=${(event.content || '').length}`, event.type === 'done' ? event : event.type === 'thinking' ? { content: (event.content || '').slice(0, 120) } : '')
             }
 
-            switch (event.type) {
-              case 'status':
-                args.callbacks.onStatus?.(event.content)
-                break
-              case 'intent_preview': {
-                const meta = event.metadata as { intent?: string; slots?: string[] } | undefined
-                args.callbacks.onIntentPreview?.(
-                  meta?.intent ?? '',
-                  meta?.slots ?? [],
-                  event.content,
-                )
-                break
-              }
-              case 'intent_classified': {
-                const meta = event.metadata as { intent?: string; route?: string; slots?: Record<string, unknown>; confidence?: number; source?: string } | undefined
-                args.callbacks.onIntentClassified?.(
-                  meta?.intent ?? '',
-                  meta?.route ?? 'conversational',
-                  meta?.slots ?? {},
-                  meta?.confidence ?? 0,
-                  meta?.source,
-                )
-                break
-              }
-              case 'plan_ready': {
-                const meta = event.metadata as { steps?: Array<{ tool: string; input: Record<string, unknown> }> } | undefined
-                args.callbacks.onPlanReady?.(meta?.steps ?? [])
-                break
-              }
-              case 'tool_start': {
-                const meta = event.metadata as { tool_name?: string; input?: Record<string, unknown>; step_index?: number } | undefined
-                args.callbacks.onToolStart?.(meta?.tool_name ?? '', meta?.input ?? {}, meta?.step_index ?? 0)
-                break
-              }
-              case 'tool_result': {
-                const meta = event.metadata as AgentStep | undefined
-                if (meta) args.callbacks.onToolResult?.(meta)
-                break
-              }
-              case 'validate_result': {
-                const meta = event.metadata as { conflicts?: unknown[]; gate?: string } | undefined
-                args.callbacks.onValidateResult?.(meta?.conflicts ?? [], meta?.gate ?? '')
-                break
-              }
-              case 'task_done': {
-                const meta = event.metadata as { steps?: AgentStep[] } & Record<string, unknown> | undefined
-                args.callbacks.onTaskDone?.(event.content, meta?.steps ?? [], meta ?? {})
-                break
-              }
-              case 'task_acknowledged': {
-                const meta = event.metadata as Record<string, unknown> | undefined
-                args.callbacks.onTaskAcknowledged?.(event.content, meta ?? {})
-                break
-              }
-              case 'orchestration_start': {
-                const meta = event.metadata as { subtask_count?: number; subtasks?: Array<{ task_id: string; intent_type: string; agent_name: string; depends_on: string[] }> } | undefined
-                args.callbacks.onOrchestrationStart?.(meta?.subtask_count ?? 0, meta?.subtasks ?? [])
-                break
-              }
-              case 'subtask_start': {
-                const meta = event.metadata as { task_id?: string; agent_name?: string; intent_type?: string } | undefined
-                args.callbacks.onSubtaskStart?.(meta?.task_id ?? '', meta?.agent_name ?? '', meta?.intent_type ?? '')
-                break
-              }
-              case 'subtask_done': {
-                const meta = event.metadata as { task_id?: string; agent_name?: string; status?: string; duration_ms?: number; output_preview?: string } | undefined
-                args.callbacks.onSubtaskDone?.(meta?.task_id ?? '', meta?.agent_name ?? '', meta?.status ?? 'ok', meta?.duration_ms ?? 0, meta?.output_preview ?? '')
-                break
-              }
-              case 'orchestration_done': {
-                const meta = event.metadata as { merged_trust?: number; all_ok?: boolean } & Record<string, unknown> | undefined
-                args.callbacks.onOrchestrationDone?.(meta?.merged_trust ?? 0, meta?.all_ok ?? false, meta ?? {})
-                break
-              }
-              case 'agent_checkpoint': {
-                const meta = event.metadata as {
-                  checkpoint_tier?: string
-                  requires_confirmation?: boolean
-                  auto_proceed_seconds?: number | null
-                  intent?: string
-                  confidence?: number
-                } | undefined
-                args.callbacks.onAgentCheckpoint?.(event.content, meta ?? {})
-                break
-              }
-              case 'task_cancelled': {
-                args.callbacks.onTaskCancelled?.(event.content)
-                break
-              }
-              case 'agent_thinking_token': {
-                const meta = event.metadata as { step?: string; alignment?: number } | undefined
-                args.callbacks.onAgentThinkingToken?.(event.content, meta?.step ?? 'generate_answer')
-                // If alignment is critically low, fire as epistemic drift too
-                if (meta?.alignment != null && meta.alignment < 0.3) {
-                  args.callbacks.onEpistemicEvent?.('drift', event.content.slice(0, 80), { alignment: meta.alignment })
-                }
-                break
-              }
-              case 'agent_loop_start': {
-                const meta = event.metadata as { tools_available?: string[]; max_iterations?: number } | undefined
-                args.callbacks.onAgentLoopStart?.(meta?.tools_available ?? [], meta?.max_iterations ?? 10)
-                break
-              }
-              case 'agent_loop_complete': {
-                const meta = event.metadata as { tools_used?: string[]; iterations?: number; total_duration_ms?: number } | undefined
-                args.callbacks.onAgentLoopComplete?.(meta?.tools_used ?? [], meta?.iterations ?? 0, meta?.total_duration_ms ?? 0)
-                break
-              }
-              case 'thinking_start':
-                args.callbacks.onThinkingStart?.()
-                break
-              case 'thinking_token':
-                args.callbacks.onThinkingToken?.(event.content)
-                break
-              case 'thinking':
-                args.callbacks.onThinking?.(event.content)
-                break
-              case 'thinking_end':
-                args.callbacks.onThinkingEnd?.()
-                break
-              case 'retrieval': {
-                const meta = event.metadata as { memories?: Array<{ id: string; text: string; trust: number }> } | undefined
-                args.callbacks.onRetrieval?.(meta?.memories ?? [])
-                break
-              }
-              case 'trust_shift': {
-                const meta = event.metadata as { memoryId?: string; from?: number; to?: number; reason?: string; text?: string } | undefined
-                if (meta?.memoryId) {
-                  args.callbacks.onTrustShift?.({
-                    memoryId: meta.memoryId,
-                    from: meta.from ?? 0,
-                    to: meta.to ?? 0,
-                    reason: meta.reason ?? '',
-                    text: meta.text ?? '',
-                  })
-                }
-                break
-              }
-              case 'verification': {
-                const meta = event.metadata as { verdict?: string; confidence?: number } | undefined
-                args.callbacks.onVerification?.({
-                  verdict: meta?.verdict ?? 'none',
-                  confidence: meta?.confidence ?? 0,
-                })
-                break
-              }
-              case 'epistemic_event': {
-                const meta = event.metadata as { event?: string; alignment?: number; avg_alignment?: number; step_a?: number; step_b?: number; proposed_tool?: string } | undefined
-                const evtType = (meta?.event ?? 'drift') as 'drift' | 'contradiction'
-                args.callbacks.onEpistemicEvent?.(evtType, event.content, meta ?? {})
-                break
-              }
-              case 'drift': {
-                const meta = event.metadata as { drift_count?: number; total_trust_delta?: number; intent_alignment?: number } | undefined
-                args.callbacks.onDrift?.(meta?.drift_count ?? 0, meta?.total_trust_delta ?? 0, meta?.intent_alignment ?? 1)
-                break
-              }
-              case 'session_state': {
-                const meta = event.metadata as { cumulative_density?: number; open_contradiction_count?: number; turn_count?: number } | undefined
-                args.callbacks.onSessionState?.(meta?.cumulative_density ?? 0, meta?.open_contradiction_count ?? 0, meta?.turn_count ?? 0)
-                break
-              }
-              case 'followup_suggest': {
-                const meta = event.metadata as { followups?: string[]; complete?: boolean } | undefined
-                args.callbacks.onFollowupSuggest?.(meta?.followups ?? [], meta?.complete ?? true)
-                break
-              }
-              case 'phase_start':
-                args.callbacks.onPhaseStart?.(event.phase || '', event.content)
-                break
-              case 'phase_end':
-                args.callbacks.onPhaseEnd?.(event.phase || '')
-                break
-              case 'token':
-                args.callbacks.onToken?.(event.content)
-                break
-              case 'correction':
-                args.callbacks.onCorrection?.(event.content)
-                break
-              case 'stream_checkpoint':
-                args.callbacks.onStreamCheckpoint?.(event.content, event.metadata)
-                // Also emit as a status so PipelineTrace picks it up
-                args.callbacks.onStatus?.(`⬡ ${event.content}`)
-                break
-              case 'stream_stopped':
-                args.callbacks.onStreamStopped?.(event.content, event.metadata)
-                args.callbacks.onStatus?.(`⚡ ${event.content}`)
-                break
-              case 'done':
-                args.callbacks.onDone?.(event.content, event.metadata)
-                break
-              case 'error':
-                args.callbacks.onError?.(event.content)
-                break
-            }
+            dispatchStreamEvent(event, args.callbacks)
           } catch (e) {
             console.warn('Failed to parse SSE event:', line, e)
           }
