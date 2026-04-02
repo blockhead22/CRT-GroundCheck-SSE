@@ -6364,10 +6364,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _TOOL_REQUIRING_INTENTS = {
                 "file_op", "code_task", "code_read", "code_write",
                 "file_read", "file_write",  # explicit file intents always need tools
+                "project_scan", "search_code",  # needs tool access
                 "web_search", "web_fetch", "research",
                 "shell_exec", "run_python",
                 "memory_write",
-                "multi_step", "plan_create",
+                "multi_step", "multi_intent", "plan_create",
                 # Hard-forced intents (from routing_beliefs) always pass
                 "gpt_log_search", "gpt_log_context", "gpt_log_promote",
             }

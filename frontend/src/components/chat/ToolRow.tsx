@@ -6,7 +6,7 @@ import type { ToolResult } from './ToolResultCard'
 // ─────────────────────────────────────────────────────────────
 
 function toolIcon(name: string): LucideIcon {
-  const n = name.toLowerCase()
+  const n = (name || '').toLowerCase()
   if (/read|file_read|file_text|open/.test(n)) return FileText
   if (/edit|write|patch|pen|modify|update/.test(n)) return PenLine
   if (/bash|command|terminal|exec|run|shell/.test(n)) return Terminal

@@ -558,8 +558,12 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
             path = args.get("path", ".")
             if not os.path.isabs(path):
                 path = os.path.join("D:/AI_round2", path)
-            entries = os.listdir(path)
-            result["content"] = "\n".join(sorted(entries))
+            if not os.path.isdir(path):
+                result["content"] = f"ERROR: Directory not found: {path}\nNote: The project root is D:/AI_round2. Key directories: routes/, personal_agent/, frontend/src/, sse/, tools/, channels/, docs/. There is no 'src/' directory at root level."
+                result["status"] = "error"
+            else:
+                entries = os.listdir(path)
+                result["content"] = "\n".join(sorted(entries)) if entries else "(empty directory)"
 
         elif tool_name == "search_code":
             query = args.get("query", "")

@@ -7,6 +7,7 @@ import type { MoodType } from '../MoodBackground'
 type StepMeta = { icon: string; tooltip: string; color: string }
 
 export function classifyStatus(s: string): StepMeta {
+  if (!s) return { icon: '?', tooltip: 'Unknown step', color: '#888' }
   const l = s.toLowerCase()
   if (l.includes('reading context'))            return { icon: '◎', tooltip: 'Loading conversation history, user profile, and active session context', color: '#F0EBE1' }
   if (l.includes('searching memory'))           return { icon: '◈', tooltip: 'Querying trust-weighted memory store — retrieving relevant facts and past assertions', color: '#E0A080' }

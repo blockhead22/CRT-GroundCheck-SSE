@@ -31,6 +31,13 @@ class EmbeddingEngine:
         if self.model is None:
             print(f"Loading embedding model: {self.model_name}...")
             self.model = SentenceTransformer(self.model_name)
+            # Suppress "Token indices sequence length > 512" warning from HF tokenizer.
+            # SentenceTransformers already truncates internally, but the tokenizer's
+            # model_max_length triggers the warning before that happens.
+            try:
+                self.model.tokenizer.model_max_length = 8192
+            except Exception:
+                pass
             print(f"Model loaded ({self.model.get_sentence_embedding_dimension()} dimensions)")
     
     # all-MiniLM-L6-v2 has model_max_length=512 tokens in its HuggingFace tokenizer
