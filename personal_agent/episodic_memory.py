@@ -30,6 +30,8 @@ from dataclasses import dataclass, asdict, field
 from pathlib import Path
 from collections import Counter, defaultdict
 
+from .runtime_paths import resolve_episodic_db_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,10 +139,10 @@ class EpisodicMemoryDB:
     - Consumer hardware (minimal memory footprint)
     """
     
-    DEFAULT_PATH = "personal_agent/crt_episodic.db"
+    DEFAULT_PATH = "crt_episodic.db"
     
     def __init__(self, db_path: Optional[str] = None):
-        self.db_path = db_path or self.DEFAULT_PATH
+        self.db_path = db_path or str(resolve_episodic_db_path())
         self._init_db()
     
     def _get_conn(self) -> sqlite3.Connection:

@@ -26,6 +26,8 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
+from .runtime_paths import resolve_agent_runs_db_path
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -54,7 +56,7 @@ class ExecutionBelief:
 MIN_RUNS = 5
 TREND_WINDOW = 3
 
-_DB_PATH = os.path.join(os.path.dirname(__file__), "agent_runs.db")
+_DB_PATH = str(resolve_agent_runs_db_path())
 
 # Direction symbols
 _DIR_SYMBOLS = {

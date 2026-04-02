@@ -42,6 +42,7 @@ from .models import (
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.cloud_usage_tracker import log_cloud_call as _track_cloud_call
 from personal_agent.db_utils import get_thread_session_db
+from personal_agent.runtime_paths import resolve_agent_runs_db_path
 
 try:
     from personal_agent.governance import GovernanceLayer, GovernanceTier
@@ -1313,8 +1314,7 @@ def _classify_and_store_feedback(thread_id: str, message: str) -> None:
     """
     import sqlite3, time, re
 
-    db_path = os.path.join(os.path.dirname(__file__), "..", "personal_agent", "agent_runs.db")
-    db_path = os.path.normpath(db_path)
+    db_path = str(resolve_agent_runs_db_path())
     if not os.path.exists(db_path):
         return
 
@@ -1742,17 +1742,7 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
     import json as _json
     import sqlite3
 
-    # Find the memory DB — same candidates the copilot uses
-    db_candidates = [
-        Path("personal_agent/crt_memory_shared.db"),
-        Path("personal_agent/crt_memory.db"),
-        Path("data/crt_memory.db"),
-    ]
-    db_path = None
-    for cand in db_candidates:
-        if cand.exists():
-            db_path = str(cand)
-            break
+    db_path = str(getattr(getattr(engine, "memory", None), "db_path", "") or "")
 
     if not db_path:
         return "I don't have any stored facts about you yet. Tell me about yourself and I'll remember."

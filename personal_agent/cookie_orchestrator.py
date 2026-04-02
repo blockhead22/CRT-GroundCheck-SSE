@@ -1134,7 +1134,8 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                         lines.append(f"    {b.details}")
 
                     # Show feedback history
-                    _fb_db = os.path.join(os.path.dirname(__file__), "agent_runs.db")
+                    from personal_agent.runtime_paths import resolve_agent_runs_db_path
+                    _fb_db = str(resolve_agent_runs_db_path())
                     if os.path.exists(_fb_db):
                         _fb_conn = sqlite3.connect(_fb_db, timeout=3)
                         _fb_rows = _fb_conn.execute(

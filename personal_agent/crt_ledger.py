@@ -26,6 +26,7 @@ import time
 
 _logger = logging.getLogger(__name__)
 
+from .runtime_paths import resolve_runtime_path
 from .crt_core import CRTMath, CRTConfig, MemorySource
 from .fact_slots import extract_fact_slots, create_simple_fact
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
@@ -166,11 +167,11 @@ class ContradictionLedger:
     
     def __init__(
         self,
-        db_path: str = "personal_agent/crt_ledger.db",
+        db_path: Optional[str] = None,
         config: Optional[CRTConfig] = None
     ):
         """Initialize ledger."""
-        self.db_path = db_path
+        self.db_path = db_path or str(resolve_runtime_path("crt_ledger.db"))
         self.config = config or CRTConfig()
         self.crt_math = CRTMath(self.config)
         self.two_tier_system: Optional[TwoTierFactSystem] = None

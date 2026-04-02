@@ -14,9 +14,11 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
+from .runtime_paths import resolve_action_receipts_db_path
+
 logger = logging.getLogger(__name__)
 
-_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "action_receipts.db")
+_DB_PATH = str(resolve_action_receipts_db_path())
 
 _CREATE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS action_receipts (

@@ -29,6 +29,7 @@ import time
 import joblib
 
 from personal_agent.exceptions import log_swallowed_exception
+from .runtime_paths import resolve_runtime_path, resolve_profile_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -232,15 +233,18 @@ class CRTEnhancedRAG:
     
     def __init__(
         self,
-        memory_db: str = "personal_agent/crt_memory.db",
-        ledger_db: str = "personal_agent/crt_ledger.db",
-        profile_db: str = "personal_agent/crt_user_profile.db",
+        memory_db: Optional[str] = None,
+        ledger_db: Optional[str] = None,
+        profile_db: Optional[str] = None,
         config: Optional[CRTConfig] = None,
         llm_client=None
     ):
         """Initialize CRT-enhanced RAG."""
         self.config = config or CRTConfig()
         self.crt_math = CRTMath(self.config)
+        memory_db = memory_db or str(resolve_runtime_path("crt_memory.db"))
+        ledger_db = ledger_db or str(resolve_runtime_path("crt_ledger.db"))
+        profile_db = profile_db or str(resolve_profile_db_path())
         
         # Store LLM client for passing to subsystems
         self._llm_client = llm_client
@@ -260,8 +264,8 @@ class CRTEnhancedRAG:
 
         # Keep profile storage isolated for non-default test/temp memory DBs unless
         # the caller explicitly passes profile_db.
-        default_memory_db = "personal_agent/crt_memory.db"
-        default_profile_db = "personal_agent/crt_user_profile.db"
+        default_memory_db = str(resolve_runtime_path("crt_memory.db"))
+        default_profile_db = str(resolve_profile_db_path())
         resolved_profile_db = profile_db
         try:
             if profile_db == default_profile_db and memory_db != default_memory_db:

@@ -38,6 +38,7 @@ _request_user_id: contextvars.ContextVar[Optional[str]] = contextvars.ContextVar
 )
 
 from .db_utils import retry_on_lock, get_db_connection
+from .runtime_paths import resolve_runtime_path
 from .crt_core import (
     CRTMath, CRTConfig, SSEMode, MemorySource,
     encode_vector, extract_emotion_intensity, extract_future_relevance
@@ -379,11 +380,11 @@ class CRTMemorySystem:
     
     def __init__(
         self,
-        db_path: str = "personal_agent/crt_memory.db",
+        db_path: Optional[str] = None,
         config: Optional[CRTConfig] = None
     ):
         """Initialize CRT memory system."""
-        self.db_path = db_path
+        self.db_path = db_path or str(resolve_runtime_path("crt_memory.db"))
         self.config = config or CRTConfig()
         self.crt_math = CRTMath(self.config)
         self.anchor_system = AnchorSystem()

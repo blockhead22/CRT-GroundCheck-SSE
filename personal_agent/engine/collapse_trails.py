@@ -11,6 +11,7 @@ import uuid
 from typing import Any, Dict, Iterable, Optional
 
 from personal_agent.db_utils import get_db_connection
+from personal_agent.runtime_paths import resolve_collapse_trails_db_path
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +29,8 @@ def _safe_json(value: Any) -> str:
 class CollapseTrailLogger:
     """Stores full query->retrieval->reasoning->response lineage."""
 
-    def __init__(self, db_path: str = "personal_agent/crt_collapse_trails.db"):
-        self.db_path = str(Path(db_path))
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = str(Path(db_path) if db_path else resolve_collapse_trails_db_path())
         self._init_db()
 
     def _init_db(self) -> None:
@@ -131,7 +132,7 @@ class CollapseTrailLogger:
         return trail_id
 
 
-def get_collapse_trail_logger(db_path: str = "personal_agent/crt_collapse_trails.db") -> CollapseTrailLogger:
+def get_collapse_trail_logger(db_path: Optional[str] = None) -> CollapseTrailLogger:
     global _LOGGER_SINGLETON
     if _LOGGER_SINGLETON is not None:
         return _LOGGER_SINGLETON
@@ -139,4 +140,3 @@ def get_collapse_trail_logger(db_path: str = "personal_agent/crt_collapse_trails
         if _LOGGER_SINGLETON is None:
             _LOGGER_SINGLETON = CollapseTrailLogger(db_path=db_path)
     return _LOGGER_SINGLETON
-

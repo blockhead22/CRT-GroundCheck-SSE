@@ -79,6 +79,14 @@ from personal_agent.model_router import ModelRouter
 from personal_agent.active_learning import get_active_learning_coordinator, LearningStats
 from personal_agent.db_utils import get_thread_session_db, get_db_connection
 from personal_agent.engine.collapse_trails import get_collapse_trail_logger
+from personal_agent.runtime_paths import (
+    iter_existing_memory_dbs,
+    resolve_active_learning_db_path,
+    resolve_collapse_trails_db_path,
+    resolve_scheduled_tasks_db_path,
+    resolve_ledger_db_path,
+    resolve_memory_db_path,
+)
 from personal_agent.continuous_loops import build_loops, maybe_reply_to_journal_entry
 from personal_agent.greeting_system import get_time_based_greeting, GreetingSystem
 from personal_agent.episodic_memory import get_episodic_manager, EpisodicMemoryManager
@@ -905,9 +913,9 @@ def create_app() -> FastAPI:
         collapse_trails_db_path=str(
             dnnt_cfg.get("collapse_trails_db_path")
             or dnnt_cfg.get("collapse_trails_path")
-            or "personal_agent/crt_collapse_trails.db"
+            or str(resolve_collapse_trails_db_path())
         ),
-        active_learning_db_path=str(dnnt_cfg.get("active_learning_db_path") or "personal_agent/active_learning.db"),
+        active_learning_db_path=str(dnnt_cfg.get("active_learning_db_path") or str(resolve_active_learning_db_path())),
         state_path=str(dnnt_cfg.get("state_path") or "data/dnnt_background_state.json"),
         min_new_examples=int(dnnt_cfg.get("min_new_examples") or 24),
         max_examples_per_cycle=int(dnnt_cfg.get("max_examples_per_cycle") or dnnt_cfg.get("max_examples") or 512),
@@ -992,7 +1000,7 @@ def create_app() -> FastAPI:
         app.state.belief_classifier = None
 
     # Scheduled Tasks Loop (reminders, timed jobs, thoughts)
-    scheduled_tasks_db_path = str(root / "data" / "scheduled_tasks.db")
+    scheduled_tasks_db_path = str(resolve_scheduled_tasks_db_path())
     init_scheduled_tasks_db(scheduled_tasks_db_path)
     
     # Get session DB for posting to Ledger
@@ -1190,12 +1198,8 @@ def create_app() -> FastAPI:
             # subsequent requests hit the cache and return immediately.
 
             # Use shared DBs or per-thread isolation
-            if _shared_memory_enabled:
-                memory_db = "personal_agent/crt_memory_shared.db"
-                ledger_db = "personal_agent/crt_ledger_shared.db"
-            else:
-                memory_db = f"personal_agent/crt_memory_{tid}.db"
-                ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+            memory_db = str(resolve_memory_db_path(tid, shared=_shared_memory_enabled))
+            ledger_db = str(resolve_ledger_db_path(tid, shared=_shared_memory_enabled))
             print("[ENGINE] Thread %s -> memory=%s" % (tid, memory_db))
 
             # Initialize engine and inject LLM client for hybrid extraction
@@ -1243,12 +1247,8 @@ def create_app() -> FastAPI:
 
     def _thread_db_paths(thread_id: str) -> tuple[str, str]:
         tid = _sanitize_thread_id(thread_id)
-        if _shared_memory_enabled:
-            memory_db = "personal_agent/crt_memory_shared.db"
-            ledger_db = "personal_agent/crt_ledger_shared.db"
-        else:
-            memory_db = f"personal_agent/crt_memory_{tid}.db"
-            ledger_db = f"personal_agent/crt_ledger_{tid}.db"
+        memory_db = str(resolve_memory_db_path(tid, shared=_shared_memory_enabled))
+        ledger_db = str(resolve_ledger_db_path(tid, shared=_shared_memory_enabled))
         return memory_db, ledger_db
 
     collapse_logger = get_collapse_trail_logger()
@@ -1451,14 +1451,7 @@ def create_app() -> FastAPI:
         # Seed self-knowledge (idempotent â€” skips facts that already exist)
         try:
             from scripts.seed_self_knowledge import seed_self_knowledge
-            import glob
-            # Seed into all existing per-thread memory databases
-            pattern = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personal_agent", "crt_memory_*.db")
-            thread_dbs = glob.glob(pattern)
-            # Also seed the shared DB if it exists
-            shared_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "personal_agent", "crt_memory_shared.db")
-            if os.path.exists(shared_db) and shared_db not in thread_dbs:
-                thread_dbs.append(shared_db)
+            thread_dbs = [str(p) for p in iter_existing_memory_dbs(include_shared=True)]
             total_seeded = 0
             for db_p in thread_dbs:
                 try:

@@ -23,6 +23,7 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from .fact_slots import extract_fact_slots, ExtractedFact, is_question, names_look_equivalent
+from .runtime_paths import resolve_profile_db_path
 
 # Conditional import for LLM extraction (optional feature)
 try:
@@ -89,8 +90,8 @@ class GlobalUserProfile:
     - Temporal statements ("I'm working on X today")
     """
     
-    def __init__(self, db_path: str = "personal_agent/crt_user_profile.db", use_llm_extraction: bool = True):
-        self.db_path = db_path
+    def __init__(self, db_path: Optional[str] = None, use_llm_extraction: bool = True):
+        self.db_path = db_path or str(resolve_profile_db_path())
         self.use_llm_extraction = use_llm_extraction and HAS_LLM_SUPPORT
         logger.debug(f"GlobalUserProfile init: db_path={self.db_path}, use_llm={self.use_llm_extraction}")
         

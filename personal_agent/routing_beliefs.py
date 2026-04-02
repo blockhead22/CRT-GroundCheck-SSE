@@ -24,6 +24,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from .runtime_paths import resolve_agent_runs_db_path
+
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
@@ -364,7 +366,7 @@ _SEEDED_PRIORS: Dict[str, float] = {
 # SQLite persistence
 # ---------------------------------------------------------------------------
 
-_DB_PATH = os.path.join(os.path.dirname(__file__), "agent_runs.db")
+_DB_PATH = str(resolve_agent_runs_db_path())
 _LEARNING_RATE = 0.05
 _WEIGHT_CLAMP = 2.0
 

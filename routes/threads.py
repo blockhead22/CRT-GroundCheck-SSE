@@ -17,6 +17,11 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from personal_agent.crt_rag import CRTEnhancedRAG
 from personal_agent.db_utils import get_db_connection
+from personal_agent.runtime_paths import (
+    resolve_facts_db_path,
+    resolve_ledger_db_path,
+    resolve_memory_db_path,
+)
 from personal_agent.user_profile import GlobalUserProfile
 
 from routes.deps import sanitize_thread_id
@@ -114,18 +119,17 @@ def _list_contradictions(
 
 
 def _thread_db_paths_map(tid: str) -> Dict[str, Path]:
-    root = Path(__file__).resolve().parent.parent
     shared = os.getenv("CRT_SHARED_MEMORY", "false").lower() == "true"
     if shared:
         return {
-            "memory": (root / "personal_agent/crt_memory_shared.db"),
-            "ledger": (root / "personal_agent/crt_ledger_shared.db"),
-            "facts": (root / "personal_agent/crt_facts.db"),
+            "memory": resolve_memory_db_path(tid, shared=True),
+            "ledger": resolve_ledger_db_path(tid, shared=True),
+            "facts": resolve_facts_db_path(),
         }
     return {
-        "memory": (root / f"personal_agent/crt_memory_{tid}.db"),
-        "ledger": (root / f"personal_agent/crt_ledger_{tid}.db"),
-        "facts": (root / "personal_agent/crt_facts.db"),
+        "memory": resolve_memory_db_path(tid, shared=False),
+        "ledger": resolve_ledger_db_path(tid, shared=False),
+        "facts": resolve_facts_db_path(),
     }
 
 
@@ -561,4 +565,3 @@ def epistemic_timeline(
     except Exception as exc:
         logger.warning("[epistemic-timeline] query failed for %s: %s", tid, exc)
         return {"thread_id": tid, "total": 0, "events": []}
-

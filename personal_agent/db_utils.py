@@ -7,6 +7,8 @@ import logging
 from typing import Callable, Dict, TypeVar, Optional
 from contextlib import contextmanager
 
+from .runtime_paths import resolve_thread_sessions_db_path
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
@@ -154,7 +156,7 @@ class ThreadSessionDB:
     - Response variation detection (avoid repetitive answers to same questions)
     """
     
-    DEFAULT_PATH = "personal_agent/crt_thread_sessions.db"
+    DEFAULT_PATH = "crt_thread_sessions.db"
 
     HUMOR_CUES = (
         "lmao", "lol", "haha", "hehe", "rofl", "jk", "kidding",
@@ -167,7 +169,7 @@ class ThreadSessionDB:
     )
     
     def __init__(self, db_path: Optional[str] = None):
-        self.db_path = db_path or self.DEFAULT_PATH
+        self.db_path = db_path or str(resolve_thread_sessions_db_path())
         self._pending_checkpoints: Dict[str, dict] = {}
         self._init_db()
     

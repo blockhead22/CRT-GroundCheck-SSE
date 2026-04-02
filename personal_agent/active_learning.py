@@ -35,6 +35,7 @@ from queue import Queue
 import subprocess
 import os
 
+from .runtime_paths import resolve_active_learning_db_path
 
 @dataclass
 class GateEvent:
@@ -93,12 +94,12 @@ class ActiveLearningCoordinator:
     
     def __init__(
         self,
-        db_path: str = "personal_agent/active_learning.db",
+        db_path: Optional[str] = None,
         model_path: str = "models/response_classifier.joblib",
         training_threshold: int = 50,  # Retrain after N corrections
         training_script: str = "tools/train_response_classifier.py",
     ):
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path) if db_path else resolve_active_learning_db_path()
         self.model_path = Path(model_path)
         self.training_threshold = training_threshold
         self.training_script = Path(training_script)

@@ -27,6 +27,8 @@ import time
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional
 
+from .runtime_paths import resolve_agent_runs_db_path
+
 # ---------------------------------------------------------------------------
 # Alignment scoring — cosine similarity between intent and step reasoning
 # ---------------------------------------------------------------------------
@@ -310,7 +312,7 @@ class RunLog:
 # SQLite persistence
 # ---------------------------------------------------------------------------
 
-_DB_PATH = os.path.join(os.path.dirname(__file__), "agent_runs.db")
+_DB_PATH = str(resolve_agent_runs_db_path())
 _db_instance = None
 
 
