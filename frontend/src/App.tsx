@@ -990,9 +990,15 @@ export default function App() {
                 return next
               })
             },
-            onFollowupSuggest: (followups, _complete) => {
+            onFollowupSuggest: (followups, complete) => {
+              if (complete === false) {
+                setFollowupSuggestions([])
+                return
+              }
               if (followups.length > 0) {
                 setFollowupSuggestions(followups)
+              } else {
+                setFollowupSuggestions([])
               }
             },
             onStatus: (status) => {
