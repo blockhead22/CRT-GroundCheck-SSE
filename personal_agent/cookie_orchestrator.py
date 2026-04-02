@@ -562,8 +562,19 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                 result["content"] = f"ERROR: Directory not found: {path}\nNote: The project root is D:/AI_round2. Key directories: routes/, personal_agent/, frontend/src/, sse/, tools/, channels/, docs/. There is no 'src/' directory at root level."
                 result["status"] = "error"
             else:
-                entries = os.listdir(path)
-                result["content"] = "\n".join(sorted(entries)) if entries else "(empty directory)"
+                # Skip non-project directories that confuse the brain
+                _NON_PROJECT_DIRS = {'src'}  # Claude Code source dump, not project code
+                _rel = os.path.relpath(path, "D:/AI_round2").replace("\\", "/")
+                if _rel in _NON_PROJECT_DIRS:
+                    result["content"] = (
+                        f"NOTE: {_rel}/ contains third-party reference code (Claude Code source analysis), "
+                        f"NOT the Aether/CRT project.\n"
+                        f"Project Python code lives in: routes/, personal_agent/, sse/, tools/, channels/\n"
+                        f"Project frontend code lives in: frontend/src/"
+                    )
+                else:
+                    entries = os.listdir(path)
+                    result["content"] = "\n".join(sorted(entries)) if entries else "(empty directory)"
 
         elif tool_name == "search_code":
             query = args.get("query", "")
@@ -604,7 +615,7 @@ def execute_tool(tool_name: str, args: Dict[str, Any],
                            "--max-count", "10",
                            "--max-filesize", "256K",
                            "--glob", "!.venv", "--glob", "!node_modules",
-                           "--glob", "!.claude", "--glob", "!dist", "--glob", "!build",
+                           "--glob", "!.claude", "--glob", "!dist", "--glob", "!build", "--glob", "!src/src",
                            "--glob", "!*.min.js", "--glob", "!*.min.css",
                            "--glob", "!*.lock", "--glob", "!*.map",
                            "--glob", "!_write_copilot_page.py"]
@@ -1268,7 +1279,16 @@ class Orchestrator:
         # Time pressure hint near end of iterations
         remaining = getattr(state, '_remaining_iterations', None)
         if remaining is not None and remaining == 0:
-            parts.append(f"\nLast action slot. Either execute your final step OR respond with results. Return ONLY a JSON object.")
+            parts.append(
+                "\n⚠️ LAST ITERATION — you MUST respond now with whatever you have. "
+                "Use action='respond'. Do NOT call another tool. "
+                "Return ONLY a JSON object with action='respond'."
+            )
+        elif remaining is not None and remaining == 1:
+            parts.append(
+                "\nOne iteration left after this. Either finish your work with ONE more tool call, "
+                "or respond now. Return ONLY a JSON object."
+            )
         else:
             parts.append("\nWhat is your next action? Return ONLY a JSON object.")
         return "\n".join(parts)
@@ -1438,12 +1458,16 @@ class Orchestrator:
 
             # Build context and call brain (with retry on empty response)
             context = self._build_context(state, last_result)
+            # Use higher token limit when Cookie is likely to respond
+            # (last iterations or after gathering enough data)
+            _remaining = self.max_iterations - iteration - 1
+            _tok_limit = 2000 if _remaining <= 1 else 800
             brain_result = None
             for _retry in range(3):
                 brain_result = self.brain.complete(
                     system=_system_prompt,
                     prompt=context,
-                    max_tokens=800,
+                    max_tokens=_tok_limit,
                 )
                 if brain_result.content and brain_result.content.strip():
                     break
@@ -1483,6 +1507,25 @@ class Orchestrator:
                 decision["action"] = "tool_call"
 
             print(f"  [DECISION] action={action}, reasoning={reasoning[:100]}")
+
+            # HARD OVERRIDE: if last iteration and Cookie still wants a tool call,
+            # force a respond using whatever it has gathered so far.
+            _remaining = self.max_iterations - iteration - 1
+            if _remaining <= 0 and action in ("tool_call", "think", "spawn_agent"):
+                print(f"  [FORCE_RESPOND] Last iteration but action={action} — forcing respond")
+                # Synthesize a response from what Cookie gathered
+                _gathered = "\n".join(
+                    f"- {s.tool}({s.args}): {s.result_preview[:200]}"
+                    for s in run_log.steps if s.tool
+                )
+                _force_msg = (
+                    f"Based on my analysis so far:\n\n"
+                    f"{reasoning}\n\n"
+                    f"(Note: I ran out of iteration budget before completing the full analysis. "
+                    f"The above is based on {len(run_log.steps)} tool calls.)"
+                )
+                action = "respond"
+                decision = {"action": "respond", "message": _force_msg}
 
             # Layer 2.5: Live alignment monitoring — flag drift to user
             if action in ("tool_call", "think") and reasoning:
@@ -1862,7 +1905,7 @@ class Orchestrator:
                 run_log.add_step(LogStep(
                     iteration=iteration, action="spawn_agent",
                     reasoning=reasoning[:300],
-                    result=last_result[:300],
+                    result_preview=last_result[:300],
                     latency_ms=_spawn_result.elapsed_ms,
                 ))
                 iteration += 1

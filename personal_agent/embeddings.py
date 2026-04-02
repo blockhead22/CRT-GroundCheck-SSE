@@ -6,6 +6,14 @@ Replaces placeholder hash-based vectors with real AI embeddings.
 """
 
 import numpy as np
+import warnings
+import logging
+# Suppress HuggingFace tokenizer warning about sequence length > model_max_length.
+# SentenceTransformers handles truncation internally; the warning is cosmetic.
+# The warning comes via both warnings.warn() AND logging.warning() depending on version.
+warnings.filterwarnings("ignore", message="Token indices sequence length")
+# Filter the logging-based variant (transformers.tokenization_utils_base)
+logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
 from typing import Optional
 from sentence_transformers import SentenceTransformer
 
@@ -31,9 +39,6 @@ class EmbeddingEngine:
         if self.model is None:
             print(f"Loading embedding model: {self.model_name}...")
             self.model = SentenceTransformer(self.model_name)
-            # Suppress "Token indices sequence length > 512" warning from HF tokenizer.
-            # SentenceTransformers already truncates internally, but the tokenizer's
-            # model_max_length triggers the warning before that happens.
             try:
                 self.model.tokenizer.model_max_length = 8192
             except Exception:

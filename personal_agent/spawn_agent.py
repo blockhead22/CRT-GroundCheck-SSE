@@ -107,7 +107,7 @@ def run_subagent(
             max_iterations=max_iterations,
         )
 
-        gen = child.run(_child_objective, context=context or {})
+        gen = child.run(_child_objective)
 
         while True:
             try:

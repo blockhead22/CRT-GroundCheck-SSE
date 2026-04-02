@@ -1501,9 +1501,10 @@ export default function App() {
   }
 
   // Show onboarding for first-time users (before login)
-  if (!onboardingComplete && !authUser) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />
-  }
+  // DISABLED for now — re-enable when onboarding is wired to backend
+  // if (!onboardingComplete && !authUser) {
+  //   return <OnboardingFlow onComplete={handleOnboardingComplete} />
+  // }
 
   // Show login screen
   if (showLogin && !authUser) {
