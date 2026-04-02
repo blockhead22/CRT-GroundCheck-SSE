@@ -9,6 +9,11 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 ## [Unreleased] — 2026-04-01 (Evening session)
 
 ### Added
+- **Codex matrix audit**: Saved `docs/audits/system_matrix_audit_2026-04-02.md` with ROI-ordered subsystem tightening priorities.
+- **Runtime status surface**: Added `GET /api/runtime/status` to expose the active runtime data root and resolved mutable-store paths.
+- **GovernedTask durability**: Added `personal_agent/governed_task.py`, durable governed task/event persistence, and `/api/tasks/active` recovery endpoint.
+- **Chat split modules**: Added `routes/chat_runtime.py`, `routes/chat_governed_resume.py`, `routes/chat_agent_loop_runner.py`, and `routes/chat_orchestrator_runner.py`.
+- **Route split coverage**: Added `tests/test_chat_route_split.py` to assert `chat_stream` delegates to the extracted runner modules.
 - **Cookie Rule 11 — SEARCH/LIST EFFICIENCY**: Prevents file-read verification loops after search/list tasks. Cookie now responds directly from `search_code` results without re-reading individual files.
 - **Plan → pipeline thinking routing**: Cookie's `plan` action now emits a `type: "thinking"` SSE event instead of streaming as visible response tokens. Plan text (+ steps) appears as an italic stub in the Agent Loop panel, not in the chat bubble.
 - **`drift` SSE event wired end-to-end**: Backend `record_turn` result already emitted drift events; frontend now parses them (api.ts + ws.ts), dispatches `onDrift` callback, and renders as an `epistemic` step in PipelineCollapse.
@@ -25,7 +30,16 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 - **Response depth (Rule 12)**: Agent instructed to include evidence, show don't summarize. Token limit 800→3000 on last 2 iterations.
 - **Auto-continuation plan**: Design doc at `docs/plans/auto_continuation.md`. Backend detects `complete:false`, auto-fires next run. Max 3 continuations. Not yet implemented.
 
+### Changed
+- **Runtime-state writes externalized**: Core mutable stores now resolve through runtime path helpers instead of assuming repo-local DB locations.
+- **SSE/WS contract frozen**: Stream event handling now flows through a single normalized backend/frontend contract boundary.
+- **Governed task lifecycle made durable**: suspended-loop and checkpoint compatibility now sit on DB-backed governed task state instead of in-memory primary truth.
+- **`chat.py` shifted toward coordination**: stream runtime, governed resume, agent-tool-loop execution, and orchestrator execution now delegate through extracted modules.
+
 ### Fixed
+- **Runtime observability gap**: the process can now report where it is actually writing runtime state, reducing hidden DB-path confusion.
+- **Event drift risk**: SSE/WS emission/parsing now shares one normalized contract instead of separate ad hoc paths.
+- **Agent-loop lifecycle fragility**: task state now survives restart/recovery through governed task persistence.
 - **search_code timeout + large file guard**: Added `--max-filesize 256K` to rg, excluded `*.min.js`, `*.min.css`, `*.lock`, `*.map`, `_write_copilot_page.py`. Python fallback also skips files >256KB. Prevents 159s+ hangs on generated/bundled code.
 - **`file_pattern` arg support**: Cookie was passing `file_pattern: "frontend/**/*.{tsx,ts}"` which search_code silently ignored, causing full-tree scans. Now parsed into path + extensions automatically.
 - **Cookie iteration budget fundamentally fixed**: `for` loop → `while` loop with explicit counter. `plan` no longer consumes an iteration slot (it's a declaration, not work). `think`, `tool_call`, `spawn_agent` increment explicitly. Safety cap `_total_turns = max_iterations + 5` prevents infinite plan loops. Net effect: plan+read+write = plan (free) + 10 working slots.
