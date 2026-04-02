@@ -345,6 +345,10 @@ class LLMIntentRouter:
         msgs.append({"role": "user", "content": user_content})
         return msgs
 
+    # Intent classification should fail fast (5s) when Ollama is unreachable,
+    # not block for 120s. The caller (_try_llm_router) handles cloud fallback.
+    INTENT_TIMEOUT = 5
+
     def _call_llm(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """Call the LLM with tool schemas. Works with both Ollama and Hybrid clients."""
         client = self.llm_client
@@ -356,6 +360,7 @@ class LLMIntentRouter:
                 tools=self.tool_schemas,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
+                timeout=self.INTENT_TIMEOUT,
             )
 
         # HybridLLMClient — use its local_client's chat_with_tools
@@ -365,6 +370,7 @@ class LLMIntentRouter:
                 tools=self.tool_schemas,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
+                timeout=self.INTENT_TIMEOUT,
             )
 
         # Fallback: try chat() and parse JSON manually

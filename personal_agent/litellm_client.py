@@ -429,11 +429,16 @@ class UnifiedLLMClient:
 
     # ── Core LiteLLM call ─────────────────────────────────────────────
 
-    def _ollama_direct_tool_call(self, messages, tools, max_tokens, temperature, model_name):
+    def _ollama_direct_tool_call(self, messages, tools, max_tokens, temperature, model_name, timeout_override=None):
         """Bypass litellm and call Ollama directly for tool calls.
 
         Litellm corrupts Qwen3 thinking+tools responses (returns '{}').
         Direct Ollama /api/chat works correctly.
+
+        Args:
+            timeout_override: If set, use this timeout instead of the default.
+                              Use short timeouts (5s) for intent classification
+                              so the system fails fast when Ollama is unreachable.
         """
         import requests as _req
 
@@ -457,7 +462,10 @@ class UnifiedLLMClient:
             payload["tools"] = tools
 
         try:
-            _direct_timeout = 300 if self._is_thinking_model(model) else 120
+            if timeout_override is not None:
+                _direct_timeout = timeout_override
+            else:
+                _direct_timeout = 300 if self._is_thinking_model(model) else 120
             resp = _req.post(
                 f"{self.ollama_base_url}/api/chat",
                 json=payload,
@@ -798,11 +806,11 @@ class UnifiedLLMClient:
             "used_tools": len(parsed_calls) > 0,
         }
 
-    def _try_local_tools(self, messages, tools, max_tokens, temperature, model_name):
+    def _try_local_tools(self, messages, tools, max_tokens, temperature, model_name, timeout_override=None):
         """Attempt local tool call with quality gate. Returns result or None."""
         try:
             # Bypass litellm for Ollama tool calls — litellm corrupts Qwen3 thinking+tools
-            result = self._ollama_direct_tool_call(messages, tools, max_tokens, temperature, model_name)
+            result = self._ollama_direct_tool_call(messages, tools, max_tokens, temperature, model_name, timeout_override=timeout_override)
             if result is not None:
                 return result
             # Fallback to litellm path
@@ -986,6 +994,7 @@ class UnifiedLLMClient:
         max_tokens: int = 1000,
         temperature: float = 0.3,
         model: Optional[str] = None,
+        timeout: Optional[float] = None,
     ) -> Dict[str, Any]:
         provider, model_name = self._resolve_target(model)
 
@@ -1029,7 +1038,7 @@ class UnifiedLLMClient:
 
         if policy == "local_only":
             result = self._try_local_tools(
-                messages, tools, max_tokens, temperature, model_name,
+                messages, tools, max_tokens, temperature, model_name, timeout_override=timeout,
             )
             if result:
                 return result
@@ -1066,14 +1075,14 @@ class UnifiedLLMClient:
                 return result
             print("[LITELLM] Cloud unavailable, falling back to local")
             result = self._try_local_tools(
-                messages, tools, max_tokens, temperature, model_name,
+                messages, tools, max_tokens, temperature, model_name, timeout_override=timeout,
             )
             return result or {"tool_calls": [], "content": "", "used_tools": False}
 
         if policy == "local_to_cloud":
             # Local first, cloud only as fallback
             result = self._try_local_tools(
-                messages, tools, max_tokens, temperature, model_name,
+                messages, tools, max_tokens, temperature, model_name, timeout_override=timeout,
             )
             if result:
                 return result

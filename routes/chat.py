@@ -6156,18 +6156,24 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 pass
 
             # ── Check if agent loop can actually use the user's preferred model ──
-            # When generation_mode=cloud_claude, the agent loop's LiteLLM fallback
-            # chain (Anthropic API → OpenAI API → local) can't reach Claude CLI.
-            # In that case, force the orchestrator path which has ClaudeCliBrain.
+            # The agent loop needs a working LLM. Check if at least one provider
+            # is reachable. Previously this blocked on cloud_claude and llm_local
+            # modes, which caused total system failure when Ollama was unreachable.
+            # Now: only block if no provider is available at all.
             _agent_loop_model_ok = True
             try:
                 import auth as _auth_al_check
                 _uid_al_check = int(uid) if uid else 1
                 _al_gen_mode = str(_auth_al_check.get_user_setting(_uid_al_check, "generation_mode", "cloud_claude") or "cloud_claude").strip()
-                if _al_gen_mode in ("cloud_claude", "llm_local"):
-                    # cloud_claude: agent loop can't use Claude CLI
-                    # llm_local: Ollama may not be running; ClaudeCliBrain is more reliable
-                    _agent_loop_model_ok = False
+                if _al_gen_mode == "cloud_claude":
+                    # cloud_claude mode: agent loop can use the LiteLLM fallback chain
+                    # (Anthropic API → OpenAI API → local). Only block if we have
+                    # no cloud keys at all.
+                    _has_cloud = bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("OPENAI_API_KEY"))
+                    if not _has_cloud:
+                        _agent_loop_model_ok = False
+                # llm_local: let it through — intent classification now has cloud
+                # fallback, so even if Ollama is down the system degrades gracefully
             except Exception:
                 pass
 

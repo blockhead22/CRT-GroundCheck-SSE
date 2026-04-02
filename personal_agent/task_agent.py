@@ -1500,7 +1500,11 @@ def _try_llm_router(
     attached_paths: Optional[List[str]],
     routing_mode: str,
 ) -> Optional[TaskIntent]:
-    """Attempt LLM-based classification. Returns None on failure."""
+    """Attempt LLM-based classification. Returns None on failure.
+
+    When routing_mode is local/hybrid and local Ollama fails (timeout, unreachable),
+    automatically falls back to cloud router so the system doesn't collapse.
+    """
     try:
         if routing_mode == "cloud_only":
             router = _get_llm_router("cloud_only")
@@ -1510,13 +1514,26 @@ def _try_llm_router(
         if router is None:
             return None
 
-        return router.classify(
+        result = router.classify(
             message,
             attached_paths=attached_paths,
         )
+        if result is not None:
+            return result
     except Exception as e:
-        logger.warning("[LLM_ROUTER] classify() failed: %s", e)
-        return None
+        logger.warning("[LLM_ROUTER] Local classify() failed: %s", e)
+
+    # ── Cloud fallback: if local failed (Ollama unreachable/timeout), try cloud ──
+    if routing_mode not in ("cloud_only", "local_only"):
+        try:
+            cloud_router = _get_llm_router("cloud_only")
+            if cloud_router is not None:
+                logger.info("[LLM_ROUTER] Local failed, falling back to cloud intent classification")
+                return cloud_router.classify(message, attached_paths=attached_paths)
+        except Exception as e2:
+            logger.warning("[LLM_ROUTER] Cloud fallback classify() also failed: %s", e2)
+
+    return None
 
 
 def _try_embedding_classifier(
