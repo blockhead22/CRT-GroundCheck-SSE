@@ -42,9 +42,13 @@ from .models import (
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.cloud_usage_tracker import log_cloud_call as _track_cloud_call
 from personal_agent.db_utils import get_thread_session_db
-from personal_agent.governed_task import GovernedTask, GovernedTaskStatus, GovernedTaskWaitKind
+from personal_agent.governed_task import GovernedTaskStatus, GovernedTaskWaitKind
 from personal_agent.runtime_paths import resolve_agent_runs_db_path
-from personal_agent.stream_events import encode_sse_event, make_stream_event, normalize_stream_event
+from personal_agent.stream_events import normalize_stream_event
+from .chat_agent_loop_runner import run_agent_tool_loop
+from .chat_governed_resume import try_resume_or_resolve
+from .chat_orchestrator_runner import run_orchestrator
+from .chat_runtime import ChatStreamRuntime
 
 try:
     from personal_agent.governance import GovernanceLayer, GovernanceTier
@@ -5155,110 +5159,31 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
     logger.info(f"[STREAM] /api/chat/stream called with message: {req.message[:50]}...")
 
     def generate_stream():
-        import threading, queue as _queue, time as _time
         from personal_agent.event_bus import get_event_bus
-        _event_bus = get_event_bus()
-        _ws_thread_id = getattr(req, 'thread_id', None)
-
-        def _bus_emit(event: dict) -> None:
-            """Fire-and-forget emit to EventBus for WS clients."""
-            _event_bus.emit_sync(event.get("type", "unknown"), event, thread_id=_ws_thread_id)
-
-        def _status(s: str) -> str:
-            event = make_stream_event("status", s)
-            _bus_emit(event)
-            return encode_sse_event(event)
-
-        def _phase(phase: str, content: str = '', end: bool = False) -> str:
-            t = 'phase_end' if end else 'phase_start'
-            evt = make_stream_event(t, content, phase=phase)
-            _bus_emit(evt)
-            return encode_sse_event(evt)
-
-        _governed_task: Optional[dict] = None
-        _task_tag_types = {
-            "agent_loop_start",
-            "agent_loop_complete",
-            "agent_checkpoint",
-            "followup_suggest",
-            "done",
-            "error",
-            "tool_start",
-            "tool_result",
-        }
-
-        def _task_meta(extra: Optional[dict] = None) -> dict:
-            meta = dict(extra or {})
-            if _governed_task:
-                meta.setdefault("task_id", _governed_task.get("task_id"))
-                meta.setdefault("task_status", _governed_task.get("status"))
-                if _governed_task.get("wait_kind"):
-                    meta.setdefault("wait_kind", _governed_task.get("wait_kind"))
-                if _governed_task.get("checkpoint_tier"):
-                    meta.setdefault("checkpoint_tier", _governed_task.get("checkpoint_tier"))
-                if _governed_task.get("parent_task_id"):
-                    meta.setdefault("parent_task_id", _governed_task.get("parent_task_id"))
-            return meta
-
-        def _ensure_governed_task(
-            *,
-            objective: str,
-            max_iterations: int = 0,
-            current_iteration: int = 0,
-            remaining_iterations: Optional[int] = None,
-            parent_task_id: Optional[str] = None,
-        ) -> dict:
-            nonlocal _governed_task
-            if _governed_task:
-                return _governed_task
-            _existing = _session_db.get_active_governed_task(req.thread_id)
-            if _existing and str(_existing.get("source") or "") == "agent_loop":
-                _governed_task = _existing
-                return _governed_task
-            _task = GovernedTask.new(
-                thread_id=req.thread_id,
-                objective=objective,
-                source="agent_loop",
-                parent_task_id=parent_task_id,
-                max_iterations=max_iterations,
-                current_iteration=current_iteration,
-                remaining_iterations=remaining_iterations,
-            )
-            _governed_task = _session_db.create_governed_task(_task)
-            return _governed_task
-
-        def _update_governed_task(**changes: Any) -> Optional[dict]:
-            nonlocal _governed_task
-            if not _governed_task:
-                return None
-            _governed_task = _session_db.update_governed_task(str(_governed_task["task_id"]), **changes) or _governed_task
-            return _governed_task
-
-        def _append_governed_event(event_type: str, content: str = "", metadata: Optional[dict] = None) -> None:
-            if not _governed_task:
-                return
-            _session_db.append_governed_task_event(
-                str(_governed_task["task_id"]),
-                req.thread_id,
-                event_type,
-                content=content,
-                metadata=metadata or {},
-            )
-
-        def _sse(event: dict) -> str:
-            if _governed_task and event.get("type") in _task_tag_types:
-                event = dict(event)
-                event["metadata"] = _task_meta(event.get("metadata"))
-            normalized = normalize_stream_event(event)
-            _bus_emit(normalized)
-            return encode_sse_event(normalized)
+        _session_db = get_thread_session_db()
+        runtime = ChatStreamRuntime(
+            req=req,
+            request=request,
+            authorization=authorization,
+            uid=uid,
+            safe_print=_safe_print,
+            session_db=_session_db,
+            event_bus=get_event_bus(),
+        )
+        _sse = runtime.emit
+        _status = runtime.emit_status
+        _phase = runtime.emit_phase
+        _ensure_governed_task = runtime.ensure_governed_task
+        _update_governed_task = runtime.update_governed_task
+        _append_governed_event = runtime.append_governed_event
+        _governed_task = runtime.governed_task
 
         try:
             # ── Upfront activity signals ──────────────────────────────────
             q_lower = req.message.lower()
-            yield _phase('analyze', 'Reading request')
-            yield _status('reading context')
-            yield _phase('analyze', end=True)
+            yield runtime.emit_phase('analyze', 'Reading request')
+            yield runtime.emit_status('reading context')
+            yield runtime.emit_phase('analyze', end=True)
 
             # ── Intent classification (fast, pattern-based) ───────────────
             try:
@@ -5266,9 +5191,27 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     classify_intent as _classify_intent,
                     CRTTaskAgent,
                     TaskIntent,
-                    parse_checkpoint_confirmation as _parse_confirm,
                 )
-                _session_db = get_thread_session_db()
+                _resume_task_intent = None
+                _resume_user_confirmed = False
+                _resume_outcome = yield from try_resume_or_resolve(
+                    runtime,
+                    recent_history=recent_history if "recent_history" in locals() else None,
+                )
+                if _resume_outcome and _resume_outcome.terminal:
+                    return
+                if _resume_outcome:
+                    _resume_task_intent = _resume_outcome.task_intent
+                    _resume_user_confirmed = _resume_outcome.user_confirmed
+                    _orig_classify_intent = _classify_intent
+
+                    def _classify_intent(message, active_task=None):
+                        nonlocal _resume_task_intent
+                        if _resume_task_intent is not None:
+                            _intent = _resume_task_intent
+                            _resume_task_intent = None
+                            return _intent
+                        return _orig_classify_intent(message, active_task=active_task)
 
                 # ── AGENT LOOP RESUME (must be before intent classify) ────
                 # If there's a suspended agent loop for this thread, the user's
@@ -5495,7 +5438,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                 # ── Check for pending agentic checkpoint confirmation ─────
                 _pending_cp = _session_db.get_pending_checkpoint(req.thread_id)
-                _user_confirmed = False
+                _user_confirmed = _resume_user_confirmed
                 if _pending_cp:
                     # Check if this is a disambiguation response (user selected an intent type)
                     _cp_source = _pending_cp.get("intent", {}).get("source", "")
@@ -6232,6 +6175,27 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # Memory-only intents must bypass the agent loop — they need direct retrieval,
             # not an LLM tool loop that will spin up web_search / shell_exec.
             _MEMORY_ONLY_INTENTS = {"broad_recall", "system_info", "inquiry_queue"}
+            _agent_loop_gate_hit = (
+                _agent_loop_enabled
+                and _agent_loop_model_ok
+                and _task_intent is not None
+                and _task_intent.route == "task"
+                and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
+                and not _user_confirmed
+                and not _layer4_orchestrator
+            )
+            if _agent_loop_gate_hit:
+                _runner_result = yield from run_agent_tool_loop(
+                    runtime,
+                    _task_intent,
+                    _active_task,
+                    _user_confirmed,
+                    recent_history if 'recent_history' in dir() else None,
+                )
+                if _runner_result and _runner_result.handled:
+                    _agent_loop_enabled = False
+                    if _runner_result.terminal:
+                        return
             if (
                 _agent_loop_enabled
                 and _agent_loop_model_ok  # Agent loop must be able to use the user's preferred model
@@ -6524,6 +6488,18 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _orch_entry = _layer4_orchestrator or (_agent_loop_skipped_for_model and _needs_agent_loop)
             if not _orch_entry and (_layer4_orchestrator or _agent_loop_skipped_for_model):
                 _safe_print(f"[ROUTING_GATE] Blocked agent loop entry: intent={_intent_type_str!r}, conf={_routing_conf:.2f}, words={len(str(req.message or '').split())} — falling through to legacy")
+            if _orch_entry:
+                _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
+                _orch_runner_result = yield from run_orchestrator(
+                    runtime,
+                    _task_intent,
+                    _orch_reason,
+                    recent_history if 'recent_history' in dir() else None,
+                )
+                if _orch_runner_result and _orch_runner_result.handled:
+                    _orch_entry = False
+                    if _orch_runner_result.terminal:
+                        return
             if _orch_entry:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING agent loop path (intent={_intent_type_str!r}, reason={_orch_reason})")
