@@ -202,6 +202,10 @@ export function ChatThreadView(props: {
   retrievedMemories?: RetrievedMemory[]
   /** Live trust shifts (from WS trust_shift events) */
   trustShifts?: TrustShift[]
+  /** Followup suggestions from agent loop */
+  followupSuggestions?: string[]
+  onFollowupClick?: (text: string) => void
+  onDismissFollowups?: () => void
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -847,6 +851,52 @@ export function ChatThreadView(props: {
               style={{ color: 'rgba(240,235,225,0.5)' }}
             >
               dismiss
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Followup suggestion chips */}
+      <AnimatePresence>
+        {(props.followupSuggestions ?? []).length > 0 && !props.typing && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4, transition: { duration: 0.15 } }}
+            transition={{ duration: 0.25, ease: [0.25, 1, 0.5, 1] }}
+            className="flex-shrink-0 px-4 pb-2 flex flex-wrap gap-2 items-center justify-center"
+          >
+            <span className="text-[10px] font-mono mr-1" style={{ color: 'rgba(240,235,225,0.25)' }}>
+              follow up:
+            </span>
+            {(props.followupSuggestions ?? []).map((text, i) => (
+              <button
+                key={i}
+                onClick={() => props.onFollowupClick?.(text)}
+                className="rounded-full px-3 py-1 text-[12px] transition-all duration-150 hover:scale-[1.03]"
+                style={{
+                  background: 'rgba(224,160,128,0.08)',
+                  border: '1px solid rgba(224,160,128,0.2)',
+                  color: 'rgba(240,235,225,0.7)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(224,160,128,0.15)'
+                  e.currentTarget.style.color = 'rgba(240,235,225,0.9)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(224,160,128,0.08)'
+                  e.currentTarget.style.color = 'rgba(240,235,225,0.7)'
+                }}
+              >
+                {text}
+              </button>
+            ))}
+            <button
+              onClick={() => props.onDismissFollowups?.()}
+              className="ml-1 text-[10px] opacity-30 hover:opacity-60 transition-opacity"
+              style={{ color: 'var(--text-muted)' }}
+            >
+              ✕
             </button>
           </motion.div>
         )}

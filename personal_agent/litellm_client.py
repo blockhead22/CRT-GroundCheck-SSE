@@ -900,7 +900,7 @@ class UnifiedLLMClient:
             import auth as _auth_mod
             _gen_on = str(_auth_mod.get_user_setting(1, "cloud_claude_generation", "true")).lower() in ("true", "1", "yes", "on")
             if not _gen_on:
-                print("[LITELLM] Cookie fallback gated: cloud_claude_generation=off in settings")
+                print("[LITELLM] Claude session fallback gated: cloud_claude_generation=off in settings")
                 return None
         except Exception:
             pass  # If auth unavailable, allow fallback
@@ -942,14 +942,14 @@ class UnifiedLLMClient:
             )
             prompt = "\n".join(prompt_parts[-8:])  # last 8 turns max
 
-            print("[LITELLM] Trying cookie-based Claude fallback for text answer")
+            print("[LITELLM] Trying Claude session fallback for text answer")
             raw = svc._call_cookie_text(system, prompt, max_tokens=1024, feature="agent_fallback")
             if raw and raw.strip():
                 text = raw.strip()
                 # Strip JSON/markdown wrapping if Claude ignores the instruction
                 text = self._unwrap_json_response(text)
-                print(f"[LITELLM] Cookie fallback succeeded: {len(text)} chars")
-                print(f"[GEN_SOURCE] *** COOKIE CLAUDE (agent_fallback) *** — local Ollama and OpenAI both unavailable")
+                print(f"[LITELLM] Claude session fallback succeeded: {len(text)} chars")
+                print(f"[GEN_SOURCE] *** CLAUDE SESSION (agent_fallback) *** — local Ollama and OpenAI both unavailable")
                 return {"tool_calls": [], "content": text, "used_tools": False, "generation_source": "cookie_claude"}
 
             print("[LITELLM] Cookie fallback returned empty")

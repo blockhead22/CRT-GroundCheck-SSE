@@ -319,6 +319,12 @@ export class AetherSocket {
         cb.onSessionState?.(dens, contra, turns)
         break
       }
+      case 'followup_suggest': {
+        const followups = (meta?.followups as string[]) ?? []
+        const complete = (meta?.complete as boolean) ?? true
+        cb.onFollowupSuggest?.(followups, complete)
+        break
+      }
       case 'phase_start':
         cb.onPhaseStart?.(event.phase ?? '', event.content)
         break

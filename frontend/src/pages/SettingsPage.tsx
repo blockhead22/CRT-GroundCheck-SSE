@@ -408,10 +408,10 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                 <SectionCard title="Claude (Tier 2)" description="High-quality generation fallback and reflection validation.">
                   <p className="text-xs text-white/40 -mt-2 mb-3">
                     {cloudUsage?.claude_available === false && (
-                      <span className="text-amber-400/80">Cookie not configured.</span>
+                      <span className="text-amber-400/80">Claude not configured.</span>
                     )}
                     {cloudUsage?.claude_available === true && (
-                      <span className="text-green-400/80">Cookie active.</span>
+                      <span className="text-green-400/80">Claude active.</span>
                     )}
                   </p>
 

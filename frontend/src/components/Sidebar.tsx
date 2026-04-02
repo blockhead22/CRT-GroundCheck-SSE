@@ -16,6 +16,7 @@ const navSections: NavSection[] = [
       { id: 'copilot', label: 'Aether', icon: '◈' },
       { id: 'live', label: 'Live', icon: '◉' },
       { id: 'belief-map', label: 'Belief Map', icon: '◎' },
+      { id: 'beliefs', label: 'Beliefs', icon: '◇' },
     ],
   },
   {

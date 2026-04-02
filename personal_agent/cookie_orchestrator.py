@@ -5,7 +5,7 @@ The hands (existing CRT tool infrastructure) execute.
 
 The brain is swappable via the BrainProvider abstraction:
   - ClaudeCliBrain: Claude via CLI OAuth (free with Max, recommended)
-  - CookieBrain: Claude Opus via browser session cookie (legacy)
+  - CookieBrain: Claude Opus via browser session cookie (legacy, internal only)
   - AnthropicBrain: Official Anthropic API (paid, production-grade)
   - OpenAIBrain: OpenAI API (paid, fast)
   - OllamaBrain: Local Ollama models (free, your hardware)
@@ -335,7 +335,7 @@ def get_brain(provider: str = "claude-cli", **kwargs) -> BrainProvider:
     """Factory function to get a brain provider by name.
 
     Args:
-        provider: "cookie", "anthropic", "openai", "ollama"
+        provider: "cookie" (legacy), "claude-cli", "anthropic", "openai", "ollama"
         **kwargs: passed to the provider constructor
 
     Returns:
@@ -379,7 +379,7 @@ class OrchestratorState:
     thinking: List[str] = field(default_factory=list)
     final_response: Optional[str] = None
     done: bool = False
-    total_cookie_ms: float = 0.0
+    total_brain_ms: float = 0.0
     total_tool_ms: float = 0.0
 
     def add_step(self, step: StepRecord):
@@ -432,7 +432,7 @@ Available actions:
 - {"action": "tool_call", "tool": "gpt_log_context", "args": {"msg_id": "id_from_search", "window": 5}, "reasoning": "why"} — Get full conversation thread around a GPT log search result.
 - {"action": "tool_call", "tool": "gpt_log_promote", "args": {"msg_id": "id_to_promote"}, "reasoning": "why"} — Promote a GPT log message into CRT memory (low trust, external source).
 - {"action": "think", "reasoning": "your internal reasoning before next step"}
-- {"action": "respond", "message": "your final answer to the user", "reasoning": "why"}
+- {"action": "respond", "message": "your final answer to the user", "reasoning": "why", "followups": ["optional list of suggested follow-up prompts if the answer is incomplete or could go deeper"], "complete": true}
 - {"action": "ask_user", "message": "your question", "reasoning": "why"}
 - {"action": "spawn_agent", "task": "focused subtask description", "context": {"key": "value"}, "estimated_depth": 3, "reasoning": "why spawn instead of doing it directly — use when a subtask is complex enough to need its own planning/tool loop"}
 
@@ -448,6 +448,7 @@ Rules:
 9. INTELLECTUAL HONESTY: Disagree when the evidence doesn't support the user's claim. Do not wrap agreement in uncertainty language — that is still agreement. If routing weights are a lookup table, say so. If a claim is speculative, say it's speculative. Agreeing with everything the user says is a failure mode, not helpfulness. The user built this system to get honest signal, not validation.
 10. file_write can target actual project files (not just workspace/). When you write to a project file, the system will show the user a diff and ask for approval before saving. Use absolute or relative paths — both work.
 11. SEARCH/LIST EFFICIENCY: For tasks that ask you to find, list, or summarize things (TODOs, functions, patterns, etc.), respond DIRECTLY from search_code results — do NOT verify by reading individual files afterward unless the user explicitly asked to see file contents. If search_code returns matching lines, that IS the answer. Reading the same files again wastes iterations and causes alignment drift.
+12. RESPONSE DEPTH: When responding, be thorough and detailed. Include specific evidence from your tool calls — file names, line numbers, code snippets, memory contents, search results. Don't summarize when you can show. The user wants depth and substance, not executive summaries. If you read a file, reference what you found in it. If you searched memory, quote the relevant entries. Aim for a response that teaches the user something they didn't already know.
 """
 
 
@@ -1260,7 +1261,7 @@ class Orchestrator:
 
     def _build_context(self, state: OrchestratorState,
                        last_result: Optional[str] = None) -> str:
-        """Build the context prompt for Cookie."""
+        """Build the context prompt for the agent loop brain."""
         parts = [f"OBJECTIVE: {state.objective}"]
 
         completed = state.completed_summary()
@@ -1294,7 +1295,7 @@ class Orchestrator:
         return "\n".join(parts)
 
     def _parse_decision(self, raw: str) -> Dict[str, Any]:
-        """Parse Cookie's JSON decision, handling common formatting issues."""
+        """Parse the brain's JSON decision, handling common formatting issues."""
         import re
         text = raw.strip()
 
@@ -1434,7 +1435,7 @@ class Orchestrator:
             print(f"[SELF_MODEL] Failed (non-fatal): {_sm_err}")
 
         # Inject conversation history into context if provided.
-        # Labelled as PRIOR CONTEXT (not current task) to prevent Cookie from
+        # Labelled as PRIOR CONTEXT (not current task) to prevent the brain from
         # conflating previous tasks with the current objective.
         if conversation_history:
             history_text = "\n".join(conversation_history)
@@ -1458,10 +1459,10 @@ class Orchestrator:
 
             # Build context and call brain (with retry on empty response)
             context = self._build_context(state, last_result)
-            # Use higher token limit when Cookie is likely to respond
+            # Use higher token limit when the brain is likely to respond
             # (last iterations or after gathering enough data)
             _remaining = self.max_iterations - iteration - 1
-            _tok_limit = 2000 if _remaining <= 1 else 800
+            _tok_limit = 3000 if _remaining <= 1 else 800
             brain_result = None
             for _retry in range(3):
                 brain_result = self.brain.complete(
@@ -1476,7 +1477,7 @@ class Orchestrator:
                 print(f"  [BRAIN] Empty/timeout response, retrying ({_retry + 1}/3)...")
                 time.sleep(1)
 
-            state.total_cookie_ms += brain_result.latency_ms
+            state.total_brain_ms += brain_result.latency_ms
 
             raw = brain_result.content or ""
             print(f"  [BRAIN:{brain_result.provider}] ({brain_result.latency_ms:.0f}ms) {raw[:200]}")
@@ -1508,12 +1509,12 @@ class Orchestrator:
 
             print(f"  [DECISION] action={action}, reasoning={reasoning[:100]}")
 
-            # HARD OVERRIDE: if last iteration and Cookie still wants a tool call,
+            # HARD OVERRIDE: if last iteration and brain still wants a tool call,
             # force a respond using whatever it has gathered so far.
             _remaining = self.max_iterations - iteration - 1
             if _remaining <= 0 and action in ("tool_call", "think", "spawn_agent"):
                 print(f"  [FORCE_RESPOND] Last iteration but action={action} — forcing respond")
-                # Synthesize a response from what Cookie gathered
+                # Synthesize a response from what the brain gathered
                 _gathered = "\n".join(
                     f"- {s.tool}({s.args}): {s.result_preview[:200]}"
                     for s in run_log.steps if s.tool
@@ -1557,7 +1558,7 @@ class Orchestrator:
             if action == "plan":
                 # First-move declaration — surface to user immediately before any tool runs.
                 # Plan does NOT consume an iteration slot — it's a declaration, not work.
-                # After yielding the plan, set last_result to an acknowledgment so Cookie
+                # After yielding the plan, set last_result to an acknowledgment so the brain
                 # sees "Plan acknowledged" on the next iteration and doesn't re-plan.
                 _plan_msg = decision.get("message", "")
                 _plan_steps = decision.get("steps", [])
@@ -1871,6 +1872,16 @@ class Orchestrator:
                     print(f"  [ALIGNMENT] response: {_align:.3f}")
 
                 yield {"type": "response", "content": message}
+
+                # Emit followup suggestions if brain provided them
+                _followups = decision.get("followups") or []
+                _is_complete = decision.get("complete", True)
+                if _followups or not _is_complete:
+                    yield {
+                        "type": "followup_suggest",
+                        "followups": _followups[:4],  # max 4 suggestions
+                        "complete": _is_complete,
+                    }
                 break
 
             elif action == "ask_user":
@@ -1941,7 +1952,7 @@ class Orchestrator:
             ))
 
         # Persist run log
-        run_log.brain_ms = state.total_cookie_ms
+        run_log.brain_ms = state.total_brain_ms
         run_log.tool_ms = state.total_tool_ms
         run_log.hit_iteration_limit = not state.done
         run_log.complete(
@@ -1994,13 +2005,13 @@ class Orchestrator:
         print(f"\n{'='*60}")
         print(f"ORCHESTRATOR COMPLETE")
         print(f"  Steps: {len(state.steps)}")
-        print(f"  Brain time: {state.total_cookie_ms:.0f}ms")
+        print(f"  Brain time: {state.total_brain_ms:.0f}ms")
         print(f"  Tool time: {state.total_tool_ms:.0f}ms")
-        print(f"  Total: {state.total_cookie_ms + state.total_tool_ms:.0f}ms")
+        print(f"  Total: {state.total_brain_ms + state.total_tool_ms:.0f}ms")
         print(f"{'='*60}")
 
         yield {"type": "done", "steps": len(state.steps),
-               "brain_ms": state.total_cookie_ms,
+               "brain_ms": state.total_brain_ms,
                "tool_ms": state.total_tool_ms,
                "run_id": run_log.run_id}
 

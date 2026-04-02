@@ -485,7 +485,7 @@ def _get_db() -> RoutingBeliefDB:
 # ---------------------------------------------------------------------------
 
 def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
-    """Decide whether a message should route to the Cookie orchestrator.
+    """Decide whether a message should route to the agent loop orchestrator.
 
     Args:
         message: The user's message text.
@@ -543,7 +543,7 @@ def should_orchestrate(message: str, intent: Any = None) -> RoutingDecision:
 def update_from_run(message: str, run_log: Any) -> None:
     """Update routing beliefs after an orchestrator run completes.
 
-    Called from cookie_orchestrator.py after run log persistence.
+    Called from the orchestrator after run log persistence.
     """
     features = _extract_all_features(message)
 

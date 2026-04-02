@@ -422,6 +422,7 @@ export type StreamEventType =
   | 'epistemic_event'
   | 'drift'
   | 'session_state'
+  | 'followup_suggest'
   | 'done'
   | 'error'
 
@@ -480,6 +481,7 @@ export type StreamCallbacks = {
   // Post-turn trust delta summary (drift) and session snapshot
   onDrift?: (driftCount: number, totalTrustDelta: number, intentAlignment: number) => void
   onSessionState?: (density: number, contradictions: number, turnCount: number) => void
+  onFollowupSuggest?: (followups: string[], complete: boolean) => void
   onPhaseStart?: (phase: string, content?: string) => void
   onPhaseEnd?: (phase: string) => void
   onToken?: (token: string) => void
@@ -744,6 +746,11 @@ export async function streamFromCrtApi(args: {
                 args.callbacks.onSessionState?.(meta?.cumulative_density ?? 0, meta?.open_contradiction_count ?? 0, meta?.turn_count ?? 0)
                 break
               }
+              case 'followup_suggest': {
+                const meta = event.metadata as { followups?: string[]; complete?: boolean } | undefined
+                args.callbacks.onFollowupSuggest?.(meta?.followups ?? [], meta?.complete ?? true)
+                break
+              }
               case 'phase_start':
                 args.callbacks.onPhaseStart?.(event.phase || '', event.content)
                 break
@@ -997,6 +1004,60 @@ export type ContradictionNextResponse = {
   has_item: boolean
   item?: ContradictionWorkItem | null
 }
+
+// ---------------------------------------------------------------------------
+// Beliefs
+// ---------------------------------------------------------------------------
+
+export type BeliefTrustChange = {
+  from: number
+  to: number
+  reason: string
+  timestamp: number
+}
+
+export type BeliefContradiction = {
+  ledger_id: string
+  other_memory_id: string
+  status: string
+  disposition: string
+  drift: number | null
+}
+
+export type BeliefEntry = {
+  memory_id: string
+  text: string
+  trust: number
+  confidence: number
+  authority: string
+  belnap_state: string
+  temporal_status: string
+  created_at: number
+  domain_tags: string[] | null
+  contradictions: BeliefContradiction[]
+  contradiction_count: number
+  trust_trajectory: BeliefTrustChange[]
+}
+
+export type BeliefsResponse = {
+  thread_id: string
+  total_beliefs: number
+  average_trust: number
+  contested: number
+  held_contradictions: number
+  generated_at: number
+  beliefs: BeliefEntry[]
+}
+
+export async function listBeliefs(threadId: string, limit = 50, minTrust = 0): Promise<BeliefsResponse> {
+  return fetchJson<BeliefsResponse>(
+    `/api/beliefs?thread_id=${encodeURIComponent(threadId)}&limit=${limit}&min_trust=${minTrust}`,
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Contradictions
+// ---------------------------------------------------------------------------
 
 export async function listOpenContradictions(threadId: string, limit = 50): Promise<ContradictionListItem[]> {
   return fetchJson<ContradictionListItem[]>(

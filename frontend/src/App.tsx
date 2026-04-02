@@ -24,6 +24,7 @@ import { JournalPage } from './pages/JournalPage'
 import { CopilotPage } from './pages/CopilotPage'
 import { LiveFeedPage } from './pages/LiveFeedPage'
 import BeliefMapPage from './pages/BeliefMapPage'
+import { BeliefsPage } from './pages/BeliefsPage'
 import { TelemetryPage } from './pages/TelemetryPage'
 import { newId } from './lib/id'
 import { getAetherSocket } from './lib/ws'
@@ -45,7 +46,7 @@ export default function App() {
   // URL-synced navigation
   const navigate = useNavigate()
   const location = useLocation()
-  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map']
+  const validNavIds: NavId[] = ['chat', 'dashboard', 'loops', 'journal', 'jobs', 'docs', 'copilot', 'live', 'telemetry', 'settings', 'v2', 'belief-map', 'beliefs']
   const navFromUrl = (): NavId => {
     const path = location.pathname.replace(/^\//, '').split('/')[0] || 'chat'
     return validNavIds.includes(path as NavId) ? (path as NavId) : 'chat'
@@ -142,7 +143,8 @@ export default function App() {
   const [pipelineSteps, setPipelineSteps] = useState<import('./components/chat/PipelineCollapse').PipelineStep[]>([])
   const [retrievedMemories, setRetrievedMemories] = useState<import('./components/chat/RetrievalPanel').RetrievedMemory[]>([])
   const [trustShifts, setTrustShifts] = useState<import('./components/chat/TrustBar').TrustShift[]>([])
-  
+  const [followupSuggestions, setFollowupSuggestions] = useState<string[]>([])
+
   // Mood background state
   const [currentMood, setCurrentMood] = useState<MoodData | null>(null)
 
@@ -701,6 +703,7 @@ export default function App() {
     pipelineStepsRef.current = []
     setRetrievedMemories([])
     setTrustShifts([])
+    setFollowupSuggestions([])
     setAgentThinkingState(null)
     agentThinkingRef.current = null
     setPendingCheckpoint(null)
@@ -987,6 +990,11 @@ export default function App() {
                 return next
               })
             },
+            onFollowupSuggest: (followups, _complete) => {
+              if (followups.length > 0) {
+                setFollowupSuggestions(followups)
+              }
+            },
             onStatus: (status) => {
               if (!status) return
               setStreamStatusLog((prev) => {
@@ -1044,8 +1052,8 @@ export default function App() {
               console.log(`[APP_DEBUG] onDone content_len=${content.length} checkpoint_pending=${(metadata as any)?.checkpoint_pending} agent_loop=${(metadata as any)?.agent_loop} loop_suspended=${(metadata as any)?.loop_suspended}`, content.slice(0, 200))
               const at = Date.now()
 
-              // ── Cookie loop suspended (ask_user pause) ─────────────────
-              // Cookie asked a clarifying question and paused. Surface the
+              // ── Agent loop suspended (ask_user pause) ─────────────────
+              // Agent loop asked a clarifying question and paused. Surface the
               // question in the ActionCard so the user can reply directly.
               if ((metadata as any)?.loop_suspended === true) {
                 const question = (metadata as any)?.loop_question as string ?? content
@@ -1098,7 +1106,7 @@ export default function App() {
                     reflection_scorecard: null,
                     correction_applied: false,
                     correction_text: null,
-                    generation_source: 'cookie_orchestrator',
+                    generation_source: 'agent_loop',
                     escalation: null,
                     cloud_governance_used: false,
                     tools_executed: null,
@@ -1645,6 +1653,12 @@ export default function App() {
                         setProactiveSuggestion(null)
                       }}
                       onDismissProactiveSuggestion={() => setProactiveSuggestion(null)}
+                      followupSuggestions={followupSuggestions}
+                      onFollowupClick={(text) => {
+                        setFollowupSuggestions([])
+                        handleSend(`[followup] ${text}`)
+                      }}
+                      onDismissFollowups={() => setFollowupSuggestions([])}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>
@@ -1663,6 +1677,8 @@ export default function App() {
                   <LiveFeedPage />
                 ) : navActive === 'belief-map' ? (
                   <BeliefMapPage threadId={selectedThread?.id ?? 'default'} />
+                ) : navActive === 'beliefs' ? (
+                  <BeliefsPage threadId={selectedThread?.id ?? 'default'} />
                 ) : navActive === 'telemetry' ? (
                   <TelemetryPage threadId={selectedThread?.id} />
                 ) : navActive === 'v2' ? (

@@ -1,6 +1,6 @@
 """spawn_agent — Phase 5 of the agentic pipeline.
 
-A child Cookie Orchestrator run that executes a focused subtask and returns
+A child agent loop run that executes a focused subtask and returns
 its result to the parent loop. Uses the same suspend/resume primitive as
 ask_user: the parent yields, child runs fully, parent resumes with result.
 
@@ -20,7 +20,7 @@ The child has:
 
 This is NOT wired into chat.py yet. Wire-in is Phase 5 integration.
 To enable: import handle_spawn_agent from this module and call it
-from the cookie_orchestrator.py action handler.
+from the orchestrator action handler in cookie_orchestrator.py.
 
 Usage (from orchestrator, when wired):
     result = yield from handle_spawn_agent(event, brain, memory_system)
@@ -72,7 +72,7 @@ def run_subagent(
     allowed_tools: Optional[List[str]] = None,
     parent_run_id: Optional[str] = None,
 ) -> Generator[Dict[str, Any], None, SpawnResult]:
-    """Run a child Cookie Orchestrator for a focused subtask.
+    """Run a child agent loop for a focused subtask.
 
     This is a generator — yield events to the caller (pipeline panel updates),
     then return the SpawnResult when done.
@@ -206,11 +206,11 @@ def handle_spawn_agent(
     memory_system=None,
     parent_remaining_iterations: int = 8,
 ) -> Generator[Dict[str, Any], None, SpawnResult]:
-    """Drop-in handler for action="spawn_agent" in cookie_orchestrator.py.
+    """Drop-in handler for action="spawn_agent" in the orchestrator.
 
     NOT yet wired — import and call from the orchestrator action handler.
 
-    Wire-in (one block in cookie_orchestrator.py run() loop):
+    Wire-in (one block in the orchestrator run() loop):
 
         elif action == "spawn_agent":
             from personal_agent.spawn_agent import handle_spawn_agent

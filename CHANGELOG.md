@@ -19,6 +19,11 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 - **Electron DevTools**: Added `--devtools` CLI flag (auto-enable in dev) to open Chrome DevTools in the Electron shell.
 - **Claude Code source analysis** (`src/src/`): 5-layer architecture mapped (QueryEngine, Coordinator/Worker, Tool System, Task/Daemon, Memory/Context). 9 absorbable patterns identified: concurrent tool executor, task taxonomy, coordinator/swarm, deferred tool loading, selective reinjection, lifecycle hooks, permission classifier, bridge, speculation. Pattern mapping table added to strategy_repo_split.md (interfaces→crt-core, wiring→AI_round2).
 - **Suspend/resume remaining budget**: Both `ask_user` and `diff_write` suspend paths now store `remaining_iterations`. Resume uses `max(3, stored_remaining)` instead of hardcoded 8. Nested ask_user re-suspend also carries budget.
+- **Followup suggestion chips (frontend)**: Centered clickable chips above composer. `[followup]` prefix forces agent loop routing. Full SSE chain: respond→followup_suggest→api.ts+ws.ts→App.tsx→ChatThreadView chips.
+- **Cookie → Agent Loop rename**: 11 files updated. `_needs_cookie`→`_needs_agent_loop`, `_cookie_entry`→`_orch_entry`, `generation_source: "agent_loop"`. Comments/docstrings updated. Browser cookie auth preserved.
+- **FORCE_RESPOND override**: If agent tries tool_call on last iteration, code forces respond from accumulated reasoning. Guarantees an answer.
+- **Response depth (Rule 12)**: Agent instructed to include evidence, show don't summarize. Token limit 800→3000 on last 2 iterations.
+- **Auto-continuation plan**: Design doc at `docs/plans/auto_continuation.md`. Backend detects `complete:false`, auto-fires next run. Max 3 continuations. Not yet implemented.
 
 ### Fixed
 - **search_code timeout + large file guard**: Added `--max-filesize 256K` to rg, excluded `*.min.js`, `*.min.css`, `*.lock`, `*.map`, `_write_copilot_page.py`. Python fallback also skips files >256KB. Prevents 159s+ hangs on generated/bundled code.
@@ -38,6 +43,13 @@ For the full roadmap see [ROADMAP.md](ROADMAP.md).
 - **`onThinking` not wired in App.tsx**: Added handler to push `{ kind: 'thinking', content }` into pipelineSteps.
 - **`status` steps silently dropped in groupSteps**: `sessionNotes` added to `groupSteps` return; density/conflict strings now collected into expanded footer section.
 - **Pipeline history showing "1 step"**: `pipelineStepsRef` now captures live step list at `done` time for full persistence.
+- **Followup routing crash**: `[followup]` prefix forces agent loop entry. Prevents conversational followups crashing on legacy path timeout.
+- **spawn_agent LogStep crash**: `result=` → `result_preview=` field name mismatch in RunStep dataclass.
+- **spawn_agent context crash**: Removed invalid `context=` kwarg from `child.run()`.
+- **project_scan/search_code/multi_intent routing**: Added to `_TOOL_REQUIRING_INTENTS` so they always route to agent loop.
+- **dir_list missing directory**: Returns explicit error + lists real project directories instead of empty string.
+- **dir_list src/ redirect**: Returns "NOTE: third-party reference code" for Claude Code source dump directory.
+- **PipelineTrace/ToolRow toLowerCase guard**: Prevents crash on undefined values from legacy path events.
 
 ### Docs
 - **ROADMAP.md** — updated through v3.7 with full March 25–April 1 history, new IN PROGRESS / NEXT UP sections

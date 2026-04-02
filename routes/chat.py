@@ -5203,9 +5203,9 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 )
                 _session_db = get_thread_session_db()
 
-                # ── COOKIE LOOP RESUME (must be before intent classify) ────
-                # If there's a suspended Cookie loop for this thread, the user's
-                # current message is their answer to Cookie's ask_user question.
+                # ── AGENT LOOP RESUME (must be before intent classify) ────
+                # If there's a suspended agent loop for this thread, the user's
+                # current message is their answer to the agent loop's ask_user question.
                 # Reconstruct the loop from the checkpoint and continue.
                 try:
                     _suspended = _session_db.get_suspended_loop(req.thread_id)
@@ -5268,7 +5268,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _resume_question = _suspended.get("question", "")
                             _resume_answer_so_far = _suspended.get("orch_answer_so_far", "")
 
-                            # Format previous steps summary for Cookie's context
+                            # Format previous steps summary for the agent loop's context
                             _resume_steps_text = ""
                             if _resume_steps:
                                 _resume_steps_text = "\n".join(
@@ -5286,7 +5286,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 + f"Continue the task with this answer. Do not re-plan.]"
                             )
 
-                        # Re-use the Cookie orchestrator path directly
+                        # Re-use the agent loop orchestrator path directly
                         yield _status("Resuming...")
                         try:
                             from personal_agent.cookie_orchestrator import Orchestrator, get_brain
@@ -5356,7 +5356,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             yield _sse({"type": "done", "content": _r_orch_answer, "metadata": {
                                 "response_type": "speech",
                                 "tool_calls": _r_steps,
-                                "orchestrator": "cookie_resume",
+                                "orchestrator": "agent_loop_resume",
                             }})
                             return
 
@@ -5871,7 +5871,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # ── AGENT TOOL LOOP PATH (Sprint 14) ──────────────────────────
             # ── REMINDER FAST-PATH (deterministic, no LLM needed) ────────
             # If the message looks like a reminder request, handle it directly
-            # without entering the agent loop (cookie Claude can't use tools).
+            # without entering the agent loop (direct Claude can't use tools).
             _is_reminder_msg = any(kw in q_lower for kw in ("remind", "reminder", "alert me", "notify me"))
             _safe_print(f"[REMINDER_GATE] intent_type={getattr(_task_intent, 'intent_type', None)}, is_reminder={_is_reminder_msg}")
             if (
@@ -6091,7 +6091,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     # Fall through to normal generation
 
             # ── LAYER 4: EPISTEMIC ROUTING (runs FIRST, before agent loop) ──
-            # Decides: orchestrator (Cookie) vs conversational vs agent loop.
+            # Decides: orchestrator (agent loop) vs conversational vs agent tool loop.
             # If Layer 4 says orchestrator, skip the agent loop entirely.
             _orch_msg = str(req.message or "")
             _layer4_orchestrator = False
@@ -6125,7 +6125,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 _al_gen_mode = str(_auth_al_check.get_user_setting(_uid_al_check, "generation_mode", "cloud_claude") or "cloud_claude").strip()
                 if _al_gen_mode in ("cloud_claude", "llm_local"):
                     # cloud_claude: agent loop can't use Claude CLI
-                    # llm_local: Ollama may not be running; Cookie (ClaudeCliBrain) is more reliable
+                    # llm_local: Ollama may not be running; ClaudeCliBrain is more reliable
                     _agent_loop_model_ok = False
             except Exception:
                 pass
@@ -6141,7 +6141,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 and _task_intent.route == "task"
                 and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
                 and not _user_confirmed  # Agent loop handles its own checkpoints
-                and not _layer4_orchestrator  # Layer 4 overrides — route to Cookie instead
+                and not _layer4_orchestrator  # Layer 4 overrides — route to agent loop instead
             ):
                 _safe_print("[AGENT_LOOP_GATE] >>> ENTERING agent tool loop path")
                 try:
@@ -6324,7 +6324,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     _tools_executed = len(_al_steps) > 0
                     # Infer generation source if agent loop didn't report one
                     if not _al_generation_source:
-                        _al_generation_source = "local" if _tools_executed else "cookie_claude"
+                        _al_generation_source = "local" if _tools_executed else "agent_loop"
                     _safe_print(f"[GEN_SOURCE] SSE final: generation_source={_al_generation_source}, tools_executed={_tools_executed}")
                     _done_meta_al = {
                         "tool_calls": _al_steps,
@@ -6342,8 +6342,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     logger.warning("[STREAM] Agent tool loop failed, falling back to legacy path: %s", _al_err, exc_info=True)
                     # Fall through to legacy path
 
-            # ── COOKIE ORCHESTRATOR PATH: Complex multi-step tasks ─────────
-            # Uses Cookie Opus as the brain for planning/reasoning,
+            # ── AGENT LOOP ORCHESTRATOR PATH: Complex multi-step tasks ─────────
+            # Uses the brain (Claude/GPT/Ollama) for planning/reasoning,
             # local tools for execution. Sandboxed file writes.
             # Layer 4 routing decision was made above (before agent loop gate).
             # Also enters orchestrator when agent loop was skipped due to model
@@ -6355,7 +6355,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 and _task_intent.route == "task"
                 and _task_intent.intent_type not in _MEMORY_ONLY_INTENTS
             )
-            # ── Routing gate: only enter Cookie for genuine tool-requiring tasks ──
+            # ── Routing gate: only enter agent loop for genuine tool-requiring tasks ──
             # Replaces the `and False` kill-switch with a real signal:
             #   1. intent_type must be in the tool-requiring whitelist
             #   2. routing confidence must be ≥ 0.75 (prevents borderline misfires)
@@ -6372,7 +6372,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 # Hard-forced intents (from routing_beliefs) always pass
                 "gpt_log_search", "gpt_log_context", "gpt_log_promote",
             }
-            _SKIP_COOKIE_INTENTS = {
+            _SKIP_ORCHESTRATOR_INTENTS = {
                 "broad_recall", "inquiry", "question", "conversational",
                 "memory_query", "memory_search",
                 "self_reflection", "greeting", "system_info", "inquiry_queue",
@@ -6382,25 +6382,32 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             except Exception:
                 _routing_conf = 0.0
             _intent_type_str = getattr(_task_intent, "intent_type", "") if _task_intent else ""
-            _needs_cookie = (
-                _intent_type_str not in _SKIP_COOKIE_INTENTS
-                and (
-                    _intent_type_str in _TOOL_REQUIRING_INTENTS
-                    or (_routing_conf >= 0.75 and _task_intent is not None and _task_intent.route == "task")
+            # Followup chips from agent loop responses should always route back to agent loop
+            _is_followup = str(req.message or "").startswith("[followup]")
+            if _is_followup:
+                req.message = req.message[len("[followup]"):].strip()
+            _needs_agent_loop = (
+                _is_followup  # followup clicks always go to agent loop
+                or (
+                    _intent_type_str not in _SKIP_ORCHESTRATOR_INTENTS
+                    and (
+                        _intent_type_str in _TOOL_REQUIRING_INTENTS
+                        or (_routing_conf >= 0.75 and _task_intent is not None and _task_intent.route == "task")
+                    )
+                    and len(str(req.message or "").split()) >= 4
                 )
-                and len(str(req.message or "").split()) >= 4
             )
             # When Layer 4 explicitly routed to orchestrator, trust it — don't let the
             # intent-based gate override an explicit orchestrator decision.
-            # _needs_cookie only gates the agent_loop_skipped redirect path.
-            _cookie_entry = _layer4_orchestrator or (_agent_loop_skipped_for_model and _needs_cookie)
-            if not _cookie_entry and (_layer4_orchestrator or _agent_loop_skipped_for_model):
-                _safe_print(f"[ROUTING_GATE] Blocked Cookie entry: intent={_intent_type_str!r}, conf={_routing_conf:.2f}, words={len(str(req.message or '').split())} — falling through to legacy")
-            if _cookie_entry:
+            # _needs_agent_loop only gates the agent_loop_skipped redirect path.
+            _orch_entry = _layer4_orchestrator or (_agent_loop_skipped_for_model and _needs_agent_loop)
+            if not _orch_entry and (_layer4_orchestrator or _agent_loop_skipped_for_model):
+                _safe_print(f"[ROUTING_GATE] Blocked agent loop entry: intent={_intent_type_str!r}, conf={_routing_conf:.2f}, words={len(str(req.message or '').split())} — falling through to legacy")
+            if _orch_entry:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
-                _safe_print(f"[ORCHESTRATOR] >>> ENTERING Cookie orchestrator path (intent={_intent_type_str!r}, reason={_orch_reason})")
+                _safe_print(f"[ORCHESTRATOR] >>> ENTERING agent loop path (intent={_intent_type_str!r}, reason={_orch_reason})")
 
-                # ── Immediate acknowledgment before Cookie initializes ──────
+                # ── Immediate acknowledgment before agent loop initializes ──────
                 # Without this, the user sees silence for several seconds.
                 # The ack is the first token of the response; the orchestrator
                 # answer is appended after. Keep it short and contextual.
@@ -6423,7 +6430,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                     _orch_engine = request.app.state.get_engine(req.thread_id)
 
-                    # Respect frontend model selection for Cookie's brain
+                    # Respect frontend model selection for the agent loop brain
                     import auth as _auth_orch
                     _uid_orch = int(uid) if uid else 1
                     _orch_gen_mode = str(_auth_orch.get_user_setting(_uid_orch, "generation_mode", "cloud_claude") or "cloud_claude").strip()
@@ -6441,7 +6448,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                     # Load conversation history for multi-turn context.
                     # window=2: only the immediately prior exchange — larger windows
-                    # cause Cookie to conflate previous tasks with the current one.
+                    # cause the brain to conflate previous tasks with the current one.
                     _orch_history = []
                     try:
                         _orch_recent = _load_recent_history_messages(
@@ -6478,12 +6485,12 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _etype = _orch_event.get("type", "")
 
                         if _etype == "plan":
-                            # Cookie's first-move declaration — stream it as visible
+                            # Agent loop's first-move declaration — stream it as visible
                             # response tokens so the user sees what's about to happen
                             # before any tools fire.
                             _plan_content = _orch_event.get("content", "")
                             _plan_steps = _orch_event.get("steps", [])
-                            # Phase 4: adaptive depth — Cookie declares estimated_depth
+                            # Phase 4: adaptive depth — brain declares estimated_depth
                             # in its plan. If provided, clamp max_iterations to that
                             # value (floor 3, ceiling 10) so simple tasks don't burn
                             # unnecessary iterations.
@@ -6550,7 +6557,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _tool_ms = _orch_event.get("latency_ms")
                             _tool_reasoning = _orch_event.get("reasoning", "")
                             if _tool_reasoning:
-                                # Phase 3: mid-update — surface Cookie's reasoning
+                                # Phase 3: mid-update — surface the brain's reasoning
                                 # as a thinking stub before the tool row fires.
                                 yield _sse({
                                     "type": "agent_thinking_token",
@@ -6707,6 +6714,19 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "content": _orch_answer,
                             })
 
+                        elif _etype == "followup_suggest":
+                            _followups = _orch_event.get("followups", [])
+                            _is_complete = _orch_event.get("complete", True)
+                            if _followups:
+                                yield _sse({
+                                    "type": "followup_suggest",
+                                    "content": "Suggested follow-ups",
+                                    "metadata": {
+                                        "followups": _followups,
+                                        "complete": _is_complete,
+                                    },
+                                })
+
                         elif _etype == "ask_user":
                             _ask_question = _orch_event.get("content", "")
                             # 1. Yield the question as a visible token
@@ -6801,15 +6821,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         # Check if orchestrator flagged a follow-up worth surfacing
                         if _orch_steps and len(_orch_steps) >= 3:
                             # Heuristic: multi-step runs often have follow-on questions.
-                            # Cookie can explicitly push to outbox via a special tool in future.
+                            # Agent loop can explicitly push to outbox via a special tool in future.
                             # For now, check if the answer ends with a question.
                             _ans_stripped = _orch_answer.strip()
                             if _ans_stripped.endswith("?") and len(_ans_stripped) > 50:
                                 _outbox.push(
                                     thread_id=req.thread_id,
                                     content=_ans_stripped.split("\n")[-1].strip(),
-                                    trigger="cookie_followup",
-                                    metadata={"steps": len(_orch_steps), "source": "cookie_orchestrator"},
+                                    trigger="agent_loop_followup",
+                                    metadata={"steps": len(_orch_steps), "source": "agent_loop"},
                                 )
                     except Exception as _outbox_err:
                         _safe_print(f"[ORCHESTRATOR] Outbox push failed (non-fatal): {_outbox_err}")
@@ -6864,7 +6884,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             "tools_executed": len(_orch_steps) > 0,
                             "response_type": "task",
                             "gates_passed": True,
-                            "generation_source": "cookie_orchestrator",
+                            "generation_source": "agent_loop",
                         },
                     })
                     return

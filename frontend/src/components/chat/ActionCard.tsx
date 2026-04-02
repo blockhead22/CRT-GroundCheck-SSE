@@ -110,7 +110,7 @@ export function ActionCard(props: {
             </svg>
           </button>
         )}
-        {/* ask_user label — shown when Cookie paused with a question */}
+        {/* ask_user label — shown when agent loop paused with a question */}
         {isAskUser && (
           <div className="mb-2 flex items-center gap-1.5 text-[11px] font-mono" style={{ color: 'rgba(212,132,92,0.6)' }}>
             <span>◆</span>
