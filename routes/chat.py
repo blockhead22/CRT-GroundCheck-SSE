@@ -42,6 +42,7 @@ from .models import (
 from personal_agent.runtime_config import get_runtime_config
 from personal_agent.cloud_usage_tracker import log_cloud_call as _track_cloud_call
 from personal_agent.db_utils import get_thread_session_db
+from personal_agent.governed_task import GovernedTask, GovernedTaskStatus, GovernedTaskWaitKind
 from personal_agent.runtime_paths import resolve_agent_runs_db_path
 from personal_agent.stream_events import encode_sse_event, make_stream_event, normalize_stream_event
 
@@ -5174,7 +5175,80 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _bus_emit(evt)
             return encode_sse_event(evt)
 
+        _governed_task: Optional[dict] = None
+        _task_tag_types = {
+            "agent_loop_start",
+            "agent_loop_complete",
+            "agent_checkpoint",
+            "followup_suggest",
+            "done",
+            "error",
+            "tool_start",
+            "tool_result",
+        }
+
+        def _task_meta(extra: Optional[dict] = None) -> dict:
+            meta = dict(extra or {})
+            if _governed_task:
+                meta.setdefault("task_id", _governed_task.get("task_id"))
+                meta.setdefault("task_status", _governed_task.get("status"))
+                if _governed_task.get("wait_kind"):
+                    meta.setdefault("wait_kind", _governed_task.get("wait_kind"))
+                if _governed_task.get("checkpoint_tier"):
+                    meta.setdefault("checkpoint_tier", _governed_task.get("checkpoint_tier"))
+                if _governed_task.get("parent_task_id"):
+                    meta.setdefault("parent_task_id", _governed_task.get("parent_task_id"))
+            return meta
+
+        def _ensure_governed_task(
+            *,
+            objective: str,
+            max_iterations: int = 0,
+            current_iteration: int = 0,
+            remaining_iterations: Optional[int] = None,
+            parent_task_id: Optional[str] = None,
+        ) -> dict:
+            nonlocal _governed_task
+            if _governed_task:
+                return _governed_task
+            _existing = _session_db.get_active_governed_task(req.thread_id)
+            if _existing and str(_existing.get("source") or "") == "agent_loop":
+                _governed_task = _existing
+                return _governed_task
+            _task = GovernedTask.new(
+                thread_id=req.thread_id,
+                objective=objective,
+                source="agent_loop",
+                parent_task_id=parent_task_id,
+                max_iterations=max_iterations,
+                current_iteration=current_iteration,
+                remaining_iterations=remaining_iterations,
+            )
+            _governed_task = _session_db.create_governed_task(_task)
+            return _governed_task
+
+        def _update_governed_task(**changes: Any) -> Optional[dict]:
+            nonlocal _governed_task
+            if not _governed_task:
+                return None
+            _governed_task = _session_db.update_governed_task(str(_governed_task["task_id"]), **changes) or _governed_task
+            return _governed_task
+
+        def _append_governed_event(event_type: str, content: str = "", metadata: Optional[dict] = None) -> None:
+            if not _governed_task:
+                return
+            _session_db.append_governed_task_event(
+                str(_governed_task["task_id"]),
+                req.thread_id,
+                event_type,
+                content=content,
+                metadata=metadata or {},
+            )
+
         def _sse(event: dict) -> str:
+            if _governed_task and event.get("type") in _task_tag_types:
+                event = dict(event)
+                event["metadata"] = _task_meta(event.get("metadata"))
             normalized = normalize_stream_event(event)
             _bus_emit(normalized)
             return encode_sse_event(normalized)
@@ -5203,6 +5277,14 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 try:
                     _suspended = _session_db.get_suspended_loop(req.thread_id)
                     if _suspended:
+                        _governed_task = _session_db.get_active_governed_task(req.thread_id)
+                        if _governed_task and str(_governed_task.get("source") or "") == "agent_loop":
+                            _update_governed_task(
+                                status=GovernedTaskStatus.RUNNING.value,
+                                wait_kind=None,
+                                question=None,
+                            )
+                            _append_governed_event("resume", req.message, {"resume_kind": str(_suspended.get("type") or "ask_user")})
                         _session_db.clear_suspended_loop(req.thread_id)
                         _safe_print(f"[ORCHESTRATOR] Resuming suspended loop — user answered: {req.message[:80]!r}")
 
@@ -5322,6 +5404,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     _rt_ms = _r_event.get("latency_ms")
                                     yield _sse({"type": "tool_start", "content": f"Running {_rt_name}...", "metadata": {"tool_name": _rt_name, "input": _rt_args}})
                                     yield _sse({"type": "tool_result", "content": _rt_result[:500], "metadata": {"tool_name": _rt_name, "status": _rt_status, "step_index": len(_r_steps), "duration_ms": _rt_ms}})
+                                    _append_governed_event("tool_result", _rt_result[:500], {"tool_name": _rt_name, "status": _rt_status, "step_index": len(_r_steps), "duration_ms": _rt_ms})
                                     _r_steps.append({"tool": _rt_name, "args": _rt_args, "status": _rt_status})
 
                                 elif _r_etype == "ask_user":
@@ -5336,6 +5419,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                         "orch_answer_so_far": _r_orch_answer,
                                         "remaining_iterations": getattr(_r_orch, 'max_iterations', 8) - len(_r_steps),
                                     })
+                                    _update_governed_task(
+                                        status=GovernedTaskStatus.AWAITING_USER.value,
+                                        wait_kind=GovernedTaskWaitKind.ASK_USER.value,
+                                        question=_r_question,
+                                        steps_done=list(_r_steps),
+                                        orch_answer_so_far=_r_orch_answer,
+                                        remaining_iterations=max(0, getattr(_r_orch, 'max_iterations', 8) - len(_r_steps)),
+                                    )
+                                    _append_governed_event("ask_user", _r_question, {"task_status": GovernedTaskStatus.AWAITING_USER.value})
                                     yield _sse({"type": "done", "content": _r_orch_answer, "metadata": {"loop_suspended": True, "loop_question": _r_question, "response_type": "ask_user"}})
                                     return
 
@@ -5346,6 +5438,9 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                         _r_orch_answer += _r_resp
 
                             # Done — yield final done event
+                            if _governed_task:
+                                _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _r_orch_answer) or _governed_task
+                                _append_governed_event("done", _r_orch_answer, {"task_status": GovernedTaskStatus.COMPLETED.value})
                             yield _sse({"type": "done", "content": _r_orch_answer, "metadata": {
                                 "response_type": "speech",
                                 "tool_calls": _r_steps,
@@ -5354,6 +5449,9 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             return
 
                         except Exception as _resume_err:
+                            if _governed_task:
+                                _governed_task = _session_db.fail_governed_task(str(_governed_task["task_id"]), str(_resume_err)) or _governed_task
+                                _append_governed_event("error", str(_resume_err), {"task_status": GovernedTaskStatus.FAILED.value})
                             _safe_print(f"[ORCHESTRATOR] Resume failed: {_resume_err}")
                             yield _sse({"type": "token", "content": f"I ran into an issue resuming our conversation: {_resume_err}"})
                             yield _sse({"type": "done", "content": "", "metadata": {"response_type": "error"}})
@@ -5666,8 +5764,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         elif _confirmation is False:
                             # User denied — emit cancellation and return immediately.
                             _cancelled_intent = _pending_cp.get("intent", {})
+                            _governed_task = _session_db.get_active_governed_task(req.thread_id)
                             _session_db.clear_pending_checkpoint(req.thread_id)
                             _session_db.clear_pending_task(req.thread_id)
+                            if _governed_task and str(_governed_task.get("source") or "") == "agent_loop":
+                                _governed_task = _session_db.cancel_governed_task(
+                                    str(_governed_task["task_id"]),
+                                    "Task cancelled. What would you like to do instead?",
+                                ) or _governed_task
+                                _append_governed_event("cancelled", "Task cancelled. What would you like to do instead?", {"task_status": GovernedTaskStatus.CANCELLED.value})
                             logger.info("[STREAM] User denied agentic checkpoint — emitting cancellation")
                             yield _sse({
                                 "type": "task_cancelled",
@@ -6139,6 +6244,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 _safe_print("[AGENT_LOOP_GATE] >>> ENTERING agent tool loop path")
                 try:
                     from personal_agent.agent_tool_loop import AgentToolLoop
+                    _ensure_governed_task(objective=req.message, max_iterations=int(_al_cfg.get("max_iterations", 10) or 10))
+                    _update_governed_task(status=GovernedTaskStatus.RUNNING.value, wait_kind=None, question=None)
+                    _append_governed_event("agent_loop_start", req.message, {"mode": "agent_tool_loop"})
+                    yield _sse({"type": "agent_loop_start", "content": "Agent loop started", "metadata": {"mode": "agent_tool_loop"}})
 
                     _get_llm_al = request.app.state.get_llm_client
                     _llm_client_al = _get_llm_al()
@@ -6284,15 +6393,27 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     checkpoint_tier=_cp_tier,
                                     metadata=_event.get("metadata"),
                                 )
+                                _update_governed_task(
+                                    status=GovernedTaskStatus.AWAITING_CHECKPOINT.value,
+                                    wait_kind=GovernedTaskWaitKind.CHECKPOINT.value,
+                                    checkpoint_tier=_cp_tier,
+                                    question=_event.get("content", ""),
+                                    steps_done=list(_al_steps),
+                                    orch_answer_so_far=_al_answer,
+                                )
+                                _append_governed_event("agent_checkpoint", _event.get("content", ""), _event.get("metadata", {}))
                                 break  # Pause — user must confirm on next message
 
                             elif _event["type"] == "token":
                                 _al_answer += _event.get("content", "")
                             elif _event["type"] == "tool_result":
                                 _al_steps.append(_event.get("metadata", {}))
+                                _update_governed_task(steps_done=list(_al_steps), orch_answer_so_far=_al_answer)
+                                _append_governed_event("tool_result", _event.get("content", ""), _event.get("metadata", {}))
                             elif _event["type"] == "agent_loop_complete":
                                 _al_done = True
                                 _al_generation_source = _event.get("metadata", {}).get("generation_source", "")
+                                _append_governed_event("agent_loop_complete", _event.get("content", ""), _event.get("metadata", {}))
 
                             # Get next event (no checkpoint confirmation in SSE mode)
                             _event = _loop_gen.send(None)
@@ -6327,10 +6448,17 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         "gates_passed": True,
                         "generation_source": _al_generation_source,
                     }
+                    if _governed_task:
+                        _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _al_answer) or _governed_task
+                        _append_governed_event("done", _al_answer, {"task_status": GovernedTaskStatus.COMPLETED.value, **_done_meta_al})
+                    yield _sse({"type": "agent_loop_complete", "content": _al_answer, "metadata": {"generation_source": _al_generation_source}})
                     yield _sse({"type": "done", "content": _al_answer, "metadata": _done_meta_al})
                     return
 
                 except Exception as _al_err:
+                    if _governed_task:
+                        _governed_task = _session_db.fail_governed_task(str(_governed_task["task_id"]), str(_al_err)) or _governed_task
+                        _append_governed_event("error", str(_al_err), {"task_status": GovernedTaskStatus.FAILED.value})
                     _safe_print(f"[AGENT_LOOP_GATE] >>> EXCEPTION in agent loop: {_al_err}")
                     logger.warning("[STREAM] Agent tool loop failed, falling back to legacy path: %s", _al_err, exc_info=True)
                     # Fall through to legacy path
@@ -6399,6 +6527,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             if _orch_entry:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
                 _safe_print(f"[ORCHESTRATOR] >>> ENTERING agent loop path (intent={_intent_type_str!r}, reason={_orch_reason})")
+                _ensure_governed_task(objective=_orch_msg, max_iterations=10)
+                _update_governed_task(status=GovernedTaskStatus.RUNNING.value, wait_kind=None, question=None)
+                _append_governed_event("agent_loop_start", _orch_msg, {"mode": "orchestrator", "reason": _orch_reason})
+                yield _sse({"type": "agent_loop_start", "content": "Agent loop started", "metadata": {"mode": "orchestrator", "reason": _orch_reason}})
 
                 # ── Immediate acknowledgment before agent loop initializes ──────
                 # Without this, the user sees silence for several seconds.
@@ -6586,6 +6718,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "args": _tool_args,
                                 "status": _tool_status,
                             })
+                            _update_governed_task(steps_done=list(_orch_steps), orch_answer_so_far=_orch_answer)
+                            _append_governed_event("tool_result", _tool_result[:500], {
+                                "tool_name": _tool_name,
+                                "status": _tool_status,
+                                "step_index": len(_orch_steps) - 1,
+                                "duration_ms": _tool_ms,
+                            })
 
                         # ── Spawn agent events (Phase 5) ──────────────────
                         elif _etype == "spawn_thinking":
@@ -6628,11 +6767,28 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "args": _orch_event.get("args", {}),
                                 "status": _st_status,
                             })
+                            _update_governed_task(
+                                status=GovernedTaskStatus.AWAITING_SUBTASK.value,
+                                wait_kind=GovernedTaskWaitKind.SUBAGENT.value,
+                                steps_done=list(_orch_steps),
+                                orch_answer_so_far=_orch_answer,
+                            )
+                            _append_governed_event("tool_result", _orch_event.get("result", "")[:300], {
+                                "tool_name": _st_name,
+                                "status": _st_status,
+                                "is_subagent": True,
+                            })
 
                         elif _etype == "spawn_complete":
                             _spawn_res = _orch_event.get("result")
                             _spawn_success = _orch_event.get("success", False)
                             _spawn_ms = _orch_event.get("elapsed_ms", 0)
+                            _update_governed_task(
+                                status=GovernedTaskStatus.RUNNING.value,
+                                wait_kind=None,
+                                steps_done=list(_orch_steps),
+                                orch_answer_so_far=_orch_answer,
+                            )
                             _safe_print(f"[ORCHESTRATOR] Subagent complete: success={_spawn_success}, {_spawn_ms:.0f}ms")
                             yield _sse({
                                 "type": "status",
@@ -6644,6 +6800,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _checkpoint_content = _orch_event.get("content", "")
                             _orch_meta = _orch_event.get("metadata", {})
                             _checkpoint_tier = _orch_meta.get("checkpoint_tier", "plan")
+                            _append_governed_event("agent_checkpoint", _checkpoint_content, _orch_meta)
 
                             # Emit the question/content as a visible token
                             if _checkpoint_content:
@@ -6668,6 +6825,14 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     },
                                 }
                                 _session_db.store_suspended_loop(req.thread_id, _diff_suspended)
+                                _update_governed_task(
+                                    status=GovernedTaskStatus.AWAITING_USER.value,
+                                    wait_kind=GovernedTaskWaitKind.DIFF_WRITE.value,
+                                    checkpoint_tier="file_write",
+                                    question=_checkpoint_content,
+                                    steps_done=list(_orch_steps),
+                                    orch_answer_so_far=_orch_answer,
+                                )
                                 _safe_print(f"[ORCHESTRATOR] Diff checkpoint suspended: {_orch_meta.get('target_path')}")
                                 yield _sse({
                                     "type": "done",
@@ -6697,11 +6862,20 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                     checkpoint_tier="plan",
                                     metadata=_orch_meta,
                                 )
+                                _update_governed_task(
+                                    status=GovernedTaskStatus.AWAITING_CHECKPOINT.value,
+                                    wait_kind=GovernedTaskWaitKind.CHECKPOINT.value,
+                                    checkpoint_tier="plan",
+                                    question=_checkpoint_content,
+                                    steps_done=list(_orch_steps),
+                                    orch_answer_so_far=_orch_answer,
+                                )
                                 _safe_print(f"[ORCHESTRATOR] Checkpoint: plan proposal stored + surfaced")
                                 break
 
                         elif _etype == "response":
                             _orch_answer = _orch_event.get("content", "")
+                            _update_governed_task(orch_answer_so_far=_orch_answer, steps_done=list(_orch_steps))
                             yield _sse({
                                 "type": "token",
                                 "content": _orch_answer,
@@ -6711,6 +6885,16 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             _followups = _orch_event.get("followups", [])
                             _is_complete = _orch_event.get("complete", True)
                             if _followups:
+                                if _is_complete:
+                                    _update_governed_task(pending_followups=list(_followups))
+                                else:
+                                    _update_governed_task(
+                                        status=GovernedTaskStatus.NEEDS_FOLLOWUP.value,
+                                        pending_followups=list(_followups),
+                                        steps_done=list(_orch_steps),
+                                        orch_answer_so_far=_orch_answer,
+                                    )
+                                _append_governed_event("followup_suggest", "Suggested follow-ups", {"followups": _followups, "complete": _is_complete})
                                 yield _sse({
                                     "type": "followup_suggest",
                                     "content": "Suggested follow-ups",
@@ -6738,6 +6922,15 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "remaining_iterations": getattr(_orch, 'max_iterations', 10) - len(_orch_steps),
                             }
                             _session_db.store_suspended_loop(req.thread_id, _suspended_state)
+                            _update_governed_task(
+                                status=GovernedTaskStatus.AWAITING_USER.value,
+                                wait_kind=GovernedTaskWaitKind.ASK_USER.value,
+                                question=_ask_question,
+                                steps_done=list(_orch_steps),
+                                orch_answer_so_far=_orch_answer,
+                                remaining_iterations=max(0, getattr(_orch, 'max_iterations', 10) - len(_orch_steps)),
+                            )
+                            _append_governed_event("ask_user", _ask_question, {"task_status": GovernedTaskStatus.AWAITING_USER.value})
                             _safe_print(f"[ORCHESTRATOR] Loop suspended — ask_user: {_ask_question[:80]!r}")
                             # 3. Yield done with loop_suspended=True so frontend shows reply UI
                             yield _sse({
@@ -6867,6 +7060,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                     # Emit final done event
                     _safe_print(f"[ORCHESTRATOR] Complete: {len(_orch_steps)} steps, answer_len={len(_orch_answer)}")
+                    if _governed_task:
+                        _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _orch_answer) or _governed_task
+                        _append_governed_event("done", _orch_answer, {"task_status": GovernedTaskStatus.COMPLETED.value, "generation_source": "agent_loop"})
+                    yield _sse({"type": "agent_loop_complete", "content": _orch_answer, "metadata": {"generation_source": "agent_loop"}})
                     yield _sse({
                         "type": "done",
                         "content": _orch_answer,
@@ -6883,6 +7080,9 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     return
 
                 except Exception as _orch_err:
+                    if _governed_task:
+                        _governed_task = _session_db.fail_governed_task(str(_governed_task["task_id"]), str(_orch_err)) or _governed_task
+                        _append_governed_event("error", str(_orch_err), {"task_status": GovernedTaskStatus.FAILED.value})
                     _safe_print(f"[ORCHESTRATOR] >>> EXCEPTION: {_orch_err}")
                     import traceback
                     traceback.print_exc()

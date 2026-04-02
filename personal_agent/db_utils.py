@@ -7,6 +7,7 @@ import logging
 from typing import Callable, Dict, TypeVar, Optional
 from contextlib import contextmanager
 
+from .governed_task import GovernedTask, GovernedTaskStatus, GovernedTaskWaitKind
 from .runtime_paths import resolve_thread_sessions_db_path
 
 logger = logging.getLogger(__name__)
@@ -465,6 +466,51 @@ class ThreadSessionDB:
                 created_at REAL NOT NULL,
                 updated_at REAL NOT NULL
             )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS governed_tasks (
+                task_id TEXT PRIMARY KEY,
+                thread_id TEXT NOT NULL,
+                parent_task_id TEXT,
+                source TEXT NOT NULL,
+                objective TEXT NOT NULL,
+                status TEXT NOT NULL,
+                wait_kind TEXT,
+                checkpoint_tier TEXT,
+                current_iteration INTEGER NOT NULL DEFAULT 0,
+                max_iterations INTEGER NOT NULL DEFAULT 0,
+                remaining_iterations INTEGER NOT NULL DEFAULT 0,
+                steps_done_json TEXT,
+                pending_followups_json TEXT,
+                orch_answer_so_far TEXT,
+                question TEXT,
+                result_summary TEXT,
+                error TEXT,
+                created_at REAL NOT NULL,
+                updated_at REAL NOT NULL,
+                expires_at REAL NOT NULL,
+                completed_at REAL,
+                state_json TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_governed_tasks_thread_status
+            ON governed_tasks(thread_id, status, updated_at DESC)
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS governed_task_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task_id TEXT NOT NULL,
+                thread_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                content TEXT,
+                metadata_json TEXT,
+                created_at REAL NOT NULL
+            )
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_governed_task_events_task
+            ON governed_task_events(task_id, created_at DESC)
         """)
 
         # ── Plans system (v2.9.2) ──────────────────────────────────────
@@ -2334,6 +2380,20 @@ class ThreadSessionDB:
 
     def get_pending_task(self, thread_id: str) -> Optional[dict]:
         """Return active task for thread, or None if none exists."""
+        _governed = self.get_active_governed_task(thread_id)
+        if _governed and str(_governed.get("source") or "") == "agent_loop":
+            return {
+                "thread_id": thread_id,
+                "intent_type": str(_governed.get("source") or "agent_loop"),
+                "status": str(_governed.get("status") or "active"),
+                "steps_completed": list(_governed.get("steps_done") or []),
+                "steps_pending": list(_governed.get("pending_followups") or []),
+                "context": dict(_governed.get("state_json") or {}),
+                "credential_keys": [],
+                "task_id": _governed.get("task_id"),
+                "objective": _governed.get("objective", ""),
+                "question": _governed.get("question"),
+            }
         import json
         conn = self._get_connection()
         row = conn.execute(
@@ -2359,22 +2419,325 @@ class ThreadSessionDB:
         conn.commit()
         conn.close()
 
+    @staticmethod
+    def _governed_task_row_to_dict(row: sqlite3.Row) -> dict:
+        d = dict(row)
+        for key, short in (
+            ("steps_done_json", "steps_done"),
+            ("pending_followups_json", "pending_followups"),
+            ("state_json", "state_json"),
+        ):
+            raw = d.pop(key, None)
+            try:
+                if raw:
+                    d[short] = json.loads(raw)
+                else:
+                    d[short] = [] if short in ("steps_done", "pending_followups") else {}
+            except Exception:
+                d[short] = [] if short in ("steps_done", "pending_followups") else {}
+        return d
+
+    def create_governed_task(self, task: GovernedTask | dict) -> dict:
+        record = task.to_record() if isinstance(task, GovernedTask) else dict(task)
+        now = time.time()
+        record.setdefault("created_at", now)
+        record.setdefault("updated_at", now)
+        record.setdefault("expires_at", now + 86400.0)
+        conn = self._get_connection()
+        conn.execute(
+            """
+            UPDATE governed_tasks
+            SET status = ?, completed_at = COALESCE(completed_at, ?), updated_at = ?
+            WHERE thread_id = ?
+              AND status IN (?, ?, ?, ?, ?)
+            """,
+            (
+                GovernedTaskStatus.CANCELLED.value,
+                now,
+                now,
+                record["thread_id"],
+                GovernedTaskStatus.RUNNING.value,
+                GovernedTaskStatus.AWAITING_USER.value,
+                GovernedTaskStatus.AWAITING_CHECKPOINT.value,
+                GovernedTaskStatus.AWAITING_SUBTASK.value,
+                GovernedTaskStatus.NEEDS_FOLLOWUP.value,
+            ),
+        )
+        conn.execute(
+            """
+            INSERT INTO governed_tasks (
+                task_id, thread_id, parent_task_id, source, objective, status, wait_kind,
+                checkpoint_tier, current_iteration, max_iterations, remaining_iterations,
+                steps_done_json, pending_followups_json, orch_answer_so_far, question,
+                result_summary, error, created_at, updated_at, expires_at, completed_at, state_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                record["task_id"],
+                record["thread_id"],
+                record.get("parent_task_id"),
+                record.get("source", "agent_loop"),
+                record.get("objective", ""),
+                record.get("status", GovernedTaskStatus.RUNNING.value),
+                record.get("wait_kind"),
+                record.get("checkpoint_tier"),
+                int(record.get("current_iteration") or 0),
+                int(record.get("max_iterations") or 0),
+                int(record.get("remaining_iterations") or 0),
+                json.dumps(record.get("steps_done", [])),
+                json.dumps(record.get("pending_followups", [])),
+                record.get("orch_answer_so_far", ""),
+                record.get("question"),
+                record.get("result_summary"),
+                record.get("error"),
+                float(record.get("created_at") or now),
+                float(record.get("updated_at") or now),
+                float(record.get("expires_at") or (now + 86400.0)),
+                record.get("completed_at"),
+                json.dumps(record.get("state_json", {})),
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return record
+
+    def get_active_governed_task(self, thread_id: str) -> Optional[dict]:
+        self.clear_expired_governed_tasks()
+        conn = self._get_connection()
+        row = conn.execute(
+            """
+            SELECT * FROM governed_tasks
+            WHERE thread_id = ?
+              AND status IN (?, ?, ?, ?, ?)
+            ORDER BY updated_at DESC
+            LIMIT 1
+            """,
+            (
+                thread_id,
+                GovernedTaskStatus.RUNNING.value,
+                GovernedTaskStatus.AWAITING_USER.value,
+                GovernedTaskStatus.AWAITING_CHECKPOINT.value,
+                GovernedTaskStatus.AWAITING_SUBTASK.value,
+                GovernedTaskStatus.NEEDS_FOLLOWUP.value,
+            ),
+        ).fetchone()
+        conn.close()
+        return self._governed_task_row_to_dict(row) if row else None
+
+    def get_governed_task(self, task_id: str) -> Optional[dict]:
+        conn = self._get_connection()
+        row = conn.execute("SELECT * FROM governed_tasks WHERE task_id = ?", (task_id,)).fetchone()
+        conn.close()
+        return self._governed_task_row_to_dict(row) if row else None
+
+    def update_governed_task(self, task_id: str, **changes) -> Optional[dict]:
+        current = self.get_governed_task(task_id)
+        if not current:
+            return None
+        current.update(changes)
+        current["updated_at"] = time.time()
+        conn = self._get_connection()
+        conn.execute(
+            """
+            UPDATE governed_tasks SET
+                parent_task_id = ?, source = ?, objective = ?, status = ?, wait_kind = ?,
+                checkpoint_tier = ?, current_iteration = ?, max_iterations = ?, remaining_iterations = ?,
+                steps_done_json = ?, pending_followups_json = ?, orch_answer_so_far = ?, question = ?,
+                result_summary = ?, error = ?, updated_at = ?, expires_at = ?, completed_at = ?, state_json = ?
+            WHERE task_id = ?
+            """,
+            (
+                current.get("parent_task_id"),
+                current.get("source", "agent_loop"),
+                current.get("objective", ""),
+                current.get("status", GovernedTaskStatus.RUNNING.value),
+                current.get("wait_kind"),
+                current.get("checkpoint_tier"),
+                int(current.get("current_iteration") or 0),
+                int(current.get("max_iterations") or 0),
+                int(current.get("remaining_iterations") or 0),
+                json.dumps(current.get("steps_done", [])),
+                json.dumps(current.get("pending_followups", [])),
+                current.get("orch_answer_so_far", ""),
+                current.get("question"),
+                current.get("result_summary"),
+                current.get("error"),
+                float(current["updated_at"]),
+                float(current.get("expires_at") or (time.time() + 86400.0)),
+                current.get("completed_at"),
+                json.dumps(current.get("state_json", {})),
+                task_id,
+            ),
+        )
+        conn.commit()
+        conn.close()
+        return current
+
+    def complete_governed_task(self, task_id: str, result_summary: Optional[str] = None) -> Optional[dict]:
+        return self.update_governed_task(
+            task_id,
+            status=GovernedTaskStatus.COMPLETED.value,
+            wait_kind=None,
+            question=None,
+            pending_followups=[],
+            result_summary=result_summary,
+            completed_at=time.time(),
+        )
+
+    def fail_governed_task(self, task_id: str, error: str) -> Optional[dict]:
+        return self.update_governed_task(
+            task_id,
+            status=GovernedTaskStatus.FAILED.value,
+            wait_kind=None,
+            question=None,
+            pending_followups=[],
+            error=error,
+            completed_at=time.time(),
+        )
+
+    def cancel_governed_task(self, task_id: str, result_summary: Optional[str] = None) -> Optional[dict]:
+        return self.update_governed_task(
+            task_id,
+            status=GovernedTaskStatus.CANCELLED.value,
+            wait_kind=None,
+            question=None,
+            pending_followups=[],
+            result_summary=result_summary,
+            completed_at=time.time(),
+        )
+
+    def append_governed_task_event(
+        self,
+        task_id: str,
+        thread_id: str,
+        event_type: str,
+        content: str = "",
+        metadata: Optional[dict] = None,
+    ) -> int:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO governed_task_events
+            (task_id, thread_id, event_type, content, metadata_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (task_id, thread_id, event_type, content, json.dumps(metadata or {}), time.time()),
+        )
+        event_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return int(event_id) if event_id is not None else -1
+
+    def list_governed_task_events(self, task_id: str, limit: int = 100) -> list[dict]:
+        limit = max(1, min(int(limit or 100), 500))
+        conn = self._get_connection()
+        rows = conn.execute(
+            """
+            SELECT id, task_id, thread_id, event_type, content, metadata_json, created_at
+            FROM governed_task_events
+            WHERE task_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+            """,
+            (task_id, limit),
+        ).fetchall()
+        conn.close()
+        out = []
+        for row in rows:
+            try:
+                meta = json.loads(row["metadata_json"] or "{}")
+            except Exception:
+                meta = {}
+            out.append(
+                {
+                    "id": row["id"],
+                    "task_id": row["task_id"],
+                    "thread_id": row["thread_id"],
+                    "event_type": row["event_type"],
+                    "content": row["content"] or "",
+                    "metadata": meta,
+                    "created_at": row["created_at"],
+                }
+            )
+        return out
+
+    def clear_expired_governed_tasks(self) -> int:
+        now = time.time()
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            UPDATE governed_tasks
+            SET status = ?, completed_at = COALESCE(completed_at, ?), updated_at = ?
+            WHERE expires_at < ?
+              AND status IN (?, ?, ?, ?, ?)
+            """,
+            (
+                GovernedTaskStatus.CANCELLED.value,
+                now,
+                now,
+                now,
+                GovernedTaskStatus.RUNNING.value,
+                GovernedTaskStatus.AWAITING_USER.value,
+                GovernedTaskStatus.AWAITING_CHECKPOINT.value,
+                GovernedTaskStatus.AWAITING_SUBTASK.value,
+                GovernedTaskStatus.NEEDS_FOLLOWUP.value,
+            ),
+        )
+        count = cursor.rowcount or 0
+        conn.commit()
+        conn.close()
+        return int(count)
+
     # ── Agentic checkpoint storage (in-memory, ephemeral) ──────────────
 
     def store_pending_checkpoint(self, thread_id: str, intent_data: dict, checkpoint_tier: str, metadata: dict = None) -> None:
         """Store a pending agentic checkpoint awaiting user confirmation."""
-        self._pending_checkpoints[thread_id] = {
+        payload = {
             "intent": intent_data,
             "checkpoint_tier": checkpoint_tier,
             "metadata": metadata or {},
         }
+        active = self.get_active_governed_task(thread_id)
+        if active and str(active.get("source") or "") == "agent_loop":
+            state_json = dict(active.get("state_json") or {})
+            state_json["pending_checkpoint"] = payload
+            self.update_governed_task(
+                str(active["task_id"]),
+                status=GovernedTaskStatus.AWAITING_CHECKPOINT.value,
+                wait_kind=GovernedTaskWaitKind.CHECKPOINT.value,
+                checkpoint_tier=checkpoint_tier,
+                question=(metadata or {}).get("prompt") or active.get("question"),
+                state_json=state_json,
+            )
+            return
+        self._pending_checkpoints[thread_id] = payload
 
     def get_pending_checkpoint(self, thread_id: str) -> Optional[dict]:
         """Return pending checkpoint for thread, or None."""
+        active = self.get_active_governed_task(thread_id)
+        if active and str(active.get("status") or "") == GovernedTaskStatus.AWAITING_CHECKPOINT.value:
+            state_json = dict(active.get("state_json") or {})
+            pending = state_json.get("pending_checkpoint")
+            if isinstance(pending, dict):
+                return pending
         return self._pending_checkpoints.get(thread_id)
 
     def clear_pending_checkpoint(self, thread_id: str) -> None:
         """Remove pending checkpoint for thread."""
+        active = self.get_active_governed_task(thread_id)
+        if active and str(active.get("status") or "") == GovernedTaskStatus.AWAITING_CHECKPOINT.value:
+            state_json = dict(active.get("state_json") or {})
+            state_json.pop("pending_checkpoint", None)
+            self.update_governed_task(
+                str(active["task_id"]),
+                status=GovernedTaskStatus.RUNNING.value,
+                wait_kind=None,
+                checkpoint_tier=None,
+                question=None,
+                state_json=state_json,
+            )
         self._pending_checkpoints.pop(thread_id, None)
 
     # ── Cookie suspended loop state ───────────────────────────────────
@@ -2385,18 +2748,51 @@ class ThreadSessionDB:
         """Persist Cookie loop state after ask_user pause.
         state keys: objective, steps_done, iteration, question, orch_answer_so_far
         """
+        active = self.get_active_governed_task(thread_id)
+        if active and str(active.get("source") or "") == "agent_loop":
+            state_json = dict(active.get("state_json") or {})
+            state_json["suspended_loop"] = dict(state or {})
+            wait_kind = GovernedTaskWaitKind.DIFF_WRITE.value if str((state or {}).get("type") or "") == "diff_write" else GovernedTaskWaitKind.ASK_USER.value
+            self.update_governed_task(
+                str(active["task_id"]),
+                status=GovernedTaskStatus.AWAITING_USER.value,
+                wait_kind=wait_kind,
+                question=(state or {}).get("question"),
+                orch_answer_so_far=(state or {}).get("orch_answer_so_far", active.get("orch_answer_so_far", "")),
+                steps_done=list((state or {}).get("steps_done", active.get("steps_done", [])) or []),
+                remaining_iterations=int((state or {}).get("remaining_iterations", active.get("remaining_iterations", 0)) or 0),
+                state_json=state_json,
+            )
+            return
         if not hasattr(self, '_suspended_loops'):
             self._suspended_loops: dict = {}
         self._suspended_loops[thread_id] = state
 
     def get_suspended_loop(self, thread_id: str) -> Optional[dict]:
         """Return suspended loop state for thread, or None."""
+        active = self.get_active_governed_task(thread_id)
+        if active and str(active.get("status") or "") == GovernedTaskStatus.AWAITING_USER.value:
+            state_json = dict(active.get("state_json") or {})
+            suspended = state_json.get("suspended_loop")
+            if isinstance(suspended, dict):
+                return suspended
         if not hasattr(self, '_suspended_loops'):
             return None
         return self._suspended_loops.get(thread_id)
 
     def clear_suspended_loop(self, thread_id: str) -> None:
         """Remove suspended loop state for thread."""
+        active = self.get_active_governed_task(thread_id)
+        if active and str(active.get("status") or "") == GovernedTaskStatus.AWAITING_USER.value:
+            state_json = dict(active.get("state_json") or {})
+            state_json.pop("suspended_loop", None)
+            self.update_governed_task(
+                str(active["task_id"]),
+                status=GovernedTaskStatus.RUNNING.value,
+                wait_kind=None,
+                question=None,
+                state_json=state_json,
+            )
         if hasattr(self, '_suspended_loops'):
             self._suspended_loops.pop(thread_id, None)
 

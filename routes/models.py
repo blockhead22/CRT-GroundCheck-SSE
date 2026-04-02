@@ -816,6 +816,26 @@ class AuthMeResponse(BaseModel):
     user: Optional[AuthUserResponse] = None
 
 
+class ActiveGovernedTaskItem(BaseModel):
+    task_id: str
+    thread_id: str
+    source: str
+    objective: str
+    status: str
+    wait_kind: Optional[str] = None
+    checkpoint_tier: Optional[str] = None
+    current_iteration: int = 0
+    max_iterations: int = 0
+    remaining_iterations: int = 0
+    question: Optional[str] = None
+    pending_followups: List[str] = Field(default_factory=list)
+    updated_at: float
+
+
+class ActiveGovernedTaskResponse(BaseModel):
+    task: Optional[ActiveGovernedTaskItem] = None
+
+
 class ChatThreadModel(BaseModel):
     id: str
     title: str
