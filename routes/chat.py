@@ -3657,12 +3657,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _auth_cg.get_user_setting(_uid_cg, "cloud_generation_fallback", "true")
             ).lower() in ("true", "1", "yes", "on")
             # Respect escalation policy — "local_only" blocks cloud fallback
+            # EXCEPT when user explicitly selected cloud_claude as generation_mode.
+            # That's a direct instruction to use cloud; don't block it.
             _esc_policy_setting = str(
                 _auth_cg.get_user_setting(_uid_cg, "cloud_escalation_policy", "conservative")
             ).lower().strip()
-            if _esc_policy_setting == "local_only":
+            _user_gen_mode = str(_auth_cg.get_user_setting(_uid_cg, "generation_mode", "") or "").strip()
+            if _esc_policy_setting == "local_only" and _user_gen_mode not in ("cloud_claude", "cloud_openai"):
                 _cloud_gen_enabled = False
                 print("[GENERATION] fallback: blocked by escalation policy (local_only)")
+            elif _esc_policy_setting == "local_only" and _user_gen_mode in ("cloud_claude", "cloud_openai"):
+                print(f"[GENERATION] fallback: escalation policy is local_only but generation_mode={_user_gen_mode}, allowing cloud fallback")
             if _cloud_gen_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_gen_svc = get_cloud_feature_service()
@@ -4545,12 +4550,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                     _auth_cg2.get_user_setting(_uid_cg2, "cloud_generation_fallback", "true")
                 ).lower() in ("true", "1", "yes", "on")
                 # Respect escalation policy — "local_only" blocks cloud fallback
+                # EXCEPT when user explicitly selected cloud generation mode
                 _esc_policy_setting2 = str(
                     _auth_cg2.get_user_setting(_uid_cg2, "cloud_escalation_policy", "conservative")
                 ).lower().strip()
-                if _esc_policy_setting2 == "local_only":
+                _user_gen_mode2 = str(_auth_cg2.get_user_setting(_uid_cg2, "generation_mode", "") or "").strip()
+                if _esc_policy_setting2 == "local_only" and _user_gen_mode2 not in ("cloud_claude", "cloud_openai"):
                     _cloud_gen_enabled2 = False
                     print("[GENERATION] late_fallback: blocked by escalation policy (local_only)")
+                elif _esc_policy_setting2 == "local_only" and _user_gen_mode2 in ("cloud_claude", "cloud_openai"):
+                    print(f"[GENERATION] late_fallback: escalation is local_only but generation_mode={_user_gen_mode2}, allowing")
                 if _cloud_gen_enabled2:
                     from personal_agent.cloud_features import get_cloud_feature_service
                     _cloud_gen_svc2 = get_cloud_feature_service()
@@ -7407,10 +7416,10 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             yield _phase('plan', 'Processing')
 
             # ── Run pipeline in background, emit real status events ──────
-            result_q: _queue.Queue = _queue.Queue()
-            err_q: _queue.Queue = _queue.Queue()
-            status_q: _queue.Queue = _queue.Queue()
-            event_q: _queue.Queue = _queue.Queue()
+            result_q: _queue_mod.Queue = _queue_mod.Queue()
+            err_q: _queue_mod.Queue = _queue_mod.Queue()
+            status_q: _queue_mod.Queue = _queue_mod.Queue()
+            event_q: _queue_mod.Queue = _queue_mod.Queue()
 
             def _run():
                 # Set the pipeline status queue so _emit_pipeline_status works
@@ -7425,6 +7434,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             t = threading.Thread(target=_run, daemon=True)
             t.start()
 
+            import time as _time
             _last_status_t = _time.monotonic()
             _fallback_idx = 0
             _fallback_statuses = ['reasoning', 'planning response', 'verifying', 'drafting']

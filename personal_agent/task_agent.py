@@ -126,7 +126,21 @@ _API_KEY_RE = re.compile(
 _CONTINUATION_RE = re.compile(
     r"\b(follow\s+up|continue\s+(the|this)|finish\s+(the|this)|"
     r"next\s+step|what(?:'s|\s+is)\s+next|complete\s+(the|this)|"
-    r"pick\s+up\s+where|proceed\s+with|resume\s+(the|this))\b",
+    r"pick\s+up\s+where|proceed\s+with|resume\s+(the|this)|"
+    r"keep\s+going|go\s+ahead|continue\s+working|keep\s+working|carry\s+on)\b",
+    re.IGNORECASE,
+)
+
+_AGENTIC_WORK_RE = re.compile(
+    r"\b("
+    r"break\s+(?:this|the|it|work)\b.*\b(?:steps?|phases?)|"
+    r"phase\s+by\s+phase|"
+    r"keep\s+going\b.*\b(?:until|fully|complete|done|finished)|"
+    r"continue\s+working|keep\s+working|continue\s+with\s+the\s+(?:work|refactor|implementation|task)|"
+    r"draft\s+(?:the\s+)?(?:file\s+)?changes?|"
+    r"ask\s+me\s+before\s+writing|"
+    r"without\s+waiting\s+for\s+me"
+    r")\b",
     re.IGNORECASE,
 )
 
@@ -884,6 +898,15 @@ def classify_intent(
             )
 
     # ── 1b-desktop. Desktop action — "open chrome", "click on" etc. (Sprint 11) ──
+    if _AGENTIC_WORK_RE.search(message):
+        return TaskIntent(
+            route="task",
+            intent_type="multi_step",
+            slots={"raw_message": message},
+            confidence=0.91,
+            reason="agentic_work_pattern",
+        )
+
     if _DESKTOP_ACTION_RE.search(message) and not _DESKTOP_CONVERSATIONAL_RE.search(message):
         return TaskIntent(
             route="task",
@@ -1355,9 +1378,19 @@ def classify_intent_hybrid(
 
     # 0b-pre. Conversational pre-filter: intercept greetings/opinions/reflections
     # MUST run before cache lookup so stale LLM misclassifications can't replay.
+    _agentic_followup_hint = bool(
+        active_task
+        and _CONTINUATION_RE.search(message if len(message) <= 200 else message[:120])
+    )
+    _agentic_work_hint = bool(_AGENTIC_WORK_RE.search(message))
     try:
         from personal_agent.llm_intent_router import LLMIntentRouter as _RouterCls
-        if _RouterCls._is_conversational(_RouterCls, message) and not attached_paths:
+        if (
+            _RouterCls._is_conversational(_RouterCls, message)
+            and not attached_paths
+            and not _agentic_followup_hint
+            and not _agentic_work_hint
+        ):
             logger.info("[INTENT_ROUTER] Conversational pre-filter (task_agent): '%s'", message[:60])
             return TaskIntent(
                 route="conversational",
@@ -1519,17 +1552,49 @@ def _try_llm_router(
             attached_paths=attached_paths,
         )
         if result is not None:
-            return result
+            # Check if this is a real classification or a failed-local masquerading
+            # as conversational. When Ollama is unreachable, the LLM returns nothing
+            # and the router interprets silence as "conversational" — but that's a
+            # failure, not a real classification. Detect it and fall through to cloud.
+            _is_fake_conversational = (
+                result.route == "conversational"
+                and result.intent_type == "conversational"
+                and getattr(result, "source", "") == "llm_local"
+                and not result.slots.get("llm_response", "").strip()
+            )
+            if not _is_fake_conversational:
+                return result
+            logger.info("[LLM_ROUTER] Local returned empty conversational (Ollama likely down), trying cloud fallback")
     except Exception as e:
         logger.warning("[LLM_ROUTER] Local classify() failed: %s", e)
 
     # ── Cloud fallback: if local failed (Ollama unreachable/timeout), try cloud ──
-    if routing_mode not in ("cloud_only", "local_only"):
+    # This is intent classification only — not generation. The cloud_claude_enabled
+    # setting governs generation; intent routing should always have a fallback
+    # so the system doesn't collapse when Ollama is offline.
+    if routing_mode != "local_only":
         try:
-            cloud_router = _get_llm_router("cloud_only")
-            if cloud_router is not None:
-                logger.info("[LLM_ROUTER] Local failed, falling back to cloud intent classification")
-                return cloud_router.classify(message, attached_paths=attached_paths)
+            _openai_key = os.environ.get("OPENAI_API_KEY")
+            if _openai_key:
+                logger.info("[LLM_ROUTER] Local failed, falling back to OpenAI for intent classification")
+                from personal_agent.litellm_client import get_default_llm_client
+                _cloud_client = get_default_llm_client("gpt-4o-mini")
+                # Override the client's fallback policy to cloud_only for this call
+                _orig_policy = getattr(_cloud_client, "fallback_policy", None)
+                _cloud_client.fallback_policy = "cloud_only"
+                try:
+                    from personal_agent.llm_intent_router import LLMIntentRouter, create_local_router
+                    from personal_agent.tool_registry import get_routing_schemas
+                    _cloud_router = LLMIntentRouter(
+                        llm_client=_cloud_client,
+                        tool_schemas=get_routing_schemas(),
+                        source_label="llm_cloud_fallback",
+                        max_tokens=300,
+                    )
+                    _cloud_router.INTENT_TIMEOUT = 15  # Cloud gets a bit more time
+                    return _cloud_router.classify(message, attached_paths=attached_paths)
+                finally:
+                    _cloud_client.fallback_policy = _orig_policy
         except Exception as e2:
             logger.warning("[LLM_ROUTER] Cloud fallback classify() also failed: %s", e2)
 

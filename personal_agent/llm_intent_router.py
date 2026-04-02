@@ -241,6 +241,17 @@ class LLMIntentRouter:
         "hello aether, ", "ok aether, ", "okay aether, ",
     )
 
+    _TASK_LIKE_PATTERNS: tuple = (
+        re.compile(r"\bbreak\s+(?:this|the|it|work)\b.*\b(?:steps?|phases?)\b", re.IGNORECASE),
+        re.compile(r"\bphase\s+by\s+phase\b", re.IGNORECASE),
+        re.compile(r"\bdraft\s+(?:the\s+)?(?:file\s+)?changes?\b", re.IGNORECASE),
+        re.compile(r"\bask\s+me\s+before\s+writing\b", re.IGNORECASE),
+        re.compile(
+            r"\b(?:keep\s+going|continue|go\s+ahead)\b.*\b(?:phase|step|work|working|refactor|implementation|task|complete|done|finished|until)\b",
+            re.IGNORECASE,
+        ),
+    )
+
     def _is_conversational(self, message: str) -> bool:
         """Return True if the message is clearly conversational (no tool needed)."""
         # Ignore messages with file attachments — they likely need file_read
@@ -256,6 +267,9 @@ class LLMIntentRouter:
             if normalized.startswith(agent_pfx):
                 normalized = normalized[len(agent_pfx):].strip()
                 break
+        for task_pat in self._TASK_LIKE_PATTERNS:
+            if task_pat.search(normalized):
+                return False
         if normalized in self._CONVERSATIONAL_EXACT:
             return True
         for prefix in self._CONVERSATIONAL_PREFIXES:

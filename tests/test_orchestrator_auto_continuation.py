@@ -112,8 +112,15 @@ def test_orchestrator_auto_continues_to_completion(monkeypatch, tmp_path: Path) 
     events = _parse_sse_events(list(run_orchestrator(runtime, SimpleNamespace(intent_type="research", route="task"), "layer4", None)))
     done = next(event for event in events if event["type"] == "done")
 
+    assert any(
+        event["type"] == "status"
+        and event["content"] == "Phase incomplete; received 1 follow-up option(s)"
+        for event in events
+    )
     assert any(event["type"] == "status" and "Continuing with: continue phase 2" in event["content"] for event in events)
     assert done["metadata"]["continuations"] == 1
+    assert done["metadata"]["last_phase_complete"] is True
+    assert done["metadata"]["pending_followup_count"] == 1
     assert "Phase 1." in done["content"]
     assert "Phase 2 done." in done["content"]
     assert db.get_active_governed_task("auto-cont") is None
@@ -147,12 +154,20 @@ def test_orchestrator_auto_continuation_limit_leaves_needs_followup(monkeypatch,
     events = _parse_sse_events(list(run_orchestrator(runtime, SimpleNamespace(intent_type="research", route="task"), "layer4", None)))
     done = next(event for event in reversed(events) if event["type"] == "done")
 
+    assert any(
+        event["type"] == "status"
+        and event["content"] == "Phase incomplete; received 1 follow-up option(s)"
+        for event in events
+    )
     assert any(event["type"] == "status" and event["content"] == "Auto-continuation limit reached" for event in events)
     assert any(
         event["type"] == "followup_suggest"
         and event.get("metadata", {}).get("auto_continuation_limit_reached") is True
         for event in events
     )
+    assert done["metadata"]["continuations"] == 3
+    assert done["metadata"]["last_phase_complete"] is False
+    assert done["metadata"]["pending_followup_count"] == 1
     assert done["metadata"]["auto_continuation_limit_reached"] is True
 
     active = db.get_active_governed_task("auto-cont")

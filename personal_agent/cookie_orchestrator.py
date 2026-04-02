@@ -24,7 +24,7 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List, Optional, Set
 
 # Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -450,6 +450,27 @@ Rules:
 11. SEARCH/LIST EFFICIENCY: For tasks that ask you to find, list, or summarize things (TODOs, functions, patterns, etc.), respond DIRECTLY from search_code results — do NOT verify by reading individual files afterward unless the user explicitly asked to see file contents. If search_code returns matching lines, that IS the answer. Reading the same files again wastes iterations and causes alignment drift.
 12. RESPONSE DEPTH: When responding, be thorough and detailed. Include specific evidence from your tool calls — file names, line numbers, code snippets, memory contents, search results. Don't summarize when you can show. The user wants depth and substance, not executive summaries. If you read a file, reference what you found in it. If you searched memory, quote the relevant entries. Aim for a response that teaches the user something they didn't already know.
 """
+
+KNOWN_ORCHESTRATOR_TOOLS: frozenset[str] = frozenset({
+    "file_read",
+    "file_write",
+    "dir_list",
+    "search_code",
+    "memory_recall",
+    "memory_store",
+    "web_search",
+    "shell_exec",
+    "code_intel",
+    "fetch_url",
+    "run_python",
+    "diff_file",
+    "image_read",
+    "plan_create",
+    "introspect",
+    "gpt_log_search",
+    "gpt_log_context",
+    "gpt_log_promote",
+})
 
 
 # ---------------------------------------------------------------------------
@@ -1364,13 +1385,7 @@ class Orchestrator:
 
     # Known tool names — if the brain puts one as the action directly,
     # normalize to {"action": "tool_call", "tool": "<name>"}
-    _KNOWN_TOOLS = {
-        "file_read", "file_write", "dir_list", "search_code",
-        "memory_recall", "memory_store", "web_search", "shell_exec",
-        "code_intel", "fetch_url", "run_python", "diff_file",
-        "image_read", "plan_create", "introspect",
-        "gpt_log_search", "gpt_log_context",
-    }
+    _KNOWN_TOOLS = KNOWN_ORCHESTRATOR_TOOLS
 
     def _normalize_action(self, decision: Dict[str, Any]) -> Dict[str, Any]:
         """Fix common brain format errors — e.g. action='gpt_log_search' instead of action='tool_call'."""
@@ -1380,6 +1395,19 @@ class Orchestrator:
             decision["tool"] = action
             decision["action"] = "tool_call"
         return decision
+
+    @staticmethod
+    def _tool_guidance(visible_tools: Set[str], requested_tool: str = "") -> str:
+        sorted_tools = ", ".join(sorted(visible_tools)) if visible_tools else "(none)"
+        if requested_tool:
+            return (
+                f"Invalid tool '{requested_tool}'. Valid tool names for this run: {sorted_tools}. "
+                f"Use EXACT tool names only. Do not invent aliases like Read, Write, Search, or Bash."
+            )
+        return (
+            f"Valid tool names for this run: {sorted_tools}. "
+            f"Use EXACT tool names only. Do not invent aliases."
+        )
 
     def run(self, objective: str,
             conversation_history: Optional[List[str]] = None,
@@ -1418,6 +1446,7 @@ class Orchestrator:
             from personal_agent.tool_gate import get_tools_for_intent, filter_orchestrator_tools
             _allowed_tools = get_tools_for_intent(intent_type or "task", route)
             _base_system = filter_orchestrator_tools(ORCHESTRATOR_SYSTEM, _allowed_tools)
+            _base_system += "\n\n" + self._tool_guidance(_allowed_tools)
             print(f"[TOOL_GATE] intent={intent_type} → {len(_allowed_tools)} tools visible")
         except Exception as _tg_err:
             print(f"[TOOL_GATE] Failed (non-fatal): {_tg_err}")
@@ -1496,12 +1525,7 @@ class Orchestrator:
             # Normalize: some models (GPT-4o) emit {"action": "introspect"} instead
             # of {"action": "tool_call", "tool": "introspect"}. If action matches a
             # known tool name, fix it up.
-            _KNOWN_TOOLS = frozenset({
-                "file_read", "dir_list", "search_code", "memory_recall",
-                "web_search", "shell_exec", "file_write", "code_intel",
-                "fetch_url", "memory_store", "run_python", "diff_file",
-                "image_read", "plan_create", "introspect",
-            })
+            _KNOWN_TOOLS = KNOWN_ORCHESTRATOR_TOOLS
             if action in _KNOWN_TOOLS:
                 decision["tool"] = action
                 decision.setdefault("args", {})
@@ -1597,6 +1621,27 @@ class Orchestrator:
             elif action == "tool_call":
                 tool = decision.get("tool", "")
                 args = decision.get("args", {})
+                _visible_tools = set(_allowed_tools) if "_allowed_tools" in locals() else set(KNOWN_ORCHESTRATOR_TOOLS)
+
+                if tool not in _visible_tools:
+                    _tool_feedback = self._tool_guidance(_visible_tools, requested_tool=tool)
+                    print(f"  [TOOL_REJECT] {_tool_feedback}")
+                    state.thinking.append(f"[tool_reject] {_tool_feedback}")
+                    _align = score_alignment(objective, reasoning)
+                    run_log.add_step(LogStep(
+                        iteration=iteration,
+                        action="tool_call",
+                        tool=tool,
+                        args=args,
+                        reasoning=reasoning[:300],
+                        result_preview=_tool_feedback[:500],
+                        status="error",
+                        latency_ms=0,
+                        intent_alignment=_align,
+                    ))
+                    last_result = _tool_feedback
+                    iteration += 1
+                    continue
 
                 # Extract expectation from reasoning BEFORE execution
                 _expectation = None

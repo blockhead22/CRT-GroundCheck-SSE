@@ -163,6 +163,9 @@ class UnifiedLLMClient:
             "ollama_base_url",
             os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         )
+        # Track Ollama reachability. After a connection failure, skip Ollama
+        # on subsequent calls to avoid repeated 120s timeouts. Resets on success.
+        self._ollama_dead = False
         self.cloud_model = cfg.get("cloud_model", "")
         self.cloud_api_key = cfg.get("cloud_api_key", "")
         self.cloud_base_url = cfg.get("cloud_base_url", "")
@@ -461,6 +464,11 @@ class UnifiedLLMClient:
         if tools:
             payload["tools"] = tools
 
+        # Skip if Ollama is known-dead from a previous call this session
+        if self._ollama_dead:
+            print("[LITELLM] Ollama known-dead, skipping direct call")
+            return None
+
         try:
             if timeout_override is not None:
                 _direct_timeout = timeout_override
@@ -495,6 +503,9 @@ class UnifiedLLMClient:
                         "arguments": fn.get("arguments", {}),
                     })
 
+            # Ollama responded — mark as alive (may have come back online)
+            self._ollama_dead = False
+
             result = {
                 "tool_calls": parsed_calls,
                 "content": content,
@@ -513,6 +524,11 @@ class UnifiedLLMClient:
 
         except Exception as e:
             print(f"[LITELLM] Ollama direct call error: {e}")
+            # Mark Ollama as dead so subsequent calls skip immediately
+            # instead of waiting for another timeout
+            if "timed out" in str(e).lower() or "connection" in str(e).lower():
+                self._ollama_dead = True
+                print("[LITELLM] Marking Ollama as unreachable for this session")
             return None
 
     @staticmethod
@@ -813,6 +829,12 @@ class UnifiedLLMClient:
             result = self._ollama_direct_tool_call(messages, tools, max_tokens, temperature, model_name, timeout_override=timeout_override)
             if result is not None:
                 return result
+            # If we used a short timeout (intent classification) and direct call failed,
+            # skip the litellm fallback — it has its own long timeout and Ollama is
+            # clearly unreachable. Let the caller handle cloud fallback instead.
+            if timeout_override is not None and timeout_override < 30:
+                print(f"[LITELLM] Ollama unreachable (fast timeout={timeout_override}s), skipping litellm retry")
+                return None
             # Fallback to litellm path
             resp = self._call("local", model_name, messages, max_tokens,
                               temperature, tools=tools)
@@ -1011,10 +1033,15 @@ class UnifiedLLMClient:
         policy = self.fallback_policy or "cloud_to_local"
 
         # Respect cloud_claude_enabled setting — downgrade cloud policies to local_only
+        # EXCEPT when generation_mode is explicitly cloud (user selected cloud in UI)
         if policy in ("local_to_cloud", "cloud_only", "cloud_to_local"):
             try:
                 import auth as _auth_mod
                 _cloud_on = str(_auth_mod.get_user_setting(1, "cloud_claude_enabled", "false")).lower() in ("true", "1", "yes", "on")
+                _gen_mode = str(_auth_mod.get_user_setting(1, "generation_mode", "") or "").strip()
+                # If user explicitly selected cloud generation, don't block it
+                if _gen_mode in ("cloud_claude", "cloud_openai"):
+                    _cloud_on = True
                 if not _cloud_on:
                     print(f"[LITELLM] Cloud disabled in settings, overriding {policy} → local_only")
                     policy = "local_only"
@@ -1042,6 +1069,9 @@ class UnifiedLLMClient:
             )
             if result:
                 return result
+            # If fast timeout was set (intent classification), don't retry — Ollama is down
+            if timeout is not None and timeout < 30:
+                return {"tool_calls": [], "content": "", "used_tools": False, "generation_source": "local_failed"}
             # Local tool call failed — retry without tools for a plain text answer
             print("[LITELLM] Local tool call failed, retrying without tools for text answer")
             try:

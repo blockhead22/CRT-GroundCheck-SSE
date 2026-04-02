@@ -429,10 +429,18 @@ def run_orchestrator(
                         if str(item).strip()
                     ]
                     phase_complete = bool(orch_event.get("complete", True))
+                    runtime.safe_print(
+                        f"[ORCHESTRATOR] followup_suggest received: complete={phase_complete} "
+                        f"count={len(pending_followups)} followups={pending_followups!r}"
+                    )
                     if pending_followups:
                         if phase_complete:
                             runtime.update_governed_task(pending_followups=list(pending_followups))
                         else:
+                            runtime.safe_print(
+                                f"[ORCHESTRATOR] complete=false detected; "
+                                f"evaluating auto-continuation with {len(pending_followups)} follow-up(s)"
+                            )
                             runtime.update_governed_task(
                                 status=GovernedTaskStatus.NEEDS_FOLLOWUP.value,
                                 pending_followups=list(pending_followups),
@@ -444,6 +452,10 @@ def run_orchestrator(
                             "Suggested follow-ups",
                             {"followups": pending_followups, "complete": phase_complete},
                         )
+                        if not phase_complete:
+                            yield runtime.emit_status(
+                                f"Phase incomplete; received {len(pending_followups)} follow-up option(s)"
+                            )
                         yield runtime.emit(
                             {
                                 "type": "followup_suggest",
@@ -678,6 +690,9 @@ def run_orchestrator(
                     "response_type": "task",
                     "gates_passed": True,
                     "generation_source": "agent_loop",
+                    "continuations": continuation_count,
+                    "last_phase_complete": phase_complete,
+                    "pending_followup_count": len(pending_followups),
                     "auto_continuation_limit_reached": continuation_count >= _MAX_AUTO_CONTINUATIONS,
                 }
                 yield runtime.emit({"type": "done", "content": accumulated_answer, "metadata": done_meta})
@@ -716,6 +731,8 @@ def run_orchestrator(
                 "gates_passed": True,
                 "generation_source": "agent_loop",
                 "continuations": continuation_count,
+                "last_phase_complete": phase_complete,
+                "pending_followup_count": len(pending_followups),
             }
             yield runtime.emit({"type": "done", "content": accumulated_answer, "metadata": done_meta})
             return StreamTerminalResult(terminal=True, handled=True, metadata=done_meta)
