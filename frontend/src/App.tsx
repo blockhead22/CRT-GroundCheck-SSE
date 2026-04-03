@@ -474,6 +474,10 @@ export default function App() {
 
   // Sprint 4 — notification SSE stream for commitment reminders
   useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
+    return
     const base = getEffectiveApiBaseUrl()
     let es: EventSource | null = null
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
@@ -561,6 +565,128 @@ export default function App() {
       es?.close()
       if (retryTimeout) clearTimeout(retryTimeout)
     }
+  }, [selectedThreadId])
+
+  // Notification lane now rides the shared WS connection
+  useEffect(() => {
+    const socket = getAetherSocket()
+    const unsubscribe = socket.onAny((event) => {
+      if (event.type !== 'notification') return
+      const subtype = String(event.subtype || '')
+      const metadata = (event.metadata as Record<string, unknown> | undefined) ?? {}
+      const targetThreadId =
+        String(event.thread_id || metadata.thread_id || selectedThreadId || '').trim() || selectedThreadId
+      if (!targetThreadId) return
+
+      if (subtype === 'commitment') {
+        if (Notification.permission === 'granted') {
+          new Notification('Aether Reminder', {
+            body: String(event.content || ''),
+            icon: '/favicon.ico',
+          })
+        }
+        const notifMsg = {
+          id: newId('m'),
+          role: 'assistant' as const,
+          text: `Reminder: ${String(event.content || '')}`,
+          createdAt: Date.now(),
+          crt: {
+            response_type: 'notification',
+            notification_type: 'commitment',
+            commitment_id: metadata.commitment_id as string | undefined,
+            priority: metadata.priority as string | undefined,
+            consequence: metadata.consequence as string | undefined,
+          },
+        }
+        setThreads((prev) => {
+          const existing = prev.find((thread) => thread.id === targetThreadId)
+          if (!existing) {
+            return [
+              {
+                id: targetThreadId,
+                title: `Reminder ${targetThreadId.slice(0, 8)}`,
+                updatedAt: Date.now(),
+                messages: [notifMsg],
+                unreadCount: targetThreadId === selectedThreadId ? 0 : 1,
+                hasProactive: targetThreadId !== selectedThreadId,
+                lastProactiveAt: Date.now(),
+              },
+              ...prev,
+            ]
+          }
+          const next = prev.map((thread) => {
+            if (thread.id !== targetThreadId) return thread
+            const isSelected = thread.id === selectedThreadId
+            return {
+              ...thread,
+              updatedAt: Date.now(),
+              messages: [...thread.messages, notifMsg],
+              unreadCount: isSelected ? 0 : Number(thread.unreadCount ?? 0) + 1,
+              hasProactive: !isSelected,
+              lastProactiveAt: Date.now(),
+            }
+          })
+          next.sort((a, b) => b.updatedAt - a.updatedAt)
+          return next
+        })
+        return
+      }
+
+      if (subtype === 'heartbeat_contradiction') {
+        setMascotAnimation('surprised')
+        setTimeout(() => setMascotAnimation('idle'), 500)
+        if (Notification.permission === 'granted') {
+          new Notification('Aether noticed something', {
+            body: String(event.content || '').slice(0, 200),
+            icon: '/favicon.ico',
+          })
+        }
+        const contraMsg = {
+          id: newId('m'),
+          role: 'assistant' as const,
+          text: `**Contradiction detected:** ${String(event.content || '')}`,
+          createdAt: Date.now(),
+          crt: {
+            response_type: 'notification',
+            notification_type: 'contradiction',
+            drift_score: metadata.drift_score as number | undefined,
+            existing_memory_id: metadata.existing_memory_id as string | undefined,
+          },
+        }
+        setThreads((prev) => {
+          const existing = prev.find((thread) => thread.id === targetThreadId)
+          if (!existing) {
+            return [
+              {
+                id: targetThreadId,
+                title: `Notice ${targetThreadId.slice(0, 8)}`,
+                updatedAt: Date.now(),
+                messages: [contraMsg],
+                unreadCount: targetThreadId === selectedThreadId ? 0 : 1,
+                hasProactive: targetThreadId !== selectedThreadId,
+                lastProactiveAt: Date.now(),
+              },
+              ...prev,
+            ]
+          }
+          const next = prev.map((thread) => {
+            if (thread.id !== targetThreadId) return thread
+            const isSelected = thread.id === selectedThreadId
+            return {
+              ...thread,
+              updatedAt: Date.now(),
+              messages: [...thread.messages, contraMsg],
+              unreadCount: isSelected ? 0 : Number(thread.unreadCount ?? 0) + 1,
+              hasProactive: !isSelected,
+              lastProactiveAt: Date.now(),
+            }
+          })
+          next.sort((a, b) => b.updatedAt - a.updatedAt)
+          return next
+        })
+      }
+    })
+    return unsubscribe
   }, [selectedThreadId])
 
   // Sync threads to server when logged in

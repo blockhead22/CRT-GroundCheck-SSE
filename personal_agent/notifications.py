@@ -72,8 +72,10 @@ async def emit_commitment_notification(commitment: Any, user_id: str = "default"
     event = {
         "type": "commitment_notification",
         "content": commitment.description,
+        "thread_id": getattr(commitment, "thread_id", None),
         "metadata": {
             "commitment_id": commitment.commitment_id,
+            "thread_id": getattr(commitment, "thread_id", None),
             "intent": commitment.intent,
             "priority": commitment.priority,
             "consequence": commitment.consequence,
@@ -86,11 +88,15 @@ async def emit_commitment_notification(commitment: Any, user_id: str = "default"
     # Also emit to EventBus for WebSocket clients
     try:
         from personal_agent.event_bus import get_event_bus
-        await get_event_bus().emit("notification", {
-            "subtype": "commitment",
-            "content": commitment.description,
-            "metadata": event["metadata"],
-        })
+        await get_event_bus().emit(
+            "notification",
+            {
+                "subtype": "commitment",
+                "content": commitment.description,
+                "metadata": event["metadata"],
+            },
+            thread_id=getattr(commitment, "thread_id", None),
+        )
     except Exception:
         logger.debug("[NOTIFICATIONS] EventBus emit failed (bus may not be initialized)")
 
@@ -162,17 +168,22 @@ async def emit_generic_notification(
     event = {
         "type": event_type,
         "content": content,
+        "thread_id": (metadata or {}).get("thread_id"),
         "metadata": metadata or {},
     }
 
     # Also emit to EventBus for WebSocket clients
     try:
         from personal_agent.event_bus import get_event_bus
-        await get_event_bus().emit("notification", {
-            "subtype": event_type,
-            "content": content,
-            "metadata": metadata or {},
-        })
+        await get_event_bus().emit(
+            "notification",
+            {
+                "subtype": event_type,
+                "content": content,
+                "metadata": metadata or {},
+            },
+            thread_id=(metadata or {}).get("thread_id"),
+        )
     except Exception:
         logger.debug("[NOTIFICATIONS] EventBus emit failed (bus may not be initialized)")
 
