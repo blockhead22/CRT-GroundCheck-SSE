@@ -20,7 +20,7 @@ from __future__ import annotations
 import time
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 
 @dataclass
@@ -62,6 +62,7 @@ class OutboxQueue:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._queue: List[OutboxMessage] = []
+        self._listeners: List[Callable[[OutboxMessage], None]] = []
 
     def push(
         self,
@@ -79,6 +80,13 @@ class OutboxQueue:
         )
         with self._lock:
             self._queue.append(msg)
+            listeners = list(self._listeners)
+        for listener in listeners:
+            try:
+                listener(msg)
+            except Exception:
+                # Listener failures must never block queueing.
+                pass
 
     def drain(self, thread_id: str) -> List[OutboxMessage]:
         """Remove and return all pending messages for a thread."""
@@ -117,6 +125,20 @@ class OutboxQueue:
             if thread_id is None:
                 return len(self._queue)
             return sum(1 for m in self._queue if m.thread_id == thread_id)
+
+    def subscribe(self, callback: Callable[[OutboxMessage], None]) -> None:
+        """Register a callback invoked after a message is queued."""
+        with self._lock:
+            if callback not in self._listeners:
+                self._listeners.append(callback)
+
+    def unsubscribe(self, callback: Callable[[OutboxMessage], None]) -> None:
+        """Remove a previously registered push callback."""
+        with self._lock:
+            try:
+                self._listeners.remove(callback)
+            except ValueError:
+                pass
 
 
 # Global singleton

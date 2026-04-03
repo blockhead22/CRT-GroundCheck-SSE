@@ -205,6 +205,23 @@ export default function App() {
     return selectedThread.messages.find((m) => m.id === selectedMessageId) ?? null
   }, [selectedThread, selectedMessageId])
 
+  useEffect(() => {
+    const socket = getAetherSocket()
+    socket.connect()
+    return () => {
+      socket.disconnect()
+    }
+  }, [])
+
+  useEffect(() => {
+    const socket = getAetherSocket()
+    const channels = threads.map((thread) => `thread:${thread.id}`)
+    if (selectedThreadId) {
+      channels.push(`thread:${selectedThreadId}`)
+    }
+    socket.subscribe(channels)
+  }, [threads, selectedThreadId])
+
   // Phase 6: proactive turns — global WS handler for unprompted messages
   useEffect(() => {
     const socket = getAetherSocket()
@@ -212,10 +229,8 @@ export default function App() {
       if (event.type !== 'proactive_turn') return
       const threadId = event.thread_id as string | undefined
       if (!threadId) return
-      // Only inject into the active thread to avoid polluting other threads
       setThreads(prev => {
         const thread = prev.find(t => t.id === threadId)
-        if (!thread) return prev
         const proactiveMsg = {
           id: newId('m'),
           role: 'assistant' as const,
@@ -264,15 +279,49 @@ export default function App() {
             agent_loop: false,
           },
         }
-        return prev.map(t =>
-          t.id === threadId
-            ? { ...t, updatedAt: Date.now(), messages: [...t.messages, proactiveMsg] }
-            : t
-        )
+        if (!thread) {
+          return [
+            {
+              id: threadId,
+              title: `Proactive update ${threadId.slice(0, 8)}`,
+              updatedAt: Date.now(),
+              messages: [proactiveMsg],
+              unreadCount: threadId === selectedThreadId ? 0 : 1,
+              hasProactive: threadId !== selectedThreadId,
+              lastProactiveAt: Date.now(),
+            },
+            ...prev,
+          ]
+        }
+        const next = prev.map(t => {
+          if (t.id !== threadId) return t
+          const isSelected = t.id === selectedThreadId
+          return {
+            ...t,
+            updatedAt: Date.now(),
+            messages: [...t.messages, proactiveMsg],
+            unreadCount: isSelected ? 0 : Number(t.unreadCount ?? 0) + 1,
+            hasProactive: !isSelected,
+            lastProactiveAt: Date.now(),
+          }
+        })
+        next.sort((a, b) => b.updatedAt - a.updatedAt)
+        return next
       })
     })
     return unsubscribe
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedThreadId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedThreadId) return
+    setThreads((prev) =>
+      prev.map((thread) =>
+        thread.id === selectedThreadId
+          ? { ...thread, unreadCount: 0, hasProactive: false }
+          : thread,
+      ),
+    )
+  }, [selectedThreadId])
 
   // Greeting wave on empty thread
   useEffect(() => {
@@ -403,7 +452,10 @@ export default function App() {
               id: t.id,
               title: t.title,
               messages: t.messages as any[],
-              updatedAt: t.updatedAt
+              updatedAt: t.updatedAt,
+              unreadCount: 0,
+              hasProactive: false,
+              lastProactiveAt: null,
             })))
             if (serverThreads[0]) {
               setSelectedThreadId(serverThreads[0].id)

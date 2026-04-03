@@ -47,6 +47,7 @@ export class AetherSocket {
   private globalHandlers: Array<(data: ServerEvent) => void> = []
   private _connected = false
   private _intentionalClose = false
+  private subscribedChannels: Set<string> = new Set(['notifications'])
 
   /** Current active thread subscription for chat streaming */
   private activeThreadId: string | null = null
@@ -87,6 +88,12 @@ export class AetherSocket {
   // ── Messaging ────────────────────────────────────────────────────
 
   send(message: ClientMessage): void {
+    if (message.type === 'subscribe') {
+      for (const channel of message.channels) {
+        const clean = String(channel || '').trim()
+        if (clean) this.subscribedChannels.add(clean)
+      }
+    }
     const raw = JSON.stringify(message)
     if (this.ws && this._connected) {
       this.ws.send(raw)
@@ -104,9 +111,27 @@ export class AetherSocket {
     this.streamCallbacks = callbacks
 
     // Subscribe to thread events
-    this.send({ type: 'subscribe', channels: [`thread:${threadId}`] })
+    this.subscribeToThread(threadId)
     // Send chat
     this.send({ type: 'chat', thread_id: threadId, message })
+  }
+
+  subscribe(channels: string[]): void {
+    const unique = Array.from(
+      new Set(
+        channels
+          .map((channel) => String(channel || '').trim())
+          .filter(Boolean),
+      ),
+    )
+    if (unique.length === 0) return
+    this.send({ type: 'subscribe', channels: unique })
+  }
+
+  subscribeToThread(threadId: string): void {
+    const clean = String(threadId || '').trim()
+    if (!clean) return
+    this.subscribe([`thread:${clean}`])
   }
 
   // ── Event subscription ──────────────────────────────────────────
@@ -152,6 +177,7 @@ export class AetherSocket {
       this.reconnectAttempts = 0
       this._startPing()
       this._flushQueue()
+      this._resubscribe()
     }
 
     this.ws.onmessage = (evt) => {
@@ -238,6 +264,14 @@ export class AetherSocket {
       if (this.ws && this._connected) {
         this.ws.send(msg)
       }
+    }
+  }
+
+  private _resubscribe(): void {
+    const channels = Array.from(this.subscribedChannels)
+    if (channels.length === 0) return
+    if (this.ws && this._connected) {
+      this.ws.send(JSON.stringify({ type: 'subscribe', channels }))
     }
   }
 

@@ -213,6 +213,7 @@ export type ChatMessage = {
   crt?: CtrMessageMeta
   rating?: MessageRating | null
   ratingCategory?: string | null
+  isProactive?: boolean
   // Persisted agent thinking strip state for task-route messages
   agentThinking?: import('./components/chat/AgentThinkingStrip').AgentThinkingState | null
 }
@@ -222,6 +223,9 @@ export type ChatThread = {
   title: string
   updatedAt: number
   messages: ChatMessage[]
+  unreadCount?: number
+  hasProactive?: boolean
+  lastProactiveAt?: number | null
 }
 
 export type QuickAction = {

@@ -1,9 +1,7 @@
 """WebSocket endpoint for Aether.
 
-Replaces both chat SSE streaming and notification SSE with a single
-persistent bidirectional connection per client.
-
-SSE endpoints stay alive during migration — this runs in parallel.
+Provides a thread-aware connection registry plus proactive outbox delivery.
+SSE endpoints stay alive during migration; this powers the persistent WS lane.
 """
 
 from __future__ import annotations
@@ -11,159 +9,217 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import threading
 import time
-from typing import Any, Dict, List, Optional, Set
+from collections import defaultdict
+from typing import Any, DefaultDict, Dict, List, Optional, Set
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 from personal_agent.event_bus import get_event_bus
-from personal_agent.outbox import get_outbox
+from personal_agent.outbox import OutboxMessage, get_outbox
 from personal_agent.stream_events import make_stream_event
 
 logger = logging.getLogger(__name__)
 
-OUTBOX_DRAIN_INTERVAL = 2.0   # seconds between drain checks
-
 router = APIRouter()
 
+PING_INTERVAL = 25  # keep under common proxy idle timeouts
 
-# ── ConnectionManager ─────────────────────────────────────────────────
 
-
-class ConnectionManager:
-    """Tracks active WebSocket clients and bridges EventBus → clients."""
+class ConnectionRegistry:
+    """Tracks active sockets, subscriptions, and outbox delivery by thread."""
 
     def __init__(self) -> None:
-        # ws → metadata
         self._connections: Dict[WebSocket, Dict[str, Any]] = {}
+        self._thread_index: DefaultDict[str, Set[WebSocket]] = defaultdict(set)
         self._lock = asyncio.Lock()
         self._bus_subscribed = False
+        self._outbox_subscribed = False
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._outbox = get_outbox()
 
     async def connect(self, ws: WebSocket, user_id: str = "default") -> None:
         await ws.accept()
-        self._connections[ws] = {
-            "user_id": user_id,
-            "connected_at": time.time(),
-            "subscriptions": {"notifications"},  # default channel
-        }
-        logger.info("[WS] Client connected (total=%d)", len(self._connections))
+        if self._loop is None:
+            self._loop = asyncio.get_running_loop()
+        async with self._lock:
+            self._connections[ws] = {
+                "user_id": user_id,
+                "connected_at": time.time(),
+                "subscriptions": {"notifications"},
+            }
+            total = len(self._connections)
+            if not self._bus_subscribed:
+                get_event_bus().subscribe(self._on_bus_event)
+                self._bus_subscribed = True
+            if not self._outbox_subscribed:
+                self._outbox.subscribe(self._on_outbox_push)
+                self._outbox_subscribed = True
+        logger.info("[WS] Client connected (total=%d)", total)
+        await self._send_json(
+            ws,
+            make_stream_event(
+                "connected",
+                "Aether WebSocket active",
+                allow_ws=True,
+                ts=time.time(),
+            ),
+        )
 
-        # Lazy-subscribe to EventBus on first connection
-        if not self._bus_subscribed:
-            get_event_bus().subscribe(self._on_bus_event)
-            self._bus_subscribed = True
-
-    def disconnect(self, ws: WebSocket) -> None:
-        meta = self._connections.pop(ws, None)
+    async def disconnect(self, ws: WebSocket) -> None:
+        async with self._lock:
+            meta = self._connections.pop(ws, None)
+            if meta:
+                for channel in meta.get("subscriptions", set()):
+                    if channel.startswith("thread:"):
+                        thread_id = channel[len("thread:") :]
+                        sockets = self._thread_index.get(thread_id)
+                        if sockets is not None:
+                            sockets.discard(ws)
+                            if not sockets:
+                                self._thread_index.pop(thread_id, None)
+            total = len(self._connections)
+            if not self._connections and self._bus_subscribed:
+                get_event_bus().unsubscribe(self._on_bus_event)
+                self._bus_subscribed = False
+            if not self._connections and self._outbox_subscribed:
+                self._outbox.unsubscribe(self._on_outbox_push)
+                self._outbox_subscribed = False
         if meta:
-            logger.info("[WS] Client disconnected (total=%d)", len(self._connections))
-        # Unsubscribe from bus when no clients left
-        if not self._connections and self._bus_subscribed:
-            get_event_bus().unsubscribe(self._on_bus_event)
-            self._bus_subscribed = False
+            logger.info("[WS] Client disconnected (total=%d)", total)
+
+    async def subscribe_to(self, ws: WebSocket, channels: List[str]) -> List[str]:
+        unique_channels = [str(ch or "").strip() for ch in channels if str(ch or "").strip()]
+        async with self._lock:
+            meta = self._connections.get(ws)
+            if not meta:
+                return []
+            subs = meta.setdefault("subscriptions", set())
+            for channel in unique_channels:
+                if channel not in subs:
+                    subs.add(channel)
+                    if channel.startswith("thread:"):
+                        self._thread_index[channel[len("thread:") :]].add(ws)
+            snapshot = sorted(subs)
+        for channel in unique_channels:
+            if channel.startswith("thread:"):
+                await self.flush_outbox_for_thread(channel[len("thread:") :])
+        return snapshot
 
     async def _on_bus_event(self, event: dict) -> None:
-        """Forward EventBus events to relevant WebSocket clients."""
-        thread_id = event.get("thread_id")
-        event_type = event.get("type", "")
+        thread_id = str(event.get("thread_id") or "").strip()
+        event_type = str(event.get("type") or "").strip()
+        if event_type == "notification":
+            await self._send_to_notification_subscribers(event)
+            return
+        if thread_id:
+            await self.send_to_thread(thread_id, event)
+            return
+        await self.broadcast(event)
 
-        dead: List[WebSocket] = []
+    def _on_outbox_push(self, msg: OutboxMessage) -> None:
+        if self._loop is None:
+            return
+        try:
+            self._loop.call_soon_threadsafe(
+                lambda: asyncio.create_task(self.flush_outbox_for_thread(msg.thread_id))
+            )
+        except Exception:
+            logger.debug("[WS] Could not schedule outbox flush for thread %s", msg.thread_id)
 
-        for ws, meta in list(self._connections.items()):
-            try:
-                should_send = False
-
-                # Notification events go to clients subscribed to notifications
-                if event_type == "notification":
-                    should_send = "notifications" in meta.get("subscriptions", set())
-
-                # Thread-scoped events go to clients subscribed to that thread
-                elif thread_id:
-                    sub_key = f"thread:{thread_id}"
-                    should_send = sub_key in meta.get("subscriptions", set())
-
-                # Broadcast events (no thread) go to everyone
-                else:
-                    should_send = True
-
-                if should_send:
-                    await self._send_json(ws, event)
-
-            except Exception:
-                dead.append(ws)
-
-        for ws in dead:
-            self.disconnect(ws)
+    async def flush_outbox_for_thread(self, thread_id: str) -> int:
+        thread_id = str(thread_id or "").strip()
+        if not thread_id:
+            return 0
+        async with self._lock:
+            recipients = list(self._thread_index.get(thread_id, set()))
+        if not recipients:
+            return 0
+        msgs = self._outbox.drain(thread_id)
+        if not msgs:
+            return 0
+        delivered = 0
+        for msg in msgs:
+            event = make_stream_event(
+                "proactive_turn",
+                msg.content,
+                allow_ws=True,
+                trigger=msg.trigger,
+                thread_id=msg.thread_id,
+                metadata=msg.metadata,
+                ts=msg.created_at,
+            )
+            sent = await self._send_to_sockets(recipients, event)
+            delivered += sent
+            logger.info(
+                "[WS] Proactive turn flushed for thread %s to %d client(s) (trigger=%s)",
+                thread_id,
+                sent,
+                msg.trigger,
+            )
+        return delivered
 
     async def send_to_thread(self, thread_id: str, event: dict) -> int:
-        """Send an event to all clients subscribed to a thread."""
-        sent = 0
-        sub_key = f"thread:{thread_id}"
-        dead: List[WebSocket] = []
+        async with self._lock:
+            recipients = list(self._thread_index.get(thread_id, set()))
+        return await self._send_to_sockets(recipients, event)
 
-        for ws, meta in list(self._connections.items()):
-            if sub_key in meta.get("subscriptions", set()):
-                try:
-                    await self._send_json(ws, event)
-                    sent += 1
-                except Exception:
-                    dead.append(ws)
-
-        for ws in dead:
-            self.disconnect(ws)
-        return sent
+    async def _send_to_notification_subscribers(self, event: dict) -> int:
+        async with self._lock:
+            recipients = [
+                ws
+                for ws, meta in self._connections.items()
+                if "notifications" in meta.get("subscriptions", set())
+            ]
+        return await self._send_to_sockets(recipients, event)
 
     async def broadcast(self, event: dict) -> int:
-        """Send an event to all connected clients."""
+        async with self._lock:
+            recipients = list(self._connections)
+        return await self._send_to_sockets(recipients, event)
+
+    async def _send_to_sockets(self, sockets: List[WebSocket], event: dict) -> int:
         sent = 0
         dead: List[WebSocket] = []
-
-        for ws in list(self._connections):
+        for ws in sockets:
             try:
                 await self._send_json(ws, event)
                 sent += 1
             except Exception:
                 dead.append(ws)
-
         for ws in dead:
-            self.disconnect(ws)
+            await self.disconnect(ws)
         return sent
 
-    def subscribe_to(self, ws: WebSocket, channels: List[str]) -> None:
-        """Add channel subscriptions for a client."""
-        meta = self._connections.get(ws)
-        if meta:
-            meta["subscriptions"].update(channels)
-
     async def _send_json(self, ws: WebSocket, data: dict) -> None:
-        if ws.client_state == WebSocketState.CONNECTED:
-            await ws.send_json(data)
+        if ws.client_state != WebSocketState.CONNECTED:
+            raise RuntimeError("socket not connected")
+        await ws.send_json(data)
 
     @property
     def connection_count(self) -> int:
         return len(self._connections)
 
-
-# ── Singleton ─────────────────────────────────────────────────────────
-
-_manager: Optional[ConnectionManager] = None
+    def thread_subscription_count(self, thread_id: str) -> int:
+        return len(self._thread_index.get(thread_id, set()))
 
 
-def get_connection_manager() -> ConnectionManager:
-    global _manager
-    if _manager is None:
-        _manager = ConnectionManager()
-    return _manager
+_registry: Optional[ConnectionRegistry] = None
+_registry_lock = threading.Lock()
 
 
-# ── Keepalive ─────────────────────────────────────────────────────────
-
-PING_INTERVAL = 25  # seconds (under Cloudflare's 30s timeout)
+def get_connection_registry() -> ConnectionRegistry:
+    global _registry
+    if _registry is None:
+        with _registry_lock:
+            if _registry is None:
+                _registry = ConnectionRegistry()
+    return _registry
 
 
 async def _ping_loop(ws: WebSocket) -> None:
-    """Send periodic pings. Exits when connection closes."""
     try:
         while True:
             await asyncio.sleep(PING_INTERVAL)
@@ -171,48 +227,8 @@ async def _ping_loop(ws: WebSocket) -> None:
                 break
             await ws.send_json(make_stream_event("pong", allow_ws=True, ts=time.time()))
     except Exception:
-        pass  # connection closed
+        pass
 
-
-async def _outbox_drain_loop(ws: WebSocket, thread_ids: "list[str]") -> None:
-    """Drain the OutboxQueue for subscribed threads and push proactive_turn events.
-
-    Runs as a background task alongside the WS connection.
-    `thread_ids` is a mutable list — updated as the client subscribes to threads.
-    Exits when the socket closes.
-    """
-    outbox = get_outbox()
-    try:
-        while True:
-            await asyncio.sleep(OUTBOX_DRAIN_INTERVAL)
-            if ws.client_state != WebSocketState.CONNECTED:
-                break
-            for tid in list(thread_ids):
-                msgs = outbox.drain(tid)
-                for msg in msgs:
-                    try:
-                        await ws.send_json(
-                            make_stream_event(
-                                "proactive_turn",
-                                msg.content,
-                                allow_ws=True,
-                                trigger=msg.trigger,
-                                thread_id=msg.thread_id,
-                                metadata=msg.metadata,
-                                ts=msg.created_at,
-                            )
-                        )
-                        logger.info(
-                            "[WS] Proactive turn sent to thread %s (trigger=%s)",
-                            tid, msg.trigger,
-                        )
-                    except Exception as _send_err:
-                        logger.warning("[WS] Failed to send proactive turn: %s", _send_err)
-    except Exception:
-        pass  # connection closed
-
-
-# ── WebSocket Endpoint ────────────────────────────────────────────────
 
 @router.websocket("/ws")
 async def websocket_endpoint(
@@ -222,31 +238,13 @@ async def websocket_endpoint(
     """Main WebSocket endpoint.
 
     Connect: ws://host:port/ws?token=xxx
-    Send:    {"type": "ping"} | {"type": "subscribe", "channels": [...]} | {"type": "chat", ...}
-    Receive: pipeline events, notifications, pong
+    Send: {"type":"ping"} | {"type":"subscribe","channels":[...]} | {"type":"chat", ...}
     """
-    mgr = get_connection_manager()
 
-    # TODO: validate token against auth system when auth is required
-    # For now, accept all connections (single-user mode)
-    await mgr.connect(ws)
-
-    # Start keepalive
+    del token  # auth validation still handled elsewhere / future work
+    registry = get_connection_registry()
+    await registry.connect(ws)
     ping_task = asyncio.create_task(_ping_loop(ws))
-
-    # Start outbox drain loop — tracks which thread_ids this client subscribes to
-    _subscribed_thread_ids: list[str] = []
-    drain_task = asyncio.create_task(_outbox_drain_loop(ws, _subscribed_thread_ids))
-
-    # Send welcome
-    await ws.send_json(
-        make_stream_event(
-            "connected",
-            "Aether WebSocket active",
-            allow_ws=True,
-            ts=time.time(),
-        )
-    )
 
     try:
         while True:
@@ -257,34 +255,28 @@ async def websocket_endpoint(
                 await ws.send_json(make_stream_event("error", "Invalid JSON", allow_ws=True))
                 continue
 
-            msg_type = msg.get("type", "")
+            msg_type = str(msg.get("type") or "").strip()
 
             if msg_type == "ping":
                 await ws.send_json(make_stream_event("pong", allow_ws=True, ts=time.time()))
+                continue
 
-            elif msg_type == "subscribe":
+            if msg_type == "subscribe":
                 channels = msg.get("channels", [])
-                mgr.subscribe_to(ws, channels)
-                # Track thread subscriptions for the outbox drain loop
-                for ch in channels:
-                    if ch.startswith("thread:"):
-                        tid = ch[len("thread:"):]
-                        if tid not in _subscribed_thread_ids:
-                            _subscribed_thread_ids.append(tid)
+                snapshot = await registry.subscribe_to(ws, channels)
                 await ws.send_json(
                     make_stream_event(
                         "subscribed",
                         allow_ws=True,
-                        channels=list(mgr._connections[ws]["subscriptions"]),
+                        channels=snapshot,
                     )
                 )
+                continue
 
-            elif msg_type == "chat":
-                # Chat messages will be handled in Step 2 (pipeline emission)
-                # For now, acknowledge receipt
-                thread_id = msg.get("thread_id", "")
+            if msg_type == "chat":
+                thread_id = str(msg.get("thread_id") or "").strip()
                 if thread_id:
-                    mgr.subscribe_to(ws, [f"thread:{thread_id}"])
+                    await registry.subscribe_to(ws, [f"thread:{thread_id}"])
                 await ws.send_json(
                     make_stream_event(
                         "status",
@@ -293,15 +285,15 @@ async def websocket_endpoint(
                         thread_id=thread_id,
                     )
                 )
+                continue
 
-            else:
-                await ws.send_json(
-                    make_stream_event(
-                        "error",
-                        f"Unknown message type: {msg_type}",
-                        allow_ws=True,
-                    )
+            await ws.send_json(
+                make_stream_event(
+                    "error",
+                    f"Unknown message type: {msg_type}",
+                    allow_ws=True,
                 )
+            )
 
     except WebSocketDisconnect:
         pass
@@ -309,5 +301,4 @@ async def websocket_endpoint(
         logger.exception("[WS] Unexpected error")
     finally:
         ping_task.cancel()
-        drain_task.cancel()
-        mgr.disconnect(ws)
+        await registry.disconnect(ws)

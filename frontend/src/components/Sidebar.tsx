@@ -99,6 +99,31 @@ export function Sidebar(props: {
     if (props.isMobile) props.onClose()
   }
 
+  const renderThreadBadge = (thread: ChatThread, selected: boolean) => {
+    const unread = Number(thread.unreadCount ?? 0)
+    if (unread > 0 && !selected) {
+      return (
+        <span
+          className="inline-flex min-w-[18px] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+          style={{ background: 'rgba(212,132,92,0.18)', color: '#E0A080' }}
+        >
+          {unread > 9 ? '9+' : unread}
+        </span>
+      )
+    }
+    if (thread.hasProactive && !selected) {
+      return (
+        <span
+          className="inline-flex h-2.5 w-2.5 rounded-full"
+          style={{ background: '#D4845C', boxShadow: '0 0 10px rgba(212,132,92,0.35)' }}
+          aria-label="Thread has proactive update"
+          title="Proactive update"
+        />
+      )
+    }
+    return null
+  }
+
   const sidebarContent = (
     <div className="flex h-full w-full flex-col glass-panel">
       <div className="flex items-center justify-between px-4 py-4">
@@ -254,6 +279,7 @@ export function Sidebar(props: {
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-[#D4845C]/60">📌</span>
                             <span className="truncate text-[13px] font-medium">{t.title}</span>
+                            {renderThreadBadge(t, selected)}
                           </div>
                           <div className="text-[11px] text-white/25 mt-0.5 pl-[18px]">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
                         </div>
@@ -336,7 +362,10 @@ export function Sidebar(props: {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-medium">{t.title}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate text-[13px] font-medium">{t.title}</span>
+                          {renderThreadBadge(t, selected)}
+                        </div>
                         <div className="text-[11px] text-white/25 mt-0.5">Updated {new Date(t.updatedAt).toLocaleDateString()}</div>
                       </div>
                       <div className={`flex flex-none items-center gap-1 ${props.isMobile ? 'opacity-100' : 'opacity-0 transition-opacity duration-200 group-hover:opacity-100'}`}>
