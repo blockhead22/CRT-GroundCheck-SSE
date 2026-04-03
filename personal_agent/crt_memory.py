@@ -2050,6 +2050,13 @@ class CRTMemorySystem:
         # vectors get a slight discount (MemQuant is much less lossy than fold).
         _TIER_WEIGHT = {0: 0.90, 1: 0.97, 2: 1.0}
 
+        _KIND_BOOST = {
+            "user_fact": 1.4,
+            "preference": 1.3,
+            "narrative_note": 1.25,
+            "identity_constant": 1.5,
+        }
+
         memory_dicts = []
         for m in memories:
             tier = getattr(m, 'compression_tier', 2)
@@ -2102,10 +2109,6 @@ class CRTMemorySystem:
             # Without this, conversational noise ("What's on your mind?") drowns
             # out structured facts ("Nick lives in Wisconsin") in retrieval.
             _kind = str(getattr(m, "kind", "") or "").strip().lower()
-            _KIND_BOOST = {
-                "user_fact": 1.4, "preference": 1.3, "narrative_note": 1.25,
-                "identity_constant": 1.5,
-            }
             kind_boost = _KIND_BOOST.get(_kind, 1.0)
             score = max(0.0, best_sim) * recency * belief * tier_weight * kind_boost
             memory_dicts.append((m, score))

@@ -73,6 +73,20 @@ class TestGateTaskIntentNoDoubleDowngrade:
         assert gate["checkpoint_tier"] == "tier_1"
 
 
+# Broad recall should stay read-only and never ask "Should I proceed?"
+def test_broad_recall_is_treated_as_read_only():
+    intent = TaskIntent(
+        route="task",
+        intent_type="broad_recall",
+        slots={"query": "medical history"},
+        confidence=0.9,
+        reason="memory recall",
+    )
+    gate = gate_task_intent(intent)
+    assert gate["checkpoint_tier"] == "none"
+    assert gate["requires_confirmation"] is False
+
+
 # ---------------------------------------------------------------------------
 # 2. Source authority: meta-corrections should be detected
 # ---------------------------------------------------------------------------

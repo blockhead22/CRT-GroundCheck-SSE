@@ -666,7 +666,14 @@ def gate_task_intent(intent: "TaskIntent") -> Dict[str, Any]:
         }
 
     # ── Layer 1+2 read-only tools — no confirmation needed ──────────────
-    _READ_ONLY_INTENTS = {"system_info", "file_read", "dir_list", "project_scan", "list_commitments"}
+    _READ_ONLY_INTENTS = {
+        "broad_recall",
+        "system_info",
+        "file_read",
+        "dir_list",
+        "project_scan",
+        "list_commitments",
+    }
     if intent.intent_type in _READ_ONLY_INTENTS:
         return {
             "checkpoint_tier": "none",

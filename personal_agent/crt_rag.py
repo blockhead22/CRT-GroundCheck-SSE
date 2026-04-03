@@ -50,6 +50,7 @@ from .fact_slots import (
 from .two_tier_facts import TwoTierFactSystem, TwoTierExtractionResult
 from .learned_suggestions import LearnedSuggestionEngine
 from .runtime_config import get_runtime_config
+from .text_utils import looks_like_llm_error_text
 from .disclosure_policy import (
     DisclosurePolicy,
     DisclosureAction,
@@ -4534,6 +4535,9 @@ class CRTEnhancedRAG:
             }
         if user_input_kind == "assertion":
             logger.info(f"[PROFILE_DEBUG] Processing assertion - about to store memory and update profile")
+            if looks_like_llm_error_text(user_text):
+                logger.warning("[MEMORY_GUARD] Skipping leaked LLM error text from user-memory storage")
+                user_input_kind = "instruction"
 
             # ── Source authority analysis ──────────────────────────────────
             # Detect reported speech, journal entries, third-party claims,

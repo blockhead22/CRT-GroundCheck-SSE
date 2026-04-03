@@ -33,6 +33,14 @@ _REASONING_LEAK_RE = re.compile(
 )
 _THREAD_ID_RE = re.compile(r"[^a-zA-Z0-9_-]+")
 _WS_RE = re.compile(r"\s+")
+_LLM_ERROR_PREFIXES = (
+    "[Ollama error:",
+    "[Ollama connection error:",
+    "[LLM error:",
+    "[Model '",
+    "[No LLM available",
+    "[Cloud LLM error:",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -114,3 +122,19 @@ def norm_whitespace(text: str) -> str:
 def norm_text(text: str) -> str:
     """Lower-case + whitespace-normalised version of *text*."""
     return norm_whitespace(text).lower()
+
+
+def looks_like_llm_error_text(text: str) -> bool:
+    """Return True when *text* looks like leaked model/runtime error output."""
+    cleaned = (text or "").strip()
+    if not cleaned:
+        return False
+    if cleaned == "[filtered-empty-memory]":
+        return True
+    if any(cleaned.startswith(prefix) for prefix in _LLM_ERROR_PREFIXES):
+        return True
+    if "\n\n" in cleaned:
+        tail = cleaned.split("\n\n", 1)[1].strip()
+        if any(tail.startswith(prefix) for prefix in _LLM_ERROR_PREFIXES):
+            return True
+    return False

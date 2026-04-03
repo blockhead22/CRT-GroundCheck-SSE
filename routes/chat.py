@@ -31,6 +31,7 @@ from personal_agent.text_utils import (
     strip_thinking_tags as _strip_thinking_tags,
     strip_think_blocks,
     extract_think_content,
+    looks_like_llm_error_text,
 )
 from .models import (
     ChatSendRequest,
@@ -3917,9 +3918,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                                         WHERE authority = 'provisional'
                                         AND deprecated = 0
                                         AND timestamp > ?
-                                        LIMIT 1
+                                        ORDER BY timestamp DESC
+                                        LIMIT 5
                                     """, (_time_prov.time() - 30,))
-                                    _prov_row = _cur_prov.fetchone()
+                                    _prov_row = next(
+                                        (
+                                            row for row in (_cur_prov.fetchall() or [])
+                                            if not looks_like_llm_error_text(str((row[2] if len(row) > 2 else "") or ""))
+                                        ),
+                                        None,
+                                    )
                                     _conn_prov.close()
                                     if _prov_row:
                                         _skip_demotion = True

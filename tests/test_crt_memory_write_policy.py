@@ -44,3 +44,12 @@ def test_instruction_does_not_create_user_memory(rag: CRTEnhancedRAG):
     after = _count_user_memories(rag)
 
     assert after == before
+
+
+def test_leaked_llm_error_text_does_not_create_user_memory(rag: CRTEnhancedRAG):
+    before = _count_user_memories(rag)
+
+    rag.query("[Ollama connection error: Is Ollama running? Try: ollama serve]")
+    after = _count_user_memories(rag)
+
+    assert after == before
