@@ -164,7 +164,14 @@ function StreamingMessage({
 export function ChatThreadView(props: {
   thread: ChatThread
   typing: boolean
-  onSend: (text: string) => void
+  onSend: (
+    text: string,
+    opts?: {
+      generationMode?: 'local' | 'local_network' | 'cloud_openai' | 'cloud_claude'
+      cloudModelOpenAI?: string
+      cloudModelClaude?: string
+    },
+  ) => void
   quickActions: QuickAction[]
   onPickQuickAction: (a: QuickAction) => void
   userName: string

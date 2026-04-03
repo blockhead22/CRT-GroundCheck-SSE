@@ -633,9 +633,20 @@ export default function App() {
     }
   }, [isThinking])
 
-  async function handleSend(text: string, opts?: { silent?: boolean }) {
+  async function handleSend(
+    text: string,
+    opts?: {
+      silent?: boolean
+      generationMode?: 'local' | 'local_network' | 'cloud_openai' | 'cloud_claude'
+      cloudModelOpenAI?: string
+      cloudModelClaude?: string
+    },
+  ) {
     if (!selectedThread) return
     const silent = opts?.silent ?? false
+    const generationMode = opts?.generationMode ?? null
+    const cloudModelOpenAI = opts?.cloudModelOpenAI ?? null
+    const cloudModelClaude = opts?.cloudModelClaude ?? null
 
     const raw = text
     const trimmed = raw.trim()
@@ -721,6 +732,9 @@ export default function App() {
         await streamFromCrtApi({
           threadId: withUser.id,
           message: outgoingText,
+          generationMode,
+          cloudModelOpenAI,
+          cloudModelClaude,
           phaseMode,
           signal: abortController.signal,
           callbacks: {
@@ -1268,7 +1282,14 @@ export default function App() {
         })
       } else {
         // Use non-streaming API (original behavior)
-        const res = await sendToCrtApi({ threadId: withUser.id, message: outgoingText, history: withUser.messages })
+        const res = await sendToCrtApi({
+          threadId: withUser.id,
+          message: outgoingText,
+          history: withUser.messages,
+          generationMode,
+          cloudModelOpenAI,
+          cloudModelClaude,
+        })
         const at = Date.now()
         const asstMsg = {
           id: newId('m'),

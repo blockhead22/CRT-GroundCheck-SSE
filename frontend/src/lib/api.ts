@@ -10,6 +10,9 @@ export type ChatSendRequest = {
   message: string
   user_marked_important?: boolean
   mode?: string | null
+  generation_mode?: string | null
+  cloud_model_openai?: string | null
+  cloud_model_claude?: string | null
   phase_mode?: boolean
 }
 
@@ -223,11 +226,17 @@ export async function sendToCrtApi(args: {
   threadId: string
   message: string
   history: ChatMessage[]
+  generationMode?: string | null
+  cloudModelOpenAI?: string | null
+  cloudModelClaude?: string | null
 }): Promise<ChatSendResponse> {
   const base = getApiBaseUrlInternal()
   const payload: ChatSendRequest = {
     thread_id: args.threadId,
     message: args.message,
+    generation_mode: args.generationMode ?? null,
+    cloud_model_openai: args.cloudModelOpenAI ?? null,
+    cloud_model_claude: args.cloudModelClaude ?? null,
   }
 
   let res: Response
@@ -407,6 +416,9 @@ export type { AgentStep, StreamCallbacks, StreamEvent } from './streamEvents'
 export async function streamFromCrtApi(args: {
   threadId: string
   message: string
+  generationMode?: string | null
+  cloudModelOpenAI?: string | null
+  cloudModelClaude?: string | null
   phaseMode?: boolean
   callbacks: StreamCallbacks
   signal?: AbortSignal
@@ -415,6 +427,9 @@ export async function streamFromCrtApi(args: {
   const payload: ChatSendRequest = {
     thread_id: args.threadId,
     message: args.message,
+    generation_mode: args.generationMode ?? null,
+    cloud_model_openai: args.cloudModelOpenAI ?? null,
+    cloud_model_claude: args.cloudModelClaude ?? null,
     phase_mode: args.phaseMode,
   }
 

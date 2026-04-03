@@ -8,6 +8,7 @@ from typing import Any, Dict, Generator, List, Optional
 
 from personal_agent.governed_task import GovernedTaskStatus, GovernedTaskWaitKind
 
+from .chat_provider_routing import resolve_effective_generation_mode
 from .chat_runtime import ChatStreamRuntime, StreamTerminalResult
 
 
@@ -72,12 +73,7 @@ def run_orchestrator(
 
         orch_engine = request.app.state.get_engine(req.thread_id)
 
-        import auth as _auth_orch
-
-        uid_orch = int(runtime.uid) if runtime.uid else 1
-        orch_gen_mode = str(
-            _auth_orch.get_user_setting(uid_orch, "generation_mode", "cloud_claude") or "cloud_claude"
-        ).strip()
+        orch_gen_mode = resolve_effective_generation_mode(req, runtime.uid)
         if orch_gen_mode == "cloud_openai":
             orch_brain = OpenAIBrain(model="gpt-4o")
         else:

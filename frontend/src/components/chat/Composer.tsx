@@ -33,7 +33,14 @@ const MODEL_OPTIONS: { value: GenerationMode; label: string; shortLabel: string;
 export function Composer(props: {
   disabled?: boolean
   placeholder?: string
-  onSend: (text: string) => void
+  onSend: (
+    text: string,
+    opts?: {
+      generationMode?: GenerationMode
+      cloudModelOpenAI?: string
+      cloudModelClaude?: string
+    },
+  ) => void
   onResearch?: (query: string) => void
   researching?: boolean
   typing?: boolean
@@ -231,7 +238,11 @@ export function Composer(props: {
       const refs = attachedPaths.map((p) => `[${p.type}: ${p.path}]`).join(' ')
       fullMessage = refs + ' ' + t
     }
-    props.onSend(fullMessage)
+    props.onSend(fullMessage, {
+      generationMode,
+      cloudModelOpenAI: generationMode === 'cloud_openai' ? selectedModelName : undefined,
+      cloudModelClaude: generationMode === 'cloud_claude' ? selectedModelName : undefined,
+    })
     setText('')
     setAttachedPaths([])
     if (textareaRef.current) {

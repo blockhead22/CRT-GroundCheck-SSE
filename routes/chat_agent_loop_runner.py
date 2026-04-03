@@ -8,6 +8,7 @@ from typing import Any, Generator, Optional
 from personal_agent.governed_task import GovernedTaskStatus, GovernedTaskWaitKind
 from personal_agent.runtime_config import get_runtime_config
 
+from .chat_provider_routing import build_request_llm_client
 from .chat_runtime import ChatStreamRuntime, StreamTerminalResult
 
 
@@ -35,8 +36,7 @@ def run_agent_tool_loop(
         runtime.append_governed_event("agent_loop_start", req.message, {"mode": "agent_tool_loop"})
         yield runtime.emit({"type": "agent_loop_start", "content": "Agent loop started", "metadata": {"mode": "agent_tool_loop"}})
 
-        get_llm = request.app.state.get_llm_client
-        llm_client = get_llm()
+        llm_client = build_request_llm_client(request, req, runtime.uid)
         al_max_iter = al_cfg.get("max_iterations", 10)
         al_show_thinking = al_cfg.get("show_thinking", True)
 

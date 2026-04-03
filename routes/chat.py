@@ -48,6 +48,7 @@ from personal_agent.stream_events import normalize_stream_event
 from .chat_agent_loop_runner import run_agent_tool_loop
 from .chat_governed_resume import try_resume_or_resolve
 from .chat_orchestrator_runner import run_orchestrator
+from .chat_provider_routing import build_request_llm_client, resolve_effective_generation_mode
 from .chat_runtime import ChatStreamRuntime
 
 try:
@@ -2293,7 +2294,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     try:
         import auth as _auth_early
         _uid_early = int(uid) if uid else 1
-        _gen_mode_early = str(_auth_early.get_user_setting(_uid_early, "generation_mode", "cloud_openai") or "cloud_openai").strip()
+        _gen_mode_early = resolve_effective_generation_mode(req, uid)
         _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" generation_mode={_gen_mode_early} uid={_uid_early} thread={req.thread_id}")
     except Exception as _early_err:
         _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" (settings read failed: {_early_err})")
@@ -3412,7 +3413,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     try:
         import auth as _auth_gen
         _uid_gen = int(uid) if uid else 1
-        _generation_mode = str(_auth_gen.get_user_setting(_uid_gen, "generation_mode", "cloud_openai") or "cloud_openai").strip()
+        _generation_mode = resolve_effective_generation_mode(req, uid)
         # Normalize local_network → local for routing purposes (same Ollama backend, URL set via OLLAMA_BASE_URL)
         if _generation_mode == "local_network":
             _generation_mode = "local"
@@ -3662,7 +3663,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _esc_policy_setting = str(
                 _auth_cg.get_user_setting(_uid_cg, "cloud_escalation_policy", "conservative")
             ).lower().strip()
-            _user_gen_mode = str(_auth_cg.get_user_setting(_uid_cg, "generation_mode", "") or "").strip()
+            _user_gen_mode = resolve_effective_generation_mode(req, uid)
             if _esc_policy_setting == "local_only" and _user_gen_mode not in ("cloud_claude", "cloud_openai"):
                 _cloud_gen_enabled = False
                 print("[GENERATION] fallback: blocked by escalation policy (local_only)")
@@ -4554,7 +4555,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _esc_policy_setting2 = str(
                     _auth_cg2.get_user_setting(_uid_cg2, "cloud_escalation_policy", "conservative")
                 ).lower().strip()
-                _user_gen_mode2 = str(_auth_cg2.get_user_setting(_uid_cg2, "generation_mode", "") or "").strip()
+                _user_gen_mode2 = resolve_effective_generation_mode(req, uid)
                 if _esc_policy_setting2 == "local_only" and _user_gen_mode2 not in ("cloud_claude", "cloud_openai"):
                     _cloud_gen_enabled2 = False
                     print("[GENERATION] late_fallback: blocked by escalation policy (local_only)")
@@ -7085,9 +7086,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             if _task_intent is not None and _task_intent.route == "task":
                 try:
                     _get_engine = request.app.state.get_engine
-                    _get_llm = request.app.state.get_llm_client
                     _engine = _get_engine(req.thread_id)
-                    _llm_client = _get_llm()
+                    _llm_client = build_request_llm_client(request, req, uid)
 
                     _agent = CRTTaskAgent(
                         memory_agent=_engine.memory,
