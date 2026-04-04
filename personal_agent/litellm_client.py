@@ -19,6 +19,7 @@ from typing import Any, Dict, Generator, List, Optional, Tuple
 import litellm
 import requests
 
+from .ollama_config import resolve_ollama_base_url
 from .text_utils import extract_think_content
 
 logger = logging.getLogger(__name__)
@@ -161,7 +162,7 @@ class UnifiedLLMClient:
         self.ollama_model = cfg.get("ollama_model", "qwen3:14b")
         self.ollama_base_url = cfg.get(
             "ollama_base_url",
-            os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            resolve_ollama_base_url(),
         )
         # Track Ollama reachability. After a connection failure, skip Ollama
         # on subsequent calls to avoid repeated 120s timeouts. Resets on success.
@@ -1359,7 +1360,7 @@ def create_llm_client(
 
     return UnifiedLLMClient({
         "ollama_model": ollama_model if local_enabled else "",
-        "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        "ollama_base_url": resolve_ollama_base_url(),
         "cloud_model": cloud_model if cloud_enabled else "",
         "cloud_api_key": cloud_api_key if cloud_enabled else "",
         "cloud_base_url": cloud_base_url,
@@ -1386,7 +1387,7 @@ def get_default_llm_client(model: str = None) -> UnifiedLLMClient:
     if _default_client is None or _default_client.ollama_model != model:
         _default_client = UnifiedLLMClient({
             "ollama_model": model,
-            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            "ollama_base_url": resolve_ollama_base_url(),
         })
     return _default_client
 

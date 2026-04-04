@@ -467,6 +467,7 @@ Patterns from Claude Code source analysis, governed by CRT:
 - [ ] Multi-device sync
 - [ ] Expo mobile app + Cloudflare Tunnel
 - [ ] AI-powered permission classifier with epistemic state
+- [ ] Multi-model council architecture — local executive + delegated specialist + observer path ([plan](D:/AI_round2/docs/plans/MULTI_MODEL_COUNCIL_PLAN.md))
 
 ---
 

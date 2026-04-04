@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from routes.chat_provider_routing import build_request_llm_client, resolve_effective_generation_mode
+from routes.chat_provider_routing import (
+    build_orchestrator_brain,
+    build_request_llm_client,
+    is_cloud_fallback_allowed,
+    resolve_effective_generation_mode,
+)
 from routes.models import ChatSendRequest
 
 
@@ -177,3 +182,69 @@ def test_cloud_text_uses_cloud_feature_service_when_base_keys_absent(monkeypatch
 
     assert text == "claude-service:claude-sonnet-4-5"
     assert base.calls == []
+
+
+def test_orchestrator_brain_uses_ollama_for_local_mode(monkeypatch) -> None:
+    monkeypatch.setenv("CRT_OLLAMA_MODEL", "qwen3:14b")
+    monkeypatch.setattr(
+        "personal_agent.cookie_orchestrator.get_brain",
+        lambda provider, **kwargs: SimpleNamespace(provider=provider, _model=kwargs.get("model")),
+    )
+
+    requested_mode, brain = build_orchestrator_brain(
+        ChatSendRequest(thread_id="t1", message="hi", generation_mode="local"),
+        1,
+    )
+
+    assert requested_mode == "local"
+    assert brain.provider == "ollama"
+    assert brain._model == "qwen3:14b"
+
+
+def test_orchestrator_brain_uses_network_model_for_local_network(monkeypatch) -> None:
+    def _fake_setting(uid, key, default=""):
+        if key == "network_ollama_model":
+            return "deepseek-r1:latest"
+        return default
+
+    monkeypatch.setattr("auth.get_user_setting", _fake_setting)
+    monkeypatch.setattr(
+        "personal_agent.cookie_orchestrator.get_brain",
+        lambda provider, **kwargs: SimpleNamespace(provider=provider, _model=kwargs.get("model")),
+    )
+
+    requested_mode, brain = build_orchestrator_brain(
+        ChatSendRequest(thread_id="t1", message="hi", generation_mode="local_network"),
+        1,
+    )
+
+    assert requested_mode == "local_network"
+    assert brain.provider == "ollama"
+    assert brain._model == "deepseek-r1:latest"
+
+
+def test_cloud_fallback_blocked_in_local_only_mode(monkeypatch) -> None:
+    def _fake_setting(uid, key, default=""):
+        if key == "routing_mode":
+            return "local_only"
+        return default
+
+    monkeypatch.setattr("auth.get_user_setting", _fake_setting)
+
+    allowed = is_cloud_fallback_allowed(
+        ChatSendRequest(thread_id="t1", message="hi", generation_mode="local"),
+        1,
+    )
+
+    assert allowed is False
+
+
+def test_cloud_fallback_still_allowed_for_explicit_cloud_mode(monkeypatch) -> None:
+    monkeypatch.setattr("auth.get_user_setting", lambda uid, key, default="": "local_only" if key == "routing_mode" else default)
+
+    allowed = is_cloud_fallback_allowed(
+        ChatSendRequest(thread_id="t1", message="hi", generation_mode="cloud_openai"),
+        1,
+    )
+
+    assert allowed is True

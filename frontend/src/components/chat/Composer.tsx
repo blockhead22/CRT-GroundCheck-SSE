@@ -1,6 +1,8 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getCloudSettings, updateCloudSettings, getAvailableModels, uploadImage, type AvailableModels } from '../../lib/api'
+import { usePredictiveText } from '../../hooks/usePredictiveText'
+import { learnFromMessage } from '../../lib/dictionary'
 import { ClaudeLogo } from '../icons/ClaudeLogo'
 import { OpenAILogo } from '../icons/OpenAILogo'
 
@@ -50,8 +52,13 @@ export function Composer(props: {
   onToggleDiagnostics?: () => void
 }) {
   const [text, setText] = useState('')
+  const [cursorPos, setCursorPos] = useState(0)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const ghostRef = useRef<HTMLDivElement>(null)
   const [focused, setFocused] = useState(false)
+
+  // Predictive text ghost autocomplete
+  const { suggestion, dismiss: dismissSuggestion } = usePredictiveText(text, cursorPos, focused)
   const [generationMode, setGenerationMode] = useState<GenerationMode>('local')
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false)
   const [settingsLoaded, setSettingsLoaded] = useState(false)
@@ -243,7 +250,11 @@ export function Composer(props: {
       cloudModelOpenAI: generationMode === 'cloud_openai' ? selectedModelName : undefined,
       cloudModelClaude: generationMode === 'cloud_claude' ? selectedModelName : undefined,
     })
+    // Learn vocabulary from sent message for predictive text
+    learnFromMessage(t)
     setText('')
+    setCursorPos(0)
+    dismissSuggestion()
     setAttachedPaths([])
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
@@ -271,6 +282,20 @@ export function Composer(props: {
   }, [props.typing, props.onStop])
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Tab accepts predictive text suggestion
+    if (e.key === 'Tab' && suggestion) {
+      e.preventDefault()
+      const newText = text + suggestion
+      setText(newText)
+      setCursorPos(newText.length)
+      dismissSuggestion()
+      return
+    }
+    // Escape dismisses suggestion
+    if (e.key === 'Escape' && suggestion) {
+      dismissSuggestion()
+      // Don't return — let Escape also propagate for stop-generation
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       send()
@@ -691,7 +716,10 @@ export function Composer(props: {
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => {
+              setText(e.target.value)
+              setCursorPos(e.target.selectionStart ?? e.target.value.length)
+            }}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             onDrop={handleDrop}
@@ -706,6 +734,46 @@ export function Composer(props: {
             autoComplete="off"
             spellCheck="true"
           />
+
+          {/* Ghost text overlay for predictive autocomplete */}
+          {suggestion && focused && cursorPos === text.length && (
+            <div
+              ref={ghostRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 overflow-hidden px-5 pb-3 pt-4 text-[15px] leading-relaxed"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {/* Invisible spacer matching the typed text */}
+              <span style={{ visibility: 'hidden', whiteSpace: 'pre-wrap' }}>{text}</span>
+              {/* Ghost suggestion */}
+              <span
+                style={{
+                  color: 'rgba(240,235,225,0.2)',
+                  fontStyle: 'normal',
+                  pointerEvents: 'none',
+                }}
+              >
+                {suggestion}
+              </span>
+              {/* Tiny Tab hint (only shown once via localStorage) */}
+              {suggestion.length > 1 && !localStorage.getItem('aether_ghost_hint_seen') && (
+                <span
+                  style={{
+                    fontSize: 9,
+                    color: 'rgba(212,132,92,0.4)',
+                    marginLeft: 6,
+                    fontFamily: 'var(--font-mono, monospace)',
+                  }}
+                  ref={(el) => {
+                    // Mark hint as seen after first render
+                    if (el) setTimeout(() => localStorage.setItem('aether_ghost_hint_seen', '1'), 3000)
+                  }}
+                >
+                  Tab
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Bottom bar with attach + hint + buttons */}
           <div className="flex items-center justify-between px-5 pb-3">

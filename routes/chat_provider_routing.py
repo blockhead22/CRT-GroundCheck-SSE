@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import os
 import logging
 from dataclasses import dataclass
-from typing import Any, Generator, Optional
+from typing import Any, Generator, Optional, Tuple
 
 from fastapi import Request
+
+from personal_agent.ollama_config import resolve_ollama_base_url
 
 from .models import ChatSendRequest
 
@@ -37,13 +40,62 @@ def _get_user_setting(uid: Optional[int], key: str, default: str) -> str:
         return str(default or "").strip()
 
 
-def resolve_effective_generation_mode(req: ChatSendRequest, uid: Optional[int]) -> str:
+def get_requested_generation_mode(req: ChatSendRequest, uid: Optional[int]) -> str:
     requested = str(getattr(req, "generation_mode", "") or "").strip()
     if not requested:
-        requested = _get_user_setting(uid, "generation_mode", "cloud_openai")
+        requested = _get_user_setting(uid, "generation_mode", "local")
+    return requested or "local"
+
+
+def resolve_effective_generation_mode(req: ChatSendRequest, uid: Optional[int]) -> str:
+    requested = get_requested_generation_mode(req, uid)
     if requested == "local_network":
         return "local"
-    return requested or "cloud_openai"
+    return requested or "local"
+
+
+def resolve_local_ollama_model(req: ChatSendRequest, uid: Optional[int]) -> str:
+    requested = get_requested_generation_mode(req, uid)
+    if requested == "local_network":
+        network_model = _get_user_setting(uid, "network_ollama_model", "")
+        if network_model:
+            return network_model
+    return str(os.getenv("CRT_OLLAMA_MODEL") or "qwen3:14b").strip()
+
+
+def is_cloud_fallback_allowed(req: ChatSendRequest, uid: Optional[int]) -> bool:
+    requested = get_requested_generation_mode(req, uid)
+    if requested in ("cloud_claude", "cloud_openai"):
+        return True
+
+    escalation = _get_user_setting(uid, "cloud_escalation_policy", "conservative").lower().strip()
+    routing_mode = _get_user_setting(uid, "routing_mode", "hybrid").lower().strip()
+    if escalation == "local_only" or routing_mode == "local_only":
+        return False
+    return True
+
+
+def build_orchestrator_brain(req: ChatSendRequest, uid: Optional[int]) -> Tuple[str, Any]:
+    from personal_agent.cookie_orchestrator import get_brain
+
+    requested = get_requested_generation_mode(req, uid)
+    effective = resolve_effective_generation_mode(req, uid)
+    if effective == "cloud_openai":
+        model = str(
+            getattr(req, "cloud_model_openai", "") or _get_user_setting(uid, "cloud_model_openai", "gpt-4o")
+        ).strip() or "gpt-4o"
+        return requested, get_brain("openai", model=model)
+    if effective == "local":
+        return requested, get_brain(
+            "ollama",
+            model=resolve_local_ollama_model(req, uid),
+            base_url=resolve_ollama_base_url(),
+        )
+
+    model = str(
+        getattr(req, "cloud_model_claude", "") or _get_user_setting(uid, "cloud_model_claude", "claude-sonnet-4-20250514")
+    ).strip() or "claude-sonnet-4-20250514"
+    return requested, get_brain("claude-cli", model=model)
 
 
 def resolve_provider_preference(req: ChatSendRequest, uid: Optional[int], base_client: Any) -> Optional[ProviderPreference]:

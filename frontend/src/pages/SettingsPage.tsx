@@ -232,6 +232,11 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
 
   // Claude master toggle state for disabling sub-toggles
   const claudeEnabled = cloudSettings?.cloud_claude_enabled === 'true' || cloudSettings?.cloud_claude_enabled === 'on'
+  const generationMode = cloudSettings?.generation_mode || 'local'
+  const routingMode = cloudSettings?.routing_mode || 'local_only'
+  const localModels = availableModels?.local || []
+  const cloudCatalog = availableModels?.cloud || []
+  const anthropicCatalog = availableModels?.anthropic || []
 
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'profile', label: 'Profile' },
@@ -660,13 +665,18 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
               </SectionCard>
 
               {/* ── Model Selection (merged from Advanced) ── */}
-              <SectionCard title="Model Selection" description="Choose which models are used for generation. These override defaults when set.">
+              <SectionCard title="Model Selection" description="Choose which models are used for generation and routing. For a local-first setup, keep generation on local, routing on local-only, and tooling fallback on local-only.">
                 {cloudSettings ? (
                   <div className="space-y-4">
+                    <div className={`rounded border px-3 py-2 text-xs ${localModels.length > 0 ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-200/80' : 'border-amber-500/20 bg-amber-500/10 text-amber-200/80'}`}>
+                      {localModels.length > 0
+                        ? `Local Ollama models detected: ${localModels.map((m) => m.name).slice(0, 4).join(', ')}${localModels.length > 4 ? ` +${localModels.length - 4} more` : ''}`
+                        : 'No local Ollama models were detected from the frontend. Start Ollama and pull at least one model if you want local-only mode to work cleanly.'}
+                    </div>
                     <div>
                       <label className="mb-1.5 block text-sm text-white/70">Generation Mode</label>
                       <select
-                        value={cloudSettings.generation_mode || 'local'}
+                        value={generationMode}
                         onChange={(e) => handleCloudSelect('generation_mode', e.target.value)}
                         className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
                       >
@@ -679,10 +689,42 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     </div>
 
                     <div>
+                      <label className="mb-1.5 block text-sm text-white/70">Routing Mode</label>
+                      <select
+                        value={routingMode}
+                        onChange={(e) => handleCloudSelect('routing_mode', e.target.value)}
+                        className="w-full rounded glass-field px-4 py-2.5 text-sm text-white bg-transparent focus:outline-none focus:ring-1 focus:ring-white/20"
+                      >
+                        <option value="local_only" className="bg-gray-900">Local only</option>
+                        <option value="hybrid" className="bg-gray-900">Hybrid</option>
+                        <option value="cloud_only" className="bg-gray-900">Cloud only</option>
+                      </select>
+                      <p className="mt-1 text-xs text-white/40">Controls intent classification fallback. `local_only` prevents routing from silently escaping to cloud.</p>
+                    </div>
+
+                    {generationMode === 'local_network' && (
+                      <div>
+                        <label className="mb-1.5 block text-sm text-white/70">Network Ollama Model</label>
+                        <input
+                          type="text"
+                          list="settings-local-models"
+                          value={cloudSettings.network_ollama_model || ''}
+                          onChange={(e) => setCloudSettingsState({ ...cloudSettings, network_ollama_model: e.target.value })}
+                          onBlur={(e) => handleCloudSelect('network_ollama_model', e.target.value)}
+                          placeholder="deepseek-r1:latest"
+                          className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
+                        />
+                        <p className="mt-1 text-xs text-white/40">Used only for Network (Ollama/LAN) mode.</p>
+                      </div>
+                    )}
+
+                    <div>
                       <label className="mb-1.5 block text-sm text-white/70">OpenAI Model</label>
                       <input
                         type="text"
-                        defaultValue={cloudSettings.cloud_model_openai || 'gpt-4o-mini'}
+                        list="settings-openai-models"
+                        value={cloudSettings.cloud_model_openai || 'gpt-4o-mini'}
+                        onChange={(e) => setCloudSettingsState({ ...cloudSettings, cloud_model_openai: e.target.value })}
                         onBlur={(e) => handleCloudSelect('cloud_model_openai', e.target.value)}
                         placeholder="gpt-4o-mini"
                         className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
@@ -694,7 +736,9 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       <label className="mb-1.5 block text-sm text-white/70">Claude Model</label>
                       <input
                         type="text"
-                        defaultValue={cloudSettings.cloud_model_claude || 'claude-sonnet-4-20250514'}
+                        list="settings-anthropic-models"
+                        value={cloudSettings.cloud_model_claude || 'claude-sonnet-4-20250514'}
+                        onChange={(e) => setCloudSettingsState({ ...cloudSettings, cloud_model_claude: e.target.value })}
                         onBlur={(e) => handleCloudSelect('cloud_model_claude', e.target.value)}
                         placeholder="claude-sonnet-4-20250514"
                         className="w-full rounded glass-field px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20"
@@ -703,6 +747,21 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                     </div>
 
                     {/* Routing LLM Model Override removed — Layer 4 epistemic routing handles this now */}
+                    <datalist id="settings-local-models">
+                      {localModels.map((m) => (
+                        <option key={m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </datalist>
+                    <datalist id="settings-openai-models">
+                      {cloudCatalog.map((m) => (
+                        <option key={m.name} value={m.name}>{m.label}</option>
+                      ))}
+                    </datalist>
+                    <datalist id="settings-anthropic-models">
+                      {anthropicCatalog.map((m) => (
+                        <option key={m.name} value={m.name}>{m.label}</option>
+                      ))}
+                    </datalist>
                   </div>
                 ) : (
                   <p className="text-sm text-white/40">Loading model settings...</p>
@@ -1315,7 +1374,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                   <div>
                     <select
                       className="glass-field w-full rounded px-3 py-2 text-sm text-white/90"
-                      value={cloudSettings.tooling_fallback_policy || 'local_to_cloud'}
+                      value={cloudSettings.tooling_fallback_policy || 'local_only'}
                       onChange={(e) => handleCloudSelect('tooling_fallback_policy', e.target.value)}
                     >
                       <option value="local_to_cloud">Local first, cloud fallback</option>
@@ -1328,7 +1387,7 @@ export function SettingsPage({ authUser, threadId, onDisplayNameChanged, onProfi
                       {cloudSettings.tooling_fallback_policy === 'cloud_to_local' && 'Try cloud/Anthropic first; fall back to local if cloud unavailable.'}
                       {cloudSettings.tooling_fallback_policy === 'local_only' && 'Never use cloud models. All requests stay on local Ollama.'}
                       {cloudSettings.tooling_fallback_policy === 'cloud_only' && 'Only use cloud/Anthropic models. Skip local entirely.'}
-                      {!cloudSettings.tooling_fallback_policy && 'Try local Ollama models first; escalate to cloud if unavailable or returns empty.'}
+                      {!cloudSettings.tooling_fallback_policy && 'Never use cloud models. All requests stay on local Ollama.'}
                     </div>
                   </div>
                 ) : (

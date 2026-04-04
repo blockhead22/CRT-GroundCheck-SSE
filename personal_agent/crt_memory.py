@@ -53,6 +53,7 @@ logger = logging.getLogger(__name__)
 _TRANSCRIPT_GUARD_MARKERS = (
     "[CONTINUITY INSTRUCTION]",
     "[RECENT CONVERSATION CONTEXT]",
+    "[Temporary GPT archive context - reference only, not settled memory]",
 )
 
 _TRANSCRIPT_LINE_RE = re.compile(r"(?im)^\s*(user|assistant)\s*:")

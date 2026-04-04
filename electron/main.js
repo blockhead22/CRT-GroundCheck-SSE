@@ -12,6 +12,7 @@ const {
   globalShortcut,
   ipcMain,
   shell,
+  session,
 } = require('electron');
 const path = require('path');
 const http = require('http');
@@ -83,6 +84,26 @@ let clipboardMonitor = null;
 let ambientMonitor = null;
 let desktopPet = null;
 let frontendLoaded = false;
+
+async function installContextMenu(window) {
+  try {
+    const mod = await import('electron-context-menu');
+    const contextMenu = mod.default || mod;
+    contextMenu({
+      window,
+      showSearchWithGoogle: true,
+      showCopyImage: false,
+      showSaveImageAs: false,
+      showSelectAll: true,
+      showInspectElement: IS_DEV,
+      showLookUpSelection: false,
+      // Spellcheck suggestions appear automatically when right-clicking misspelled words
+    });
+    console.log('[main] Spellcheck + context menu enabled');
+  } catch (error) {
+    console.warn('[main] Failed to enable context menu:', error?.message || error);
+  }
+}
 
 // ── Window ────────────────────────────────────────────────────────────
 
@@ -975,6 +996,13 @@ app.whenReady().then(async () => {
 
   // 1. Create window with loading screen
   createWindow();
+
+  // ── Spellcheck + Context Menu ────────────────────────────────────────
+  // Enable Chromium's built-in spellchecker
+  session.defaultSession.setSpellCheckerLanguages(['en-US']);
+
+  // Custom right-click context menu with spellcheck suggestions
+  await installContextMenu(mainWindow);
 
   mainWindow.loadURL(`data:text/html,${encodeURIComponent(`<!DOCTYPE html>
 <html><head><style>

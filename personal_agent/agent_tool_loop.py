@@ -839,7 +839,7 @@ class AgentToolLoop:
 
                     yield {
                         "type": "agent_checkpoint",
-                        "content": f"I need to {action_desc}. Go ahead?",
+                        "content": f"Before I do that, I need your go-ahead to {action_desc}.",
                         "metadata": {
                             "requires_confirmation": True,
                             "checkpoint_tier": tier,

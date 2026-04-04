@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set
 
+from .ollama_config import resolve_ollama_base_url
+
 # Ensure project root is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -182,8 +184,7 @@ class OllamaBrain(BrainProvider):
     def __init__(self, model: str = "llama3.2",
                  base_url: Optional[str] = None):
         self._model = model
-        self._base_url = base_url or os.environ.get(
-            "OLLAMA_BASE_URL", "http://localhost:11434")
+        self._base_url = base_url or resolve_ollama_base_url()
 
     def complete(self, system: str, prompt: str, max_tokens: int = 800) -> BrainResult:
         import requests

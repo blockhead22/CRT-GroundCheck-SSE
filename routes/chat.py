@@ -49,7 +49,12 @@ from personal_agent.stream_events import normalize_stream_event
 from .chat_agent_loop_runner import run_agent_tool_loop
 from .chat_governed_resume import try_resume_or_resolve
 from .chat_orchestrator_runner import run_orchestrator
-from .chat_provider_routing import build_request_llm_client, resolve_effective_generation_mode
+from .chat_provider_routing import (
+    build_orchestrator_brain,
+    build_request_llm_client,
+    is_cloud_fallback_allowed,
+    resolve_effective_generation_mode,
+)
 from .chat_runtime import ChatStreamRuntime
 
 try:
@@ -139,6 +144,11 @@ _EXPAND_TRIGGERS = (
 _CONTINUITY_FOLLOWUP_HINTS = (
     "tell me more",
     "continue",
+    "try again",
+    "let's try again",
+    "lets try again",
+    "retry that",
+    "redo that",
     "and then",
     "what about",
     "how about",
@@ -169,6 +179,19 @@ _CONTINUITY_FOLLOWUP_HINTS = (
     "about me",
     "about who i am",
     "more about me",
+)
+
+_PENDING_FOLLOWUP_SHORTCUTS = (
+    "tell me",
+    "go on",
+    "go ahead",
+    "continue",
+    "keep going",
+    "say more",
+    "what do you mean",
+    "explain",
+    "explain that",
+    "explain it",
 )
 
 _GROUNDCHECK_BRIDGE_LOCK = threading.Lock()
@@ -393,6 +416,409 @@ def _augment_query_with_continuity(
     lines = list(reversed(lines_rev))
     context_block = f"{instruction}\n{context_header}\n" + "\n".join(lines)
     return f"{message}\n\n{context_block}"
+
+
+def _normalize_followup_shortcut(message: str) -> str:
+    return re.sub(r"\s+", " ", str(message or "").strip().lower())
+
+
+def _looks_like_pending_followup_shortcut(message: str) -> bool:
+    return _normalize_followup_shortcut(message) in _PENDING_FOLLOWUP_SHORTCUTS
+
+
+def _extract_recent_followup_anchor(history_messages: List[Dict[str, str]]) -> Optional[Dict[str, str]]:
+    last_assistant = ""
+    for item in reversed(history_messages or []):
+        role = str((item or {}).get("role") or "").strip().lower()
+        content = str((item or {}).get("content") or "").strip()
+        if not content:
+            continue
+        if role == "assistant" and not last_assistant:
+            last_assistant = content
+            continue
+        if role != "user":
+            continue
+        user_text = content
+        if user_text.startswith("[followup]"):
+            user_text = user_text[len("[followup]"):].strip()
+        user_lower = user_text.lower()
+        if not user_text:
+            continue
+        if "?" in user_text or user_lower.startswith(
+            ("what ", "how ", "why ", "which ", "can you ", "do you ", "tell me ")
+        ):
+            return {
+                "question": user_text,
+                "last_assistant": last_assistant,
+                "source": "recent_history",
+            }
+    return None
+
+
+def _resolve_pending_followup_context(
+    *,
+    message: str,
+    session_db: Any,
+    thread_id: str,
+    history_messages: List[Dict[str, str]],
+) -> Optional[Dict[str, str]]:
+    if not _looks_like_pending_followup_shortcut(message):
+        return None
+
+    try:
+        active = session_db.get_active_governed_task(thread_id) if session_db is not None else None
+    except Exception:
+        active = None
+
+    if isinstance(active, dict):
+        question = str(active.get("question") or "").strip()
+        if question:
+            return {
+                "question": question,
+                "objective": str(active.get("objective") or "").strip(),
+                "last_answer": str(active.get("orch_answer_so_far") or "").strip(),
+                "source": "governed_question",
+            }
+        pending_followups = [str(item or "").strip() for item in (active.get("pending_followups") or []) if str(item or "").strip()]
+        if pending_followups:
+            return {
+                "question": pending_followups[0],
+                "objective": str(active.get("objective") or "").strip(),
+                "last_answer": str(active.get("orch_answer_so_far") or "").strip(),
+                "source": "governed_followup",
+            }
+
+    recent_anchor = _extract_recent_followup_anchor(history_messages)
+    if recent_anchor:
+        return {
+            "question": str(recent_anchor.get("question") or "").strip(),
+            "objective": "",
+            "last_answer": str(recent_anchor.get("last_assistant") or "").strip(),
+            "source": str(recent_anchor.get("source") or "recent_history"),
+        }
+    return None
+
+
+def _augment_query_with_pending_followup(
+    *,
+    message: str,
+    pending_context: Optional[Dict[str, str]],
+) -> str:
+    if not pending_context:
+        return message
+    question = str(pending_context.get("question") or "").strip()
+    if not question:
+        return message
+
+    parts = [
+        str(message or "").strip(),
+        "",
+        "[CONTINUITY INSTRUCTION] Treat this as a direct continuation of the pending question below.",
+        "[PENDING FOLLOW-UP QUESTION]",
+        question,
+    ]
+    objective = str(pending_context.get("objective") or "").strip()
+    if objective:
+        parts.extend(["[TASK OBJECTIVE]", objective])
+    last_answer = str(pending_context.get("last_answer") or "").strip()
+    if last_answer:
+        if len(last_answer) > 500:
+            last_answer = last_answer[:500].rstrip() + "..."
+        parts.extend(["[MOST RECENT ANSWER]", last_answer])
+    return "\n".join(part for part in parts if part != "")
+
+
+_PERSONAL_HISTORY_PATTERNS = (
+    re.compile(r"\b(?:health|medical)\s+history\b", re.IGNORECASE),
+    re.compile(r"\bwhat\s+do\s+you\s+know\s+about\s+my\b", re.IGNORECASE),
+    re.compile(r"\b(?:my|the)\s+past\b", re.IGNORECASE),
+    re.compile(r"\bnight\s+in\s+the\s+icu\b", re.IGNORECASE),
+    re.compile(r"\bthree\s+promises\b", re.IGNORECASE),
+    re.compile(r"\blife\s+matters\s+more\s+to\s+me\s+now\b", re.IGNORECASE),
+)
+
+_WEAK_HISTORY_ANSWER_MARKERS = (
+    "i have fragments",
+    "not the full picture",
+    "i'm not seeing specifics",
+    "details didn't make it through",
+    "i don't have specific details",
+    "you'd need to tell me again",
+    "i don't have that one in front of me",
+    "i know there is",
+    "i know it exists",
+    "i can't tell you what it is",
+    "from what i remember",
+    "you've mentioned",
+    "health history is important to you",
+    "if you'd like to share more",
+    "i can help you keep track of it",
+    "if there are specific areas you want to discuss",
+)
+
+
+def _is_personal_history_question(text: str) -> bool:
+    raw = str(text or "").strip()
+    if not raw:
+        return False
+    if any(p.search(raw) for p in _PERSONAL_HISTORY_PATTERNS):
+        return True
+    raw_lower = raw.lower()
+    return "history" in raw_lower and any(term in raw_lower for term in ("my", "health", "medical", "past"))
+
+
+def _infer_personal_history_topic(history_messages: List[Dict[str, str]]) -> Optional[str]:
+    for item in reversed(history_messages or []):
+        content = str((item or {}).get("content") or "").strip()
+        if not content:
+            continue
+        if _is_personal_history_question(content):
+            return _history_topic_key(content)
+        content_lower = content.lower()
+        if any(
+            term in content_lower
+            for term in (
+                "medical history",
+                "health history",
+                "night in the icu",
+                "three promises",
+                "life matters more",
+                "leukemia",
+                "cancer",
+                "transplant",
+                "gvhd",
+                "diagnosis",
+                "prognosis",
+                "hospital",
+                "icu",
+            )
+        ):
+            return "health_history"
+        if any(term in content_lower for term in ("personal history", "my past", "the past")):
+            return "personal_history"
+    return None
+
+
+def _resolve_personal_history_reference(
+    text: str,
+    history_messages: List[Dict[str, str]],
+) -> Tuple[Optional[str], Optional[str], bool]:
+    raw = str(text or "").strip()
+    if not raw:
+        return None, None, False
+    if _is_personal_history_question(raw):
+        return raw, _history_topic_key(raw), False
+    if not _looks_like_follow_up(raw):
+        return None, None, False
+    inferred_topic = _infer_personal_history_topic(history_messages)
+    if not inferred_topic:
+        return None, None, False
+    if inferred_topic == "health_history":
+        return "medical history", inferred_topic, True
+    return "personal history", inferred_topic, True
+
+
+def _history_topic_key(text: str) -> str:
+    raw_lower = str(text or "").lower()
+    if any(term in raw_lower for term in ("health", "medical", "icu", "hospital", "three promises", "life matters more")):
+        return "health_history"
+    return "personal_history"
+
+
+def _history_search_queries(text: str) -> List[str]:
+    raw = str(text or "").strip()
+    queries: List[str] = [raw]
+    raw_lower = raw.lower()
+    if any(term in raw_lower for term in ("health", "medical", "icu", "hospital", "three promises", "life matters more")):
+        queries.extend([
+            "medical history",
+            "health history",
+            "night in the ICU",
+            "three promises",
+            "why life matters more to me now",
+        ])
+    deduped: List[str] = []
+    seen = set()
+    for item in queries:
+        cleaned = str(item or "").strip()
+        if not cleaned:
+            continue
+        key = cleaned.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(cleaned)
+    return deduped
+
+
+def _build_gpt_reference_summary(excerpts: List[Dict[str, Any]]) -> str:
+    lines = ["Temporary GPT archive references for this thread:"]
+    for item in excerpts[:4]:
+        role = str(item.get("role") or "?")
+        date = str(item.get("date") or "?")
+        title = str(item.get("conv_title") or "Untitled")
+        snippet = str(item.get("text") or "").strip().replace("\n", " ")
+        if len(snippet) > 260:
+            snippet = snippet[:260].rstrip() + "..."
+        lines.append(f"- [{role}] {date} | {title}: {snippet}")
+    return "\n".join(lines)
+
+
+def _get_or_build_gpt_reference_packet(
+    thread_id: str,
+    query_text: str,
+    *,
+    ttl_seconds: int = 86400,
+) -> Tuple[Optional[Dict[str, Any]], bool]:
+    topic_key = _history_topic_key(query_text)
+    try:
+        from personal_agent.gpt_reference_cache import get_packet, put_packet
+        cached = get_packet(thread_id, topic_key)
+        if cached:
+            return cached, True
+    except Exception:
+        put_packet = None
+
+    try:
+        from personal_agent.gpt_log_store import get_gpt_log_store
+        store = get_gpt_log_store()
+    except Exception as exc:
+        logger.debug("[GPT_REF] store unavailable: %s", exc)
+        return None, False
+
+    merged: Dict[str, Dict[str, Any]] = {}
+    for search_query in _history_search_queries(query_text):
+        try:
+            for result in store.search(search_query, top_k=6):
+                existing = merged.get(result.msg_id)
+                if existing and float(existing.get("score") or 0.0) >= float(result.score or 0.0):
+                    continue
+                _dt = datetime.fromtimestamp(result.timestamp) if result.timestamp else None
+                merged[result.msg_id] = {
+                    "msg_id": result.msg_id,
+                    "conv_id": result.conv_id,
+                    "conv_title": result.conv_title,
+                    "role": result.role,
+                    "text": result.text,
+                    "timestamp": float(result.timestamp or 0.0),
+                    "date": _dt.strftime("%Y-%m-%d") if _dt else "?",
+                    "score": round(float(result.score or 0.0), 4),
+                }
+        except Exception as exc:
+            logger.debug("[GPT_REF] search failed for %r: %s", search_query, exc)
+
+    if not merged:
+        return None, False
+
+    excerpts = sorted(
+        merged.values(),
+        key=lambda item: (float(item.get("score") or 0.0), float(item.get("timestamp") or 0.0)),
+        reverse=True,
+    )[:5]
+    packet = {
+        "thread_id": thread_id,
+        "topic_key": topic_key,
+        "query_text": query_text,
+        "created_at": time.time(),
+        "summary": _build_gpt_reference_summary(excerpts),
+        "excerpts": excerpts,
+    }
+    try:
+        if put_packet is not None:
+            put_packet(
+                thread_id=thread_id,
+                topic_key=topic_key,
+                query_text=query_text,
+                summary=packet["summary"],
+                excerpts=excerpts,
+                ttl_seconds=ttl_seconds,
+            )
+    except Exception as exc:
+        logger.debug("[GPT_REF] cache write failed: %s", exc)
+    return packet, False
+
+
+def _build_gpt_reference_context_block(packet: Dict[str, Any]) -> str:
+    excerpts = packet.get("excerpts") or []
+    lines = [
+        "[Temporary GPT archive context - reference only, not settled memory]",
+        str(packet.get("summary") or "").strip(),
+    ]
+    for item in excerpts[:3]:
+        snippet = str(item.get("text") or "").strip().replace("\n", " ")
+        if len(snippet) > 320:
+            snippet = snippet[:320].rstrip() + "..."
+        lines.append(f"- [{item.get('role')}] {item.get('date')} | {item.get('conv_title')}: {snippet}")
+    return "\n".join(part for part in lines if part)
+
+
+def _history_answer_is_weak(result: Dict[str, Any]) -> bool:
+    answer = str(result.get("answer") or "").strip().lower()
+    if not answer:
+        return True
+    if any(marker in answer for marker in _WEAK_HISTORY_ANSWER_MARKERS):
+        return True
+    if len(result.get("retrieved_memories") or []) == 0 and len(result.get("prompt_memories") or []) == 0:
+        return True
+    return False
+
+
+def _build_gpt_reference_answer(packet: Dict[str, Any], *, from_cache: bool) -> str:
+    excerpts = packet.get("excerpts") or []
+    opener = (
+        "I checked the temporary GPT-history references already loaded for this thread."
+        if from_cache
+        else "I checked your GPT archive for relevant past context."
+    )
+    lines = [opener, ""]
+    if excerpts:
+        lines.append("The clearest references I found:")
+        for item in excerpts[:3]:
+            snippet = str(item.get("text") or "").strip().replace("\n", " ")
+            if len(snippet) > 240:
+                snippet = snippet[:240].rstrip() + "..."
+            lines.append(f"- [{item.get('role')}] {item.get('date')} | {item.get('conv_title')}: {snippet}")
+        lines.append("")
+    lines.append("I'm treating this as temporary reference context, not settled memory, unless you want me to promote specific details.")
+    return "\n".join(lines)
+
+
+def _build_loop_acknowledgment(
+    message: str,
+    intent,
+    *,
+    history_messages: Optional[List[Dict[str, str]]] = None,
+) -> str:
+    history_messages = history_messages or []
+    ack_text = ""
+    try:
+        from personal_agent.task_agent import triage_message as _triage_message
+        from personal_agent.task_agent import _generate_acknowledgment as _generate_ack
+
+        _triage = _triage_message(message, intent)
+        ack_text = str(_triage.acknowledgment or "").strip()
+        if not ack_text:
+            ack_text = str(_generate_ack(intent, message) or "").strip()
+    except Exception:
+        ack_text = ""
+
+    resolved_query, resolved_topic, inferred = _resolve_personal_history_reference(message, history_messages)
+    if resolved_topic == "health_history":
+        if inferred:
+            return "This sounds like a follow-up to your health-history thread, so I'm pulling that context back in before I answer."
+        return "I'm going to pull together the relevant health-history context first, then answer directly."
+    if resolved_query:
+        return "I'm going to pull the relevant personal-history context back in first, then answer directly."
+
+    if not ack_text:
+        ack_text = "I'm going to look into that first, then I'll report back."
+
+    if getattr(intent, "route", "") == "conversational" and (
+        "look into that first" in ack_text.lower() or "tell you what i found" in ack_text.lower()
+    ):
+        return "I'm going to think that through for a moment, then I'll answer directly."
+
+    return ack_text
 
 
 def _is_bare_web_search_command(text: str) -> bool:
@@ -1414,6 +1840,10 @@ def _is_self_referential_question(text: str) -> bool:
         "explain how you",
         "explain your",
         "what is your purpose",
+        "what matters to you",
+        "what is important to you",
+        "what do you care about",
+        "what do you value",
         "what are your capabilities",
         "any new contradictions",
         "any contradictions",
@@ -1531,6 +1961,7 @@ def _is_self_referential_question(text: str) -> bool:
                          "heartbeat", "compress", "reflect", "thinking", "new with", "pipeline", "system",
                          "architecture", "learn", "improve", "personality", "identity", "yourself",
                          "design", "built", "created", "purpose", "different", "verification", "groundcheck",
+                         "matter", "care", "value", "important",
                          "subsystem", "mistake")
     ):
         return True
@@ -2493,8 +2924,19 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         session_db=session_db,
         thread_id=req.thread_id,
     )
+    recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
+    pending_followup_context = _resolve_pending_followup_context(
+        message=effective_message,
+        session_db=session_db,
+        thread_id=req.thread_id,
+        history_messages=recent_history,
+    )
     control_state.effective_text = effective_message
-    control_state.request_kind = "follow_up" if _looks_like_follow_up(effective_message) else "direct"
+    control_state.request_kind = (
+        "follow_up"
+        if (_looks_like_follow_up(effective_message) or pending_followup_context is not None)
+        else "direct"
+    )
     if _is_meta_provenance_followup(effective_message):
         control_state.request_kind = "meta_provenance"
     elif _is_architecture_explanation_request(effective_message):
@@ -2505,7 +2947,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         "determine_request",
         "classified",
         request_kind=control_state.request_kind,
-        follow_up=_looks_like_follow_up(effective_message),
+        follow_up=(_looks_like_follow_up(effective_message) or pending_followup_context is not None),
     )
 
     openclaw_delegate, openclaw_reason = should_delegate_to_openclaw(
@@ -3191,13 +3633,56 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     # Self-awareness injection now happens in reasoning.py/_build_quick_prompt
     # where the system prompt is assembled. No separate variable needed here.
 
-    recent_history = _load_recent_history_messages(session_db, req.thread_id, window=6)
     # Pass structured history for proper multi-turn chat; keep text
     # augmentation as fallback context in the query itself.
+    if pending_followup_context is not None:
+        query_with_context = _augment_query_with_pending_followup(
+            message=query_with_context,
+            pending_context=pending_followup_context,
+        )
     query_with_continuity = _augment_query_with_continuity(
         message=query_with_context,
         history_messages=recent_history,
     )
+    _gpt_reference_packet = None
+    _gpt_reference_from_cache = False
+    _history_ref_query, _history_ref_topic, _history_ref_inferred = _resolve_personal_history_reference(
+        effective_message,
+        recent_history,
+    )
+    if _history_ref_query:
+        try:
+            _emit_pipeline_status("checking archived GPT history")
+            _emit_pipeline_event({
+                "type": "intent_preview",
+                "content": (
+                    "This sounds like a follow-up to your earlier health-history thread, so I'm pulling that context back in before I answer."
+                    if _history_ref_inferred and _history_ref_topic == "health_history"
+                    else "I only have partial settled memory here, so I'm checking your GPT history for relevant context before I answer."
+                ),
+                "metadata": {
+                    "intent": "gpt_reference_lookup",
+                    "topic": _history_ref_topic,
+                    "inferred_from_followup": _history_ref_inferred,
+                },
+            })
+            _gpt_reference_packet, _gpt_reference_from_cache = _get_or_build_gpt_reference_packet(
+                req.thread_id,
+                _history_ref_query,
+            )
+            if _gpt_reference_packet:
+                query_with_continuity = (
+                    query_with_continuity
+                    + "\n\n"
+                    + _build_gpt_reference_context_block(_gpt_reference_packet)
+                )
+                _emit_pipeline_status(
+                    "loaded archived GPT context"
+                    if _gpt_reference_from_cache
+                    else "found archived GPT context"
+                )
+        except Exception as _gpt_ref_err:
+            logger.debug("[GPT_REF] preload failed: %s", _gpt_ref_err)
     control_state.mark(
         "bind",
         "context_ready",
@@ -3380,6 +3865,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         authority=req.authority,
         kind=req.kind,
     )
+    if _gpt_reference_packet is not None:
+        result["gpt_reference_packet"] = _gpt_reference_packet
+        result["gpt_reference_from_cache"] = _gpt_reference_from_cache
+        if _history_answer_is_weak(result):
+            result["answer"] = _build_gpt_reference_answer(
+                _gpt_reference_packet,
+                from_cache=_gpt_reference_from_cache,
+            )
+            result["response_type"] = "reference"
+            result["gates_passed"] = True
+            result["gate_reason"] = "gpt_reference_cache"
     _mark("engine_query_done")
     # Emit memory retrieval count
     _mem_retrieved_count = len(result.get("retrieved_memories") or []) + len(result.get("prompt_memories") or [])
@@ -3512,6 +4008,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             _mem_lines.append(f"- {_mt[:250]}{_trust_tag}")
                     if len(_mem_lines) > 1:
                         _dynamic_parts.append("\n".join(_mem_lines))
+
+                _gpt_ref_packet = result.get("gpt_reference_packet")
+                if isinstance(_gpt_ref_packet, dict):
+                    _dynamic_parts.append(_build_gpt_reference_context_block(_gpt_ref_packet))
 
                 # Self-model traits
                 if _pc_self_model:
@@ -3658,18 +4158,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _cloud_gen_enabled = str(
                 _auth_cg.get_user_setting(_uid_cg, "cloud_generation_fallback", "true")
             ).lower() in ("true", "1", "yes", "on")
-            # Respect escalation policy — "local_only" blocks cloud fallback
-            # EXCEPT when user explicitly selected cloud_claude as generation_mode.
-            # That's a direct instruction to use cloud; don't block it.
-            _esc_policy_setting = str(
-                _auth_cg.get_user_setting(_uid_cg, "cloud_escalation_policy", "conservative")
-            ).lower().strip()
             _user_gen_mode = resolve_effective_generation_mode(req, uid)
-            if _esc_policy_setting == "local_only" and _user_gen_mode not in ("cloud_claude", "cloud_openai"):
+            if not is_cloud_fallback_allowed(req, _uid_cg):
                 _cloud_gen_enabled = False
-                print("[GENERATION] fallback: blocked by escalation policy (local_only)")
-            elif _esc_policy_setting == "local_only" and _user_gen_mode in ("cloud_claude", "cloud_openai"):
-                print(f"[GENERATION] fallback: escalation policy is local_only but generation_mode={_user_gen_mode}, allowing cloud fallback")
+                print(f"[GENERATION] fallback: blocked for effective local-only routing (generation_mode={_user_gen_mode})")
             if _cloud_gen_enabled:
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_gen_svc = get_cloud_feature_service()
@@ -4558,17 +5050,10 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _cloud_gen_enabled2 = str(
                     _auth_cg2.get_user_setting(_uid_cg2, "cloud_generation_fallback", "true")
                 ).lower() in ("true", "1", "yes", "on")
-                # Respect escalation policy — "local_only" blocks cloud fallback
-                # EXCEPT when user explicitly selected cloud generation mode
-                _esc_policy_setting2 = str(
-                    _auth_cg2.get_user_setting(_uid_cg2, "cloud_escalation_policy", "conservative")
-                ).lower().strip()
                 _user_gen_mode2 = resolve_effective_generation_mode(req, uid)
-                if _esc_policy_setting2 == "local_only" and _user_gen_mode2 not in ("cloud_claude", "cloud_openai"):
+                if not is_cloud_fallback_allowed(req, _uid_cg2):
                     _cloud_gen_enabled2 = False
-                    print("[GENERATION] late_fallback: blocked by escalation policy (local_only)")
-                elif _esc_policy_setting2 == "local_only" and _user_gen_mode2 in ("cloud_claude", "cloud_openai"):
-                    print(f"[GENERATION] late_fallback: escalation is local_only but generation_mode={_user_gen_mode2}, allowing")
+                    print(f"[GENERATION] late_fallback: blocked for effective local-only routing (generation_mode={_user_gen_mode2})")
                 if _cloud_gen_enabled2:
                     from personal_agent.cloud_features import get_cloud_feature_service
                     _cloud_gen_svc2 = get_cloud_feature_service()
@@ -4866,6 +5351,9 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         "generation_provider": (model_route or {}).get("provider") if isinstance(model_route, dict) else None,
         "generation_source": result.get("generation_source"),
         "escalation": result.get("escalation"),
+        "gpt_reference_used": isinstance(result.get("gpt_reference_packet"), dict),
+        "gpt_reference_from_cache": bool(result.get("gpt_reference_from_cache")),
+        "gpt_reference_topic": (result.get("gpt_reference_packet") or {}).get("topic_key") if isinstance(result.get("gpt_reference_packet"), dict) else None,
         "cloud_governance_used": result.get("cloud_governance_used", False),
         "groundcheck_bridge": groundcheck_bridge_meta,
         "gate_debug": result.get("gate_debug") or None,
@@ -5325,9 +5813,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         # Re-use the agent loop orchestrator path directly
                         yield _status("Resuming...")
                         try:
-                            from personal_agent.cookie_orchestrator import Orchestrator, get_brain
-                            _r_brain_mode = getattr(req, "generation_mode", "cloud_claude") or "cloud_claude"
-                            _r_brain = get_brain("claude-cli" if _r_brain_mode == "cloud_claude" else "claude-cli")
+                            from personal_agent.cookie_orchestrator import Orchestrator
+                            _r_brain_mode, _r_brain = build_orchestrator_brain(req, uid)
                             _r_remaining = _suspended.get("remaining_iterations", 8)
                             _safe_print(f"[ORCHESTRATOR] Resume brain: {_r_brain_mode}, remaining_iterations: {_r_remaining}")
                             _r_orch = Orchestrator(brain=_r_brain, max_iterations=max(3, _r_remaining))
@@ -6293,7 +6780,11 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     try:
                         from personal_agent.task_agent import triage_message, _INTENT_TOOL_MAP
                         _triage = triage_message(req.message, _task_intent)
-                        _ack_text = _triage.acknowledgment
+                        _ack_text = _build_loop_acknowledgment(
+                            req.message,
+                            _task_intent,
+                            history_messages=recent_history,
+                        )
                         _tools_planned = _triage.tools_needed or _INTENT_TOOL_MAP.get(_task_intent.intent_type, [])
                         if _ack_text:
                             yield _sse({
@@ -6512,8 +7003,25 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _orch_entry = _layer4_orchestrator or (_agent_loop_skipped_for_model and _needs_agent_loop)
             if not _orch_entry and (_layer4_orchestrator or _agent_loop_skipped_for_model):
                 _safe_print(f"[ROUTING_GATE] Blocked agent loop entry: intent={_intent_type_str!r}, conf={_routing_conf:.2f}, words={len(str(req.message or '').split())} — falling through to legacy")
+            _orch_preview_emitted = False
             if _orch_entry:
                 _orch_reason = "layer4" if _layer4_orchestrator else "model_redirect"
+                _ack_text = _build_loop_acknowledgment(
+                    req.message,
+                    _task_intent,
+                    history_messages=(recent_history if 'recent_history' in dir() else None),
+                )
+                yield _sse({
+                    "type": "intent_preview",
+                    "content": _ack_text,
+                    "metadata": {
+                        "intent": _intent_type_str,
+                        "route": getattr(_task_intent, "route", ""),
+                        "reason": _orch_reason,
+                    },
+                })
+                yield _sse({"type": "token", "content": _ack_text + "\n\n"})
+                _orch_preview_emitted = True
                 _orch_runner_result = yield from run_orchestrator(
                     runtime,
                     _task_intent,
@@ -6536,33 +7044,33 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 # Without this, the user sees silence for several seconds.
                 # The ack is the first token of the response; the orchestrator
                 # answer is appended after. Keep it short and contextual.
-                _intent_type_ack = getattr(_task_intent, 'intent_type', '') or ''
-                _msg_lower_ack = req.message.lower().strip()
-                if any(w in _msg_lower_ack for w in ('read', 'open', 'look at', 'check', 'show', 'what', 'find')):
-                    _ack_text = "Looking at that..."
-                elif any(w in _msg_lower_ack for w in ('write', 'edit', 'update', 'change', 'fix', 'patch')):
-                    _ack_text = "On it."
-                elif any(w in _msg_lower_ack for w in ('search', 'research', 'fetch', 'web')):
-                    _ack_text = "On it, looking that up..."
-                elif any(w in _msg_lower_ack for w in ('run', 'execute', 'build', 'test')):
-                    _ack_text = "Running that..."
-                else:
-                    _ack_text = "On it."
-                yield _sse({"type": "token", "content": _ack_text + "\n\n"})
+                _ack_text = _build_loop_acknowledgment(
+                    req.message,
+                    _task_intent,
+                    history_messages=(
+                        _orch_recent
+                        if "_orch_recent" in locals()
+                        else (recent_history if "recent_history" in locals() else None)
+                    ),
+                )
+                if not _orch_preview_emitted:
+                    yield _sse({
+                        "type": "intent_preview",
+                        "content": _ack_text,
+                        "metadata": {
+                            "intent": _intent_type_str,
+                            "route": getattr(_task_intent, "route", ""),
+                            "reason": _orch_reason,
+                        },
+                    })
+                    yield _sse({"type": "token", "content": _ack_text + "\n\n"})
 
                 try:
-                    from personal_agent.cookie_orchestrator import Orchestrator, ClaudeCliBrain, OpenAIBrain, get_brain
+                    from personal_agent.cookie_orchestrator import Orchestrator
 
                     _orch_engine = request.app.state.get_engine(req.thread_id)
 
-                    # Respect frontend model selection for the agent loop brain
-                    import auth as _auth_orch
-                    _uid_orch = int(uid) if uid else 1
-                    _orch_gen_mode = str(_auth_orch.get_user_setting(_uid_orch, "generation_mode", "cloud_claude") or "cloud_claude").strip()
-                    if _orch_gen_mode == "cloud_openai":
-                        _orch_brain = OpenAIBrain(model="gpt-4o")
-                    else:
-                        _orch_brain = ClaudeCliBrain()
+                    _orch_gen_mode, _orch_brain = build_orchestrator_brain(req, uid)
                     _safe_print(f"[ORCHESTRATOR] Brain selected: {_orch_gen_mode} -> {getattr(_orch_brain, '_model', 'unknown')}")
 
                     _orch = Orchestrator(

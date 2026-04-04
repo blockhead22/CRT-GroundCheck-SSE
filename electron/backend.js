@@ -41,6 +41,15 @@ class BackendManager extends EventEmitter {
 
   /** Environment variables for the backend (mirrors start_api.ps1) */
   getEnv() {
+    const desktopOllamaBaseUrl =
+      process.env.CRT_DESKTOP_OLLAMA_BASE_URL ||
+      process.env.AETHER_OLLAMA_BASE_URL ||
+      'http://localhost:11434';
+    const forceLocalOllama = !(
+      process.env.CRT_DESKTOP_OLLAMA_BASE_URL ||
+      process.env.AETHER_OLLAMA_BASE_URL
+    );
+
     return {
       ...process.env,
       PORT: String(this.port),
@@ -55,7 +64,10 @@ class BackendManager extends EventEmitter {
       CRT_SHARED_MEMORY: 'true',
       CRT_ENABLE_LLM: 'true',
       CRT_OLLAMA_MODEL: process.env.CRT_OLLAMA_MODEL || 'qwen3:14b',
-      OLLAMA_BASE_URL: process.env.OLLAMA_BASE_URL || 'http://192.168.1.146:11434',
+      CRT_FORCE_LOCAL_OLLAMA: forceLocalOllama ? 'true' : 'false',
+      // Do not inherit a stale shell-wide OLLAMA_BASE_URL for desktop local mode.
+      // Use CRT_DESKTOP_OLLAMA_BASE_URL or AETHER_OLLAMA_BASE_URL when a LAN target is intentional.
+      OLLAMA_BASE_URL: desktopOllamaBaseUrl,
       // CRT_INTENT_MODEL removed — Layer 4 epistemic routing handles this
       HF_HUB_OFFLINE: '1',
       TRANSFORMERS_OFFLINE: '1',

@@ -35,6 +35,30 @@ def test_store_memory_strips_continuity_and_transcript_blocks(tmp_path: Path):
     assert item.text == "tell me a joke"
 
 
+def test_store_memory_strips_temporary_gpt_archive_context(tmp_path: Path):
+    mem_db = tmp_path / "mem.db"
+    memory = CRTMemorySystem(db_path=str(mem_db))
+
+    polluted = (
+        "Aether, what do you know about my health history?\n\n"
+        "[Temporary GPT archive context - reference only, not settled memory]\n"
+        "Temporary GPT archive references for this thread:\n"
+        "- [user] 2025-03-24 | Notes: those three promises...\n"
+    )
+
+    item = memory.store_memory(
+        text=polluted,
+        confidence=0.9,
+        source=MemorySource.USER,
+        context={"type": "user_input", "kind": "assertion"},
+        thread_id="tg_guard",
+    )
+
+    assert "[Temporary GPT archive context - reference only, not settled memory]" not in item.text
+    assert "Temporary GPT archive references for this thread" not in item.text
+    assert item.text == "Aether, what do you know about my health history?"
+
+
 def test_rag_query_persists_thread_id_on_memory_rows(tmp_path: Path):
     mem_db = tmp_path / "mem.db"
     led_db = tmp_path / "ledger.db"
@@ -58,4 +82,3 @@ def test_rag_query_persists_thread_id_on_memory_rows(tmp_path: Path):
     assert row is not None
     assert row[0] == "tg_123"
     assert "parity nick" in str(row[1]).lower()
-

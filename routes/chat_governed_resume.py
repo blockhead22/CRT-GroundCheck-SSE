@@ -9,7 +9,7 @@ from typing import Any, Generator, Optional
 from personal_agent.governed_task import GovernedTaskStatus, GovernedTaskWaitKind
 from personal_agent.runtime_config import get_runtime_config
 
-from .chat_provider_routing import build_request_llm_client, resolve_effective_generation_mode
+from .chat_provider_routing import build_orchestrator_brain, build_request_llm_client
 from .chat_runtime import ChatStreamRuntime
 
 
@@ -218,10 +218,9 @@ def _resume_suspended_loop(
 
     yield runtime.emit_status("Resuming...")
     try:
-        from personal_agent.cookie_orchestrator import Orchestrator, get_brain
+        from personal_agent.cookie_orchestrator import Orchestrator
 
-        r_brain_mode = resolve_effective_generation_mode(req, runtime.uid)
-        r_brain = get_brain("claude-cli" if r_brain_mode == "cloud_claude" else "claude-cli")
+        r_brain_mode, r_brain = build_orchestrator_brain(req, runtime.uid)
         r_remaining = suspended.get("remaining_iterations", 8)
         runtime.safe_print(f"[ORCHESTRATOR] Resume brain: {r_brain_mode}, remaining_iterations: {r_remaining}")
         r_orch = Orchestrator(brain=r_brain, max_iterations=max(3, r_remaining))

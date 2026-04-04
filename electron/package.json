@@ -9,6 +9,7 @@
     "build": "electron-builder"
   },
   "dependencies": {
+    "electron-context-menu": "^4.1.2",
     "electron-store": "^8.2.0",
     "ws": "^8.20.0"
   },

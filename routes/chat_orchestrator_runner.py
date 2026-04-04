@@ -8,7 +8,7 @@ from typing import Any, Dict, Generator, List, Optional
 
 from personal_agent.governed_task import GovernedTaskStatus, GovernedTaskWaitKind
 
-from .chat_provider_routing import resolve_effective_generation_mode
+from .chat_provider_routing import build_orchestrator_brain
 from .chat_runtime import ChatStreamRuntime, StreamTerminalResult
 
 
@@ -69,15 +69,11 @@ def run_orchestrator(
     current_msg = original_msg
 
     try:
-        from personal_agent.cookie_orchestrator import ClaudeCliBrain, OpenAIBrain, Orchestrator
+        from personal_agent.cookie_orchestrator import Orchestrator
 
         orch_engine = request.app.state.get_engine(req.thread_id)
 
-        orch_gen_mode = resolve_effective_generation_mode(req, runtime.uid)
-        if orch_gen_mode == "cloud_openai":
-            orch_brain = OpenAIBrain(model="gpt-4o")
-        else:
-            orch_brain = ClaudeCliBrain()
+        orch_gen_mode, orch_brain = build_orchestrator_brain(req, runtime.uid)
         runtime.safe_print(
             f"[ORCHESTRATOR] Brain selected: {orch_gen_mode} -> {getattr(orch_brain, '_model', 'unknown')}"
         )

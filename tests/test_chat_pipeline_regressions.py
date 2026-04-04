@@ -62,6 +62,19 @@ def test_continuity_augmented_text_does_not_trigger_contradiction_spam(rag: CRTE
     assert after == before
 
 
+def test_gpt_reference_augmented_text_is_stripped_from_retrieval_query(rag: CRTEnhancedRAG):
+    polluted = (
+        "Aether, what do you know about my health history?\n\n"
+        "[Temporary GPT archive context - reference only, not settled memory]\n"
+        "Temporary GPT archive references for this thread:\n"
+        "- [user] 2025-03-24 | Notes: those three promises...\n"
+    )
+
+    cleaned = rag._strip_continuity_augmented_text(polluted)
+
+    assert cleaned == "Aether, what do you know about my health history?"
+
+
 def test_nickname_history_query_bypasses_contradiction_prompt(rag: CRTEnhancedRAG):
     rag.query("My name is Nick Block.")
     rag.query("Call me Nicky.")

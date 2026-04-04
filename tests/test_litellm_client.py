@@ -13,6 +13,7 @@ from personal_agent.litellm_client import (
     CloudPromptPolicy,
     create_llm_client,
 )
+from personal_agent.ollama_config import resolve_ollama_base_url
 
 
 def _make_client(**overrides):
@@ -105,6 +106,12 @@ class TestToLiteLLMParams:
         client = _make_client()
         params = client._to_litellm_params("local", "ollama/qwen3:14b")
         assert params["model"] == "ollama/qwen3:14b"  # not ollama/ollama/...
+
+
+class TestOllamaBaseUrlResolution:
+    def test_force_local_ollama_ignores_stale_env(self):
+        with patch.dict(os.environ, {"OLLAMA_BASE_URL": "http://192.168.1.91:11434", "CRT_FORCE_LOCAL_OLLAMA": "true"}, clear=False):
+            assert resolve_ollama_base_url() == "http://localhost:11434"
 
 
 # ── Thinking model detection ─────────────────────────────────────────

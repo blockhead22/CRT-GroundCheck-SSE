@@ -57,6 +57,39 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "gpt_log_search",
         "gpt_log_context",
     },
+    "broad_recall": {
+        "memory_recall",
+        "introspect",
+        "gpt_log_search",
+        "gpt_log_context",
+    },
+    "file_read": {
+        "file_read",
+        "dir_list",
+        "search_code",
+        "memory_recall",
+        "introspect",
+    },
+    "dir_list": {
+        "dir_list",
+        "file_read",
+        "memory_recall",
+        "introspect",
+    },
+    "project_scan": {
+        "dir_list",
+        "file_read",
+        "search_code",
+        "memory_recall",
+        "introspect",
+    },
+    "task_continuation": {
+        "memory_recall",
+        "file_read",
+        "dir_list",
+        "search_code",
+        "introspect",
+    },
     "code_task": {
         "memory_recall",
         "file_read",
@@ -153,6 +186,26 @@ ALL_TOOLS: Set[str] = {
     "image_read", "introspect",
     "gpt_log_search", "gpt_log_context", "gpt_log_promote",
 }
+
+
+_EXPLICIT_NETWORK_INTENTS = {
+    "web_search",
+    "research",
+    "web_browse",
+    "url_fetch",
+    "service_action",
+}
+
+
+def _is_local_only_mode() -> bool:
+    try:
+        import auth as _auth_mod
+
+        routing_mode = str(_auth_mod.get_user_setting(1, "routing_mode", "hybrid") or "hybrid").strip().lower()
+        generation_mode = str(_auth_mod.get_user_setting(1, "generation_mode", "local") or "local").strip().lower()
+        return routing_mode == "local_only" or generation_mode == "local_only"
+    except Exception:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +308,14 @@ def get_tools_for_intent(
             logger.info(f"[TOOL_GATE] Demoted tools in active set: {demoted & toolset}")
     except Exception:
         pass
+
+    # In local-only mode, don't expose network-search tools unless the
+    # classified intent explicitly asked for them. This keeps local recall
+    # and file workflows from opportunistically drifting onto the web.
+    if _is_local_only_mode() and intent_type not in _EXPLICIT_NETWORK_INTENTS:
+        toolset.discard("web_search")
+        if intent_type not in {"url_fetch", "service_action"}:
+            toolset.discard("fetch_url")
 
     return toolset
 

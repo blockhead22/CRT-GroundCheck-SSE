@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Literal, Optional, Tuple
 
 from personal_agent.runtime_paths import resolve_managed_skills_dir
+from personal_agent.text_utils import extract_think_content, strip_think_blocks
 
 logger = logging.getLogger(__name__)
 
@@ -566,8 +567,8 @@ class TaskIntent:
 # Checkpoint messages shown to the user before entering agentic mode.
 # Tiers: high = auto-proceed with notice, medium = ask, low = clarify ambiguity.
 _CHECKPOINT_MESSAGES: Dict[str, str] = {
-    "tier_1": "I'm about to {action}. Go ahead?",
-    "tier_2": "I detected a task: {action}. Should I proceed? ({reason})",
+    "tier_1": "I'm ready to {action}. Go ahead?",
+    "tier_2": "I can handle that. Before I do, I need your go-ahead to {action}. ({reason})",
     "tier_3": "I need to resolve something before I can {action}: {reason}",
 }
 
@@ -1364,6 +1365,7 @@ def classify_intent_hybrid(
     # 0. Identity/self-referential questions → conversational (never agent loop)
     # Must run before cache to override stale system_info classifications
     _lower = message.lower().strip().rstrip("?!.")
+    _identity_text = re.sub(r"^(?:aether|assistant)\s*[,:-]?\s*", "", _lower).strip()
     _identity_patterns = (
         "who are you", "what are you", "what's your purpose", "whats your purpose",
         "how do you work", "what do you do", "tell me about yourself",
@@ -1371,8 +1373,10 @@ def classify_intent_hybrid(
         "explain your architecture", "how does your memory work",
         "what model are you", "what llm are you", "are you claude",
         "are you chatgpt", "are you gpt", "what ai are you",
+        "what matters to you", "what is important to you",
+        "what do you care about", "what do you value",
     )
-    if _lower in _identity_patterns or any(_lower.startswith(p) for p in _identity_patterns):
+    if _identity_text in _identity_patterns or any(_identity_text.startswith(p) for p in _identity_patterns):
         logger.info("[INTENT_ROUTER] Identity question detected: '%s' → conversational", message[:60])
         return TaskIntent(
             route="conversational",
@@ -1795,12 +1799,16 @@ _ACK_TEMPLATES: Dict[str, List[str]] = {
         "Installing that now \u2014 one moment.",
     ],
     "create_commitment": [
-        "I'll set that reminder for you.",
-        "Got it \u2014 creating that reminder now.",
+        "I'm going to check the reminder details, then set it for you.",
+        "I'll confirm the reminder details first, then create it.",
     ],
     "broad_recall": [
-        "Let me search my memory for that.",
-        "Thinking back \u2014 give me a moment.",
+        "I'm going to check what I already know first, then answer from memory.",
+        "Let me pull together what I already have on that before I answer.",
+    ],
+    "gpt_log_search": [
+        "I'm going to search your GPT history first, then pull in the relevant context.",
+        "Let me check the GPT archive for that and then summarize the useful parts.",
     ],
 }
 
@@ -1830,11 +1838,35 @@ def _generate_acknowledgment(intent: "TaskIntent", message: str) -> str:
     Uses templates for speed. Falls back to a generic message for
     unknown intent types.
     """
+    _msg = str(message or "").strip().lower()
+    if intent.intent_type == "broad_recall":
+        if any(term in _msg for term in ("health history", "medical history", "icu", "three promises", "life matters more")):
+            return (
+                "I'm going to check what I already know, and if that's thin I'll pull in the "
+                "relevant history context before I answer."
+            )
+        return "I'm going to check what I already know first, then answer from memory."
+    if intent.intent_type == "file_read":
+        return "I'm going to inspect that first, then I'll tell you what matters."
+    if intent.intent_type == "file_write":
+        return "I'm going to inspect the relevant file first, then make the change."
+    if intent.intent_type == "shell_exec":
+        return "I'm going to run that first, then I'll tell you what came back."
+    if intent.intent_type == "web_search":
+        return "I'm going to look that up first, then I'll summarize what matters."
+    if intent.intent_type == "project_scan":
+        return "I'm going to inspect the project structure first, then I'll tell you what I find."
+    if intent.intent_type == "service_action":
+        return "I'm going to check that service first, then I'll report back with the result."
+
     templates = _ACK_TEMPLATES.get(intent.intent_type, [])
     if templates:
         return _random.choice(templates)
     # Generic fallback
-    return "Working on that for you \u2014 give me a moment."
+    _tools = _INTENT_TOOL_MAP.get(intent.intent_type, [])
+    if _tools:
+        return f"I'm going to use {', '.join(_tools[:2])} first, then I'll report back."
+    return "I'm going to look into that first, then I'll tell you what I found."
 
 
 def triage_message(
@@ -3957,6 +3989,9 @@ RULES:
                 plan.append({"tool": "fetch_url", "input": {"url": url}})
                 plan.append({"tool": "install_skill", "input": {"url": url}})
 
+        elif intent.intent_type == "broad_recall":
+            plan.append({"tool": "memory_recall", "input": {"query": message}})
+
         elif intent.intent_type == "imperative_task":
             api_key = intent.slots.get("api_key")
             if api_key:
@@ -4151,6 +4186,9 @@ RULES:
 
         elif tool == "web_search":
             return (yield from self._run_web_search(step, inp, step_index, thread_id))
+
+        elif tool == "memory_recall":
+            return self._run_memory_recall(step, inp, step_index)
 
         elif tool == "file_read":
             return self._run_file_read(step, inp, step_index)
@@ -5069,6 +5107,82 @@ RULES:
                 },
             }
 
+    def _run_memory_recall(
+        self,
+        step: AgentStep,
+        inp: Dict[str, Any],
+        step_index: int,
+    ) -> Dict[str, Any]:
+        query = str(inp.get("query", "") or "").strip()
+        if not query:
+            step.status = "error"
+            step.error = "No memory query provided."
+            return {
+                "type": "tool_result",
+                "content": step.error,
+                "metadata": {"tool_name": "memory_recall", "status": "error", "error": step.error, "step_index": step_index},
+            }
+
+        if self._memory is None or not hasattr(self._memory, "retrieve_memories"):
+            step.status = "error"
+            step.error = "Memory system unavailable."
+            return {
+                "type": "tool_result",
+                "content": step.error,
+                "metadata": {"tool_name": "memory_recall", "status": "error", "error": step.error, "step_index": step_index},
+            }
+
+        try:
+            started = time.monotonic()
+            raw_results = self._memory.retrieve_memories(query, k=5) or []
+            duration_ms = (time.monotonic() - started) * 1000
+
+            matches: List[Dict[str, Any]] = []
+            for mem, score in raw_results:
+                text = getattr(mem, "text", str(mem)).strip()
+                if not text:
+                    continue
+                trust = getattr(mem, "trust", None)
+                matches.append(
+                    {
+                        "text": text,
+                        "score": float(score),
+                        "trust": float(trust) if trust is not None else None,
+                    }
+                )
+
+            lines: List[str] = []
+            for item in matches[:5]:
+                trust = item.get("trust")
+                trust_tag = f" [trust={trust:.2f}]" if trust is not None else ""
+                lines.append(f"- {item['text']}{trust_tag} (score={item['score']:.3f})")
+
+            step.output = {"query": query, "results": matches, "success": True}
+            step.output_preview = "\n".join(lines) if lines else "(no matching memories found)"
+            step.duration_ms = duration_ms
+            step.status = "ok"
+            step.verified = True
+            return {
+                "type": "tool_result",
+                "content": step.output_preview,
+                "metadata": {
+                    "tool_name": "memory_recall",
+                    "status": "ok",
+                    "result_count": len(matches),
+                    "duration_ms": round(duration_ms),
+                    "step_index": step_index,
+                },
+            }
+        except Exception as e:
+            logger.warning("[MEMORY_RECALL] Failed: %s", e)
+            step.status = "error"
+            step.error = str(e)
+            return {
+                "type": "tool_result",
+                "content": f"Memory recall failed: {e}",
+                "metadata": {"tool_name": "memory_recall", "status": "error", "error": str(e), "step_index": step_index},
+            }
+
     # ------------------------------------------------------------------
     # Commitment tools (Sprint 4)
     # ------------------------------------------------------------------
@@ -5796,6 +5910,18 @@ RULES:
                     yield {"type": "agent_thinking_token", "content": text,
                            "metadata": {"step": "generate_answer"}}
                 else:
+                    if "<think>" in text.lower() or "</think>" in text.lower():
+                        inline_thinking, visible = extract_think_content(text)
+                        if inline_thinking:
+                            thinking_buf += inline_thinking
+                            yield {
+                                "type": "agent_thinking_token",
+                                "content": inline_thinking,
+                                "metadata": {"step": "generate_answer"},
+                            }
+                        text = visible
+                        if not text:
+                            continue
                     if not first_content_emitted:
                         # Buffer content until we see a newline or enough text
                         content_line_buf += text
@@ -5850,15 +5976,16 @@ RULES:
                 thinking_ms = int((time.time() - thinking_start) * 1000)
                 logger.debug("[TASK_AGENT] Answer thinking: %dms, %d chars", thinking_ms, len(thinking_buf))
 
-            return content_buf.strip() or "[No answer generated]"
+            return strip_think_blocks(content_buf).strip() or "[No answer generated]"
 
         except Exception as e:
             logger.warning("[TASK_AGENT] Stream answer failed: %s", e)
             fallback = self._generate_answer(
                 message, fetched_content, intent, steps, stored_credentials, active_task
             )
-            yield {"type": "token", "content": fallback}
-            return fallback
+            cleaned_fallback = strip_think_blocks(fallback)
+            yield {"type": "token", "content": cleaned_fallback}
+            return cleaned_fallback
 
     def _build_answer_context(
         self,
@@ -5918,6 +6045,26 @@ RULES:
                 f"[Continuing task: {active_task.get('intent_type', 'unknown')}]\n"
                 f"{json.dumps(active_task.get('context', {}), indent=2)}\n[End]"
             )
+        memory_steps = [s for s in steps if s.tool_name == "memory_recall" and s.status == "ok"]
+        if memory_steps:
+            memory_lines: List[str] = []
+            for s in memory_steps:
+                output = s.output if isinstance(s.output, dict) else {}
+                for item in (output.get("results") or [])[:5]:
+                    text = str(item.get("text") or "").strip()
+                    if not text:
+                        continue
+                    tags: List[str] = []
+                    trust = item.get("trust")
+                    score = item.get("score")
+                    if trust is not None:
+                        tags.append(f"trust={trust:.2f}")
+                    if score is not None:
+                        tags.append(f"score={float(score):.3f}")
+                    suffix = f" ({', '.join(tags)})" if tags else ""
+                    memory_lines.append(f"- {text}{suffix}")
+            if memory_lines:
+                context_parts.append(f"[Memory recall results]\n" + "\n".join(memory_lines) + "\n[End]")
         return "\n\n".join(context_parts)
 
     # ------------------------------------------------------------------
@@ -6199,7 +6346,9 @@ RULES:
         # Use fast model for answer summarisation — reasoning models timeout
         fast_model = os.getenv("CRT_MODEL_FAST") or "role:fast"
         try:
-            return self._llm.chat(messages, max_tokens=800, temperature=0.3, model=fast_model)
+            return strip_think_blocks(
+                self._llm.chat(messages, max_tokens=800, temperature=0.3, model=fast_model)
+            )
         except Exception as e:
             logger.warning("[TASK_AGENT] LLM call failed: %s", e)
             return self._no_llm_answer(fetched_content, intent, steps, stored_credentials)

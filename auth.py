@@ -473,7 +473,8 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "cloud_claude_daily_limit": "20",
     "cloud_claude_max_tokens": "4096",
     # Primary generation mode: "local" | "cloud_openai" | "cloud_claude"
-    "generation_mode": "cloud_openai",
+    "generation_mode": "local",
+    "network_ollama_model": "",
     "cloud_model_openai": "gpt-4o-mini",
     "cloud_model_claude": "claude-sonnet-4-20250514",
     # Intuition Check (Sprint 8+)
@@ -498,7 +499,7 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "desktop_require_confirmation": "dangerous_only",
     "desktop_vision_provider": "cookie",
     # Intent routing (Sprint 13 / v2.9)
-    "routing_mode": "hybrid",
+    "routing_mode": "local_only",
     "routing_llm_model": "",
     # Response synthesis (v2.9.1)
     "synthesis_enabled": "true",
@@ -530,7 +531,7 @@ CLOUD_SETTING_DEFAULTS: Dict[str, str] = {
     "tooling_model_role_tool_loop": "",
     "tooling_model_role_answer": "",
     # Tooling — fallback policy
-    "tooling_fallback_policy": "cloud_to_local",
+    "tooling_fallback_policy": "local_only",
     # Tooling — agent loop
     "tooling_agent_loop_enabled": "true",
     "tooling_agent_loop_max_iterations": "10",

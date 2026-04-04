@@ -725,7 +725,11 @@ class CRTEnhancedRAG:
         if not t:
             return ""
 
-        markers = ("[CONTINUITY INSTRUCTION]", "[RECENT CONVERSATION CONTEXT]")
+        markers = (
+            "[CONTINUITY INSTRUCTION]",
+            "[RECENT CONVERSATION CONTEXT]",
+            "[Temporary GPT archive context - reference only, not settled memory]",
+        )
         cut_at: Optional[int] = None
         for marker in markers:
             idx = t.find(marker)

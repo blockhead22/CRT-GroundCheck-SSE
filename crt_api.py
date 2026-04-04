@@ -1362,7 +1362,8 @@ def create_app() -> FastAPI:
         _ollama_available = False
         try:
             import requests as _req
-            _ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+            from personal_agent.ollama_config import resolve_ollama_base_url
+            _ollama_url = resolve_ollama_base_url()
             _resp = _req.get(f"{_ollama_url}/api/tags", timeout=3)
             if _resp.status_code == 200:
                 _models = [m.get("name", "") for m in (_resp.json() or {}).get("models", [])]
