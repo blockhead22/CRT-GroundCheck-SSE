@@ -2384,6 +2384,16 @@ def _is_strict_local_only_mode(req: "ChatRequest", uid: Optional[int]) -> bool:
         return False
 
 
+def _is_cloud_governance_allowed(req: "ChatRequest", uid: Optional[int]) -> bool:
+    """Return whether auxiliary cloud governance calls are allowed for this turn.
+
+    This is intentionally narrower than general provider routing. It controls
+    optional cloud governance helpers such as slot classification, cloud NLI,
+    and intuition checks that should not fire during strict local-only runs.
+    """
+    return not _is_strict_local_only_mode(req, uid)
+
+
 def _is_contradiction_inventory_request(text: str) -> bool:
     """Detect user requests asking about contradictions/conflicts."""
     t = (text or "").strip().lower()
@@ -4415,7 +4425,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     ))
     if _skip_governance:
         _safe_print(f"[GOVERNANCE] Skipping slot classification for conversational message (gate_reason={_gate_reason_for_skip})")
-    elif _is_strict_local_only_mode(req, uid):
+    elif not _is_cloud_governance_allowed(req, uid):
         _skip_governance = True
         _safe_print("[GOVERNANCE] Skipping cloud slot classification in strict local-only mode")
 
@@ -4754,7 +4764,7 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             _cloud_nli_enabled = str(
                 _auth_mod_nli.get_user_setting(_uid_int_nli, "cloud_nli_contradiction", "false")
             ).lower() in ("true", "1", "yes", "on")
-            if _cloud_nli_enabled:
+            if _cloud_nli_enabled and _is_cloud_governance_allowed(req, uid):
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc_nli = get_cloud_feature_service()
                 if _cloud_svc_nli is not None:
@@ -4794,6 +4804,8 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                             result["contradiction_detected"] = False
                             print("[GOVERNANCE] nli: cloud cleared contradiction, upgraded to pass")
                             _gen_tracking["nli"] = "cloud(pass)"
+            elif _cloud_nli_enabled:
+                _safe_print("[GOVERNANCE] nli: skipping cloud NLI in strict local-only mode")
     except Exception as _cloud_nli_err:
         logger.warning("[GOVERNANCE] nli_error: cloud NLI check failed (non-fatal): %s", _cloud_nli_err)
 
@@ -6416,6 +6428,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 _task_intent is not None
                 and _task_intent.route in ("conversational", "clarify")
                 and _task_intent.confidence < 0.75
+                and _is_cloud_governance_allowed(req, uid)
             ):
                 try:
                     from personal_agent.intuition_check import get_intuition_check as _get_tap
@@ -6448,6 +6461,12 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         })
                 except Exception as _tap_err:
                     logger.debug("[STREAM] Intuition check clarify failed: %s", _tap_err)
+            elif (
+                _task_intent is not None
+                and _task_intent.route in ("conversational", "clarify")
+                and _task_intent.confidence < 0.75
+            ):
+                logger.debug("[STREAM] Intuition check clarify skipped in strict local-only mode")
 
             # ── PLAN ENGINE CHECK (v2.9.3) ──────────────────────────────
             # If the message warrants a plan (multi-step work), generate one
@@ -7856,6 +7875,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
 
                     # ── INTUITION CHECK: Post-task suggestion ────────────────
                     try:
+                        if not _is_cloud_governance_allowed(req, uid):
+                            raise RuntimeError("strict local-only mode")
                         from personal_agent.intuition_check import get_intuition_check as _get_tap_post
                         from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs_post
                         _tap_post = _get_tap_post(cloud_service=_get_cfs_post())
@@ -7880,7 +7901,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                                 "latency_ms": _tap_suggest.latency_ms,
                             }
                     except Exception as _tap_post_err:
-                        logger.debug("[STREAM] Intuition check suggest failed: %s", _tap_post_err)
+                        logger.debug("[STREAM] Intuition check suggest skipped/failed: %s", _tap_post_err)
 
                     # --- Governance gate (legacy task path) ---
                     if _LEGACY_GOVERNANCE and _task_answer:
@@ -7936,6 +7957,8 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             # If the user has been idle for a while and there's open work,
             # the intuition check generates a natural reconnection message.
             try:
+                if not _is_cloud_governance_allowed(req, uid):
+                    raise RuntimeError("strict local-only mode")
                 from personal_agent.intuition_check import get_intuition_check as _get_tap_recon
                 from personal_agent.cloud_features import get_cloud_feature_service as _get_cfs_recon
                 _tap_recon = _get_tap_recon(cloud_service=_get_cfs_recon())
@@ -7978,7 +8001,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             },
                         })
             except Exception as _tap_recon_err:
-                logger.debug("[STREAM] Intuition check reconnect failed: %s", _tap_recon_err)
+                logger.debug("[STREAM] Intuition check reconnect skipped/failed: %s", _tap_recon_err)
 
             # ── Intent pre-pass for conversational route ──────────────────
             try:
