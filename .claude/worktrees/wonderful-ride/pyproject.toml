@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "crt-memory"
+version = "0.9.0"
+description = "Contradiction-preserving memory for AI agents. No silent overwrites."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.13"
+authors = [
+    {name = "CRT Team"}
+]
+keywords = [
+    "ai", "memory", "contradiction", "trust", "rag", 
+    "llm", "grounding", "fact-checking"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.22.0",
+    "sentence-transformers>=2.2.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "xgboost>=1.7.0",
+    "jsonschema>=4.0.0",
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+llm = [
+    "openai>=1.0.0",
+    "anthropic>=0.18.0",
+]
+full = [
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+    "seaborn>=0.12.0",
+    "hdbscan>=0.8.0",
+    "datasets>=2.14.0",
+]
+mcp = [
+    "mcp>=1.0.0",
+]
+channels = [
+    "python-telegram-bot>=21.0",
+]
+
+[project.scripts]
+crt-mcp = "personal_agent.crt_mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/blockhead22/CRT-GroundCheck-SSE"
+Documentation = "https://github.com/blockhead22/CRT-GroundCheck-SSE#readme"
+Repository = "https://github.com/blockhead22/CRT-GroundCheck-SSE"
+Issues = "https://github.com/blockhead22/CRT-GroundCheck-SSE/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["personal_agent*", "groundcheck*", "sse*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.sql"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"

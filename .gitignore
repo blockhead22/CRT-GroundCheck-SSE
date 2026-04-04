@@ -123,6 +123,8 @@ models/*/checkpoint_final.pt
 # VILT/LoRA model checkpoints (large, reproducible)
 models/vilt_*/
 models/dnnt_*/
-/.claude/worktrees/
+
 /electron/node_modules
 /data/chatgpt_export
+/.claude/worktrees/wonderful-ride/models
+/.claude/worktrees/wonderful-ride/frontend/node_modules

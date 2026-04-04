@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CRT Promotion Apply Result (v1)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "results"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "generated_at",
+        "memory_db",
+        "proposals_path",
+        "decisions_path",
+        "dry_run",
+        "notes"
+      ],
+      "properties": {
+        "version": {"type": "string", "enum": ["v1"]},
+        "generated_at": {"type": "string", "format": "date-time"},
+        "memory_db": {"type": "string", "minLength": 1},
+        "proposals_path": {"type": "string", "minLength": 1},
+        "decisions_path": {"type": "string", "minLength": 1},
+        "dry_run": {"type": "boolean"},
+        "notes": {"type": ["string", "null"]}
+      }
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "proposal_id",
+          "decision",
+          "action",
+          "new_memory_id",
+          "reason"
+        ],
+        "properties": {
+          "proposal_id": {"type": "string", "minLength": 1},
+          "decision": {"type": "string", "enum": ["approved", "rejected", "defer"]},
+          "action": {"type": "string", "enum": ["applied", "skipped", "error"]},
+          "new_memory_id": {"type": ["string", "null"]},
+          "reason": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

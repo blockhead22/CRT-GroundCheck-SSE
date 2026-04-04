@@ -1,0 +1,57 @@
+name: GroundCheck Tests
+
+on:
+  push:
+    paths: ['groundcheck/**', 'groundcheck_mcp/**', 'tests/**', 'pyproject.toml', '.github/workflows/**']
+  pull_request:
+    paths: ['groundcheck/**', 'groundcheck_mcp/**', 'tests/**', 'pyproject.toml', '.github/workflows/**']
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install package
+        run: pip install -e ".[dev]"
+      
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+      
+      - name: Verify zero dependencies
+        run: |
+          python -c "
+          import groundcheck
+          from groundcheck import GroundCheck, Memory
+          v = GroundCheck()
+          r = v.verify('test', [Memory(id='m1', text='test')])
+          print(f'GroundCheck {groundcheck.__version__} OK')
+          "
+
+  test-neural:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install package with neural deps
+        run: pip install -e ".[dev,neural]"
+      
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-models-${{ hashFiles('groundcheck/neural_extractor.py') }}
+      
+      - name: Run neural tests
+        run: pytest tests/test_neural_extraction.py tests/test_semantic_matcher.py tests/test_neural_integration.py -v --tb=short

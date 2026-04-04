@@ -1,0 +1,270 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EvidencePacket v1.0",
+  "description": "Truth-disclosure format for SSE query results. Preserves all claims and contradictions without interpretation or ranking.",
+  "type": "object",
+  "required": [
+    "metadata",
+    "claims",
+    "contradictions",
+    "clusters",
+    "support_metrics",
+    "provenance",
+    "event_log"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["query", "timestamp", "indexed_version", "adapter_request_id"],
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Exact query text, not interpreted"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When SSE generated this packet (ISO8601)"
+        },
+        "indexed_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Which SSE index snapshot was queried"
+        },
+        "adapter_request_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Unique audit trail identifier"
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 0,
+      "description": "All claims found, no filtering allowed",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim_id",
+          "claim_text",
+          "source_document_id",
+          "extraction_offset",
+          "extraction_verified"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "claim_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique claim identifier"
+          },
+          "claim_text": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact claim text as extracted, no paraphrasing"
+          },
+          "source_document_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Which document this came from"
+          },
+          "extraction_offset": {
+            "type": "object",
+            "required": ["start", "end"],
+            "additionalProperties": false,
+            "properties": {
+              "start": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Character position where claim starts"
+              },
+              "end": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Character position where claim ends"
+              }
+            }
+          },
+          "extraction_verified": {
+            "type": "boolean",
+            "description": "Quality flag on parsing, NOT on truthfulness"
+          }
+        }
+      }
+    },
+    "contradictions": {
+      "type": "array",
+      "minItems": 0,
+      "description": "All contradictions found, no suppression allowed",
+      "items": {
+        "type": "object",
+        "required": [
+          "claim_a_id",
+          "claim_b_id",
+          "relationship_type",
+          "topology_strength",
+          "detected_timestamp"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "claim_a_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "First claim ID"
+          },
+          "claim_b_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Second claim ID"
+          },
+          "relationship_type": {
+            "type": "string",
+            "enum": ["contradicts", "qualifies", "extends"],
+            "description": "Type of relationship between claims"
+          },
+          "topology_strength": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Vector similarity / edge weight (NOT confidence in truth)"
+          },
+          "detected_timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When SSE detected this relationship (ISO8601)"
+          }
+        }
+      }
+    },
+    "clusters": {
+      "type": "array",
+      "minItems": 0,
+      "description": "Disagreement clusters (topological groupings, not coherence judgments)",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Array of claim IDs in this disagreement cluster"
+      }
+    },
+    "support_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "required": [
+            "source_count",
+            "retrieval_score",
+            "contradiction_count",
+            "cluster_membership_count"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "source_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How many distinct documents contain this claim (evidence density)"
+            },
+            "retrieval_score": {
+              "type": "number",
+              "minimum": 0.0,
+              "maximum": 1.0,
+              "description": "Vector similarity to query (mathematical relevance only)"
+            },
+            "contradiction_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How many claims contradict this one (feature, not bug)"
+            },
+            "cluster_membership_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How many disagreement clusters involve this claim (topological centrality)"
+            }
+          }
+        }
+      },
+      "description": "Evidence density metrics for each claim (NOT credibility/confidence)"
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.*$": {
+          "type": "object",
+          "required": [
+            "document_id",
+            "offset_start",
+            "offset_end",
+            "extraction_method"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "document_id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Source document identifier"
+            },
+            "offset_start": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Character position in source document"
+            },
+            "offset_end": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "End position in source document"
+            },
+            "extraction_method": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Which parser found this claim (technical metadata)"
+            }
+          }
+        }
+      },
+      "description": "Source attribution for every claim"
+    },
+    "event_log": {
+      "type": "array",
+      "minItems": 0,
+      "description": "Immutable audit trail (append-only)",
+      "items": {
+        "type": "object",
+        "required": ["event_type", "timestamp", "details"],
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "enum": [
+              "query_executed",
+              "contradiction_found",
+              "topology_changed",
+              "boundary_violation",
+              "adaptation_event",
+              "contradiction_suppressed"
+            ],
+            "description": "Type of system event"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When event occurred (ISO8601)"
+          },
+          "details": {
+            "type": "object",
+            "description": "Event-specific data (descriptive facts only, no judgment)",
+            "additionalProperties": true
+          }
+        }
+      }
+    }
+  }
+}

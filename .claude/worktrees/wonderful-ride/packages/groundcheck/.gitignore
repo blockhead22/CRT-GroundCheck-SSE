@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Databases and user data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.groundcheck/
+
+# Environment variables
+.env
+.env.local
+
+# Local dev config (API keys, model paths)
+.groundcheck_config.json
