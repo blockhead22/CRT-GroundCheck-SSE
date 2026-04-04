@@ -1995,6 +1995,112 @@ def _is_user_reflection_question(text: str) -> bool:
     return any(p in t for p in patterns)
 
 
+def _extract_personal_fact_bundle_slots(text: str) -> List[str]:
+    """Detect bundled user-fact questions that ask for multiple personal slots."""
+    t = (text or "").strip().lower()
+    if not t or len(t) > 500:
+        return []
+
+    slots: List[str] = []
+    if re.search(r"\b(what('?s| is) my name|my name|who am i)\b", t):
+        slots.append("name")
+    if ("favorite" in t or "favourite" in t) and ("color" in t or "colour" in t):
+        slots.append("favorite_color")
+    if ("favorite" in t or "favourite" in t) and ("drink" in t or "beverage" in t):
+        slots.append("favorite_drink")
+
+    deduped = list(dict.fromkeys(slots))
+    return deduped if len(deduped) >= 2 else []
+
+
+def _personal_fact_slot_label(slot: str) -> str:
+    labels = {
+        "name": "Name",
+        "favorite_color": "Favorite color",
+        "favorite_drink": "Favorite drink",
+    }
+    return labels.get(slot, slot.replace("_", " ").title())
+
+
+def _normalize_fact_value(value: Any) -> str:
+    return " ".join(str(value or "").strip().split())
+
+
+def _answer_personal_fact_bundle(text: str, engine: "Any", thread_id: str) -> str:
+    """Answer bundled personal-fact questions field-by-field with conflict handling."""
+    requested_slots = _extract_personal_fact_bundle_slots(text)
+    if not requested_slots:
+        return ""
+
+    effective_facts: Dict[str, Dict[str, Any]] = {}
+    try:
+        if hasattr(engine, "get_effective_user_facts"):
+            effective_facts = engine.get_effective_user_facts(thread_id=thread_id) or {}
+    except Exception as e:
+        logger.warning("[PERSONAL_FACT_BUNDLE] effective fact lookup failed: %s", e)
+
+    lines = ["Here's what I can answer from memory, field by field:"]
+
+    for slot in requested_slots:
+        label = _personal_fact_slot_label(slot)
+        current_fact = effective_facts.get(slot) or {}
+        current_value = _normalize_fact_value(current_fact.get("value"))
+
+        history_values: List[str] = []
+        try:
+            history_rows = engine.get_fact_history(slot, thread_id=thread_id) if hasattr(engine, "get_fact_history") else []
+        except Exception as e:
+            logger.debug("[PERSONAL_FACT_BUNDLE] history lookup failed for %s: %s", slot, e)
+            history_rows = []
+
+        seen_values: set[str] = set()
+        if current_value:
+            seen_values.add(current_value.lower())
+            history_values.append(current_value)
+
+        for row in history_rows or []:
+            hist_value = _normalize_fact_value((row or {}).get("value"))
+            if not hist_value:
+                continue
+            hist_norm = hist_value.lower()
+            if hist_norm in seen_values:
+                continue
+            seen_values.add(hist_norm)
+            history_values.append(hist_value)
+
+        if current_value and len(history_values) <= 1:
+            lines.append(f"- {label}: {current_value}")
+            continue
+
+        if current_value and len(history_values) > 1:
+            others = [v for v in history_values if v.lower() != current_value.lower()]
+            if others:
+                lines.append(
+                    f"- {label}: conflicted. Current strongest value is {current_value}, "
+                    f"but I also have {', '.join(others[:4])} on record."
+                )
+            else:
+                lines.append(f"- {label}: {current_value}")
+            continue
+
+        if len(history_values) > 1:
+            lines.append(
+                f"- {label}: conflicted. I have multiple values on record: "
+                f"{', '.join(history_values[:5])}."
+            )
+            continue
+
+        if len(history_values) == 1:
+            lines.append(f"- {label}: {history_values[0]}")
+            continue
+
+        lines.append(f"- {label}: I don't have a grounded value for that yet.")
+
+    lines.append("")
+    lines.append("I'm answering each field independently so one conflict doesn't wipe out the rest.")
+    return "\n".join(lines)
+
+
 def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
     """Build an answer about Aether from self-model + system knowledge.
 
@@ -3468,6 +3574,27 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 "confidence": 0.85,
                 "retrieved_memories": [],
                 "prompt_memories": prompt_items,
+            },
+        )
+
+    bundled_personal_slots = _extract_personal_fact_bundle_slots(effective_message)
+    if bundled_personal_slots:
+        control_state.request_kind = "personal_fact_bundle"
+        control_state.mark("bind", "structured_user_facts")
+        answer = _answer_personal_fact_bundle(effective_message, engine, req.thread_id)
+        if greeting_text:
+            answer = f"{greeting_text}\n\n{answer}"
+        control_state.mark("decide", "ready", detail="personal_fact_bundle")
+        return _chat_response(
+            answer=answer,
+            response_type="belief",
+            gates_passed=True,
+            gate_reason="personal_fact_bundle",
+            metadata={
+                "confidence": 0.86,
+                "retrieved_memories": [],
+                "prompt_memories": [],
+                "requested_slots": bundled_personal_slots,
             },
         )
 

@@ -1366,6 +1366,31 @@ def classify_intent_hybrid(
     # Must run before cache to override stale system_info classifications
     _lower = message.lower().strip().rstrip("?!.")
     _identity_text = re.sub(r"^(?:aether|assistant)\s*[,:-]?\s*", "", _lower).strip()
+    _requested_personal_slots: List[str] = []
+    if re.search(r"\b(what('?s| is) my name|my name|who am i)\b", _identity_text):
+        _requested_personal_slots.append("name")
+    if ("favorite" in _identity_text or "favourite" in _identity_text) and (
+        "color" in _identity_text or "colour" in _identity_text
+    ):
+        _requested_personal_slots.append("favorite_color")
+    if ("favorite" in _identity_text or "favourite" in _identity_text) and (
+        "drink" in _identity_text or "beverage" in _identity_text
+    ):
+        _requested_personal_slots.append("favorite_drink")
+    if len(set(_requested_personal_slots)) >= 2:
+        logger.info("[INTENT_ROUTER] Bundled personal-fact question detected: '%s' -> task", message[:60])
+        return TaskIntent(
+            route="task",
+            intent_type="broad_recall",
+            slots={
+                "raw_message": message,
+                "query": message,
+                "requested_slots": list(dict.fromkeys(_requested_personal_slots)),
+            },
+            confidence=0.94,
+            reason="multi_slot_personal_fact_match",
+            source="regex",
+        )
     _identity_patterns = (
         "who are you", "what are you", "what's your purpose", "whats your purpose",
         "how do you work", "what do you do", "tell me about yourself",
@@ -1379,7 +1404,7 @@ def classify_intent_hybrid(
     if _identity_text in _identity_patterns or any(_identity_text.startswith(p) for p in _identity_patterns):
         logger.info("[INTENT_ROUTER] Identity question detected: '%s' → conversational", message[:60])
         return TaskIntent(
-            route="conversational",
+            route="task",
             intent_type="self_referential",
             slots={"raw_message": message},
             confidence=0.95,
