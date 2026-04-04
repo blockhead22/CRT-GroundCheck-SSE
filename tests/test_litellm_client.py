@@ -3,6 +3,7 @@
 import os
 import sys
 import pytest
+import requests
 from unittest.mock import MagicMock, patch
 
 # Add project root to path
@@ -13,6 +14,7 @@ from personal_agent.litellm_client import (
     CloudPromptPolicy,
     create_llm_client,
 )
+import personal_agent.litellm_client as litellm_client_mod
 from personal_agent.ollama_config import resolve_ollama_base_url
 
 
@@ -202,6 +204,49 @@ class TestQualityGate:
         for prefix in client._META_STARTS:
             content = prefix + " some more text"
             assert content.lower().startswith(prefix)
+
+
+class TestOllamaFailureHandling:
+    def test_single_timeout_does_not_mark_ollama_dead(self, monkeypatch):
+        client = _make_client()
+
+        class _Resp:
+            status_code = 200
+
+            @staticmethod
+            def json():
+                return {"message": {"content": "ok", "tool_calls": []}}
+
+        calls = {"count": 0}
+
+        def _fake_post(*args, **kwargs):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise RuntimeError("Read timed out")
+            return _Resp()
+
+        monkeypatch.setattr(requests, "post", _fake_post)
+
+        first = client._ollama_direct_tool_call(
+            messages=[{"role": "user", "content": "hi"}],
+            tools=[],
+            max_tokens=64,
+            temperature=0.2,
+            model_name="llama3.2",
+            timeout_override=1,
+        )
+        second = client._ollama_direct_tool_call(
+            messages=[{"role": "user", "content": "hi again"}],
+            tools=[],
+            max_tokens=64,
+            temperature=0.2,
+            model_name="llama3.2",
+            timeout_override=1,
+        )
+
+        assert first is None
+        assert client._ollama_dead is False
+        assert second is not None
 
 
 # ── Parse tool response ──────────────────────────────────────────────

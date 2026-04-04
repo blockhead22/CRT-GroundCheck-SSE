@@ -167,6 +167,7 @@ class UnifiedLLMClient:
         # Track Ollama reachability. After a connection failure, skip Ollama
         # on subsequent calls to avoid repeated 120s timeouts. Resets on success.
         self._ollama_dead = False
+        self._ollama_timeout_count = 0
         self.cloud_model = cfg.get("cloud_model", "")
         self.cloud_api_key = cfg.get("cloud_api_key", "")
         self.cloud_base_url = cfg.get("cloud_base_url", "")
@@ -506,6 +507,7 @@ class UnifiedLLMClient:
 
             # Ollama responded — mark as alive (may have come back online)
             self._ollama_dead = False
+            self._ollama_timeout_count = 0
 
             result = {
                 "tool_calls": parsed_calls,
@@ -525,9 +527,14 @@ class UnifiedLLMClient:
 
         except Exception as e:
             print(f"[LITELLM] Ollama direct call error: {e}")
-            # Mark Ollama as dead so subsequent calls skip immediately
-            # instead of waiting for another timeout
-            if "timed out" in str(e).lower() or "connection" in str(e).lower():
+            _err = str(e).lower()
+            if "timed out" in _err:
+                self._ollama_timeout_count += 1
+                print(f"[LITELLM] Ollama timeout count: {self._ollama_timeout_count}")
+                if self._ollama_timeout_count >= 3:
+                    self._ollama_dead = True
+                    print("[LITELLM] Marking Ollama as unreachable after repeated timeouts")
+            elif "connection" in _err:
                 self._ollama_dead = True
                 print("[LITELLM] Marking Ollama as unreachable for this session")
             return None

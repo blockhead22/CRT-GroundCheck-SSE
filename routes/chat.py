@@ -1975,6 +1975,26 @@ def _is_self_referential_question(text: str) -> bool:
     return False
 
 
+def _is_user_reflection_question(text: str) -> bool:
+    """Detect questions about Nick's values, priorities, or beliefs."""
+    t = (text or "").strip().lower()
+    if not t or len(t) > 500:
+        return False
+    patterns = (
+        "what do you think i value",
+        "what do i value",
+        "what do you think matters to me",
+        "what matters to me",
+        "what do you think i care about",
+        "what do i care about",
+        "what do you think i believe",
+        "what do i believe",
+        "what do you think is important to me",
+        "what is important to me",
+    )
+    return any(p in t for p in patterns)
+
+
 def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
     """Build an answer about Aether from self-model + system knowledge.
 
@@ -2133,6 +2153,40 @@ def _answer_self_referential(text: str, engine: "Any", thread_id: str) -> str:
             "evolves trust on memories over time, and asks before acting. "
             "I can tell you more about specific parts of how I work if you ask."
         )
+
+
+def _answer_user_reflection(text: str, engine: "Any", thread_id: str) -> str:
+    """Answer user-reflection questions from memory without drifting into self-talk."""
+    try:
+        raw_results = engine.memory.retrieve_memories(text, k=5) or []
+    except Exception as e:
+        logger.warning("[USER_REFLECTION] Memory retrieval failed: %s", e)
+        return "I don't have enough grounded memory to say what you value yet."
+
+    cleaned: list[str] = []
+    for mem, _score in raw_results:
+        snippet = str(getattr(mem, "text", mem) or "").strip()
+        if not snippet:
+            continue
+        if "[SYSTEM NOTE" in snippet:
+            snippet = snippet.split("[SYSTEM NOTE", 1)[0].strip()
+        if snippet.upper().startswith("FACT:"):
+            snippet = snippet[5:].strip()
+        snippet = " ".join(snippet.split())
+        if snippet:
+            cleaned.append(snippet)
+
+    if not cleaned:
+        return "I don't have enough grounded memory to say what you value yet."
+
+    lines = [
+        "Based on what you've told me, these are the strongest memory-grounded signals I have about what you value:",
+    ]
+    for snippet in cleaned[:4]:
+        lines.append(f"- {snippet}")
+    lines.append("")
+    lines.append("That's the evidence I'm using rather than pretending certainty.")
+    return "\n".join(lines)
 
 
 def _is_broad_recall_request(text: str) -> bool:
@@ -2310,6 +2364,24 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
     except Exception as e:
         logger.warning("[BROAD_RECALL] Failed to build recall: %s", e)
         return "I had trouble retrieving my full memory set. Try asking about a specific topic."
+
+
+def _is_strict_local_only_mode(req: "ChatRequest", uid: Optional[int]) -> bool:
+    try:
+        import auth as _auth_local
+
+        _uid_local = int(uid) if uid else 1
+        _routing_mode = str(_auth_local.get_user_setting(_uid_local, "routing_mode", "") or "").strip().lower()
+        _cloud_escalation = str(
+            _auth_local.get_user_setting(_uid_local, "cloud_escalation_policy", "conservative") or "conservative"
+        ).strip().lower()
+        _effective_generation = str(resolve_effective_generation_mode(req, uid) or "").strip().lower()
+        return _routing_mode == "local_only" or (
+            _effective_generation in ("local", "local_network")
+            and _cloud_escalation == "local_only"
+        )
+    except Exception:
+        return False
 
 
 def _is_contradiction_inventory_request(text: str) -> bool:
@@ -3395,6 +3467,25 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             },
         )
 
+    if _is_user_reflection_question(effective_message):
+        control_state.request_kind = "user_reflection"
+        control_state.mark("bind", "memory_reflection")
+        answer = _answer_user_reflection(effective_message, engine, req.thread_id)
+        if greeting_text:
+            answer = f"{greeting_text}\n\n{answer}"
+        control_state.mark("decide", "ready", detail="user_reflection")
+        return _chat_response(
+            answer=answer,
+            response_type="belief",
+            gates_passed=True,
+            gate_reason="user_reflection",
+            metadata={
+                "confidence": 0.82,
+                "retrieved_memories": [],
+                "prompt_memories": [],
+            },
+        )
+
     # Self-referential questions: "how do you work?", "any contradictions?", etc.
     # Route to self-model + system knowledge instead of user-fact memory search.
     if _is_self_referential_question(effective_message):
@@ -4320,10 +4411,13 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
     _gate_reason_for_skip = str(result.get("gate_reason") or "").lower()
     _skip_governance = any(kw in _gate_reason_for_skip for kw in (
         "greeting", "self_referential", "conversational", "no_memories",
-        "identity", "chitchat", "explanation",
+        "identity", "chitchat", "explanation", "user_reflection",
     ))
     if _skip_governance:
         _safe_print(f"[GOVERNANCE] Skipping slot classification for conversational message (gate_reason={_gate_reason_for_skip})")
+    elif _is_strict_local_only_mode(req, uid):
+        _skip_governance = True
+        _safe_print("[GOVERNANCE] Skipping cloud slot classification in strict local-only mode")
 
     # If local fact extraction couldn't classify a slot, try cloud classification.
     try:
@@ -6366,7 +6460,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         llm_client=_get_llm_pe(),
                         session_db=_session_db,
                     )
-                    _PLAN_SKIP_INTENTS = {"broad_recall", "system_info", "inquiry_queue", "conversational"}
+                    _PLAN_SKIP_INTENTS = {"broad_recall", "user_reflection", "system_info", "inquiry_queue", "conversational"}
                     _plan_intent_type = getattr(_task_intent, "intent_type", None)
                     if _plan_intent_type in _PLAN_SKIP_INTENTS:
                         _safe_print(f"[PLAN] skipping planner for memory-only intent: {_plan_intent_type}")
@@ -6685,7 +6779,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
             _safe_print(f"[AGENT_LOOP_GATE] enabled={_agent_loop_enabled}, intent={_task_intent is not None}, route={getattr(_task_intent, 'route', None)}, confirmed={_user_confirmed}, layer4_orchestrator={_layer4_orchestrator}, model_ok={_agent_loop_model_ok}")
             # Memory-only intents must bypass the agent loop — they need direct retrieval,
             # not an LLM tool loop that will spin up web_search / shell_exec.
-            _MEMORY_ONLY_INTENTS = {"broad_recall", "system_info", "inquiry_queue"}
+            _MEMORY_ONLY_INTENTS = {"broad_recall", "user_reflection", "system_info", "inquiry_queue"}
             _agent_loop_gate_hit = (
                 _agent_loop_enabled
                 and _agent_loop_model_ok
@@ -6973,7 +7067,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 "gpt_log_search", "gpt_log_context", "gpt_log_promote",
             }
             _SKIP_ORCHESTRATOR_INTENTS = {
-                "broad_recall", "inquiry", "question", "conversational",
+                "broad_recall", "user_reflection", "inquiry", "question", "conversational",
                 "memory_query", "memory_search",
                 "self_reflection", "greeting", "system_info", "inquiry_queue",
             }

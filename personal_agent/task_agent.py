@@ -1387,6 +1387,29 @@ def classify_intent_hybrid(
             source="regex",
         )
 
+    _user_reflection_patterns = (
+        "what do you think i value",
+        "what do i value",
+        "what do you think matters to me",
+        "what matters to me",
+        "what do you think i care about",
+        "what do i care about",
+        "what do you think i believe",
+        "what do i believe",
+        "what do you think is important to me",
+        "what is important to me",
+    )
+    if _identity_text in _user_reflection_patterns or any(_identity_text.startswith(p) for p in _user_reflection_patterns):
+        logger.info("[INTENT_ROUTER] User-reflection question detected: '%s' → task", message[:60])
+        return TaskIntent(
+            route="task",
+            intent_type="user_reflection",
+            slots={"raw_message": message, "query": message},
+            confidence=0.93,
+            reason="user_reflection_pattern_match",
+            source="regex",
+        )
+
     # 0b-pre. Conversational pre-filter: intercept greetings/opinions/reflections
     # MUST run before cache lookup so stale LLM misclassifications can't replay.
     _agentic_followup_hint = bool(
@@ -1806,6 +1829,10 @@ _ACK_TEMPLATES: Dict[str, List[str]] = {
         "I'm going to check what I already know first, then answer from memory.",
         "Let me pull together what I already have on that before I answer.",
     ],
+    "user_reflection": [
+        "I'm going to check what you've told me first, then answer from memory.",
+        "Let me ground that in memory before I say what stands out about you.",
+    ],
     "gpt_log_search": [
         "I'm going to search your GPT history first, then pull in the relevant context.",
         "Let me check the GPT archive for that and then summarize the useful parts.",
@@ -1829,6 +1856,7 @@ _INTENT_TOOL_MAP: Dict[str, List[str]] = {
     "skill_install": ["fetch_url", "file_write"],
     "create_commitment": ["create_commitment"],
     "broad_recall": ["memory_recall"],
+    "user_reflection": ["memory_recall"],
 }
 
 
@@ -1846,6 +1874,8 @@ def _generate_acknowledgment(intent: "TaskIntent", message: str) -> str:
                 "relevant history context before I answer."
             )
         return "I'm going to check what I already know first, then answer from memory."
+    if intent.intent_type == "user_reflection":
+        return "I'm going to ground that in memory first, then tell you what seems to matter most to you."
     if intent.intent_type == "file_read":
         return "I'm going to inspect that first, then I'll tell you what matters."
     if intent.intent_type == "file_write":
@@ -2160,6 +2190,7 @@ class CRTTaskAgent:
                 "web_browse": "Browse the web",
                 "web_search": "Search the web",
                 "broad_recall": "Recall memories",
+                "user_reflection": "Reflect on Nick",
                 "self_referential": "About me (Aether)",
                 "url_fetch": "Fetch a URL",
                 "conversational": "Just chat",
@@ -2482,6 +2513,8 @@ class CRTTaskAgent:
                 _synthesis_enabled = _synth_settings.get("synthesis_enabled", "true") != "false"
             except Exception:
                 pass
+            if intent.intent_type in {"broad_recall", "user_reflection"}:
+                _synthesis_enabled = False
 
             # ── Synthesis gate debug logging ──
             if not _synthesis_enabled:
@@ -2702,6 +2735,7 @@ class CRTTaskAgent:
                 "web_browse": "Browse the web",
                 "web_search": "Search the web",
                 "broad_recall": "Recall memories",
+                "user_reflection": "Reflect on Nick",
                 "self_referential": "About me (Aether)",
                 "url_fetch": "Fetch a URL",
                 "conversational": "Just chat",
@@ -3990,6 +4024,9 @@ RULES:
                 plan.append({"tool": "install_skill", "input": {"url": url}})
 
         elif intent.intent_type == "broad_recall":
+            plan.append({"tool": "memory_recall", "input": {"query": message}})
+
+        elif intent.intent_type == "user_reflection":
             plan.append({"tool": "memory_recall", "input": {"query": message}})
 
         elif intent.intent_type == "imperative_task":
@@ -6109,6 +6146,52 @@ RULES:
         Returns None if no deterministic format is available (caller should
         fall through to LLM generation).
         """
+        def _clean_memory_text(raw: Any) -> str:
+            text = str(raw or "").strip()
+            if not text:
+                return ""
+            if "[SYSTEM NOTE" in text:
+                text = text.split("[SYSTEM NOTE", 1)[0].strip()
+            if text.upper().startswith("FACT:"):
+                text = text[5:].strip()
+            return " ".join(text.split())
+
+        if intent.intent_type in ("broad_recall", "user_reflection"):
+            _mr_step = next(
+                (s for s in steps if s.tool_name == "memory_recall" and s.status == "ok"),
+                None,
+            )
+            if _mr_step and isinstance(_mr_step.output, dict):
+                _results = list(_mr_step.output.get("results") or [])
+                _cleaned = []
+                for item in _results:
+                    if not isinstance(item, dict):
+                        continue
+                    _text = _clean_memory_text(item.get("text"))
+                    if _text:
+                        _cleaned.append(_text)
+                if not _cleaned:
+                    if intent.intent_type == "user_reflection":
+                        return "I don't have enough grounded memory yet to say what you value with confidence."
+                    return "I couldn't find anything grounded in memory for that yet."
+
+                if intent.intent_type == "user_reflection":
+                    lines = [
+                        "Based on what you've told me, these are the strongest memory-grounded signals I have about what you value:",
+                    ]
+                    for text in _cleaned[:4]:
+                        lines.append(f"- {text}")
+                    lines.append("")
+                    lines.append("That's the evidence I'm using rather than pretending certainty.")
+                    return "\n".join(lines)
+
+                lines = ["From memory, here's what I can say:"]
+                for text in _cleaned[:5]:
+                    lines.append(f"- {text}")
+                return "\n".join(lines)
+            _err_step = next((s for s in steps if s.status == "error"), None)
+            return f"Memory recall failed: {_err_step.error}" if _err_step else "I couldn't pull that from memory."
+
         if intent.intent_type in ("create_commitment", "list_commitments", "cancel_commitment"):
             _c_step = next(
                 (s for s in steps if s.tool_name == intent.intent_type and s.status == "ok"),

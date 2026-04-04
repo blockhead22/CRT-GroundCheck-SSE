@@ -157,34 +157,39 @@ export function PipelineTrace({
                 return (
                   <div
                     key={`${s}-${i}`}
-                    className="flex items-center gap-2 pl-1.5 py-[1px] rounded group/step cursor-default transition-colors hover:bg-white/4"
+                    className="flex items-start gap-2 pl-1.5 py-[2px] rounded group/step cursor-default transition-colors hover:bg-white/4"
                     title={tooltip}
                   >
                     <span
-                      className="text-[10px] font-mono w-3 flex-shrink-0 transition-colors"
+                      className="text-[10px] font-mono w-3 flex-shrink-0 transition-colors mt-[2px]"
                       style={{ color: isActive ? color : isLast ? color + '99' : '#332e22' }}
                     >
                       {icon}
                     </span>
-                    <span
-                      className="text-[11px] font-mono transition-colors"
-                      style={{ color: isActive ? '#F0EBE1' : isLast ? '#a09880' : '#3d3626' }}
-                    >
-                      {s}
-                    </span>
-                    {isActive && (
-                      <span
-                        className="h-[5px] w-[5px] rounded-full animate-ping flex-shrink-0"
-                        style={{ background: color, opacity: 0.6 }}
-                      />
-                    )}
-                    {/* Tooltip shown on hover via title, plus inline on hover */}
-                    <span
-                      className="hidden group-hover/step:block text-[9px] italic truncate max-w-[200px] ml-auto"
-                      style={{ color: '#5a5445' }}
-                    >
-                      {tooltip}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="text-[11px] font-mono transition-colors"
+                          style={{ color: isActive ? '#F0EBE1' : isLast ? '#a09880' : '#3d3626' }}
+                        >
+                          {s}
+                        </span>
+                        {isActive && (
+                          <span
+                            className="h-[5px] w-[5px] rounded-full animate-ping flex-shrink-0"
+                            style={{ background: color, opacity: 0.6 }}
+                          />
+                        )}
+                      </div>
+                      <div
+                        className="text-[10px] leading-snug mt-[1px] max-w-[340px]"
+                        style={{
+                          color: isActive ? 'rgba(224,160,128,0.78)' : isLast ? 'rgba(122,112,96,0.9)' : 'rgba(90,84,69,0.78)',
+                        }}
+                      >
+                        {tooltip}
+                      </div>
+                    </div>
                   </div>
                 )
               })}

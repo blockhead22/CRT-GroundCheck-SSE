@@ -378,8 +378,9 @@ export function ChatThreadView(props: {
     : (lastAssistant?.text ?? '')
   const theaterFontPx = theaterFontSize(theaterText.length)
 
-  // Show action card only when the backend has emitted an agent_checkpoint event
-  const showActionCard = !!props.pendingCheckpoint && !isStreaming && !showTyping
+  // Checkpoints are terminal wait states. Keep them visible even if the
+  // stream/status UI has not fully settled yet.
+  const showActionCard = !!props.pendingCheckpoint
 
   return (
     <div className="flex h-full min-h-0 flex-col">

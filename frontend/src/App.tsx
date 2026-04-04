@@ -1254,7 +1254,7 @@ export default function App() {
               // Agent loop asked a clarifying question and paused. Surface the
               // question in the ActionCard so the user can reply directly.
               if ((metadata as any)?.loop_suspended === true) {
-                const question = (metadata as any)?.loop_question as string ?? content
+                const question = String((metadata as any)?.loop_question ?? content ?? '').trim()
                 setPendingCheckpoint({
                   message: question,
                   metadata: {
@@ -1267,7 +1267,7 @@ export default function App() {
                 const suspendMsg = {
                   id: newId('m'),
                   role: 'assistant' as const,
-                  text: content || question,
+                  text: question || content,
                   createdAt: at,
                   agentThinking: null,
                   crt: {
@@ -1312,9 +1312,18 @@ export default function App() {
                   },
                 }
                 upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, suspendMsg] })
+                setStreamingThinking('')
                 setStreamingResponse('')
                 setIsThinking(false)
+                setStreamPhase(null)
+                setStreamStatusLog([])
+                streamStatusRef.current = []
+                finalBufferRef.current = ''
+                setIntentPreview(null)
+                setAgentThinkingState(null)
+                agentThinkingRef.current = null
                 setTaskWorking(false)
+                setTyping(false)
                 return  // skip normal done processing
               }
               // Prefer thinking from metadata (server-side) if available, fallback to streamed content

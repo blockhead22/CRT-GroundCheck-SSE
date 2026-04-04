@@ -63,6 +63,12 @@ INTENT_TOOLSETS: Dict[str, Set[str]] = {
         "gpt_log_search",
         "gpt_log_context",
     },
+    "user_reflection": {
+        "memory_recall",
+        "introspect",
+        "gpt_log_search",
+        "gpt_log_context",
+    },
     "file_read": {
         "file_read",
         "dir_list",

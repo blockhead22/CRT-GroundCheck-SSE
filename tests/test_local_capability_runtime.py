@@ -14,6 +14,15 @@ def test_broad_recall_builds_memory_recall_plan():
     assert plan == [{"tool": "memory_recall", "input": {"query": "What do you know about me?"}}]
 
 
+def test_user_reflection_builds_memory_recall_plan():
+    agent = CRTTaskAgent(memory_agent=None, llm_client=None, session_db=None)
+    intent = TaskIntent(route="task", intent_type="user_reflection", slots={}, confidence=0.95)
+
+    plan = agent._build_plan(intent, "What do you think I value?", None)
+
+    assert plan == [{"tool": "memory_recall", "input": {"query": "What do you think I value?"}}]
+
+
 def test_local_only_tool_gate_hides_web_search_for_generic_task(monkeypatch):
     def _fake_setting(uid, key, default=""):
         if key == "routing_mode":
