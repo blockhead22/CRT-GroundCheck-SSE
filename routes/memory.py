@@ -1159,6 +1159,7 @@ def run_synthesis(
     """
     from personal_agent.belief_synthesis import synthesize, classify_synthesis_query
     from personal_agent.cloud_features import get_cloud_feature_service
+    from personal_agent.local_only_policy import is_strict_local_only_mode
 
     engine: CRTEnhancedRAG = request.app.state.engine
 
@@ -1177,7 +1178,7 @@ def run_synthesis(
         logger.warning("[SYNTHESIS_API] Failed to load memories: %s", e)
         all_mems = []
 
-    cloud = get_cloud_feature_service()
+    cloud = None if is_strict_local_only_mode(uid=1) else get_cloud_feature_service()
     result = synthesize(
         query=body.query,
         memories=all_mems,

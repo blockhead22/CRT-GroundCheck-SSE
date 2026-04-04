@@ -1969,14 +1969,20 @@ Facts by theme:
 
         # Try 1: Cloud feature service (cookie-based Claude)
         try:
-            from personal_agent.cloud_features import get_cloud_feature_service
-            svc = get_cloud_feature_service()
-            if svc:
-                response = svc.generate_full_response(
-                    system_prompt="You are a narrative synthesis engine. Output only valid JSON.",
-                    user_message=prompt,
-                    max_tokens=1500,
-                )
+            from personal_agent.local_only_policy import is_strict_local_only_mode
+
+            if not is_strict_local_only_mode(uid=1):
+                from personal_agent.cloud_features import get_cloud_feature_service
+
+                svc = get_cloud_feature_service()
+                if svc:
+                    response = svc.generate_full_response(
+                        system_prompt="You are a narrative synthesis engine. Output only valid JSON.",
+                        user_message=prompt,
+                        max_tokens=1500,
+                    )
+            else:
+                logger.info("[NARRATIVE_SYNTHESIS] Skipping cloud synthesis in strict local-only mode")
         except Exception as e:
             logger.debug("[NARRATIVE_SYNTHESIS] Cloud service failed: %s", e)
 

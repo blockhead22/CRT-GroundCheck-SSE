@@ -944,6 +944,11 @@ class UnifiedLLMClient:
             pass  # If auth unavailable, allow fallback
 
         try:
+            from .local_only_policy import is_strict_local_only_mode
+
+            if is_strict_local_only_mode(uid=1):
+                print("[LITELLM] Claude session fallback blocked in strict local-only mode")
+                return None
             from .cloud_features import get_cloud_feature_service
             svc = get_cloud_feature_service()
             if svc is None or not svc._cookie_available():

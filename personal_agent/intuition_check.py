@@ -291,6 +291,13 @@ class IntuitionCheck:
 
     def _is_available(self) -> bool:
         """Check if the cloud service is available for intuition checks."""
+        try:
+            from personal_agent.local_only_policy import is_cloud_governance_allowed
+
+            if not is_cloud_governance_allowed(uid=1):
+                return False
+        except Exception:
+            pass
         if self._cloud is None:
             return False
         # Reuse the cloud service's OpenAI availability check

@@ -732,6 +732,15 @@ def _generate_synthesis_text(prompt: str, cloud_service) -> Optional[str]:
         return None
 
     try:
+        from personal_agent.local_only_policy import is_strict_local_only_mode
+
+        if is_strict_local_only_mode(uid=1):
+            logger.info("[SYNTHESIS] Skipping cloud synthesis text in strict local-only mode")
+            return None
+    except Exception:
+        pass
+
+    try:
         result = cloud_service.generate_response(
             user_message=prompt,
             retrieved_memories=None,

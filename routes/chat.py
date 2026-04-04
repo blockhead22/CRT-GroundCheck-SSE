@@ -2368,17 +2368,11 @@ def _answer_broad_recall(engine: "Any", thread_id: str) -> str:
 
 def _is_strict_local_only_mode(req: "ChatRequest", uid: Optional[int]) -> bool:
     try:
-        import auth as _auth_local
+        from personal_agent.local_only_policy import is_strict_local_only_mode as _strict_local_only_mode
 
-        _uid_local = int(uid) if uid else 1
-        _routing_mode = str(_auth_local.get_user_setting(_uid_local, "routing_mode", "") or "").strip().lower()
-        _cloud_escalation = str(
-            _auth_local.get_user_setting(_uid_local, "cloud_escalation_policy", "conservative") or "conservative"
-        ).strip().lower()
-        _effective_generation = str(resolve_effective_generation_mode(req, uid) or "").strip().lower()
-        return _routing_mode == "local_only" or (
-            _effective_generation in ("local", "local_network")
-            and _cloud_escalation == "local_only"
+        return _strict_local_only_mode(
+            uid=uid,
+            generation_mode=resolve_effective_generation_mode(req, uid),
         )
     except Exception:
         return False

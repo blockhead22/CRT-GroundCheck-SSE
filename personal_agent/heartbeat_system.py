@@ -820,11 +820,12 @@ Output ONLY valid JSON, nothing else."""
         _cloud_reflection_skip = False
         try:
             import auth as _auth_mod_refl
+            from personal_agent.local_only_policy import is_cloud_governance_allowed
             # Use user_id=1 (single-user default) for heartbeat context
             _cloud_refl_enabled = str(
                 _auth_mod_refl.get_user_setting(1, "cloud_reflection_validation", "false")
             ).lower() in ("true", "1", "yes", "on")
-            if _cloud_refl_enabled:
+            if _cloud_reflection_enabled := (_cloud_refl_enabled and is_cloud_governance_allowed(uid=1)):
                 from personal_agent.cloud_features import get_cloud_feature_service
                 _cloud_svc_refl = get_cloud_feature_service()
                 if _cloud_svc_refl is not None:
@@ -850,6 +851,8 @@ Output ONLY valid JSON, nothing else."""
                             "[CLOUD_REFLECTION] Cloud rejected self-model update: %s",
                             _validation.get("concerns", "unspecified"),
                         )
+            elif _cloud_refl_enabled:
+                logger.info("[CLOUD_REFLECTION] Skipping cloud reflection validation in strict local-only mode")
         except Exception as _cloud_refl_err:
             logger.debug("[CLOUD_REFLECTION] Cloud validation failed (non-fatal): %s", _cloud_refl_err)
 

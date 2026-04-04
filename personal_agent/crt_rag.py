@@ -5369,6 +5369,7 @@ class CRTEnhancedRAG:
             if _synthesis_type in ("thematic", "trajectory", "contradiction_aware"):
                 from .belief_synthesis import synthesize as _belief_synthesize
                 from .cloud_features import get_cloud_feature_service
+                from .local_only_policy import is_strict_local_only_mode
 
                 # Load ALL user memories for clustering (not just retrieved subset)
                 try:
@@ -5380,7 +5381,7 @@ class CRTEnhancedRAG:
                 except Exception:
                     _all_mems = [m for m, _s in retrieved]
 
-                _cloud = get_cloud_feature_service()
+                _cloud = None if is_strict_local_only_mode(uid=1) else get_cloud_feature_service()
                 _synth_result = _belief_synthesize(
                     query=user_query,
                     memories=_all_mems,

@@ -464,6 +464,15 @@ class CloudFeatureService:
         Returns parsed dict with keys like contains_fact, slot_name, value, etc.
         Returns None if no provider available or limit exceeded.
         """
+        try:
+            from personal_agent.local_only_policy import is_cloud_governance_allowed
+
+            if not is_cloud_governance_allowed(uid=1):
+                logger.info("[GOVERNANCE] slot_classify: skipped in strict local-only mode")
+                return None
+        except Exception:
+            pass
+
         if not self._check_daily_limit("slot_classification"):
             return None
 
@@ -494,6 +503,15 @@ class CloudFeatureService:
         Returns parsed dict with keys: relation, confidence, explanation, severity.
         Returns None if no provider available or limit exceeded.
         """
+        try:
+            from personal_agent.local_only_policy import is_cloud_governance_allowed
+
+            if not is_cloud_governance_allowed(uid=1):
+                logger.info("[CLOUD] NLI contradiction check skipped in strict local-only mode")
+                return None
+        except Exception:
+            pass
+
         if not self._check_daily_limit("nli_contradiction"):
             return None
 
@@ -528,6 +546,15 @@ class CloudFeatureService:
         Returns parsed dict with keys: valid, confidence, concerns, suggestion.
         Returns None if no provider available or limit exceeded.
         """
+        try:
+            from personal_agent.local_only_policy import is_cloud_governance_allowed
+
+            if not is_cloud_governance_allowed(uid=1):
+                logger.info("[CLOUD] Reflection validation skipped in strict local-only mode")
+                return None
+        except Exception:
+            pass
+
         if not self._check_daily_limit("reflection_validation"):
             return None
 
