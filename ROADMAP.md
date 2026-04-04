@@ -1,5 +1,5 @@
 # CRT/Aether Roadmap
-Last updated: April 1, 2026 (v3.7)
+Last updated: April 4, 2026 (v3.7)
 
 ---
 
@@ -403,6 +403,13 @@ Last updated: April 1, 2026 (v3.7)
 - [ ] Layer 2 alignment check (per-run alignment score to SQLite run log)
 - [ ] Frontend rebuild (toFixed(1) trust delta, isActiveStream pipeline collapse timing)
 - [ ] 50+ orchestrator runs needed for route learning data
+
+### April 4 maintenance / open-core cleanup
+- [x] `crt-core` public repo hardening pass completed
+- [x] Public README tightened: shipped scope clarified, placeholder namespaces called out honestly
+- [x] Product-specific validation claims softened to avoid leaking deployment-specific evidence/model mix
+- [x] Governance docstrings scrubbed of project-private branding and overclaimed study stats
+- [x] Added lightweight public-surface tests + GitHub Actions pytest workflow to `crt-core`
 
 ### External Integrations (ad hoc)
 - [ ] Weather, calendar, maps, email — each is ~30 min of skill.md + credential setup
