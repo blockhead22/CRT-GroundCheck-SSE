@@ -83,6 +83,26 @@ Nick is preparing for limited friend beta testing (3-5 people). Key decisions be
 
 ---
 
+## April 4, 2026 Update
+
+### Open Source vs Product Boundary
+- **`crt-core` is the public constitution** - laws, governance agents, immune checks, boundary principles, public interfaces, examples, and tests.
+- **Aether / AI_round2 is the private product system** - orchestration, memory shaping, eval corpus, learned routing, local-first degradation handling, delegation/council behavior, integrations, and UX.
+- **Working rule** - open source explains the epistemic framework; the business/product ships the system that can actually live by it.
+- **Moat direction** - not the existence of CRT, but the production operating experience: continuity quality, route learning, memory ingestion, failure replay, local-model control, and real-world orchestration.
+
+### Public Repo Cleanup Completed Today
+- Hardened `D:\\crt-core` for public scope honesty: README now reflects what ships today, placeholder namespaces are described as placeholders, and product-specific validation language was softened.
+- Scrubbed product/private-lore residue from core governance docstrings so the repo reads like a reusable framework rather than a leak of private project mythology.
+- Added lightweight public-surface tests and GitHub Actions CI to keep the open repo credible and maintainable.
+
+### Practical Strategy Snapshot
+- **Open repo mission** - publish the CRT framework clearly enough that people can understand and adopt the governance layer.
+- **Private product mission** - build a coherent governed AI system that remembers, stays honest under pressure, degrades gracefully, and feels continuous in actual use.
+- **Near-term implication** - continue letting `crt-core` become the clean public framework while keeping the strongest orchestration and evaluation advantages in the closed app.
+
+---
+
 ## Known Rough Edges
 - `unexpected_failure` noise in logs for diff_preview — cosmetic
 - Discord bot failing on startup (bad token)
