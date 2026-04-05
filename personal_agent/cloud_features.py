@@ -296,14 +296,35 @@ class CloudFeatureService:
                 )
                 print(f"[CLOUD_CLAUDE] Empty response for {feature}")
                 return None
-            # Estimate tokens: word count * 1.3
-            est_tokens = int(len(raw_content.split()) * 1.3)
+            # Estimate tokens: word count * 1.3 for output, chars // 4 for input
+            est_output = int(len(raw_content.split()) * 1.3)
+            est_input = len(full_prompt) // 4
             usage_logger.log(
                 provider="claude_subscription", feature=feature,
-                model="claude-sonnet-4-5", prompt=full_prompt,
+                model=model, prompt=full_prompt,
                 response=raw_content, latency_ms=latency, success=True,
+                input_tokens=est_input, output_tokens=est_output,
             )
-            print(f"[CLOUD_CLAUDE] {feature} response ({latency}ms, ~{est_tokens} tokens): {repr(raw_content)[:150]}")
+            # Log to cost tracker for session-level cost tracking
+            try:
+                from personal_agent.cloud_usage_tracker import log_cloud_call
+                from personal_agent.cloud_usage_logger import _estimate_cost
+                _cost = _estimate_cost(model, est_input, est_output)
+                log_cloud_call(
+                    call_type=feature, provider="anthropic_cookie",
+                    model=model, input_tokens_est=est_input,
+                    output_tokens_est=est_output, latency_ms=latency, success=True,
+                )
+                # Also update litellm client's request cost accumulator
+                try:
+                    from personal_agent.litellm_client import get_default_llm_client
+                    get_default_llm_client()._request_cost_usd += _cost
+                except Exception:
+                    pass
+                print(f"[CLOUD_COST] anthropic_cookie/{model}: {est_input} in + {est_output} out = ${_cost:.6f}")
+            except Exception:
+                pass
+            print(f"[CLOUD_CLAUDE] {feature} response ({latency}ms, ~{est_output} tokens): {repr(raw_content)[:150]}")
             return raw_content.strip()
         except Exception as e:
             latency = int((time.time() - t0) * 1000)

@@ -4211,6 +4211,40 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         if _generation_mode == "local_network":
             _generation_mode = "local"
         _safe_print(f"[GENERATION] mode_select: generation_mode={_generation_mode}, uid={_uid_gen}")
+
+        # ── STRUCTURAL GOVERNANCE: Confidence-gated response depth ──────
+        # Compute belief confidence from retrieved memories BEFORE generation.
+        # If confidence is low, structurally constrain the response:
+        # - Cap max_tokens so the model can't produce long assertive answers
+        # - Inject a hedge prefix so the model frames uncertainty honestly
+        # This is architectural, not advisory — the constraint lives in the
+        # execution context, not in the prompt instructions.
+        _pre_gen_mems = result.get("retrieved_memories") or result.get("prompt_memories") or []
+        _pre_gen_belief = 0.4  # default: no memories = low confidence
+        if _pre_gen_mems and isinstance(_pre_gen_mems, list):
+            _valid_mems = [m for m in _pre_gen_mems if isinstance(m, dict)]
+            if _valid_mems:
+                _avg_trust = sum(m.get("trust", 0.5) for m in _valid_mems) / len(_valid_mems)
+                _pre_gen_belief = min(0.85, 0.3 + 0.05 * len(_valid_mems) + _avg_trust * 0.2)
+        result["pre_gen_belief"] = round(_pre_gen_belief, 3)
+
+        _confidence_gate_active = False
+        _confidence_max_tokens = 4096  # default
+        _confidence_hedge = ""
+        if _pre_gen_belief < 0.4:
+            _confidence_gate_active = True
+            _confidence_max_tokens = 150
+            _confidence_hedge = (
+                "[Note: I have low confidence in this answer — my memory evidence is weak or absent. "
+                "I'll keep it brief and honest about what I don't know.]\n\n"
+            )
+            _safe_print(f"[STRUCTURAL_GATE] Confidence gate ACTIVE: belief={_pre_gen_belief:.2f} < 0.4 → max_tokens={_confidence_max_tokens}, hedge injected")
+        elif _pre_gen_belief < 0.55:
+            _confidence_max_tokens = 500
+            _safe_print(f"[STRUCTURAL_GATE] Medium confidence: belief={_pre_gen_belief:.2f} → max_tokens={_confidence_max_tokens}")
+        else:
+            _safe_print(f"[STRUCTURAL_GATE] High confidence: belief={_pre_gen_belief:.2f} → full depth")
+
         _emit_pipeline_status(f"generating ({_generation_mode})")
 
         # --- Escalation policy: may promote local → cloud for this request ---
@@ -4355,13 +4389,16 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _pc_prompt = "\n".join(_pc_prompt_parts)
 
                 _safe_print(f"[GENERATION] cloud_primary: using {_provider} ({_cloud_model})")
+                # Apply confidence gate: inject hedge prefix if low confidence
+                if _confidence_hedge:
+                    _pc_prompt = _confidence_hedge + _pc_prompt
                 _t_primary = time.perf_counter()
                 _cloud_primary_answer = _primary_cloud_svc.generate_full_response(
                     prompt=_pc_prompt,
                     system_prompt=_pc_system,
                     provider=_provider,
                     model=_cloud_model,
-                    max_tokens=4096,
+                    max_tokens=_confidence_max_tokens,
                 )
                 _lat_primary = int((time.perf_counter() - _t_primary) * 1000)
                 if _cloud_primary_answer:
@@ -4603,6 +4640,21 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
                 _esc_policy.record_success("local")
             except Exception:
                 pass
+
+    # ── STRUCTURAL GOVERNANCE: Apply confidence gate to final answer ──────
+    # If confidence is low and the answer is too long, truncate it.
+    # If confidence is low, prepend the hedge prefix (if not already from cloud path).
+    if _confidence_gate_active:
+        _final_answer = str(result.get("answer") or "")
+        if _final_answer and not _final_answer.startswith("[Note: I have low confidence"):
+            # Truncate if over the token limit (rough: 4 chars per token)
+            _char_limit = _confidence_max_tokens * 4
+            if len(_final_answer) > _char_limit:
+                _final_answer = _final_answer[:_char_limit].rsplit(" ", 1)[0] + "..."
+                _safe_print(f"[STRUCTURAL_GATE] Response truncated to ~{_confidence_max_tokens} tokens (was {len(str(result.get('answer', ''))) // 4})")
+            result["answer"] = _confidence_hedge + _final_answer
+            result["structural_gate_applied"] = True
+            _safe_print(f"[STRUCTURAL_GATE] Hedge prefix applied to final answer")
 
     control_state.mark(
         "generate",
@@ -5022,6 +5074,25 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             f"escalation={_gen_tracking['escalation']}, "
             f"latency={_gen_latency_ms}ms"
         )
+        # Store gate check results for frontend visualization
+        result["gate_checks"] = {
+            "slot": _gen_tracking.get("slots", "none"),
+            "nli": _gen_tracking.get("nli", "none"),
+            "gap": "safe",  # default; updated below if governance ran
+        }
+        # Extract gap audit from governance annotations if available
+        try:
+            _gov_tier = result.get("governance_tier") or result.get("metadata", {}).get("governance_tier")
+            _gov_anns = result.get("governance_annotations") or result.get("metadata", {}).get("governance_annotations", 0)
+            _gov_findings = result.get("governance_findings") or result.get("metadata", {}).get("governance_findings", [])
+            if _gov_tier:
+                result["gate_checks"]["governance_tier"] = _gov_tier
+            for _finding in (_gov_findings or []):
+                if "gap" in str(_finding).lower() or "belief/speech" in str(_finding).lower():
+                    result["gate_checks"]["gap"] = "flagged"
+                    break
+        except Exception:
+            pass
     except Exception as _summary_err:
         _safe_print(f"[REQUEST_SUMMARY] error: {_summary_err}")
 
@@ -7241,6 +7312,16 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                     if not _al_generation_source:
                         _al_generation_source = "local" if _tools_executed else "agent_loop"
                     _safe_print(f"[GEN_SOURCE] SSE final: generation_source={_al_generation_source}, tools_executed={_tools_executed}")
+                    # Extract belief confidence from the last governance check
+                    _al_belief = 0.5
+                    try:
+                        # Agent loop governance runs inside the loop — get the last belief
+                        for _ev in reversed(_al_events):
+                            if isinstance(_ev, dict) and _ev.get("type") == "governance":
+                                _al_belief = float(_ev.get("metadata", {}).get("belief_confidence", 0.5))
+                                break
+                    except Exception:
+                        pass
                     _done_meta_al = {
                         "tool_calls": _al_steps,
                         "agent_loop": True,
@@ -7248,6 +7329,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         "response_type": "task",
                         "gates_passed": True,
                         "generation_source": _al_generation_source,
+                        "belief_confidence": round(_al_belief, 3),
                     }
                     if _governed_task:
                         _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _al_answer) or _governed_task
@@ -8532,6 +8614,55 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         )
                 except Exception as _gov_err:
                     logger.debug("[GOVERNANCE_LEGACY] Failed: %s", _gov_err)
+
+            # Inject gate check results into done metadata
+            try:
+                _gate_checks = shared_response.metadata.get("gate_checks") if hasattr(shared_response, "metadata") and shared_response.metadata else None
+                if not _gate_checks:
+                    _gate_checks = result.get("gate_checks") if "result" in dir() and isinstance(result, dict) else None
+                if _gate_checks:
+                    metadata["gate_checks"] = _gate_checks
+                else:
+                    # Build from what we know
+                    metadata["gate_checks"] = {
+                        "slot": metadata.get("slot_type", "none"),
+                        "nli": "pass" if metadata.get("gates_passed") else metadata.get("gate_reason", "unknown"),
+                        "gap": "safe",
+                    }
+                    # Check governance findings for gap audit
+                    for _gf in (metadata.get("governance_findings") or []):
+                        if "gap" in str(_gf).lower():
+                            metadata["gate_checks"]["gap"] = "flagged"
+                            break
+            except Exception:
+                metadata.setdefault("gate_checks", {"slot": "none", "nli": "none", "gap": "safe"})
+
+            # Inject belief confidence into done metadata
+            try:
+                _final_belief = metadata.get("governance_tier")
+                if "belief_confidence" not in metadata:
+                    # Use the governance belief if computed, otherwise estimate from retrieval
+                    if "_conv_belief" in dir():
+                        metadata["belief_confidence"] = round(_conv_belief, 3)
+                    elif "_legacy_belief" in dir():
+                        metadata["belief_confidence"] = round(_legacy_belief, 3)
+                    else:
+                        # Estimate from retrieved memory trust scores
+                        _ret_mems = metadata.get("retrieved_memories") or metadata.get("prompt_memories") or []
+                        if _ret_mems:
+                            _avg_trust = sum(m.get("trust", 0.5) for m in _ret_mems if isinstance(m, dict)) / max(len(_ret_mems), 1)
+                            metadata["belief_confidence"] = round(min(0.85, 0.3 + 0.05 * len(_ret_mems) + _avg_trust * 0.2), 3)
+                        else:
+                            metadata["belief_confidence"] = 0.4  # No memories = low confidence
+            except Exception:
+                metadata.setdefault("belief_confidence", 0.4)
+
+            # Inject request cost into done metadata
+            try:
+                from personal_agent.litellm_client import get_default_llm_client
+                metadata["cost_usd"] = round(get_default_llm_client().get_request_cost(), 6)
+            except Exception:
+                metadata.setdefault("cost_usd", 0.0)
 
             yield f"data: {json.dumps({'type': 'done', 'content': answer, 'metadata': metadata})}\n\n"
 

@@ -1418,6 +1418,8 @@ export default function App() {
                   tools_executed: (metadata as any)?.tools_executed ?? null,
                   agent_loop: (metadata as any)?.agent_loop ?? false,
                   cost_usd: (metadata as any)?.cost_usd ?? 0,
+                  belief_confidence: (metadata as any)?.belief_confidence ?? null,
+                  gate_checks: (metadata as any)?.gate_checks ?? null,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })

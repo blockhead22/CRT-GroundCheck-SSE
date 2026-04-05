@@ -568,6 +568,61 @@ export function MessageBubble(props: {
             </span>
           )}
 
+          {/* Belief confidence badge */}
+          {isAssistant && meta?.belief_confidence != null && meta.belief_confidence > 0 && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-mono tabular-nums"
+              style={{
+                background: meta.belief_confidence >= 0.7
+                  ? 'rgba(52,211,153,0.10)' : meta.belief_confidence >= 0.4
+                  ? 'rgba(201,164,92,0.10)' : 'rgba(212,112,88,0.10)',
+                color: meta.belief_confidence >= 0.7
+                  ? '#34d399' : meta.belief_confidence >= 0.4
+                  ? '#c9a45c' : '#D47058',
+                border: `1px solid ${meta.belief_confidence >= 0.7
+                  ? 'rgba(52,211,153,0.2)' : meta.belief_confidence >= 0.4
+                  ? 'rgba(201,164,92,0.2)' : 'rgba(212,112,88,0.2)'}`,
+              }}
+              title={`Belief confidence: ${(meta.belief_confidence * 100).toFixed(0)}% — how much the system trusts this response based on memory evidence`}
+            >
+              ◉ {meta.belief_confidence.toFixed(2)}
+            </span>
+          )}
+
+          {/* Gate check dots — slot/NLI/gap */}
+          {isAssistant && meta?.gate_checks && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-mono" title="Governance gates: Slot Classify · NLI Critic · Gap Audit">
+              {(() => {
+                const gc = meta.gate_checks as { slot?: string; nli?: string; gap?: string }
+                const dotStyle = (val: string) => {
+                  if (!val || val === 'none' || val === 'skip') return { bg: 'rgba(240,235,225,0.15)', color: 'var(--text-faint)' }
+                  if (val === 'safe' || val.includes('pass')) return { bg: 'rgba(52,211,153,0.2)', color: '#34d399' }
+                  if (val === 'flagged' || val.includes('fail') || val.includes('contradiction')) return { bg: 'rgba(212,112,88,0.2)', color: '#D47058' }
+                  if (val.includes('soft')) return { bg: 'rgba(201,164,92,0.2)', color: '#c9a45c' }
+                  return { bg: 'rgba(52,211,153,0.15)', color: '#34d399' }
+                }
+                const gates = [
+                  { label: 'S', val: gc.slot || 'none', title: `Slot: ${gc.slot || 'none'}` },
+                  { label: 'N', val: gc.nli || 'none', title: `NLI: ${gc.nli || 'none'}` },
+                  { label: 'G', val: gc.gap || 'safe', title: `Gap: ${gc.gap || 'safe'}` },
+                ]
+                return gates.map(g => {
+                  const s = dotStyle(g.val)
+                  return (
+                    <span key={g.label} title={g.title}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 16, height: 16, borderRadius: '50%',
+                        background: s.bg, color: s.color, fontSize: 8, fontWeight: 600,
+                      }}>
+                      {g.label}
+                    </span>
+                  )
+                })
+              })()}
+            </span>
+          )}
+
           {/* Status badges — condensed */}
           {meta && (
             <div className="flex items-center gap-1.5">

@@ -178,6 +178,17 @@ export type CtrMessageMeta = {
   // Agent loop metadata — whether tools were actually executed
   tools_executed?: boolean | null
   agent_loop?: boolean
+  // Cost tracking
+  cost_usd?: number
+  // Belief confidence — how much the system trusts this response (0-1)
+  belief_confidence?: number | null
+  // Gate check results — slot classify / NLI critic / gap audit
+  gate_checks?: {
+    slot?: string
+    nli?: string
+    gap?: string
+    governance_tier?: string
+  } | null
   // Reintroduced claims tracking
   reintroduced_claims_count?: number
   xray?: {

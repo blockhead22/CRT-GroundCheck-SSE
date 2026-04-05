@@ -63,7 +63,7 @@ class BackendManager extends EventEmitter {
       ].join(','),
       CRT_SHARED_MEMORY: 'true',
       CRT_ENABLE_LLM: 'true',
-      CRT_OLLAMA_MODEL: process.env.CRT_OLLAMA_MODEL || 'qwen3:14b',
+      CRT_OLLAMA_MODEL: process.env.CRT_OLLAMA_MODEL || 'gemma3:latest',
       CRT_FORCE_LOCAL_OLLAMA: forceLocalOllama ? 'true' : 'false',
       // Do not inherit a stale shell-wide OLLAMA_BASE_URL for desktop local mode.
       // Use CRT_DESKTOP_OLLAMA_BASE_URL or AETHER_OLLAMA_BASE_URL when a LAN target is intentional.
