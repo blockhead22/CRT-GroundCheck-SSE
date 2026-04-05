@@ -659,6 +659,18 @@ class AgentToolLoop:
                     think_content = extract_think_content(text_content)
                     clean_text = strip_thinking_tags(text_content)
 
+                    # Unwrap JSON-wrapped responses from models like gemma3
+                    # that sometimes return {"response": "actual text"} instead of plain text
+                    if clean_text.strip().startswith('{"response"'):
+                        try:
+                            import json as _json_unwrap
+                            _parsed = _json_unwrap.loads(clean_text.strip())
+                            if isinstance(_parsed, dict) and "response" in _parsed:
+                                clean_text = str(_parsed["response"])
+                                print("[AGENT_LOOP_DEBUG] Unwrapped JSON-wrapped response from model")
+                        except Exception:
+                            pass  # Not valid JSON, keep original
+
                     if think_content and self.show_thinking:
                         yield {
                             "type": "agent_thinking_token",
@@ -782,6 +794,15 @@ class AgentToolLoop:
                     if _forced_text:
                         from personal_agent.text_utils import strip_thinking_tags
                         _forced_text = strip_thinking_tags(_forced_text)
+                        # Unwrap JSON-wrapped responses
+                        if _forced_text.startswith('{"response"'):
+                            try:
+                                import json as _json_f
+                                _pf = _json_f.loads(_forced_text)
+                                if isinstance(_pf, dict) and "response" in _pf:
+                                    _forced_text = str(_pf["response"])
+                            except Exception:
+                                pass
                         print(f"[AGENT_LOOP_DEBUG] Forced answer: {_forced_text[:200]}")
                         yield {"type": "token", "content": _forced_text}
                     else:

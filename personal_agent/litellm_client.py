@@ -471,6 +471,14 @@ class UnifiedLLMClient:
             print("[LITELLM] Ollama known-dead, skipping direct call")
             return None
 
+        # Skip direct call for models known to reject the tool schema format.
+        # These models work fine via litellm which handles format translation.
+        _direct_skip_models = {"gemma3", "gemma4", "gemma", "llama2", "mistral"}
+        _model_base = model.split(":")[0].lower()
+        if tools and _model_base in _direct_skip_models:
+            print(f"[LITELLM] Skipping direct Ollama call for {model} (tool schema incompatible), using litellm path")
+            return None
+
         try:
             if timeout_override is not None:
                 _direct_timeout = timeout_override
@@ -528,15 +536,18 @@ class UnifiedLLMClient:
         except Exception as e:
             print(f"[LITELLM] Ollama direct call error: {e}")
             _err = str(e).lower()
-            if "timed out" in _err:
-                self._ollama_timeout_count += 1
-                print(f"[LITELLM] Ollama timeout count: {self._ollama_timeout_count}")
-                if self._ollama_timeout_count >= 3:
-                    self._ollama_dead = True
-                    print("[LITELLM] Marking Ollama as unreachable after repeated timeouts")
-            elif "connection" in _err:
+            if "connect timeout" in _err or "connection refused" in _err or "no connection" in _err:
+                # Connection failure = Ollama is genuinely down
                 self._ollama_dead = True
-                print("[LITELLM] Marking Ollama as unreachable for this session")
+                print("[LITELLM] Marking Ollama as unreachable (connection refused/timeout)")
+            elif "read timed out" in _err or "timed out" in _err:
+                # Read timeout = GPU busy (model swapping or generating on another request)
+                # Don't mark as dead — it'll be available once the current request finishes
+                self._ollama_timeout_count += 1
+                print(f"[LITELLM] Ollama GPU busy (read timeout), count: {self._ollama_timeout_count}")
+                if self._ollama_timeout_count >= 5:
+                    self._ollama_dead = True
+                    print("[LITELLM] Marking Ollama as unreachable after 5 consecutive GPU timeouts")
             return None
 
     @staticmethod
@@ -1056,7 +1067,9 @@ class UnifiedLLMClient:
                 if _gen_mode in ("cloud_claude", "cloud_openai"):
                     _cloud_on = True
                 if not _cloud_on:
-                    print(f"[LITELLM] Cloud disabled in settings, overriding {policy} → local_only")
+                    # Only log when we're actually changing something (not when already local_only)
+                    if policy != "local_only":
+                        print(f"[LITELLM] Cloud disabled in settings, overriding {policy} → local_only")
                     policy = "local_only"
             except Exception:
                 pass

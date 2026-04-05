@@ -226,7 +226,7 @@ class BackendManager extends EventEmitter {
     const env = { ...this.getEnv(), CRT_API_URL: `http://${this.host}:${this.port}` };
 
     const bots = [
-      { name: 'telegram', module: 'channels.telegram_bot', tokenVar: 'TELEGRAM_BOT_TOKEN' },
+      // { name: 'telegram', module: 'channels.telegram_bot', tokenVar: 'TELEGRAM_BOT_TOKEN' },
       { name: 'discord', module: 'channels.discord_bot', tokenVar: 'DISCORD_BOT_TOKEN' },
     ];
 
