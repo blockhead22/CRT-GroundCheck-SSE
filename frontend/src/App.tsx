@@ -124,6 +124,8 @@ export default function App() {
   const [streamingThinking, setStreamingThinking] = useState<string>('')
   const [streamingResponse, setStreamingResponse] = useState<string>('')
   const [isThinking, setIsThinking] = useState(false)
+  const [sessionCostUsd, setSessionCostUsd] = useState(0)
+  const [lastMsgCostUsd, setLastMsgCostUsd] = useState(0)
   const [useStreaming, setUseStreaming] = useState(true) // Toggle for streaming mode
   const phaseMode = true
   const [streamPhase, setStreamPhase] = useState<string | null>(null)
@@ -1415,9 +1417,16 @@ export default function App() {
                   cloud_governance_used: (metadata as any)?.cloud_governance_used ?? false,
                   tools_executed: (metadata as any)?.tools_executed ?? null,
                   agent_loop: (metadata as any)?.agent_loop ?? false,
+                  cost_usd: (metadata as any)?.cost_usd ?? 0,
                 },
               }
               upsertThread({ ...withUser, updatedAt: at, messages: [...withUser.messages, asstMsg] })
+              // Track cost
+              const msgCost = (metadata as any)?.cost_usd ?? 0
+              if (msgCost > 0) {
+                setLastMsgCostUsd(msgCost)
+                setSessionCostUsd(prev => prev + msgCost)
+              }
               // Clear streaming state
               setStreamingThinking('')
               setStreamingResponse('')
@@ -1873,6 +1882,8 @@ export default function App() {
                         handleSend(`[followup] ${text}`)
                       }}
                       onDismissFollowups={() => setFollowupSuggestions([])}
+                      sessionCostUsd={sessionCostUsd}
+                      lastMsgCostUsd={lastMsgCostUsd}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

@@ -213,6 +213,9 @@ export function ChatThreadView(props: {
   followupSuggestions?: string[]
   onFollowupClick?: (text: string) => void
   onDismissFollowups?: () => void
+  /** Cost tracking */
+  sessionCostUsd?: number
+  lastMsgCostUsd?: number
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -909,6 +912,21 @@ export function ChatThreadView(props: {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Session cost indicator */}
+      {(props.sessionCostUsd ?? 0) > 0 && (
+        <div className="flex-shrink-0 flex items-center justify-end px-4 pb-1 gap-3"
+          style={{ fontSize: 10, fontFamily: 'var(--font-mono, monospace)', color: 'var(--text-faint, #635c50)' }}>
+          {(props.lastMsgCostUsd ?? 0) > 0 && (
+            <span style={{ color: 'rgba(201,164,92,0.6)' }}>
+              last: ${(props.lastMsgCostUsd ?? 0).toFixed(4)}
+            </span>
+          )}
+          <span>
+            session: ${(props.sessionCostUsd ?? 0).toFixed(4)}
+          </span>
+        </div>
+      )}
 
       {/* Composer + companion mascot */}
       <div className="flex-shrink-0 relative">

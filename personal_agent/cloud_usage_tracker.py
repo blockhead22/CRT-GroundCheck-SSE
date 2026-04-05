@@ -400,3 +400,60 @@ def log_cloud_call(
         )
     except Exception:
         pass
+
+
+# Budget thresholds (USD)
+_BUDGET_THRESHOLDS = [
+    (10, "green"),
+    (25, "yellow"),
+    (50, "orange"),
+    (75, "red"),
+    (100, "critical"),
+]
+
+
+def check_budget() -> Dict[str, Any]:
+    """Check cumulative API cost against budget thresholds.
+
+    Returns: {"total_cost_usd": float, "level": str, "budget_limit": 100,
+              "remaining": float, "warning": str | None}
+    """
+    try:
+        tracker = get_cloud_usage_tracker()
+        tracker._ensure_init()
+        with tracker._lock:
+            row = tracker._conn.execute(
+                "SELECT SUM(input_tokens_est * 1.0 + output_tokens_est * 1.0) as total_tokens, "
+                "COUNT(*) as total_calls FROM cloud_usage_log WHERE success = 1"
+            ).fetchone()
+
+        total_tokens = (row[0] or 0) if row else 0
+        total_calls = (row[1] or 0) if row else 0
+
+        # Estimate cost using average Sonnet pricing ($3/M in + $15/M out)
+        # Rough: assume 60% input, 40% output
+        input_est = total_tokens * 0.6
+        output_est = total_tokens * 0.4
+        total_cost = (input_est / 1_000_000 * 3.0) + (output_est / 1_000_000 * 15.0)
+
+        # Determine warning level
+        level = "green"
+        warning = None
+        for threshold, lvl in _BUDGET_THRESHOLDS:
+            if total_cost >= threshold:
+                level = lvl
+        if level in ("orange", "red", "critical"):
+            warning = f"API spending at ${total_cost:.2f} of $100 budget ({level})"
+
+        return {
+            "total_cost_usd": round(total_cost, 4),
+            "total_calls": total_calls,
+            "level": level,
+            "budget_limit": 100,
+            "remaining": round(100 - total_cost, 4),
+            "warning": warning,
+        }
+    except Exception as e:
+        logger.debug("[BUDGET] check_budget failed: %s", e)
+        return {"total_cost_usd": 0, "total_calls": 0, "level": "green",
+                "budget_limit": 100, "remaining": 100, "warning": None}

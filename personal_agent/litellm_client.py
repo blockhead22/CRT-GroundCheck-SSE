@@ -192,6 +192,66 @@ class UnifiedLLMClient:
             self.cloud_model or "(none)", self.product_mode,
         )
 
+    # ── Usage tracking ────────────────────────────────────────────────
+
+    # Accumulates cost for the current request (reset by caller between requests)
+    _request_cost_usd: float = 0.0
+
+    @staticmethod
+    def _extract_usage(resp: Any) -> Dict[str, int]:
+        """Extract token usage from a litellm response object."""
+        try:
+            usage = getattr(resp, "usage", None)
+            if usage is None:
+                return {}
+            return {
+                "input_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+                "output_tokens": getattr(usage, "completion_tokens", 0) or 0,
+            }
+        except Exception:
+            return {}
+
+    def _log_usage(self, provider: str, model: str, usage: Dict[str, int],
+                   call_type: str = "generation", thread_id: str = "", uid: int = 0):
+        """Log actual token usage and accumulate cost for the current request."""
+        if not usage:
+            return
+        input_t = usage.get("input_tokens", 0)
+        output_t = usage.get("output_tokens", 0)
+        if input_t == 0 and output_t == 0:
+            return
+
+        # Calculate cost
+        from personal_agent.cloud_usage_logger import _estimate_cost
+        cost = _estimate_cost(model, input_t, output_t)
+        self._request_cost_usd += cost
+
+        # Log to tracker
+        try:
+            from personal_agent.cloud_usage_tracker import log_cloud_call
+            log_cloud_call(
+                call_type=call_type,
+                provider=provider,
+                model=model,
+                input_tokens_est=input_t,
+                output_tokens_est=output_t,
+                success=True,
+                thread_id=thread_id,
+                uid=uid,
+            )
+        except Exception:
+            pass
+
+        print(f"[CLOUD_COST] {provider}/{model}: {input_t} in + {output_t} out = ${cost:.6f} (session: ${self._request_cost_usd:.4f})")
+
+    def reset_request_cost(self):
+        """Reset per-request cost accumulator. Call at the start of each user message."""
+        self._request_cost_usd = 0.0
+
+    def get_request_cost(self) -> float:
+        """Get accumulated cost for current request."""
+        return self._request_cost_usd
+
     # ── Properties ────────────────────────────────────────────────────
 
     @property
@@ -734,7 +794,15 @@ class UnifiedLLMClient:
                   f"tools={len(tools)}, msgs={len(messages)}, "
                   f"msg_chars={sum(len(str(m.get('content',''))) for m in messages)}")
 
-        return litellm.completion(**kwargs)
+        resp = litellm.completion(**kwargs)
+
+        # Track actual token usage from every API call
+        _usage = self._extract_usage(resp)
+        if _usage:
+            _call_type = "generation" if not tools else "tool_call"
+            self._log_usage(provider, resolved_model, _usage, call_type=_call_type)
+
+        return resp
 
     # ── generate() ────────────────────────────────────────────────────
 
@@ -835,11 +903,16 @@ class UnifiedLLMClient:
                     "arguments": args if isinstance(args, dict) else {},
                 })
 
-        return {
+        result = {
             "tool_calls": parsed_calls,
             "content": content,
             "used_tools": len(parsed_calls) > 0,
         }
+        # Attach usage if available
+        _usage = self._extract_usage(response)
+        if _usage:
+            result["usage"] = _usage
+        return result
 
     def _try_local_tools(self, messages, tools, max_tokens, temperature, model_name, timeout_override=None):
         """Attempt local tool call with quality gate. Returns result or None."""
@@ -926,8 +999,14 @@ class UnifiedLLMClient:
             if tools:
                 kwargs["tools"] = tools
             resp = litellm.completion(**kwargs)
+            # Track actual token usage
+            _usage = self._extract_usage(resp)
+            if _usage:
+                self._log_usage("openai", raw_model, _usage, call_type="tool_call")
             result = self._parse_tool_response(resp)
             result["generation_source"] = "openai"
+            if _usage:
+                result["usage"] = _usage
             print(f"[GEN_SOURCE] OPENAI TOOLS — model={model}")
             return result
         except Exception as e:

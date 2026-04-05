@@ -33,16 +33,39 @@ _DB_FILE = _DATA_DIR / "cloud_usage.db"
 # ---------------------------------------------------------------------------
 
 COST_PER_1K: Dict[str, Dict[str, float]] = {
+    # OpenAI
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
+    "gpt-4o": {"input": 0.0025, "output": 0.01},
+    # Anthropic (via API key — draws from $100 extra usage credits)
+    "claude-sonnet-4-20250514": {"input": 0.003, "output": 0.015},
+    "claude-sonnet-4-6": {"input": 0.003, "output": 0.015},
     "claude-sonnet-4-5": {"input": 0.003, "output": 0.015},
-    # cookie/subscription calls have zero direct API cost
+    "claude-opus-4-5": {"input": 0.015, "output": 0.075},
+    "claude-opus-4-6": {"input": 0.015, "output": 0.075},
+    # Local / cookie — no API cost
     "claude_subscription": {"input": 0.0, "output": 0.0},
+    "local": {"input": 0.0, "output": 0.0},
 }
 
 
 def _estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
     """Return estimated cost in USD."""
-    rates = COST_PER_1K.get(model, COST_PER_1K.get("gpt-4o-mini", {}))
+    rates = COST_PER_1K.get(model)
+    if rates is None:
+        # Prefix match: "claude-sonnet-4-20250514" → "claude-sonnet-4"
+        _m = (model or "").lower()
+        for key, val in COST_PER_1K.items():
+            if _m.startswith(key.split("-")[0]) and key.split("-")[0] in _m:
+                rates = val
+                break
+        if rates is None:
+            # Fallback by provider prefix
+            if "claude" in _m or "anthropic" in _m:
+                rates = COST_PER_1K.get("claude-sonnet-4-6", {})
+            elif "gpt" in _m or "openai" in _m:
+                rates = COST_PER_1K.get("gpt-4o-mini", {})
+            else:
+                rates = {"input": 0.0, "output": 0.0}  # local models
     cost = (input_tokens / 1000.0) * rates.get("input", 0.0)
     cost += (output_tokens / 1000.0) * rates.get("output", 0.0)
     return round(cost, 8)

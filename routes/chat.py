@@ -2910,6 +2910,12 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         _uid_early = int(uid) if uid else 1
         _gen_mode_early = resolve_effective_generation_mode(req, uid)
         _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" generation_mode={_gen_mode_early} uid={_uid_early} thread={req.thread_id}")
+        # Reset per-request cost accumulator
+        try:
+            from personal_agent.litellm_client import get_default_llm_client
+            get_default_llm_client().reset_request_cost()
+        except Exception:
+            pass
     except Exception as _early_err:
         _safe_print(f"[PIPELINE_ENTRY] message=\"{str(req.message or '')[:60]}\" (settings read failed: {_early_err})")
 
@@ -7247,6 +7253,12 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _al_answer) or _governed_task
                         _append_governed_event("done", _al_answer, {"task_status": GovernedTaskStatus.COMPLETED.value, **_done_meta_al})
                     yield _sse({"type": "agent_loop_complete", "content": _al_answer, "metadata": {"generation_source": _al_generation_source}})
+                    # Inject request cost
+                    try:
+                        from personal_agent.litellm_client import get_default_llm_client
+                        _done_meta_al["cost_usd"] = round(get_default_llm_client().get_request_cost(), 6)
+                    except Exception:
+                        _done_meta_al["cost_usd"] = 0.0
                     yield _sse({"type": "done", "content": _al_answer, "metadata": _done_meta_al})
                     return
 
@@ -7888,6 +7900,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         _governed_task = _session_db.complete_governed_task(str(_governed_task["task_id"]), _orch_answer) or _governed_task
                         _append_governed_event("done", _orch_answer, {"task_status": GovernedTaskStatus.COMPLETED.value, "generation_source": "agent_loop"})
                     yield _sse({"type": "agent_loop_complete", "content": _orch_answer, "metadata": {"generation_source": "agent_loop"}})
+                    # Get request cost
+                    _orch_cost = 0.0
+                    try:
+                        from personal_agent.litellm_client import get_default_llm_client
+                        _orch_cost = round(get_default_llm_client().get_request_cost(), 6)
+                    except Exception:
+                        pass
                     yield _sse({
                         "type": "done",
                         "content": _orch_answer,
@@ -7899,6 +7918,7 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                             "response_type": "task",
                             "gates_passed": True,
                             "generation_source": "agent_loop",
+                            "cost_usd": _orch_cost,
                         },
                     })
                     return
@@ -8150,6 +8170,13 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                         except Exception as _gov_err:
                             logger.debug("[GOVERNANCE_LEGACY] Task path failed: %s", _gov_err)
 
+                    # Inject request cost into done metadata
+                    try:
+                        from personal_agent.litellm_client import get_default_llm_client
+                        _cost_client = get_default_llm_client()
+                        _done_meta["cost_usd"] = round(_cost_client.get_request_cost(), 6)
+                    except Exception:
+                        _done_meta["cost_usd"] = 0.0
                     yield _sse({"type": "done", "content": _task_answer, "metadata": _done_meta})
                     return
                 except Exception as _te:
