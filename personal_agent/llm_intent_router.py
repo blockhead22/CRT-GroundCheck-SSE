@@ -359,9 +359,10 @@ class LLMIntentRouter:
         msgs.append({"role": "user", "content": user_content})
         return msgs
 
-    # Intent classification should fail fast (5s) when Ollama is unreachable,
-    # not block for 120s. The caller (_try_llm_router) handles cloud fallback.
-    INTENT_TIMEOUT = 5
+    # Intent classification timeout. Must be long enough for the intent model
+    # to actually respond (llama3.2=3B needs ~3s, qwen3:14b needs ~10-15s)
+    # but short enough to fail fast when Ollama is unreachable.
+    INTENT_TIMEOUT = 15
 
     def _call_llm(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """Call the LLM with tool schemas. Works with both Ollama and Hybrid clients."""

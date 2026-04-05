@@ -3640,7 +3640,17 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
 
     # Broad recall: "what do you know about me?" — dump all high-trust facts.
     # Also handles identity questions right after user provides info (recency awareness).
+    # Check both the regex AND the intent classifier — the LLM router catches
+    # broader patterns like "what do you remember about my views on X?"
     _is_identity_question = _is_broad_recall_request(effective_message)
+    if not _is_identity_question:
+        # Check if intent classifier said broad_recall
+        try:
+            _intent_type_for_recall = getattr(_task_intent, "intent_type", "") if _task_intent else ""
+        except NameError:
+            _intent_type_for_recall = ""
+        if _intent_type_for_recall == "broad_recall":
+            _is_identity_question = True
     if not _is_identity_question:
         # Also catch "who am I" / "tell me about who I am" that might not
         # fully match broad recall but need recency awareness
@@ -3668,7 +3678,65 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
         except Exception:
             pass
 
-        answer = _answer_broad_recall(engine, req.thread_id)
+        # Determine if this is a generic "about me" or topic-specific recall
+        try:
+            _recall_slots = getattr(_task_intent, "slots", {}) if _task_intent else {}
+        except NameError:
+            _recall_slots = {}
+        _recall_query = _recall_slots.get("query", "") or ""
+        # If no explicit query slot, check if the raw message is topic-specific
+        # (not just "what do you know about me" but "what do you remember about my views on X")
+        if not _recall_query:
+            _raw_msg = _recall_slots.get("raw_message", effective_message) or effective_message
+            # Extract topic from "about my X" or "about X" patterns
+            import re as _re_recall
+            _topic_match = _re_recall.search(r"\babout\s+(?:my\s+)?(.{5,60}?)(?:\?|$)", _raw_msg, _re_recall.IGNORECASE)
+            if _topic_match:
+                _candidate = _topic_match.group(1).strip().rstrip("?. ")
+                # Skip generic "about me" patterns
+                if _candidate.lower() not in ("me", "myself", "who i am", "me so far"):
+                    _recall_query = _candidate
+        if _recall_query and _recall_query not in ("about me", "me", "who am i"):
+            # Topic-specific recall — use RAG retrieval + LLM synthesis
+            _safe_print(f"[BROAD_RECALL] Topic-specific: '{_recall_query}' — using targeted retrieval")
+            try:
+                _retrieved = engine.retrieve(effective_message, k=15) if hasattr(engine, "retrieve") else []
+                if _retrieved:
+                    _mem_texts = []
+                    for m in _retrieved[:10]:
+                        _mt = m.get("text", "") if isinstance(m, dict) else str(m)
+                        if _mt.strip():
+                            _mem_texts.append(f"- {_mt.strip()[:300]}")
+                    if _mem_texts:
+                        _recall_context = "\n".join(_mem_texts)
+                        # Try LLM synthesis
+                        try:
+                            from personal_agent.litellm_client import get_default_llm_client
+                            _synth_client = get_default_llm_client()
+                            _synth_resp = _synth_client.chat(
+                                messages=[
+                                    {"role": "system", "content": "You are Aether, a personal AI assistant. Synthesize the following memories into a coherent, conversational answer to the user's question. Be specific, cite what you actually know, and acknowledge gaps honestly."},
+                                    {"role": "user", "content": f"Question: {effective_message}\n\nRelevant memories:\n{_recall_context}"},
+                                ],
+                                max_tokens=500,
+                                temperature=0.3,
+                            )
+                            if _synth_resp and isinstance(_synth_resp, str) and len(_synth_resp.strip()) > 20:
+                                answer = _synth_resp.strip()
+                            else:
+                                answer = f"Here's what I remember about that:\n\n{_recall_context}"
+                        except Exception as _synth_err:
+                            _safe_print(f"[BROAD_RECALL] Synthesis failed: {_synth_err}")
+                            answer = f"Here's what I remember about that:\n\n{_recall_context}"
+                    else:
+                        answer = _answer_broad_recall(engine, req.thread_id)
+                else:
+                    answer = _answer_broad_recall(engine, req.thread_id)
+            except Exception as _tgt_err:
+                _safe_print(f"[BROAD_RECALL] Targeted retrieval failed: {_tgt_err}")
+                answer = _answer_broad_recall(engine, req.thread_id)
+        else:
+            answer = _answer_broad_recall(engine, req.thread_id)
 
         # If we have recent context and the broad recall was sparse, enrich
         if recent_context and ("don't have" in answer.lower() or "0 facts" in answer.lower()):
@@ -6880,6 +6948,20 @@ def chat_stream(req: ChatSendRequest, request: Request, authorization: Optional[
                 _routing = _route_check(_orch_msg, _task_intent)
                 _layer4_orchestrator = not _user_confirmed and _routing.route == "orchestrator"
                 _safe_print(f"[ROUTING] {_routing.route} (conf={_routing.confidence:.2f}, reasons={_routing.reasons})")
+
+                # ── Pure transformation guard ──────────────────────────
+                # Tasks like "rewrite as table", "convert to list", "format as markdown"
+                # need zero tools — sending them through the orchestrator wastes iterations
+                # on tool calls that can't help. Route to direct generation instead.
+                if _layer4_orchestrator and _task_intent and _task_intent.intent_type == "conversational":
+                    import re as _re_transform
+                    _is_pure_transform = bool(_re_transform.search(
+                        r"\b(?:rewrite|convert|format|transform|rephrase|restructure|reorganize)\b.*\b(?:as|into|to)\b.*\b(?:table|list|json|csv|markdown|bullet|summary|paragraph)\b",
+                        _orch_msg, _re_transform.IGNORECASE,
+                    ))
+                    if _is_pure_transform:
+                        _layer4_orchestrator = False
+                        _safe_print("[ROUTING] Pure transformation detected — skipping orchestrator, direct generation")
             except Exception as _route_err:
                 _safe_print(f"[ROUTING] Belief routing failed, falling back: {_route_err}")
 

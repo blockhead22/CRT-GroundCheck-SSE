@@ -361,7 +361,9 @@ _WEB_SEARCH_RE = re.compile(
     r"\b((?:(?:can|could|would)\s+you\s+)?(?:please\s+)?"
     r"(?:search\s+(?:the\s+)?(?:web|internet|google|online)\s+for|"
     r"google\s+|look\s+up\s+|find\s+(?:info|information|results)\s+(?:about|on|for)|"
-    r"search\s+for\s+|web\s+search\s+))\b",
+    r"search\s+for\s+|web\s+search\s+))\b"
+    # Negative lookahead: don't match code/file search patterns
+    r"(?!.*\b(?:TODO|FIXME|HACK|XXX|directory|folder|file|codebase|repo|function|class|import|def\s)\b)",
     re.IGNORECASE,
 )
 
@@ -922,6 +924,20 @@ def classify_intent(
             slots={"task_description": message},
             confidence=0.88,
             reason="desktop_action_pattern",
+        )
+
+    # ── 1b-code. Code search — "search for TODO in", "find FIXME in", etc. ──
+    _CODE_SEARCH_MATCH = re.search(
+        r"\b(?:search|look|find|scan|check|grep)\b.*\b(?:TODO|FIXME|HACK|XXX|comments?|function|class|import|def\b).*\b(?:in|inside|within|across|directory|folder|file|codebase|repo)\b",
+        message, re.IGNORECASE,
+    )
+    if _CODE_SEARCH_MATCH:
+        return TaskIntent(
+            route="task",
+            intent_type="search_code",
+            slots={"raw_message": message},
+            confidence=0.90,
+            reason="code_search_pattern",
         )
 
     # ── 1b-web. Web search — "search the web for", "google X" ───────────

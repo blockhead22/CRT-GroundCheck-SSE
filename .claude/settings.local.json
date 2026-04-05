@@ -36,7 +36,8 @@
       "WebFetch(domain:www.alif.web.id)",
       "WebFetch(domain:claude.ai)",
       "WebFetch(domain:www.reddit.com)",
-      "WebFetch(domain:www.anthropic.com)"
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:ccunpacked.dev)"
     ]
   }
 }
