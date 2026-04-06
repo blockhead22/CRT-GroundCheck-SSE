@@ -4266,11 +4266,24 @@ def chat_send(req: ChatSendRequest, request: Request, authorization: Optional[st
             for _m in (_pc_mems[:10] if isinstance(_pc_mems, list) else []):
                 _token_est += len(str(_m.get("text", ""))) // 4
 
+            # Count recent cloud turns for conversation momentum
+            _recent_cloud = 0
+            try:
+                for _rh in (recent_history or [])[-3:]:
+                    _rh_meta = _rh.get("metadata") or _rh.get("meta") or {}
+                    if isinstance(_rh_meta, dict):
+                        _gs = str(_rh_meta.get("generation_source") or _rh_meta.get("generation_provider") or "")
+                        if "cloud" in _gs or "claude" in _gs or "openai" in _gs or "agent_loop" in _gs:
+                            _recent_cloud += 1
+            except Exception:
+                pass
+
             _escalation_decision = _esc_policy.decide(
                 query=effective_message,
                 generation_mode=_generation_mode,
                 context_token_estimate=_token_est,
                 gate_boost=getattr(engine, '_last_behavioral_directives', {}).get('gate_boost', 0.0) if hasattr(engine, '_last_behavioral_directives') else 0.0,
+                recent_cloud_turns=_recent_cloud,
             )
             result["escalation"] = _escalation_decision.to_dict()
 

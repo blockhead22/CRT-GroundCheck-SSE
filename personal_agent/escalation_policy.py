@@ -130,14 +130,17 @@ class EscalationPolicy:
         generation_mode: str = "local",
         context_token_estimate: int = 0,
         gate_boost: float = 0.0,
+        recent_cloud_turns: int = 0,
     ) -> EscalationDecision:
         """Decide which tier to start generation at.
 
         Args:
-            query: The user's message (unused for now, reserved for future heuristics).
+            query: The user's message.
             generation_mode: User's configured generation mode ("local", "cloud_openai", "cloud_claude").
             context_token_estimate: Estimated token count of prompt + history + memories.
             gate_boost: Reflection loop blindspot gate boost (0.0-0.15).
+            recent_cloud_turns: Number of recent turns (last 3) that used cloud generation.
+                If >= 2, conversation has momentum on cloud — don't downgrade mid-thread.
 
         Returns:
             EscalationDecision with start_tier, skip_tiers, and reason.
@@ -214,6 +217,19 @@ class EscalationPolicy:
                         _pat.pattern[:60],
                     )
                     break
+
+        # 5. Conversation momentum — if recent turns used cloud, don't downgrade
+        # mid-thread. A short follow-up like "what about this one?" after a deep
+        # cloud-generated analysis needs the same depth. Without this, the system
+        # drops from Claude to gemma3 and produces garbage.
+        if "local" not in skip and recent_cloud_turns >= 2:
+            skip.append("local")
+            reasons.append(f"conversation_momentum:{recent_cloud_turns}/3_recent_cloud")
+            boosted = True
+            logger.info(
+                "[ESCALATION] Conversation momentum — %d of last 3 turns used cloud, maintaining",
+                recent_cloud_turns,
+            )
 
         # Determine start tier
         if "local" in skip:
