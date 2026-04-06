@@ -1664,10 +1664,13 @@ def list_user_beliefs(
     engine = _get_engine(request, tid)
     uid = resolve_user_id(authorization)
 
-    # Load all active user_belief memories
-    items = _recent_scope_items(engine, tid, user_id=uid)
+    # Load all active user_belief memories — GLOBAL across all threads.
+    # Beliefs are persistent user convictions, not thread-local context.
+    # Using thread-scoped loading caused beliefs to "disappear" when a new
+    # thread was created (each restart generates a new UUID thread).
+    all_items = engine.memory._load_all_memories(user_id=uid) if uid else engine.memory._load_all_memories()
     beliefs = [
-        m for m in items
+        m for m in all_items
         if getattr(m, "kind", "") == "user_belief"
         and not getattr(m, "deprecated", False)
         and float(getattr(m, "trust", 0)) >= min_trust
