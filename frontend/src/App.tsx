@@ -1887,6 +1887,8 @@ export default function App() {
                       onDismissFollowups={() => setFollowupSuggestions([])}
                       sessionCostUsd={sessionCostUsd}
                       lastMsgCostUsd={lastMsgCostUsd}
+                      beliefConfidence={selectedThread?.messages[selectedThread.messages.length - 1]?.crt?.belief_confidence}
+                      costUsd={lastMsgCostUsd}
                     />
                   ) : (
                     <div className="flex flex-1 items-center justify-center p-10 text-white/60">No chat selected.</div>

@@ -1,38 +1,23 @@
 import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { getTrustDelta, type TrustDeltaItem } from '../../lib/api'
+import { cleanMemoryText } from '../../lib/memoryUtils'
 
-function TrustPill({ item }: { item: TrustDeltaItem }) {
-  const isUp = item.delta > 0
-  const isDown = item.delta < 0
-  const color = isUp ? '#34d399' : isDown ? '#fb7185' : 'rgba(240,235,225,0.3)'
-  const sign = isUp ? '+' : ''
+/** Extract a short label from memory text — slot name or first few words */
+function shortLabel(item: TrustDeltaItem): string {
+  const raw = item.text_preview || ''
+  const cleaned = cleanMemoryText(raw)
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.85, y: 4 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-      className="group/pill relative flex items-center gap-1.5 rounded px-2 py-1 cursor-default"
-      style={{ border: `1px solid ${color}25`, background: `${color}08` }}
-      title={item.reason || undefined}
-    >
-      <span className="font-mono text-[10px] flex-shrink-0" style={{ color }}>
-        {sign}{(item.delta * 100).toFixed(1)}%
-      </span>
-      <span className="line-clamp-1 max-w-[140px] text-[10px]" style={{ color: 'rgba(240,235,225,0.4)' }}>
-        {item.text_preview || item.memory_id.slice(0, 12) + '…'}
-      </span>
-      {/* Hover tooltip with full trust values */}
-      <div
-        className="pointer-events-none absolute bottom-full left-0 mb-1 hidden rounded px-2 py-1.5 text-[10px] whitespace-nowrap group-hover/pill:block z-50"
-        style={{ background: 'rgba(18,17,16,0.95)', border: '1px solid rgba(240,235,225,0.08)', color: 'rgba(240,235,225,0.7)' }}
-      >
-        <span className="font-mono">{item.old_trust.toFixed(3)} → {item.new_trust.toFixed(3)}</span>
-        {item.reason && <div className="mt-0.5" style={{ color: 'rgba(240,235,225,0.4)' }}>{item.reason}</div>}
-      </div>
-    </motion.div>
-  )
+  // Try to extract a slot-like label: "favorite_color = orange" → "favorite_color"
+  const slotMatch = cleaned.match(/^(\w[\w_]+)\s*[=:]/)
+  if (slotMatch) return slotMatch[1].replace(/_/g, ' ')
+
+  // Try to extract "My X is Y" → "X"
+  const myMatch = cleaned.match(/^(?:my|your|the)\s+(.{3,20}?)(?:\s+is|\s+are|[.,])/i)
+  if (myMatch) return myMatch[1].trim()
+
+  // Fallback: first 20 chars
+  return cleaned.slice(0, 20) || item.memory_id.slice(0, 8)
 }
 
 export function TrustDeltaStrip({
@@ -64,32 +49,52 @@ export function TrustDeltaStrip({
 
   if (loading || items.length === 0) return null
 
-  const visible = expanded ? items : items.slice(0, 3)
-  const hidden = items.length - 3
+  // Sort by absolute delta descending — most significant shifts first
+  const sorted = [...items].sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+  const visible = expanded ? sorted : sorted.slice(0, 4)
+  const hidden = sorted.length - 4
 
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.2, delay: 0.3 }}
-      className="mt-2 overflow-hidden"
+      className="mt-1.5"
     >
-      <div className="flex items-center gap-1 mb-1.5">
-        <span className="text-[9px] uppercase tracking-widest" style={{ color: 'rgba(240,235,225,0.2)' }}>
-          trust moved
+      <div
+        className="flex items-center gap-1 flex-wrap font-mono text-[10px] leading-relaxed"
+        style={{ color: 'rgba(240,235,225,0.3)' }}
+      >
+        <span style={{ color: 'rgba(240,235,225,0.15)', fontSize: 9 }} className="uppercase tracking-widest mr-0.5">
+          trust
         </span>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        <AnimatePresence>
-          {visible.map((item) => (
-            <TrustPill key={item.memory_id + item.timestamp} item={item} />
-          ))}
-        </AnimatePresence>
+        {visible.map((item, i) => {
+          const isUp = item.delta > 0
+          const color = isUp ? '#34d399' : '#fb7185'
+          const sign = isUp ? '↑' : '↓'
+          const label = shortLabel(item)
+          return (
+            <span key={item.memory_id + item.timestamp} className="inline-flex items-center gap-0.5 cursor-default group/delta relative">
+              {i > 0 && <span style={{ color: 'rgba(240,235,225,0.1)' }}> · </span>}
+              <span style={{ color }}>{sign}</span>
+              <span style={{ color: 'rgba(240,235,225,0.35)' }}>{label}</span>
+              <span style={{ color }} className="tabular-nums">{isUp ? '+' : ''}{(item.delta * 100).toFixed(1)}%</span>
+              {/* Hover tooltip */}
+              <span
+                className="pointer-events-none absolute bottom-full left-0 mb-1 hidden rounded px-2 py-1 whitespace-nowrap group-hover/delta:block z-50"
+                style={{ background: 'rgba(18,17,16,0.95)', border: '1px solid rgba(240,235,225,0.08)', color: 'rgba(240,235,225,0.6)', fontSize: 9 }}
+              >
+                {item.old_trust.toFixed(3)} → {item.new_trust.toFixed(3)}
+                {item.reason && <span className="ml-1" style={{ color: 'rgba(240,235,225,0.3)' }}>({item.reason})</span>}
+              </span>
+            </span>
+          )
+        })}
         {!expanded && hidden > 0 && (
           <button
             onClick={() => setExpanded(true)}
-            className="rounded px-2 py-1 text-[10px] transition-opacity hover:opacity-70"
-            style={{ border: '1px solid rgba(240,235,225,0.08)', background: 'rgba(240,235,225,0.03)', color: 'rgba(240,235,225,0.3)' }}
+            className="hover:opacity-70 transition-opacity"
+            style={{ color: 'rgba(240,235,225,0.2)' }}
           >
             +{hidden} more
           </button>

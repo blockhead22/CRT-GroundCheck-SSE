@@ -5,6 +5,8 @@ import { TrustBar, type TrustShift } from './TrustBar'
 import { ToolRow } from './ToolRow'
 import type { ToolResult } from './ToolResultCard'
 import { cleanMemoryText } from '../../lib/memoryUtils'
+import { AetherMascot } from '../AetherMascot'
+import type { MascotAnimation } from '../AetherMascot'
 
 // ─────────────────────────────────────────────────────────────
 // Types
@@ -88,9 +90,13 @@ function groupSteps(steps: PipelineStep[]) {
 export function PipelineCollapse({
   steps,
   streaming,
+  beliefConfidence,
+  costUsd,
 }: {
   steps: PipelineStep[]
   streaming: boolean
+  beliefConfidence?: number | null
+  costUsd?: number | null
 }) {
   const [expanded, setExpanded] = useState(true)
   const startRef = useRef<number>(0)
@@ -148,40 +154,120 @@ export function PipelineCollapse({
   const toolCount = agentLoop.filter(i => i.kind === 'tool').length
   const thoughtCount = agentLoop.filter(i => i.kind === 'thinking').length
   const shiftCount = trustShifts.length
-  // Count drift epistemic events for the summary (post-turn summary, not inline warnings)
-  const driftEvents = agentLoop.filter(i => i.kind === 'epistemic' && (i as any).eventType === 'drift').length
+  // Drift detection — color shifts from amber to red when alignment drops
+  const driftItems = agentLoop.filter(i => i.kind === 'epistemic' && (i as any).eventType === 'drift') as Array<Extract<typeof agentLoop[0], { kind: 'epistemic' }>>
+  const driftEvents = driftItems.length
+  const hasDrift = driftEvents > 0
+  // Get worst alignment score from drift events
+  const worstAlignment = driftItems.reduce((min, d) => {
+    const a = (d as any).alignment
+    return typeof a === 'number' && a < min ? a : min
+  }, 1.0)
+  // Drift severity: 0 = no drift, 1 = severe
+  const driftSeverity = hasDrift ? Math.max(0, Math.min(1, 1 - worstAlignment)) : 0
+
+  // Bar color interpolation: amber (#E0A080) → red (#D47058) based on drift severity
+  const barColor = hasDrift
+    ? `rgb(${Math.round(212 + (212 - 212) * driftSeverity)}, ${Math.round(160 - (160 - 112) * driftSeverity)}, ${Math.round(128 - (128 - 88) * driftSeverity)})`
+    : '#E0A080'
+  const barGlow = hasDrift
+    ? `0 0 8px rgba(212,112,88,${0.3 + driftSeverity * 0.4})`
+    : '0 0 8px rgba(212,132,92,0.3)'
+
   const latencyStr = elapsedMs != null
     ? elapsedMs >= 1000 ? `${(elapsedMs / 1000).toFixed(1)}s` : `${elapsedMs}ms`
     : null
 
-  // Summary line parts — "2 thoughts · 1 tool · 3 mem · 2 shifts · 1.2s"
+  // Summary line — "5 mem · ◉ 0.73 · ✓ · $0.01 · 2.1s"
   const summaryParts: string[] = []
+  if (memories.length > 0) summaryParts.push(`${memories.length} mem`)
   if (thoughtCount > 0) summaryParts.push(`${thoughtCount} thought${thoughtCount !== 1 ? 's' : ''}`)
   if (toolCount > 0) summaryParts.push(`${toolCount} tool${toolCount !== 1 ? 's' : ''}`)
-  if (memories.length > 0) summaryParts.push(`${memories.length} mem`)
+  if (beliefConfidence != null && beliefConfidence > 0) summaryParts.push(`◉ ${beliefConfidence.toFixed(2)}`)
+  if (verification?.verdict === 'pass') summaryParts.push('✓ verified')
+  if (verification?.verdict === 'fail') summaryParts.push('✗ conflict')
   if (shiftCount > 0) summaryParts.push(`${shiftCount} shift${shiftCount !== 1 ? 's' : ''}`)
-  else if (driftEvents > 0) summaryParts.push(`${driftEvents} drift`)
-  if (verification?.verdict === 'pass') summaryParts.push('✓')
-  if (verification?.verdict === 'fail') summaryParts.push('✗')
+  if (driftEvents > 0) summaryParts.push(`⚠ ${driftEvents} drift`)
+  if (costUsd != null && costUsd > 0) summaryParts.push(`$${costUsd < 0.01 ? costUsd.toFixed(4) : costUsd.toFixed(2)}`)
   if (latencyStr) summaryParts.push(latencyStr)
 
   return (
     <div className="my-2 select-none">
+
+      {/* ── Drift-aware progress bar with mascot (streaming only) ── */}
+      {streaming && (() => {
+        const progressPct = `${Math.min(90, (steps.length / Math.max(steps.length + 2, 8)) * 100)}%`
+        // Determine mascot state from latest pipeline activity
+        const lastStep = steps[steps.length - 1]
+        let mascotAnim: MascotAnimation = 'loading'
+        let mascotMood: 'calm' | 'warm' | 'curious' | 'intense' | 'uncertain' = 'curious'
+        if (hasDrift) {
+          mascotAnim = 'alert'; mascotMood = 'intense'
+        } else if (lastStep?.kind === 'thinking') {
+          mascotAnim = 'thinking'; mascotMood = 'curious'
+        } else if (lastStep?.kind === 'tool') {
+          mascotAnim = 'working'; mascotMood = 'warm'
+        } else if (lastStep?.kind === 'retrieval') {
+          mascotAnim = 'curious'; mascotMood = 'curious'
+        } else if (lastStep?.kind === 'status') {
+          const s = (lastStep as any).content?.toLowerCase?.() || ''
+          if (s.includes('generat') || s.includes('draft')) { mascotAnim = 'working'; mascotMood = 'warm' }
+          else if (s.includes('verif')) { mascotAnim = 'nod'; mascotMood = 'warm' }
+          else if (s.includes('contradict')) { mascotAnim = 'alert'; mascotMood = 'intense' }
+          else { mascotAnim = 'curious'; mascotMood = 'curious' }
+        }
+        return (
+          <div className="relative mb-1.5">
+            {/* Mascot walking along the bar */}
+            <motion.div
+              className="absolute z-10"
+              style={{ bottom: 2, marginLeft: -12 }}
+              initial={{ left: '0%', opacity: 0 }}
+              animate={{ left: progressPct, opacity: 1 }}
+              exit={{ left: '0%', bottom: -180, opacity: 0 }}
+              transition={{ left: { duration: 0.6, ease: 'easeOut' }, opacity: { duration: 0.3 } }}
+            >
+              <AetherMascot mood={mascotMood} animation={mascotAnim} size={24} />
+            </motion.div>
+
+            {/* Progress bar */}
+            <div className="h-[2px] rounded-full overflow-hidden" style={{ background: 'rgba(240,235,225,0.04)' }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: barColor, boxShadow: barGlow }}
+                initial={{ width: '0%' }}
+                animate={{ width: progressPct }}
+                transition={{ duration: 0.4, ease: 'easeOut' }}
+              />
+            </div>
+            {/* Drift pulse overlay */}
+            {hasDrift && (
+              <motion.div
+                className="h-[2px] rounded-full mt-[-2px]"
+                style={{ background: 'rgba(212,112,88,0.6)' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 0.8, 0] }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
+          </div>
+        )
+      })()}
 
       {/* ── Collapsed summary line ── */}
       {!streaming && (
         <button
           onClick={() => setExpanded(v => !v)}
           className="flex items-center gap-1.5 text-[11px] font-mono w-full text-left py-0.5 transition-opacity hover:opacity-80"
-          style={{ color: 'rgba(240,235,225,0.3)' }}
+          style={{ color: hasDrift ? 'rgba(212,112,88,0.6)' : 'rgba(240,235,225,0.3)' }}
         >
           {expanded
-            ? <ChevronDown size={11} style={{ color: '#E0A080', flexShrink: 0 }} />
-            : <ChevronRight size={11} style={{ color: '#E0A080', flexShrink: 0 }} />
+            ? <ChevronDown size={11} style={{ color: hasDrift ? '#D47058' : '#E0A080', flexShrink: 0 }} />
+            : <ChevronRight size={11} style={{ color: hasDrift ? '#D47058' : '#E0A080', flexShrink: 0 }} />
           }
           <span>{summaryParts.join(' · ')}</span>
           {!expanded && (
-            <span className="flex-1 border-b ml-1" style={{ borderColor: 'rgba(240,235,225,0.05)' }} />
+            <span className="flex-1 border-b ml-1" style={{ borderColor: hasDrift ? 'rgba(212,112,88,0.1)' : 'rgba(240,235,225,0.05)' }} />
           )}
         </button>
       )}
@@ -218,14 +304,14 @@ export function PipelineCollapse({
                 <AgentLoopSection items={agentLoop} streaming={streaming} />
               )}
 
-              {/* ── SECTION 4: Generating pulse (live only) ── */}
+              {/* ── SECTION 4: Generating pulse (live only) — shifts red on drift ── */}
               {streaming && (
-                <div className="flex items-center gap-2 text-[11px] font-mono pl-1" style={{ color: 'rgba(240,235,225,0.3)' }}>
+                <div className="flex items-center gap-2 text-[11px] font-mono pl-1" style={{ color: hasDrift ? 'rgba(212,112,88,0.5)' : 'rgba(240,235,225,0.3)' }}>
                   <span
                     className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
-                    style={{ background: '#E0A080' }}
+                    style={{ background: hasDrift ? '#D47058' : '#E0A080' }}
                   />
-                  <span>generating…</span>
+                  <span>{hasDrift ? 'generating (drift detected)…' : 'generating…'}</span>
                 </div>
               )}
 

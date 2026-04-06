@@ -84,6 +84,8 @@ function StreamingMessage({
   retrievedMemories,
   trustShifts,
   isActiveStream,
+  beliefConfidence,
+  costUsd,
 }: {
   content: string
   isThinking: boolean
@@ -95,6 +97,8 @@ function StreamingMessage({
   retrievedMemories?: RetrievedMemory[]
   trustShifts?: TrustShift[]
   isActiveStream?: boolean
+  beliefConfidence?: number | null
+  costUsd?: number | null
 }) {
   const hasContent = Boolean(content)
   const hasPipelineSteps = (pipelineSteps ?? []).length > 0
@@ -111,7 +115,7 @@ function StreamingMessage({
     >
       {/* Pipeline collapse — structured thinking/tool/trust steps */}
       {hasPipelineSteps ? (
-        <PipelineCollapse steps={pipelineSteps!} streaming={pipelineStreaming} />
+        <PipelineCollapse steps={pipelineSteps!} streaming={pipelineStreaming} beliefConfidence={beliefConfidence} costUsd={costUsd} />
       ) : (
         /* Legacy pipeline trace — flat status strings */
         !hideTrace && <PipelineTrace statuses={statusLog} streaming={pipelineStreaming} />
@@ -216,6 +220,10 @@ export function ChatThreadView(props: {
   /** Cost tracking */
   sessionCostUsd?: number
   lastMsgCostUsd?: number
+  /** Belief confidence for current streaming message (from done metadata) */
+  beliefConfidence?: number | null
+  /** Cost for current streaming message */
+  costUsd?: number | null
 }) {
   const empty = props.thread.messages.length === 0
 
@@ -711,6 +719,8 @@ export function ChatThreadView(props: {
                           retrievedMemories={props.retrievedMemories}
                           trustShifts={props.trustShifts}
                           isActiveStream={isStreaming}
+                          beliefConfidence={props.beliefConfidence}
+                          costUsd={props.costUsd}
                         />
                       </motion.div>
                     )}
